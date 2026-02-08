@@ -1743,7 +1743,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     };
   }, [gameId]);
   
-  // Handler for winner to broadcast "show cards"
+  // Handler for winner to broadcast "show cards" and persist to database
   const handleWinner357ShowCards = useCallback(() => {
     const currentGameUuid = game?.current_game_uuid;
     console.log('[BROADCAST] Sending show-cards event for game', currentGameUuid);
@@ -1755,7 +1755,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       event: 'show-cards',
       payload: { timestamp: Date.now(), currentGameUuid }
     });
-  }, [game?.current_game_uuid]);
+    
+    // PERSIST: Mark the winner's cards as is_public = true for hand history
+    // Find the current round (for 3-5-7, match current_round number within current dealer game)
+    const currentPlayer = players.find(p => p.user_id === user?.id);
+    const rounds = game?.rounds || [];
+    const dealerGameRounds = currentGameUuid 
+      ? rounds.filter((r: any) => r.dealer_game_id === currentGameUuid)
+      : rounds;
+    // For 3-5-7, find the round matching current_round number with highest hand_number
+    const matchingRounds = dealerGameRounds.filter((r: any) => r.round_number === game?.current_round);
+    const activeRound = matchingRounds.reduce<any>(
+      (best: any, r: any) => (!best || (r.hand_number ?? 0) > (best.hand_number ?? 0) ? r : best),
+      null
+    );
+    const roundId = activeRound?.id;
+    
+    if (currentPlayer && roundId) {
+      console.log('[SHOW_CARDS] Persisting is_public=true for player', currentPlayer.id, 'round', roundId);
+      supabase
+        .from('player_cards')
+        .update({ is_public: true })
+        .eq('round_id', roundId)
+        .eq('player_id', currentPlayer.id)
+        .then(({ error }) => {
+          if (error) {
+            console.error('[SHOW_CARDS] Failed to persist is_public:', error);
+          } else {
+            console.log('[SHOW_CARDS] Successfully persisted is_public=true');
+          }
+        });
+    } else {
+      console.warn('[SHOW_CARDS] Missing data for persist:', { currentPlayer: !!currentPlayer, roundId });
+    }
+  }, [game?.current_game_uuid, game?.rounds, game?.current_round, players, user?.id]);
   
   // Reset winner357ShowCards when game transitions away from game_over OR when a new hand starts
   useEffect(() => {

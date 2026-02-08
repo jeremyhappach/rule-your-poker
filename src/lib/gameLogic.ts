@@ -1766,10 +1766,9 @@ export async function endRound(gameId: string) {
       if (currentRound === 3 || revealAtShowdown) {
         // Round 3 or reveal enabled: set visibility for hand history
         const visibleTo = currentRound === 3 ? seatedUserIds : showdownUserIds;
-        // Cards are publicly tabled (visible to everyone) if:
-        // - Round 3 (final round - always public), OR
-        // - Player chose to reveal (reveal_at_showdown enabled)
-        const isPubliclyTabled = currentRound === 3 || revealAtShowdown;
+        // Only Round 3 cards are automatically public (visible to everyone including non-participants)
+        // For Rounds 1-2, cards only become public if the winner clicks "Show Cards" (handled in Game.tsx)
+        const isPubliclyTabled = currentRound === 3;
         console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users for', stayedPlayerIds.length, 'players, isPublic:', isPubliclyTabled);
         // Fire-and-forget: visibility update is for history only - but must actually execute!
         supabase
