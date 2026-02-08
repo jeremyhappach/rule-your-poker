@@ -203,8 +203,10 @@ export function evaluatePegging(
   const thirtyOne = newCount === 31;
   
   // Check for pairs (consecutive cards of same rank)
+  // CRITICAL: At the start of a new run (count reset after 31/Go), pairs/trips/quads must NOT
+  // be evaluated against cards from the previous run.
   let pairPoints = 0;
-  if (playedCards.length > 0) {
+  if (currentCount !== 0 && playedCards.length > 0) {
     let pairCount = 1;
     for (let i = playedCards.length - 1; i >= 0; i--) {
       if (playedCards[i].card.rank === newCard.rank) {

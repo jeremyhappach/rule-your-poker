@@ -379,7 +379,11 @@ export function playPeggingCard(
     }
   }
 
-  const peggingPoints = evaluatePegging(state.pegging.playedCards, card, state.pegging.currentCount, isLastCardOfHand);
+  // CRITICAL: Only evaluate pegging points within the current run (since last 31/Go reset).
+  // Otherwise pairs/runs can incorrectly score across sequence boundaries (e.g., K♠ hits 31 then K♥ starts new run).
+  const currentRunPlayedCards = state.pegging.playedCards.slice(state.pegging.sequenceStartIndex);
+
+  const peggingPoints = evaluatePegging(currentRunPlayedCards, card, state.pegging.currentCount, isLastCardOfHand);
   const pointsEarned = peggingPoints.total;
   
   // Update player score
