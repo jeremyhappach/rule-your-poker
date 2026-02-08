@@ -290,6 +290,43 @@ serve(async (req) => {
           continue;
         }
 
+        // ============= ALL-HUMANS AUTO-FOLD GUARD (prevents infinite pussy tax) =============
+        // In card games (3-5-7, Holm), if EVERY human player is in auto_fold mode, the game
+        // would loop forever with every human folding → pussy tax → next round → repeat.
+        // To prevent this, we pause the session when this condition is detected.
+        const isCardGame =
+          game.game_type === '3-5-7' ||
+          game.game_type === '3-5-7-game' ||
+          game.game_type === '357' ||
+          game.game_type === 'holm-game';
+
+        if (isCardGame && game.status === 'in_progress' && !game.is_paused) {
+          // Fetch all seated human players (not sitting_out)
+          const { data: seatedHumans } = await supabase
+            .from('players')
+            .select('id, auto_fold, sitting_out')
+            .eq('game_id', game.id)
+            .eq('is_bot', false)
+            .eq('sitting_out', false);
+
+          const seatedHumanCount = seatedHumans?.length || 0;
+          const allHumansAutoFold =
+            seatedHumanCount > 0 && seatedHumans!.every((p: any) => p.auto_fold === true);
+
+          if (allHumansAutoFold) {
+            console.log('[CRON-ENFORCE] 🛑 ALL HUMANS AUTO-FOLD: Pausing session', game.id, 'humans:', seatedHumanCount);
+
+            await supabase
+              .from('games')
+              .update({ is_paused: true })
+              .eq('id', game.id);
+
+            actionsTaken.push(`All ${seatedHumanCount} humans in auto_fold - session paused to prevent infinite pussy tax`);
+            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
+            continue; // Skip further processing for this game
+          }
+        }
+
         // ============= ACTIVE HUMAN PLAYER GUARD =============
         // CRITICAL: This guard prevents the cron from racing with active human players.
         // When humans are connected and playing, ALL game-affecting operations are handled
