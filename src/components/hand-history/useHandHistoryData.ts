@@ -23,9 +23,15 @@ interface UseHandHistoryDataProps {
 export function useHandHistoryData({
   gameId,
   currentUserId,
-  currentPlayerId,
+  currentPlayerId: passedPlayerId,
   currentRound,
 }: UseHandHistoryDataProps) {
+  // For ended sessions, we need to find the viewer's historical player ID(s) from that session
+  // since passedPlayerId may not match the IDs stored in player_chip_changes
+  const [viewerPlayerIds, setViewerPlayerIds] = useState<string[]>([]);
+  
+  // Effective player ID for current session viewing - combines passed ID with historical IDs
+  // This allows chip change calculations to work for both active and ended sessions
   const [gameResults, setGameResults] = useState<GameResultRecord[]>([]);
   const [dealerGames, setDealerGames] = useState<Map<string, DealerGameRecord>>(new Map());
   const [dealerGameNumberById, setDealerGameNumberById] = useState<Map<string, number>>(new Map());
@@ -214,13 +220,24 @@ export function useHandHistoryData({
   };
 
   const fetchPlayerNames = async (roundsData: RoundRecord[]) => {
+    // Fetch snapshots to get historical player IDs for the current viewer
     const { data: snapshotsData } = await supabase
       .from("session_player_snapshots")
-      .select("player_id, username")
+      .select("player_id, user_id, username")
       .eq("game_id", gameId);
 
     const namesMap = new Map<string, string>();
     snapshotsData?.forEach((snap) => namesMap.set(snap.player_id, snap.username));
+    
+    // Build list of player IDs that belong to the current viewer (for chip change calculations)
+    const viewerIds: string[] = [];
+    if (currentUserId) {
+      snapshotsData?.forEach((snap) => {
+        if (snap.user_id === currentUserId) {
+          viewerIds.push(snap.player_id);
+        }
+      });
+    }
 
     const { data: playersData } = await supabase
       .from("players")
@@ -248,12 +265,18 @@ export function useHandHistoryData({
           const username = profile?.username || "Unknown";
           if (!namesMap.has(player.id)) namesMap.set(player.id, username);
           userIdMap.set(player.user_id, username);
+          
+          // Also add player IDs from current players table for active sessions
+          if (player.user_id === currentUserId && !viewerIds.includes(player.id)) {
+            viewerIds.push(player.id);
+          }
         }
       });
     }
 
     setPlayerNames(namesMap);
     setUserIdToName(userIdMap);
+    setViewerPlayerIds(viewerIds);
 
     // Fetch player cards
     if (roundsData.length > 0) {
@@ -315,11 +338,28 @@ export function useHandHistoryData({
     return systemWinners.includes(result.winner_username || "");
   };
 
+  // Helper to check if a player ID belongs to the current viewer
+  const isViewerPlayer = (playerId: string): boolean => {
+    if (passedPlayerId && playerId === passedPlayerId) return true;
+    return viewerPlayerIds.includes(playerId);
+  };
+  
+  // Helper to get chip change for viewer from an event (sums all viewer's player IDs)
+  const getViewerChipChange = (chipChanges: Record<string, number>): number => {
+    let total = 0;
+    for (const [playerId, change] of Object.entries(chipChanges)) {
+      if (isViewerPlayer(playerId)) {
+        total += change;
+      }
+    }
+    return total;
+  };
+
   const canSeeCards = (
     playerId: string,
     visibleToUserIds: string[] | null
   ): boolean => {
-    if (playerId === currentPlayerId) return true;
+    if (isViewerPlayer(playerId)) return true;
     if (!visibleToUserIds || visibleToUserIds.length === 0) return false;
     return currentUserId ? visibleToUserIds.includes(currentUserId) : false;
   };
@@ -489,15 +529,24 @@ export function useHandHistoryData({
           const roundCards = playerCardsByRound.get(round.id);
           const roundCardDataForRound = roundCardData.get(round.id);
 
-          // My cards
-          const myCardsData = roundCards?.get(currentPlayerId || "");
-          const myCards = myCardsData?.cards || [];
+          // My cards - check all viewer player IDs
+          let myCards: CardData[] = [];
+          let myCardsPlayerId: string | undefined;
+          if (roundCards) {
+            for (const [playerId, data] of roundCards.entries()) {
+              if (isViewerPlayer(playerId) && data.cards.length > 0) {
+                myCards = data.cards;
+                myCardsPlayerId = playerId;
+                break;
+              }
+            }
+          }
 
           // Visible player cards
           const visiblePlayerCards: RoundGroup["visiblePlayerCards"] = [];
           if (roundCards) {
             roundCards.forEach((data, playerId) => {
-              const isMe = playerId === currentPlayerId;
+              const isMe = isViewerPlayer(playerId);
               const canSee = isMe || canSeeCards(playerId, data.visibleToUserIds);
               
               if (canSee) {
@@ -590,7 +639,7 @@ export function useHandHistoryData({
           (sum, rg) =>
             sum +
             rg.events.reduce(
-              (eSum, e) => eSum + (e.player_chip_changes[currentPlayerId || ""] ?? 0),
+              (eSum, e) => eSum + getViewerChipChange(e.player_chip_changes),
               0
             ),
           0
@@ -606,7 +655,7 @@ export function useHandHistoryData({
       // Calculate totals for the dealer game
       const allEvents = hands.flatMap((h) => h.rounds.flatMap((r) => r.events));
       const totalChipChange = allEvents.reduce(
-        (sum, e) => sum + (e.player_chip_changes[currentPlayerId || ""] ?? 0),
+        (sum, e) => sum + getViewerChipChange(e.player_chip_changes),
         0
       );
       const totalPot = allEvents
@@ -709,7 +758,7 @@ export function useHandHistoryData({
         totalChipChange,
         winner: resolvedWinner,
         winnerDescription: winnerDescription,
-        isWinner: winnerPlayerId === currentPlayerId,
+        isWinner: winnerPlayerId ? isViewerPlayer(winnerPlayerId) : false,
         totalPot,
         latestTimestamp: allEvents[allEvents.length - 1]?.created_at || dealerGame?.started_at || "",
         isDiceGame,
@@ -728,7 +777,7 @@ export function useHandHistoryData({
     dealerGameNumberById,
     playerNames,
     userIdToName,
-    currentPlayerId,
+    viewerPlayerIds,
     currentUserId,
     playerCardsByRound,
     roundCardData,
