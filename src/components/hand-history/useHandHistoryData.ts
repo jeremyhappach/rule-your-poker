@@ -340,8 +340,16 @@ export function useHandHistoryData({
 
   // Helper to check if a player ID belongs to the current viewer
   const isViewerPlayer = (playerId: string): boolean => {
-    if (passedPlayerId && playerId === passedPlayerId) return true;
-    return viewerPlayerIds.includes(playerId);
+    // Prefer the snapshot-derived list when available (works for ended sessions and avoids
+    // accidentally treating an opponent "currentPlayerId" as the viewer).
+    if (viewerPlayerIds.length > 0) {
+      return viewerPlayerIds.includes(playerId);
+    }
+
+    // Fallback for cases where we don't have snapshots yet.
+    if (passedPlayerId) return playerId === passedPlayerId;
+
+    return false;
   };
   
   // Helper to get chip change for viewer from an event (sums all viewer's player IDs)
@@ -362,17 +370,6 @@ export function useHandHistoryData({
         }
       }
     }
-    
-    // Debug logging for cribbage chip change issues
-    if (total === 0 && Object.keys(chipChanges).length > 0) {
-      console.log('[HAND_HISTORY] Zero chip change despite having entries:', {
-        chipChanges,
-        viewerPlayerIds,
-        passedPlayerId,
-        currentUserId,
-      });
-    }
-    
     return total;
   };
 
