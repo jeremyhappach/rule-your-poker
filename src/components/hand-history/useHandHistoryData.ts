@@ -563,27 +563,18 @@ export function useHandHistoryData({
             }
           }
 
+          // Check if this round has a showdown event (non-system, non-ante event)
+          // For 3-5-7: A showdown is when multiple players stayed and hands were compared
+          // Leg Purchase is NOT a showdown - it's a solo stay where one player got a free leg
+          const hasShowdown = events.some(e => 
+            !isSystemEvent(e) && 
+            e.winner_username !== "Ante" &&
+            e.winner_username !== "Leg Purchase"
+          );
+          
           // For 3-5-7, also check if reveal_at_showdown is enabled in dealer game config
           const is357Game = gameType === "357" || gameType === "3-5-7";
           const revealAtShowdown = is357Game && dealerGame?.config?.reveal_at_showdown !== false;
-          
-          // Check if this round has a showdown event (non-system, non-ante event)
-          // For 3-5-7: Leg Purchase counts as a showdown since it means someone won the round
-          // and cards should be revealed if reveal_at_showdown is enabled
-          const hasShowdown = events.some(e => {
-            // Skip system events
-            if (isSystemEvent(e)) return false;
-            if (e.winner_username === "Ante") return false;
-            if (e.winner_username === "Pussy Tax") return false;
-            if (e.winner_username === "Pot Refund") return false;
-            if (e.winner_username === "CHOP Ante Correction" || e.winner_username === "Ante Correction") return false;
-            
-            // For 3-5-7, Leg Purchase means a round was won - this is our "showdown"
-            if (is357Game && e.winner_username === "Leg Purchase") return true;
-            
-            // Any other non-system event is a showdown
-            return true;
-          });
 
           // Visible player cards
           const visiblePlayerCards: RoundGroup["visiblePlayerCards"] = [];
