@@ -368,7 +368,12 @@ function separateEventsByPhase(events: CribbageEventRecord[]): {
       cutCard = event.card_played as CardData;
     } else if (event.event_type === "pegging" || event.event_type === "go") {
       peggingEvents.push(event);
-    } else if (event.event_type === "hand_scoring" || event.event_type === "crib_scoring" || event.event_type === "his_heels") {
+    } else if (
+      event.event_type === "hand_scoring" ||
+      event.event_type === "crib_scoring" ||
+      event.event_type === "crib_reveal" ||
+      event.event_type === "his_heels"
+    ) {
       scoringEvents.push(event);
     }
   }
