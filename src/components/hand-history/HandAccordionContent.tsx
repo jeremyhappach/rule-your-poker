@@ -3,7 +3,7 @@ import { HandHistoryEventRow } from "./HandHistoryEventRow";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import { CribbageEventDisplay } from "./CribbageEventDisplay";
 import { compactHandDescription, compactLegDescription } from "@/lib/handDescriptionUtils";
-import type { DealerGameGroup, RoundGroup, GameResultRecord, CribbageEventRecord, CardData } from "./types";
+import type { DealerGameGroup, RoundGroup, GameResultRecord, CribbageEventRecord, CardData, HandGroup } from "./types";
 
 interface HandAccordionContentProps {
   group: DealerGameGroup;
@@ -65,6 +65,22 @@ function getCardCountLabel(roundNumber: number): string {
       return "";
   }
 }
+// Separate ante events from other events for 3-5-7 display
+function separateAnteEvents(events: GameResultRecord[]): { anteEvents: GameResultRecord[]; otherEvents: GameResultRecord[] } {
+  const anteEvents: GameResultRecord[] = [];
+  const otherEvents: GameResultRecord[] = [];
+  
+  events.forEach(event => {
+    if (event.winner_username === "Ante") {
+      anteEvents.push(event);
+    } else {
+      otherEvents.push(event);
+    }
+  });
+  
+  return { anteEvents, otherEvents };
+}
+
 function RoundDisplay({
   round,
   roundIndex,
@@ -72,6 +88,7 @@ function RoundDisplay({
   is357,
   currentPlayerId,
   playerNames,
+  showAnteInRound = true,
 }: {
   round: RoundGroup;
   roundIndex: number;
@@ -79,13 +96,22 @@ function RoundDisplay({
   is357: boolean;
   currentPlayerId?: string;
   playerNames?: Map<string, string>;
+  showAnteInRound?: boolean;
 }) {
   const hasCribbageEvents = round.cribbageEvents && round.cribbageEvents.length > 0;
   // For cribbage, don't show player cards separately - they're shown in CribbageEventDisplay counting sections
   const hasCards = !hasCribbageEvents && round.visiblePlayerCards.length > 0;
   const hasCommunityCards = round.communityCards.length > 0;
   const hasChuckyCards = round.chuckyCards.length > 0;
-  const hasEvents = round.events.length > 0;
+  
+  // For 3-5-7, separate ante events (handled at hand level) from round events
+  const { anteEvents, otherEvents } = is357 
+    ? separateAnteEvents(round.events)
+    : { anteEvents: [], otherEvents: round.events };
+  
+  // In 3-5-7, ante events are shown at hand level, not in round
+  const displayEvents = showAnteInRound ? round.events : otherEvents;
+  const hasEvents = displayEvents.length > 0;
 
   // For 3-5-7, show round header
   const showRoundHeader = is357 && totalRounds > 1;
@@ -107,16 +133,29 @@ function RoundDisplay({
         </div>
       )}
 
-      {/* Player cards for this round */}
+      {/* Player cards for this round - show viewer first, then other players */}
       {hasCards && (
         <div className="space-y-1">
-          {round.visiblePlayerCards.map((pc) => (
-            <MiniCardRow
-              key={pc.playerId}
-              cards={pc.cards}
-              label={`${pc.isCurrentPlayer ? "You" : pc.username}:`}
-            />
-          ))}
+          {/* First, show viewer's cards */}
+          {round.visiblePlayerCards
+            .filter(pc => pc.isCurrentPlayer)
+            .map((pc) => (
+              <MiniCardRow
+                key={pc.playerId}
+                cards={pc.cards}
+                label="You:"
+              />
+            ))}
+          {/* Then show other players' revealed cards */}
+          {round.visiblePlayerCards
+            .filter(pc => !pc.isCurrentPlayer)
+            .map((pc) => (
+              <MiniCardRow
+                key={pc.playerId}
+                cards={pc.cards}
+                label={`${pc.username}:`}
+              />
+            ))}
         </div>
       )}
 
@@ -186,10 +225,10 @@ function RoundDisplay({
         />
       )}
 
-      {/* Events */}
+      {/* Events (excluding ante for 3-5-7, which is shown at hand level) */}
       {hasEvents && (
         <div className="space-y-1">
-          {round.events.map((event) => {
+          {displayEvents.map((event) => {
             const { label, description, chipChange } = formatEventDescription(event, currentPlayerId, playerNames);
             return (
               <HandHistoryEventRow
@@ -258,6 +297,15 @@ export function HandAccordionContent({
     );
   }
 
+  // For 3-5-7, collect all ante events from first round of each hand to show at hand level
+  const getAnteEventsForHand = (hand: HandGroup): GameResultRecord[] => {
+    if (!is357) return [];
+    // Ante events are stored in round 1
+    const round1 = hand.rounds.find(r => r.roundNumber === 1);
+    if (!round1) return [];
+    return round1.events.filter(e => e.winner_username === "Ante");
+  };
+
   return (
     <div className="space-y-2 pt-2">
       {/* Metadata */}
@@ -269,47 +317,69 @@ export function HandAccordionContent({
       )}
 
       {/* Hands */}
-      {group.hands.map((hand, handIdx) => (
-        <div key={hand.handNumber}>
-          {/* Hand separator for multiple hands (Holm with ties, 3-5-7 with legs) */}
-          {hasMultipleHands && handIdx > 0 && (
-            <div className="flex items-center gap-2 my-3 text-[10px] text-poker-gold font-semibold">
-              <div className="h-px bg-poker-gold/30 flex-1" />
-              <span>{isHolm ? "🔄 ROLLOVER" : `Hand ${handIdx + 1}`}</span>
-              <div className="h-px bg-poker-gold/30 flex-1" />
-            </div>
-          )}
+      {group.hands.map((hand, handIdx) => {
+        const anteEvents = getAnteEventsForHand(hand);
+        
+        return (
+          <div key={hand.handNumber}>
+            {/* Hand separator for multiple hands (Holm with ties, 3-5-7 with legs) */}
+            {hasMultipleHands && handIdx > 0 && (
+              <div className="flex items-center gap-2 my-3 text-[10px] text-poker-gold font-semibold">
+                <div className="h-px bg-poker-gold/30 flex-1" />
+                <span>{isHolm ? "🔄 ROLLOVER" : `Hand ${handIdx + 1}`}</span>
+                <div className="h-px bg-poker-gold/30 flex-1" />
+              </div>
+            )}
 
-          {hasMultipleHands && handIdx === 0 && !isDiceWithRollovers && (
-            <div className="text-[10px] text-muted-foreground font-medium mb-1">
-              Hand 1
-            </div>
-          )}
+            {hasMultipleHands && handIdx === 0 && !isDiceWithRollovers && (
+              <div className="text-[10px] text-muted-foreground font-medium mb-1">
+                Hand 1
+              </div>
+            )}
 
-          {/* Rounds within this hand */}
-          {hand.rounds.map((round, roundIdx) => (
-            <div key={round.roundId}>
-              {/* Dice rollover separator */}
-              {group.isDiceGame && roundIdx > 0 && (
-                <div className="flex items-center gap-2 my-2 text-[10px] text-poker-gold font-semibold">
-                  <div className="h-px bg-poker-gold/30 flex-1" />
-                  <span>🔄 ROLLOVER - ONE TIE ALL TIE</span>
-                  <div className="h-px bg-poker-gold/30 flex-1" />
-                </div>
-              )}
+            {/* For 3-5-7: Show ante at hand level, right after hand header */}
+            {is357 && anteEvents.length > 0 && (
+              <div className="space-y-1 mb-2">
+                {anteEvents.map((event) => {
+                  const { label, description, chipChange } = formatEventDescription(event, currentPlayerId, playerNames);
+                  return (
+                    <HandHistoryEventRow
+                      key={event.id}
+                      label={label}
+                      description={description}
+                      delta={chipChange}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
-              <RoundDisplay
-                round={round}
-                roundIndex={roundIdx}
-                totalRounds={hand.rounds.length}
-                is357={is357}
-                currentPlayerId={currentPlayerId}
-                playerNames={playerNames}
-              />
-            </div>
-          ))}
-        </div>
-      ))}
+            {/* Rounds within this hand */}
+            {hand.rounds.map((round, roundIdx) => (
+              <div key={round.roundId}>
+                {/* Dice rollover separator */}
+                {group.isDiceGame && roundIdx > 0 && (
+                  <div className="flex items-center gap-2 my-2 text-[10px] text-poker-gold font-semibold">
+                    <div className="h-px bg-poker-gold/30 flex-1" />
+                    <span>🔄 ROLLOVER - ONE TIE ALL TIE</span>
+                    <div className="h-px bg-poker-gold/30 flex-1" />
+                  </div>
+                )}
+
+                <RoundDisplay
+                  round={round}
+                  roundIndex={roundIdx}
+                  totalRounds={hand.rounds.length}
+                  is357={is357}
+                  currentPlayerId={currentPlayerId}
+                  playerNames={playerNames}
+                  showAnteInRound={!is357}
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
