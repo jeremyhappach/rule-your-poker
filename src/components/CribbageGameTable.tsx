@@ -89,6 +89,10 @@ export const CribbageGameTable = ({
   
   // Track if we've logged the cut card for this hand
   const cutCardLoggedRef = useRef<string | null>(null);
+  
+  // Ref to track latest handleGo callback for use in auto-go effect
+  // This avoids stale closure issues where eventCtx might be null
+  const handleGoRef = useRef<(() => void) | null>(null);
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
@@ -246,6 +250,7 @@ export const CribbageGameTable = ({
   // No local tracking needed - the state is authoritative
 
   // Auto-go: When it's our turn and we can't play, automatically call go
+  // Uses ref to avoid stale closure issues - ensures eventCtx is always current
   useEffect(() => {
     if (!cribbageState || !currentPlayerId || isProcessing) return;
     if (cribbageState.phase !== 'pegging') return;
@@ -259,13 +264,11 @@ export const CribbageGameTable = ({
     if (!canPlay && myState.hand.length > 0) {
       // Auto-call go after a brief delay so the player sees what happened
       const timeout = setTimeout(() => {
-        handleGo();
+        handleGoRef.current?.();
       }, 500);
       return () => clearTimeout(timeout);
     }
   }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
-
-  // Bot decision ref to prevent duplicate actions
   const botActionInProgress = useRef(false);
 
   // Bot decision logic
@@ -507,6 +510,11 @@ export const CribbageGameTable = ({
       toast.error((err as Error).message);
     }
   };
+
+  // Keep handleGoRef updated to the latest callback
+  useEffect(() => {
+    handleGoRef.current = handleGo;
+  });
 
   if (!cribbageState || !currentPlayerId) {
     return (

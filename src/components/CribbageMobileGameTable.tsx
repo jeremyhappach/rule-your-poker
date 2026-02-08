@@ -1363,23 +1363,9 @@ export const CribbageMobileGameTable = ({
     logCountingScoringEvents(eventCtx, cribbageState, players, runningScores);
   }, [cribbageState?.phase, eventCtx, players]);
 
-  // Auto-go
-  useEffect(() => {
-    if (!cribbageState || !currentPlayerId || isProcessing) return;
-    if (cribbageState.phase !== 'pegging') return;
-    if (cribbageState.pegging.currentTurnPlayerId !== currentPlayerId) return;
-    
-    const myState = cribbageState.playerStates[currentPlayerId];
-    if (!myState) return;
-    
-    const canPlay = hasPlayableCard(myState.hand, cribbageState.pegging.currentCount);
-    if (!canPlay && myState.hand.length > 0) {
-      const timeout = setTimeout(() => {
-        handleGo();
-      }, 500);
-      return () => clearTimeout(timeout);
-    }
-  }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
+  // Ref to track latest handleGo callback for use in auto-go effect
+  // This avoids stale closure issues where old handleGo had null eventCtx
+  const handleGoRef = useRef<(() => void) | null>(null);
 
   // Bot logic
   const botActionInProgress = useRef(false);
@@ -1575,6 +1561,30 @@ export const CribbageMobileGameTable = ({
       toast.error((err as Error).message);
     }
   }, [cribbageState, currentPlayerId, eventCtx]);
+
+  // Keep handleGoRef updated to the latest callback
+  useEffect(() => {
+    handleGoRef.current = handleGo;
+  }, [handleGo]);
+
+  // Auto-go: Automatically call Go when player can't play any cards
+  // Uses ref to avoid stale closure issues - ensures eventCtx is always current
+  useEffect(() => {
+    if (!cribbageState || !currentPlayerId || isProcessing) return;
+    if (cribbageState.phase !== 'pegging') return;
+    if (cribbageState.pegging.currentTurnPlayerId !== currentPlayerId) return;
+    
+    const myState = cribbageState.playerStates[currentPlayerId];
+    if (!myState) return;
+    
+    const canPlay = hasPlayableCard(myState.hand, cribbageState.pegging.currentCount);
+    if (!canPlay && myState.hand.length > 0) {
+      const timeout = setTimeout(() => {
+        handleGoRef.current?.();
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
 
   // Handle counting phase completion - start new hand
   // NOTE: Win sequences are now triggered reactively via score subscription,
