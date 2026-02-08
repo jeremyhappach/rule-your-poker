@@ -158,6 +158,29 @@ function RoundDisplay({
             ))}
         </div>
       )}
+      
+      {/* Player decisions (stay/fold) - public info for all viewers */}
+      {round.playerDecisions && round.playerDecisions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 text-[10px]">
+          {round.playerDecisions.map((decision) => {
+            const playerName = playerNames?.get(decision.playerId) || "Unknown";
+            const isStay = decision.actionType === "stay";
+            return (
+              <span
+                key={decision.playerId}
+                className={cn(
+                  "px-1.5 py-0.5 rounded",
+                  isStay 
+                    ? "bg-primary/20 text-primary" 
+                    : "bg-destructive/20 text-destructive"
+                )}
+              >
+                {playerName}: {isStay ? "✓ Stayed" : "✗ Folded"}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Community cards */}
       {hasCommunityCards && <MiniCardRow cards={round.communityCards} label="Board:" />}
