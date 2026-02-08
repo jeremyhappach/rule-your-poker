@@ -1764,15 +1764,22 @@ export async function endRound(gameId: string) {
       const showdownUserIds = playersWhoStayed.map(p => p.user_id);
       
       if (currentRound === 3 || revealAtShowdown) {
-        // Round 3 or reveal enabled: set visibility
+        // Round 3 or reveal enabled: set visibility for hand history
         const visibleTo = currentRound === 3 ? seatedUserIds : showdownUserIds;
-        console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users');
-        // Fire-and-forget: visibility update is for history only
+        console.log('[endRound] SHOWDOWN: Setting card visibility to', visibleTo.length, 'users for', stayedPlayerIds.length, 'players');
+        // Fire-and-forget: visibility update is for history only - but must actually execute!
         supabase
           .from('player_cards')
           .update({ visible_to_user_ids: visibleTo })
           .eq('round_id', round.id)
-          .in('player_id', stayedPlayerIds);
+          .in('player_id', stayedPlayerIds)
+          .then(({ error }) => {
+            if (error) {
+              console.error('[endRound] SHOWDOWN: Error setting card visibility:', error);
+            } else {
+              console.log('[endRound] SHOWDOWN: Card visibility set successfully');
+            }
+          });
       }
       // Only evaluate hands of players who stayed
       // 3-5-7 game uses wildcards based on round - determine explicit wild rank
