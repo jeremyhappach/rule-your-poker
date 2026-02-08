@@ -80,11 +80,12 @@ function RoundDisplay({
   currentPlayerId?: string;
   playerNames?: Map<string, string>;
 }) {
-  const hasCards = round.visiblePlayerCards.length > 0;
+  const hasCribbageEvents = round.cribbageEvents && round.cribbageEvents.length > 0;
+  // For cribbage, don't show player cards separately - they're shown in CribbageEventDisplay counting sections
+  const hasCards = !hasCribbageEvents && round.visiblePlayerCards.length > 0;
   const hasCommunityCards = round.communityCards.length > 0;
   const hasChuckyCards = round.chuckyCards.length > 0;
   const hasEvents = round.events.length > 0;
-  const hasCribbageEvents = round.cribbageEvents && round.cribbageEvents.length > 0;
 
   // For 3-5-7, show round header
   const showRoundHeader = is357 && totalRounds > 1;
