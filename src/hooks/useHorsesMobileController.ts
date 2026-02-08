@@ -1673,17 +1673,8 @@ export function useHorsesMobileController({
         await new Promise((resolve) => setTimeout(resolve, 450));
         if (cancelled) return;
 
-        const { data: turnCheck } = await supabase
-          .from("rounds")
-          .select("horses_state")
-          .eq("id", currentRoundId)
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        const checkState = (turnCheck as any)?.horses_state as HorsesStateFromDB | null; // eslint-disable-line @typescript-eslint/no-explicit-any
-        if (checkState?.currentTurnPlayerId && checkState.currentTurnPlayerId !== botId) return;
-
+        // Always attempt to advance - the RPC has an atomic guard that prevents duplicate advances
+        // Removing the pre-check here fixes a deadlock where both players complete but gamePhase stays "playing"
         await horsesAdvanceTurn(currentRoundId, botId);
       } catch (error) {
         console.error("[HORSES] Bot play failed:", error);
