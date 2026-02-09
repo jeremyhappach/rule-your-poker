@@ -5927,12 +5927,45 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
 
     try {
-      await supabase
-        .from('games')
-        .update({
-          pending_session_end: true,
-        })
-        .eq('id', gameId);
+      // If we're in a pre-game state (no active dealer game running),
+      // end session immediately instead of deferring to end-of-hand
+      const noActiveDealerGame = ['game_selection', 'dealer_selection', 'configuring', 'waiting'].includes(game?.status || '');
+      
+      if (noActiveDealerGame) {
+        // Check if session has any history (game_results)
+        const { count } = await supabase
+          .from('game_results')
+          .select('id', { count: 'exact', head: true })
+          .eq('game_id', gameId);
+        
+        const hasHistory = (count ?? 0) > 0;
+        
+        if (hasHistory || game?.real_money) {
+          // Archive to session_ended
+          await supabase
+            .from('games')
+            .update({
+              status: 'session_ended',
+              session_ended_at: new Date().toISOString(),
+              pending_session_end: false,
+              game_over_at: new Date().toISOString(),
+            })
+            .eq('id', gameId);
+        } else {
+          // No history, safe to delete
+          // Delete players first, then game
+          await supabase.from('players').delete().eq('game_id', gameId);
+          await supabase.from('games').delete().eq('id', gameId);
+        }
+      } else {
+        // Active game in progress - defer to end-of-hand
+        await supabase
+          .from('games')
+          .update({
+            pending_session_end: true,
+          })
+          .eq('id', gameId);
+      }
 
       setShowEndSessionDialog(false);
     } catch (error: any) {
