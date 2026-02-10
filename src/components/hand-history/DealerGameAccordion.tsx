@@ -46,9 +46,10 @@ export function DealerGameAccordion({
   const cribbageScoreline = (() => {
     if (!isCribbage || !group.cribbageFinalScores) return null;
     const scores = Object.values(group.cribbageFinalScores).filter((v) => typeof v === 'number' && !Number.isNaN(v));
-    if (scores.length < 2) return null;
+    if (scores.length === 0) return null;
     const hi = Math.max(...scores);
-    const lo = Math.min(...scores);
+    // If only one player has scored points, the other scored 0
+    const lo = scores.length >= 2 ? Math.min(...scores) : 0;
     return `${hi}-${lo}`;
   })();
 
