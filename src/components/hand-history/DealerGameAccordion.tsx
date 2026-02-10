@@ -54,7 +54,7 @@ export function DealerGameAccordion({
 
   const skunkIcons = isCribbage && group.cribbageSkunkLevel ? "🦨".repeat(group.cribbageSkunkLevel) : "";
 
-  const winnerLine = [group.winner || "No winner", cribbageScoreline, skunkIcons].filter(Boolean).join(" ");
+  const winnerLine = [group.winner || "No winner", !isCribbage ? cribbageScoreline : null, skunkIcons].filter(Boolean).join(" ");
 
   return (
     <AccordionItem
@@ -78,7 +78,7 @@ export function DealerGameAccordion({
             )}
           </div>
 
-          {/* Middle: winner line (stays centered between left and right totals) */}
+          {/* Middle: winner line + cribbage final score beneath */}
           <div className="flex-1 min-w-0 pt-0.5 text-center">
             <span
               className={cn(
@@ -90,6 +90,9 @@ export function DealerGameAccordion({
             >
               {winnerLine}
             </span>
+            {isCribbage && cribbageScoreline && (
+              <span className="text-[10px] text-muted-foreground block">{cribbageScoreline}{skunkIcons ? ` ${skunkIcons}` : ""}</span>
+            )}
           </div>
 
           {/* Right: chip change (chevron lives after children, so keep this tight) */}
