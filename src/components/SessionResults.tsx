@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { Clock, ChevronLeft } from "lucide-react";
+import { Clock, ChevronLeft, MessageCircle } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -45,9 +45,44 @@ interface SessionResultsProps {
 
 export const SessionResults = ({ open, onOpenChange, session, currentUserId }: SessionResultsProps) => {
   const [showHistory, setShowHistory] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [allPlayers, setAllPlayers] = useState<PlayerResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [gameCount, setGameCount] = useState<number | null>(null);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; message: string; created_at: string; username: string }>>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+
+  const fetchChat = useCallback(async () => {
+    setChatLoading(true);
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('id, message, created_at, user_id')
+      .eq('game_id', session.id)
+      .order('created_at', { ascending: true });
+
+    if (error || !data || data.length === 0) {
+      setChatMessages([]);
+      setChatLoading(false);
+      return;
+    }
+
+    const userIds = [...new Set(data.map(m => m.user_id))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds);
+
+    const usernameMap = new Map<string, string>();
+    profiles?.forEach(p => usernameMap.set(p.id, p.username));
+
+    setChatMessages(data.map(m => ({
+      id: m.id,
+      message: m.message,
+      created_at: m.created_at,
+      username: usernameMap.get(m.user_id) || 'Unknown',
+    })));
+    setChatLoading(false);
+  }, [session.id]);
 
   // Find current user's player ID from the session players
   const currentPlayer = session.players.find(p => !p.is_bot);
@@ -245,23 +280,25 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) {
         setShowHistory(false);
+        setShowChat(false);
+        setChatMessages([]);
       }
       onOpenChange(isOpen);
     }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center gap-2">
-            {showHistory && (
+            {(showHistory || showChat) && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0"
-                onClick={() => setShowHistory(false)}
+                onClick={() => { setShowHistory(false); setShowChat(false); }}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             )}
-            {showHistory ? 'Hand History' : 'Session Results'}
+            {showHistory ? 'Hand History' : showChat ? 'Chat History' : 'Session Results'}
             {session.real_money && <span className="text-green-400 ml-1">$</span>}
           </DialogTitle>
         </DialogHeader>
@@ -275,6 +312,26 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
               currentPlayerId={currentPlayerId}
               gameType={session.game_type}
             />
+          </div>
+        ) : showChat ? (
+          <div className="min-h-[200px] max-h-[400px] overflow-y-auto">
+            {chatLoading ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">Loading chat...</div>
+            ) : chatMessages.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">No chat messages</div>
+            ) : (
+              <div className="space-y-1">
+                {chatMessages.map((msg) => (
+                  <div key={msg.id} className="text-sm">
+                    <span className="font-semibold text-primary">{msg.username}</span>
+                    <span className="text-muted-foreground mx-1 text-xs">
+                      {format(new Date(msg.created_at), 'h:mm a')}
+                    </span>
+                    <span className="text-foreground">{msg.message}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -324,18 +381,28 @@ export const SessionResults = ({ open, onOpenChange, session, currentUserId }: S
               )}
             </div>
             
-            {/* View History Button - show if we have games */}
-            {(gameCount ?? 0) > 0 && (
+            <div className="flex gap-2">
+              {(gameCount ?? 0) > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => setShowHistory(true)}
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Hand History
+                </Button>
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="w-full"
-                onClick={() => setShowHistory(true)}
+                className="flex-1"
+                onClick={() => { setShowChat(true); fetchChat(); }}
               >
-                <Clock className="w-4 h-4 mr-2" />
-                View Hand History
+                <MessageCircle className="w-4 h-4 mr-2" />
+                Chat History
               </Button>
-            )}
+            </div>
           </div>
         )}
       </DialogContent>
