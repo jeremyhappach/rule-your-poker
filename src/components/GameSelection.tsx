@@ -29,7 +29,7 @@ export const GameSelection = ({
     {
       id: "holm-game",
       name: "Holm",
-      description: "4 cards to best Chucky",
+      description: "Beat Chucky!",
       enabled: true,
     },
     {
@@ -63,7 +63,7 @@ export const GameSelection = ({
     {
       id: "ship-captain-crew",
       name: "Ship Captain Crew",
-      description: "Get 6-5-4, max cargo",
+      description: "6-5-4",
       enabled: true,
     },
   ];
@@ -162,7 +162,7 @@ export const GameSelection = ({
                       onClick={() => handleGameSelect(game)}
                       disabled={disabled}
                       className={`
-                        relative w-full py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-between
+                        relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-between
                         ${disabled
                           ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
                           : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer'
@@ -202,7 +202,7 @@ export const GameSelection = ({
                   <button
                     key={game.id}
                     onClick={() => handleGameSelect(game)}
-                    className="relative w-full py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
+                    className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                   >
                     <span className="text-base font-bold text-poker-gold">
                       {game.name}
