@@ -55,7 +55,7 @@ export function DealerGameAccordion({
 
   const skunkIcons = isCribbage && group.cribbageSkunkLevel ? "🦨".repeat(group.cribbageSkunkLevel) : "";
 
-  const winnerLine = [group.winner || "No winner", !isCribbage ? cribbageScoreline : null, skunkIcons].filter(Boolean).join(" ");
+  const winnerLine = [group.winner || "No winner", !isCribbage ? cribbageScoreline : null, !isCribbage ? skunkIcons : null].filter(Boolean).join(" ");
 
   return (
     <AccordionItem
