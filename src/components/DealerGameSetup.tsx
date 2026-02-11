@@ -1172,13 +1172,13 @@ export const DealerGameSetup = ({
   // Game definitions for unified grid
   const allGames = [
     // Card Games
-    { id: 'holm-game', name: 'Holm', description: '4 cards vs community + Chucky', category: 'cards', enabled: true },
+    { id: 'holm-game', name: 'Holm', description: 'Beat Chucky!', category: 'cards', enabled: true },
     { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
     { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4 },
     { id: 'sports-trivia', name: 'Trivia', description: 'Answer trivia, win the pot', category: 'cards', enabled: true },
     // Dice Games
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
-    { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: 'Get 6-5-4, max cargo', category: 'dice', enabled: true },
+    { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
   ];
 
   const cardGames = allGames.filter(g => g.category === 'cards');
@@ -1477,7 +1477,7 @@ export const DealerGameSetup = ({
                         onClick={() => handleGameSelect(game.id)}
                         disabled={disabled}
                         className={`
-                          relative w-full py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-between
+                          relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center justify-between
                           ${disabled
                             ? 'border-gray-600 bg-gray-800/30 cursor-not-allowed opacity-50'
                             : 'border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer'
@@ -1517,7 +1517,7 @@ export const DealerGameSetup = ({
                     <button
                       key={game.id}
                       onClick={() => handleGameSelect(game.id)}
-                      className="relative w-full py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
+                      className="relative w-full h-14 py-3 px-4 rounded-lg border-2 transition-all flex items-center border-poker-gold bg-amber-900/30 hover:bg-amber-900/50 cursor-pointer"
                     >
                       <span className="text-base font-bold text-poker-gold">
                         {game.name}
