@@ -847,18 +847,38 @@ export function useHandHistoryData({
           }
         }
         
-        // Calculate chip change for cribbage based on final scores
-        // Cribbage uses ante × multiplier (1x normal, 2x skunk, 3x double skunk)
-        if (cribbageFinalScores && Object.keys(cribbageFinalScores).length >= 2) {
+        // Calculate chip change for cribbage.
+        // CRITICAL: If game_results exist, they are the authoritative source for chip changes
+        // and winner. Only fall back to scores_after-based calculation when no results exist
+        // (e.g., in-progress games). This fixes bugs where incomplete cribbage events caused
+        // wrong winners and chip deltas.
+        const hasGameResults = outcomeEvents.length > 0;
+        
+        if (hasGameResults) {
+          // Use game_results for chip change (already computed at line ~733)
+          // and winner (already set at line ~744). Just update winnerPlayerId
+          // from game_results if available for the isWinner flag.
+          if (!winnerPlayerId && lastOutcome?.winner_username) {
+            // winner_player_id was null but we have a winner_username - find the player
+            // Try to find the winner from chip changes (positive change = winner)
+            const chipChanges = lastOutcome.player_chip_changes || {};
+            for (const [pid, change] of Object.entries(chipChanges)) {
+              if (typeof change === 'number' && change > 0) {
+                winnerPlayerId = pid;
+                break;
+              }
+            }
+          }
+          // Recalculate using skunk multiplier from game_results chip changes
+          // The game_results already has the correct amount including skunk multipliers
+          // totalChipChange was already set correctly from game_results at line ~733
+        } else if (cribbageFinalScores && Object.keys(cribbageFinalScores).length >= 2) {
+          // No game_results yet (in-progress game) - derive from cribbage events
           const ante = Number(cfg.ante ?? cfg.ante_amount ?? 1);
           const multiplier = cribbageSkunkLevel === 2 ? 3 : cribbageSkunkLevel === 1 ? 2 : 1;
           const stakes = ante * multiplier;
           
-          // Find which player is the viewer and who won (reached pointsToWin first)
           const entries = Object.entries(cribbageFinalScores);
-          
-          // Determine the actual winner: whoever reached pointsToWin
-          // If no one reached it, fall back to max score
           let actualWinnerPlayerId: string | null = null;
           for (const [playerId, score] of entries) {
             if (score >= pointsToWin) {
@@ -866,25 +886,20 @@ export function useHandHistoryData({
               break;
             }
           }
-          // Fallback if somehow no one reached the target
           if (!actualWinnerPlayerId) {
             const maxScore = Math.max(...entries.map(([, s]) => s));
             actualWinnerPlayerId = entries.find(([, s]) => s === maxScore)?.[0] || null;
           }
           
-          // Check if the viewer is the winner
           const viewerIsWinner = actualWinnerPlayerId ? isViewerPlayer(actualWinnerPlayerId) : false;
           
-          // Also update winnerPlayerId for the isWinner calculation below
           if (actualWinnerPlayerId && !winnerPlayerId) {
             winnerPlayerId = actualWinnerPlayerId;
-            // Update resolvedWinner name if not set
             if (!resolvedWinner) {
               resolvedWinner = playerNames.get(actualWinnerPlayerId) || "Winner";
             }
           }
           
-          // Calculate chip change: winner gains stakes, loser loses stakes
           totalChipChange = viewerIsWinner ? stakes : -stakes;
         }
       }
