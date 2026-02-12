@@ -735,6 +735,54 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
   
+  // After a player leaves, check if the session has enough humans to continue.
+  // If not, revert to 'waiting' or end the session entirely.
+  const checkAndCleanupAfterPlayerLeave = async (gId: string) => {
+    const { data: remainingPlayers } = await supabase
+      .from('players')
+      .select('id, is_bot, sitting_out')
+      .eq('game_id', gId);
+
+    const activeHumans = remainingPlayers?.filter(p => !p.is_bot && !p.sitting_out) || [];
+    const totalPlayers = remainingPlayers?.length || 0;
+
+    console.log('[CLEANUP] After player leave:', { activeHumans: activeHumans.length, totalPlayers });
+
+    if (totalPlayers === 0) {
+      // No players left at all — delete or archive
+      const { data: gData } = await supabase.from('games').select('real_money, status').eq('id', gId).single();
+      if (gData?.real_money) {
+        await supabase.from('games').update({ status: 'session_ended', session_ended_at: new Date().toISOString(), game_over_at: new Date().toISOString() }).eq('id', gId);
+      } else {
+        // Check if game has history
+        const { count } = await supabase.from('game_results').select('id', { count: 'exact', head: true }).eq('game_id', gId);
+        if ((count ?? 0) > 0) {
+          await supabase.from('games').update({ status: 'session_ended', session_ended_at: new Date().toISOString(), game_over_at: new Date().toISOString() }).eq('id', gId);
+        } else {
+          await supabase.from('players').delete().eq('game_id', gId);
+          await supabase.from('games').delete().eq('id', gId);
+        }
+      }
+      return;
+    }
+
+    // If < 2 active players or 0 humans, session can't continue in a game state
+    if (activeHumans.length === 0 || totalPlayers < 2) {
+      const { data: gData } = await supabase.from('games').select('status, real_money').eq('id', gId).single();
+      if (!gData) return;
+      
+      const transitionalStates = ['dealer_selection', 'game_selection', 'configuring', 'dealer_announcement',
+        'cribbage_dealer_selection', 'ante_decision', 'in_progress', 'game_over'];
+      
+      if (transitionalStates.includes(gData.status) || gData.status === 'waiting') {
+        console.log('[CLEANUP] Not enough players in state:', gData.status, '- reverting to waiting');
+        
+        // If real money or has history, just revert to waiting so remaining player sees the lobby
+        await supabase.from('games').update({ status: 'waiting' }).eq('id', gId);
+      }
+    }
+  };
+
   const handleStandUpNow = async () => {
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
@@ -761,6 +809,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (error) {
       console.error('[PLAYER OPTIONS] Failed to stand up:', error);
       toast({ title: "Error", description: "Failed to stand up", variant: "destructive" });
+    } else {
+      // After removing ourselves, check if session needs cleanup
+      await checkAndCleanupAfterPlayerLeave(gameId!);
     }
   };
   
@@ -824,6 +875,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.error('[PLAYER OPTIONS] Failed to leave game:', error);
       toast({ title: "Error", description: "Failed to leave game", variant: "destructive" });
     } else {
+      // Fire-and-forget: check if session needs cleanup after we leave
+      checkAndCleanupAfterPlayerLeave(gameId!);
       navigate('/');
     }
   };
