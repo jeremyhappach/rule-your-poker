@@ -1323,40 +1323,13 @@ export const CribbageMobileGameTable = ({
     if (countingLoggedKeyRef.current === key) return;
     countingLoggedKeyRef.current = key;
 
-    // Build a safe baseline score (pre-counting) for event logging.
-    // IMPORTANT: At the start of counting, pegScore is usually still the pegging-only score.
-    // But if a client only observes the state after counting has applied (or during a fast
-    // counting -> complete transition), pegScore may already include hand+crib points.
-    //
-    // So per-player we subtract totals ONLY when pegScore is high enough to plausibly include them;
-    // otherwise we treat pegScore as the baseline. This prevents negative scores_after.
-    const currentScores: Record<string, number> = {};
-    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
-      currentScores[playerId] = ps.pegScore ?? 0;
-    }
-
-    const dealerId = cribbageState.dealerPlayerId;
-    const perPlayerHandTotals: Record<string, number> = {};
-    for (const playerId of Object.keys(cribbageState.playerStates)) {
-      const hand = cribbageState.pegging.playedCards
-        .filter((pc) => pc.playerId === playerId)
-        .map((pc) => pc.card);
-      const combos = getHandScoringCombos(hand, cribbageState.cutCard, false);
-      perPlayerHandTotals[playerId] = combos.reduce((sum, c) => sum + c.points, 0);
-    }
-
-    const cribCombos = getHandScoringCombos(cribbageState.crib, cribbageState.cutCard, true);
-    const cribTotal = cribCombos.reduce((sum, c) => sum + c.points, 0);
-
+    // Use the cached pegging-phase scores as the authoritative baseline.
+    // The reverse-engineering approach (subtracting hand+crib totals from pegScore) is unreliable
+    // because pegScore may already include counting points by the time this effect fires.
     const runningScores: Record<string, number> = {};
-    for (const playerId of Object.keys(cribbageState.playerStates)) {
-      const handTotal = perPlayerHandTotals[playerId] ?? 0;
-      const cribPts = playerId === dealerId ? cribTotal : 0;
-      const subtractTotal = handTotal + cribPts;
-
-      const current = currentScores[playerId] ?? 0;
-      const baseline = current >= subtractTotal ? current - subtractTotal : current;
-      runningScores[playerId] = Math.max(0, baseline);
+    const cachedPeggingScores = lastPeggingScoresRef.current;
+    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+      runningScores[playerId] = cachedPeggingScores?.[playerId] ?? ps.pegScore ?? 0;
     }
 
     // Log all hand and crib scoring events (atomic DB guard prevents duplicates)
