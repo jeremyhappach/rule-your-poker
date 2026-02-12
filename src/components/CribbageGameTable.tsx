@@ -498,12 +498,39 @@ export const CribbageGameTable = ({
   };
 
   const handleGo = async () => {
-    if (!cribbageState || !currentPlayerId) return;
+    if (!cribbageState || !currentPlayerId || !roundId) return;
 
     try {
-      const newState = callGo(cribbageState, currentPlayerId);
-      // Fire-and-forget event logging (atomic DB guard prevents duplicates)
-      logGoPointEvent(eventCtx, cribbageState, newState);
+      // CRITICAL: Fetch fresh state from DB to prevent stale subscription state issues.
+      // Same pattern as handlePlayCard - prevents missed Go points.
+      const { data: freshRound, error: fetchError } = await supabase
+        .from('rounds')
+        .select('cribbage_state')
+        .eq('id', roundId)
+        .single();
+      
+      let stateForGo = cribbageState;
+      if (!fetchError && freshRound?.cribbage_state) {
+        const freshState = freshRound.cribbage_state as unknown as CribbageState;
+        
+        if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
+          console.warn('[CRIBBAGE] Stale state detected for Go - not our turn in fresh state');
+          setCribbageState(freshState);
+          return;
+        }
+        
+        const freshPlayerState = freshState.playerStates[currentPlayerId];
+        if (freshPlayerState && hasPlayableCard(freshPlayerState.hand, freshState.pegging.currentCount)) {
+          console.warn('[CRIBBAGE] Fresh state shows playable card - skipping Go');
+          setCribbageState(freshState);
+          return;
+        }
+        
+        stateForGo = freshState;
+      }
+      
+      const newState = callGo(stateForGo, currentPlayerId);
+      logGoPointEvent(eventCtx, stateForGo, newState);
       
       await updateState(newState);
     } catch (err) {
