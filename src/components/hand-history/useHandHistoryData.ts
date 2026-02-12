@@ -795,13 +795,36 @@ export function useHandHistoryData({
         // This prevents the header scoreline from reflecting any post-win counting artifacts.
         const truncated = truncateCribbageEventsAtWin(allCribbageEventsForDealerGame, pointsToWin);
 
-        const computedScores: Record<string, number> = {};
-        for (const ev of truncated) {
-          if (ev.points > 0) {
-            computedScores[ev.player_id] = (computedScores[ev.player_id] ?? 0) + ev.points;
+        // Use scores_after from the LAST event as the authoritative final scores.
+        // This is more reliable than summing points by player_id, because historical data
+        // may have player_id attribution bugs (all events logged under one player_id)
+        // while scores_after correctly tracks both players' running totals.
+        const lastEventWithScores = [...truncated].reverse().find(ev => 
+          ev.scores_after && Object.keys(ev.scores_after).length > 0
+        );
+        
+        if (lastEventWithScores?.scores_after) {
+          const scoresFromLastEvent: Record<string, number> = {};
+          for (const [pid, score] of Object.entries(lastEventWithScores.scores_after)) {
+            if (typeof score === 'number' && !Number.isNaN(score)) {
+              scoresFromLastEvent[pid] = score;
+            }
+          }
+          if (Object.keys(scoresFromLastEvent).length > 0) {
+            cribbageFinalScores = scoresFromLastEvent;
           }
         }
-        if (Object.keys(computedScores).length > 0) cribbageFinalScores = computedScores;
+        
+        // Fallback: if no scores_after available, sum points by player_id
+        if (!cribbageFinalScores) {
+          const computedScores: Record<string, number> = {};
+          for (const ev of truncated) {
+            if (ev.points > 0) {
+              computedScores[ev.player_id] = (computedScores[ev.player_id] ?? 0) + ev.points;
+            }
+          }
+          if (Object.keys(computedScores).length > 0) cribbageFinalScores = computedScores;
+        }
 
         if (cribbageFinalScores) {
           const skunkEnabled = Boolean(cfg.skunk_enabled ?? cfg.skunkEnabled ?? true);

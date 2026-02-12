@@ -488,23 +488,16 @@ export function CribbageEventDisplay({ events, playerNames, playerHands = [], po
     return truncateCribbageEventsAtWin(events, pointsToWin);
   }, [events, pointsToWin]);
 
-  // Compute a trustworthy running scoreline from the filtered event stream.
+  // Use the authoritative scores_after from each event rather than recomputing
+  // from player_id + points. This handles historical data where player_id 
+  // attribution was incorrect but scores_after correctly tracked both players.
   const computedScoresAfterById = useMemo(() => {
-    const sorted = [...filteredEvents].sort((a, b) => {
-      if (a.hand_number !== b.hand_number) return a.hand_number - b.hand_number;
-      return a.sequence_number - b.sequence_number;
-    });
-
-    const playerIds = Array.from(new Set(sorted.map((e) => e.player_id)));
-    const running: Record<string, number> = {};
-    for (const id of playerIds) running[id] = 0;
-
     const map = new Map<string, Record<string, number>>();
-    for (const ev of sorted) {
-      if (ev.points > 0) {
-        running[ev.player_id] = (running[ev.player_id] ?? 0) + ev.points;
+    for (const ev of filteredEvents) {
+      // Prefer the event's own scores_after (authoritative running scoreline)
+      if (ev.scores_after && Object.keys(ev.scores_after).length > 0) {
+        map.set(ev.id, { ...ev.scores_after });
       }
-      map.set(ev.id, { ...running });
     }
     return map;
   }, [filteredEvents]);
