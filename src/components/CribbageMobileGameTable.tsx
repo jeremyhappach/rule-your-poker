@@ -1549,18 +1549,60 @@ export const CribbageMobileGameTable = ({
   }, [cribbageState, currentPlayerId, currentRoundId, eventCtx]);
 
   const handleGo = useCallback(async () => {
-    if (!cribbageState || !currentPlayerId) return;
+    if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
     try {
-      const newState = callGo(cribbageState, currentPlayerId);
+      // CRITICAL: Fetch fresh state from DB to prevent stale subscription state issues.
+      // Same pattern as handlePlayCard - prevents missed Go points when subscription
+      // state is slightly behind the authoritative DB state.
+      const { data: freshRound, error: fetchError } = await supabase
+        .from('rounds')
+        .select('cribbage_state')
+        .eq('id', currentRoundId)
+        .single();
+      
+      if (fetchError || !freshRound?.cribbage_state) {
+        console.error('[CRIBBAGE] Failed to fetch fresh state before Go:', fetchError);
+        // Fall back to subscription state
+        const newState = callGo(cribbageState, currentPlayerId);
+        logGoPointEvent(eventCtx, cribbageState, newState);
+        await updateState(newState);
+        return;
+      }
+      
+      const freshState = freshRound.cribbage_state as unknown as CribbageState;
+      
+      // Verify it's still our turn with fresh state
+      if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
+        console.warn('[CRIBBAGE] Stale state detected for Go - not our turn in fresh state');
+        setCribbageState(freshState);
+        return;
+      }
+      
+      // Verify we still can't play with fresh state
+      const freshPlayerState = freshState.playerStates[currentPlayerId];
+      if (!freshPlayerState) {
+        console.warn('[CRIBBAGE] Player state not found in fresh state for Go');
+        setCribbageState(freshState);
+        return;
+      }
+      
+      // If fresh state shows we CAN play, don't call Go - update local state instead
+      if (hasPlayableCard(freshPlayerState.hand, freshState.pegging.currentCount)) {
+        console.warn('[CRIBBAGE] Fresh state shows playable card - skipping Go');
+        setCribbageState(freshState);
+        return;
+      }
+      
+      const newState = callGo(freshState, currentPlayerId);
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
-      logGoPointEvent(eventCtx, cribbageState, newState);
+      logGoPointEvent(eventCtx, freshState, newState);
       
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, eventCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx]);
 
   // Keep handleGoRef updated to the latest callback
   useEffect(() => {
