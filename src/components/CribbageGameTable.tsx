@@ -24,7 +24,7 @@ import {
   logCutCardEvent,
   logCountingScoringEvents
 } from '@/lib/useCribbageEventLogging';
-import { getHandScoringCombos } from '@/lib/cribbageScoringDetails';
+
 
 interface Player {
   id: string;
@@ -91,6 +91,9 @@ export const CribbageGameTable = ({
   
   // Track if we've logged the cut card for this hand
   const cutCardLoggedRef = useRef<string | null>(null);
+
+  // Cache pegging-phase scores so counting event logging uses the correct baseline
+  const lastPeggingScoresRef = useRef<Record<string, number> | null>(null);
   
   // Ref to track latest handleGo callback for use in auto-go effect
   // This avoids stale closure issues where eventCtx might be null
@@ -111,6 +114,17 @@ export const CribbageGameTable = ({
     logCutCardEvent(eventCtx, cribbageState);
   }, [cribbageState?.cutCard, eventCtx]);
 
+  // Cache pegging scores during pegging phase so we have the correct baseline for counting events
+  useEffect(() => {
+    if (!cribbageState) return;
+    if (cribbageState.phase !== 'pegging') return;
+    const scores: Record<string, number> = {};
+    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+      scores[playerId] = ps.pegScore ?? 0;
+    }
+    lastPeggingScoresRef.current = scores;
+  }, [cribbageState?.phase, cribbageState?.pegging?.playedCards?.length, cribbageState?.playerStates]);
+
   // Log counting phase events (fire-and-forget, atomic DB guard prevents duplicates)
   const countingLoggedKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -126,33 +140,13 @@ export const CribbageGameTable = ({
     if (countingLoggedKeyRef.current === key) return;
     countingLoggedKeyRef.current = key;
 
-    // Build safe baseline scores (pre-counting) for event logging
-    const currentScores: Record<string, number> = {};
-    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
-      currentScores[playerId] = ps.pegScore ?? 0;
-    }
-
-    const dealerId = cribbageState.dealerPlayerId;
-    const perPlayerHandTotals: Record<string, number> = {};
-    for (const playerId of Object.keys(cribbageState.playerStates)) {
-      const hand = cribbageState.pegging.playedCards
-        .filter((pc) => pc.playerId === playerId)
-        .map((pc) => pc.card);
-      const combos = getHandScoringCombos(hand, cribbageState.cutCard, false);
-      perPlayerHandTotals[playerId] = combos.reduce((sum, c) => sum + c.points, 0);
-    }
-
-    const cribCombos = getHandScoringCombos(cribbageState.crib, cribbageState.cutCard, true);
-    const cribTotal = cribCombos.reduce((sum, c) => sum + c.points, 0);
-
+    // Use the cached pegging-phase scores as the authoritative baseline.
+    // The reverse-engineering approach (subtracting hand+crib totals from pegScore) is unreliable
+    // because pegScore may already include counting points by the time this effect fires.
     const runningScores: Record<string, number> = {};
-    for (const playerId of Object.keys(cribbageState.playerStates)) {
-      const handTotal = perPlayerHandTotals[playerId] ?? 0;
-      const cribPts = playerId === dealerId ? cribTotal : 0;
-      const subtractTotal = handTotal + cribPts;
-      const current = currentScores[playerId] ?? 0;
-      const baseline = current >= subtractTotal ? current - subtractTotal : current;
-      runningScores[playerId] = Math.max(0, baseline);
+    const cachedPeggingScores = lastPeggingScoresRef.current;
+    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+      runningScores[playerId] = cachedPeggingScores?.[playerId] ?? ps.pegScore ?? 0;
     }
 
     logCountingScoringEvents(eventCtx, cribbageState, players, runningScores);
