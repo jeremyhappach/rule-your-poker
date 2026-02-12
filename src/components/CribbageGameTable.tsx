@@ -21,8 +21,10 @@ import {
   logPeggingPlay, 
   logGoPointEvent,
   logHisHeelsEvent,
-  logCutCardEvent
+  logCutCardEvent,
+  logCountingScoringEvents
 } from '@/lib/useCribbageEventLogging';
+import { getHandScoringCombos } from '@/lib/cribbageScoringDetails';
 
 interface Player {
   id: string;
@@ -108,6 +110,53 @@ export const CribbageGameTable = ({
     cutCardLoggedRef.current = cutCardKey;
     logCutCardEvent(eventCtx, cribbageState);
   }, [cribbageState?.cutCard, eventCtx]);
+
+  // Log counting phase events (fire-and-forget, atomic DB guard prevents duplicates)
+  const countingLoggedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cribbageState || !eventCtx) return;
+    const phase = cribbageState.phase;
+    if (phase !== 'counting' && phase !== 'complete') {
+      countingLoggedKeyRef.current = null;
+      return;
+    }
+    if (!cribbageState.cutCard) return;
+
+    const key = `${roundId}:${cribbageState.dealerPlayerId}:${cribbageState.pegging.playedCards.length}:${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}`;
+    if (countingLoggedKeyRef.current === key) return;
+    countingLoggedKeyRef.current = key;
+
+    // Build safe baseline scores (pre-counting) for event logging
+    const currentScores: Record<string, number> = {};
+    for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+      currentScores[playerId] = ps.pegScore ?? 0;
+    }
+
+    const dealerId = cribbageState.dealerPlayerId;
+    const perPlayerHandTotals: Record<string, number> = {};
+    for (const playerId of Object.keys(cribbageState.playerStates)) {
+      const hand = cribbageState.pegging.playedCards
+        .filter((pc) => pc.playerId === playerId)
+        .map((pc) => pc.card);
+      const combos = getHandScoringCombos(hand, cribbageState.cutCard, false);
+      perPlayerHandTotals[playerId] = combos.reduce((sum, c) => sum + c.points, 0);
+    }
+
+    const cribCombos = getHandScoringCombos(cribbageState.crib, cribbageState.cutCard, true);
+    const cribTotal = cribCombos.reduce((sum, c) => sum + c.points, 0);
+
+    const runningScores: Record<string, number> = {};
+    for (const playerId of Object.keys(cribbageState.playerStates)) {
+      const handTotal = perPlayerHandTotals[playerId] ?? 0;
+      const cribPts = playerId === dealerId ? cribTotal : 0;
+      const subtractTotal = handTotal + cribPts;
+      const current = currentScores[playerId] ?? 0;
+      const baseline = current >= subtractTotal ? current - subtractTotal : current;
+      runningScores[playerId] = Math.max(0, baseline);
+    }
+
+    logCountingScoringEvents(eventCtx, cribbageState, players, runningScores);
+  }, [cribbageState?.phase, eventCtx, players]);
 
   // Initialize game state from database or create new
   useEffect(() => {
