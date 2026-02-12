@@ -1301,13 +1301,16 @@ export const DealerGameSetup = ({
         ? selectedMode.doubleSkunkThreshold 
         : 0;
       
+      // CRIBBAGE: Go through ante_decision phase like all other games.
+      // After all antes are in, handleAllAnteDecisionsIn will transition to cribbage_dealer_selection.
       const { error } = await supabase
         .from('games')
         .update({
           game_type: gameTypeToSubmit,
           ante_amount: parsedAnte,
           config_complete: true,
-          status: 'cribbage_dealer_selection', // High-card animation phase
+          status: 'ante_decision',
+          ante_decision_deadline: anteDeadline,
           pot: 0, // No pot in cribbage - direct player transfers
           leg_value: 0,
           legs_to_win: 0,
@@ -1315,7 +1318,7 @@ export const DealerGameSetup = ({
           pussy_tax_enabled: false,
           current_game_uuid: dealerGameId,
           is_first_hand: true,
-          dealer_selection_state: null, // Will be populated by HighCardDealerSelection
+          dealer_selection_state: null,
           // Cribbage-specific settings
           points_to_win: parsedPointsToWin,
           skunk_enabled: effectiveSkunksEnabled,
@@ -1332,7 +1335,23 @@ export const DealerGameSetup = ({
         return;
       }
       
-      console.log(`[DEALER SETUP] ✅ Cribbage going to dealer selection, dealer_game_id:`, dealerGameId);
+      // Reset ante_decision for all non-dealer players
+      await supabase
+        .from('players')
+        .update({ ante_decision: null })
+        .eq('game_id', gameId)
+        .neq('id', dealerPlayerId);
+      
+      // Auto ante up the dealer
+      await supabase
+        .from('players')
+        .update({ 
+          ante_decision: 'ante_up',
+          sitting_out: false
+        })
+        .eq('id', dealerPlayerId);
+      
+      console.log(`[DEALER SETUP] ✅ Cribbage going to ante_decision, dealer_game_id:`, dealerGameId);
       onConfigComplete();
       return;
     }
