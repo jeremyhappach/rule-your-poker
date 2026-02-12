@@ -847,43 +847,41 @@ export function useHandHistoryData({
           }
         }
         
-        // Calculate chip change for cribbage.
-        // CRITICAL: If game_results exist, they are the authoritative source for chip changes
-        // and winner. Only fall back to scores_after-based calculation when no results exist
-        // (e.g., in-progress games). This fixes bugs where incomplete cribbage events caused
-        // wrong winners and chip deltas.
-        const hasGameResults = outcomeEvents.length > 0;
-        
-        if (hasGameResults) {
-          // Use game_results for chip change (already computed at line ~733)
-          // and winner (already set at line ~744). Just update winnerPlayerId
-          // from game_results if available for the isWinner flag.
-          if (!winnerPlayerId && lastOutcome?.winner_username) {
-            // winner_player_id was null but we have a winner_username - find the player
-            // Try to find the winner from chip changes (positive change = winner)
-            const chipChanges = lastOutcome.player_chip_changes || {};
-            for (const [pid, change] of Object.entries(chipChanges)) {
-              if (typeof change === 'number' && change > 0) {
-                winnerPlayerId = pid;
-                break;
-              }
-            }
-          }
-          // Recalculate using skunk multiplier from game_results chip changes
-          // The game_results already has the correct amount including skunk multipliers
-          // totalChipChange was already set correctly from game_results at line ~733
-        } else if (cribbageFinalScores && Object.keys(cribbageFinalScores).length >= 2) {
-          // No game_results yet (in-progress game) - derive from cribbage events
+        // Calculate chip change for cribbage from events-based scoring.
+        // We always use the events-based approach because it reliably determines
+        // the winner from score comparison, which works even when events don't
+        // capture the full game (scores stop before pointsToWin).
+        if (cribbageFinalScores && Object.keys(cribbageFinalScores).length >= 2) {
           const ante = Number(cfg.ante ?? cfg.ante_amount ?? 1);
           const multiplier = cribbageSkunkLevel === 2 ? 3 : cribbageSkunkLevel === 1 ? 2 : 1;
           const stakes = ante * multiplier;
           
           const entries = Object.entries(cribbageFinalScores);
           let actualWinnerPlayerId: string | null = null;
-          for (const [playerId, score] of entries) {
-            if (score >= pointsToWin) {
-              actualWinnerPlayerId = playerId;
-              break;
+          
+          // First try game_results for authoritative winner
+          if (outcomeEvents.length > 0) {
+            const lastOutcomeEvt = outcomeEvents[outcomeEvents.length - 1];
+            actualWinnerPlayerId = lastOutcomeEvt?.winner_player_id || null;
+            // If winner_player_id is null, recover from chip changes
+            if (!actualWinnerPlayerId) {
+              const chipChanges = lastOutcomeEvt?.player_chip_changes || {};
+              for (const [pid, change] of Object.entries(chipChanges)) {
+                if (typeof change === 'number' && change > 0) {
+                  actualWinnerPlayerId = pid;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Fallback: derive winner from cribbage scores
+          if (!actualWinnerPlayerId) {
+            for (const [playerId, score] of entries) {
+              if (score >= pointsToWin) {
+                actualWinnerPlayerId = playerId;
+                break;
+              }
             }
           }
           if (!actualWinnerPlayerId) {
@@ -900,7 +898,14 @@ export function useHandHistoryData({
             }
           }
           
-          totalChipChange = viewerIsWinner ? stakes : -stakes;
+          // Use game_results pot_won if available for accurate stakes (includes skunk multipliers)
+          if (outcomeEvents.length > 0) {
+            const lastOutcomeEvt = outcomeEvents[outcomeEvents.length - 1];
+            const actualStakes = lastOutcomeEvt?.pot_won || stakes;
+            totalChipChange = viewerIsWinner ? actualStakes : -actualStakes;
+          } else {
+            totalChipChange = viewerIsWinner ? stakes : -stakes;
+          }
         }
       }
 
