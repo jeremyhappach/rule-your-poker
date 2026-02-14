@@ -153,7 +153,7 @@ export const CribbageHighCardSelection = ({
     deckRef.current = shuffleDeck(createSimpleDeck());
 
     // Phase 1: Show announcement
-    onAnnouncementChange?.('Drawing for button');
+    onAnnouncementChange?.('High card for first deal');
     
     const dealTimer = addTimeout(() => {
       // Phase 2: Deal initial cards

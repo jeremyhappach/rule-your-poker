@@ -223,7 +223,7 @@ export const HighCardDealerSelection = ({
 
     const roundAnnouncement =
       roundNum === 1
-        ? 'High card wins deal'
+        ? (isCribbageVariant ? 'Drawing for button' : 'High card wins deal')
         : isCribbageVariant
           ? null
           : 'Tie! Drawing again...';
