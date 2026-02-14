@@ -865,13 +865,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "player_actions_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "player_actions_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false
@@ -909,13 +902,6 @@ export type Database = {
           visible_to_user_ids?: string[] | null
         }
         Relationships: [
-          {
-            foreignKeyName: "player_cards_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "player_cards_round_id_fkey"
             columns: ["round_id"]
