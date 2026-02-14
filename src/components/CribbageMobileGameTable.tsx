@@ -1963,11 +1963,50 @@ export const CribbageMobileGameTable = ({
     );
   }
 
-  // Show loading only AFTER initial load attempt completes and still no state (not in external dealer selection mode)
+  // During ante_decision phase (no round yet), show a minimal cribbage table with "Awaiting ante decisions"
   if (!isDealerSelection && (!initialLoadComplete || !cribbageState || !currentPlayerId)) {
+    // If we have players but no cribbage state, show the felt with a waiting message
+    // instead of a bare "Loading" text
+    const opponents = players.filter(p => p.user_id !== currentUserId);
     return (
-      <div className="flex items-center justify-center h-full bg-background">
-        <div className="text-poker-gold">Loading Cribbage...</div>
+      <div className="h-full flex flex-col overflow-hidden bg-background">
+        {/* Felt area */}
+        <div className="relative flex-shrink-0 w-full" style={{ paddingTop: '67%' }}>
+          <div
+            className="absolute inset-0 rounded-[50%] overflow-hidden border-4 border-amber-700 shadow-xl mx-2 mt-1"
+            style={{
+              background: `url(${peoriaBridgeMobile}) center/cover no-repeat`,
+            }}
+          >
+            {/* Game title */}
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 text-center">
+              <div className="text-poker-gold font-bold text-lg drop-shadow-lg">Cribbage</div>
+            </div>
+            {/* Pot display */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+              <div className="bg-slate-900/80 rounded-full px-6 py-3 border-2 border-poker-gold">
+                <span className="text-poker-gold font-bold text-xl">$0</span>
+              </div>
+            </div>
+            {/* Opponent chips */}
+            {opponents.map((opp, i) => (
+              <div key={opp.id} className="absolute top-8 left-4 z-20">
+                <div className="text-white text-xs font-medium">
+                  {opp.profiles?.username || 'Player'} {opp.is_bot ? '(N)' : ''}
+                </div>
+                <div className="bg-white rounded-full px-2 py-1 text-xs font-bold text-slate-900 mt-0.5 w-fit">
+                  {formatChipValue(opp.chips)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Dealer announcement: Awaiting ante decisions */}
+        <div className="bg-poker-gold/95 px-4 py-3 text-center">
+          <p className="text-sm font-bold text-slate-900">Awaiting ante decisions...</p>
+        </div>
+        {/* Tab section placeholder */}
+        <div className="flex-1 bg-background" />
       </div>
     );
   }
