@@ -5783,7 +5783,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const activePlayersBefore = players.filter(p => !p.sitting_out);
           const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
 
-          if (perPlayerAmount > 0 && activePlayersBefore.length > 0) {
+          // Skip ante animation for cribbage - it doesn't use the chip animation pattern
+          if (!isCribbageGame && perPlayerAmount > 0 && activePlayersBefore.length > 0) {
             const preChipsSnapshot: Record<string, number> = {};
             const expectedChips: Record<string, number> = {};
             activePlayersBefore.forEach(p => {
@@ -5796,7 +5797,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setExpectedPostAnteChips(expectedChips);
             setAnteAnimationExpectedPot(expectedPot);
 
-            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : isCribbageGame ? 'cribbage' : '357'}-first-ante-${expectedPot}`;
+            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : '357'}-first-ante-${expectedPot}`;
             if (anteAnimationFiredRef.current !== triggerKey) {
               anteAnimationFiredRef.current = triggerKey;
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
@@ -6822,8 +6823,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'cribbage')) && (() => {
           const isInProgress = game.status === 'in_progress';
+          const isAnteDecision = game.status === 'ante_decision';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
+
+          // CRIBBAGE during ante_decision - show cribbage table instead of 3-5-7
+          if (isAnteDecision && game.game_type === 'cribbage') {
+            return (
+              <CribbageMobileGameTable
+                gameId={gameId!}
+                roundId=""
+                dealerGameId={null}
+                handNumber={0}
+                players={players}
+                currentUserId={user?.id || ''}
+                dealerPosition={game.dealer_position || 1}
+                anteAmount={game.ante_amount || 1}
+                pot={0}
+                isHost={isCreator}
+                onGameComplete={() => {}}
+                dealerChatMessages={[]}
+                onInjectDealerChatMessage={() => {}}
+                gameConfig={{
+                  pointsToWin: game.points_to_win || 121,
+                  skunkEnabled: game.skunk_enabled ?? true,
+                  skunkThreshold: game.skunk_threshold || 91,
+                  doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+                  doubleSkunkThreshold: game.double_skunk_threshold || 61,
+                }}
+              />
+            );
+          }
 
           // DICE GAMES (Horses and Ship Captain Crew)
           if (isInProgress && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
