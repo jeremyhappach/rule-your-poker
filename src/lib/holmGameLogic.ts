@@ -1664,10 +1664,43 @@ async function handleMultiPlayerShowdown(
   const stayedPlayerIds = new Set(stayedPlayers.map(p => p.id));
   console.log('[HOLM MULTI] stayedPlayerIds:', Array.from(stayedPlayerIds));
   
-  const cardsOfStayedPlayers = cachedPlayerCards.filter(pc => stayedPlayerIds.has(pc.player_id));
+  let cardsOfStayedPlayers = cachedPlayerCards.filter(pc => stayedPlayerIds.has(pc.player_id));
   
   console.log('[HOLM MULTI] CACHED cards count (all):', cachedPlayerCards.length);
   console.log('[HOLM MULTI] FILTERED to stayed players:', cardsOfStayedPlayers.length);
+  
+  // CRITICAL GUARD: If cached cards don't cover all stayed players, re-fetch directly.
+  // This can happen if the initial fetch was affected by RLS timing (all_decisions_in
+  // not yet visible) or a transient issue during the showdown delay.
+  if (cardsOfStayedPlayers.length < stayedPlayers.length) {
+    console.warn('[HOLM MULTI] ⚠️ CARD MISMATCH: have cards for', cardsOfStayedPlayers.length, 'but', stayedPlayers.length, 'stayed. Re-fetching...');
+    const { data: refetchedCards } = await supabase
+      .from('player_cards')
+      .select('*, players!inner(*, profiles(username))')
+      .eq('round_id', roundId);
+    
+    if (refetchedCards && refetchedCards.length > 0) {
+      cardsOfStayedPlayers = refetchedCards.filter(pc => stayedPlayerIds.has(pc.player_id));
+      console.log('[HOLM MULTI] Re-fetched cards, now have:', cardsOfStayedPlayers.length, 'for stayed players');
+    }
+  }
+  
+  // CRITICAL GUARD: If we STILL don't have cards for stayed players, abort.
+  // Without cards we cannot evaluate hands — proceeding would cause a false "full tie"
+  // that incorrectly deals Chucky and shows "Ya tie but ya lose!".
+  if (cardsOfStayedPlayers.length === 0) {
+    console.error('[HOLM MULTI] ❌ FATAL: No cards found for ANY stayed player. Aborting showdown to prevent false tie.');
+    console.error('[HOLM MULTI] cachedPlayerCards IDs:', cachedPlayerCards.map(pc => pc.player_id));
+    console.error('[HOLM MULTI] stayedPlayerIds:', Array.from(stayedPlayerIds));
+    
+    await supabase.from('rounds').update({ status: 'completed' }).eq('id', roundId);
+    await supabase.from('games').update({
+      last_round_result: 'Error: could not load player cards for showdown — advancing to next hand',
+      awaiting_next_round: true,
+    }).eq('id', gameId);
+    return;
+  }
+  
   cardsOfStayedPlayers.forEach(pc => {
     const playerData = pc.players as any;
     const cards = pc.cards as any[];
@@ -2114,7 +2147,8 @@ async function handleMultiPlayerShowdown(
     
     if (playersBeatChucky.length === 0) {
       // All tied players lost to or tied with Chucky - they all match pot (capped)
-      const allTiedWithChucky = playersTieChucky.length === playersLoseToChucky.length;
+      // CRITICAL: Guard against 0-length arrays — (0 === 0) would falsely report "all tied"
+      const allTiedWithChucky = playersTieChucky.length > 0 && playersTieChucky.length === playersLoseToChucky.length;
       console.log('[HOLM TIE] Chucky beats/ties all players, roundPot:', roundPot, 'allTiedWithChucky:', allTiedWithChucky);
       
       const potMatchAmount = game.pot_max_enabled 
