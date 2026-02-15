@@ -1,7 +1,7 @@
 export function getNextBotNumber(usernames: Array<string | null | undefined>): number {
   const numbers = usernames
     .map((u) => {
-      const match = /^Bot\s+(\d+)/i.exec((u ?? '').trim());
+      const match = /^Bot\s+(\d+)(?:$|-)/i.exec((u ?? '').trim());
       if (!match) return null;
       const n = Number(match[1]);
       return Number.isFinite(n) ? n : null;
