@@ -908,6 +908,21 @@ export async function endHolmRound(gameId: string) {
   // CRITICAL FIX: Fetch ALL player cards NOW, BEFORE any delays or status changes
   // This prevents race conditions where cards get deleted/modified during delays
   console.log('[HOLM END] ⚠️ FETCHING ALL PLAYER CARDS IMMEDIATELY (before any delays) ⚠️');
+  
+  // DIAGNOSTIC: Capture exact game state at moment of card fetch
+  const { data: diagGame } = await supabase.from('games').select('all_decisions_in, status, current_game_uuid').eq('id', gameId).single();
+  const { data: diagRound } = await supabase.from('rounds').select('status, id, dealer_game_id').eq('id', round.id).single();
+  console.log('[HOLM DIAG] Game state at card fetch:', JSON.stringify(diagGame));
+  console.log('[HOLM DIAG] Round state at card fetch:', JSON.stringify(diagRound));
+  
+  // DIAGNOSTIC: Also try a raw count query WITHOUT the players join to isolate if the issue is RLS on player_cards or the join
+  const { data: rawCardCount, error: rawCountError } = await supabase
+    .from('player_cards')
+    .select('id, player_id')
+    .eq('round_id', round.id);
+  console.log('[HOLM DIAG] Raw player_cards count (no join):', rawCardCount?.length ?? 'ERROR', rawCountError?.message ?? '');
+  console.log('[HOLM DIAG] Raw player_cards IDs:', rawCardCount?.map(pc => pc.player_id) ?? []);
+  
   const { data: allPlayerCardsData, error: cardsError } = await supabase
     .from('player_cards')
     .select('*, players!inner(*, profiles(username))')
@@ -917,7 +932,29 @@ export async function endHolmRound(gameId: string) {
     console.error('[HOLM END] ERROR fetching player cards:', cardsError);
   }
   
-  console.log('[HOLM END] Cached player cards count:', allPlayerCardsData?.length || 0);
+  console.log('[HOLM END] Cached player cards count (with join):', allPlayerCardsData?.length || 0);
+  console.log('[HOLM DIAG] MISMATCH?', (rawCardCount?.length ?? 0) !== (allPlayerCardsData?.length ?? 0) ? '⚠️ YES - join is filtering!' : 'No');
+  
+  // Write diagnostic to DB for post-mortem analysis
+  logGameState({
+    gameId,
+    dealerGameId: game.current_game_uuid,
+    roundId: round.id,
+    eventType: 'SHOWDOWN_START',
+    gameStatus: diagGame?.status,
+    roundStatus: diagRound?.status,
+    allDecisionsIn: diagGame?.all_decisions_in,
+    sourceLocation: 'holmGameLogic:CARD_FETCH_DIAGNOSTIC',
+    details: {
+      rawCardCount: rawCardCount?.length ?? -1,
+      joinedCardCount: allPlayerCardsData?.length ?? -1,
+      rawPlayerIds: rawCardCount?.map(pc => pc.player_id) ?? [],
+      joinedPlayerIds: allPlayerCardsData?.map(pc => pc.player_id) ?? [],
+      cardsError: cardsError?.message ?? null,
+      rawCountError: rawCountError?.message ?? null,
+    },
+  });
+  
   allPlayerCardsData?.forEach(pc => {
     const playerData = pc.players as any;
     const cards = pc.cards as any[];
