@@ -792,7 +792,8 @@ export async function endHolmRound(gameId: string) {
         supabase
           .from('player_cards')
           .update({ visible_to_user_ids: seatedUserIds, is_public: true })
-          .eq('round_id', round.id);
+          .eq('round_id', round.id)
+          .then(({ error }) => { if (error) console.error('[HOLM] is_public update error:', error); });
 
         const roundPot = round.pot || game.pot || 0;
         await handleMultiPlayerShowdown(
@@ -1225,7 +1226,8 @@ export async function endHolmRound(gameId: string) {
     supabase
       .from('player_cards')
       .update({ visible_to_user_ids: seatedUserIds, is_public: true })
-      .eq('round_id', capturedRoundId);
+      .eq('round_id', capturedRoundId)
+      .then(({ error }) => { if (error) console.error('[HOLM END] is_public update error:', error); });
 
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
     
@@ -1345,7 +1347,8 @@ export async function endHolmRound(gameId: string) {
   supabase
     .from('player_cards')
     .update({ visible_to_user_ids: seatedUserIds, is_public: true })
-    .eq('round_id', capturedRoundId);
+    .eq('round_id', capturedRoundId)
+    .then(({ error }) => { if (error) console.error('[HOLM END] is_public update error:', error); });
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
   console.log('[HOLM END] Waiting 3 seconds for players to read exposed cards...');
