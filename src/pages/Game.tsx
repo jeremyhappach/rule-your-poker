@@ -740,8 +740,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const checkAndCleanupAfterPlayerLeave = async (gId: string) => {
     const { data: remainingPlayers } = await supabase
       .from('players')
-      .select('id, is_bot, sitting_out')
-      .eq('game_id', gId);
+      .select('id, is_bot, sitting_out, status')
+      .eq('game_id', gId)
+      .neq('status', 'left');
 
     const activeHumans = remainingPlayers?.filter(p => !p.is_bot && !p.sitting_out) || [];
     const totalPlayers = remainingPlayers?.length || 0;
@@ -800,10 +801,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
-    // Stand up = delete player record to become an observer
+    // Stand up = soft-delete player record (preserve for hand history FK integrity)
     const { error } = await supabase
       .from('players')
-      .delete()
+      .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, sit_out_next_hand: false })
       .eq('id', currentPlayer.id);
     
     if (error) {
@@ -865,10 +866,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
-    // Delete the player record entirely
+    // Soft-delete the player record (preserve for hand history FK integrity)
     const { error } = await supabase
       .from('players')
-      .delete()
+      .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, sit_out_next_hand: false })
       .eq('id', currentPlayer.id);
     
     if (error) {
@@ -2555,7 +2556,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // CRITICAL: Fetch fresh player AND game data directly from database
       const [playersResult, gameResult] = await Promise.all([
-        supabase.from('players').select('*').eq('game_id', gameId),
+        supabase.from('players').select('*').eq('game_id', gameId).neq('status', 'left'),
         supabase.from('games').select('ante_decision_deadline').eq('id', gameId).single()
       ]);
       
@@ -3852,7 +3853,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // PARALLEL FETCH: Get game, players, and defaults all at once for speed
     const [gameResult, playersResult, defaultsResult] = await Promise.all([
       supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle(),
-      supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).order('position'),
+      supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position'),
       supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single(),
     ]);
 
@@ -5665,8 +5666,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const sittingOutUpdates = sittingOutPlayers.map(player => {
       const newSittingOutHands = (player.sitting_out_hands || 0) + 1;
       if (newSittingOutHands >= 14) {
-        console.log(`[ANTE] Removing player ${player.id} (${player.position}) after 14 consecutive games sitting out`);
-        return supabase.from('players').delete().eq('id', player.id);
+        console.log(`[ANTE] Soft-removing player ${player.id} (${player.position}) after 14 consecutive games sitting out`);
+        return supabase.from('players').update({ status: 'left', sitting_out: true }).eq('id', player.id);
       } else {
         return supabase.from('players').update({ sitting_out_hands: newSittingOutHands }).eq('id', player.id);
       }
@@ -6080,14 +6081,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .maybeSingle();
         
         if (existingPlayer) {
-          // Player is returning - update their position and sitting_out status, keep their chips
+          // Player is returning - reactivate, update position, restore chips from snapshot
+          const lastKnownChips = await getLastKnownChips(gameId, user.id);
           const { error: updateError } = await supabase
             .from('players')
             .update({
+              status: 'active',
               position: position,
               sitting_out: gameInProgress,
               waiting: gameInProgress, // If game in progress, mark as waiting to join next game
-              ante_decision: null // Reset ante decision so they get the popup
+              ante_decision: null, // Reset ante decision so they get the popup
+              stand_up_next_hand: false,
+              sit_out_next_hand: false,
+              ...(lastKnownChips !== null ? { chips: lastKnownChips } : {}),
             })
             .eq('id', existingPlayer.id);
           
