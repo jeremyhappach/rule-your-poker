@@ -903,6 +903,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "player_cards_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "player_cards_round_id_fkey"
             columns: ["round_id"]
             isOneToOne: false

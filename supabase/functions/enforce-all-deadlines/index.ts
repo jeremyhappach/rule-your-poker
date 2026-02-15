@@ -378,7 +378,8 @@ serve(async (req) => {
             const { data: players } = await supabase
               .from('players')
               .select('*')
-              .eq('game_id', game.id);
+              .eq('game_id', game.id)
+              .neq('status', 'left');
 
             const dealerPlayer = players?.find((p: any) => p.position === game.dealer_position);
 
@@ -404,7 +405,8 @@ serve(async (req) => {
               const { data: freshPlayers } = await supabase
                 .from('players')
                 .select('*')
-                .eq('game_id', game.id);
+                .eq('game_id', game.id)
+                .neq('status', 'left');
 
               // Count remaining eligible dealers
               const eligibleDealers = (freshPlayers || []).filter((p: any) =>
@@ -563,7 +565,8 @@ serve(async (req) => {
           const { data: allPlayers } = await supabase
             .from('players')
             .select('id, user_id, is_bot, sitting_out, status, auto_fold, chips')
-            .eq('game_id', game.id);
+            .eq('game_id', game.id)
+            .neq('status', 'left');
           
           const presentHumans = (allPlayers || []).filter((p: any) => !p.is_bot && !p.sitting_out);
           const presentBots = (allPlayers || []).filter((p: any) => p.is_bot && !p.sitting_out);
@@ -665,7 +668,8 @@ serve(async (req) => {
           const { data: allPlayers } = await supabase
             .from('players')
             .select('id, user_id, is_bot, sitting_out, status, ante_decision, profiles(username)')
-            .eq('game_id', game.id);
+            .eq('game_id', game.id)
+            .neq('status', 'left');
           
           // Step 1: Auto-ante all bots immediately (they should never wait)
           const undecidedBots = (allPlayers || []).filter((p: any) => 
@@ -2402,20 +2406,18 @@ serve(async (req) => {
                 .from('players')
                 .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, auto_fold, status')
                 .eq('game_id', game.id)
+                .neq('status', 'left')
                 .order('position');
               
               if (allPlayers) {
                 // Evaluate player states
                 for (const player of allPlayers) {
                   if (player.stand_up_next_hand) {
-                    if (player.is_bot) {
-                      await supabase.from('players').delete().eq('id', player.id);
-                    } else {
-                      await supabase
-                        .from('players')
-                        .update({ sitting_out: true, stand_up_next_hand: false, waiting: false })
-                        .eq('id', player.id);
-                    }
+                    // Soft-delete: set status='left' for both bots and humans (preserve FK integrity)
+                    await supabase
+                      .from('players')
+                      .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, waiting: false })
+                      .eq('id', player.id);
                     continue;
                   }
                   
@@ -2613,20 +2615,18 @@ serve(async (req) => {
               .from('players')
               .select('id, user_id, position, sitting_out, waiting, stand_up_next_hand, sit_out_next_hand, is_bot, auto_fold, status')
               .eq('game_id', game.id)
+              .neq('status', 'left')
               .order('position');
             
             if (allPlayers) {
               // Evaluate player states
               for (const player of allPlayers) {
                 if (player.stand_up_next_hand) {
-                  if (player.is_bot) {
-                    await supabase.from('players').delete().eq('id', player.id);
-                  } else {
-                    await supabase
-                      .from('players')
-                      .update({ sitting_out: true, stand_up_next_hand: false, waiting: false })
-                      .eq('id', player.id);
-                  }
+                  // Soft-delete: set status='left' for both bots and humans (preserve FK integrity)
+                  await supabase
+                    .from('players')
+                    .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, waiting: false })
+                    .eq('id', player.id);
                   continue;
                 }
                 

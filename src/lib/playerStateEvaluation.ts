@@ -453,18 +453,19 @@ export async function handlePlayerRejoin(playerId: string): Promise<boolean> {
 }
 
 /**
- * Remove all sitting out players when game transitions back to waiting.
- * This forces players to re-select seats if they want to rejoin.
- * Bots are deleted entirely; humans are deleted (they'll need to pick a seat again).
+ * Soft-remove all sitting out players when game transitions back to waiting.
+ * Sets status='left' so they must re-select seats to rejoin.
+ * Player records are preserved for hand history FK integrity.
  */
 export async function removeSittingOutPlayersOnWaiting(gameId: string): Promise<void> {
-  console.log('[WAITING CLEANUP] Removing sitting out players for game:', gameId);
+  console.log('[WAITING CLEANUP] Soft-removing sitting out players for game:', gameId);
   
   // Find all sitting out players (including those with auto_fold=true who are essentially sitting out)
   const { data: sittingOutPlayers, error: fetchError } = await supabase
     .from('players')
     .select('id, user_id, position, is_bot, sitting_out, auto_fold, profiles(username)')
     .eq('game_id', gameId)
+    .neq('status', 'left')
     .or('sitting_out.eq.true,auto_fold.eq.true');
   
   if (fetchError) {
@@ -477,20 +478,20 @@ export async function removeSittingOutPlayersOnWaiting(gameId: string): Promise<
     return;
   }
   
-  console.log('[WAITING CLEANUP] Found', sittingOutPlayers.length, 'sitting out players to remove:', 
+  console.log('[WAITING CLEANUP] Found', sittingOutPlayers.length, 'sitting out players to soft-remove:', 
     sittingOutPlayers.map(p => ({ pos: p.position, username: p.profiles?.username, is_bot: p.is_bot })));
   
-  // Delete all sitting out players - they'll need to pick a seat again
+  // Soft-delete: set status='left' instead of deleting
   const playerIds = sittingOutPlayers.map(p => p.id);
   
-  const { error: deleteError } = await supabase
+  const { error: updateError } = await supabase
     .from('players')
-    .delete()
+    .update({ status: 'left', sitting_out: true })
     .in('id', playerIds);
   
-  if (deleteError) {
-    console.error('[WAITING CLEANUP] Error deleting sitting out players:', deleteError);
+  if (updateError) {
+    console.error('[WAITING CLEANUP] Error soft-removing sitting out players:', updateError);
   } else {
-    console.log('[WAITING CLEANUP] Successfully removed', playerIds.length, 'sitting out players');
+    console.log('[WAITING CLEANUP] Successfully soft-removed', playerIds.length, 'sitting out players');
   }
 }
