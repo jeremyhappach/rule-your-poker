@@ -1290,9 +1290,14 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Exposing player cards for showdown - setting status to showdown...');
   
   // SET STATUS TO SHOWDOWN (from 'processing') so UI reveals player cards
+  // CRITICAL: Set decision_deadline to a non-null value to prevent the showdown recovery
+  // path (line ~727) from claiming this round while we're still processing it.
+  // The recovery path checks `.is('decision_deadline', null)` — by setting a value here,
+  // we ensure only a genuinely stuck showdown (where the original client died) gets recovered.
+  const showdownLockDeadline = new Date(Date.now() + 30_000).toISOString();
   await supabase
     .from('rounds')
-    .update({ status: 'showdown' })
+    .update({ status: 'showdown', decision_deadline: showdownLockDeadline })
     .eq('id', capturedRoundId);
   
   // VISIBILITY: At Holm multi-player showdown, ALL seated players can see ALL cards
@@ -2010,6 +2015,31 @@ async function handleMultiPlayerShowdown(
   } else {
     // FULL TIE: ALL players tied - they must all face Chucky
     console.log('[HOLM TIE] Full tie detected (all players tied). Tied players must face Chucky.');
+    
+    // CRITICAL GUARD: If evaluations/winners is empty, this is NOT a real tie — it's a data
+    // integrity issue (e.g., cachedPlayerCards didn't match stayedPlayerIds due to a race
+    // condition). Abort instead of incorrectly dealing Chucky.
+    if (winners.length === 0) {
+      console.error('[HOLM TIE] ❌ BUG: evaluations/winners is EMPTY — this is NOT a real tie. Aborting Chucky deal.');
+      console.error('[HOLM TIE] cardsOfStayedPlayers count:', cardsOfStayedPlayers.length, 'cachedPlayerCards count:', cachedPlayerCards.length);
+      console.error('[HOLM TIE] stayedPlayerIds:', Array.from(stayedPlayerIds));
+      
+      // Mark round as completed and set awaiting_next_round to allow game to continue
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed' })
+        .eq('id', roundId);
+      
+      await supabase
+        .from('games')
+        .update({
+          last_round_result: 'Error: hand evaluation failed — advancing to next hand',
+          awaiting_next_round: true,
+        })
+        .eq('id', gameId);
+      
+      return;
+    }
     
     // Deal Chucky cards (4 cards for Holm game) - EXCLUDE used cards
     // Get all player cards for this round to exclude from Chucky's deck
