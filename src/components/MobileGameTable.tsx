@@ -3399,7 +3399,7 @@ export const MobileGameTable = ({
           
           const stickyTurnPosition = allDecisionsIn 
             ? null 
-            : (rawTurnPos ?? (handContextId === cachedHand ? cachedPos : null));
+            : (stickyTurnPositionRef.current.position ?? null);
           
           return (
             <TurnSpotlight
