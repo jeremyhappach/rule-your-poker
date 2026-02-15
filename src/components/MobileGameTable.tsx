@@ -2089,15 +2089,20 @@ export const MobileGameTable = ({
     gameType === 'holm-game' &&
     !!currentPlayer &&
     (
-      // Case 1: Normal solo-vs-Chucky flow
+      // Case 1: Normal solo-vs-Chucky flow - use locked ID or live decision
+      // CRITICAL: Do NOT fall back to winnerPlayerId here. It can be stale from a PREVIOUS hand
+      // where the current player was solo, causing their cards to table incorrectly when a BOT
+      // is the actual solo player this hand.
       (isSoloVsChucky &&
-        (soloVsChuckyPlayerIdLocked && soloVsChuckyPlayerIdLocked.handContextId === handContextId && soloVsChuckyPlayerIdLocked.playerId
+        (soloVsChuckyPlayerIdLocked && soloVsChuckyPlayerIdLocked.handContextId === handContextId
           ? soloVsChuckyPlayerIdLocked.playerId === currentPlayer.id
-          : winnerPlayerId
-            ? winnerPlayerId === currentPlayer.id
-            : currentPlayer.current_decision === 'stay')) ||
+          : currentPlayer.current_decision === 'stay')) ||
       // Case 2: During pot-to-player animation, keep winner's cards tabled even if isSoloVsChucky briefly flickers
-      (holmWinPotTriggerId && winnerPlayerId === currentPlayer.id)
+      // BUT only if the lock confirms this player was actually the solo player this hand
+      (holmWinPotTriggerId && 
+        soloVsChuckyPlayerIdLocked && 
+        soloVsChuckyPlayerIdLocked.handContextId === handContextId && 
+        soloVsChuckyPlayerIdLocked.playerId === currentPlayer.id)
     );
 
   // Get winner's cards for highlighting (winner may be current player or another player)
