@@ -1529,9 +1529,13 @@ export const MobileGameTable = ({
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
   // IMPORTANT: Holm showdown should table player cards BEFORE flipping the final 2 community cards,
   // so we allow this state to become true as soon as all_decisions_in is set.
+  // CRITICAL: Do NOT trust allDecisionsIn alone during 'betting' — it can be stale from the
+  // previous hand and, combined with stale stayedPlayersCount, would prematurely trigger
+  // solo-vs-Chucky mode for the wrong player (causing wrong cards to table and all 4
+  // community cards to appear revealed).
   const isSoloVsChuckyRaw = gameType === 'holm-game' && 
     stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || (allDecisionsIn && roundStatus !== 'betting') || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
 
   useEffect(() => {
     if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
@@ -1586,7 +1590,7 @@ export const MobileGameTable = ({
   // HOLM: Detect multi-player showdown (2+ players stayed) - needs tighter card overlap
   const isHolmMultiPlayerShowdown = gameType === 'holm-game' && 
     stayedPlayersCount >= 2 && 
-    (roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn);
+    (roundStatus === 'showdown' || roundStatus === 'completed' || (allDecisionsIn && roundStatus !== 'betting'));
   
   // 3-5-7 "secret reveal" for rounds 1 and 2: only players who stayed can see each other's cards
   const currentPlayerForSecretReveal = players.find(p => p.user_id === currentUserId);
@@ -2085,25 +2089,16 @@ export const MobileGameTable = ({
   // through the win/payout sequence (hide from bottom section to prevent the "snap back" effect).
   // CRITICAL: Also check holmWinPotTriggerId - if pot animation is active, keep cards tabled for the winner
   // to prevent brief re-population during win celebration.
+  // CRITICAL: Only use the handContextId-scoped lock to determine if the current player is solo.
+  // NO fallbacks (current_decision, winnerPlayerId) — they can be stale from a previous hand
+  // and cause the wrong player's cards to table, or trigger premature showdown mode.
   const isCurrentPlayerSoloVsChucky =
     gameType === 'holm-game' &&
     !!currentPlayer &&
-    (
-      // Case 1: Normal solo-vs-Chucky flow - use locked ID or live decision
-      // CRITICAL: Do NOT fall back to winnerPlayerId here. It can be stale from a PREVIOUS hand
-      // where the current player was solo, causing their cards to table incorrectly when a BOT
-      // is the actual solo player this hand.
-      (isSoloVsChucky &&
-        (soloVsChuckyPlayerIdLocked && soloVsChuckyPlayerIdLocked.handContextId === handContextId
-          ? soloVsChuckyPlayerIdLocked.playerId === currentPlayer.id
-          : currentPlayer.current_decision === 'stay')) ||
-      // Case 2: During pot-to-player animation, keep winner's cards tabled even if isSoloVsChucky briefly flickers
-      // BUT only if the lock confirms this player was actually the solo player this hand
-      (holmWinPotTriggerId && 
-        soloVsChuckyPlayerIdLocked && 
-        soloVsChuckyPlayerIdLocked.handContextId === handContextId && 
-        soloVsChuckyPlayerIdLocked.playerId === currentPlayer.id)
-    );
+    soloVsChuckyPlayerIdLocked != null &&
+    soloVsChuckyPlayerIdLocked.handContextId === handContextId &&
+    soloVsChuckyPlayerIdLocked.playerId === currentPlayer.id &&
+    (isSoloVsChucky || !!holmWinPotTriggerId);
 
   // Get winner's cards for highlighting (winner may be current player or another player)
   // ALSO provide cards when holmWinPotTriggerId is set (for tabling winner cards during animation)
@@ -4552,8 +4547,10 @@ export const MobileGameTable = ({
           // Find the solo player (use locked id so tabling persists even if decisions clear)
           // NOTE: Do NOT fall back to winnerPlayerId here; it can be stale during hand transitions
           // and can briefly table the wrong player's cards (causing flicker/incorrect tabling).
+          // CRITICAL: Only use the handContextId-scoped lock — no current_decision fallback
+          // (it can be stale from a previous hand and table the wrong player's cards)
           const soloLockedForHand = soloVsChuckyPlayerIdLocked && soloVsChuckyPlayerIdLocked.handContextId === handContextId ? soloVsChuckyPlayerIdLocked.playerId : null;
-          const soloPlayerId = soloLockedForHand || players.find(p => p.current_decision === 'stay')?.id;
+          const soloPlayerId = soloLockedForHand;
           const soloPlayer = soloPlayerId ? players.find(p => p.id === soloPlayerId) : null;
           if (!soloPlayer) return null;
           
