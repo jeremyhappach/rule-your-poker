@@ -1685,20 +1685,12 @@ async function handleMultiPlayerShowdown(
     }
   }
   
-  // CRITICAL GUARD: If we STILL don't have cards for stayed players, abort.
-  // Without cards we cannot evaluate hands — proceeding would cause a false "full tie"
-  // that incorrectly deals Chucky and shows "Ya tie but ya lose!".
+  // Log if cards are still missing after re-fetch, but DO NOT abort.
+  // The 0===0 tie-breaker guard downstream prevents false Chucky deals even with empty data.
   if (cardsOfStayedPlayers.length === 0) {
-    console.error('[HOLM MULTI] ❌ FATAL: No cards found for ANY stayed player. Aborting showdown to prevent false tie.');
-    console.error('[HOLM MULTI] cachedPlayerCards IDs:', cachedPlayerCards.map(pc => pc.player_id));
-    console.error('[HOLM MULTI] stayedPlayerIds:', Array.from(stayedPlayerIds));
-    
-    await supabase.from('rounds').update({ status: 'completed' }).eq('id', roundId);
-    await supabase.from('games').update({
-      last_round_result: 'Error: could not load player cards for showdown — advancing to next hand',
-      awaiting_next_round: true,
-    }).eq('id', gameId);
-    return;
+    console.warn('[HOLM MULTI] ⚠️ WARNING: No cards found for stayed players after re-fetch. Evaluation may be incomplete.');
+    console.warn('[HOLM MULTI] cachedPlayerCards IDs:', cachedPlayerCards.map(pc => pc.player_id));
+    console.warn('[HOLM MULTI] stayedPlayerIds:', Array.from(stayedPlayerIds));
   }
   
   cardsOfStayedPlayers.forEach(pc => {
