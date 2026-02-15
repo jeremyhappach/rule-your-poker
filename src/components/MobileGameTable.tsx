@@ -616,11 +616,12 @@ export const MobileGameTable = ({
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
   
   // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
-  // The spotlight should only move forward to the next player, never jump back to a previous position.
-  // We track the last confirmed turn position and the handContextId it belongs to.
-  const stickyTurnPositionRef = useRef<{ position: number | null; handContextId: string | null }>({
-    position: null,
-    handContextId: null,
+   // The spotlight should only move forward to the next player, never jump back to a previous position.
+   // We track the last confirmed turn position, the handContextId it belongs to, and visited positions.
+   const stickyTurnPositionRef = useRef<{ position: number | null; handContextId: string | null; visited: Set<number> }>({
+     position: null,
+     handContextId: null,
+     visited: new Set(),
   });
 
   
@@ -1453,7 +1454,7 @@ export const MobileGameTable = ({
     setShowdownModeLocked(false);
     
     // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
-    stickyTurnPositionRef.current = { position: null, handContextId: to };
+    stickyTurnPositionRef.current = { position: null, handContextId: to, visited: new Set() };
     
     // NOTE: currentPlayerCardsRef is reset separately in the useMemo that computes currentPlayerCards
     // because it's defined later in the component (after currentPlayer is computed)
@@ -2422,7 +2423,10 @@ export const MobileGameTable = ({
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards]);
         setCachedChuckyActive(true);
-        setCachedChuckyCardsRevealed(chuckyCardsRevealed || 0);
+        // CRITICAL: Only allow revealed count to increase, never decrease
+        // This prevents Chucky cards from briefly reverting to card back during DB sync
+        const newRevealed = chuckyCardsRevealed || 0;
+        setCachedChuckyCardsRevealed(prev => Math.max(prev, newRevealed));
         cachedChuckyHandContextRef.current = handContextId ?? null;
       } else {
         console.warn('[MOBILE_CHUCKY] Skipping cache - handContextId mismatch:', {
@@ -3364,17 +3368,22 @@ export const MobileGameTable = ({
         {/* Turn Spotlight - Holm games and Dice games */}
         {gameType === 'holm-game' && (() => {
           // SPOTLIGHT FIX: Compute sticky turn position to prevent "snap back" during DB sync.
-          // The spotlight should only move to a NEW position, never revert to a previous one.
+          // The spotlight should only move to a NEW position, never revert to a previously visited one.
           const rawTurnPos = currentTurnPosition ?? null;
           const cachedPos = stickyTurnPositionRef.current.position;
           const cachedHand = stickyTurnPositionRef.current.handContextId;
           
           // Reset sticky position on new hand
           if (handContextId !== cachedHand) {
-            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null };
+            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null, visited: new Set(rawTurnPos !== null ? [rawTurnPos] : []) };
           } else if (rawTurnPos !== null && rawTurnPos !== cachedPos) {
-            // New position within the same hand - update the sticky cache
-            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null };
+            // Only update if this position hasn't been visited before in this hand
+            // This prevents brief regression to a prior player's position during DB sync
+            if (!stickyTurnPositionRef.current.visited.has(rawTurnPos)) {
+              stickyTurnPositionRef.current.visited.add(rawTurnPos);
+              stickyTurnPositionRef.current = { ...stickyTurnPositionRef.current, position: rawTurnPos };
+            }
+            // If rawTurnPos was already visited, keep the current cached position
           }
           // If rawTurnPos is null but we have a cached position for the SAME hand, keep showing cached
           // This prevents the spotlight from briefly disappearing during DB sync gaps.

@@ -349,7 +349,7 @@ export function HandAccordionContent({
             {hasMultipleHands && handIdx > 0 && (
               <div className="flex items-center gap-2 my-3 text-[10px] text-poker-gold font-semibold">
                 <div className="h-px bg-poker-gold/30 flex-1" />
-                <span>{isHolm ? "🔄 ROLLOVER" : `Hand ${handIdx + 1}`}</span>
+                <span>Hand {handIdx + 1}</span>
                 <div className="h-px bg-poker-gold/30 flex-1" />
               </div>
             )}

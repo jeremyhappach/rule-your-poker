@@ -602,7 +602,17 @@ export function useHandHistoryData({
           
           // For 3-5-7, also check if reveal_at_showdown is enabled in dealer game config
           const is357Game = gameType === "357" || gameType === "3-5-7";
+          const isHolmGame = gameType === "holm-game";
           const revealAtShowdown = is357Game && dealerGame?.config?.reveal_at_showdown !== false;
+
+          // Get player actions for this round to identify who stayed vs folded
+          const roundActions = playerActionsByRound.get(round.id) || [];
+          const foldedPlayerIds = new Set(
+            roundActions.filter(a => a.actionType === 'fold').map(a => a.playerId)
+          );
+          const stayedPlayerIds = new Set(
+            roundActions.filter(a => a.actionType === 'stay').map(a => a.playerId)
+          );
 
           // Visible player cards
           const visiblePlayerCards: RoundGroup["visiblePlayerCards"] = [];
@@ -610,11 +620,13 @@ export function useHandHistoryData({
             roundCards.forEach((data, playerId) => {
               const isMe = isViewerPlayer(playerId);
               
-              // For 3-5-7 with showdown + reveal enabled, show all player cards
-              // This captures the showdown reveal that happened during the game
-              const canSeeFromShowdown = is357Game && hasShowdown && revealAtShowdown;
-              // Also check is_public for cards that were explicitly exposed (Holm multi-player showdown)
-              const canSee = isMe || data.isPublic || canSeeFromShowdown || canSeeCards(playerId, data.visibleToUserIds, data.isPublic);
+              // For 3-5-7 with showdown + reveal enabled, show cards for players who STAYED (not folded)
+              const canSeeFromShowdown357 = is357Game && hasShowdown && revealAtShowdown && !foldedPlayerIds.has(playerId);
+              // For Holm: show cards for players who stayed (had their cards exposed at showdown)
+              // This handles cases where is_public wasn't persisted correctly
+              const canSeeFromHolmShowdown = isHolmGame && hasShowdown && (stayedPlayerIds.has(playerId) || !foldedPlayerIds.has(playerId));
+              // Also check is_public for cards that were explicitly exposed
+              const canSee = isMe || data.isPublic || canSeeFromShowdown357 || canSeeFromHolmShowdown || canSeeCards(playerId, data.visibleToUserIds, data.isPublic);
               
               if (canSee) {
                 visiblePlayerCards.push({
@@ -631,7 +643,6 @@ export function useHandHistoryData({
           visiblePlayerCards.sort((a, b) => (b.isCurrentPlayer ? 1 : 0) - (a.isCurrentPlayer ? 1 : 0));
           
           // Get player decisions (stay/fold) for this round - public info
-          const roundActions = playerActionsByRound.get(round.id) || [];
           const playerDecisions = roundActions.map(action => ({
             playerId: action.playerId,
             actionType: action.actionType as 'stay' | 'fold',

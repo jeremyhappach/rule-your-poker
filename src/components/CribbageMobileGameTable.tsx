@@ -2315,7 +2315,9 @@ export const CribbageMobileGameTable = ({
           
           // Determine if counting is complete (snapshot exists but no more announcements)
           // This happens when the counting animation finishes but we're waiting for next hand
-          const isCountingComplete = effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel;
+          // CRITICAL: Only show "Dealing Next Hand" if counting has actually started (countingAnimationActiveRef was set)
+          // This prevents a brief flash of "Dealing Next Hand" before counting announcements begin
+          const isCountingComplete = effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current;
           
           const shouldShowBanner = (
             (effectivePhase === 'counting' && !isCountingComplete) || 
