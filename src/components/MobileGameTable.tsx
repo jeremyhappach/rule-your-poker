@@ -608,7 +608,7 @@ export const MobileGameTable = ({
 
   // HOLM: Lock solo-vs-Chucky tabling once it starts to prevent flicker/unmount during win animation
   const [soloVsChuckyTableLocked, setSoloVsChuckyTableLocked] = useState(false);
-  const [soloVsChuckyPlayerIdLocked, setSoloVsChuckyPlayerIdLocked] = useState<string | null>(null);
+  const [soloVsChuckyPlayerIdLocked, setSoloVsChuckyPlayerIdLocked] = useState<{ playerId: string; handContextId: string } | null>(null);
   // Track if tabled cards have already animated (to prevent re-animation on re-render)
   const soloVsChuckyAnimatedRef = useRef(false);
   
@@ -1447,7 +1447,7 @@ export const MobileGameTable = ({
 
     // Solo-vs-Chucky tabling lock (must clear together with caches)
     setSoloVsChuckyTableLocked(false);
-    setSoloVsChuckyPlayerIdLocked(null);
+    setSoloVsChuckyPlayerIdLocked(null); // Also auto-invalidated by handContextId check
     soloVsChuckyAnimatedRef.current = false;
     
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
@@ -1541,17 +1541,19 @@ export const MobileGameTable = ({
 
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
   useEffect(() => {
-    if (soloVsChuckyPlayerIdLocked) return;
+    // Only use the lock if it matches the CURRENT hand context
+    const lockedForThisHand = soloVsChuckyPlayerIdLocked?.handContextId === handContextId;
+    if (lockedForThisHand) return;
     if (!(isSoloVsChuckyRaw || soloVsChuckyTableLocked || holmWinPotTriggerId)) return;
 
     // Prefer the actual stayed player while decisions are still present; fall back to parsing the winner from lastRoundResult.
     const stayed = players.find(p => p.current_decision === 'stay');
-    if (stayed) {
-      setSoloVsChuckyPlayerIdLocked(stayed.id);
+    if (stayed && handContextId) {
+      setSoloVsChuckyPlayerIdLocked({ playerId: stayed.id, handContextId });
       return;
     }
 
-    if (lastRoundResult) {
+    if (lastRoundResult && handContextId) {
       const result = lastRoundResult.toLowerCase();
       for (const p of players) {
         const botAlias = p.is_bot ? getBotAlias(players, p.user_id) : '';
@@ -1568,12 +1570,12 @@ export const MobileGameTable = ({
               result.includes(`${name} earns`)
           )
         ) {
-          setSoloVsChuckyPlayerIdLocked(p.id);
+          setSoloVsChuckyPlayerIdLocked({ playerId: p.id, handContextId });
           return;
         }
       }
     }
-  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult]);
+  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, handContextId]);
 
   // Reset of solo-vs-Chucky locks is handled inside resetHandUiCaches (and is deferred during animations)
   // so tabled cards can't snap back mid pot-to-player animation.
@@ -2089,8 +2091,8 @@ export const MobileGameTable = ({
     (
       // Case 1: Normal solo-vs-Chucky flow
       (isSoloVsChucky &&
-        (soloVsChuckyPlayerIdLocked
-          ? soloVsChuckyPlayerIdLocked === currentPlayer.id
+        (soloVsChuckyPlayerIdLocked?.handContextId === handContextId && soloVsChuckyPlayerIdLocked?.playerId
+          ? soloVsChuckyPlayerIdLocked.playerId === currentPlayer.id
           : winnerPlayerId
             ? winnerPlayerId === currentPlayer.id
             : currentPlayer.current_decision === 'stay')) ||
@@ -2908,7 +2910,8 @@ export const MobileGameTable = ({
     // CRITICAL: For Holm, hide chips during MULTI-PLAYER showdown (2+ stayed) for ALL positions except home position
     // This gives room for cards to display without overlap
     const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
-    const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
+    const soloLockedId = soloVsChuckyPlayerIdLocked?.handContextId === handContextId ? soloVsChuckyPlayerIdLocked.playerId : null;
+    const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
     // For Holm: hide chips for all players in showdown (gives room for exposed cards)
     // For 3-5-7: also hide chips during round 2 and 3 multi-player showdowns
     const hideChipForShowdown = (gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip) ||
@@ -3116,7 +3119,8 @@ export const MobileGameTable = ({
     // This prevents the "jump" where cards move from player slot to tabled position mid-animation
     // For solo vs Chucky: hide solo player's cards from slot (they're tabled above pot)
     const is357WinWinner = threeFiveSevenWinnerId === player.id && threeFiveSevenWinPhase !== 'idle';
-    const isSoloVsChuckyPlayer = isSoloVsChucky && soloVsChuckyPlayerIdLocked === player.id && player.id !== currentPlayer?.id;
+    const soloLockedIdForSlot = soloVsChuckyPlayerIdLocked?.handContextId === handContextId ? soloVsChuckyPlayerIdLocked.playerId : null;
+    const isSoloVsChuckyPlayer = isSoloVsChucky && soloLockedIdForSlot === player.id && player.id !== currentPlayer?.id;
     const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer;
     
     // Determine if name should appear below cards (for upper corners and middle positions during showdown)
@@ -4543,7 +4547,8 @@ export const MobileGameTable = ({
           // Find the solo player (use locked id so tabling persists even if decisions clear)
           // NOTE: Do NOT fall back to winnerPlayerId here; it can be stale during hand transitions
           // and can briefly table the wrong player's cards (causing flicker/incorrect tabling).
-          const soloPlayerId = soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id;
+          const soloLockedForHand = soloVsChuckyPlayerIdLocked?.handContextId === handContextId ? soloVsChuckyPlayerIdLocked.playerId : null;
+          const soloPlayerId = soloLockedForHand || players.find(p => p.current_decision === 'stay')?.id;
           const soloPlayer = soloPlayerId ? players.find(p => p.id === soloPlayerId) : null;
           if (!soloPlayer) return null;
           
