@@ -21,7 +21,25 @@
   </head>
 
   <body>
+    <!-- Inline splash prevents FOUC while CSS/JS bundles load -->
+    <div id="splash-screen" style="position:fixed;inset:0;z-index:99999;background:#0a0f1a;display:flex;align-items:center;justify-content:center;">
+      <div style="color:#94a3b8;font-family:system-ui,sans-serif;font-size:1rem;opacity:0.8;">Loading…</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Remove splash once React has mounted and styles are applied
+      const observer = new MutationObserver(() => {
+        const root = document.getElementById('root');
+        if (root && root.children.length > 0) {
+          const splash = document.getElementById('splash-screen');
+          if (splash) splash.remove();
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.getElementById('root'), { childList: true });
+      // Fallback: remove after 4s no matter what
+      setTimeout(() => { const s = document.getElementById('splash-screen'); if (s) s.remove(); }, 4000);
+    </script>
   </body>
 </html>
