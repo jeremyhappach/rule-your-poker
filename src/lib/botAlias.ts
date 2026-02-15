@@ -10,7 +10,7 @@ export function getBotAlias(
   // This preserves the original numbering even after bots are removed and re-added
   const bot = players.find(b => b.user_id === botUserId && b.is_bot);
   if (bot?.profiles?.username) {
-    const match = /^Bot\s+\d+/i.exec(bot.profiles.username);
+    const match = /^Bot\s+\d+$/i.exec(bot.profiles.username);
     if (match) return match[0];
   }
 

@@ -116,17 +116,18 @@ export async function addBotPlayer(gameId: string) {
   const aggressionLevel = getRandomAggressionLevel(botId);
   console.log('[BOT CREATION] Assigned aggression level:', aggressionLevel);
   
-  // Count ALL existing bot profiles across all games to get a globally unique bot number
-  const { data: existingBotProfiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('username')
-    .like('username', 'Bot %');
+  // Get bot usernames scoped to this game session (including left bots) for sequential numbering
+  const { data: gameBotPlayers, error: profilesError } = await supabase
+    .from('players')
+    .select('user_id, profiles(username)')
+    .eq('game_id', gameId)
+    .eq('is_bot', true);
 
   if (profilesError) {
-    console.error('[BOT CREATION] Error fetching existing bot profiles:', profilesError);
+    console.error('[BOT CREATION] Error fetching game bot players:', profilesError);
   }
 
-  const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
+  const existingUsernames = (gameBotPlayers ?? []).map((p) => (p.profiles as any)?.username);
   const nextNumber = getNextBotNumber(existingUsernames);
 
   // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
@@ -236,17 +237,18 @@ export async function addBotPlayerSittingOut(gameId: string) {
   const aggressionLevel = getRandomAggressionLevel(botId);
   console.log('[BOT CREATION SITTING-OUT] Assigned aggression level:', aggressionLevel);
   
-  // Count ALL existing bot profiles across all games to get a globally unique bot number
-  const { data: existingBotProfiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('username')
-    .like('username', 'Bot %');
+  // Get bot usernames scoped to this game session (including left bots) for sequential numbering
+  const { data: gameBotPlayers, error: profilesError } = await supabase
+    .from('players')
+    .select('user_id, profiles(username)')
+    .eq('game_id', gameId)
+    .eq('is_bot', true);
 
   if (profilesError) {
-    console.error('[BOT CREATION SITTING-OUT] Error fetching existing bot profiles:', profilesError);
+    console.error('[BOT CREATION SITTING-OUT] Error fetching game bot players:', profilesError);
   }
 
-  const existingUsernames = (existingBotProfiles ?? []).map((p) => p.username);
+  const existingUsernames = (gameBotPlayers ?? []).map((p) => (p.profiles as any)?.username);
   const nextNumber = getNextBotNumber(existingUsernames);
 
   // Prefer a clean sequential name, but fall back to a guaranteed-unique suffix if a duplicate exists.
