@@ -1963,42 +1963,71 @@ export const CribbageMobileGameTable = ({
     );
   }
 
-  // During ante_decision phase (no round yet), show a minimal cribbage table with "Awaiting ante decisions"
+  // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   if (!isDealerSelection && (!initialLoadComplete || !cribbageState || !currentPlayerId)) {
-    // If we have players but no cribbage state, show the felt with a waiting message
-    // instead of a bare "Loading" text
     const opponents = players.filter(p => p.user_id !== currentUserId);
     return (
       <div className="h-full flex flex-col overflow-hidden bg-background">
-        {/* Felt area */}
-        <div className="relative flex-shrink-0 w-full" style={{ paddingTop: '67%' }}>
+        {/* Felt Area - matching the real circular table layout */}
+        <div 
+          className="relative flex items-start justify-center pt-1"
+          style={{ 
+            height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
+            minHeight: '300px',
+          }}
+        >
+          <div className="absolute inset-0 bg-slate-200 z-0" />
           <div
-            className="absolute inset-0 rounded-[50%] overflow-hidden border-4 border-amber-700 shadow-xl mx-2 mt-1"
+            className="relative z-10"
             style={{
-              background: `url(${peoriaBridgeMobile}) center/cover no-repeat`,
+              width: 'min(90vw, calc(55vh - 32px))',
+              height: 'min(90vw, calc(55vh - 32px))',
             }}
           >
-            {/* Game title */}
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 text-center">
-              <div className="text-poker-gold font-bold text-lg drop-shadow-lg">Cribbage</div>
-            </div>
-            {/* Pot display */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-              <div className="bg-slate-900/80 rounded-full px-6 py-3 border-2 border-poker-gold">
-                <span className="text-poker-gold font-bold text-xl">$0</span>
+            <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${peoriaBridgeMobile})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'brightness(0.5)',
+                }}
+              />
+              {/* Game title */}
+              <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
+                <h2 className="text-sm font-bold text-white drop-shadow-lg">Cribbage</h2>
               </div>
             </div>
-            {/* Opponent chips */}
-            {opponents.map((opp, i) => (
-              <div key={opp.id} className="absolute top-8 left-4 z-20">
-                <div className="text-white text-xs font-medium">
-                  {opp.profiles?.username || 'Player'} {opp.is_bot ? '(N)' : ''}
-                </div>
-                <div className="bg-white rounded-full px-2 py-1 text-xs font-bold text-slate-900 mt-0.5 w-fit">
-                  {formatChipValue(opp.chips)}
-                </div>
-              </div>
-            ))}
+            {/* Opponent overlays */}
+            <div className="absolute inset-0 z-50 pointer-events-none">
+              {opponents.map((opp, index) => {
+                const totalOpponents = opponents.length;
+                let positionClasses: string;
+                let alignmentClasses: string;
+                if (totalOpponents === 1) {
+                  positionClasses = 'top-14 left-6';
+                  alignmentClasses = 'items-start';
+                } else if (totalOpponents === 2) {
+                  positionClasses = index === 0 ? 'top-14 left-6' : 'top-14 right-6';
+                  alignmentClasses = index === 0 ? 'items-start' : 'items-end';
+                } else {
+                  if (index === 0) { positionClasses = 'top-14 left-6'; alignmentClasses = 'items-start'; }
+                  else if (index === 1) { positionClasses = 'top-14 right-6'; alignmentClasses = 'items-end'; }
+                  else { positionClasses = 'bottom-44 right-6'; alignmentClasses = 'items-end'; }
+                }
+                return (
+                  <div key={opp.id} className={`absolute flex flex-col ${positionClasses} ${alignmentClasses}`}>
+                    <div className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md border border-slate-200">
+                      <span className="text-slate-900 font-bold text-xs">{formatChipValue(opp.chips)}</span>
+                    </div>
+                    <span className="text-[10px] text-white font-medium drop-shadow-md mt-0.5 text-center">
+                      {opp.profiles?.username || 'Player'}{opp.is_bot ? ' (N)' : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
         {/* Dealer announcement: Awaiting ante decisions */}
