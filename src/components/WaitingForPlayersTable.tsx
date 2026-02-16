@@ -346,8 +346,11 @@ export const WaitingForPlayersTable = ({
 
   const handleInvite = () => {
     const gameUrl = window.location.href;
-    navigator.clipboard.writeText(gameUrl);
-    console.log('Game link copied to clipboard');
+    navigator.clipboard.writeText(gameUrl).then(() => {
+      toast.success("Game link copied to clipboard!");
+    }).catch(() => {
+      toast.info(`Share this link: ${gameUrl}`);
+    });
   };
 
   // Check if user is an observer (not seated)
