@@ -35,11 +35,22 @@ interface GinRummyMobileCardsTabProps {
   gameId: string;
 }
 
+// Convert symbol suits to word suits for CribbagePlayingCard
+const SYMBOL_TO_WORD: Record<string, string> = {
+  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
+};
+
 const toDisplayCard = (card: GinRummyCard) => ({
-  suit: card.suit as any,
+  suit: (SYMBOL_TO_WORD[card.suit] || card.suit) as any,
   rank: card.rank,
   value: card.value,
 });
+
+// Rank order for sorting
+const RANK_ORDER: Record<string, number> = {
+  'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+  '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
+};
 
 export const GinRummyMobileCardsTab = ({
   ginState,
@@ -91,7 +102,15 @@ export const GinRummyMobileCardsTab = ({
     return match || null;
   }, [selectedCardIndex, myState, layOffOptions]);
 
-  const handleCardClick = (index: number) => {
+  // Sort hand by rank for display, preserving original indices for actions
+  const sortedHand = useMemo(() => {
+    if (!myState) return [];
+    return myState.hand
+      .map((card, index) => ({ card, originalIndex: index }))
+      .sort((a, b) => (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0));
+  }, [myState]);
+
+
     if (!myState) return;
     // Allow selection during discard phase or lay-off phase
     if ((ginState.turnPhase === 'discard' && isMyTurn && ginState.phase === 'playing') || isLayingOff) {
@@ -152,39 +171,46 @@ export const GinRummyMobileCardsTab = ({
 
   return (
     <div className="h-full px-2 flex flex-col">
-      {/* Cards display */}
-      <div className="flex items-center justify-center min-h-[92px] py-0">
-        <div
-          className={cn(
-            "flex justify-center origin-center",
-            cardCount > 10 ? "-space-x-3" : "-space-x-1",
-            cardCount <= 7 ? "scale-[1.55]" : cardCount <= 10 ? "scale-[1.25]" : "scale-[1.1]"
-          )}
-        >
-          {myState.hand.map((card, index) => {
-            const isSelected = selectedCardIndex === index;
+      {/* Cards display - arched fan layout */}
+      <div className="flex items-end justify-center min-h-[110px] py-1 overflow-visible">
+        <div className="relative flex items-end justify-center" style={{ width: `${Math.min(cardCount * 28 + 20, 340)}px`, height: '90px' }}>
+          {sortedHand.map(({ card, originalIndex }, i) => {
+            const isSelected = selectedCardIndex === originalIndex;
             const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-            const isLayOffable = layOffCardIndices.has(index);
+            const isLayOffable = layOffCardIndices.has(originalIndex);
+
+            // Fan arc: spread cards evenly, rotate around center
+            const mid = (cardCount - 1) / 2;
+            const offset = i - mid;
+            const maxAngle = cardCount > 8 ? 3 : 4; // degrees per card
+            const rotation = offset * maxAngle;
+            const yOffset = Math.abs(offset) * Math.abs(offset) * 1.5; // parabolic rise at edges
+            const xSpread = offset * (cardCount > 9 ? 26 : 30);
 
             return (
               <button
-                key={`${card.rank}-${card.suit}-${index}`}
-                onClick={() => handleCardClick(index)}
+                key={`${card.rank}-${card.suit}-${originalIndex}`}
+                onClick={() => handleCardClick(originalIndex)}
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || !canSelect}
                 className={cn(
-                  "transition-all duration-200 rounded relative",
+                  "absolute transition-all duration-200 rounded",
                   isSelected
-                    ? "-translate-y-3 ring-2 ring-poker-gold z-10"
-                    : "translate-y-0",
+                    ? "ring-2 ring-poker-gold z-20"
+                    : "",
                   canSelect &&
                     !isSelected &&
-                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
-                  isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60 -translate-y-0.5"
+                    "[@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
+                  isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60"
                 )}
-                style={{ zIndex: isSelected ? 10 : index }}
+                style={{
+                  zIndex: isSelected ? 20 : i,
+                  left: '50%',
+                  transform: `translateX(${xSpread - 16}px) translateY(${isSelected ? -(yOffset + 14) : -yOffset}px) rotate(${rotation}deg)`,
+                  transformOrigin: 'bottom center',
+                }}
               >
-                <CribbagePlayingCard card={toDisplayCard(card)} size="md" />
+                <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
               </button>
             );
           })}
