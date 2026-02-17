@@ -187,7 +187,7 @@ export const GinRummyMobileCardsTab = ({
             const rotation = offset * maxAngle;
             const maxOffset = Math.abs(mid);
             const yOffset = (maxOffset * maxOffset - offset * offset) * 1.5; // inverted parabola: high in center, low at edges
-            const xSpread = offset * (cardCount > 9 ? 26 : 30);
+            const xSpread = offset * (cardCount > 9 ? 22 : 26);
 
             return (
               <button
@@ -212,7 +212,7 @@ export const GinRummyMobileCardsTab = ({
                   transformOrigin: 'bottom center',
                 }}
               >
-                <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
+                <CribbagePlayingCard card={toDisplayCard(card)} size="md" />
               </button>
             );
           })}

@@ -66,7 +66,7 @@ export const GinRummyKnockDisplay = ({
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-end justify-end pb-[2%] pointer-events-none">
-      <div className="bg-black/80 backdrop-blur-md rounded-xl p-2 max-w-[70%] mx-auto border border-white/20 shadow-2xl pointer-events-auto">
+      <div className="max-w-[75%] mx-auto pointer-events-auto">
         {/* Result header */}
         {result && (
           <div className="text-center mb-1">
