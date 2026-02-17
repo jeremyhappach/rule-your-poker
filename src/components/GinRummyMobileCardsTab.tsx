@@ -1,7 +1,7 @@
 // Gin Rummy Mobile Cards Tab - Player's hand display and action buttons
 // Follows the CribbageMobileCardsTab pattern
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn, formatChipValue } from '@/lib/utils';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
@@ -69,10 +69,26 @@ export const GinRummyMobileCardsTab = ({
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [isEmoticonSending, setIsEmoticonSending] = useState(false);
+  const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
+  const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
   const myState = ginState.playerStates[currentPlayerId];
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const cardCount = myState?.hand.length || 0;
+
+  // Track newly drawn card: when turnPhase changes to 'discard', capture the drawn card
+  useEffect(() => {
+    if (prevTurnPhaseRef.current === 'draw' && ginState.turnPhase === 'discard' && isMyTurn) {
+      const lastAct = ginState.lastAction;
+      if (lastAct && (lastAct.type === 'draw_stock' || lastAct.type === 'draw_discard') && lastAct.card) {
+        setDrawnCard({ rank: lastAct.card.rank, suit: lastAct.card.suit });
+      }
+    }
+    if (ginState.turnPhase === 'draw' || !isMyTurn || ginState.phase !== 'playing') {
+      setDrawnCard(null);
+    }
+    prevTurnPhaseRef.current = ginState.turnPhase;
+  }, [ginState.turnPhase, ginState.lastAction, isMyTurn, ginState.phase]);
 
   const canKnockNow = isMyTurn && ginState.turnPhase === 'discard' && myState && canKnock(myState.hand);
   const hasGinNow = isMyTurn && ginState.turnPhase === 'discard' && myState && hasGin(myState.hand);
@@ -179,6 +195,7 @@ export const GinRummyMobileCardsTab = ({
             const isSelected = selectedCardIndex === originalIndex;
             const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
             const isLayOffable = layOffCardIndices.has(originalIndex);
+            const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
 
             // Fan arc: spread cards evenly, rotate around center
             const mid = (cardCount - 1) / 2;
@@ -203,7 +220,8 @@ export const GinRummyMobileCardsTab = ({
                   canSelect &&
                     !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
-                  isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60"
+                  isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
+                  isNewlyDrawn && !isSelected && "ring-2 ring-sky-400 animate-pulse"
                 )}
                 style={{
                   zIndex: isSelected ? 20 : i,
