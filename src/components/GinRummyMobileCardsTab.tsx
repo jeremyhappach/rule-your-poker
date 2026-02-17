@@ -77,6 +77,7 @@ export const GinRummyMobileCardsTab = ({
   const cardCount = myState?.hand.length || 0;
 
   // Track newly drawn card: when turnPhase changes to 'discard', capture the drawn card
+  // Persist highlight until it's no longer my turn (i.e. after I discard)
   useEffect(() => {
     if (prevTurnPhaseRef.current === 'draw' && ginState.turnPhase === 'discard' && isMyTurn) {
       const lastAct = ginState.lastAction;
@@ -84,11 +85,15 @@ export const GinRummyMobileCardsTab = ({
         setDrawnCard({ rank: lastAct.card.rank, suit: lastAct.card.suit });
       }
     }
-    if (ginState.turnPhase === 'draw' || !isMyTurn || ginState.phase !== 'playing') {
+    prevTurnPhaseRef.current = ginState.turnPhase;
+  }, [ginState.turnPhase, ginState.lastAction, isMyTurn]);
+
+  // Clear drawn card highlight only when turn passes away from me
+  useEffect(() => {
+    if (!isMyTurn || ginState.phase !== 'playing') {
       setDrawnCard(null);
     }
-    prevTurnPhaseRef.current = ginState.turnPhase;
-  }, [ginState.turnPhase, ginState.lastAction, isMyTurn, ginState.phase]);
+  }, [isMyTurn, ginState.phase]);
 
   const canKnockNow = isMyTurn && ginState.turnPhase === 'discard' && myState && canKnock(myState.hand);
   const hasGinNow = isMyTurn && ginState.turnPhase === 'discard' && myState && hasGin(myState.hand);
