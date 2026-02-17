@@ -173,8 +173,8 @@ export const GinRummyMobileCardsTab = ({
   return (
     <div className="h-full px-2 flex flex-col">
       {/* Cards display - arched fan layout */}
-      <div className="flex items-end justify-center min-h-[110px] py-1 overflow-visible">
-        <div className="relative flex items-end justify-center" style={{ width: `${Math.min(cardCount * 28 + 20, 340)}px`, height: '90px' }}>
+      <div className="flex items-end justify-center min-h-[130px] py-1 overflow-visible">
+        <div className="relative flex items-end justify-center" style={{ width: `${Math.min(cardCount * 28 + 20, 340)}px`, height: '110px' }}>
           {sortedHand.map(({ card, originalIndex }, i) => {
             const isSelected = selectedCardIndex === originalIndex;
             const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
@@ -317,7 +317,7 @@ export const GinRummyMobileCardsTab = ({
         {/* Laying off - human player */}
         {isLayingOff && (
           <div className="flex items-center gap-2">
-            {selectedCardIndex !== null && selectedLayOffTarget && (
+            {layOffOptions.length > 0 && selectedCardIndex !== null && selectedLayOffTarget && (
               <Button
                 onClick={handleLayOff}
                 disabled={isProcessing}
@@ -327,23 +327,22 @@ export const GinRummyMobileCardsTab = ({
                 Lay Off
               </Button>
             )}
-            {selectedCardIndex !== null && !selectedLayOffTarget && (
-              <p className="text-[10px] text-red-400">Can't lay off this card</p>
+            {layOffOptions.length > 0 && selectedCardIndex === null && (
+              <p className="text-green-400 text-[10px] animate-pulse">
+                {layOffOptions.length} card{layOffOptions.length > 1 ? 's' : ''} can lay off — tap to select
+              </p>
+            )}
+            {layOffOptions.length === 0 && (
+              <p className="text-muted-foreground text-[10px]">Nothing to lay off</p>
             )}
             <Button
               onClick={onFinishLayingOff}
               disabled={isProcessing}
-              variant="outline"
-              className="border-white/40 text-foreground px-4"
+              className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4"
               size="sm"
             >
-              Done
+              {layOffOptions.length === 0 ? 'Continue' : 'Done Laying Off'}
             </Button>
-            {layOffOptions.length > 0 && selectedCardIndex === null && (
-              <p className="text-green-400 text-[10px] animate-pulse">
-                {layOffOptions.length} card{layOffOptions.length > 1 ? 's' : ''} can lay off
-              </p>
-            )}
           </div>
         )}
 

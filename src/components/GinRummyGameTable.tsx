@@ -564,7 +564,7 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
-            {isCribDealer(currentPlayerId) && (
+            {isCribDealer(currentPlayerId) && ginState.phase === 'playing' && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                 <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-[10px]">D</span>
