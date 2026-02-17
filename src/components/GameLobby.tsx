@@ -761,27 +761,34 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                 {game.game_type === 'holm-game' ? (
                                   <>
                                     <span className="text-amber-400/50">•</span>
+                                    <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max` : 'No Max'}</span>
+                                    <span className="text-amber-400/50">•</span>
                                     <span>{game.chucky_cards || 4} Chucky</span>
                                   </>
                                 ) : game.game_type === 'cribbage' ? (
                                   <>
                                     <span className="text-amber-400/50">•</span>
-                                    <span>{game.points_to_win || 121} pts to win</span>
+                                    <span>{game.points_to_win || 121} pts</span>
+                                    <span className="text-amber-400/50">•</span>
+                                    <span>{(game as any).skunk_enabled ? 'Skunks' : 'No Skunks'}</span>
                                   </>
                                 ) : game.game_type === 'ginrummy' ? (
+                                  <>
+                                    <span className="text-amber-400/50">•</span>
+                                    <span>{game.points_to_win || 25} pts</span>
+                                  </>
+                                ) : game.game_type === 'horses' || game.game_type === 'ship-captain-crew' ? (
                                   <></>
                                 ) : (
                                   <>
                                     <span className="text-amber-400/50">•</span>
-                                    <span>${game.leg_value} Legs ({game.legs_to_win} to win)</span>
+                                    <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max` : 'No Max'}</span>
+                                    <span className="text-amber-400/50">•</span>
+                                    <span>{game.legs_to_win} Legs</span>
                                   </>
                                 )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                                <span>{game.pussy_tax_enabled ? `$${game.pussy_tax_value} P Tax` : 'No P Tax'}</span>
-                                <span className="text-amber-400/50">•</span>
-                                <span>{game.pot_max_enabled ? `$${game.pot_max_value} Max` : 'No Max'}</span>
-                              </div>
+                              {/* All params shown in first row above */}
                             </div>
                           )}
                         </div>
