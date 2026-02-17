@@ -31,6 +31,8 @@ import {
 } from '@/lib/ginRummyRoundLogic';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
+import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
+import { GinRummyMatchWinner } from './GinRummyMatchWinner';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
@@ -316,8 +318,9 @@ export const GinRummyGameTable = ({
           return;
         }
 
-        // Start next hand after a delay
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Start next hand after a delay (shorter for void hands)
+        const delay = ginState.knockResult ? 3000 : 1500;
+        await new Promise(resolve => setTimeout(resolve, delay));
         const result = await startNextGinRummyHand(gameId, dealerGameId, ginState);
         if (result.success) {
           console.log('[GIN-RUMMY] Next hand started:', result.handNumber);
@@ -411,6 +414,18 @@ export const GinRummyGameTable = ({
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = passFirstDraw(ginState, currentPlayerId);
+      await updateState(newState);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleLayOff = async (cardIndex: number, meldIndex: number) => {
+    if (!ginState || !currentPlayerId || isProcessing) return;
+    const card = ginState.playerStates[currentPlayerId]?.hand[cardIndex];
+    if (!card) return;
+    try {
+      const newState = layOffCard(ginState, currentPlayerId, card, meldIndex);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -512,6 +527,23 @@ export const GinRummyGameTable = ({
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
             />
+
+            {/* Knock Result Display */}
+            {(ginState.phase === 'knocking' || ginState.phase === 'laying_off' || ginState.phase === 'scoring' || (ginState.phase === 'complete' && ginState.knockResult)) && (
+              <GinRummyKnockDisplay
+                ginState={ginState}
+                getPlayerUsername={getPlayerUsername}
+                currentPlayerId={currentPlayerId}
+              />
+            )}
+
+            {/* Match Winner Celebration */}
+            {ginState.phase === 'complete' && ginState.winnerPlayerId && (
+              <GinRummyMatchWinner
+                ginState={ginState}
+                getPlayerUsername={getPlayerUsername}
+              />
+            )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
             {isCribDealer(currentPlayerId) && (
@@ -678,6 +710,7 @@ export const GinRummyGameTable = ({
               onKnock={handleKnock}
               onTakeFirstDraw={handleTakeFirstDraw}
               onPassFirstDraw={handlePassFirstDraw}
+              onLayOff={handleLayOff}
               onFinishLayingOff={handleFinishLayingOff}
               currentPlayer={currentPlayer}
               gameId={gameId}

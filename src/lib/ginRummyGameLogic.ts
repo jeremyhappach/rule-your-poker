@@ -432,10 +432,13 @@ export function declareKnock(
 
   // If gin, skip laying off — go straight to scoring
   const nextPhase: GinRummyPhase = isGin ? 'scoring' : 'knocking';
+  const opponentIdForLayOff = getOpponent(state, playerId);
 
   return {
     ...state,
     phase: nextPhase,
+    // Set turn to opponent for laying off (or irrelevant if gin → scoring)
+    currentTurnPlayerId: isGin ? playerId : opponentIdForLayOff,
     playerStates: {
       ...state.playerStates,
       [playerId]: newPlayerState,
