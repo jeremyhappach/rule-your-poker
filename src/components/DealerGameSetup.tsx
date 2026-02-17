@@ -1197,7 +1197,7 @@ export const DealerGameSetup = ({
     { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
     { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4 },
     { id: 'gin-rummy', name: 'Gin Rummy', description: 'Knock, gin, undercut', category: 'cards', enabled: true, maxPlayers: 2 },
-    { id: 'sports-trivia', name: 'Trivia', description: 'Answer trivia, win the pot', category: 'cards', enabled: true },
+    
     // Dice Games
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
     { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
