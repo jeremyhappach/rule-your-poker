@@ -6834,10 +6834,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'cribbage')) && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy'))) && (() => {
           const isInProgress = game.status === 'in_progress';
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
+          const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
 
           // CRIBBAGE during ante_decision - show cribbage table instead of 3-5-7
@@ -6864,6 +6865,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   doubleSkunkEnabled: game.double_skunk_enabled ?? true,
                   doubleSkunkThreshold: game.double_skunk_threshold || 61,
                 }}
+              />
+            );
+          }
+
+          // GIN RUMMY during ante_decision - show gin rummy table instead of 3-5-7
+          if (isAnteDecision && game.game_type === 'gin-rummy') {
+            return (
+              <GinRummyGameTable
+                gameId={gameId!}
+                roundId=""
+                dealerGameId={null}
+                handNumber={0}
+                players={players}
+                currentUserId={user?.id || ''}
+                dealerPosition={game.dealer_position || 1}
+                anteAmount={game.ante_amount || 1}
+                pot={0}
+                isHost={isCreator}
+                onGameComplete={() => {}}
               />
             );
           }
@@ -6955,7 +6975,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
 
           // GIN RUMMY GAME
-          if (isInProgress && game.game_type === 'gin-rummy') {
+          if ((isInProgress || isGinRummyGameOver) && game.game_type === 'gin-rummy') {
             return (
               <GinRummyGameTable
                 gameId={gameId!}
