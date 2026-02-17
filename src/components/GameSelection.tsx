@@ -46,6 +46,13 @@ export const GameSelection = ({
       maxPlayers: 4,
     },
     {
+      id: "gin-rummy",
+      name: "Gin Rummy",
+      description: "Knock or go gin",
+      enabled: true,
+      maxPlayers: 2,
+    },
+    {
       id: "sports-trivia",
       name: "Trivia",
       description: "Answer trivia, win the pot",
@@ -76,6 +83,7 @@ export const GameSelection = ({
       case 'ship-captain-crew': return 'Ship';
       case 'sports-trivia': return 'Trivia';
       case 'cribbage': return 'Cribbage';
+      case 'gin-rummy': return 'Gin Rummy';
       default: return gameType;
     }
   };

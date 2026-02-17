@@ -1124,7 +1124,7 @@ export const DealerGameSetup = ({
   };
   
   const isSimpleAnteGame = (gameType: string) => {
-    return isDiceGame(gameType) || gameType === 'sports-trivia' || gameType === 'cribbage';
+    return isDiceGame(gameType) || gameType === 'sports-trivia' || gameType === 'cribbage' || gameType === 'gin-rummy';
   };
 
   const handleGameSelect = async (gameType: string) => {
@@ -1260,6 +1260,12 @@ export const DealerGameSetup = ({
       if (selectedMode.id === 'custom') {
         dealerGameConfig.custom_points_to_win = pointsToWin;
       }
+    }
+    
+    // Add gin-rummy-specific config
+    const isGinRummy = gameTypeToSubmit === 'gin-rummy';
+    if (isGinRummy) {
+      dealerGameConfig.points_to_win = 100; // Standard match target
     }
     
     // Insert into dealer_games table first
