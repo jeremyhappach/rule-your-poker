@@ -65,8 +65,8 @@ export const GinRummyKnockDisplay = ({
   const result = ginState.knockResult;
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col items-end justify-end pb-[4%] pointer-events-none">
-      <div className="bg-black/80 backdrop-blur-md rounded-xl p-2 max-w-[92%] mx-auto border border-white/20 shadow-2xl pointer-events-auto">
+    <div className="absolute inset-0 z-40 flex flex-col items-end justify-end pb-[2%] pointer-events-none">
+      <div className="bg-black/80 backdrop-blur-md rounded-xl p-2 max-w-[94%] mx-auto border border-white/20 shadow-2xl pointer-events-auto">
         {/* Result header */}
         {result && (
           <div className="text-center mb-1">
@@ -82,52 +82,64 @@ export const GinRummyKnockDisplay = ({
           </div>
         )}
 
-        {/* Knocker's melds + deadwood on one compact line */}
-        <div className="mb-1">
-          <div className="flex items-center gap-1 flex-wrap justify-center">
-            <span className="text-[8px] text-white/70 whitespace-nowrap">
-              {getPlayerUsername(knockerId)} {knockerState.hasGin ? 'Gin' : `Knocked (${knockerState.deadwoodValue} dw)`}:
-            </span>
-            {knockerState.melds.map((meld, i) => (
-              <MeldGroup key={`k-meld-${i}`} meld={meld} />
-            ))}
-            {knockerState.deadwood.length > 0 && (
-              <>
-                <span className="text-[7px] text-red-400/80">DW:</span>
-                <div className="flex -space-x-2">
-                  {knockerState.deadwood.map((card, i) => (
-                    <div key={`dw-${card.rank}-${card.suit}-${i}`} className="scale-[0.65] opacity-70">
-                      <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
-                    </div>
-                  ))}
+        {/* Knocker label above cards */}
+        <p className="text-[8px] text-white/70 text-center mb-0.5">
+          {getPlayerUsername(knockerId)} {knockerState.hasGin ? 'Gin' : `Knocked (${knockerState.deadwoodValue} dw)`}
+        </p>
+
+        {/* Knocker melds + deadwood — cards only, bigger */}
+        <div className="flex items-center gap-1.5 flex-wrap justify-center mb-1">
+          {knockerState.melds.map((meld, i) => (
+            <div key={`k-meld-${i}`} className="flex -space-x-1.5">
+              {meld.cards.map((card, j) => (
+                <div key={`${card.rank}-${card.suit}-${j}`} className="scale-[0.8]">
+                  <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                 </div>
-              </>
-            )}
-          </div>
+              ))}
+            </div>
+          ))}
+          {knockerState.deadwood.length > 0 && (
+            <div className="flex items-center gap-0.5">
+              <span className="text-[7px] text-red-400/80">DW</span>
+              <div className="flex -space-x-1.5">
+                {knockerState.deadwood.map((card, i) => (
+                  <div key={`dw-${card.rank}-${card.suit}-${i}`} className="scale-[0.8] opacity-70">
+                    <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Opponent's hand - only show when scoring/complete */}
         {(ginState.phase === 'scoring' || isComplete) && opponentState.melds.length > 0 && (
           <div className="border-t border-white/10 pt-1">
-            <div className="flex items-center gap-1 flex-wrap justify-center">
-              <span className="text-[8px] text-white/70 whitespace-nowrap">
-                {getPlayerUsername(opponentId)} ({opponentState.deadwoodValue} dw)
-                {opponentState.laidOffCards.length > 0 && ` +${opponentState.laidOffCards.length} laid off`}:
-              </span>
+            <p className="text-[8px] text-white/70 text-center mb-0.5">
+              {getPlayerUsername(opponentId)} ({opponentState.deadwoodValue} dw)
+              {opponentState.laidOffCards.length > 0 && ` +${opponentState.laidOffCards.length} laid off`}
+            </p>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
               {opponentState.melds.map((meld, i) => (
-                <MeldGroup key={`o-meld-${i}`} meld={meld} />
+                <div key={`o-meld-${i}`} className="flex -space-x-1.5">
+                  {meld.cards.map((card, j) => (
+                    <div key={`${card.rank}-${card.suit}-${j}`} className="scale-[0.8]">
+                      <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
+                    </div>
+                  ))}
+                </div>
               ))}
               {opponentState.deadwood.length > 0 && (
-                <>
-                  <span className="text-[7px] text-red-400/80">DW:</span>
-                  <div className="flex -space-x-2">
+                <div className="flex items-center gap-0.5">
+                  <span className="text-[7px] text-red-400/80">DW</span>
+                  <div className="flex -space-x-1.5">
                     {opponentState.deadwood.map((card, i) => (
-                      <div key={`odw-${card.rank}-${card.suit}-${i}`} className="scale-[0.65] opacity-70">
+                      <div key={`odw-${card.rank}-${card.suit}-${i}`} className="scale-[0.8] opacity-70">
                         <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                       </div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
