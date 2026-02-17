@@ -464,7 +464,8 @@ export const GinRummyGameTable = ({
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    return player?.profiles?.username || 'Unknown';
+    if (!player) return 'Unknown';
+    return getDisplayName(players, player, player.profiles?.username || 'Player');
   };
 
   const isCribDealer = (playerId: string | undefined) => {
@@ -597,8 +598,8 @@ export const GinRummyGameTable = ({
                   )}
                 </div>
 
-                {/* Opponent's cards (face down) */}
-                {opponentState.hand.length > 0 && (
+                {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
+                {opponentState.hand.length > 0 && ginState.phase !== 'knocking' && ginState.phase !== 'laying_off' && ginState.phase !== 'scoring' && !(ginState.phase === 'complete' && ginState.knockResult) && (
                   <div className="flex -space-x-1.5 mt-1 ml-1">
                     {opponentState.hand.map((_, i) => (
                       <div

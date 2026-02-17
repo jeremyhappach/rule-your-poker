@@ -10,8 +10,12 @@ interface GinRummyKnockDisplayProps {
   currentPlayerId: string | undefined;
 }
 
+const SYMBOL_TO_WORD: Record<string, string> = {
+  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
+};
+
 const toDisplayCard = (card: GinRummyCard) => ({
-  suit: card.suit as any,
+  suit: (SYMBOL_TO_WORD[card.suit] || card.suit) as any,
   rank: card.rank,
   value: card.value,
 });
@@ -61,8 +65,8 @@ export const GinRummyKnockDisplay = ({
   const result = ginState.knockResult;
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none">
-      <div className="bg-black/80 backdrop-blur-md rounded-xl p-3 max-w-[90%] border border-white/20 shadow-2xl pointer-events-auto">
+    <div className="absolute inset-0 z-40 flex flex-col items-end justify-end pb-[10%] pointer-events-none">
+      <div className="bg-black/80 backdrop-blur-md rounded-xl p-3 max-w-[90%] mx-auto border border-white/20 shadow-2xl pointer-events-auto">
         {/* Result header */}
         {result && (
           <div className="text-center mb-2">
