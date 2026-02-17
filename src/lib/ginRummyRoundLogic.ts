@@ -522,11 +522,11 @@ export async function recordGinRummyHandResult(
   // Calculate per-hand chip transfer: base ante + bonus for gin/undercut
   let handPayout = ante; // Winner always gets the ante
   
-  if (result.isGin && config.gin_bonus > 0) {
-    handPayout += config.gin_bonus * ante;
-  } else if (result.isUndercut && config.undercut_bonus > 0) {
-    handPayout += config.undercut_bonus * ante;
-  }
+   if (result.isGin && config.gin_bonus > 0) {
+     handPayout += Math.floor((config.gin_bonus / 100) * ante);
+   } else if (result.isUndercut && config.undercut_bonus > 0) {
+     handPayout += Math.floor((config.undercut_bonus / 100) * ante);
+   }
   
   // Execute per-hand chip transfers
   await Promise.all([

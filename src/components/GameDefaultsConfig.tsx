@@ -696,29 +696,29 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             <p className="text-xs text-muted-foreground">0 = disabled. Extra chips per point of score difference at match end</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="gin-gin-bonus">Gin Bonus (×ante)</Label>
-            <Input
-              id="gin-gin-bonus"
-              type="text"
-              inputMode="numeric"
-              value={(ginDefaults as any).gin_bonus ?? 2}
-              onChange={(e) => updateDefault('gin-rummy', 'gin_bonus' as any, e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Extra ante multiplier when going gin (0 deadwood)</p>
-          </div>
+           <div className="space-y-2">
+             <Label htmlFor="gin-gin-bonus">Gin Bonus (% of ante)</Label>
+             <Input
+               id="gin-gin-bonus"
+               type="text"
+               inputMode="numeric"
+               value={(ginDefaults as any).gin_bonus ?? 200}
+               onChange={(e) => updateDefault('gin-rummy', 'gin_bonus' as any, e.target.value)}
+             />
+             <p className="text-xs text-muted-foreground">e.g. 100 = extra 1× ante when going gin</p>
+           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="gin-undercut-bonus">Undercut Bonus (×ante)</Label>
-            <Input
-              id="gin-undercut-bonus"
-              type="text"
-              inputMode="numeric"
-              value={(ginDefaults as any).undercut_bonus ?? 2}
-              onChange={(e) => updateDefault('gin-rummy', 'undercut_bonus' as any, e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Extra ante multiplier when undercutting the knocker</p>
-          </div>
+           <div className="space-y-2">
+             <Label htmlFor="gin-undercut-bonus">Undercut Bonus (% of ante)</Label>
+             <Input
+               id="gin-undercut-bonus"
+               type="text"
+               inputMode="numeric"
+               value={(ginDefaults as any).undercut_bonus ?? 200}
+               onChange={(e) => updateDefault('gin-rummy', 'undercut_bonus' as any, e.target.value)}
+             />
+             <p className="text-xs text-muted-foreground">e.g. 100 = extra 1× ante when undercutting</p>
+           </div>
         </div>
 
         {renderBotSettings('gin-rummy')}
