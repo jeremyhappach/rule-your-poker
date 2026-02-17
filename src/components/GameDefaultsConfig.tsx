@@ -47,6 +47,7 @@ const GAME_TYPES = [
   { value: 'holm', label: 'Holm', icon: Spade, category: 'card' },
   { value: '3-5-7', label: '3-5-7', icon: Spade, category: 'card' },
   { value: 'cribbage', label: 'Cribbage', icon: Crown, category: 'card' },
+  { value: 'gin-rummy', label: 'Gin Rummy', icon: Spade, category: 'card' },
   { value: 'horses', label: 'Horses', icon: Dice5, category: 'dice' },
   { value: 'ship-captain-crew', label: 'Ship Captain Crew', icon: Anchor, category: 'dice' },
 ];
@@ -203,6 +204,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
       points_to_win: Number(d.points_to_win ?? 121),
       skunk_threshold: Number(d.skunk_threshold ?? 91),
       double_skunk_threshold: Number(d.double_skunk_threshold ?? 61),
+      per_point_value: Number((d as any).per_point_value ?? 0),
+      gin_bonus: Number((d as any).gin_bonus ?? 0),
+      undercut_bonus: Number((d as any).undercut_bonus ?? 0),
     }));
     
     setSaving(true);
@@ -232,6 +236,9 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             skunk_threshold: defaultConfig.skunk_threshold,
             double_skunk_enabled: defaultConfig.double_skunk_enabled,
             double_skunk_threshold: defaultConfig.double_skunk_threshold,
+            per_point_value: defaultConfig.per_point_value,
+            gin_bonus: defaultConfig.gin_bonus,
+            undercut_bonus: defaultConfig.undercut_bonus,
           })
           .eq('game_type', defaultConfig.game_type);
 
@@ -636,6 +643,89 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     );
   };
 
+  const renderGinRummySettings = () => {
+    const ginDefaults = getDefaultByType('gin-rummy');
+    if (!ginDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Gin Rummy</div>;
+    
+    return (
+      <>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Spade className="h-4 w-4" />
+          Match Settings
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="gin-points">Points to Win</Label>
+          <Input
+            id="gin-points"
+            type="text"
+            inputMode="numeric"
+            value={ginDefaults.points_to_win ?? 100}
+            onChange={(e) => updateDefault('gin-rummy', 'points_to_win', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Standard is 100, short is 50</p>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <DollarSign className="h-4 w-4" />
+            Payout Settings
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="gin-ante">Ante Amount ($)</Label>
+            <Input
+              id="gin-ante"
+              type="text"
+              inputMode="numeric"
+              value={ginDefaults.ante_amount}
+              onChange={(e) => updateDefault('gin-rummy', 'ante_amount', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Base per-hand payout (winner takes from loser)</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gin-per-point">Per-Point Value ($)</Label>
+            <Input
+              id="gin-per-point"
+              type="text"
+              inputMode="numeric"
+              value={(ginDefaults as any).per_point_value ?? 0}
+              onChange={(e) => updateDefault('gin-rummy', 'per_point_value' as any, e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">0 = disabled. Extra chips per point of score difference at match end</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gin-gin-bonus">Gin Bonus (×ante)</Label>
+            <Input
+              id="gin-gin-bonus"
+              type="text"
+              inputMode="numeric"
+              value={(ginDefaults as any).gin_bonus ?? 2}
+              onChange={(e) => updateDefault('gin-rummy', 'gin_bonus' as any, e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Extra ante multiplier when going gin (0 deadwood)</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="gin-undercut-bonus">Undercut Bonus (×ante)</Label>
+            <Input
+              id="gin-undercut-bonus"
+              type="text"
+              inputMode="numeric"
+              value={(ginDefaults as any).undercut_bonus ?? 2}
+              onChange={(e) => updateDefault('gin-rummy', 'undercut_bonus' as any, e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Extra ante multiplier when undercutting the knocker</p>
+          </div>
+        </div>
+
+        {renderBotSettings('gin-rummy')}
+      </>
+    );
+  };
+
   const renderHorsesSettings = () => {
     const horsesDefaults = getDefaultByType('horses');
     if (!horsesDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Horses</div>;
@@ -696,6 +786,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         return render357Settings();
       case 'cribbage':
         return renderCribbageSettings();
+      case 'gin-rummy':
+        return renderGinRummySettings();
       case 'horses':
         return renderHorsesSettings();
       case 'ship-captain-crew':

@@ -335,14 +335,6 @@ export async function endGinRummyGame(
     const playerIds = Object.keys(ginState.playerStates);
     const loserId = playerIds.find(id => id !== ginState.winnerPlayerId)!;
 
-    // Calculate payout: ante × number of hands played (or just ante for simplicity)
-    // For gin rummy, the winner gets the ante from the loser
-    const payoutAmount = ginState.anteAmount;
-    const chipChanges: Record<string, number> = {
-      [ginState.winnerPlayerId]: payoutAmount,
-      [loserId]: -payoutAmount,
-    };
-
     // Atomic claim: transition round to 'completed'
     const { data: claimedRounds, error: claimError } = await supabase
       .from('rounds')
@@ -363,7 +355,6 @@ export async function endGinRummyGame(
 
     if (!claimedRound) {
       console.log('[GIN-RUMMY] Already processed by another client');
-      // Still ensure game_over status
       await supabase
         .from('games')
         .update({
@@ -378,18 +369,41 @@ export async function endGinRummyGame(
     const handNumber = claimedRound.hand_number ?? 1;
     const dealerGameId = claimedRound.dealer_game_id ?? null;
 
-    // Execute chip transfers (awaited for financial integrity)
-    const { error: deductError } = await supabase.rpc('increment_player_chips', {
-      p_player_id: loserId,
-      p_amount: -payoutAmount,
-    });
-    if (deductError) console.error('[GIN-RUMMY] Failed to deduct loser:', deductError);
+    // Fetch dealer_game config for per-point settings
+    // NOTE: Per-hand chip transfers (ante + gin/undercut bonuses) are already handled
+    // by recordGinRummyHandResult after each hand. The match-end payout only adds
+    // the per-point score differential (if enabled).
+    const config = await fetchGinRummyConfig(dealerGameId);
+    const perPointValue = config.per_point_value ?? 0;
+    
+    let payoutAmount = 0;
+    
+    // Per-point payout (if enabled) - based on final score differential
+    if (perPointValue > 0) {
+      const winnerScore = ginState.matchScores[ginState.winnerPlayerId] || 0;
+      const loserScore = ginState.matchScores[loserId] || 0;
+      payoutAmount = (winnerScore - loserScore) * perPointValue;
+    }
 
-    const { error: awardError } = await supabase.rpc('increment_player_chips', {
-      p_player_id: ginState.winnerPlayerId,
-      p_amount: payoutAmount,
-    });
-    if (awardError) console.error('[GIN-RUMMY] Failed to award winner:', awardError);
+    const chipChanges: Record<string, number> = {
+      [ginState.winnerPlayerId]: payoutAmount,
+      [loserId]: -payoutAmount,
+    };
+
+    // Execute per-point chip transfers (only if per-point is enabled)
+    if (payoutAmount > 0) {
+      const { error: deductError } = await supabase.rpc('increment_player_chips', {
+        p_player_id: loserId,
+        p_amount: -payoutAmount,
+      });
+      if (deductError) console.error('[GIN-RUMMY] Failed to deduct loser:', deductError);
+
+      const { error: awardError } = await supabase.rpc('increment_player_chips', {
+        p_player_id: ginState.winnerPlayerId,
+        p_amount: payoutAmount,
+      });
+      if (awardError) console.error('[GIN-RUMMY] Failed to award winner:', awardError);
+    }
 
     // Get winner display name
     const { data: winner } = await supabase
@@ -446,7 +460,7 @@ export async function endGinRummyGame(
       console.error('[GIN-RUMMY] Failed to snapshot chips:', err);
     });
 
-    console.log('[GIN-RUMMY] Game ended successfully');
+    console.log('[GIN-RUMMY] Game ended successfully, payout:', payoutAmount);
     return true;
 
   } catch (error) {
@@ -456,8 +470,36 @@ export async function endGinRummyGame(
 }
 
 /**
+ * Fetch gin rummy config from dealer_games record.
+ */
+async function fetchGinRummyConfig(
+  dealerGameId: string | null
+): Promise<{
+  per_point_value: number;
+  gin_bonus: number;
+  undercut_bonus: number;
+}> {
+  const defaults = { per_point_value: 0, gin_bonus: 0, undercut_bonus: 0 };
+  if (!dealerGameId) return defaults;
+
+  const { data, error } = await supabase
+    .from('dealer_games')
+    .select('config')
+    .eq('id', dealerGameId)
+    .single();
+
+  if (error || !data?.config) return defaults;
+  const cfg = data.config as any;
+  return {
+    per_point_value: cfg.per_point_value ?? 0,
+    gin_bonus: cfg.gin_bonus ?? 0,
+    undercut_bonus: cfg.undercut_bonus ?? 0,
+  };
+}
+
+/**
  * Record a per-hand result (for hand history) without ending the match.
- * Called after each hand's scoring phase completes.
+ * Also handles per-hand chip transfers for gin/undercut bonuses.
  */
 export async function recordGinRummyHandResult(
   gameId: string,
@@ -471,9 +513,30 @@ export async function recordGinRummyHandResult(
   }
 
   const result = ginState.knockResult;
+  const loserId = result.winnerId === result.knockerId ? result.opponentId : result.knockerId;
+
+  // Fetch config for bonus calculations
+  const config = await fetchGinRummyConfig(dealerGameId);
+  const ante = ginState.anteAmount;
+  
+  // Calculate per-hand chip transfer: base ante + bonus for gin/undercut
+  let handPayout = ante; // Winner always gets the ante
+  
+  if (result.isGin && config.gin_bonus > 0) {
+    handPayout += config.gin_bonus * ante;
+  } else if (result.isUndercut && config.undercut_bonus > 0) {
+    handPayout += config.undercut_bonus * ante;
+  }
+  
+  // Execute per-hand chip transfers
+  await Promise.all([
+    supabase.rpc('increment_player_chips', { p_player_id: loserId, p_amount: -handPayout }),
+    supabase.rpc('increment_player_chips', { p_player_id: result.winnerId, p_amount: handPayout }),
+  ]);
+
   const chipChanges: Record<string, number> = {
-    [result.winnerId]: result.pointsAwarded,
-    [result.winnerId === result.knockerId ? result.opponentId : result.knockerId]: -result.pointsAwarded,
+    [result.winnerId]: handPayout,
+    [loserId]: -handPayout,
   };
 
   // Get winner username
@@ -500,7 +563,7 @@ export async function recordGinRummyHandResult(
       game_id: gameId,
       dealer_game_id: dealerGameId,
       hand_number: handNumber,
-      pot_won: result.pointsAwarded,
+      pot_won: handPayout,
       winner_player_id: result.winnerId,
       winner_username: winnerUsername,
       winning_hand_description: `${winnerUsername}: ${description}`,
@@ -510,6 +573,6 @@ export async function recordGinRummyHandResult(
     })
     .then(({ error }) => {
       if (error) console.error('[GIN-RUMMY] Failed to record hand result:', error);
-      else console.log('[GIN-RUMMY] Hand result recorded:', { handNumber, description });
+      else console.log('[GIN-RUMMY] Hand result recorded:', { handNumber, description, handPayout });
     });
 }

@@ -131,6 +131,12 @@ export const DealerGameSetup = ({
   const [skunksEnabled, setSkunksEnabled] = useState(true);
   const [customPointsToWin, setCustomPointsToWin] = useState('61'); // Default for custom mode
   
+  // Gin Rummy-specific settings
+  const [ginRummyPointsToWin, setGinRummyPointsToWin] = useState(100);
+  const [ginRummyPerPointValue, setGinRummyPerPointValue] = useState(0);
+  const [ginRummyGinBonus, setGinRummyGinBonus] = useState(2);
+  const [ginRummyUndercutBonus, setGinRummyUndercutBonus] = useState(2);
+  
   // Cache defaults for both game types
   const [holmDefaults, setHolmDefaults] = useState<GameDefaults | null>(null);
   const [threeFiveSevenDefaults, setThreeFiveSevenDefaults] = useState<GameDefaults | null>(null);
@@ -1115,6 +1121,7 @@ export const DealerGameSetup = ({
       case 'horses': return 'Horses';
       case 'ship-captain-crew': return 'Ship';
       case 'sports-trivia': return 'Trivia';
+      case 'gin-rummy': return 'Gin Rummy';
       default: return gameType;
     }
   };
@@ -1142,10 +1149,10 @@ export const DealerGameSetup = ({
     if (gameType === 'holm-game' || gameType === '3-5-7') {
       handleGameTypeChange(gameType);
     } else if (isSimpleAnteGame(gameType)) {
-      // Fetch defaults for simple ante games (dice, trivia, cribbage)
+      // Fetch defaults for simple ante games (dice, trivia, cribbage, gin-rummy)
       const { data: gameDefaults } = await supabase
         .from('game_defaults')
-        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold')
+        .select('ante_amount, points_to_win, skunk_enabled, skunk_threshold, double_skunk_enabled, double_skunk_threshold, per_point_value, gin_bonus, undercut_bonus')
         .eq('game_type', gameType)
         .single();
       
@@ -1158,12 +1165,26 @@ export const DealerGameSetup = ({
           setCribbageGameMode('full');
           setSkunksEnabled(gameDefaults.skunk_enabled ?? true);
         }
+        
+        // Apply gin-rummy-specific defaults
+        if (gameType === 'gin-rummy') {
+          setGinRummyPointsToWin(gameDefaults.points_to_win ?? 100);
+          setGinRummyPerPointValue(gameDefaults.per_point_value ?? 0);
+          setGinRummyGinBonus(gameDefaults.gin_bonus ?? 2);
+          setGinRummyUndercutBonus(gameDefaults.undercut_bonus ?? 2);
+        }
       } else {
         // Fall back to default ante
         setAnteAmount('5');
         if (gameType === 'cribbage') {
           setCribbageGameMode('full');
           setSkunksEnabled(true);
+        }
+        if (gameType === 'gin-rummy') {
+          setGinRummyPointsToWin(100);
+          setGinRummyPerPointValue(0);
+          setGinRummyGinBonus(2);
+          setGinRummyUndercutBonus(2);
         }
       }
     }
@@ -1175,6 +1196,7 @@ export const DealerGameSetup = ({
     { id: 'holm-game', name: 'Holm', description: 'Beat Chucky!', category: 'cards', enabled: true },
     { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
     { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4 },
+    { id: 'gin-rummy', name: 'Gin Rummy', description: 'Knock, gin, undercut', category: 'cards', enabled: true, maxPlayers: 2 },
     { id: 'sports-trivia', name: 'Trivia', description: 'Answer trivia, win the pot', category: 'cards', enabled: true },
     // Dice Games
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
@@ -1265,7 +1287,10 @@ export const DealerGameSetup = ({
     // Add gin-rummy-specific config
     const isGinRummy = gameTypeToSubmit === 'gin-rummy';
     if (isGinRummy) {
-      dealerGameConfig.points_to_win = 100; // Standard match target
+      dealerGameConfig.points_to_win = ginRummyPointsToWin;
+      dealerGameConfig.per_point_value = ginRummyPerPointValue;
+      dealerGameConfig.gin_bonus = ginRummyGinBonus;
+      dealerGameConfig.undercut_bonus = ginRummyUndercutBonus;
     }
     
     // Insert into dealer_games table first
@@ -1363,21 +1388,28 @@ export const DealerGameSetup = ({
     }
     
     // NON-CRIBBAGE: Standard ante_decision flow
+    const updateFields: any = {
+      game_type: gameTypeToSubmit,
+      ante_amount: parsedAnte,
+      config_complete: true,
+      status: 'ante_decision',
+      ante_decision_deadline: anteDeadline,
+      // Reset card game specific fields
+      leg_value: 0,
+      legs_to_win: 0,
+      pot_max_enabled: false,
+      pussy_tax_enabled: false,
+      current_game_uuid: dealerGameId, // Reference the dealer_games record
+    };
+    
+    // Gin Rummy needs points_to_win on the games table
+    if (isGinRummy) {
+      updateFields.points_to_win = ginRummyPointsToWin;
+    }
+    
     const { error } = await supabase
       .from('games')
-      .update({
-        game_type: gameTypeToSubmit,
-        ante_amount: parsedAnte,
-        config_complete: true,
-        status: 'ante_decision',
-        ante_decision_deadline: anteDeadline,
-        // Reset card game specific fields
-        leg_value: 0,
-        legs_to_win: 0,
-        pot_max_enabled: false,
-        pussy_tax_enabled: false,
-        current_game_uuid: dealerGameId, // Reference the dealer_games record
-      })
+      .update(updateFields)
       .eq('id', gameId);
     
     if (error) {
@@ -1618,15 +1650,18 @@ export const DealerGameSetup = ({
       const isHorses = selectedGameType === 'horses';
       const isTrivia = selectedGameType === 'sports-trivia';
       const isCribbage = selectedGameType === 'cribbage';
+      const isGinRummy = selectedGameType === 'gin-rummy';
       
-      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isTrivia ? 'Trivia' : 'Cribbage';
+      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isTrivia ? 'Trivia' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : selectedGameType;
       const gameRulesText = isSCC 
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
           ? '5 dice • Up to 3 rolls • 1s are wild • Highest hand wins'
           : isTrivia
             ? 'Answer trivia questions • Win the pot'
-            : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
+            : isGinRummy
+              ? '10 cards • Draw & discard • Knock at ≤10 deadwood • Match to target'
+              : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
       
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1739,7 +1774,83 @@ export const DealerGameSetup = ({
                   </>
                 )}
                 
-                {!isCribbage && (
+                {/* Gin Rummy-specific settings */}
+                {isGinRummy && (
+                  <>
+                    {/* Match Mode Selection */}
+                    <div className="space-y-2">
+                      <Label className="text-amber-100 text-sm">Match Target</Label>
+                      <div className="flex flex-col gap-2">
+                        {[
+                          { pts: 100, label: 'Standard', desc: '100 pts' },
+                          { pts: 50, label: 'Short', desc: '50 pts' },
+                          { pts: 25, label: 'Quick', desc: '25 pts' },
+                        ].map((mode) => (
+                          <button
+                            key={mode.pts}
+                            type="button"
+                            onClick={() => setGinRummyPointsToWin(mode.pts)}
+                            className={`w-full py-2.5 px-4 rounded-lg border transition-all flex items-center justify-between ${
+                              ginRummyPointsToWin === mode.pts
+                                ? 'border-poker-gold bg-poker-gold/20 text-white'
+                                : 'border-amber-700/50 bg-amber-900/20 text-amber-200 hover:bg-amber-900/40'
+                            }`}
+                          >
+                            <span className="font-medium">{mode.label}</span>
+                            <span className="text-sm opacity-70">{mode.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Per-point value */}
+                    <div className="space-y-1">
+                      <Label className="text-amber-100 text-sm">Per-Point Value ($)</Label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={ginRummyPerPointValue}
+                        onChange={(e) => setGinRummyPerPointValue(parseInt(e.target.value) || 0)}
+                        className="bg-amber-900/30 border-poker-gold/50 text-white"
+                      />
+                      <p className="text-xs text-amber-200/50">0 = disabled (flat ante only)</p>
+                    </div>
+                    
+                    {/* Bonus chips */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-amber-100 text-sm">Gin Bonus (×ante)</Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={ginRummyGinBonus}
+                          onChange={(e) => setGinRummyGinBonus(parseInt(e.target.value) || 0)}
+                          className="bg-amber-900/30 border-poker-gold/50 text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-amber-100 text-sm">Undercut Bonus (×ante)</Label>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={ginRummyUndercutBonus}
+                          onChange={(e) => setGinRummyUndercutBonus(parseInt(e.target.value) || 0)}
+                          className="bg-amber-900/30 border-poker-gold/50 text-white"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Summary */}
+                    <div className="text-xs text-amber-200/60 bg-amber-900/20 rounded-lg p-2 text-center">
+                      Match to {ginRummyPointsToWin} pts
+                      {ginRummyPerPointValue > 0 && ` • $${ginRummyPerPointValue}/pt`}
+                      {ginRummyGinBonus > 0 && ` • Gin +${ginRummyGinBonus}×ante`}
+                      {ginRummyUndercutBonus > 0 && ` • Undercut +${ginRummyUndercutBonus}×ante`}
+                    </div>
+                  </>
+                )}
+                
+                {!isCribbage && !isGinRummy && (
                   <p className="text-sm text-amber-200/70 text-center">
                     {gameRulesText}
                   </p>

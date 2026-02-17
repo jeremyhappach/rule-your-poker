@@ -420,9 +420,11 @@ export type Database = {
           double_skunk_enabled: boolean
           double_skunk_threshold: number
           game_type: string
+          gin_bonus: number
           id: string
           leg_value: number
           legs_to_win: number
+          per_point_value: number
           points_to_win: number
           pot_max_enabled: boolean
           pot_max_value: number
@@ -433,6 +435,7 @@ export type Database = {
           reveal_at_showdown: boolean
           skunk_enabled: boolean
           skunk_threshold: number
+          undercut_bonus: number
           updated_at: string
         }
         Insert: {
@@ -449,9 +452,11 @@ export type Database = {
           double_skunk_enabled?: boolean
           double_skunk_threshold?: number
           game_type: string
+          gin_bonus?: number
           id?: string
           leg_value?: number
           legs_to_win?: number
+          per_point_value?: number
           points_to_win?: number
           pot_max_enabled?: boolean
           pot_max_value?: number
@@ -462,6 +467,7 @@ export type Database = {
           reveal_at_showdown?: boolean
           skunk_enabled?: boolean
           skunk_threshold?: number
+          undercut_bonus?: number
           updated_at?: string
         }
         Update: {
@@ -478,9 +484,11 @@ export type Database = {
           double_skunk_enabled?: boolean
           double_skunk_threshold?: number
           game_type?: string
+          gin_bonus?: number
           id?: string
           leg_value?: number
           legs_to_win?: number
+          per_point_value?: number
           points_to_win?: number
           pot_max_enabled?: boolean
           pot_max_value?: number
@@ -491,6 +499,7 @@ export type Database = {
           reveal_at_showdown?: boolean
           skunk_enabled?: boolean
           skunk_threshold?: number
+          undercut_bonus?: number
           updated_at?: string
         }
         Relationships: []
