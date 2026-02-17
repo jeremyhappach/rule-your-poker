@@ -277,26 +277,9 @@ export const GinRummyMobileCardsTab = ({
           <p className="text-muted-foreground text-sm">Opponent deciding on upcard...</p>
         )}
 
-        {/* Draw phase */}
+        {/* Draw phase - prompt to tap felt */}
         {ginState.phase === 'playing' && ginState.turnPhase === 'draw' && isMyTurn && (
-          <>
-            <Button
-              onClick={onDrawStock}
-              disabled={isProcessing}
-              className="bg-blue-700 hover:bg-blue-600 text-white font-bold px-4"
-              size="sm"
-            >
-              Draw Stock
-            </Button>
-            <Button
-              onClick={onDrawDiscard}
-              disabled={isProcessing}
-              className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4"
-              size="sm"
-            >
-              Draw Discard
-            </Button>
-          </>
+          <p className="text-poker-gold text-sm font-medium animate-pulse">Tap stock or discard on felt</p>
         )}
 
         {/* Discard phase - card selected */}

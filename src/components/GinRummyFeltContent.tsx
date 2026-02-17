@@ -14,6 +14,9 @@ interface GinRummyFeltContentProps {
   opponentId: string;
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
+  onDrawStock?: () => void;
+  onDrawDiscard?: () => void;
+  isProcessing?: boolean;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
@@ -32,11 +35,15 @@ export const GinRummyFeltContent = ({
   opponentId,
   getPlayerUsername,
   cardBackColors,
+  onDrawStock,
+  onDrawDiscard,
+  isProcessing,
 }: GinRummyFeltContentProps) => {
   const discardTopCard = getDiscardTop(ginState);
   const stockCount = stockRemaining(ginState);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
+  const canDraw = isMyTurn && ginState.phase === 'playing' && ginState.turnPhase === 'draw' && !isProcessing;
 
   return (
     <>
@@ -57,12 +64,14 @@ export const GinRummyFeltContent = ({
 
       {/* Stock & Discard Piles - Center */}
       <div className="absolute top-[46%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-4">
-        {/* Stock Pile */}
+        {/* Stock Pile - tappable during draw phase */}
         <div className="flex flex-col items-center gap-0.5">
-          <div 
-            className={`w-12 h-[68px] rounded-md border flex items-center justify-center shadow-lg ${
+          <button
+            onClick={canDraw ? onDrawStock : undefined}
+            disabled={!canDraw}
+            className={`w-12 h-[68px] rounded-md border flex items-center justify-center shadow-lg transition-all ${
               stockDanger ? 'border-red-500/60' : 'border-white/30'
-            }`}
+            } ${canDraw ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
             style={{
               background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
             }}
@@ -70,16 +79,22 @@ export const GinRummyFeltContent = ({
             <span className={`text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/80'}`}>
               {stockCount}
             </span>
-          </div>
+          </button>
           <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`}>
             {stockDanger ? 'Low!' : 'Stock'}
           </span>
         </div>
 
-        {/* Discard Pile */}
+        {/* Discard Pile - tappable during draw phase */}
         <div className="flex flex-col items-center gap-0.5">
           {discardTopCard ? (
-            <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
+            <button
+              onClick={canDraw ? onDrawDiscard : undefined}
+              disabled={!canDraw}
+              className={`rounded-md transition-all ${canDraw ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+            >
+              <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
+            </button>
           ) : (
             <div className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center">
               <span className="text-white/20 text-[8px]">Empty</span>
