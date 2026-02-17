@@ -565,6 +565,9 @@ export const GinRummyGameTable = ({
               opponentId={opponentId}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
+              onDrawStock={handleDrawStock}
+              onDrawDiscard={handleDrawDiscard}
+              isProcessing={isProcessing}
             />
 
             {/* Knock Result Display */}
