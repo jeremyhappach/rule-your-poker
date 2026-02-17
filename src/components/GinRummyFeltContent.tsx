@@ -3,6 +3,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { cn } from '@/lib/utils';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
@@ -39,6 +40,19 @@ export const GinRummyFeltContent = ({
 
   return (
     <>
+      {/* Turn Spotlight - behind stock & discard (z-10, below z-20 piles) */}
+      {ginState.phase === 'playing' && (
+        <div className="absolute top-[46%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          <div
+            className={cn(
+              "w-40 h-40 rounded-full transition-all duration-500",
+              isMyTurn
+                ? "bg-poker-gold/15 shadow-[0_0_40px_15px_hsl(var(--poker-gold)/0.2)] animate-pulse"
+                : "bg-white/5 shadow-[0_0_30px_10px_rgba(255,255,255,0.05)]"
+            )}
+          />
+        </div>
+      )}
       {/* Match Score - Top center */}
       <div className="absolute top-[22%] left-1/2 -translate-x-1/2 z-20">
         <Badge variant="outline" className="text-white border-white/40 text-[11px] bg-black/40 backdrop-blur-sm px-3 py-1">

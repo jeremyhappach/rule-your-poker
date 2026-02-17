@@ -244,8 +244,8 @@ export const GinRummyGameTable = ({
             state = passFirstDraw(state, botId);
           }
         }
-        // Phase: playing - draw
-        else if (state.phase === 'playing' && state.turnPhase === 'draw') {
+        // Phase: playing - draw (then fall through to discard)
+        if (state.phase === 'playing' && state.turnPhase === 'draw') {
           const topDiscard = getDiscardTop(state);
           const source = botChooseDrawSource(botState.hand, topDiscard);
           if (source === 'discard' && topDiscard) {
@@ -253,8 +253,29 @@ export const GinRummyGameTable = ({
           } else {
             state = drawFromStock(state, botId);
           }
+          // Re-read bot state after draw (hand changed)
+          const updatedBotState = state.playerStates[botId];
+
+          // Fall through to discard immediately
+          const drawnFromDiscard = state.drawSource === 'discard' && state.lastAction?.card
+            ? state.lastAction.card
+            : null;
+
+          const knockDecision = botShouldKnock(updatedBotState.hand, drawnFromDiscard);
+
+          if (knockDecision.shouldKnock) {
+            const discardCardVal = updatedBotState.hand[knockDecision.discardIndex];
+            state = declareKnock(state, botId, discardCardVal);
+            if (state.phase === 'scoring') {
+              state = scoreHand(state);
+            }
+          } else {
+            const discardIdx = knockDecision.discardIndex;
+            const card = updatedBotState.hand[discardIdx];
+            state = discardCard(state, botId, card);
+          }
         }
-        // Phase: playing - discard
+        // Phase: playing - discard only (edge case: state loaded mid-discard)
         else if (state.phase === 'playing' && state.turnPhase === 'discard') {
           const drawnFromDiscard = state.drawSource === 'discard' && state.lastAction?.card
             ? state.lastAction.card
@@ -263,8 +284,8 @@ export const GinRummyGameTable = ({
           const knockDecision = botShouldKnock(botState.hand, drawnFromDiscard);
 
           if (knockDecision.shouldKnock) {
-            const discardCard = botState.hand[knockDecision.discardIndex];
-            state = declareKnock(state, botId, discardCard);
+            const discardCardVal = botState.hand[knockDecision.discardIndex];
+            state = declareKnock(state, botId, discardCardVal);
             if (state.phase === 'scoring') {
               state = scoreHand(state);
             }
