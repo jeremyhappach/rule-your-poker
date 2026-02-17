@@ -58,11 +58,18 @@ export const GinRummyKnockDisplay = ({
   if (!knockerId) return null;
 
   const opponentId = knockerId === ginState.dealerPlayerId ? ginState.nonDealerPlayerId : ginState.dealerPlayerId;
-  const knockerState = ginState.playerStates[knockerId];
-  const opponentState = ginState.playerStates[opponentId];
+
+  // Only show the OTHER player's tabled cards — current player's cards stay in their hand area
+  const otherPlayerId = currentPlayerId === knockerId ? opponentId : knockerId;
+  const otherState = ginState.playerStates[otherPlayerId];
+  const isOtherTheKnocker = otherPlayerId === knockerId;
 
   const isComplete = ginState.phase === 'complete';
   const result = ginState.knockResult;
+
+  // Don't show opponent's melds until scoring/complete (they haven't been revealed yet)
+  const showOtherMelds = isOtherTheKnocker || ginState.phase === 'scoring' || isComplete;
+  if (!showOtherMelds || (otherState.melds.length === 0 && otherState.deadwood.length === 0)) return null;
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-end justify-end pb-[2%] pointer-events-none">
@@ -71,7 +78,7 @@ export const GinRummyKnockDisplay = ({
         {result && (
           <div className="text-center mb-1">
             <p className={cn(
-              "text-[10px] font-bold",
+              "text-[10px] font-bold drop-shadow-md",
               result.isGin ? "text-green-400" : result.isUndercut ? "text-amber-400" : "text-poker-gold"
             )}>
               {result.isGin && '🎉 GIN! '}
@@ -82,25 +89,29 @@ export const GinRummyKnockDisplay = ({
           </div>
         )}
 
-        {/* Knocker label above cards */}
-        <p className="text-[8px] text-white/70 text-center mb-0.5">
-          {getPlayerUsername(knockerId)} {knockerState.hasGin ? 'Gin' : `Knocked (${knockerState.deadwoodValue} dw)`}
+        {/* Other player's label */}
+        <p className="text-[8px] text-white/70 text-center mb-0.5 drop-shadow">
+          {getPlayerUsername(otherPlayerId)}
+          {isOtherTheKnocker
+            ? (otherState.hasGin ? ' — Gin' : ` — Knocked (${otherState.deadwoodValue} dw)`)
+            : ` (${otherState.deadwoodValue} dw)${otherState.laidOffCards.length > 0 ? ` +${otherState.laidOffCards.length} laid off` : ''}`
+          }
         </p>
 
-        {/* Knocker melds + deadwood */}
+        {/* Other player's melds + deadwood */}
         <div className="flex items-center gap-1 flex-wrap justify-center mb-1">
-          {knockerState.melds.map((meld, i) => (
-            <div key={`k-meld-${i}`} className="flex -space-x-3">
+          {otherState.melds.map((meld, i) => (
+            <div key={`meld-${i}`} className="flex -space-x-3">
               {meld.cards.map((card, j) => (
                 <CribbagePlayingCard key={`${card.rank}-${card.suit}-${j}`} card={toDisplayCard(card)} size="sm" />
               ))}
             </div>
           ))}
-          {knockerState.deadwood.length > 0 && (
+          {otherState.deadwood.length > 0 && (
             <div className="flex items-center gap-0.5">
               <span className="text-[7px] text-red-400/80">DW</span>
               <div className="flex -space-x-3">
-                {knockerState.deadwood.map((card, i) => (
+                {otherState.deadwood.map((card, i) => (
                   <div key={`dw-${card.rank}-${card.suit}-${i}`} className="opacity-70">
                     <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                   </div>
@@ -110,41 +121,10 @@ export const GinRummyKnockDisplay = ({
           )}
         </div>
 
-        {/* Opponent's hand - only show when scoring/complete */}
-        {(ginState.phase === 'scoring' || isComplete) && opponentState.melds.length > 0 && (
-          <div className="border-t border-white/10 pt-1">
-            <p className="text-[8px] text-white/70 text-center mb-0.5">
-              {getPlayerUsername(opponentId)} ({opponentState.deadwoodValue} dw)
-              {opponentState.laidOffCards.length > 0 && ` +${opponentState.laidOffCards.length} laid off`}
-            </p>
-            <div className="flex items-center gap-1 flex-wrap justify-center">
-              {opponentState.melds.map((meld, i) => (
-                <div key={`o-meld-${i}`} className="flex -space-x-3">
-                  {meld.cards.map((card, j) => (
-                    <CribbagePlayingCard key={`${card.rank}-${card.suit}-${j}`} card={toDisplayCard(card)} size="sm" />
-                  ))}
-                </div>
-              ))}
-              {opponentState.deadwood.length > 0 && (
-                <div className="flex items-center gap-0.5">
-                  <span className="text-[7px] text-red-400/80">DW</span>
-                  <div className="flex -space-x-3">
-                    {opponentState.deadwood.map((card, i) => (
-                      <div key={`odw-${card.rank}-${card.suit}-${i}`} className="opacity-70">
-                        <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Match score */}
         {isComplete && (
-          <div className="mt-1 pt-1 border-t border-white/10 text-center">
-            <p className="text-[8px] text-white/50">
+          <div className="text-center">
+            <p className="text-[8px] text-white/50 drop-shadow">
               Match: {getPlayerUsername(knockerId)} {ginState.matchScores[knockerId] || 0} — {ginState.matchScores[opponentId] || 0} {getPlayerUsername(opponentId)}
               <span className="text-white/30"> (to {ginState.pointsToWin})</span>
             </p>
