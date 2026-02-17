@@ -185,7 +185,8 @@ export const GinRummyMobileCardsTab = ({
             const offset = i - mid;
             const maxAngle = cardCount > 8 ? 3 : 4; // degrees per card
             const rotation = offset * maxAngle;
-            const yOffset = Math.abs(offset) * Math.abs(offset) * 1.5; // parabolic rise at edges
+            const maxOffset = Math.abs(mid);
+            const yOffset = (maxOffset * maxOffset - offset * offset) * 1.5; // inverted parabola: high in center, low at edges
             const xSpread = offset * (cardCount > 9 ? 26 : 30);
 
             return (

@@ -15,8 +15,12 @@ interface GinRummyFeltContentProps {
   cardBackColors: { color: string; darkColor: string };
 }
 
+const SYMBOL_TO_WORD: Record<string, string> = {
+  '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
+};
+
 const toDisplayCard = (card: GinRummyCard) => ({
-  suit: card.suit as any,
+  suit: (SYMBOL_TO_WORD[card.suit] || card.suit) as any,
   rank: card.rank,
   value: card.value,
 });
