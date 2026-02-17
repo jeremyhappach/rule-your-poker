@@ -111,6 +111,7 @@ export const GinRummyMobileCardsTab = ({
   }, [myState]);
 
 
+  const handleCardClick = (index: number) => {
     if (!myState) return;
     // Allow selection during discard phase or lay-off phase
     if ((ginState.turnPhase === 'discard' && isMyTurn && ginState.phase === 'playing') || isLayingOff) {
