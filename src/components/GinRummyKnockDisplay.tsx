@@ -98,8 +98,8 @@ export const GinRummyKnockDisplay = ({
           }
         </p>
 
-        {/* Other player's melds + deadwood */}
-        <div className="flex items-center gap-1 flex-wrap justify-center mb-1">
+        {/* Other player's melds + deadwood — force two-row wrap */}
+        <div className="flex items-start gap-1 flex-wrap justify-center mb-1 max-w-[220px] mx-auto">
           {otherState.melds.map((meld, i) => (
             <div key={`meld-${i}`} className="flex -space-x-3">
               {meld.cards.map((card, j) => (
