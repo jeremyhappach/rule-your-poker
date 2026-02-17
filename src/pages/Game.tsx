@@ -12,6 +12,7 @@ import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable
 import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
 import { TriviaGameTable } from "@/components/TriviaGameTable";
+import { GinRummyGameTable } from "@/components/GinRummyGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
@@ -32,6 +33,7 @@ import { startHolmRound, endHolmRound, proceedToNextHolmRound, checkHolmRoundCom
 import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
+import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -4159,10 +4161,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const isHolm = gameData.game_type === 'holm-game';
       const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
       const isCribbage = gameData.game_type === 'cribbage';
+      const isGinRummy = gameData.game_type === 'gin-rummy';
 
       let currentRound: Round | null = null;
-      if (isHolm || isCribbage) {
-        // Holm and Cribbage use single-round-per-hand pattern
+      if (isHolm || isCribbage || isGinRummy) {
+        // Holm, Cribbage, and Gin Rummy use single-round-per-hand pattern
         currentRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
           dealerGameId: gameData.current_game_uuid,
           currentRoundNumber: gameData.current_round,
@@ -5836,6 +5839,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealer_selection_state: null, // Will be populated by HighCardDealerSelection
               })
               .eq('id', gameId);
+          } else if (freshGame?.game_type === 'gin-rummy') {
+            // Gin Rummy: go straight to in_progress and start the round
+            console.log('[ANTE][GIN-RUMMY] Starting gin rummy round');
+            await startGinRummyRound(gameId!);
           } else {
             await supabase
               .from('games')
@@ -6943,6 +6950,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 gameType={game.game_type || 'horses'}
                 isHost={isCreator}
                 onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
+              />
+            );
+          }
+
+          // GIN RUMMY GAME
+          if (isInProgress && game.game_type === 'gin-rummy') {
+            return (
+              <GinRummyGameTable
+                gameId={gameId!}
+                roundId={currentRound?.id || ''}
+                dealerGameId={currentRound?.dealer_game_id || null}
+                handNumber={currentRound?.hand_number ?? 1}
+                players={players}
+                currentUserId={user?.id || ''}
+                dealerPosition={game.dealer_position || 1}
+                anteAmount={game.ante_amount || 1}
+                pot={potForDisplay}
+                isHost={isCreator}
+                onGameComplete={handleGameOverComplete}
               />
             );
           }
