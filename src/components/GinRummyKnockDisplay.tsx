@@ -88,11 +88,11 @@ export const GinRummyKnockDisplay = ({
         </p>
 
         {/* Knocker melds + deadwood — cards only, bigger */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-center mb-1">
+        <div className="flex items-center gap-1 flex-wrap justify-center mb-1">
           {knockerState.melds.map((meld, i) => (
-            <div key={`k-meld-${i}`} className="flex -space-x-1.5">
+            <div key={`k-meld-${i}`} className="flex -space-x-3">
               {meld.cards.map((card, j) => (
-                <div key={`${card.rank}-${card.suit}-${j}`} className="scale-[0.8]">
+                <div key={`${card.rank}-${card.suit}-${j}`} className="scale-[0.75]">
                   <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                 </div>
               ))}
@@ -101,9 +101,9 @@ export const GinRummyKnockDisplay = ({
           {knockerState.deadwood.length > 0 && (
             <div className="flex items-center gap-0.5">
               <span className="text-[7px] text-red-400/80">DW</span>
-              <div className="flex -space-x-1.5">
+              <div className="flex -space-x-3">
                 {knockerState.deadwood.map((card, i) => (
-                  <div key={`dw-${card.rank}-${card.suit}-${i}`} className="scale-[0.8] opacity-70">
+                  <div key={`dw-${card.rank}-${card.suit}-${i}`} className="scale-[0.75] opacity-70">
                     <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                   </div>
                 ))}
@@ -119,11 +119,11 @@ export const GinRummyKnockDisplay = ({
               {getPlayerUsername(opponentId)} ({opponentState.deadwoodValue} dw)
               {opponentState.laidOffCards.length > 0 && ` +${opponentState.laidOffCards.length} laid off`}
             </p>
-            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            <div className="flex items-center gap-1 flex-wrap justify-center">
               {opponentState.melds.map((meld, i) => (
-                <div key={`o-meld-${i}`} className="flex -space-x-1.5">
+                <div key={`o-meld-${i}`} className="flex -space-x-3">
                   {meld.cards.map((card, j) => (
-                    <div key={`${card.rank}-${card.suit}-${j}`} className="scale-[0.8]">
+                    <div key={`${card.rank}-${card.suit}-${j}`} className="scale-[0.75]">
                       <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                     </div>
                   ))}
@@ -132,9 +132,9 @@ export const GinRummyKnockDisplay = ({
               {opponentState.deadwood.length > 0 && (
                 <div className="flex items-center gap-0.5">
                   <span className="text-[7px] text-red-400/80">DW</span>
-                  <div className="flex -space-x-1.5">
+                  <div className="flex -space-x-3">
                     {opponentState.deadwood.map((card, i) => (
-                      <div key={`odw-${card.rank}-${card.suit}-${i}`} className="scale-[0.8] opacity-70">
+                      <div key={`odw-${card.rank}-${card.suit}-${i}`} className="scale-[0.75] opacity-70">
                         <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
                       </div>
                     ))}
