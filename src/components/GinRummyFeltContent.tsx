@@ -70,7 +70,7 @@ export const GinRummyFeltContent = ({
         {/* Discard Pile */}
         <div className="flex flex-col items-center gap-0.5">
           {discardTopCard ? (
-            <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="sm" />
+            <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
           ) : (
             <div className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center">
               <span className="text-white/20 text-[8px]">Empty</span>
