@@ -54,6 +54,7 @@ import React, {
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 
@@ -434,6 +435,9 @@ export const MobileGameTable = ({
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
+  
+  // Prevent screen from dimming during gameplay
+  useWakeLock(true);
 
   // Helper: check if this is a dice game (Horses or Ship Captain Crew)
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';

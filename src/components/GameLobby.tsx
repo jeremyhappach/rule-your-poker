@@ -62,6 +62,7 @@ interface Game {
   pot_max_value?: number;
   game_type?: string;
   chucky_cards?: number;
+  points_to_win?: number;
   real_money?: boolean;
   player_count?: number;
   is_creator?: boolean;
@@ -745,9 +746,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
 
                           {isInProgress && game.ante_amount !== undefined && (
                             <div className="text-xs text-amber-300/70 pt-2 mt-2 border-t border-amber-700/30 space-y-1">
-                              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                                 <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
-                                  {game.game_type === 'holm-game' ? 'Holm' : '3-5-7'}
+                                  {game.game_type === 'holm-game' ? 'Holm' 
+                                    : game.game_type === 'cribbage' ? 'Cribbage'
+                                    : game.game_type === 'ginrummy' ? 'Gin Rummy'
+                                    : game.game_type === 'horses' ? 'Horses'
+                                    : game.game_type === 'ship-captain-crew' ? 'SCC'
+                                    : '3-5-7'}
                                   {game.real_money && <span className="text-green-400 ml-1">$</span>}
                                 </span>
                                 <span className="text-amber-400/50">•</span>
@@ -757,6 +763,13 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                     <span className="text-amber-400/50">•</span>
                                     <span>{game.chucky_cards || 4} Chucky</span>
                                   </>
+                                ) : game.game_type === 'cribbage' ? (
+                                  <>
+                                    <span className="text-amber-400/50">•</span>
+                                    <span>{game.points_to_win || 121} pts to win</span>
+                                  </>
+                                ) : game.game_type === 'ginrummy' ? (
+                                  <></>
                                 ) : (
                                   <>
                                     <span className="text-amber-400/50">•</span>

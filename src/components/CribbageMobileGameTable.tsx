@@ -32,6 +32,7 @@ import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { MessageSquare, User, Clock } from 'lucide-react';
+import { useWakeLock } from '@/hooks/useWakeLock';
 import { 
   useCribbageEventContext, 
   logPeggingPlay, 
@@ -154,6 +155,9 @@ export const CribbageMobileGameTable = ({
   const { getTableColors, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
+  
+  // Prevent screen from dimming during gameplay
+  useWakeLock(true);
   
   // Chat hook - integrated like other mobile game tables
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);

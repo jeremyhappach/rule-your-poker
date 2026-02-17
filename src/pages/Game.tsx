@@ -1485,6 +1485,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 communityCardsCacheRef.current = { cards: null, round: null, show: false };
                 setCommunityCacheEpoch((e) => e + 1);
                 // Clear dealer selection state when transitioning away from dealer_selection
+                // or when entering cribbage_dealer_selection (to prevent stale session-level cards)
                 if (newStatus !== 'dealer_selection') {
                   setDealerSelectionCards([]);
                   setDealerSelectionAnnouncement(null);

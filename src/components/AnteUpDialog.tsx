@@ -47,12 +47,16 @@ export const AnteUpDialog = ({
   const isHorsesGame = gameType === 'horses';
   const isSCCGame = gameType === 'ship-captain-crew';
   const isTriviaGame = gameType === 'sports-trivia';
+  const isCribbageGame = gameType === 'cribbage';
+  const isGinRummyGame = gameType === 'ginrummy';
   
   const getGameDisplayName = () => {
     if (isHolmGame) return 'Holm Game';
     if (isHorsesGame) return 'Horses';
     if (isSCCGame) return 'Ship Captain Crew';
     if (isTriviaGame) return 'Sports Trivia';
+    if (isCribbageGame) return 'Cribbage';
+    if (isGinRummyGame) return 'Gin Rummy';
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
@@ -184,7 +188,7 @@ export const AnteUpDialog = ({
               </>
             )}
             
-            {!isHolmGame && !isHorsesGame && !isSCCGame && !isTriviaGame && (
+            {!isHolmGame && !isHorsesGame && !isSCCGame && !isTriviaGame && !isCribbageGame && !isGinRummyGame && (
               <>
                 <div className="font-semibold">Leg Value:</div>
                 <div className="text-right">${legValue}</div>

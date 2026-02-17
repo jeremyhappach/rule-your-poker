@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useWakeLock } from '@/hooks/useWakeLock';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import {
   drawFromStock,
@@ -99,6 +100,9 @@ export const GinRummyGameTable = ({
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
   const { playKnock } = useKnockSound();
+  
+  // Prevent screen from dimming during gameplay
+  useWakeLock(true);
 
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
 
