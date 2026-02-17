@@ -232,7 +232,7 @@ export const GinRummyMobileCardsTab = ({
                     !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
                   isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
-                  isNewlyDrawn && !isSelected && "ring-2 ring-sky-400 animate-pulse"
+                  isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
                 )}
                 style={{
                   zIndex: isSelected ? 20 : i,
