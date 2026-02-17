@@ -95,8 +95,16 @@ export const GinRummyMobileCardsTab = ({
     }
   }, [isMyTurn, ginState.phase]);
 
-  const canKnockNow = isMyTurn && ginState.turnPhase === 'discard' && myState && canKnock(myState.hand);
-  const hasGinNow = isMyTurn && ginState.turnPhase === 'discard' && myState && hasGin(myState.hand);
+  // Knock/Gin checks: evaluate the hand AFTER removing the selected card (since knock = discard + knock)
+  const handAfterDiscard = useMemo(() => {
+    if (selectedCardIndex === null || !myState) return null;
+    const h = [...myState.hand];
+    h.splice(selectedCardIndex, 1);
+    return h;
+  }, [selectedCardIndex, myState]);
+
+  const canKnockNow = isMyTurn && ginState.turnPhase === 'discard' && handAfterDiscard && canKnock(handAfterDiscard);
+  const hasGinNow = isMyTurn && ginState.turnPhase === 'discard' && handAfterDiscard && hasGin(handAfterDiscard);
 
   // Lay-off detection: am I the non-knocker in knocking/laying_off phase?
   const isLayingOff = (ginState.phase === 'knocking' || ginState.phase === 'laying_off') &&
