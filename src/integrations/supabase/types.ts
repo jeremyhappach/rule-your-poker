@@ -1118,6 +1118,7 @@ export type Database = {
           dealer_game_id: string | null
           decision_deadline: string | null
           game_id: string
+          gin_rummy_state: Json | null
           hand_number: number | null
           horses_state: Json | null
           id: string
@@ -1139,6 +1140,7 @@ export type Database = {
           dealer_game_id?: string | null
           decision_deadline?: string | null
           game_id: string
+          gin_rummy_state?: Json | null
           hand_number?: number | null
           horses_state?: Json | null
           id?: string
@@ -1160,6 +1162,7 @@ export type Database = {
           dealer_game_id?: string | null
           decision_deadline?: string | null
           game_id?: string
+          gin_rummy_state?: Json | null
           hand_number?: number | null
           horses_state?: Json | null
           id?: string
