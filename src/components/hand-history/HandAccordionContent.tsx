@@ -277,6 +277,7 @@ export function HandAccordionContent({
   const is357 = group.gameType === "357" || group.gameType === "3-5-7";
   const isHolm = group.gameType === "holm-game";
   const isCribbage = group.gameType === "cribbage";
+  const isGinRummy = group.gameType === "gin-rummy";
   const hasMultipleHands = group.hands.length > 1;
 
   // For dice games with rollovers, check if we have multiple rounds

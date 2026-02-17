@@ -25,6 +25,8 @@ const formatGameType = (type: string | null | undefined): string => {
       return "SCC";
     case "cribbage":
       return "Cribbage";
+    case "ginrummy":
+      return "Gin Rummy";
     default:
       return type;
   }

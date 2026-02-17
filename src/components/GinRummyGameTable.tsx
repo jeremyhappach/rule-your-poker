@@ -1,7 +1,7 @@
 // Gin Rummy Game Table - Mobile layout following CribbageMobileGameTable pattern
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
@@ -15,7 +15,20 @@ import {
   layOffCard,
   finishLayingOff,
   scoreHand,
+  getDiscardTop,
 } from '@/lib/ginRummyGameLogic';
+import {
+  shouldBotTakeFirstDraw,
+  botChooseDrawSource,
+  botChooseDiscard,
+  botShouldKnock,
+  botGetLayOffs,
+} from '@/lib/ginRummyBotLogic';
+import {
+  startNextGinRummyHand,
+  recordGinRummyHandResult,
+  endGinRummyGame,
+} from '@/lib/ginRummyRoundLogic';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { MobileChatPanel } from './MobileChatPanel';
@@ -164,6 +177,160 @@ export const GinRummyGameTable = ({
     }
     prevMessageCountRef.current = userMessages.length;
   }, [allMessages, activeTab, currentUserId]);
+
+  // ─── Bot Action Loop ────────────────────────────────────────────
+  const botActionInProgress = useRef(false);
+
+  useEffect(() => {
+    if (!ginState || !currentPlayerId || isProcessing || botActionInProgress.current) return;
+
+    const currentTurnId = ginState.currentTurnPlayerId;
+    if (!currentTurnId) return;
+
+    const turnPlayer = players.find(p => p.id === currentTurnId);
+    if (!turnPlayer?.is_bot) return;
+
+    // Bot needs to act
+    const runBotAction = async () => {
+      if (botActionInProgress.current) return;
+      botActionInProgress.current = true;
+
+      try {
+        // Add a human-like delay
+        await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 600));
+
+        // Re-fetch latest state to prevent stale-closure issues
+        const { data } = await supabase
+          .from('rounds')
+          .select('gin_rummy_state')
+          .eq('id', roundId)
+          .single();
+
+        if (!data?.gin_rummy_state) return;
+        let state = data.gin_rummy_state as unknown as GinRummyState;
+
+        // Verify it's still the bot's turn
+        if (state.currentTurnPlayerId !== currentTurnId) return;
+
+        const botId = currentTurnId;
+        const botState = state.playerStates[botId];
+        if (!botState) return;
+
+        // Phase: first_draw
+        if (state.phase === 'first_draw' && state.firstDrawOfferedTo === botId) {
+          const upCard = state.discardPile[state.discardPile.length - 1];
+          if (upCard && shouldBotTakeFirstDraw(botState.hand, upCard)) {
+            state = takeFirstDrawCard(state, botId);
+          } else {
+            state = passFirstDraw(state, botId);
+          }
+        }
+        // Phase: playing - draw
+        else if (state.phase === 'playing' && state.turnPhase === 'draw') {
+          const topDiscard = getDiscardTop(state);
+          const source = botChooseDrawSource(botState.hand, topDiscard);
+          if (source === 'discard' && topDiscard) {
+            state = drawFromDiscard(state, botId);
+          } else {
+            state = drawFromStock(state, botId);
+          }
+        }
+        // Phase: playing - discard
+        else if (state.phase === 'playing' && state.turnPhase === 'discard') {
+          const drawnFromDiscard = state.drawSource === 'discard' && state.lastAction?.card
+            ? state.lastAction.card
+            : null;
+
+          const knockDecision = botShouldKnock(botState.hand, drawnFromDiscard);
+
+          if (knockDecision.shouldKnock) {
+            const discardCard = botState.hand[knockDecision.discardIndex];
+            state = declareKnock(state, botId, discardCard);
+            if (state.phase === 'scoring') {
+              state = scoreHand(state);
+            }
+          } else {
+            const discardIdx = knockDecision.discardIndex;
+            const card = botState.hand[discardIdx];
+            state = discardCard(state, botId, card);
+          }
+        }
+        // Phase: knocking/laying_off - bot is the non-knocker
+        else if ((state.phase === 'knocking' || state.phase === 'laying_off')) {
+          const knockerId = Object.entries(state.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
+          if (knockerId && botId !== knockerId) {
+            // Lay off cards if possible
+            const layOffs = botGetLayOffs(botState.hand, state.playerStates[knockerId].melds);
+            for (const lo of layOffs) {
+              try {
+                state = layOffCard(state, botId, lo.card, lo.onMeldIndex);
+              } catch {
+                break; // Card may no longer be valid
+              }
+            }
+            state = finishLayingOff(state, botId);
+            if (state.phase === 'scoring') {
+              state = scoreHand(state);
+            }
+          }
+        }
+
+        // Write updated state
+        await supabase
+          .from('rounds')
+          .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+          .eq('id', roundId);
+
+        setGinState(state);
+      } catch (err) {
+        console.error('[GIN-RUMMY BOT] Error:', err);
+      } finally {
+        botActionInProgress.current = false;
+      }
+    };
+
+    const timeout = setTimeout(runBotAction, 300);
+    return () => clearTimeout(timeout);
+  }, [ginState, currentPlayerId, isProcessing, players, roundId]);
+
+  // ─── Hand Completion & Next Hand ──────────────────────────────
+  const handCompletionInProgress = useRef(false);
+
+  useEffect(() => {
+    if (!ginState || ginState.phase !== 'complete' || handCompletionInProgress.current) return;
+    if (!dealerGameId) return;
+
+    handCompletionInProgress.current = true;
+
+    const processCompletion = async () => {
+      try {
+        // Record hand result
+        if (ginState.knockResult) {
+          await recordGinRummyHandResult(gameId, dealerGameId, handNumber, ginState);
+        }
+
+        // Check if match is won
+        if (ginState.winnerPlayerId) {
+          await endGinRummyGame(gameId, roundId, ginState);
+          onGameComplete();
+          return;
+        }
+
+        // Start next hand after a delay
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        const result = await startNextGinRummyHand(gameId, dealerGameId, ginState);
+        if (result.success) {
+          console.log('[GIN-RUMMY] Next hand started:', result.handNumber);
+        }
+      } catch (err) {
+        console.error('[GIN-RUMMY] Hand completion error:', err);
+      } finally {
+        handCompletionInProgress.current = false;
+      }
+    };
+
+    processCompletion();
+  }, [ginState?.phase, ginState?.winnerPlayerId]);
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
