@@ -1203,8 +1203,9 @@ export const CribbageMobileGameTable = ({
     };
 
     // Use a simple state signature since rounds doesn't have updated_at
+    // Include sequenceStartIndex to detect Go resets and crib length for discard detection
     const getStateSignature = (state: CribbageState): string => {
-      return `${state.phase}-${state.pegging.playedCards.length}-${state.pegging.currentCount}-${state.pegging.currentTurnPlayerId}`;
+      return `${state.phase}-${state.pegging.playedCards.length}-${state.pegging.currentCount}-${state.pegging.currentTurnPlayerId}-${state.pegging.sequenceStartIndex ?? 0}-${state.crib.length}`;
     };
 
     // Primary: Realtime subscription
@@ -1247,7 +1248,7 @@ export const CribbageMobileGameTable = ({
 
         if (error || !data?.cribbage_state) {
           // Backoff on errors
-          pollInterval = Math.min(pollInterval * 1.5, 15000);
+          pollInterval = Math.min(pollInterval * 1.3, 8000);
         } else {
           // Check if data has changed using state signature
           const newState = data.cribbage_state as unknown as CribbageState;
@@ -1259,13 +1260,13 @@ export const CribbageMobileGameTable = ({
             handleStateUpdate(newState, false);
             pollInterval = 2000; // Reset on new data
           } else {
-            // Backoff when no changes (max 10 seconds to stay responsive)
-            pollInterval = Math.min(pollInterval * 1.3, 10000);
+            // Backoff when no changes (max 5 seconds to stay responsive during pegging)
+            pollInterval = Math.min(pollInterval * 1.2, 5000);
           }
         }
       } catch (err) {
         console.error('[CRIBBAGE_POLL] Poll error:', err);
-        pollInterval = Math.min(pollInterval * 1.5, 15000);
+        pollInterval = Math.min(pollInterval * 1.3, 8000);
       }
 
       if (isActive) {
@@ -1281,7 +1282,7 @@ export const CribbageMobileGameTable = ({
       clearTimeout(pollTimeoutId);
       supabase.removeChannel(channel);
     };
-  }, [currentRoundId, triggerWinSequence]);
+  }, [currentRoundId]); // CRITICAL: Only depend on currentRoundId to prevent channel teardown on unrelated state changes
 
   // REMOVED: Initial load win trigger - all win sequences now go through counting animation.
   // If a game is rejoined in 'complete' state, the counting animation snapshot logic will handle it.
