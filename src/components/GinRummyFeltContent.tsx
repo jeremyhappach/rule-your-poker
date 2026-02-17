@@ -41,12 +41,9 @@ export const GinRummyFeltContent = ({
     <>
       {/* Match Score - Top center */}
       <div className="absolute top-[22%] left-1/2 -translate-x-1/2 z-20">
-        <div className="flex items-center gap-1.5">
-          <Badge variant="outline" className="text-white border-white/40 text-[9px] bg-black/30 backdrop-blur-sm px-2">
-            {getPlayerUsername(currentPlayerId ?? '')} {ginState.matchScores[currentPlayerId ?? ''] || 0} — {ginState.matchScores[opponentId] || 0} {getPlayerUsername(opponentId)}
-          </Badge>
-          <span className="text-[8px] text-white/50">to {ginState.pointsToWin}</span>
-        </div>
+        <Badge variant="outline" className="text-white border-white/40 text-[11px] bg-black/40 backdrop-blur-sm px-3 py-1">
+          {getPlayerUsername(currentPlayerId ?? '')} {ginState.matchScores[currentPlayerId ?? ''] || 0} — {ginState.matchScores[opponentId] || 0} {getPlayerUsername(opponentId)}
+        </Badge>
       </div>
 
       {/* Stock & Discard Piles - Center */}
