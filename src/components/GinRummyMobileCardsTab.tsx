@@ -189,8 +189,8 @@ export const GinRummyMobileCardsTab = ({
   return (
     <div className="h-full px-2 flex flex-col">
       {/* Deadwood indicator - computed live from hand */}
-      <div className="flex items-center pl-1 pt-0.5">
-        <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-wide">
+      <div className="flex items-center pl-2 pt-1">
+        <span className="text-sm font-mono font-bold text-muted-foreground tracking-wide">
           DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
         </span>
       </div>
