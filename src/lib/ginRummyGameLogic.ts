@@ -209,6 +209,7 @@ export function passFirstDraw(
     lastAction: {
       type: 'draw_stock',
       playerId: nonDealer,
+      card: topStock,
       timestamp: new Date().toISOString(),
     },
   };
@@ -246,6 +247,7 @@ export function drawFromStock(
     lastAction: {
       type: 'draw_stock',
       playerId,
+      card: topCard,
       timestamp: new Date().toISOString(),
     },
   };
