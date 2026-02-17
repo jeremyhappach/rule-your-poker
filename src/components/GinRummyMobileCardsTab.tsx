@@ -5,7 +5,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn, formatChipValue } from '@/lib/utils';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
-import { canKnock, hasGin, findLayOffOptions } from '@/lib/ginRummyScoring';
+import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { supabase } from '@/integrations/supabase/client';
@@ -188,6 +188,12 @@ export const GinRummyMobileCardsTab = ({
 
   return (
     <div className="h-full px-2 flex flex-col">
+      {/* Deadwood indicator - computed live from hand */}
+      <div className="flex items-center pl-1 pt-0.5">
+        <span className="text-[10px] font-mono font-bold text-muted-foreground tracking-wide">
+          DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
+        </span>
+      </div>
       {/* Cards display - arched fan layout */}
       <div className="flex items-end justify-center min-h-[130px] py-1 overflow-visible">
         <div className="relative flex items-end justify-center" style={{ width: `${Math.min(cardCount * 28 + 20, 340)}px`, height: '110px' }}>
