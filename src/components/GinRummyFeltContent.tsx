@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
+import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
@@ -30,6 +31,7 @@ export const GinRummyFeltContent = ({
   const discardTopCard = getDiscardTop(ginState);
   const stockCount = stockRemaining(ginState);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
+  const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
 
   return (
     <>
@@ -48,14 +50,20 @@ export const GinRummyFeltContent = ({
         {/* Stock Pile */}
         <div className="flex flex-col items-center gap-0.5">
           <div 
-            className="w-12 h-[68px] rounded-md border border-white/30 flex items-center justify-center shadow-lg"
+            className={`w-12 h-[68px] rounded-md border flex items-center justify-center shadow-lg ${
+              stockDanger ? 'border-red-500/60' : 'border-white/30'
+            }`}
             style={{
               background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
             }}
           >
-            <span className="text-white/80 text-[10px] font-bold">{stockCount}</span>
+            <span className={`text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/80'}`}>
+              {stockCount}
+            </span>
           </div>
-          <span className="text-[8px] text-white/50">Stock</span>
+          <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`}>
+            {stockDanger ? 'Low!' : 'Stock'}
+          </span>
         </div>
 
         {/* Discard Pile */}
@@ -72,7 +80,7 @@ export const GinRummyFeltContent = ({
       </div>
 
       {/* Phase / Turn Indicator - Below piles */}
-      <div className="absolute top-[72%] left-1/2 -translate-x-1/2 z-20">
+      <div className="absolute top-[72%] left-1/2 -translate-x-1/2 z-20 w-[80%]">
         {ginState.phase === 'playing' && (
           <p className="text-[10px] text-white/80 text-center">
             {isMyTurn ? (
@@ -85,15 +93,25 @@ export const GinRummyFeltContent = ({
           </p>
         )}
 
+        {/* First Draw - enhanced prompts */}
         {ginState.phase === 'first_draw' && isMyTurn && (
-          <p className="text-[10px] text-poker-gold font-bold animate-pulse text-center">
-            Take the discard or pass
-          </p>
+          <div className="text-center">
+            <p className="text-[11px] text-poker-gold font-bold animate-pulse">
+              {ginState.firstDrawPassed.length === 0
+                ? 'Take the upcard or pass?'
+                : 'Opponent passed — take or pass?'}
+            </p>
+            {discardTopCard && (
+              <p className="text-[8px] text-white/40 mt-0.5">
+                {discardTopCard.rank}{discardTopCard.suit} is face up
+              </p>
+            )}
+          </div>
         )}
 
         {ginState.phase === 'first_draw' && !isMyTurn && (
           <p className="text-[10px] text-white/60 text-center">
-            {getPlayerUsername(ginState.currentTurnPlayerId)} deciding...
+            {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
           </p>
         )}
 
@@ -120,8 +138,8 @@ export const GinRummyFeltContent = ({
         )}
 
         {ginState.phase === 'complete' && !ginState.knockResult && (
-          <p className="text-[10px] text-white/60 text-center">
-            Void hand — stock exhausted
+          <p className="text-[10px] text-red-400 font-bold text-center animate-pulse">
+            Void Hand — Stock Exhausted · Re-dealing...
           </p>
         )}
       </div>
