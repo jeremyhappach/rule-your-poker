@@ -36,6 +36,7 @@ import { GinRummyMatchWinner } from './GinRummyMatchWinner';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
+import { useKnockSound } from '@/hooks/useKnockSound';
 import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
@@ -97,6 +98,7 @@ export const GinRummyGameTable = ({
   const { getTableColors, getCardBackColors } = useVisualPreferences();
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
+  const { playKnock } = useKnockSound();
 
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
 
@@ -106,6 +108,7 @@ export const GinRummyGameTable = ({
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
   const prevMessageCountRef = useRef(0);
+  const prevPhaseRef = useRef<string | null>(null);
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
@@ -117,6 +120,16 @@ export const GinRummyGameTable = ({
       : ginState.dealerPlayerId)
     : '';
   const opponent = players.find(p => p.id === opponentId);
+
+  // Play knock sound when phase transitions to 'knocking'
+  useEffect(() => {
+    if (!ginState) return;
+    const currentPhase = ginState.phase;
+    if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking') {
+      playKnock();
+    }
+    prevPhaseRef.current = currentPhase;
+  }, [ginState?.phase, playKnock]);
 
   // Load state from DB
   useEffect(() => {
