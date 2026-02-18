@@ -1177,6 +1177,20 @@ export const CribbageMobileGameTable = ({
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
+  // CRITICAL: When currentRoundId changes, immediately clear stale cribbage state.
+  // This prevents old cards from being visible AND interactive during the gap before
+  // the realtime subscription delivers the new round's state.
+  const prevRoundIdRef = useRef<string>(currentRoundId);
+  useEffect(() => {
+    if (currentRoundId === prevRoundIdRef.current) return;
+    const oldId = prevRoundIdRef.current;
+    prevRoundIdRef.current = currentRoundId;
+    console.log('[CRIBBAGE] currentRoundId changed, clearing stale state', { oldId, newId: currentRoundId });
+    setCribbageState(null);
+    cribbageStateRef.current = null;
+    setIsTransitioning(true);
+  }, [currentRoundId]);
+
   // Realtime subscription with polling fallback
   // This ensures updates are received even if WebSocket connection degrades
   useEffect(() => {
@@ -1292,17 +1306,14 @@ export const CribbageMobileGameTable = ({
   // If a game is rejoined in 'complete' state, the counting animation snapshot logic will handle it.
 
   // Detect hand transitions to prevent stale card flash
+  // Clear transitioning flag when a valid new hand key arrives
   useEffect(() => {
     if (!currentHandKey) return;
     
     // If hand key changed, we're transitioning to a new hand
     if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
-      setIsTransitioning(true);
-      // Brief delay to allow the new state to fully settle
-      const timer = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 100);
-      return () => clearTimeout(timer);
+      // New hand state has arrived - clear transitioning immediately
+      setIsTransitioning(false);
     }
     
     lastHandKeyRef.current = currentHandKey;
@@ -1461,15 +1472,55 @@ export const CribbageMobileGameTable = ({
   };
 
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
-    if (!cribbageState || !currentPlayerId) return;
+    if (!cribbageState || !currentPlayerId || !currentRoundId) return;
     
     try {
-      const newState = discardToCrib(cribbageState, currentPlayerId, cardIndices);
+      // CRITICAL: Fetch fresh state from DB to prevent stale card decisions.
+      // Without this, a player can discard cards from a PREVIOUS hand's state
+      // during the brief window before the realtime subscription delivers the new hand.
+      const { data: freshRound, error: fetchError } = await supabase
+        .from('rounds')
+        .select('cribbage_state')
+        .eq('id', currentRoundId)
+        .single();
+      
+      if (fetchError || !freshRound?.cribbage_state) {
+        console.error('[CRIBBAGE] Failed to fetch fresh state before discard:', fetchError);
+        toast.error('Failed to sync game state. Try again.');
+        return;
+      }
+      
+      const freshState = freshRound.cribbage_state as unknown as CribbageState;
+      
+      // Verify we're still in discarding phase
+      if (freshState.phase !== 'discarding') {
+        console.warn('[CRIBBAGE] Stale state detected - no longer in discarding phase');
+        setCribbageState(freshState);
+        return;
+      }
+      
+      // Verify player hasn't already discarded
+      const freshPlayerState = freshState.playerStates[currentPlayerId];
+      if (!freshPlayerState || freshPlayerState.discardedToCrib.length > 0) {
+        console.warn('[CRIBBAGE] Already discarded in fresh state');
+        setCribbageState(freshState);
+        return;
+      }
+      
+      // Validate card indices against fresh hand
+      if (cardIndices.some(i => i >= freshPlayerState.hand.length)) {
+        console.warn('[CRIBBAGE] Card indices invalid in fresh state');
+        setCribbageState(freshState);
+        toast.error('Cards no longer available');
+        return;
+      }
+      
+      const newState = discardToCrib(freshState, currentPlayerId, cardIndices);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId]);
+  }, [cribbageState, currentPlayerId, currentRoundId]);
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
