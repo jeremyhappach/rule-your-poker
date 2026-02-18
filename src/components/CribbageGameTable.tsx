@@ -187,6 +187,17 @@ export const CribbageGameTable = ({
     loadOrInitializeState();
   }, [roundId, players, anteAmount, dealerPosition]);
 
+  // CRITICAL: When roundId changes, immediately clear stale cribbage state.
+  // This prevents old cards from being visible and interactive during hand transitions.
+  const prevRoundIdRef = useRef<string>(roundId);
+  useEffect(() => {
+    if (roundId === prevRoundIdRef.current) return;
+    prevRoundIdRef.current = roundId;
+    console.log('[CRIBBAGE] roundId changed, clearing stale state');
+    setCribbageState(null);
+    setIsTransitioning(true);
+  }, [roundId]);
+
   // Realtime subscription with polling fallback
   useEffect(() => {
     if (!roundId) return;
@@ -273,17 +284,12 @@ export const CribbageGameTable = ({
   }, [roundId, onGameComplete]);
 
   // Detect hand transitions to prevent stale card flash
+  // Clear transitioning flag when valid new hand state arrives
   useEffect(() => {
     if (!currentHandKey) return;
     
-    // If hand key changed, we're transitioning to a new hand
     if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
-      setIsTransitioning(true);
-      // Brief delay to allow the new state to fully settle
-      const timer = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 100);
-      return () => clearTimeout(timer);
+      setIsTransitioning(false);
     }
     
     lastHandKeyRef.current = currentHandKey;
