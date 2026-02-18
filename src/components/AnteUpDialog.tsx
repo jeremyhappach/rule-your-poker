@@ -48,7 +48,7 @@ export const AnteUpDialog = ({
   const isSCCGame = gameType === 'ship-captain-crew';
   const isTriviaGame = gameType === 'sports-trivia';
   const isCribbageGame = gameType === 'cribbage';
-  const isGinRummyGame = gameType === 'ginrummy';
+  const isGinRummyGame = gameType === 'gin-rummy' || gameType === 'ginrummy';
   
   const getGameDisplayName = () => {
     if (isHolmGame) return 'Holm Game';

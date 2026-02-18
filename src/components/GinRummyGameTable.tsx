@@ -390,6 +390,16 @@ export const GinRummyGameTable = ({
     }
   };
 
+  // Fetch fresh state from DB to avoid stale closures in multiplayer
+  const fetchFreshState = async (): Promise<GinRummyState | null> => {
+    const { data } = await supabase
+      .from('rounds')
+      .select('gin_rummy_state')
+      .eq('id', roundId)
+      .single();
+    return data?.gin_rummy_state as unknown as GinRummyState | null;
+  };
+
   // Action handlers
   const handleDrawStock = async () => {
     if (!ginState || !currentPlayerId || isProcessing) return;
@@ -439,9 +449,12 @@ export const GinRummyGameTable = ({
   };
 
   const handleTakeFirstDraw = async () => {
-    if (!ginState || !currentPlayerId || isProcessing) return;
+    if (!currentPlayerId || isProcessing) return;
     try {
-      const newState = takeFirstDrawCard(ginState, currentPlayerId);
+      // Fetch fresh state from DB to prevent stale closure issues in multiplayer
+      const fresh = await fetchFreshState();
+      if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
+      const newState = takeFirstDrawCard(fresh, currentPlayerId);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -449,9 +462,12 @@ export const GinRummyGameTable = ({
   };
 
   const handlePassFirstDraw = async () => {
-    if (!ginState || !currentPlayerId || isProcessing) return;
+    if (!currentPlayerId || isProcessing) return;
     try {
-      const newState = passFirstDraw(ginState, currentPlayerId);
+      // Fetch fresh state from DB to prevent stale closure issues in multiplayer
+      const fresh = await fetchFreshState();
+      if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
+      const newState = passFirstDraw(fresh, currentPlayerId);
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
