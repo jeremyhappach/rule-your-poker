@@ -207,23 +207,17 @@ export const GinRummyMobileCardsTab = ({
           DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
         </span>
       </div>
-      {/* Cards display - arched fan layout */}
-      <div className="flex items-end justify-center min-h-[130px] py-1 overflow-visible">
-        <div className="relative flex items-end justify-center" style={{ width: `${Math.min(cardCount * 28 + 20, 340)}px`, height: '110px' }}>
+      {/* Cards display - horizontal overlapping row */}
+      <div className="flex items-center justify-center py-1 overflow-visible">
+        <div className={cn(
+          "flex justify-center",
+          cardCount > 7 ? "-space-x-4" : cardCount > 5 ? "-space-x-3" : "-space-x-2"
+        )}>
           {sortedHand.map(({ card, originalIndex }, i) => {
             const isSelected = selectedCardIndex === originalIndex;
             const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
             const isLayOffable = layOffCardIndices.has(originalIndex);
             const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-
-            // Fan arc: spread cards evenly, rotate around center
-            const mid = (cardCount - 1) / 2;
-            const offset = i - mid;
-            const maxAngle = cardCount > 8 ? 3 : 4; // degrees per card
-            const rotation = offset * maxAngle;
-            const maxOffset = Math.abs(mid);
-            const yOffset = (maxOffset * maxOffset - offset * offset) * 1.5; // inverted parabola: high in center, low at edges
-            const xSpread = offset * (cardCount > 9 ? 22 : 26);
 
             return (
               <button
@@ -232,24 +226,19 @@ export const GinRummyMobileCardsTab = ({
                 onPointerUp={(e) => e.currentTarget.blur()}
                 disabled={isProcessing || !canSelect}
                 className={cn(
-                  "absolute transition-all duration-200 rounded",
+                  "transition-all duration-200 rounded relative",
                   isSelected
-                    ? "ring-2 ring-poker-gold z-20"
-                    : "",
+                    ? "-translate-y-3 ring-2 ring-poker-gold z-20"
+                    : "translate-y-0",
                   canSelect &&
                     !isSelected &&
-                    "[@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
+                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
                   isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
                   isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
                 )}
-                style={{
-                  zIndex: isSelected ? 20 : i,
-                  left: '50%',
-                  transform: `translateX(${xSpread - 16}px) translateY(${isSelected ? -(yOffset + 14) : -yOffset}px) rotate(${rotation}deg)`,
-                  transformOrigin: 'bottom center',
-                }}
+                style={{ zIndex: isSelected ? 20 : i }}
               >
-                <CribbagePlayingCard card={toDisplayCard(card)} size="md" />
+                <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
               </button>
             );
           })}
