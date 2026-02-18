@@ -152,11 +152,23 @@ export const GinRummyGameTable = ({
     load();
   }, [roundId]);
 
-  // Realtime subscription
+  // Realtime subscription + polling fallback
+  // Realtime can silently drop events; polling ensures turns always advance.
+  const lastRealtimeRef = useRef<number>(Date.now());
+
   useEffect(() => {
     if (!roundId) return;
     let isActive = true;
 
+    const applyState = (state: GinRummyState) => {
+      if (!isActive) return;
+      setGinState(state);
+      if (state.phase === 'complete' && state.winnerPlayerId) {
+        onGameComplete();
+      }
+    };
+
+    // Primary: realtime subscription
     const channel = supabase
       .channel(`gin-rummy-${roundId}`)
       .on(
@@ -168,19 +180,62 @@ export const GinRummyGameTable = ({
           filter: `id=eq.${roundId}`,
         },
         (payload) => {
+          lastRealtimeRef.current = Date.now();
           const newData = payload.new as { gin_rummy_state?: GinRummyState };
-          if (newData.gin_rummy_state && isActive) {
-            setGinState(newData.gin_rummy_state);
-            if (newData.gin_rummy_state.phase === 'complete' && newData.gin_rummy_state.winnerPlayerId) {
-              onGameComplete();
-            }
+          if (newData.gin_rummy_state) {
+            applyState(newData.gin_rummy_state);
           }
         }
       )
       .subscribe();
 
+    // Fallback: poll every 3s when it's NOT my turn (most likely to be stale)
+    // and every 5s when it IS my turn (less critical but still needed)
+    const pollInterval = setInterval(async () => {
+      if (!isActive) return;
+      // Only poll if we haven't received a realtime event in the last 2s
+      if (Date.now() - lastRealtimeRef.current < 2000) return;
+
+      try {
+        const { data } = await supabase
+          .from('rounds')
+          .select('gin_rummy_state')
+          .eq('id', roundId)
+          .single();
+
+        if (data?.gin_rummy_state && isActive) {
+          const freshState = data.gin_rummy_state as unknown as GinRummyState;
+          // Only apply if state actually changed (compare turn/phase)
+          setGinState(prev => {
+            if (!prev) return freshState;
+            if (
+              prev.currentTurnPlayerId !== freshState.currentTurnPlayerId ||
+              prev.phase !== freshState.phase ||
+              prev.turnPhase !== freshState.turnPhase ||
+              prev.firstDrawOfferedTo !== freshState.firstDrawOfferedTo
+            ) {
+              console.log('[GIN-RUMMY] Poll detected state change', {
+                prevTurn: prev.currentTurnPlayerId,
+                newTurn: freshState.currentTurnPlayerId,
+                prevPhase: prev.phase,
+                newPhase: freshState.phase,
+              });
+              if (freshState.phase === 'complete' && freshState.winnerPlayerId) {
+                onGameComplete();
+              }
+              return freshState;
+            }
+            return prev;
+          });
+        }
+      } catch {
+        // Silent fail - polling is best-effort
+      }
+    }, 3000);
+
     return () => {
       isActive = false;
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
