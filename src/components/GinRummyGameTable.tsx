@@ -152,9 +152,17 @@ export const GinRummyGameTable = ({
     load();
   }, [roundId]);
 
-  // Realtime subscription + polling fallback
-  // Realtime can silently drop events; polling ensures turns always advance.
+  // Realtime subscription + smart polling fallback
+  // Realtime can silently drop large JSONB payloads (gin_rummy_state).
+  // Polling ONLY activates when waiting for opponent and realtime is silent.
   const lastRealtimeRef = useRef<number>(Date.now());
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track whether it's my turn (used by polling to decide if it should run)
+  const isMyTurnRef = useRef(false);
+  useEffect(() => {
+    isMyTurnRef.current = ginState?.currentTurnPlayerId === currentPlayerId;
+  }, [ginState?.currentTurnPlayerId, currentPlayerId]);
 
   useEffect(() => {
     if (!roundId) return;
@@ -189,53 +197,69 @@ export const GinRummyGameTable = ({
       )
       .subscribe();
 
-    // Fallback: poll every 3s when it's NOT my turn (most likely to be stale)
-    // and every 5s when it IS my turn (less critical but still needed)
-    const pollInterval = setInterval(async () => {
+    // Smart polling: only when NOT my turn AND realtime has been silent
+    // Uses escalating intervals: 2s → 4s → 6s (caps at 6s)
+    let pollDelay = 2000;
+
+    const schedulePoll = () => {
       if (!isActive) return;
-      // Only poll if we haven't received a realtime event in the last 2s
-      if (Date.now() - lastRealtimeRef.current < 2000) return;
+      pollTimerRef.current = setTimeout(async () => {
+        if (!isActive) return;
 
-      try {
-        const { data } = await supabase
-          .from('rounds')
-          .select('gin_rummy_state')
-          .eq('id', roundId)
-          .single();
-
-        if (data?.gin_rummy_state && isActive) {
-          const freshState = data.gin_rummy_state as unknown as GinRummyState;
-          // Only apply if state actually changed (compare turn/phase)
-          setGinState(prev => {
-            if (!prev) return freshState;
-            if (
-              prev.currentTurnPlayerId !== freshState.currentTurnPlayerId ||
-              prev.phase !== freshState.phase ||
-              prev.turnPhase !== freshState.turnPhase ||
-              prev.firstDrawOfferedTo !== freshState.firstDrawOfferedTo
-            ) {
-              console.log('[GIN-RUMMY] Poll detected state change', {
-                prevTurn: prev.currentTurnPlayerId,
-                newTurn: freshState.currentTurnPlayerId,
-                prevPhase: prev.phase,
-                newPhase: freshState.phase,
-              });
-              if (freshState.phase === 'complete' && freshState.winnerPlayerId) {
-                onGameComplete();
-              }
-              return freshState;
-            }
-            return prev;
-          });
+        // Skip if: it's my turn, game is complete, or realtime recently delivered
+        const timeSinceRealtime = Date.now() - lastRealtimeRef.current;
+        if (isMyTurnRef.current || timeSinceRealtime < 2000) {
+          pollDelay = 2000; // Reset delay when skipping
+          schedulePoll();
+          return;
         }
-      } catch {
-        // Silent fail - polling is best-effort
-      }
-    }, 3000);
+
+        try {
+          const { data } = await supabase
+            .from('rounds')
+            .select('gin_rummy_state')
+            .eq('id', roundId)
+            .maybeSingle();
+
+          if (data?.gin_rummy_state && isActive) {
+            const freshState = data.gin_rummy_state as unknown as GinRummyState;
+            setGinState(prev => {
+              if (!prev) return freshState;
+              if (
+                prev.currentTurnPlayerId !== freshState.currentTurnPlayerId ||
+                prev.phase !== freshState.phase ||
+                prev.turnPhase !== freshState.turnPhase ||
+                prev.firstDrawOfferedTo !== freshState.firstDrawOfferedTo
+              ) {
+                console.log('[GIN-RUMMY] Poll caught missed realtime event', {
+                  prevTurn: prev.currentTurnPlayerId?.slice(0, 8),
+                  newTurn: freshState.currentTurnPlayerId?.slice(0, 8),
+                  phase: freshState.phase,
+                });
+                pollDelay = 2000; // Reset on change
+                if (freshState.phase === 'complete' && freshState.winnerPlayerId) {
+                  onGameComplete();
+                }
+                return freshState;
+              }
+              // No change — back off slightly
+              pollDelay = Math.min(pollDelay + 2000, 6000);
+              return prev;
+            });
+          }
+        } catch {
+          // Silent fail
+        }
+
+        schedulePoll();
+      }, pollDelay);
+    };
+
+    schedulePoll();
 
     return () => {
       isActive = false;
-      clearInterval(pollInterval);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       supabase.removeChannel(channel);
     };
   }, [roundId, onGameComplete]);
