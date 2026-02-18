@@ -750,7 +750,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                 <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-600/20 text-amber-300 font-medium">
                                   {game.game_type === 'holm-game' ? 'Holm' 
                                     : game.game_type === 'cribbage' ? 'Cribbage'
-                                    : game.game_type === 'ginrummy' ? 'Gin Rummy'
+                                    : game.game_type === 'gin-rummy' ? 'Gin Rummy'
                                     : game.game_type === 'horses' ? 'Horses'
                                     : game.game_type === 'ship-captain-crew' ? 'SCC'
                                     : '3-5-7'}
@@ -772,7 +772,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                     <span className="text-amber-400/50">•</span>
                                     <span>{(game as any).skunk_enabled ? 'Skunks' : 'No Skunks'}</span>
                                   </>
-                                ) : game.game_type === 'ginrummy' ? (
+                                ) : game.game_type === 'gin-rummy' ? (
                                   <>
                                     <span className="text-amber-400/50">•</span>
                                     <span>{game.points_to_win || 25} pts</span>
