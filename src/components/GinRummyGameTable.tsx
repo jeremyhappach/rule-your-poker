@@ -152,24 +152,26 @@ export const GinRummyGameTable = ({
     load();
   }, [roundId]);
 
-  // Realtime subscription + smart polling fallback
-  // Realtime can silently drop large JSONB payloads (gin_rummy_state).
-  // Polling ONLY activates when waiting for opponent and realtime is silent.
-  const lastRealtimeRef = useRef<number>(Date.now());
+  // Realtime subscription + aggressive polling fallback
+  // Realtime silently drops large JSONB payloads — polling is the safety net for human vs human.
+  const lastRealtimeRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Track whether it's my turn (used by polling to decide if it should run)
-  const isMyTurnRef = useRef(false);
-  useEffect(() => {
-    isMyTurnRef.current = ginState?.currentTurnPlayerId === currentPlayerId;
-  }, [ginState?.currentTurnPlayerId, currentPlayerId]);
+  const localStateTimestampRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!roundId) return;
     let isActive = true;
 
-    const applyState = (state: GinRummyState) => {
+    const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
+      const ts = state.lastAction?.timestamp ?? null;
+      // Always apply — let React deduplicate if the state is identical
+      console.log(`[GIN-RUMMY] State update from ${source}`, {
+        phase: state.phase,
+        turn: state.currentTurnPlayerId?.slice(0, 8),
+        ts,
+      });
+      localStateTimestampRef.current = ts;
       setGinState(state);
       if (state.phase === 'complete' && state.winnerPlayerId) {
         onGameComplete();
@@ -191,71 +193,48 @@ export const GinRummyGameTable = ({
           lastRealtimeRef.current = Date.now();
           const newData = payload.new as { gin_rummy_state?: GinRummyState };
           if (newData.gin_rummy_state) {
-            applyState(newData.gin_rummy_state);
+            applyState(newData.gin_rummy_state, 'realtime');
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[GIN-RUMMY] Realtime subscription status:', status);
+      });
 
-    // Smart polling: only when NOT my turn AND realtime has been silent
-    // Uses escalating intervals: 2s → 4s → 6s (caps at 6s)
-    let pollDelay = 2000;
-
-    const schedulePoll = () => {
+    // Fallback polling — runs every 2s unconditionally.
+    // Applies fresh state whenever the lastAction timestamp has changed.
+    const poll = async () => {
       if (!isActive) return;
-      pollTimerRef.current = setTimeout(async () => {
-        if (!isActive) return;
 
-        // Skip if: it's my turn, game is complete, or realtime recently delivered
-        const timeSinceRealtime = Date.now() - lastRealtimeRef.current;
-        if (isMyTurnRef.current || timeSinceRealtime < 2000) {
-          pollDelay = 2000; // Reset delay when skipping
-          schedulePoll();
-          return;
-        }
+      try {
+        const { data } = await supabase
+          .from('rounds')
+          .select('gin_rummy_state')
+          .eq('id', roundId)
+          .maybeSingle();
 
-        try {
-          const { data } = await supabase
-            .from('rounds')
-            .select('gin_rummy_state')
-            .eq('id', roundId)
-            .maybeSingle();
-
-          if (data?.gin_rummy_state && isActive) {
-            const freshState = data.gin_rummy_state as unknown as GinRummyState;
-            setGinState(prev => {
-              if (!prev) return freshState;
-              if (
-                prev.currentTurnPlayerId !== freshState.currentTurnPlayerId ||
-                prev.phase !== freshState.phase ||
-                prev.turnPhase !== freshState.turnPhase ||
-                prev.firstDrawOfferedTo !== freshState.firstDrawOfferedTo
-              ) {
-                console.log('[GIN-RUMMY] Poll caught missed realtime event', {
-                  prevTurn: prev.currentTurnPlayerId?.slice(0, 8),
-                  newTurn: freshState.currentTurnPlayerId?.slice(0, 8),
-                  phase: freshState.phase,
-                });
-                pollDelay = 2000; // Reset on change
-                if (freshState.phase === 'complete' && freshState.winnerPlayerId) {
-                  onGameComplete();
-                }
-                return freshState;
-              }
-              // No change — back off slightly
-              pollDelay = Math.min(pollDelay + 2000, 6000);
-              return prev;
+        if (data?.gin_rummy_state && isActive) {
+          const freshState = data.gin_rummy_state as unknown as GinRummyState;
+          const freshTs = freshState.lastAction?.timestamp ?? null;
+          if (freshTs !== localStateTimestampRef.current) {
+            console.log('[GIN-RUMMY] Poll caught missed update', {
+              localTs: localStateTimestampRef.current,
+              freshTs,
             });
+            applyState(freshState, 'poll');
           }
-        } catch {
-          // Silent fail
         }
+      } catch {
+        // Silent fail
+      }
 
-        schedulePoll();
-      }, pollDelay);
+      if (isActive) {
+        pollTimerRef.current = setTimeout(poll, 2000);
+      }
     };
 
-    schedulePoll();
+    // Start polling after a brief delay to let realtime settle first
+    pollTimerRef.current = setTimeout(poll, 2000);
 
     return () => {
       isActive = false;
