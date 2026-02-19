@@ -136,15 +136,21 @@ function dealRiggedHand(state: GinRummyState, fullDeck: GinRummyCard[]): GinRumm
     c('A', '♥'),                              // 1 deadwood
   ];
 
-  // Non-dealer hand: two cards that can lay off on dealer's melds
-  // 4♠ extends A♠2♠3♠4♠ run, 10♦ extends 7♦8♦9♦10♦ run
+  // Non-dealer hand: two cards that can lay off on dealer's melds, rest are isolated
+  // high deadwood (no two share rank or form consecutive same-suit runs).
+  // 4♠ extends A♠2♠3♠4♠ run, 10♦ extends 7♦8♦9♦10♦ run.
+  // Cards are deliberately scattered so no single drawn card can accidentally make gin.
   const nonDealerHand: GinRummyCard[] = [
     c('4', '♠'),   // lay-off onto dealer's ♠ run
     c('10', '♦'),  // lay-off onto dealer's ♦ run
-    c('K', '♣'), c('Q', '♣'), c('J', '♣'),  // high deadwood
-    c('K', '♠'), c('Q', '♠'),
-    c('K', '♦'), c('Q', '♦'),
-    c('J', '♠'),
+    c('K', '♣'),   // isolated high deadwood
+    c('Q', '♥'),   // isolated — different rank/suit from K♣
+    c('J', '♠'),   // isolated — different rank/suit from above
+    c('9', '♥'),   // isolated — Q♥ and 9♥ are not consecutive
+    c('6', '♣'),   // isolated — K♣ and 6♣ are not consecutive
+    c('3', '♥'),   // isolated — 9♥ and 3♥ are not consecutive
+    c('2', '♣'),   // isolated — 6♣ and 2♣ are not consecutive
+    c('K', '♦'),   // isolated — 10♦ and K♦ are not consecutive
   ];
 
   // Build stock from remaining cards (exclude dealt + upcard)
@@ -153,7 +159,7 @@ function dealRiggedHand(state: GinRummyState, fullDeck: GinRummyCard[]): GinRumm
   const upCard = remaining[0];
   const stockPile = remaining.slice(1);
 
-  console.log('[GIN-RUMMY DEBUG] Rigged deal active! Dealer deadwood=1, Non-dealer has 2 lay-off cards (4♠, 10♦)');
+  console.log('[GIN-RUMMY DEBUG] Rigged deal active! Dealer deadwood=1, Non-dealer has 2 lay-off cards (4♠, 10♦) + isolated high deadwood (cannot accidentally gin)');
 
   return {
     ...state,
