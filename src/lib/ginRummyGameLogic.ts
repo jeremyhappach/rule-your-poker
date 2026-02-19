@@ -241,6 +241,7 @@ export function passFirstDraw(
   if (newPassed.length === 1) {
     return {
       ...state,
+      currentTurnPlayerId: state.dealerPlayerId,
       firstDrawOfferedTo: state.dealerPlayerId,
       firstDrawPassed: newPassed,
       lastAction: {
