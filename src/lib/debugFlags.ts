@@ -54,3 +54,17 @@ export function isSafetyPollingDisabled(): boolean {
     hasLocalFlag('ptp_debug_disable_safety_polls')
   );
 }
+
+/**
+ * Forces Gin Rummy to deal rigged hands for testing knock/lay-off flow.
+ * Enable via ?debug_gin_rigged=1 or localStorage ptp_debug_gin_rigged = "1"
+ *
+ * Dealer gets: A♠ 2♠ 3♠ (run meld) + 4♥ 5♥ 6♥ (run meld) + 7♦ 8♦ 9♦ (run meld) + A♥ (1 deadwood) → can knock
+ * Non-dealer gets: 4♠ 5♣ + rest are high deadwood, but 4♠ lays off on dealer's run if extended, and 10♦ lays off too
+ */
+export function isGinRiggedDealEnabled(): boolean {
+  return (
+    hasQueryFlag('debug_gin_rigged') ||
+    hasLocalFlag('ptp_debug_gin_rigged')
+  );
+}

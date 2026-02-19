@@ -21,6 +21,7 @@ import {
   sumDeadwood,
   canDrawFromStock,
 } from './ginRummyScoring';
+import { isGinRiggedDealEnabled } from './debugFlags';
 
 // ─── State Factory ──────────────────────────────────────────────
 
@@ -79,12 +80,17 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 /** Deal 10 cards to each player, place one face-up on discard pile, rest is stock */
 export function dealHand(state: GinRummyState): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
+  const { dealerPlayerId, nonDealerPlayerId } = state;
+
+  // Debug: rigged hands for testing knock/lay-off flow
+  if (isGinRiggedDealEnabled()) {
+    return dealRiggedHand(state, deck);
+  }
+
   const nonDealerHand = deck.slice(0, CARDS_PER_PLAYER);
   const dealerHand = deck.slice(CARDS_PER_PLAYER, CARDS_PER_PLAYER * 2);
   const upCard = deck[CARDS_PER_PLAYER * 2]; // First discard pile card
   const stockPile = deck.slice(CARDS_PER_PLAYER * 2 + 1); // Remaining cards
-
-  const { dealerPlayerId, nonDealerPlayerId } = state;
 
   return {
     ...state,
@@ -109,7 +115,68 @@ export function dealHand(state: GinRummyState): GinRummyState {
   };
 }
 
-// ─── First Draw Phase ───────────────────────────────────────────
+// ─── Debug: Rigged Deal for Knock/Lay-Off Testing ───────────────
+// Dealer: 3 melds (A♠2♠3♠, 4♥5♥6♥, 7♦8♦9♦) + A♥ = 1 deadwood → can knock immediately
+// Non-dealer: 4♠ and 10♦ can lay off on dealer's melds + rest high deadwood
+function dealRiggedHand(state: GinRummyState, fullDeck: GinRummyCard[]): GinRummyState {
+  const { dealerPlayerId, nonDealerPlayerId } = state;
+  const c = (rank: string, suit: '♠' | '♥' | '♦' | '♣'): GinRummyCard => {
+    let value: number;
+    if (rank === 'A') value = 1;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { rank, suit, value };
+  };
+
+  // Dealer hand: 3 clean melds + 1 low deadwood card
+  const dealerHand: GinRummyCard[] = [
+    c('A', '♠'), c('2', '♠'), c('3', '♠'),  // run meld
+    c('4', '♥'), c('5', '♥'), c('6', '♥'),  // run meld
+    c('7', '♦'), c('8', '♦'), c('9', '♦'),  // run meld
+    c('A', '♥'),                              // 1 deadwood
+  ];
+
+  // Non-dealer hand: two cards that can lay off on dealer's melds
+  // 4♠ extends A♠2♠3♠4♠ run, 10♦ extends 7♦8♦9♦10♦ run
+  const nonDealerHand: GinRummyCard[] = [
+    c('4', '♠'),   // lay-off onto dealer's ♠ run
+    c('10', '♦'),  // lay-off onto dealer's ♦ run
+    c('K', '♣'), c('Q', '♣'), c('J', '♣'),  // high deadwood
+    c('K', '♠'), c('Q', '♠'),
+    c('K', '♦'), c('Q', '♦'),
+    c('J', '♠'),
+  ];
+
+  // Build stock from remaining cards (exclude dealt + upcard)
+  const usedKeys = new Set([...dealerHand, ...nonDealerHand].map(cd => `${cd.rank}-${cd.suit}`));
+  const remaining = fullDeck.filter(cd => !usedKeys.has(`${cd.rank}-${cd.suit}`));
+  const upCard = remaining[0];
+  const stockPile = remaining.slice(1);
+
+  console.log('[GIN-RUMMY DEBUG] Rigged deal active! Dealer deadwood=1, Non-dealer has 2 lay-off cards (4♠, 10♦)');
+
+  return {
+    ...state,
+    phase: 'first_draw',
+    playerStates: {
+      [dealerPlayerId]: {
+        ...state.playerStates[dealerPlayerId],
+        hand: dealerHand,
+      },
+      [nonDealerPlayerId]: {
+        ...state.playerStates[nonDealerPlayerId],
+        hand: nonDealerHand,
+      },
+    },
+    stockPile,
+    discardPile: [upCard],
+    currentTurnPlayerId: nonDealerPlayerId,
+    turnPhase: 'draw',
+    drawSource: null,
+    firstDrawOfferedTo: nonDealerPlayerId,
+    firstDrawPassed: [],
+  };
+}
 // Non-dealer may take the face-up card or pass.
 // If non-dealer passes, dealer may take it or pass.
 // If both pass, non-dealer draws from stock and normal play begins.
