@@ -60,8 +60,8 @@ export const GinRummyFeltContent = ({
       />
 
       {/* Match Score - Top center */}
-      <div className="absolute top-[22%] left-1/2 -translate-x-1/2 z-20">
-        <Badge variant="outline" className="text-white border-white/40 text-[11px] bg-black/40 backdrop-blur-sm px-3 py-1">
+      <div className="absolute top-[22%] left-1/2 -translate-x-1/2 z-20 w-[75%]">
+        <Badge variant="outline" className="text-white border-white/40 text-[11px] bg-black/40 backdrop-blur-sm px-3 py-1 w-full flex justify-center whitespace-nowrap">
           {getPlayerUsername(currentPlayerId ?? '')} {ginState.matchScores[currentPlayerId ?? ''] || 0} — {ginState.matchScores[opponentId] || 0} {getPlayerUsername(opponentId)}
         </Badge>
       </div>

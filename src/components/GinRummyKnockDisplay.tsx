@@ -5,6 +5,7 @@
 import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { cn } from '@/lib/utils';
+import { canLayOff } from '@/lib/ginRummyScoring';
 
 interface GinRummyKnockDisplayProps {
   ginState: GinRummyState;
@@ -43,6 +44,7 @@ const OpponentHandDisplay = ({
   hasGin,
   interactiveMelds = false,
   selectedCardForLayOff = false,
+  selectedCard = null,
   onLayOffToMeld,
   isProcessing,
 }: {
@@ -55,6 +57,7 @@ const OpponentHandDisplay = ({
   hasGin?: boolean;
   interactiveMelds?: boolean;
   selectedCardForLayOff?: boolean;
+  selectedCard?: GinRummyCard | null;
   onLayOffToMeld?: (meldIndex: number) => void;
   isProcessing?: boolean;
 }) => {
@@ -76,15 +79,18 @@ const OpponentHandDisplay = ({
       {melds.length > 0 && (
         <div className="flex flex-wrap justify-center gap-1.5 w-full">
           {melds.map((meld, i) => {
-            const canTarget = interactiveMelds && selectedCardForLayOff;
+            // Only allow tapping if a card is selected AND that card can legally lay off on this specific meld
+            const isValidTarget = interactiveMelds && selectedCardForLayOff && selectedCard
+              ? canLayOff(selectedCard, meld)
+              : false;
             return (
               <button
                 key={`meld-${i}`}
-                onClick={canTarget && onLayOffToMeld ? () => onLayOffToMeld(i) : undefined}
-                disabled={!canTarget || isProcessing}
+                onClick={isValidTarget && onLayOffToMeld ? () => onLayOffToMeld(i) : undefined}
+                disabled={!isValidTarget || isProcessing}
                 className={cn(
                   "flex flex-col items-center gap-0.5 rounded-lg p-1 transition-all border",
-                  canTarget
+                  isValidTarget
                     ? "ring-2 ring-poker-gold/80 border-poker-gold/60 bg-black/40 cursor-pointer active:scale-95 pointer-events-auto"
                     : "border-white/10 bg-transparent"
                 )}
@@ -162,6 +168,13 @@ export const GinRummyKnockDisplay = ({
   // Lay-off is interactive when the OTHER player is the knocker and I'm laying off onto their melds
   const isLayingOffOntoOther = isOtherTheKnocker && (ginState.phase === 'knocking' || ginState.phase === 'laying_off');
 
+  // Resolve the actual selected card from current player's hand for per-meld validation
+  const myPlayerId = currentPlayerId;
+  const myState = myPlayerId ? ginState.playerStates[myPlayerId] : null;
+  const selectedCard = (isLayingOffOntoOther && layOffSelectedCardIndex != null && myState)
+    ? (myState.hand[layOffSelectedCardIndex] ?? null)
+    : null;
+
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none px-2 gap-2">
       {/* Result header */}
@@ -189,6 +202,7 @@ export const GinRummyKnockDisplay = ({
           hasGin={otherState.hasGin}
           interactiveMelds={isLayingOffOntoOther}
           selectedCardForLayOff={layOffSelectedCardIndex != null}
+          selectedCard={selectedCard}
           onLayOffToMeld={onLayOffToMeld}
           isProcessing={isProcessing}
         />
