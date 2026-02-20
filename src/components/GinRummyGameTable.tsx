@@ -160,10 +160,10 @@ export const GinRummyGameTable = ({
 
   // Realtime subscription + aggressive polling fallback
   // Realtime silently drops large JSONB payloads — polling is the safety net for human vs human.
-  const lastRealtimeRef = useRef<number>(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const localStateTimestampRef = useRef<string | null>(null);
-  const localStateRef = useRef<GinRummyState | null>(null);
+  // Use a ref for onGameComplete to avoid rebuilding the subscription on every parent re-render
+  const onGameCompleteRef = useRef(onGameComplete);
+  useEffect(() => { onGameCompleteRef.current = onGameComplete; }, [onGameComplete]);
 
   useEffect(() => {
     if (!roundId) return;
@@ -171,18 +171,14 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
-      const ts = state.lastAction?.timestamp ?? null;
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
         turn: state.currentTurnPlayerId?.slice(0, 8),
         firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
-        ts,
       });
-      localStateTimestampRef.current = ts;
-      localStateRef.current = state;
       setGinState(state);
       if (state.phase === 'complete' && state.winnerPlayerId) {
-        onGameComplete();
+        onGameCompleteRef.current();
       }
     };
 
@@ -198,7 +194,6 @@ export const GinRummyGameTable = ({
           filter: `id=eq.${roundId}`,
         },
         (payload) => {
-          lastRealtimeRef.current = Date.now();
           const newData = payload.new as { gin_rummy_state?: GinRummyState };
           if (newData.gin_rummy_state) {
             applyState(newData.gin_rummy_state, 'realtime');
@@ -209,10 +204,8 @@ export const GinRummyGameTable = ({
         console.log('[GIN-RUMMY] Realtime subscription status:', status);
       });
 
-    // Fallback polling — runs every 2s unconditionally.
-    // ALWAYS applies fresh DB state — no comparison gate. This is intentional.
+    // Fallback polling — unconditional, always applies fresh DB state.
     // Realtime silently drops large JSONB payloads; polling is the guaranteed fallback.
-    // React's setState deduplicates if the object is referentially equal anyway.
     const poll = async () => {
       if (!isActive) return;
 
@@ -224,32 +217,26 @@ export const GinRummyGameTable = ({
           .maybeSingle();
 
         if (data?.gin_rummy_state && isActive) {
-          const freshState = data.gin_rummy_state as unknown as GinRummyState;
-          console.log('[GIN-RUMMY] Poll applying state', {
-            phase: freshState.phase,
-            turn: freshState.currentTurnPlayerId?.slice(0, 8),
-            ts: freshState.lastAction?.timestamp,
-          });
-          applyState(freshState, 'poll');
+          applyState(data.gin_rummy_state as unknown as GinRummyState, 'poll');
         }
       } catch {
         // Silent fail
       }
 
       if (isActive) {
-        pollTimerRef.current = setTimeout(poll, 2000);
+        pollTimerRef.current = setTimeout(poll, 1500);
       }
     };
 
-    // Start polling after a brief delay to let realtime settle first
-    pollTimerRef.current = setTimeout(poll, 2000);
+    // First poll after a short delay, then every 1.5s
+    pollTimerRef.current = setTimeout(poll, 800);
 
     return () => {
       isActive = false;
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [roundId, onGameComplete]);
+  }, [roundId]); // ← onGameComplete intentionally excluded; using ref instead
 
   // Chat unread tracking
   useEffect(() => {
