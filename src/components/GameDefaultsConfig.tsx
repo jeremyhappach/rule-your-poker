@@ -697,27 +697,27 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
           </div>
 
            <div className="space-y-2">
-             <Label htmlFor="gin-gin-bonus">Gin Bonus (% of ante)</Label>
+             <Label htmlFor="gin-gin-bonus">Gin Bonus (pts)</Label>
              <Input
                id="gin-gin-bonus"
                type="text"
                inputMode="numeric"
-               value={(ginDefaults as any).gin_bonus ?? 200}
+               value={(ginDefaults as any).gin_bonus ?? 25}
                onChange={(e) => updateDefault('gin-rummy', 'gin_bonus' as any, e.target.value)}
              />
-             <p className="text-xs text-muted-foreground">e.g. 100 = extra 1× ante when going gin</p>
+             <p className="text-xs text-muted-foreground">Extra points awarded for going gin (0 = disabled)</p>
            </div>
 
            <div className="space-y-2">
-             <Label htmlFor="gin-undercut-bonus">Undercut Bonus (% of ante)</Label>
+             <Label htmlFor="gin-undercut-bonus">Undercut Bonus (pts)</Label>
              <Input
                id="gin-undercut-bonus"
                type="text"
                inputMode="numeric"
-               value={(ginDefaults as any).undercut_bonus ?? 200}
+               value={(ginDefaults as any).undercut_bonus ?? 25}
                onChange={(e) => updateDefault('gin-rummy', 'undercut_bonus' as any, e.target.value)}
              />
-             <p className="text-xs text-muted-foreground">e.g. 100 = extra 1× ante when undercutting</p>
+             <p className="text-xs text-muted-foreground">Extra points awarded for undercutting (0 = disabled)</p>
            </div>
         </div>
 

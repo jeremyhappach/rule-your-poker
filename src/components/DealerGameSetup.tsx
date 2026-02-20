@@ -134,8 +134,8 @@ export const DealerGameSetup = ({
   // Gin Rummy-specific settings
   const [ginRummyPointsToWin, setGinRummyPointsToWin] = useState(100);
   const [ginRummyPerPointValue, setGinRummyPerPointValue] = useState(0);
-   const [ginRummyGinBonus, setGinRummyGinBonus] = useState(200);
-   const [ginRummyUndercutBonus, setGinRummyUndercutBonus] = useState(200);
+   const [ginRummyGinBonus, setGinRummyGinBonus] = useState(25);
+   const [ginRummyUndercutBonus, setGinRummyUndercutBonus] = useState(25);
   
   // Cache defaults for both game types
   const [holmDefaults, setHolmDefaults] = useState<GameDefaults | null>(null);
@@ -1170,8 +1170,8 @@ export const DealerGameSetup = ({
         if (gameType === 'gin-rummy') {
           setGinRummyPointsToWin(gameDefaults.points_to_win ?? 100);
           setGinRummyPerPointValue(gameDefaults.per_point_value ?? 0);
-           setGinRummyGinBonus(gameDefaults.gin_bonus ?? 200);
-           setGinRummyUndercutBonus(gameDefaults.undercut_bonus ?? 200);
+           setGinRummyGinBonus(gameDefaults.gin_bonus ?? 25);
+           setGinRummyUndercutBonus(gameDefaults.undercut_bonus ?? 25);
         }
       } else {
         // Fall back to default ante
@@ -1183,8 +1183,8 @@ export const DealerGameSetup = ({
         if (gameType === 'gin-rummy') {
           setGinRummyPointsToWin(100);
           setGinRummyPerPointValue(0);
-           setGinRummyGinBonus(200);
-           setGinRummyUndercutBonus(200);
+           setGinRummyGinBonus(25);
+           setGinRummyUndercutBonus(25);
         }
       }
     }
@@ -1816,10 +1816,10 @@ export const DealerGameSetup = ({
                       <p className="text-xs text-amber-200/50">0 = disabled (flat ante only)</p>
                     </div>
                     
-                     {/* Bonus chips */}
+                     {/* Bonus points */}
                      <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-1">
-                         <Label className="text-amber-100 text-sm">Gin Bonus (% of ante)</Label>
+                         <Label className="text-amber-100 text-sm">Gin Bonus (pts)</Label>
                          <Input
                            type="text"
                            inputMode="numeric"
@@ -1827,10 +1827,10 @@ export const DealerGameSetup = ({
                            onChange={(e) => setGinRummyGinBonus(parseInt(e.target.value) || 0)}
                            className="bg-amber-900/30 border-poker-gold/50 text-white"
                          />
-                         <p className="text-xs text-amber-200/50">e.g. 100 = extra 1× ante</p>
+                         <p className="text-xs text-amber-200/50">Extra pts awarded for going gin</p>
                        </div>
                        <div className="space-y-1">
-                         <Label className="text-amber-100 text-sm">Undercut Bonus (% of ante)</Label>
+                         <Label className="text-amber-100 text-sm">Undercut Bonus (pts)</Label>
                          <Input
                            type="text"
                            inputMode="numeric"
@@ -1838,7 +1838,7 @@ export const DealerGameSetup = ({
                            onChange={(e) => setGinRummyUndercutBonus(parseInt(e.target.value) || 0)}
                            className="bg-amber-900/30 border-poker-gold/50 text-white"
                          />
-                         <p className="text-xs text-amber-200/50">e.g. 100 = extra 1× ante</p>
+                         <p className="text-xs text-amber-200/50">Extra pts awarded for undercutting</p>
                        </div>
                      </div>
                      
@@ -1846,8 +1846,8 @@ export const DealerGameSetup = ({
                      <div className="text-xs text-amber-200/60 bg-amber-900/20 rounded-lg p-2 text-center">
                        Match to {ginRummyPointsToWin} pts
                        {ginRummyPerPointValue > 0 && ` • $${ginRummyPerPointValue}/pt`}
-                       {ginRummyGinBonus > 0 && ` • Gin +${ginRummyGinBonus}% ante`}
-                       {ginRummyUndercutBonus > 0 && ` • Undercut +${ginRummyUndercutBonus}% ante`}
+                       {ginRummyGinBonus > 0 && ` • Gin +${ginRummyGinBonus}pts`}
+                       {ginRummyUndercutBonus > 0 && ` • Undercut +${ginRummyUndercutBonus}pts`}
                      </div>
                   </>
                 )}
