@@ -369,20 +369,19 @@ export async function endGinRummyGame(
     const handNumber = claimedRound.hand_number ?? 1;
     const dealerGameId = claimedRound.dealer_game_id ?? null;
 
-    // Fetch dealer_game config for per-point settings
-    // NOTE: Per-hand chip transfers (ante + gin/undercut bonuses) are already handled
-    // by recordGinRummyHandResult after each hand. The match-end payout only adds
-    // the per-point score differential (if enabled).
+    // Fetch dealer_game config for bonus/per-point settings
     const config = await fetchGinRummyConfig(dealerGameId);
     const perPointValue = config.per_point_value ?? 0;
+    const anteAmount = ginState.anteAmount || 1;
     
-    let payoutAmount = 0;
+    // Base match payout: the ante amount (chips transfer at match end, not per-hand)
+    let payoutAmount = anteAmount;
     
-    // Per-point payout (if enabled) - based on final score differential
+    // Optional: per-point payout on top of ante (based on final score differential)
     if (perPointValue > 0) {
       const winnerScore = ginState.matchScores[ginState.winnerPlayerId] || 0;
       const loserScore = ginState.matchScores[loserId] || 0;
-      payoutAmount = (winnerScore - loserScore) * perPointValue;
+      payoutAmount += (winnerScore - loserScore) * perPointValue;
     }
 
     const chipChanges: Record<string, number> = {
@@ -390,20 +389,18 @@ export async function endGinRummyGame(
       [loserId]: -payoutAmount,
     };
 
-    // Execute per-point chip transfers (only if per-point is enabled)
-    if (payoutAmount > 0) {
-      const { error: deductError } = await supabase.rpc('increment_player_chips', {
-        p_player_id: loserId,
-        p_amount: -payoutAmount,
-      });
-      if (deductError) console.error('[GIN-RUMMY] Failed to deduct loser:', deductError);
+    // Execute chip transfer at match end (single transaction)
+    const { error: deductError } = await supabase.rpc('increment_player_chips', {
+      p_player_id: loserId,
+      p_amount: -payoutAmount,
+    });
+    if (deductError) console.error('[GIN-RUMMY] Failed to deduct loser:', deductError);
 
-      const { error: awardError } = await supabase.rpc('increment_player_chips', {
-        p_player_id: ginState.winnerPlayerId,
-        p_amount: payoutAmount,
-      });
-      if (awardError) console.error('[GIN-RUMMY] Failed to award winner:', awardError);
-    }
+    const { error: awardError } = await supabase.rpc('increment_player_chips', {
+      p_player_id: ginState.winnerPlayerId,
+      p_amount: payoutAmount,
+    });
+    if (awardError) console.error('[GIN-RUMMY] Failed to award winner:', awardError);
 
     // Get winner display name
     const { data: winner } = await supabase
@@ -519,20 +516,19 @@ export async function recordGinRummyHandResult(
   const config = await fetchGinRummyConfig(dealerGameId);
   const ante = ginState.anteAmount;
   
-  // Calculate per-hand chip transfer: base ante + bonus for gin/undercut
-  let handPayout = ante; // Winner always gets the ante
+  // Per-hand: record the hand result for history only.
+  // Chips only change hands when the match is won (someone reaches pointsToWin).
+  // Per-hand payout calculation is kept for the game_results record (for audit/history).
+  let handPayout = ante; // What the winner would earn per hand (for record-keeping)
   
-   if (result.isGin && config.gin_bonus > 0) {
-     handPayout += Math.floor((config.gin_bonus / 100) * ante);
-   } else if (result.isUndercut && config.undercut_bonus > 0) {
-     handPayout += Math.floor((config.undercut_bonus / 100) * ante);
-   }
-  
-  // Execute per-hand chip transfers
-  await Promise.all([
-    supabase.rpc('increment_player_chips', { p_player_id: loserId, p_amount: -handPayout }),
-    supabase.rpc('increment_player_chips', { p_player_id: result.winnerId, p_amount: handPayout }),
-  ]);
+  if (result.isGin && config.gin_bonus > 0) {
+    handPayout += Math.floor((config.gin_bonus / 100) * ante);
+  } else if (result.isUndercut && config.undercut_bonus > 0) {
+    handPayout += Math.floor((config.undercut_bonus / 100) * ante);
+  }
+
+  // NO chip transfers here — chips only move at match end (endGinRummyGame).
+  // This keeps the game zero-sum until the match winner is determined.
 
   const chipChanges: Record<string, number> = {
     [result.winnerId]: handPayout,
