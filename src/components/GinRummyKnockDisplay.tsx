@@ -89,9 +89,6 @@ const OpponentHandDisplay = ({
                     : "border-white/10 bg-transparent"
                 )}
               >
-                <span className="text-[6px] text-white/40 uppercase tracking-wide">
-                  {canTarget ? '← Lay off here' : meld.type === 'run' ? 'Run' : 'Set'}
-                </span>
                 <div className="flex -space-x-2.5">
                   {meld.cards.map((card, j) => (
                     <CribbagePlayingCard
@@ -110,7 +107,6 @@ const OpponentHandDisplay = ({
       {/* Deadwood */}
       {sortedDeadwood.length > 0 && (
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[6px] text-red-400/70 uppercase tracking-wide">Deadwood</span>
           <div className="flex -space-x-2.5">
             {sortedDeadwood.map((card, i) => (
               <div key={`dw-${card.rank}-${card.suit}-${i}`} className="opacity-70">
