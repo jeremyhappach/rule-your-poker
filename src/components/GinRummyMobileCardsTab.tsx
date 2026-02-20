@@ -163,8 +163,8 @@ export const GinRummyMobileCardsTab = ({
     };
   }, [myState]);
 
-  // Keep legacy sortedHand alias for lay-off highlighting
-  const sortedHand = organizedHand.allSorted;
+  // Flat sorted hand: deadwood first (by rank), then melds
+  const sortedHand = [...organizedHand.deadwoodCards, ...organizedHand.meldCards];
 
 
   const handleCardClick = (index: number) => {
@@ -240,85 +240,34 @@ export const GinRummyMobileCardsTab = ({
         </span>
       </div>
 
-      {/* Cards display — grouped: melds first, then deadwood */}
-      <div className="flex items-start justify-center py-1 overflow-visible gap-1.5 flex-wrap">
-        {/* Meld groups */}
-        {organizedHand.meldCards.length > 0 && (() => {
-          // Group by meldGroup index
-          const groups: Array<typeof organizedHand.meldCards> = [];
-          organizedHand.meldCards.forEach(item => {
-            if (!groups[item.meldGroup]) groups[item.meldGroup] = [];
-            groups[item.meldGroup].push(item);
-          });
-          return groups.filter(Boolean).map((group, gi) => (
-            <div key={`meld-group-${gi}`} className="flex flex-col items-center gap-0">
-              <div className="flex -space-x-3">
-                {group.map(({ card, originalIndex }, ci) => {
-                  const isSelected = selectedCardIndex === originalIndex;
-                  const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-                  const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-                  return (
-                    <button
-                      key={`${card.rank}-${card.suit}-${originalIndex}`}
-                      onClick={() => handleCardClick(originalIndex)}
-                      onPointerUp={(e) => e.currentTarget.blur()}
-                      disabled={isProcessing || !canSelect}
-                      className={cn(
-                        "transition-all duration-200 rounded relative",
-                        isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                        canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
-                        isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
-                      )}
-                      style={{ zIndex: isSelected ? 20 : ci }}
-                    >
-                      <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ));
-        })()}
-
-        {/* Vertical separator between melds and deadwood */}
-        {organizedHand.meldCards.length > 0 && organizedHand.deadwoodCards.length > 0 && (
-          <div className="w-px self-stretch bg-white/20 mx-0.5" />
-        )}
-
-        {/* Deadwood cards */}
-        {organizedHand.deadwoodCards.length > 0 && (
-          <div className="flex flex-col items-center gap-0">
-            <div className={cn(
-              "flex",
-              organizedHand.deadwoodCards.length > 4 ? "-space-x-3" : "-space-x-2"
-            )}>
-              {organizedHand.deadwoodCards.map(({ card, originalIndex }, ci) => {
-                const isSelected = selectedCardIndex === originalIndex;
-                const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-                const isLayOffable = layOffCardIndices.has(originalIndex);
-                const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
-                return (
-                  <button
-                    key={`${card.rank}-${card.suit}-${originalIndex}`}
-                    onClick={() => handleCardClick(originalIndex)}
-                    onPointerUp={(e) => e.currentTarget.blur()}
-                    disabled={isProcessing || !canSelect}
-                    className={cn(
-                      "transition-all duration-200 rounded relative opacity-80",
-                      isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
-                      canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
-                      isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
-                      isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
-                    )}
-                    style={{ zIndex: isSelected ? 20 : ci }}
-                  >
-                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+      {/* Cards display — single flat horizontal row: deadwood first (rank-sorted), then melds */}
+      <div className="flex items-start justify-center py-1 overflow-visible -space-x-4">
+        {sortedHand.map(({ card, originalIndex, meldGroup }, ci) => {
+          const isSelected = selectedCardIndex === originalIndex;
+          const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
+          const isLayOffable = layOffCardIndices.has(originalIndex);
+          const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+          const isMeld = meldGroup >= 0;
+          return (
+            <button
+              key={`${card.rank}-${card.suit}-${originalIndex}`}
+              onClick={() => handleCardClick(originalIndex)}
+              onPointerUp={(e) => e.currentTarget.blur()}
+              disabled={isProcessing || !canSelect}
+              className={cn(
+                "transition-all duration-200 rounded relative",
+                isMeld ? "opacity-100" : "opacity-80",
+                isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
+                canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
+                isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
+              )}
+              style={{ zIndex: isSelected ? 20 : ci }}
+            >
+              <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+            </button>
+          );
+        })}
       </div>
 
       {/* Action area */}
