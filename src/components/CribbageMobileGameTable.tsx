@@ -402,6 +402,15 @@ export const CribbageMobileGameTable = ({
     
     return () => clearTimeout(timer);
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.count]);
+
+  // Clear 31 delay when phase moves away from pegging (e.g. hand ends or new hand starts)
+  useEffect(() => {
+    if (!cribbageState) return;
+    if (cribbageState.phase !== 'pegging') {
+      setThirtyOneDelayActive(false);
+      thirtyOneDelayRef.current = null;
+    }
+  }, [cribbageState?.phase]);
   
   // Use the previous (pre-reset) index during 31 delay, otherwise use the DB index
   const sequenceStartIndex = thirtyOneDelayActive 
@@ -2086,9 +2095,11 @@ export const CribbageMobileGameTable = ({
             </div>
           </div>
         </div>
-        {/* Dealer announcement: Awaiting ante decisions */}
+        {/* Dealer announcement banner */}
         <div className="bg-poker-gold/95 px-4 py-3 text-center">
-          <p className="text-sm font-bold text-slate-900">Awaiting ante decisions...</p>
+          <p className="text-sm font-bold text-slate-900">
+            {initialLoadComplete ? 'Preparing next hand...' : 'Awaiting ante decisions...'}
+          </p>
         </div>
         {/* Tab section placeholder */}
         <div className="flex-1 bg-background" />
