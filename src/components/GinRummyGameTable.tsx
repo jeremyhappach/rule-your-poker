@@ -664,8 +664,8 @@ export const GinRummyGameTable = ({
               opponentId={opponentId}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
-              onDrawStock={handleDrawStock}
-              onDrawDiscard={handleDrawDiscard}
+              onDrawStock={ginState.phase === 'first_draw' ? handlePassFirstDraw : handleDrawStock}
+              onDrawDiscard={ginState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
               isProcessing={isProcessing}
             />
 

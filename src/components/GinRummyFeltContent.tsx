@@ -44,6 +44,9 @@ export const GinRummyFeltContent = ({
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
   const canDraw = isMyTurn && ginState.phase === 'playing' && ginState.turnPhase === 'draw' && !isProcessing;
+  const canTakeFirstDraw = isMyTurn && ginState.phase === 'first_draw' && !isProcessing;
+  const discardClickable = canDraw || canTakeFirstDraw;
+  const stockClickable = canDraw || canTakeFirstDraw; // During first_draw, tapping stock = Pass
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
   const hidePiles = ['knocking', 'laying_off', 'scoring', 'complete'].includes(ginState.phase);
@@ -72,11 +75,11 @@ export const GinRummyFeltContent = ({
           {/* Stock Pile */}
           <div className="flex flex-col items-center gap-0.5">
             <button
-              onClick={canDraw ? onDrawStock : undefined}
-              disabled={!canDraw}
+              onClick={stockClickable ? onDrawStock : undefined}
+              disabled={!stockClickable}
               className={`w-12 h-[68px] rounded-md border flex items-center justify-center shadow-lg transition-all ${
                 stockDanger ? 'border-red-500/60' : 'border-white/30'
-              } ${canDraw ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+              } ${stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
               style={{
                 background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
               }}
@@ -94,9 +97,9 @@ export const GinRummyFeltContent = ({
           <div className="flex flex-col items-center gap-0.5">
             {discardTopCard ? (
               <button
-                onClick={canDraw ? onDrawDiscard : undefined}
-                disabled={!canDraw}
-                className={`rounded-md transition-all ${canDraw ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
+                onClick={discardClickable ? onDrawDiscard : undefined}
+                disabled={!discardClickable}
+                className={`rounded-md transition-all ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
               >
                 <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
               </button>
@@ -129,14 +132,9 @@ export const GinRummyFeltContent = ({
             <div className="text-center">
               <p className="text-[11px] text-poker-gold font-bold animate-pulse">
                 {ginState.firstDrawPassed.length === 0
-                  ? 'Take the upcard or pass?'
-                  : 'Opponent passed — take or pass?'}
+                  ? 'Tap upcard to take · tap stock to pass'
+                  : 'Opponent passed — tap upcard to take · tap stock to pass'}
               </p>
-              {discardTopCard && (
-                <p className="text-[8px] text-white/40 mt-0.5">
-                  {discardTopCard.rank}{discardTopCard.suit} is face up
-                </p>
-              )}
             </div>
           )}
 
