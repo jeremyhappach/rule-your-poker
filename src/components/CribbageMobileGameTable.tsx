@@ -747,7 +747,6 @@ export const CribbageMobileGameTable = ({
 
   useEffect(() => {
     const playerMessageCount = allMessages.length;
-    const totalWithDealer = playerMessageCount + dealerMessages.length;
     
     // Only flash for player messages, not dealer messages
     if (playerMessageCount > prevMessageCountRef.current && activeTab !== 'chat') {
@@ -758,8 +757,9 @@ export const CribbageMobileGameTable = ({
       return () => clearTimeout(timeout);
     }
     
+    // Always sync the ref to current player count (but don't count dealer msgs)
     prevMessageCountRef.current = playerMessageCount;
-  }, [allMessages.length, dealerMessages.length, activeTab]);
+  }, [allMessages.length, activeTab]);
 
   // Clear unread messages when switching to chat tab
   useEffect(() => {
@@ -2029,7 +2029,12 @@ export const CribbageMobileGameTable = ({
   }
 
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
+  // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
   if (!isDealerSelection && (!initialLoadComplete || !cribbageState || !currentPlayerId)) {
+    // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
+    if (isTransitioning) {
+      return <div className="h-full flex flex-col overflow-hidden bg-background" />;
+    }
     const opponents = players.filter(p => p.user_id !== currentUserId);
     return (
       <div className="h-full flex flex-col overflow-hidden bg-background">
