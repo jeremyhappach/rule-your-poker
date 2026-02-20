@@ -246,14 +246,13 @@ export const GinRummyMobileCardsTab = ({
   return (
     <div className="h-full px-2 flex flex-col">
 
-      {/* ── POST-KNOCK VIEW: Single overlapping row, melds grouped with small gap ── */}
+      {/* ── POST-KNOCK VIEW: Melds top row, deadwood below right-aligned ── */}
       {inPostKnock ? (
         <div className="flex flex-col gap-1 py-1">
-          {/* Single flat row: melds (with small gap between groups) + deadwood + laid-off */}
-          <div className="flex items-end justify-center overflow-visible">
-            {/* Meld groups */}
+          {/* Meld groups row */}
+          <div className="flex items-end justify-start overflow-visible flex-wrap gap-y-1">
             {postKnockMelds.map((meld, meldIdx) => (
-              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-3", meldIdx > 0 && "ml-1.5")}>
+              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-1")}>
                 {meld.cards.map((card, ci) => (
                   <div key={`my-meld-${meldIdx}-${ci}`} style={{ zIndex: ci }}>
                     <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
@@ -262,9 +261,26 @@ export const GinRummyMobileCardsTab = ({
               </div>
             ))}
 
-            {/* Deadwood cards — selectable when laying off */}
-            {postKnockDeadwoodCards.length > 0 && (
-              <div className={cn("flex -space-x-3", postKnockMelds.length > 0 && "ml-1.5")}>
+            {/* Laid-off cards by opponent shown with bold blue highlight */}
+            {iAmKnocker && laidOffOnMyMelds.length > 0 && (
+              <div className="flex -space-x-4 ml-1">
+                {laidOffOnMyMelds.map((card, li) => (
+                  <div
+                    key={`lo-${li}`}
+                    className="rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]"
+                    style={{ zIndex: li }}
+                  >
+                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Deadwood row — right-aligned below melds, selectable when laying off */}
+          {postKnockDeadwoodCards.length > 0 && (
+            <div className="flex items-end justify-end overflow-visible">
+              <div className="flex -space-x-4">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
@@ -285,26 +301,11 @@ export const GinRummyMobileCardsTab = ({
                   );
                 })}
               </div>
-            )}
-
-            {/* Laid-off cards by opponent shown with bold blue highlight */}
-            {iAmKnocker && laidOffOnMyMelds.length > 0 && (
-              <div className="flex -space-x-3 ml-1.5">
-                {laidOffOnMyMelds.map((card, li) => (
-                  <div
-                    key={`lo-${li}`}
-                    className="rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]"
-                    style={{ zIndex: li }}
-                  >
-                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* DW value */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-end">
             <span className="text-xs font-mono font-bold text-muted-foreground">
               DW: {myState.deadwoodValue ?? findOptimalMelds(myState.hand).deadwoodValue}
             </span>
@@ -402,13 +403,8 @@ export const GinRummyMobileCardsTab = ({
         {/* Laying off - my turn as non-knocker */}
         {isLayingOff && (
           <div className="flex items-center gap-2 flex-wrap justify-center">
-            {layOffOptions.length > 0 && selectedCardIndex !== null && selectedLayOffTarget && (
-              <Button onClick={handleLayOff} disabled={isProcessing} className="bg-green-600 hover:bg-green-500 text-white font-bold px-4" size="sm">
-                Lay Off → Felt
-              </Button>
-            )}
             {layOffOptions.length > 0 && selectedCardIndex === null && (
-              <p className="text-muted-foreground text-[10px]">Select a card to lay off</p>
+              <p className="text-muted-foreground text-[10px]">Tap a meld on felt to lay off</p>
             )}
             {layOffOptions.length === 0 && (
               <p className="text-muted-foreground text-[10px]">Nothing to lay off</p>
