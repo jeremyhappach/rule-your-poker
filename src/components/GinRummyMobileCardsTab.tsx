@@ -31,6 +31,8 @@ interface GinRummyMobileCardsTabProps {
   onPassFirstDraw: () => void;
   onLayOff: (cardIndex: number, meldIndex: number) => void;
   onFinishLayingOff: () => void;
+  /** Called whenever the selected card index changes during lay-off — lets parent show meld targets on the felt */
+  onLayOffCardSelected?: (index: number | null) => void;
   currentPlayer: Player;
   gameId: string;
 }
@@ -64,6 +66,7 @@ export const GinRummyMobileCardsTab = ({
   onPassFirstDraw,
   onLayOff,
   onFinishLayingOff,
+  onLayOffCardSelected,
   currentPlayer,
   gameId,
 }: GinRummyMobileCardsTabProps) => {
@@ -144,7 +147,11 @@ export const GinRummyMobileCardsTab = ({
     if (!myState) return;
     // Allow selection during discard phase or lay-off phase
     if ((ginState.turnPhase === 'discard' && isMyTurn && ginState.phase === 'playing') || isLayingOff) {
-      setSelectedCardIndex(selectedCardIndex === index ? null : index);
+      const newIndex = selectedCardIndex === index ? null : index;
+      setSelectedCardIndex(newIndex);
+      if (isLayingOff) {
+        onLayOffCardSelected?.(newIndex);
+      }
     }
   };
 
@@ -163,6 +170,7 @@ export const GinRummyMobileCardsTab = ({
   const handleLayOff = () => {
     if (selectedCardIndex === null || !selectedLayOffTarget) return;
     onLayOff(selectedCardIndex, selectedLayOffTarget.onMeldIndex);
+    onLayOffCardSelected?.(null);
     setSelectedCardIndex(null);
   };
 

@@ -107,6 +107,8 @@ export const GinRummyGameTable = ({
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
+  // Lifted lay-off card selection so the felt can show meld targets
+  const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
@@ -642,6 +644,13 @@ export const GinRummyGameTable = ({
               onDrawStock={handleDrawStock}
               onDrawDiscard={handleDrawDiscard}
               isProcessing={isProcessing}
+              selectedCardForLayOff={layOffSelectedCardIndex !== null}
+              onLayOffToMeld={(meldIndex) => {
+                if (layOffSelectedCardIndex !== null) {
+                  handleLayOff(layOffSelectedCardIndex, meldIndex);
+                  setLayOffSelectedCardIndex(null);
+                }
+              }}
             />
 
             {/* Knock Result Display */}
@@ -827,7 +836,11 @@ export const GinRummyGameTable = ({
               onTakeFirstDraw={handleTakeFirstDraw}
               onPassFirstDraw={handlePassFirstDraw}
               onLayOff={handleLayOff}
-              onFinishLayingOff={handleFinishLayingOff}
+              onFinishLayingOff={() => {
+                setLayOffSelectedCardIndex(null);
+                handleFinishLayingOff();
+              }}
+              onLayOffCardSelected={setLayOffSelectedCardIndex}
               currentPlayer={currentPlayer}
               gameId={gameId}
             />
