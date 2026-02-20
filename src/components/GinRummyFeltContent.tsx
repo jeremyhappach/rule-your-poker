@@ -4,10 +4,9 @@
 import { Badge } from '@/components/ui/badge';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
-import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
+import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
-import { cn } from '@/lib/utils';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
@@ -18,9 +17,6 @@ interface GinRummyFeltContentProps {
   onDrawStock?: () => void;
   onDrawDiscard?: () => void;
   isProcessing?: boolean;
-  // Lay-off meld targeting
-  selectedCardForLayOff?: boolean;
-  onLayOffToMeld?: (meldIndex: number) => void;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
@@ -33,8 +29,6 @@ const toDisplayCard = (card: GinRummyCard) => ({
   value: card.value,
 });
 
-const meldLabel = (meld: Meld) => meld.type === 'run' ? 'Run' : 'Set';
-
 export const GinRummyFeltContent = ({
   ginState,
   currentPlayerId,
@@ -44,8 +38,6 @@ export const GinRummyFeltContent = ({
   onDrawStock,
   onDrawDiscard,
   isProcessing,
-  selectedCardForLayOff,
-  onLayOffToMeld,
 }: GinRummyFeltContentProps) => {
   const discardTopCard = getDiscardTop(ginState);
   const stockCount = stockRemaining(ginState);
@@ -55,15 +47,6 @@ export const GinRummyFeltContent = ({
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
   const hidePiles = ['knocking', 'laying_off', 'scoring', 'complete'].includes(ginState.phase);
-
-  // Knocker's melds for lay-off targeting
-  const knockerId = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
-  const isPlayerLayingOff =
-    (ginState.phase === 'knocking' || ginState.phase === 'laying_off') &&
-    ginState.currentTurnPlayerId === currentPlayerId &&
-    currentPlayerId !== knockerId;
-  const knockerMelds: Meld[] = knockerId ? ginState.playerStates[knockerId]?.melds ?? [] : [];
-  const showMeldTargets = isPlayerLayingOff && selectedCardForLayOff && knockerMelds.length > 0;
 
   return (
     <>
@@ -127,108 +110,43 @@ export const GinRummyFeltContent = ({
         </div>
       )}
 
-      {/* Knocker's melds shown on the felt during lay-off — player taps one to lay off onto it */}
-      {isPlayerLayingOff && knockerMelds.length > 0 && (
-        <div className="absolute top-[42%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 w-[90%]">
-          <p className="text-[9px] text-center mb-1.5">
-            {showMeldTargets ? (
-              <span className="text-poker-gold font-bold animate-pulse">Tap a meld to lay off onto</span>
-            ) : (
-              <span className="text-white/60">{getPlayerUsername(knockerId ?? '')}'s melds — select a card first</span>
-            )}
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {knockerMelds.map((meld, meldIdx) => (
-              <button
-                key={`meld-target-${meldIdx}`}
-                onClick={showMeldTargets && onLayOffToMeld ? () => onLayOffToMeld(meldIdx) : undefined}
-                disabled={!showMeldTargets || isProcessing}
-                className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-lg p-1.5 transition-all border",
-                  showMeldTargets
-                    ? "ring-2 ring-poker-gold/80 border-poker-gold/60 bg-black/40 cursor-pointer active:scale-95"
-                    : "border-white/10 bg-black/20 opacity-70"
-                )}
-              >
-                <span className="text-[7px] text-white/60 uppercase tracking-wide">{meldLabel(meld)}</span>
-                <div className="flex -space-x-3">
-                  {meld.cards.map((card, j) => (
-                    <CribbagePlayingCard
-                      key={`${card.rank}-${card.suit}-${j}`}
-                      card={toDisplayCard(card)}
-                      size="sm"
-                    />
-                  ))}
-                </div>
-              </button>
-            ))}
-          </div>
+      {/* Phase / Turn Indicator — only shown during active play, not end-of-hand phases */}
+      {!hidePiles && (
+        <div className="absolute top-[72%] left-1/2 -translate-x-1/2 z-20 w-[80%]">
+          {ginState.phase === 'playing' && (
+            <p className="text-[10px] text-white/80 text-center">
+              {isMyTurn ? (
+                <span className="text-poker-gold font-bold animate-pulse">
+                  {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
+                </span>
+              ) : (
+                <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
+              )}
+            </p>
+          )}
+
+          {ginState.phase === 'first_draw' && isMyTurn && (
+            <div className="text-center">
+              <p className="text-[11px] text-poker-gold font-bold animate-pulse">
+                {ginState.firstDrawPassed.length === 0
+                  ? 'Take the upcard or pass?'
+                  : 'Opponent passed — take or pass?'}
+              </p>
+              {discardTopCard && (
+                <p className="text-[8px] text-white/40 mt-0.5">
+                  {discardTopCard.rank}{discardTopCard.suit} is face up
+                </p>
+              )}
+            </div>
+          )}
+
+          {ginState.phase === 'first_draw' && !isMyTurn && (
+            <p className="text-[10px] text-white/60 text-center">
+              {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
+            </p>
+          )}
         </div>
       )}
-
-      {/* Phase / Turn Indicator */}
-      <div className="absolute top-[72%] left-1/2 -translate-x-1/2 z-20 w-[80%]">
-        {ginState.phase === 'playing' && (
-          <p className="text-[10px] text-white/80 text-center">
-            {isMyTurn ? (
-              <span className="text-poker-gold font-bold animate-pulse">
-                {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
-              </span>
-            ) : (
-              <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
-            )}
-          </p>
-        )}
-
-        {ginState.phase === 'first_draw' && isMyTurn && (
-          <div className="text-center">
-            <p className="text-[11px] text-poker-gold font-bold animate-pulse">
-              {ginState.firstDrawPassed.length === 0
-                ? 'Take the upcard or pass?'
-                : 'Opponent passed — take or pass?'}
-            </p>
-            {discardTopCard && (
-              <p className="text-[8px] text-white/40 mt-0.5">
-                {discardTopCard.rank}{discardTopCard.suit} is face up
-              </p>
-            )}
-          </div>
-        )}
-
-        {ginState.phase === 'first_draw' && !isMyTurn && (
-          <p className="text-[10px] text-white/60 text-center">
-            {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
-          </p>
-        )}
-
-        {ginState.phase === 'knocking' && !isPlayerLayingOff && (
-          <p className="text-[10px] text-poker-gold font-bold text-center">
-            {getPlayerUsername(
-              Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked)?.[0] ?? ''
-            )} knocked!
-          </p>
-        )}
-
-        {ginState.phase === 'laying_off' && !isPlayerLayingOff && (
-          <p className="text-[10px] text-amber-300 font-bold text-center">
-            Laying off cards...
-          </p>
-        )}
-
-        {ginState.phase === 'complete' && ginState.knockResult && (
-          <p className="text-[10px] text-poker-gold font-bold text-center">
-            {getPlayerUsername(ginState.knockResult.winnerId)} wins!
-            {ginState.knockResult.isGin && ' GIN! 🎉'}
-            {ginState.knockResult.isUndercut && ' Undercut!'}
-          </p>
-        )}
-
-        {ginState.phase === 'complete' && !ginState.knockResult && (
-          <p className="text-[10px] text-red-400 font-bold text-center animate-pulse">
-            Void Hand — Stock Exhausted · Re-dealing...
-          </p>
-        )}
-      </div>
     </>
   );
 };

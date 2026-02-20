@@ -134,13 +134,37 @@ export const GinRummyMobileCardsTab = ({
     return match || null;
   }, [selectedCardIndex, myState, layOffOptions]);
 
-  // Sort hand by rank for display, preserving original indices for actions
-  const sortedHand = useMemo(() => {
-    if (!myState) return [];
-    return myState.hand
-      .map((card, index) => ({ card, originalIndex: index }))
-      .sort((a, b) => (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0));
+  // Always organize hand into melds + deadwood (deadwood sorted by rank)
+  const organizedHand = useMemo(() => {
+    if (!myState || myState.hand.length === 0) return { meldCards: [], deadwoodCards: [], allSorted: [] };
+    const { melds, deadwood } = findOptimalMelds(myState.hand);
+
+    // Cards used in melds — preserve meld grouping for display
+    const meldCards: Array<{ card: GinRummyCard; originalIndex: number; meldGroup: number }> = [];
+    melds.forEach((meld, meldIdx) => {
+      meld.cards.forEach(card => {
+        const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
+        if (originalIndex !== -1) meldCards.push({ card, originalIndex, meldGroup: meldIdx });
+      });
+    });
+
+    // Deadwood sorted by rank
+    const deadwoodCards = [...deadwood]
+      .sort((a, b) => (RANK_ORDER[a.rank] || 0) - (RANK_ORDER[b.rank] || 0))
+      .map(card => {
+        const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
+        return { card, originalIndex, meldGroup: -1 };
+      });
+
+    return {
+      meldCards,
+      deadwoodCards,
+      allSorted: [...meldCards, ...deadwoodCards],
+    };
   }, [myState]);
+
+  // Keep legacy sortedHand alias for lay-off highlighting
+  const sortedHand = organizedHand.allSorted;
 
 
   const handleCardClick = (index: number) => {
@@ -215,42 +239,86 @@ export const GinRummyMobileCardsTab = ({
           DW: {myState.hand.length > 0 ? findOptimalMelds(myState.hand).deadwoodValue : '–'}
         </span>
       </div>
-      {/* Cards display - horizontal overlapping row */}
-      <div className="flex items-center justify-center py-1 overflow-visible">
-        <div className={cn(
-          "flex justify-center",
-          cardCount > 7 ? "-space-x-4" : cardCount > 5 ? "-space-x-3" : "-space-x-2"
-        )}>
-          {sortedHand.map(({ card, originalIndex }, i) => {
-            const isSelected = selectedCardIndex === originalIndex;
-            const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
-            const isLayOffable = layOffCardIndices.has(originalIndex);
-            const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
 
-            return (
-              <button
-                key={`${card.rank}-${card.suit}-${originalIndex}`}
-                onClick={() => handleCardClick(originalIndex)}
-                onPointerUp={(e) => e.currentTarget.blur()}
-                disabled={isProcessing || !canSelect}
-                className={cn(
-                  "transition-all duration-200 rounded relative",
-                  isSelected
-                    ? "-translate-y-3 ring-2 ring-poker-gold z-20"
-                    : "translate-y-0",
-                  canSelect &&
-                    !isSelected &&
-                    "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-1 [@media(hover:hover)_and_(pointer:fine)]:hover:ring-poker-gold/50",
-                  isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
-                  isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
-                )}
-                style={{ zIndex: isSelected ? 20 : i }}
-              >
-                <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-              </button>
-            );
-          })}
-        </div>
+      {/* Cards display — grouped: melds first, then deadwood */}
+      <div className="flex items-start justify-center py-1 overflow-visible gap-1.5 flex-wrap">
+        {/* Meld groups */}
+        {organizedHand.meldCards.length > 0 && (() => {
+          // Group by meldGroup index
+          const groups: Array<typeof organizedHand.meldCards> = [];
+          organizedHand.meldCards.forEach(item => {
+            if (!groups[item.meldGroup]) groups[item.meldGroup] = [];
+            groups[item.meldGroup].push(item);
+          });
+          return groups.filter(Boolean).map((group, gi) => (
+            <div key={`meld-group-${gi}`} className="flex flex-col items-center gap-0">
+              <div className="flex -space-x-3">
+                {group.map(({ card, originalIndex }, ci) => {
+                  const isSelected = selectedCardIndex === originalIndex;
+                  const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
+                  const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+                  return (
+                    <button
+                      key={`${card.rank}-${card.suit}-${originalIndex}`}
+                      onClick={() => handleCardClick(originalIndex)}
+                      onPointerUp={(e) => e.currentTarget.blur()}
+                      disabled={isProcessing || !canSelect}
+                      className={cn(
+                        "transition-all duration-200 rounded relative",
+                        isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
+                        canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                        isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
+                      )}
+                      style={{ zIndex: isSelected ? 20 : ci }}
+                    >
+                      <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ));
+        })()}
+
+        {/* Vertical separator between melds and deadwood */}
+        {organizedHand.meldCards.length > 0 && organizedHand.deadwoodCards.length > 0 && (
+          <div className="w-px self-stretch bg-white/20 mx-0.5" />
+        )}
+
+        {/* Deadwood cards */}
+        {organizedHand.deadwoodCards.length > 0 && (
+          <div className="flex flex-col items-center gap-0">
+            <div className={cn(
+              "flex",
+              organizedHand.deadwoodCards.length > 4 ? "-space-x-3" : "-space-x-2"
+            )}>
+              {organizedHand.deadwoodCards.map(({ card, originalIndex }, ci) => {
+                const isSelected = selectedCardIndex === originalIndex;
+                const canSelect = (isMyTurn && ginState.turnPhase === 'discard' && ginState.phase === 'playing') || isLayingOff;
+                const isLayOffable = layOffCardIndices.has(originalIndex);
+                const isNewlyDrawn = drawnCard && card.rank === drawnCard.rank && card.suit === drawnCard.suit;
+                return (
+                  <button
+                    key={`${card.rank}-${card.suit}-${originalIndex}`}
+                    onClick={() => handleCardClick(originalIndex)}
+                    onPointerUp={(e) => e.currentTarget.blur()}
+                    disabled={isProcessing || !canSelect}
+                    className={cn(
+                      "transition-all duration-200 rounded relative opacity-80",
+                      isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "translate-y-0",
+                      canSelect && !isSelected && "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-1",
+                      isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
+                      isNewlyDrawn && !isSelected && "ring-2 ring-sky-400"
+                    )}
+                    style={{ zIndex: isSelected ? 20 : ci }}
+                  >
+                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action area */}

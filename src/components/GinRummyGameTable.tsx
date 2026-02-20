@@ -359,11 +359,18 @@ export const GinRummyGameTable = ({
         else if ((state.phase === 'knocking' || state.phase === 'laying_off')) {
           const knockerId = Object.entries(state.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
           if (knockerId && botId !== knockerId) {
-            // Lay off cards if possible
+            // Lay off cards one at a time with 1.5s delay each so player can follow along
             const layOffs = botGetLayOffs(botState.hand, state.playerStates[knockerId].melds);
             for (const lo of layOffs) {
               try {
                 state = layOffCard(state, botId, lo.card, lo.onMeldIndex);
+                // Write intermediate state so viewer can see each lay-off
+                await supabase
+                  .from('rounds')
+                  .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+                  .eq('id', roundId);
+                setGinState(state);
+                await new Promise(resolve => setTimeout(resolve, 1500));
               } catch {
                 break; // Card may no longer be valid
               }
@@ -644,21 +651,22 @@ export const GinRummyGameTable = ({
               onDrawStock={handleDrawStock}
               onDrawDiscard={handleDrawDiscard}
               isProcessing={isProcessing}
-              selectedCardForLayOff={layOffSelectedCardIndex !== null}
-              onLayOffToMeld={(meldIndex) => {
-                if (layOffSelectedCardIndex !== null) {
-                  handleLayOff(layOffSelectedCardIndex, meldIndex);
-                  setLayOffSelectedCardIndex(null);
-                }
-              }}
             />
 
-            {/* Knock Result Display */}
+            {/* Knock Result Display — also handles lay-off meld targeting */}
             {(ginState.phase === 'knocking' || ginState.phase === 'laying_off' || ginState.phase === 'scoring' || (ginState.phase === 'complete' && ginState.knockResult)) && (
               <GinRummyKnockDisplay
                 ginState={ginState}
                 getPlayerUsername={getPlayerUsername}
                 currentPlayerId={currentPlayerId}
+                layOffSelectedCardIndex={layOffSelectedCardIndex}
+                onLayOffToMeld={(meldIndex) => {
+                  if (layOffSelectedCardIndex !== null) {
+                    handleLayOff(layOffSelectedCardIndex, meldIndex);
+                    setLayOffSelectedCardIndex(null);
+                  }
+                }}
+                isProcessing={isProcessing}
               />
             )}
 
