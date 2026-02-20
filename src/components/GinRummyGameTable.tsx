@@ -113,6 +113,10 @@ export const GinRummyGameTable = ({
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
+  // Chip transfer animation at match end
+  const [chipAnimating, setChipAnimating] = useState(false);
+  const [chipAnimWinnerId, setChipAnimWinnerId] = useState<string | null>(null);
+  const matchEndAnimatedRef = useRef(false);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
 
@@ -413,13 +417,22 @@ export const GinRummyGameTable = ({
 
     const processCompletion = async () => {
       try {
-        // Record hand result
+        // Record hand result (history only, no chip transfer per-hand)
         if (ginState.knockResult) {
           await recordGinRummyHandResult(gameId, dealerGameId, handNumber, ginState);
         }
 
         // Check if match is won
         if (ginState.winnerPlayerId) {
+          // Trigger chip transfer animation before ending the game
+          if (!matchEndAnimatedRef.current) {
+            matchEndAnimatedRef.current = true;
+            setChipAnimWinnerId(ginState.winnerPlayerId);
+            setChipAnimating(true);
+            // Wait for animation to play
+            await new Promise(resolve => setTimeout(resolve, 2200));
+            setChipAnimating(false);
+          }
           await endGinRummyGame(gameId, roundId, ginState);
           onGameComplete();
           return;
@@ -680,6 +693,38 @@ export const GinRummyGameTable = ({
                 getPlayerUsername={getPlayerUsername}
               />
             )}
+
+            {/* Chip transfer animation at match end */}
+            {chipAnimating && chipAnimWinnerId && (() => {
+              const isCurrentPlayerWinner = chipAnimWinnerId === currentPlayerId;
+              return (
+                <div className="absolute inset-0 z-[70] pointer-events-none flex items-center justify-center">
+                  <div
+                    className="w-10 h-10 rounded-full border-2 border-white shadow-xl flex items-center justify-center"
+                    style={{
+                      backgroundColor: 'hsl(45 93% 47%)',
+                      animation: isCurrentPlayerWinner
+                        ? 'ginChipToBottom 2s ease-in-out forwards'
+                        : 'ginChipToTop 2s ease-in-out forwards',
+                    }}
+                  >
+                    <span className="text-black text-[10px] font-bold">${anteAmount}</span>
+                  </div>
+                  <style>{`
+                    @keyframes ginChipToBottom {
+                      0%   { transform: translateY(-60px) scale(1); opacity: 1; }
+                      80%  { transform: translateY(80px) scale(1.1); opacity: 1; }
+                      100% { transform: translateY(80px) scale(0); opacity: 0; }
+                    }
+                    @keyframes ginChipToTop {
+                      0%   { transform: translateY(60px) scale(1); opacity: 1; }
+                      80%  { transform: translateY(-80px) scale(1.1); opacity: 1; }
+                      100% { transform: translateY(-80px) scale(0); opacity: 0; }
+                    }
+                  `}</style>
+                </div>
+              );
+            })()}
 
             {/* Dealer button at bottom - only if current player is dealer */}
             {isCribDealer(currentPlayerId) && ginState.phase === 'playing' && (
