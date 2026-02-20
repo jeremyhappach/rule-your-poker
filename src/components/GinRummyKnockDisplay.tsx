@@ -177,19 +177,6 @@ export const GinRummyKnockDisplay = ({
 
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none px-2 gap-2">
-      {/* Result header */}
-      {result && (
-        <p className={cn(
-          "text-[11px] font-bold drop-shadow-md text-center",
-          result.isGin ? "text-green-400" : result.isUndercut ? "text-amber-400" : "text-poker-gold"
-        )}>
-          {result.isGin && '🎉 GIN! '}
-          {result.isUndercut && '🔄 Undercut! '}
-          {!result.isGin && !result.isUndercut && 'Knock — '}
-          {getPlayerUsername(result.winnerId)} wins +{result.pointsAwarded} pts
-        </p>
-      )}
-
       {/* Opponent's cards — the only cards shown on the felt */}
       <div className="w-full max-w-[280px] flex flex-col items-center gap-1 pointer-events-none">
         <OpponentHandDisplay
