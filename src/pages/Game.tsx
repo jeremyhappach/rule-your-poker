@@ -5844,6 +5844,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Gin Rummy: go straight to in_progress and start the round
             console.log('[ANTE][GIN-RUMMY] Starting gin rummy round');
             await startGinRummyRound(gameId!);
+            // Immediately fetch so currentRound is populated before GinRummyGameTable mounts,
+            // eliminating the "Loading Gin Rummy" delay from polling gaps.
+            await fetchGameData();
           } else {
             await supabase
               .from('games')
