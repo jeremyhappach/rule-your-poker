@@ -206,8 +206,9 @@ export const GinRummyGameTable = ({
       });
 
     // Fallback polling — runs every 2s unconditionally.
-    // Always applies fresh DB state regardless of timestamp to guarantee sync.
-    // We compare phase+turn+timestamp to avoid unnecessary re-renders.
+    // ALWAYS applies fresh DB state — no comparison gate. This is intentional.
+    // Realtime silently drops large JSONB payloads; polling is the guaranteed fallback.
+    // React's setState deduplicates if the object is referentially equal anyway.
     const poll = async () => {
       if (!isActive) return;
 
@@ -220,28 +221,12 @@ export const GinRummyGameTable = ({
 
         if (data?.gin_rummy_state && isActive) {
           const freshState = data.gin_rummy_state as unknown as GinRummyState;
-          const freshTs = freshState.lastAction?.timestamp ?? null;
-          const freshPhase = freshState.phase;
-          const freshTurn = freshState.currentTurnPlayerId;
-          const freshFirstDrawOffered = freshState.firstDrawOfferedTo;
-
-          // Apply if anything meaningful has changed (timestamp OR phase/turn ownership)
-          const localTs = localStateTimestampRef.current;
-          const stateChanged =
-            freshTs !== localTs ||
-            freshPhase !== (localStateRef.current?.phase ?? null) ||
-            freshTurn !== (localStateRef.current?.currentTurnPlayerId ?? null) ||
-            freshFirstDrawOffered !== (localStateRef.current?.firstDrawOfferedTo ?? null);
-
-          if (stateChanged) {
-            console.log('[GIN-RUMMY] Poll caught missed update', {
-              localTs,
-              freshTs,
-              freshPhase,
-              freshTurn: freshTurn?.slice(0, 8),
-            });
-            applyState(freshState, 'poll');
-          }
+          console.log('[GIN-RUMMY] Poll applying state', {
+            phase: freshState.phase,
+            turn: freshState.currentTurnPlayerId?.slice(0, 8),
+            ts: freshState.lastAction?.timestamp,
+          });
+          applyState(freshState, 'poll');
         }
       } catch {
         // Silent fail
