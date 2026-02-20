@@ -1784,7 +1784,6 @@ export const DealerGameSetup = ({
                         {[
                           { pts: 100, label: 'Standard', desc: '100 pts' },
                           { pts: 50, label: 'Short', desc: '50 pts' },
-                          { pts: 25, label: 'Quick', desc: '25 pts' },
                         ].map((mode) => (
                           <button
                             key={mode.pts}
@@ -1819,28 +1818,26 @@ export const DealerGameSetup = ({
                      {/* Bonus points */}
                      <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-1">
-                         <Label className="text-amber-100 text-sm">Gin Bonus (pts)</Label>
-                         <Input
-                           type="text"
-                           inputMode="numeric"
-                           value={ginRummyGinBonus}
-                           onChange={(e) => setGinRummyGinBonus(parseInt(e.target.value) || 0)}
-                           className="bg-amber-900/30 border-poker-gold/50 text-white"
-                         />
-                         <p className="text-xs text-amber-200/50">Extra pts awarded for going gin</p>
-                       </div>
-                       <div className="space-y-1">
-                         <Label className="text-amber-100 text-sm">Undercut Bonus (pts)</Label>
-                         <Input
-                           type="text"
-                           inputMode="numeric"
-                           value={ginRummyUndercutBonus}
-                           onChange={(e) => setGinRummyUndercutBonus(parseInt(e.target.value) || 0)}
-                           className="bg-amber-900/30 border-poker-gold/50 text-white"
-                         />
-                         <p className="text-xs text-amber-200/50">Extra pts awarded for undercutting</p>
-                       </div>
-                     </div>
+                          <Label className="text-amber-100 text-sm">Gin (pts)</Label>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={ginRummyGinBonus}
+                            onChange={(e) => setGinRummyGinBonus(parseInt(e.target.value) || 0)}
+                            className="bg-amber-900/30 border-poker-gold/50 text-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-amber-100 text-sm">Undercut (pts)</Label>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={ginRummyUndercutBonus}
+                            onChange={(e) => setGinRummyUndercutBonus(parseInt(e.target.value) || 0)}
+                            className="bg-amber-900/30 border-poker-gold/50 text-white"
+                          />
+                        </div>
+                      </div>
                      
                      {/* Summary */}
                      <div className="text-xs text-amber-200/60 bg-amber-900/20 rounded-lg p-2 text-center">
