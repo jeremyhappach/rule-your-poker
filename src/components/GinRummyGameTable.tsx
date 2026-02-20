@@ -423,8 +423,9 @@ export const GinRummyGameTable = ({
           return;
         }
 
-        // Start next hand after a delay (shorter for void hands)
-        const delay = ginState.knockResult ? 3000 : 1500;
+        // Start next hand after a delay (longer for gin so players can read cards)
+        const isGin = ginState.knockResult?.isGin;
+        const delay = !ginState.knockResult ? 1500 : isGin ? 5000 : 3000;
         await new Promise(resolve => setTimeout(resolve, delay));
         const result = await startNextGinRummyHand(gameId, dealerGameId, ginState);
         if (result.success) {
@@ -653,8 +654,8 @@ export const GinRummyGameTable = ({
               isProcessing={isProcessing}
             />
 
-            {/* Knock Result Display — also handles lay-off meld targeting */}
-            {(ginState.phase === 'knocking' || ginState.phase === 'laying_off' || ginState.phase === 'scoring' || (ginState.phase === 'complete' && ginState.knockResult)) && (
+            {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
+            {(ginState.phase === 'knocking' || ginState.phase === 'laying_off' || ginState.phase === 'scoring' || (ginState.phase === 'complete' && !!ginState.knockResult)) && (
               <GinRummyKnockDisplay
                 ginState={ginState}
                 getPlayerUsername={getPlayerUsername}
