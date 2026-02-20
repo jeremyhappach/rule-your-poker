@@ -46,7 +46,7 @@ export const GinRummyFeltContent = ({
   const canDraw = isMyTurn && ginState.phase === 'playing' && ginState.turnPhase === 'draw' && !isProcessing;
   const canTakeFirstDraw = isMyTurn && ginState.phase === 'first_draw' && !isProcessing;
   const discardClickable = canDraw || canTakeFirstDraw;
-  const stockClickable = canDraw || canTakeFirstDraw; // During first_draw, tapping stock = Pass
+  const stockClickable = canDraw;
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
   const hidePiles = ['knocking', 'laying_off', 'scoring', 'complete'].includes(ginState.phase);
@@ -132,8 +132,8 @@ export const GinRummyFeltContent = ({
             <div className="text-center">
               <p className="text-[11px] text-poker-gold font-bold animate-pulse">
                 {ginState.firstDrawPassed.length === 0
-                  ? 'Tap upcard to take · tap stock to pass'
-                  : 'Opponent passed — tap upcard to take · tap stock to pass'}
+                  ? 'Take the upcard or pass?'
+                  : 'Opponent passed — take or pass?'}
               </p>
             </div>
           )}
