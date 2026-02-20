@@ -268,7 +268,6 @@ export const GinRummyMobileCardsTab = ({
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
-                  const isLayOffable = layOffCardIndices.has(originalIndex);
                   return (
                     <button
                       key={`dw-${card.rank}-${card.suit}-${ci}`}
@@ -277,8 +276,6 @@ export const GinRummyMobileCardsTab = ({
                       className={cn(
                         "transition-all duration-200 rounded relative opacity-80",
                         isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "",
-                        isLayingOff && isLayOffable && !isSelected && "ring-2 ring-green-400",
-                        isLayingOff && !isLayOffable && "opacity-40",
                         isLayingOff && "cursor-pointer"
                       )}
                       style={{ zIndex: isSelected ? 20 : ci }}
@@ -411,9 +408,7 @@ export const GinRummyMobileCardsTab = ({
               </Button>
             )}
             {layOffOptions.length > 0 && selectedCardIndex === null && (
-              <p className="text-green-400 text-[10px] animate-pulse">
-                {layOffOptions.length} card{layOffOptions.length > 1 ? 's' : ''} can lay off — select then tap meld on felt
-              </p>
+              <p className="text-muted-foreground text-[10px]">Select a card to lay off</p>
             )}
             {layOffOptions.length === 0 && (
               <p className="text-muted-foreground text-[10px]">Nothing to lay off</p>

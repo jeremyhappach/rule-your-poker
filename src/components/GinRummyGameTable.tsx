@@ -691,34 +691,34 @@ export const GinRummyGameTable = ({
             )}
           </div>
 
-          {/* Opponent overlay */}
+            {/* Opponent overlay */}
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponent && opponentState && (
               <div className="absolute top-14 left-6 flex flex-col items-start">
-                {/* Chip circle row */}
-                <div className="flex items-center gap-1.5">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
-                      <span className="text-[10px] font-bold text-slate-900">
-                        ${formatChipValue(opponent.chips)}
-                      </span>
-                    </div>
-                  </div>
+                {/* Opponent name above chip stack */}
+                <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1 mb-0.5">
+                  {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
+                </span>
 
-                  <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
-                    {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
+                {/* Chip circle */}
+                <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
+                  <span className="text-[10px] font-bold text-slate-900">
+                    ${formatChipValue(opponent.chips)}
                   </span>
-
-                  {isCribDealer(opponentId) && (
-                    <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                      <span className="text-white font-bold text-[7px]">D</span>
-                    </div>
-                  )}
                 </div>
 
+                {/* Dealer button below chip stack */}
+                {isCribDealer(opponentId) && (
+                  <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center mt-0.5">
+                    <span className="text-white font-bold text-[7px]">D</span>
+                  </div>
+                )}
+              </div>
+            )}
+
                 {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
-                {opponentState.hand.length > 0 && ginState.phase !== 'knocking' && ginState.phase !== 'laying_off' && ginState.phase !== 'scoring' && !(ginState.phase === 'complete' && ginState.knockResult) && (
-                  <div className="flex -space-x-3 mt-1 ml-1">
+                {opponent && opponentState && opponentState.hand.length > 0 && ginState.phase !== 'knocking' && ginState.phase !== 'laying_off' && ginState.phase !== 'scoring' && !(ginState.phase === 'complete' && ginState.knockResult) && (
+                  <div className="absolute top-14 left-6 mt-[58px] flex -space-x-3">
                     {opponentState.hand.map((_, i) => (
                       <div
                         key={i}
@@ -730,8 +730,6 @@ export const GinRummyGameTable = ({
                     ))}
                   </div>
                 )}
-              </div>
-            )}
           </div>
         </div>
       </div>
