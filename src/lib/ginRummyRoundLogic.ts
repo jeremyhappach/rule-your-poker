@@ -518,14 +518,8 @@ export async function recordGinRummyHandResult(
   
   // Per-hand: record the hand result for history only.
   // Chips only change hands when the match is won (someone reaches pointsToWin).
-  // Per-hand payout calculation is kept for the game_results record (for audit/history).
+  // Bonus points (gin/undercut) are flat point values added to the scoring, not chip bonuses.
   let handPayout = ante; // What the winner would earn per hand (for record-keeping)
-  
-  if (result.isGin && config.gin_bonus > 0) {
-    handPayout += Math.floor((config.gin_bonus / 100) * ante);
-  } else if (result.isUndercut && config.undercut_bonus > 0) {
-    handPayout += Math.floor((config.undercut_bonus / 100) * ante);
-  }
 
   // NO chip transfers here — chips only move at match end (endGinRummyGame).
   // This keeps the game zero-sum until the match winner is determined.
