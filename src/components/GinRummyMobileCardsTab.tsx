@@ -246,59 +246,25 @@ export const GinRummyMobileCardsTab = ({
   return (
     <div className="h-full px-2 flex flex-col">
 
-      {/* ── POST-KNOCK VIEW: Organized melds + deadwood ── */}
+      {/* ── POST-KNOCK VIEW: Single overlapping row, melds grouped with small gap ── */}
       {inPostKnock ? (
         <div className="flex flex-col gap-1 py-1">
-          {/* My melds */}
-          {postKnockMelds.length > 0 && (
-            <div className="flex flex-col gap-0.5">
-              <div className="flex flex-wrap gap-1.5 justify-center">
-                {postKnockMelds.map((meld, meldIdx) => (
-                  <div key={`my-meld-${meldIdx}`} className="flex flex-col items-center gap-0.5">
-                    <div className="flex -space-x-2">
-                      {meld.cards.map((card, ci) => (
-                        <CribbagePlayingCard
-                          key={`my-meld-${meldIdx}-${ci}`}
-                          card={toDisplayCard(card)}
-                          size="lg"
-                        />
-                      ))}
-                      {/* Laid-off cards on this meld shown with blue highlight */}
-                      {iAmKnocker && laidOffOnMyMelds.filter((_, li) => {
-                        // We don't have per-meld tracking, show all laid off after the meld group
-                        return false; // handled below
-                      }).map((card, li) => (
-                        <div key={`laid-off-${li}`} className="ring-2 ring-blue-400 rounded">
-                          <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                        </div>
-                      ))}
-                    </div>
+          {/* Single flat row: melds (with small gap between groups) + deadwood + laid-off */}
+          <div className="flex items-end justify-center overflow-visible">
+            {/* Meld groups */}
+            {postKnockMelds.map((meld, meldIdx) => (
+              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-3", meldIdx > 0 && "ml-1.5")}>
+                {meld.cards.map((card, ci) => (
+                  <div key={`my-meld-${meldIdx}-${ci}`} style={{ zIndex: ci }}>
+                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
                   </div>
                 ))}
               </div>
+            ))}
 
-              {/* All laid-off cards shown separately with blue ring if I'm the knocker */}
-              {iAmKnocker && laidOffOnMyMelds.length > 0 && (
-                <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                  <div className="flex -space-x-2">
-                    {laidOffOnMyMelds.map((card, li) => (
-                      <div key={`lo-${li}`} className="ring-2 ring-blue-400 rounded">
-                        <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* My deadwood */}
-          {postKnockDeadwoodCards.length > 0 && (
-            <div className="flex flex-col items-center gap-0.5">
-              <div className={cn(
-                "flex -space-x-2",
-                isLayingOff ? "" : ""
-              )}>
+            {/* Deadwood cards — selectable when laying off */}
+            {postKnockDeadwoodCards.length > 0 && (
+              <div className={cn("flex -space-x-3", postKnockMelds.length > 0 && "ml-1.5")}>
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
@@ -309,10 +275,10 @@ export const GinRummyMobileCardsTab = ({
                       onClick={() => originalIndex !== -1 && handleCardClick(originalIndex)}
                       disabled={isProcessing || !isLayingOff}
                       className={cn(
-                        "transition-all duration-200 rounded relative",
+                        "transition-all duration-200 rounded relative opacity-80",
                         isSelected ? "-translate-y-3 ring-2 ring-poker-gold z-20" : "",
-                        isLayingOff && isLayOffable && !isSelected && "ring-1 ring-green-400/60",
-                        isLayingOff && !isLayOffable && "opacity-50",
+                        isLayingOff && isLayOffable && !isSelected && "ring-2 ring-green-400",
+                        isLayingOff && !isLayOffable && "opacity-40",
                         isLayingOff && "cursor-pointer"
                       )}
                       style={{ zIndex: isSelected ? 20 : ci }}
@@ -322,8 +288,23 @@ export const GinRummyMobileCardsTab = ({
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* Laid-off cards by opponent shown with bold blue highlight */}
+            {iAmKnocker && laidOffOnMyMelds.length > 0 && (
+              <div className="flex -space-x-3 ml-1.5">
+                {laidOffOnMyMelds.map((card, li) => (
+                  <div
+                    key={`lo-${li}`}
+                    className="rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]"
+                    style={{ zIndex: li }}
+                  >
+                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* DW value */}
           <div className="flex items-center justify-center">
