@@ -255,9 +255,6 @@ export const GinRummyMobileCardsTab = ({
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {postKnockMelds.map((meld, meldIdx) => (
                   <div key={`my-meld-${meldIdx}`} className="flex flex-col items-center gap-0.5">
-                    <span className="text-[6px] text-white/40 uppercase tracking-wide">
-                      {meld.type === 'run' ? 'Run' : 'Set'}
-                    </span>
                     <div className="flex -space-x-2">
                       {meld.cards.map((card, ci) => (
                         <CribbagePlayingCard
@@ -283,7 +280,6 @@ export const GinRummyMobileCardsTab = ({
               {/* All laid-off cards shown separately with blue ring if I'm the knocker */}
               {iAmKnocker && laidOffOnMyMelds.length > 0 && (
                 <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                  <span className="text-[6px] text-blue-400/70 uppercase tracking-wide">Laid off onto you</span>
                   <div className="flex -space-x-2">
                     {laidOffOnMyMelds.map((card, li) => (
                       <div key={`lo-${li}`} className="ring-2 ring-blue-400 rounded">
@@ -299,7 +295,6 @@ export const GinRummyMobileCardsTab = ({
           {/* My deadwood */}
           {postKnockDeadwoodCards.length > 0 && (
             <div className="flex flex-col items-center gap-0.5">
-              <span className="text-[6px] text-red-400/70 uppercase tracking-wide">Deadwood</span>
               <div className={cn(
                 "flex -space-x-2",
                 isLayingOff ? "" : ""
