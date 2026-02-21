@@ -362,6 +362,7 @@ export const GinRummyGameTable = ({
           }
           // After first_draw handling, if the turn is no longer the bot's, write and stop
           if (state.currentTurnPlayerId !== botId) {
+            optimisticUntilRef.current = Date.now() + 1200;
             await supabase
               .from('rounds')
               .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
