@@ -553,10 +553,21 @@ export function layOffCard(
     throw new Error('Card not in hand');
   }
 
-  // Add card to knocker's meld (for lay-off tracking)
+  // Add card to knocker's meld in correct order (for lay-off tracking)
   const knockerMelds = [...state.playerStates[knockerId].melds];
   const targetMeld = { ...knockerMelds[onMeldIndex] };
-  targetMeld.cards = [...targetMeld.cards, card];
+  const RANK_ORD: Record<string, number> = {
+    'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+    '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
+  };
+  if (targetMeld.type === 'run') {
+    // Insert in rank order for runs
+    const newCards = [...targetMeld.cards, card];
+    newCards.sort((a, b) => (RANK_ORD[a.rank] || 0) - (RANK_ORD[b.rank] || 0));
+    targetMeld.cards = newCards;
+  } else {
+    targetMeld.cards = [...targetMeld.cards, card];
+  }
   knockerMelds[onMeldIndex] = targetMeld;
 
   const newHand = [...hand];
