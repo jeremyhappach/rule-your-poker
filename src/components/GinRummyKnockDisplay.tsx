@@ -40,6 +40,7 @@ const OpponentHandDisplay = ({
   label,
   deadwoodValue,
   laidOffCount,
+  laidOffCards = [],
   isKnocker,
   hasGin,
   interactiveMelds = false,
@@ -53,6 +54,7 @@ const OpponentHandDisplay = ({
   label: string;
   deadwoodValue: number;
   laidOffCount?: number;
+  laidOffCards?: GinRummyCard[];
   isKnocker: boolean;
   hasGin?: boolean;
   interactiveMelds?: boolean;
@@ -61,6 +63,8 @@ const OpponentHandDisplay = ({
   onLayOffToMeld?: (meldIndex: number) => void;
   isProcessing?: boolean;
 }) => {
+  // Build a set of laid-off card keys for quick lookup
+  const laidOffSet = new Set(laidOffCards.map(c => `${c.rank}-${c.suit}`));
   const sortedDeadwood = [...deadwood].sort(
     (a, b) => (RANK_ORDER[a.rank] || 0) - (RANK_ORDER[b.rank] || 0)
   );
@@ -96,13 +100,19 @@ const OpponentHandDisplay = ({
                 )}
               >
                 <div className="flex -space-x-2.5">
-                  {meld.cards.map((card, j) => (
-                    <CribbagePlayingCard
-                      key={`${card.rank}-${card.suit}-${j}`}
-                      card={toDisplayCard(card)}
-                      size="sm"
-                    />
-                  ))}
+                  {meld.cards.map((card, j) => {
+                    const isLaidOff = laidOffSet.has(`${card.rank}-${card.suit}`);
+                    return (
+                      <div
+                        key={`${card.rank}-${card.suit}-${j}`}
+                        className={cn(
+                          isLaidOff && "rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]"
+                        )}
+                      >
+                        <CribbagePlayingCard card={toDisplayCard(card)} size="sm" />
+                      </div>
+                    );
+                  })}
                 </div>
               </button>
             );
@@ -185,6 +195,7 @@ export const GinRummyKnockDisplay = ({
           label={getPlayerUsername(otherPlayerId)}
           deadwoodValue={otherDeadwoodValue}
           laidOffCount={otherState.laidOffCards?.length}
+          laidOffCards={isOtherTheKnocker ? (otherState.laidOffCards || []) : []}
           isKnocker={isOtherTheKnocker}
           hasGin={otherState.hasGin}
           interactiveMelds={isLayingOffOntoOther}

@@ -279,7 +279,7 @@ export const GinRummyMobileCardsTab = ({
 
           {/* Deadwood row — right-aligned below melds, selectable when laying off */}
           {postKnockDeadwoodCards.length > 0 && (
-            <div className="flex items-end justify-center overflow-visible">
+            <div className="flex items-end justify-end overflow-visible w-full pr-2">
               <div className="flex -space-x-4">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
