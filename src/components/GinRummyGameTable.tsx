@@ -366,18 +366,28 @@ export const GinRummyGameTable = ({
           const upCard = state.discardPile[state.discardPile.length - 1];
           if (upCard && shouldBotTakeFirstDraw(botState.hand, upCard)) {
             state = takeFirstDrawCard(state, botId);
-          } else {
-            state = passFirstDraw(state, botId);
-          }
-          // After first_draw handling, if the turn is no longer the bot's, write and stop
-          if (state.currentTurnPlayerId !== botId) {
-            optimisticUntilRef.current = Date.now() + 1200;
+            // Write intermediate "draw" state so the opponent-draw animation fires
+            const drawSnapshot = JSON.parse(JSON.stringify(state));
             await supabase
               .from('rounds')
-              .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+              .update({ gin_rummy_state: drawSnapshot })
               .eq('id', roundId);
-            setGinState(state);
-            return;
+            setGinState(drawSnapshot);
+            // Wait so the player can see the card-fly animation
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            // Fall through to discard logic below (phase=playing, turnPhase=discard)
+          } else {
+            state = passFirstDraw(state, botId);
+            // After pass, if turn moved to human, write and stop
+            if (state.currentTurnPlayerId !== botId) {
+              optimisticUntilRef.current = Date.now() + 1200;
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+                .eq('id', roundId);
+              setGinState(state);
+              return;
+            }
           }
         }
         // Phase: playing - draw (then fall through to discard after 1s delay)
