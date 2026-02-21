@@ -735,7 +735,7 @@ export const GinRummyGameTable = ({
 
   const getPlayerUsername = (playerId: string) => {
     const player = players.find(p => p.id === playerId);
-    if (!player) return 'Unknown';
+    if (!player) return '';
     return getDisplayName(players, player, player.profiles?.username || 'Player');
   };
 
