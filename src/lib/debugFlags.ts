@@ -63,6 +63,6 @@ export function isSafetyPollingDisabled(): boolean {
  * Non-dealer gets: 4♠ 5♣ + rest are high deadwood, but 4♠ lays off on dealer's run if extended, and 10♦ lays off too
  */
 export function isGinRiggedDealEnabled(): boolean {
-  // TEMPORARY: always on for testing knock/lay-off flow
-  return true;
+  // To re-enable for testing: set localStorage ptp_debug_gin_rigged = "1" or use ?debug_gin_rigged=1
+  return hasQueryFlag('debug_gin_rigged') || hasLocalFlag('ptp_debug_gin_rigged');
 }
