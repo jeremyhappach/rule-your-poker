@@ -35,6 +35,8 @@ import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 import { GinRummyMatchWinner } from './GinRummyMatchWinner';
+import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
+import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
@@ -126,6 +128,8 @@ export const GinRummyGameTable = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
+  const [showKnockOverlay, setShowKnockOverlay] = useState(false);
+  const [showGinOverlay, setShowGinOverlay] = useState(false);
 
   // Opponent draw animation state
   const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
@@ -145,13 +149,25 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
-  // Play knock sound when phase transitions to 'knocking'
+  // Play knock sound + show overlay when phase transitions to 'knocking'
+  // Show gin overlay when knockResult indicates gin
   useEffect(() => {
     if (!ginState) return;
     const currentPhase = ginState.phase;
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking') {
-      console.log('[GIN] Phase → knocking, playing knock sound');
+      console.log('[GIN] Phase → knocking, showing knock overlay');
       setTimeout(() => playKnock(), 100);
+      setShowKnockOverlay(true);
+    }
+    // Detect gin: phase goes to scoring/complete with isGin flag
+    if (
+      (currentPhase === 'scoring' || currentPhase === 'complete') &&
+      prevPhaseRef.current !== 'scoring' &&
+      prevPhaseRef.current !== 'complete' &&
+      ginState.knockResult?.isGin
+    ) {
+      console.log('[GIN] GIN detected, showing gin overlay');
+      setShowGinOverlay(true);
     }
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
@@ -765,6 +781,25 @@ export const GinRummyGameTable = ({
                   }
                 }}
                 isProcessing={isProcessing}
+              />
+            )}
+
+            {/* Knock Overlay — shown to all clients */}
+            {showKnockOverlay && ginState.knockResult && (
+              <GinRummyKnockOverlay
+                knockerName={getPlayerUsername(
+                  Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked)?.[0] || ''
+                )}
+                deadwood={ginState.knockResult.knockerDeadwood}
+                onComplete={() => setShowKnockOverlay(false)}
+              />
+            )}
+
+            {/* Gin Overlay — cool blue with record scratch */}
+            {showGinOverlay && ginState.knockResult && (
+              <GinRummyGinOverlay
+                winnerName={getPlayerUsername(ginState.knockResult.winnerId)}
+                onComplete={() => setShowGinOverlay(false)}
               />
             )}
 
