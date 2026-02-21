@@ -159,12 +159,13 @@ export const GinRummyGameTable = ({
       setTimeout(() => playKnock(), 100);
       setShowKnockOverlay(true);
     }
-    // Detect gin: phase goes to scoring/complete with isGin flag
+    // Detect gin: phase goes to scoring/complete with hasGin flag on a player
+    const anyPlayerHasGin = ginState.playerStates && Object.values(ginState.playerStates).some(ps => ps.hasGin);
     if (
       (currentPhase === 'scoring' || currentPhase === 'complete') &&
       prevPhaseRef.current !== 'scoring' &&
       prevPhaseRef.current !== 'complete' &&
-      ginState.knockResult?.isGin
+      (ginState.knockResult?.isGin || anyPlayerHasGin)
     ) {
       console.log('[GIN] GIN detected, showing gin overlay');
       setShowGinOverlay(true);
@@ -840,12 +841,16 @@ export const GinRummyGameTable = ({
             })()}
 
             {/* Gin Overlay — cool blue with record scratch */}
-            {showGinOverlay && ginState.knockResult && (
-              <GinRummyGinOverlay
-                winnerName={getPlayerUsername(ginState.knockResult.winnerId)}
-                onComplete={() => setShowGinOverlay(false)}
-              />
-            )}
+            {showGinOverlay && (() => {
+              const ginnerEntry = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasGin);
+              const winnerId = ginnerEntry?.[0] || ginState.knockResult?.winnerId || '';
+              return (
+                <GinRummyGinOverlay
+                  winnerName={getPlayerUsername(winnerId)}
+                  onComplete={() => setShowGinOverlay(false)}
+                />
+              );
+            })()}
 
             {/* Match Winner Celebration */}
             {ginState.phase === 'complete' && ginState.winnerPlayerId && (
