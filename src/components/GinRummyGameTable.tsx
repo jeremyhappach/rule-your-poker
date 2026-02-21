@@ -772,14 +772,15 @@ export const GinRummyGameTable = ({
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
             if (ginState.phase === 'complete' && ginState.knockResult) {
+              const r = ginState.knockResult;
+              const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
+              const bonus = r.isGin ? ` (${dwDiff} dw + 25 gin bonus)` :
+                            r.isUndercut ? ` (${dwDiff} dw + 25 undercut bonus)` :
+                            '';
               return (
                 <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                   <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {getPlayerUsername(ginState.knockResult.winnerId)} wins!
-                    {ginState.knockResult.isGin && ' GIN!'}
-                    {ginState.knockResult.isUndercut && ' Undercut!'}
-                    {' +'}
-                    {ginState.knockResult.pointsAwarded} pts
+                    {getPlayerUsername(r.winnerId)} +{r.pointsAwarded}{bonus}
                   </p>
                 </div>
               );

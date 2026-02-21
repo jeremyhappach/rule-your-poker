@@ -171,11 +171,13 @@ export const GinRummyMobileCardsTab = ({
     return organizedHand.deadwoodCards.map(d => d.card);
   }, [myState, organizedHand.deadwoodCards]);
 
-  // Laidoff cards for knocker display (cards opponent played onto my melds)
+  // Laidoff cards for knocker display — tracked on the NON-knocker's state
   const laidOffOnMyMelds: GinRummyCard[] = useMemo(() => {
-    if (!myState || !iAmKnocker) return [];
-    return myState.laidOffCards || [];
-  }, [myState, iAmKnocker]);
+    if (!iAmKnocker || !knockerId) return [];
+    const nonKnockerId = knockerId === ginState.dealerPlayerId ? ginState.nonDealerPlayerId : ginState.dealerPlayerId;
+    const nonKnockerState = ginState.playerStates[nonKnockerId];
+    return nonKnockerState?.laidOffCards || [];
+  }, [iAmKnocker, knockerId, ginState.playerStates, ginState.dealerPlayerId, ginState.nonDealerPlayerId]);
 
   const handleCardClick = (index: number) => {
     if (!myState) return;
