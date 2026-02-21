@@ -128,6 +128,8 @@ export const GinRummyGameTable = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
+  // Guard: suppress realtime/poll overwrites briefly after an optimistic local update
+  const optimisticUntilRef = useRef<number>(0);
   const [showKnockOverlay, setShowKnockOverlay] = useState(false);
   const [showGinOverlay, setShowGinOverlay] = useState(false);
 
@@ -227,6 +229,11 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
+      // Skip stale realtime/poll updates that arrive right after an optimistic local update
+      if (Date.now() < optimisticUntilRef.current) {
+        console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard)`);
+        return;
+      }
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
         turn: state.currentTurnPlayerId?.slice(0, 8),
@@ -581,6 +588,8 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
+    // Suppress realtime/poll overwrites for 500ms so the optimistic state isn't clobbered
+    optimisticUntilRef.current = Date.now() + 500;
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
