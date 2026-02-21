@@ -304,10 +304,12 @@ export const GinRummyMobileCardsTab = ({
             </div>
           )}
 
-          {/* DW value */}
+          {/* DW value — compute from hand if not yet scored */}
           <div className="flex items-center justify-center">
             <span className="text-xs font-mono font-bold text-muted-foreground">
-              DW: {myState.deadwoodValue ?? findOptimalMelds(myState.hand).deadwoodValue}
+              DW: {postKnockDeadwoodCards.length > 0
+                ? (myState.deadwoodValue > 0 ? myState.deadwoodValue : findOptimalMelds(myState.hand).deadwoodValue)
+                : 0}
             </span>
           </div>
         </div>
@@ -398,14 +400,8 @@ export const GinRummyMobileCardsTab = ({
         {/* Laying off - my turn as non-knocker */}
         {isLayingOff && (
           <div className="flex items-center gap-2 flex-wrap justify-center">
-            {layOffOptions.length > 0 && selectedCardIndex === null && (
-              <p className="text-muted-foreground text-[10px]">Tap a meld on felt to lay off</p>
-            )}
-            {layOffOptions.length === 0 && (
-              <p className="text-muted-foreground text-[10px]">Nothing to lay off</p>
-            )}
             <Button onClick={onFinishLayingOff} disabled={isProcessing} className="bg-poker-gold text-black font-bold hover:bg-poker-gold/80 px-4" size="sm">
-              {layOffOptions.length === 0 ? 'Continue' : 'Done Laying Off'}
+              Done Laying Off
             </Button>
           </div>
         )}
