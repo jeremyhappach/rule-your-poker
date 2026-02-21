@@ -150,7 +150,8 @@ export const GinRummyGameTable = ({
     if (!ginState) return;
     const currentPhase = ginState.phase;
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking') {
-      playKnock();
+      console.log('[GIN] Phase → knocking, playing knock sound');
+      setTimeout(() => playKnock(), 100);
     }
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);

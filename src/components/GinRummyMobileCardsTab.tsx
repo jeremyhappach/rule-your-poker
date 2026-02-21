@@ -264,7 +264,7 @@ export const GinRummyMobileCardsTab = ({
           <div className={cn("flex items-end flex-wrap w-full px-1", isLayingOff ? "gap-y-0" : "gap-y-1")}>
             {/* Melds */}
             {postKnockMelds.map((meld, meldIdx) => (
-              <div key={`my-meld-${meldIdx}`} className={cn("flex", isLayingOff ? "-space-x-5" : "-space-x-4", meldIdx > 0 && "ml-3")}>
+              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-3")}>
                 {meld.cards.map((card, ci) => {
                   const isLaidOff = iAmKnocker && laidOffOnMyMelds.some(lo => lo.rank === card.rank && lo.suit === card.suit);
                   return (
@@ -284,7 +284,7 @@ export const GinRummyMobileCardsTab = ({
 
             {/* Deadwood — pushed to the right on whichever row it lands on */}
             {postKnockDeadwoodCards.length > 0 && (
-              <div className={cn("flex ml-auto items-end", isLayingOff ? "-space-x-5" : "-space-x-4")}>
+              <div className="flex -space-x-4 ml-auto items-end">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
@@ -428,16 +428,18 @@ export const GinRummyMobileCardsTab = ({
         )}
       </div>
 
-      {/* Player info row */}
-      <div className="flex items-center justify-center gap-2 py-0.5">
-        <QuickEmoticonPicker onSelect={handleQuickEmoticon} disabled={isEmoticonSending || !currentPlayer} />
-        <p className="font-semibold text-sm text-foreground">
-          {currentPlayer.profiles?.username || 'You'}
-        </p>
-        <span className="font-bold text-lg text-poker-gold">
-          ${formatChipValue(currentPlayer.chips)}
-        </span>
-      </div>
+      {/* Player info row — hidden during layoff to save space */}
+      {!isLayingOff && (
+        <div className="flex items-center justify-center gap-2 py-0.5">
+          <QuickEmoticonPicker onSelect={handleQuickEmoticon} disabled={isEmoticonSending || !currentPlayer} />
+          <p className="font-semibold text-sm text-foreground">
+            {currentPlayer.profiles?.username || 'You'}
+          </p>
+          <span className="font-bold text-lg text-poker-gold">
+            ${formatChipValue(currentPlayer.chips)}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
