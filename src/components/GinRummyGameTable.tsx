@@ -352,11 +352,12 @@ export const GinRummyGameTable = ({
           }
 
           // Write draw state to DB so opponent sees the draw animation
+          const drawSnapshot = JSON.parse(JSON.stringify(state));
           await supabase
             .from('rounds')
-            .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+            .update({ gin_rummy_state: drawSnapshot })
             .eq('id', roundId);
-          setGinState(state);
+          setGinState(drawSnapshot);
 
           // 1-second delay so opponent can see what the bot drew
           await new Promise(resolve => setTimeout(resolve, 1000));
