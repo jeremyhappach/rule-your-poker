@@ -164,8 +164,12 @@ export const GinRummyKnockDisplay = ({
   const nonKnockerState = ginState.playerStates[nonKnockerId];
   const laidOffCards = nonKnockerState?.laidOffCards || [];
 
-  // Show opponent's melds only once they've been computed (knocker shows immediately, non-knocker shows during scoring/complete)
-  const showOtherMelds = isOtherTheKnocker || ginState.phase === 'scoring' || isComplete;
+  // Show opponent's melds once computed (knocker: immediately; non-knocker: during knocking/laying_off/scoring/complete)
+  const showOtherMelds = isOtherTheKnocker
+    || ginState.phase === 'knocking'
+    || ginState.phase === 'laying_off'
+    || ginState.phase === 'scoring'
+    || isComplete;
 
   // If opponent has no cards to show yet, skip — but still allow laying-off message
   const hasOtherCards = otherState.melds.length > 0 || otherState.deadwood.length > 0 || otherState.hand.length > 0;

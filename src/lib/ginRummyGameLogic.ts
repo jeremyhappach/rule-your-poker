@@ -510,6 +510,10 @@ export function declareKnock(
   const nextPhase: GinRummyPhase = isGin ? 'scoring' : 'knocking';
   const opponentIdForLayOff = getOpponent(state, playerId);
 
+  // Also compute opponent's melds/deadwood so they can be displayed on felt immediately
+  const opponentState = state.playerStates[opponentIdForLayOff];
+  const opponentGrouping = findOptimalMelds(opponentState.hand);
+
   return {
     ...state,
     phase: nextPhase,
@@ -518,6 +522,12 @@ export function declareKnock(
     playerStates: {
       ...state.playerStates,
       [playerId]: newPlayerState,
+      [opponentIdForLayOff]: {
+        ...opponentState,
+        melds: opponentGrouping.melds,
+        deadwood: opponentGrouping.deadwood,
+        deadwoodValue: opponentGrouping.deadwoodValue,
+      },
     },
     discardPile: newDiscard,
     lastAction: {
@@ -573,6 +583,9 @@ export function layOffCard(
   const newHand = [...hand];
   newHand.splice(cardIdx, 1);
 
+  // Recalculate non-knocker's melds/deadwood after removing the laid-off card
+  const updatedGrouping = findOptimalMelds(newHand);
+
   return {
     ...state,
     phase: 'laying_off',
@@ -581,6 +594,9 @@ export function layOffCard(
       [playerId]: {
         ...state.playerStates[playerId],
         hand: newHand,
+        melds: updatedGrouping.melds,
+        deadwood: updatedGrouping.deadwood,
+        deadwoodValue: updatedGrouping.deadwoodValue,
         laidOffCards: [...state.playerStates[playerId].laidOffCards, card],
       },
       [knockerId]: {
