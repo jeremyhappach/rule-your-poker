@@ -248,9 +248,9 @@ export const GinRummyMobileCardsTab = ({
 
       {/* ── POST-KNOCK VIEW: Melds top row, deadwood below right-aligned ── */}
       {inPostKnock ? (
-        <div className="flex flex-col gap-1 py-1">
+        <div className="flex flex-col gap-1 py-1 items-center">
           {/* Meld groups row */}
-          <div className="flex items-end justify-start overflow-visible flex-wrap gap-y-1">
+          <div className="flex items-end justify-center overflow-visible flex-wrap gap-y-1">
             {postKnockMelds.map((meld, meldIdx) => (
               <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-1")}>
                 {meld.cards.map((card, ci) => (
@@ -279,7 +279,7 @@ export const GinRummyMobileCardsTab = ({
 
           {/* Deadwood row — right-aligned below melds, selectable when laying off */}
           {postKnockDeadwoodCards.length > 0 && (
-            <div className="flex items-end justify-end overflow-visible">
+            <div className="flex items-end justify-center overflow-visible">
               <div className="flex -space-x-4">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
@@ -305,7 +305,7 @@ export const GinRummyMobileCardsTab = ({
           )}
 
           {/* DW value */}
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-center">
             <span className="text-xs font-mono font-bold text-muted-foreground">
               DW: {myState.deadwoodValue ?? findOptimalMelds(myState.hand).deadwoodValue}
             </span>
