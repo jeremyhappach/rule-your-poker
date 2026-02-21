@@ -44,7 +44,7 @@ export const GinRummyFeltContent = ({
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
   const stockDanger = stockCount <= STOCK_EXHAUSTION_THRESHOLD + 2;
   const canDraw = isMyTurn && ginState.phase === 'playing' && ginState.turnPhase === 'draw' && !isProcessing;
-  const canTakeFirstDraw = isMyTurn && ginState.phase === 'first_draw' && !isProcessing;
+  const canTakeFirstDraw = ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && !isProcessing;
   const discardClickable = canDraw || canTakeFirstDraw;
   const stockClickable = canDraw;
 
@@ -131,7 +131,7 @@ export const GinRummyFeltContent = ({
             </p>
           )}
 
-          {ginState.phase === 'first_draw' && isMyTurn && (
+          {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && (
             <div className="text-center">
               <p className="text-[11px] text-poker-gold font-bold animate-pulse">
                 {ginState.firstDrawPassed.length === 0
@@ -141,9 +141,18 @@ export const GinRummyFeltContent = ({
             </div>
           )}
 
-          {ginState.phase === 'first_draw' && !isMyTurn && (
+          {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo !== currentPlayerId && (
             <p className="text-[10px] text-white/60 text-center">
               {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
+            </p>
+          )}
+
+          {/* Show what the bot did during first draw — visible briefly after transition */}
+          {ginState.phase === 'playing' && ginState.lastAction?.type === 'draw_discard' && 
+           ginState.lastAction?.playerId !== currentPlayerId &&
+           ginState.turnPhase === 'discard' && (
+            <p className="text-[10px] text-emerald-400 text-center font-medium">
+              {getPlayerUsername(ginState.lastAction.playerId)} took the upcard
             </p>
           )}
         </div>

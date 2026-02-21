@@ -689,6 +689,8 @@ export const GinRummyGameTable = ({
       const fresh = await fetchFreshState();
       if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
       const newState = takeFirstDrawCard(fresh, currentPlayerId);
+      // Longer optimistic guard — we're transitioning to discard phase, no bot race
+      optimisticUntilRef.current = Date.now() + 1500;
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -702,6 +704,8 @@ export const GinRummyGameTable = ({
       const fresh = await fetchFreshState();
       if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
       const newState = passFirstDraw(fresh, currentPlayerId);
+      // Longer optimistic guard — bot needs 1-2s to decide after our pass
+      optimisticUntilRef.current = Date.now() + 2500;
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
