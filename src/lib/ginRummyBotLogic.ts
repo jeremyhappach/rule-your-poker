@@ -210,5 +210,7 @@ export function botGetLayOffs(
   hand: GinRummyCard[],
   knockerMelds: Meld[]
 ): { card: GinRummyCard; onMeldIndex: number }[] {
-  return findLayOffOptions(hand, knockerMelds);
+  // Only lay off deadwood cards — never break our own melds
+  const grouping = findOptimalMelds(hand);
+  return findLayOffOptions(grouping.deadwood, knockerMelds);
 }

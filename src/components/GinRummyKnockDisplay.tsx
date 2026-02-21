@@ -73,7 +73,7 @@ const OpponentHandDisplay = ({
     <div className="flex flex-col items-center gap-1 w-full">
       {/* Label — knocker label removed (shown in dealer announcement instead) */}
       {!isKnocker && (
-        <p className="text-[9px] text-white/80 font-medium drop-shadow text-center">
+        <p className="text-sm text-white font-bold drop-shadow text-center">
           {label} ({deadwoodValue} dw{laidOffCount ? ` +${laidOffCount} laid off` : ''})
         </p>
       )}
