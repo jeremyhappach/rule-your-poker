@@ -151,6 +151,17 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
+  // Reset overlay flags when roundId changes (new hand)
+  useEffect(() => {
+    setShowKnockOverlay(false);
+    setShowGinOverlay(false);
+    prevPhaseRef.current = null;
+    ginOverlayFiredRef.current = false;
+  }, [roundId]);
+
+  // Guard: only allow one gin overlay per round (prevents re-fire from re-renders)
+  const ginOverlayFiredRef = useRef(false);
+
   // Play knock sound + show overlay when phase transitions to 'knocking'
   // Show gin overlay when knockResult indicates gin
   useEffect(() => {
@@ -168,9 +179,11 @@ export const GinRummyGameTable = ({
       prevPhaseRef.current !== 'scoring' &&
       prevPhaseRef.current !== 'complete' &&
       !showGinOverlay &&
+      !ginOverlayFiredRef.current &&
       (ginState.knockResult?.isGin || anyPlayerHasGin)
     ) {
       console.log('[GIN] GIN detected, showing gin overlay');
+      ginOverlayFiredRef.current = true;
       setShowGinOverlay(true);
     }
     prevPhaseRef.current = currentPhase;
@@ -354,6 +367,12 @@ export const GinRummyGameTable = ({
         if (!data?.gin_rummy_state) return;
         let state = data.gin_rummy_state as unknown as GinRummyState;
 
+        // Phase guard: don't act during terminal or scoring phases
+        if (['complete', 'scoring'].includes(state.phase)) {
+          console.log(`[GIN-RUMMY BOT] Skipping — phase is ${state.phase}`);
+          return;
+        }
+
         // Verify it's still the bot's turn
         if (state.currentTurnPlayerId !== currentTurnId) return;
 
@@ -434,6 +453,13 @@ export const GinRummyGameTable = ({
               setGinState(ginSnapshot);
               await new Promise(resolve => setTimeout(resolve, 3500));
               state = scoreHand(state);
+              // Write scored state and RETURN — do not fall through to generic write
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+                .eq('id', roundId);
+              setGinState(state);
+              return;
             } else if (state.phase === 'knocking') {
               // Knock! Write state so overlay plays, wait for it before tabling cards
               const knockSnapshot = JSON.parse(JSON.stringify(state));
@@ -443,6 +469,7 @@ export const GinRummyGameTable = ({
                 .eq('id', roundId);
               setGinState(knockSnapshot);
               await new Promise(resolve => setTimeout(resolve, 2800));
+              // Don't return — fall through to generic write which tables the cards
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
@@ -471,6 +498,13 @@ export const GinRummyGameTable = ({
               setGinState(ginSnapshot);
               await new Promise(resolve => setTimeout(resolve, 3500));
               state = scoreHand(state);
+              // Write scored state and RETURN — do not fall through to generic write
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+                .eq('id', roundId);
+              setGinState(state);
+              return;
             } else if (state.phase === 'knocking') {
               // Knock! Write state so overlay plays, wait for it before tabling cards
               const knockSnapshot = JSON.parse(JSON.stringify(state));
