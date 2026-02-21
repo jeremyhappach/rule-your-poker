@@ -53,6 +53,10 @@ const RANK_ORDER: Record<string, number> = {
   '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13,
 };
 
+const SUIT_ORDER: Record<string, number> = {
+  '♠': 0, '♥': 1, '♣': 2, '♦': 3,
+};
+
 // Determine if we're in a post-knock phase where the active player box shows organized melds
 const isPostKnockPhase = (phase: string) =>
   phase === 'knocking' || phase === 'laying_off' || phase === 'scoring' || phase === 'complete';
@@ -244,7 +248,11 @@ export const GinRummyMobileCardsTab = ({
 
   const inPostKnock = isPostKnockPhase(ginState.phase);
   const flatSortedHand = [...organizedHand.deadwoodCards, ...organizedHand.meldCards]
-    .sort((a, b) => (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0));
+    .sort((a, b) => {
+      const rankDiff = (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0);
+      if (rankDiff !== 0) return rankDiff;
+      return (SUIT_ORDER[a.card.suit] || 0) - (SUIT_ORDER[b.card.suit] || 0);
+    });
 
   return (
     <div className="h-full px-2 flex flex-col">
