@@ -302,6 +302,15 @@ export const GinRummyGameTable = ({
           } else {
             state = passFirstDraw(state, botId);
           }
+          // After first_draw handling, if the turn is no longer the bot's, write and stop
+          if (state.currentTurnPlayerId !== botId) {
+            await supabase
+              .from('rounds')
+              .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+              .eq('id', roundId);
+            setGinState(state);
+            return;
+          }
         }
         // Phase: playing - draw (then fall through to discard)
         if (state.phase === 'playing' && state.turnPhase === 'draw') {
