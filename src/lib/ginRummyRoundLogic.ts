@@ -563,8 +563,8 @@ export async function recordGinRummyHandResult(
   if (insertError) console.error('[GIN-RUMMY] Failed to record hand result:', insertError);
   else console.log('[GIN-RUMMY] Hand result recorded:', { handNumber, description, handPayout });
 
-  // Snapshot chips per-hand so mid-match quits have history
-  void snapshotPlayerChips(gameId, handNumber).catch((err) => {
+  // Snapshot chips per-hand so mid-match quits have history — must await
+  await snapshotPlayerChips(gameId, handNumber).catch((err) => {
     console.error('[GIN-RUMMY] Failed to snapshot chips:', err);
   });
 }
