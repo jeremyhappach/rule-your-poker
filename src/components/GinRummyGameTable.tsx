@@ -33,6 +33,7 @@ import {
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
+import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 import { GinRummyMatchWinner } from './GinRummyMatchWinner';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
@@ -126,6 +127,12 @@ export const GinRummyGameTable = ({
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
 
+  // Opponent draw animation state
+  const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
+  const [opponentDrawSource, setOpponentDrawSource] = useState<'stock' | 'discard'>('stock');
+  const [opponentDrawCard, setOpponentDrawCard] = useState<GinRummyCard | null>(null);
+  const prevLastActionRef = useRef<string | null>(null);
+
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
 
@@ -146,6 +153,28 @@ export const GinRummyGameTable = ({
     }
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
+
+  // Detect opponent draw actions and trigger animation
+  useEffect(() => {
+    if (!ginState || !currentPlayerId) return;
+    const action = ginState.lastAction;
+    if (!action) return;
+    const actionKey = `${action.type}-${action.playerId}-${action.timestamp}`;
+    if (actionKey === prevLastActionRef.current) return;
+    prevLastActionRef.current = actionKey;
+
+    // Only animate opponent draws (not our own)
+    if (action.playerId === currentPlayerId) return;
+    if (action.type === 'draw_stock') {
+      setOpponentDrawSource('stock');
+      setOpponentDrawCard(null);
+      setOpponentDrawTriggerId(`draw-${actionKey}`);
+    } else if (action.type === 'draw_discard') {
+      setOpponentDrawSource('discard');
+      setOpponentDrawCard(action.card ?? null);
+      setOpponentDrawTriggerId(`draw-${actionKey}`);
+    }
+  }, [ginState?.lastAction, currentPlayerId]);
 
   // Load state from DB
   useEffect(() => {
@@ -312,7 +341,7 @@ export const GinRummyGameTable = ({
             return;
           }
         }
-        // Phase: playing - draw (then fall through to discard)
+        // Phase: playing - draw (then fall through to discard after 1s delay)
         if (state.phase === 'playing' && state.turnPhase === 'draw') {
           const topDiscard = getDiscardTop(state);
           const source = botChooseDrawSource(botState.hand, topDiscard);
@@ -321,10 +350,21 @@ export const GinRummyGameTable = ({
           } else {
             state = drawFromStock(state, botId);
           }
+
+          // Write draw state to DB so opponent sees the draw animation
+          await supabase
+            .from('rounds')
+            .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+            .eq('id', roundId);
+          setGinState(state);
+
+          // 1-second delay so opponent can see what the bot drew
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
           // Re-read bot state after draw (hand changed)
           const updatedBotState = state.playerStates[botId];
 
-          // Fall through to discard immediately
+          // Fall through to discard
           const drawnFromDiscard = state.drawSource === 'discard' && state.lastAction?.card
             ? state.lastAction.card
             : null;
@@ -695,6 +735,14 @@ export const GinRummyGameTable = ({
               onDrawStock={handleDrawStock}
               onDrawDiscard={ginState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
               isProcessing={isProcessing}
+            />
+
+            {/* Opponent Draw Animation */}
+            <GinRummyOpponentDrawAnimation
+              triggerId={opponentDrawTriggerId}
+              drawSource={opponentDrawSource}
+              card={opponentDrawCard}
+              cardBackColors={cardBackColors}
             />
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
