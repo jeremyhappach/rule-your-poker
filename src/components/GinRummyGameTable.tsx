@@ -799,10 +799,12 @@ export const GinRummyGameTable = ({
             if (ginState.phase === 'knocking' || ginState.phase === 'laying_off') {
               const knockerId = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
               if (knockerId) {
+                const knockerState = ginState.playerStates[knockerId];
+                const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
                 return (
                   <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                     <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                      {getPlayerUsername(knockerId)} {ginState.playerStates[knockerId]?.hasGin ? 'has GIN! 🎉' : 'knocked!'}
+                      {getPlayerUsername(knockerId)} {knockerState?.hasGin ? 'has GIN! 🎉' : `knocked!${dwText}`}
                     </p>
                   </div>
                 );

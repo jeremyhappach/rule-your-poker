@@ -256,28 +256,22 @@ export const GinRummyMobileCardsTab = ({
             {/* Melds */}
             {postKnockMelds.map((meld, meldIdx) => (
               <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-1")}>
-                {meld.cards.map((card, ci) => (
-                  <div key={`my-meld-${meldIdx}-${ci}`} style={{ zIndex: ci }}>
-                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                  </div>
-                ))}
+                {meld.cards.map((card, ci) => {
+                  const isLaidOff = iAmKnocker && laidOffOnMyMelds.some(lo => lo.rank === card.rank && lo.suit === card.suit);
+                  return (
+                    <div
+                      key={`my-meld-${meldIdx}-${ci}`}
+                      className={cn(isLaidOff && "rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]")}
+                      style={{ zIndex: ci }}
+                    >
+                      <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
+                    </div>
+                  );
+                })}
               </div>
             ))}
 
-            {/* Laid-off cards by opponent shown with bold blue highlight */}
-            {iAmKnocker && laidOffOnMyMelds.length > 0 && (
-              <div className="flex -space-x-4 ml-1">
-                {laidOffOnMyMelds.map((card, li) => (
-                  <div
-                    key={`lo-${li}`}
-                    className="rounded ring-[3px] ring-blue-400 shadow-[0_0_8px_2px_rgba(96,165,250,0.7)]"
-                    style={{ zIndex: li }}
-                  >
-                    <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Laid-off cards are already shown within the melds with blue highlight — no separate section needed */}
 
             {/* Deadwood — pushed to the right on whichever row it lands on */}
             {postKnockDeadwoodCards.length > 0 && (

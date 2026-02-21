@@ -71,13 +71,12 @@ const OpponentHandDisplay = ({
 
   return (
     <div className="flex flex-col items-center gap-1 w-full">
-      {/* Label */}
-      <p className="text-[9px] text-white/80 font-medium drop-shadow text-center">
-        {label}
-        {isKnocker
-          ? (hasGin ? ' — GIN 🎉' : ` — Knocked (${deadwoodValue} dw)`)
-          : ` (${deadwoodValue} dw${laidOffCount ? ` +${laidOffCount} laid off` : ''})`}
-      </p>
+      {/* Label — knocker label removed (shown in dealer announcement instead) */}
+      {!isKnocker && (
+        <p className="text-[9px] text-white/80 font-medium drop-shadow text-center">
+          {label} ({deadwoodValue} dw{laidOffCount ? ` +${laidOffCount} laid off` : ''})
+        </p>
+      )}
 
       {/* Melds */}
       {melds.length > 0 && (
@@ -183,8 +182,8 @@ export const GinRummyKnockDisplay = ({
     : null;
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none px-2 gap-2">
-      {/* Opponent's cards — the only cards shown on the felt */}
+    <div className="absolute inset-0 z-40 flex flex-col items-center pointer-events-none px-2 gap-2" style={{ paddingTop: '32%' }}>
+      {/* Opponent's cards — the only cards shown on the felt, pushed down */}
       {showOtherMelds && hasOtherCards && (
         <div className="w-full max-w-[280px] flex flex-col items-center gap-1 pointer-events-none">
           <OpponentHandDisplay
