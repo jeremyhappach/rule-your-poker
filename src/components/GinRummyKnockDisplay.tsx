@@ -152,6 +152,7 @@ export const GinRummyKnockDisplay = ({
   if (!knockerId) return null;
 
   const opponentId = knockerId === ginState.dealerPlayerId ? ginState.nonDealerPlayerId : ginState.dealerPlayerId;
+  const nonKnockerId = opponentId;
 
   // From the viewer's perspective: the "other" player is whoever is not me
   const otherPlayerId = currentPlayerId === knockerId ? opponentId : knockerId;
@@ -159,24 +160,20 @@ export const GinRummyKnockDisplay = ({
   const otherState = ginState.playerStates[otherPlayerId];
   const isOtherTheKnocker = otherPlayerId === knockerId;
   const isComplete = ginState.phase === 'complete';
-  const result = ginState.knockResult;
+
+  // Laid-off cards are always tracked on the NON-knocker's state
+  const nonKnockerState = ginState.playerStates[nonKnockerId];
+  const laidOffCards = nonKnockerState?.laidOffCards || [];
 
   // Show opponent's melds only once they've been computed (knocker shows immediately, non-knocker shows during scoring/complete)
   const showOtherMelds = isOtherTheKnocker || ginState.phase === 'scoring' || isComplete;
-  if (!showOtherMelds) return null;
 
-  // If opponent has no cards to show yet, skip
+  // If opponent has no cards to show yet, skip — but still allow laying-off message
   const hasOtherCards = otherState.melds.length > 0 || otherState.deadwood.length > 0 || otherState.hand.length > 0;
-  if (!hasOtherCards) return null;
-
-  const otherMelds = otherState.melds;
-  const otherDeadwood = otherState.deadwood.length > 0
-    ? otherState.deadwood
-    : (showOtherMelds && isOtherTheKnocker ? [] : []);
-  const otherDeadwoodValue = otherState.deadwoodValue;
 
   // Lay-off is interactive when the OTHER player is the knocker and I'm laying off onto their melds
   const isLayingOffOntoOther = isOtherTheKnocker && (ginState.phase === 'knocking' || ginState.phase === 'laying_off');
+  const isInLayOffPhase = ginState.phase === 'knocking' || ginState.phase === 'laying_off';
 
   // Resolve the actual selected card from current player's hand for per-meld validation
   const myPlayerId = currentPlayerId;
@@ -188,28 +185,30 @@ export const GinRummyKnockDisplay = ({
   return (
     <div className="absolute inset-0 z-40 flex flex-col items-center justify-center pointer-events-none px-2 gap-2">
       {/* Opponent's cards — the only cards shown on the felt */}
-      <div className="w-full max-w-[280px] flex flex-col items-center gap-1 pointer-events-none">
-        <OpponentHandDisplay
-          melds={otherMelds}
-          deadwood={otherDeadwood}
-          label={getPlayerUsername(otherPlayerId)}
-          deadwoodValue={otherDeadwoodValue}
-          laidOffCount={otherState.laidOffCards?.length}
-          laidOffCards={isOtherTheKnocker ? (otherState.laidOffCards || []) : []}
-          isKnocker={isOtherTheKnocker}
-          hasGin={otherState.hasGin}
-          interactiveMelds={isLayingOffOntoOther}
-          selectedCardForLayOff={layOffSelectedCardIndex != null}
-          selectedCard={selectedCard}
-          onLayOffToMeld={onLayOffToMeld}
-          isProcessing={isProcessing}
-        />
-      </div>
+      {showOtherMelds && hasOtherCards && (
+        <div className="w-full max-w-[280px] flex flex-col items-center gap-1 pointer-events-none">
+          <OpponentHandDisplay
+            melds={otherState.melds}
+            deadwood={otherState.deadwood.length > 0 ? otherState.deadwood : []}
+            label={getPlayerUsername(otherPlayerId)}
+            deadwoodValue={otherState.deadwoodValue}
+            laidOffCount={isOtherTheKnocker ? laidOffCards.length : 0}
+            laidOffCards={isOtherTheKnocker ? laidOffCards : []}
+            isKnocker={isOtherTheKnocker}
+            hasGin={otherState.hasGin}
+            interactiveMelds={isLayingOffOntoOther}
+            selectedCardForLayOff={layOffSelectedCardIndex != null}
+            selectedCard={selectedCard}
+            onLayOffToMeld={onLayOffToMeld}
+            isProcessing={isProcessing}
+          />
+        </div>
+      )}
 
-      {/* Laying off indicator — shown low on the felt */}
-      {(ginState.phase === 'knocking' || ginState.phase === 'laying_off') && (
+      {/* Laying off indicator — shown low on the felt for BOTH players */}
+      {isInLayOffPhase && (
         <p className="text-[11px] text-white/80 font-medium drop-shadow text-center animate-pulse">
-          {getPlayerUsername(knockerId === ginState.dealerPlayerId ? ginState.nonDealerPlayerId : ginState.dealerPlayerId)} is laying off...
+          {getPlayerUsername(nonKnockerId)} is laying off...
         </p>
       )}
 
