@@ -367,6 +367,14 @@ export const GinRummyGameTable = ({
         else if ((state.phase === 'knocking' || state.phase === 'laying_off')) {
           const knockerId = Object.entries(state.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
           if (knockerId && botId !== knockerId) {
+            // Show bot's cards on felt first, then wait 3s before laying off
+            await supabase
+              .from('rounds')
+              .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
+              .eq('id', roundId);
+            setGinState(state);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
             // Lay off cards one at a time with 1.5s delay each so player can follow along
             const layOffs = botGetLayOffs(botState.hand, state.playerStates[knockerId].melds);
             for (const lo of layOffs) {
