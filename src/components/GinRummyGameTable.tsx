@@ -800,13 +800,10 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Game Title */}
-            <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
+            <div className="absolute top-3 left-0 right-0 z-20 flex items-center justify-center">
               <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                ${anteAmount} GIN RUMMY
+                ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({ginState.pointsToWin})</span>
               </h2>
-              <p className="text-[9px] text-white/70">
-                To {ginState.pointsToWin} pts
-              </p>
             </div>
 
             {/* Felt Content */}
