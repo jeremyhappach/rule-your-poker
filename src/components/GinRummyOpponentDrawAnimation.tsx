@@ -22,13 +22,11 @@ export const GinRummyOpponentDrawAnimation = ({
   card,
   cardBackColors,
 }: GinRummyOpponentDrawAnimationProps) => {
-  const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
-  const [currentTriggerId, setCurrentTriggerId] = useState<string | null>(null);
+  const [visible, setVisible] = useState(!!triggerId);
 
   useEffect(() => {
-    if (!triggerId || triggerId === currentTriggerId) return;
-    setCurrentTriggerId(triggerId);
+    if (!triggerId) return;
     setVisible(true);
     setAnimating(false);
 
@@ -42,11 +40,10 @@ export const GinRummyOpponentDrawAnimation = ({
     // Hide after animation completes
     const timer = setTimeout(() => {
       setVisible(false);
-      setAnimating(false);
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [triggerId, currentTriggerId]);
+  }, [triggerId]);
 
   if (!visible) return null;
 

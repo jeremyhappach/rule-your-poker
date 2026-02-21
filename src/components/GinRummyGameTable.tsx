@@ -131,6 +131,7 @@ export const GinRummyGameTable = ({
   const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
   const [opponentDrawSource, setOpponentDrawSource] = useState<'stock' | 'discard'>('stock');
   const [opponentDrawCard, setOpponentDrawCard] = useState<GinRummyCard | null>(null);
+  const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
@@ -169,10 +170,12 @@ export const GinRummyGameTable = ({
       setOpponentDrawSource('stock');
       setOpponentDrawCard(null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
+      setOpponentDrawKey(k => k + 1);
     } else if (action.type === 'draw_discard') {
       setOpponentDrawSource('discard');
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
+      setOpponentDrawKey(k => k + 1);
     }
   }, [ginState?.lastAction, currentPlayerId]);
 
@@ -740,6 +743,7 @@ export const GinRummyGameTable = ({
 
             {/* Opponent Draw Animation */}
             <GinRummyOpponentDrawAnimation
+              key={opponentDrawKey}
               triggerId={opponentDrawTriggerId}
               drawSource={opponentDrawSource}
               card={opponentDrawCard}
