@@ -156,7 +156,7 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     if (!ginState) return;
     const currentPhase = ginState.phase;
-    if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking') {
+    if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
       setTimeout(() => playKnock(), 100);
       setShowKnockOverlay(true);
@@ -167,6 +167,7 @@ export const GinRummyGameTable = ({
       (currentPhase === 'scoring' || currentPhase === 'complete') &&
       prevPhaseRef.current !== 'scoring' &&
       prevPhaseRef.current !== 'complete' &&
+      !showGinOverlay &&
       (ginState.knockResult?.isGin || anyPlayerHasGin)
     ) {
       console.log('[GIN] GIN detected, showing gin overlay');
@@ -656,14 +657,23 @@ export const GinRummyGameTable = ({
     try {
       let newState = declareKnock(ginState, currentPlayerId, card);
       if (newState.phase === 'scoring') {
-        // Gin! Write state first so gin overlay plays on both clients, then score after delay
-        await updateState(newState);
+        // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        setShowGinOverlay(true);
+        // Write to DB so opponent sees gin phase and gets overlay too
+        supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        optimisticUntilRef.current = Date.now() + 4000;
         await new Promise(resolve => setTimeout(resolve, 3500));
+        await updateState(newState);
         newState = scoreHand(newState);
       } else if (newState.phase === 'knocking') {
-        // Knock! Write state so overlay plays, wait before tabling cards
-        await updateState(newState);
+        // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        setTimeout(() => playKnock(), 100);
+        setShowKnockOverlay(true);
+        // Write to DB so opponent sees knocking phase and gets overlay too
+        supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        optimisticUntilRef.current = Date.now() + 3300;
         await new Promise(resolve => setTimeout(resolve, 2800));
+        await updateState(newState);
       }
       await updateState(newState);
     } catch (err) {
