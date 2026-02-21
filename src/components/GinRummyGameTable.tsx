@@ -864,7 +864,11 @@ export const GinRummyGameTable = ({
             {/* Gin Overlay — cool blue with record scratch */}
             {showGinOverlay && (() => {
               const ginnerEntry = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasGin);
-              const winnerId = ginnerEntry?.[0] || ginState.knockResult?.winnerId || '';
+              const winnerId = ginnerEntry?.[0]
+                || ginState.knockResult?.winnerId
+                || (ginState.lastAction?.type === 'gin' ? ginState.lastAction.playerId : '')
+                || ginState.currentTurnPlayerId
+                || '';
               return (
                 <GinRummyGinOverlay
                   winnerName={getPlayerUsername(winnerId)}
