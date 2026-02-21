@@ -405,6 +405,15 @@ export const GinRummyGameTable = ({
               setGinState(ginSnapshot);
               await new Promise(resolve => setTimeout(resolve, 3500));
               state = scoreHand(state);
+            } else if (state.phase === 'knocking') {
+              // Knock! Write state so overlay plays, wait for it before tabling cards
+              const knockSnapshot = JSON.parse(JSON.stringify(state));
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: knockSnapshot })
+                .eq('id', roundId);
+              setGinState(knockSnapshot);
+              await new Promise(resolve => setTimeout(resolve, 2800));
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
@@ -433,6 +442,15 @@ export const GinRummyGameTable = ({
               setGinState(ginSnapshot);
               await new Promise(resolve => setTimeout(resolve, 3500));
               state = scoreHand(state);
+            } else if (state.phase === 'knocking') {
+              // Knock! Write state so overlay plays, wait for it before tabling cards
+              const knockSnapshot = JSON.parse(JSON.stringify(state));
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: knockSnapshot })
+                .eq('id', roundId);
+              setGinState(knockSnapshot);
+              await new Promise(resolve => setTimeout(resolve, 2800));
             }
           } else {
             const discardIdx = knockDecision.discardIndex;
@@ -631,6 +649,10 @@ export const GinRummyGameTable = ({
         await updateState(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
         newState = scoreHand(newState);
+      } else if (newState.phase === 'knocking') {
+        // Knock! Write state so overlay plays, wait before tabling cards
+        await updateState(newState);
+        await new Promise(resolve => setTimeout(resolve, 2800));
       }
       await updateState(newState);
     } catch (err) {
