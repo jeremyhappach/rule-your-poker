@@ -206,6 +206,13 @@ export const GinRummyKnockDisplay = ({
         />
       </div>
 
+      {/* Laying off indicator — shown low on the felt */}
+      {(ginState.phase === 'knocking' || ginState.phase === 'laying_off') && (
+        <p className="text-[11px] text-white/80 font-medium drop-shadow text-center animate-pulse">
+          {getPlayerUsername(knockerId === ginState.dealerPlayerId ? ginState.nonDealerPlayerId : ginState.dealerPlayerId)} is laying off...
+        </p>
+      )}
+
       {/* Match score */}
       {isComplete && (
         <p className="text-[8px] text-white/40 drop-shadow text-center">
