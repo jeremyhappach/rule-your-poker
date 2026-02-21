@@ -581,13 +581,14 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
+    // Set local state immediately to prevent stale card flash
+    setGinState(newState);
     try {
       const { error } = await supabase
         .from('rounds')
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      setGinState(newState);
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
