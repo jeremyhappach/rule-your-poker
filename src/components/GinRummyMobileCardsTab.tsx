@@ -243,7 +243,8 @@ export const GinRummyMobileCardsTab = ({
   );
 
   const inPostKnock = isPostKnockPhase(ginState.phase);
-  const flatSortedHand = [...organizedHand.deadwoodCards, ...organizedHand.meldCards];
+  const flatSortedHand = [...organizedHand.deadwoodCards, ...organizedHand.meldCards]
+    .sort((a, b) => (RANK_ORDER[a.card.rank] || 0) - (RANK_ORDER[b.card.rank] || 0));
 
   return (
     <div className="h-full px-2 flex flex-col">
