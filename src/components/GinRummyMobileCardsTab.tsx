@@ -248,11 +248,11 @@ export const GinRummyMobileCardsTab = ({
 
       {/* ── POST-KNOCK VIEW: Melds top row, deadwood below right-aligned ── */}
       {inPostKnock ? (
-        <div className="flex flex-col gap-1 py-1 items-center">
-          {/* Meld groups row */}
-          <div className="flex items-end justify-center overflow-visible flex-wrap gap-y-1">
+        <div className="flex flex-col gap-1 py-1 w-full">
+          {/* Meld groups row — single line, tighter overlap to prevent wrapping */}
+          <div className="flex items-end justify-center overflow-visible">
             {postKnockMelds.map((meld, meldIdx) => (
-              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-1")}>
+              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-5", meldIdx > 0 && "ml-1.5")}>
                 {meld.cards.map((card, ci) => (
                   <div key={`my-meld-${meldIdx}-${ci}`} style={{ zIndex: ci }}>
                     <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
@@ -263,7 +263,7 @@ export const GinRummyMobileCardsTab = ({
 
             {/* Laid-off cards by opponent shown with bold blue highlight */}
             {iAmKnocker && laidOffOnMyMelds.length > 0 && (
-              <div className="flex -space-x-4 ml-1">
+              <div className="flex -space-x-5 ml-1.5">
                 {laidOffOnMyMelds.map((card, li) => (
                   <div
                     key={`lo-${li}`}
@@ -277,10 +277,10 @@ export const GinRummyMobileCardsTab = ({
             )}
           </div>
 
-          {/* Deadwood row — right-aligned below melds, selectable when laying off */}
+          {/* Deadwood row — pinned to second row, right-justified */}
           {postKnockDeadwoodCards.length > 0 && (
-            <div className="flex items-end justify-end overflow-visible w-full pr-2">
-              <div className="flex -space-x-4">
+            <div className="flex items-end justify-end w-full pr-2">
+              <div className="flex -space-x-5">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
@@ -304,8 +304,8 @@ export const GinRummyMobileCardsTab = ({
             </div>
           )}
 
-          {/* DW value — compute from hand if not yet scored */}
-          <div className="flex items-center justify-center">
+          {/* DW value — right-aligned under deadwood */}
+          <div className="flex items-center justify-end pr-2">
             <span className="text-xs font-mono font-bold text-muted-foreground">
               DW: {postKnockDeadwoodCards.length > 0
                 ? (myState.deadwoodValue > 0 ? myState.deadwoodValue : findOptimalMelds(myState.hand).deadwoodValue)
