@@ -396,6 +396,14 @@ export const GinRummyGameTable = ({
             const discardCardVal = updatedBotState.hand[knockDecision.discardIndex];
             state = declareKnock(state, botId, discardCardVal);
             if (state.phase === 'scoring') {
+              // Gin! Write state first so gin overlay plays, then wait before scoring
+              const ginSnapshot = JSON.parse(JSON.stringify(state));
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: ginSnapshot })
+                .eq('id', roundId);
+              setGinState(ginSnapshot);
+              await new Promise(resolve => setTimeout(resolve, 3500));
               state = scoreHand(state);
             }
           } else {
@@ -416,6 +424,14 @@ export const GinRummyGameTable = ({
             const discardCardVal = botState.hand[knockDecision.discardIndex];
             state = declareKnock(state, botId, discardCardVal);
             if (state.phase === 'scoring') {
+              // Gin! Write state first so gin overlay plays, then wait before scoring
+              const ginSnapshot = JSON.parse(JSON.stringify(state));
+              await supabase
+                .from('rounds')
+                .update({ gin_rummy_state: ginSnapshot })
+                .eq('id', roundId);
+              setGinState(ginSnapshot);
+              await new Promise(resolve => setTimeout(resolve, 3500));
               state = scoreHand(state);
             }
           } else {
@@ -611,6 +627,9 @@ export const GinRummyGameTable = ({
     try {
       let newState = declareKnock(ginState, currentPlayerId, card);
       if (newState.phase === 'scoring') {
+        // Gin! Write state first so gin overlay plays on both clients, then score after delay
+        await updateState(newState);
+        await new Promise(resolve => setTimeout(resolve, 3500));
         newState = scoreHand(newState);
       }
       await updateState(newState);
