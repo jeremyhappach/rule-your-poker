@@ -826,15 +826,18 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Knock Overlay — shown to all clients */}
-            {showKnockOverlay && ginState.knockResult && (
-              <GinRummyKnockOverlay
-                knockerName={getPlayerUsername(
-                  Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked)?.[0] || ''
-                )}
-                deadwood={ginState.knockResult.knockerDeadwood}
-                onComplete={() => setShowKnockOverlay(false)}
-              />
-            )}
+            {showKnockOverlay && (() => {
+              const knockerEntry = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked);
+              if (!knockerEntry) return null;
+              const [knockerId, knockerState] = knockerEntry;
+              return (
+                <GinRummyKnockOverlay
+                  knockerName={getPlayerUsername(knockerId)}
+                  deadwood={knockerState.deadwoodValue}
+                  onComplete={() => setShowKnockOverlay(false)}
+                />
+              );
+            })()}
 
             {/* Gin Overlay — cool blue with record scratch */}
             {showGinOverlay && ginState.knockResult && (
