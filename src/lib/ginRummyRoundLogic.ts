@@ -433,8 +433,8 @@ export async function endGinRummyGame(
       })
       .eq('id', gameId);
 
-    // Record in game_results
-    await supabase
+    // Record in game_results — MUST be awaited so cleanup logic can detect history
+    const { error: resultError } = await supabase
       .from('game_results')
       .insert({
         game_id: gameId,
@@ -447,13 +447,11 @@ export async function endGinRummyGame(
         is_chopped: false,
         player_chip_changes: chipChanges,
         game_type: 'gin-rummy',
-      })
-      .then(({ error }) => {
-        if (error) console.error('[GIN-RUMMY] Failed to record result:', error);
       });
+    if (resultError) console.error('[GIN-RUMMY] Failed to record result:', resultError);
 
-    // Fire-and-forget: snapshot chips
-    void snapshotPlayerChips(gameId, handNumber).catch((err) => {
+    // Snapshot chips — awaited to ensure history exists before player leaves
+    await snapshotPlayerChips(gameId, handNumber).catch((err) => {
       console.error('[GIN-RUMMY] Failed to snapshot chips:', err);
     });
 
@@ -547,7 +545,8 @@ export async function recordGinRummyHandResult(
 
   const description = describeKnockResult(result);
 
-  supabase
+  // Await the insert so the record exists before any cleanup logic runs
+  const { error: insertError } = await supabase
     .from('game_results')
     .insert({
       game_id: gameId,
@@ -560,9 +559,12 @@ export async function recordGinRummyHandResult(
       is_chopped: false,
       player_chip_changes: chipChanges,
       game_type: 'gin-rummy',
-    })
-    .then(({ error }) => {
-      if (error) console.error('[GIN-RUMMY] Failed to record hand result:', error);
-      else console.log('[GIN-RUMMY] Hand result recorded:', { handNumber, description, handPayout });
     });
+  if (insertError) console.error('[GIN-RUMMY] Failed to record hand result:', insertError);
+  else console.log('[GIN-RUMMY] Hand result recorded:', { handNumber, description, handPayout });
+
+  // Snapshot chips per-hand so mid-match quits have history
+  void snapshotPlayerChips(gameId, handNumber).catch((err) => {
+    console.error('[GIN-RUMMY] Failed to snapshot chips:', err);
+  });
 }

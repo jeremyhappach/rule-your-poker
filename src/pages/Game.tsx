@@ -757,9 +757,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (gData?.real_money) {
         await supabase.from('games').update({ status: 'session_ended', session_ended_at: new Date().toISOString(), game_over_at: new Date().toISOString() }).eq('id', gId);
       } else {
-        // Check if game has history
+        // Check if game has history (game_results OR dealer_games)
         const { count } = await supabase.from('game_results').select('id', { count: 'exact', head: true }).eq('game_id', gId);
-        if ((count ?? 0) > 0) {
+        const { count: dealerGameCount } = await supabase.from('dealer_games').select('id', { count: 'exact', head: true }).eq('session_id', gId);
+        if ((count ?? 0) > 0 || (dealerGameCount ?? 0) > 0) {
           await supabase.from('games').update({ status: 'session_ended', session_ended_at: new Date().toISOString(), game_over_at: new Date().toISOString() }).eq('id', gId);
         } else {
           await supabase.from('players').delete().eq('game_id', gId);
