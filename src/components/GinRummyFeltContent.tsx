@@ -1,9 +1,9 @@
 // Gin Rummy Felt Content - Center area of the circular table
 // Shows stock pile, discard pile, match scores, and phase indicators
 
-import { Badge } from '@/components/ui/badge';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
+import { GinRummyPegBoard } from './GinRummyPegBoard';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
@@ -62,11 +62,14 @@ export const GinRummyFeltContent = ({
         opponentIds={[opponentId]}
       />
 
-      {/* Match Score - Top center */}
-      <div className="absolute top-[22%] left-1/2 -translate-x-1/2 z-20 w-[65%]">
-        <Badge variant="outline" className="text-white border-white/40 text-[11px] bg-black/40 backdrop-blur-sm px-3 py-1 w-full flex justify-center whitespace-nowrap">
-          {getPlayerUsername(currentPlayerId ?? '')} {ginState.matchScores[currentPlayerId ?? ''] || 0} — {ginState.matchScores[opponentId] || 0} {getPlayerUsername(opponentId)}
-        </Badge>
+      {/* Match Score Pegboard - Top center */}
+      <div className="absolute top-[20%] left-1/2 -translate-x-1/2 z-20 w-[70%]">
+        <GinRummyPegBoard
+          ginState={ginState}
+          currentPlayerId={currentPlayerId}
+          opponentId={opponentId}
+          getPlayerUsername={getPlayerUsername}
+        />
       </div>
 
       {/* Stock & Discard Piles — hidden after knock/gin */}
