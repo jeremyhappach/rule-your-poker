@@ -4996,8 +4996,8 @@ export const MobileGameTable = ({
         
         {/* Dealer button is now shown on player chip stacks (OUTSIDE position), no separate felt button needed */}
         
-        {/* Buck indicator on felt - Holm games only, hide during showdown */}
-        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdown && (() => {
+        {/* Buck indicator on felt - Holm games only, hide only during active showdown (not locked) */}
+        {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdownRaw && (() => {
         // CRITICAL: For observers (!currentPlayer), use ABSOLUTE position mapping
         // For seated players, use relative slots based on clockwise distance
         const isObserver = !currentPlayer;
