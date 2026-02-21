@@ -246,13 +246,14 @@ export const GinRummyMobileCardsTab = ({
   return (
     <div className="h-full px-2 flex flex-col">
 
-      {/* ── POST-KNOCK VIEW: Melds top row, deadwood below right-aligned ── */}
+      {/* ── POST-KNOCK VIEW: Melds left-justified, deadwood right-justified, wraps naturally ── */}
       {inPostKnock ? (
         <div className="flex flex-col gap-1 py-1 w-full">
-          {/* Meld groups row — single line, tighter overlap to prevent wrapping */}
-          <div className="flex items-end justify-center overflow-visible">
+          {/* Single flex-wrap row: melds flush-left, deadwood flush-right */}
+          <div className="flex items-end flex-wrap gap-y-1 w-full px-1">
+            {/* Melds */}
             {postKnockMelds.map((meld, meldIdx) => (
-              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-5", meldIdx > 0 && "ml-1.5")}>
+              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-1")}>
                 {meld.cards.map((card, ci) => (
                   <div key={`my-meld-${meldIdx}-${ci}`} style={{ zIndex: ci }}>
                     <CribbagePlayingCard card={toDisplayCard(card)} size="lg" />
@@ -263,7 +264,7 @@ export const GinRummyMobileCardsTab = ({
 
             {/* Laid-off cards by opponent shown with bold blue highlight */}
             {iAmKnocker && laidOffOnMyMelds.length > 0 && (
-              <div className="flex -space-x-5 ml-1.5">
+              <div className="flex -space-x-4 ml-1">
                 {laidOffOnMyMelds.map((card, li) => (
                   <div
                     key={`lo-${li}`}
@@ -275,12 +276,10 @@ export const GinRummyMobileCardsTab = ({
                 ))}
               </div>
             )}
-          </div>
 
-          {/* Deadwood row — pinned to second row, right-justified */}
-          {postKnockDeadwoodCards.length > 0 && (
-            <div className="flex items-end justify-end w-full pr-2">
-              <div className="flex -space-x-5">
+            {/* Deadwood — pushed to the right on whichever row it lands on */}
+            {postKnockDeadwoodCards.length > 0 && (
+              <div className="flex -space-x-4 ml-auto items-end">
                 {postKnockDeadwoodCards.map((card, ci) => {
                   const originalIndex = myState.hand.findIndex(c => c.rank === card.rank && c.suit === card.suit);
                   const isSelected = selectedCardIndex === originalIndex;
@@ -301,10 +300,10 @@ export const GinRummyMobileCardsTab = ({
                   );
                 })}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* DW value — right-aligned under deadwood */}
+          {/* DW value — right-aligned */}
           <div className="flex items-center justify-end pr-2">
             <span className="text-xs font-mono font-bold text-muted-foreground">
               DW: {postKnockDeadwoodCards.length > 0
