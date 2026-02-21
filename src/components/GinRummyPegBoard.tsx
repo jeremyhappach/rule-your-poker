@@ -53,14 +53,6 @@ export const GinRummyPegBoard = ({
                   {score}
                 </span>
               </div>
-
-              {/* Peg marker at progress edge */}
-              {percentage > 0 && (
-                <div
-                  className={`absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${PLAYER_COLORS[index]} border border-white shadow transition-all duration-500`}
-                  style={{ left: `calc(${percentage}% - 4px)` }}
-                />
-              )}
             </div>
           </div>
         );
