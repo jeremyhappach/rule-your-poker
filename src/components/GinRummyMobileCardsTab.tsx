@@ -255,7 +255,7 @@ export const GinRummyMobileCardsTab = ({
           <div className="flex items-end flex-wrap gap-y-1 w-full px-1">
             {/* Melds */}
             {postKnockMelds.map((meld, meldIdx) => (
-              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-1")}>
+              <div key={`my-meld-${meldIdx}`} className={cn("flex -space-x-4", meldIdx > 0 && "ml-3")}>
                 {meld.cards.map((card, ci) => {
                   const isLaidOff = iAmKnocker && laidOffOnMyMelds.some(lo => lo.rank === card.rank && lo.suit === card.suit);
                   return (
