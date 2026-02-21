@@ -231,9 +231,18 @@ export const GinRummyGameTable = ({
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
       // Skip stale realtime/poll updates that arrive right after an optimistic local update
+      // BUT allow through updates where the phase has advanced (bot acted after our pass)
       if (Date.now() < optimisticUntilRef.current) {
-        console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard)`);
-        return;
+        const currentPhase = ginState?.phase;
+        const incomingPhase = state.phase;
+        const phaseAdvanced = currentPhase && incomingPhase && incomingPhase !== currentPhase;
+        if (!phaseAdvanced) {
+          console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard)`);
+          return;
+        }
+        // Phase advanced — bot responded, clear the guard and let it through
+        optimisticUntilRef.current = 0;
+        console.log(`[GIN-RUMMY] Phase advanced (${currentPhase} → ${incomingPhase}), allowing ${source} update through optimistic guard`);
       }
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,

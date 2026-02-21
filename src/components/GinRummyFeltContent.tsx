@@ -147,14 +147,6 @@ export const GinRummyFeltContent = ({
             </p>
           )}
 
-          {/* Show what the bot did during first draw — visible briefly after transition */}
-          {ginState.phase === 'playing' && ginState.lastAction?.type === 'draw_discard' && 
-           ginState.lastAction?.playerId !== currentPlayerId &&
-           ginState.turnPhase === 'discard' && (
-            <p className="text-[10px] text-emerald-400 text-center font-medium">
-              {getPlayerUsername(ginState.lastAction.playerId)} took the upcard
-            </p>
-          )}
         </div>
       )}
     </>
