@@ -89,6 +89,7 @@ function RoundDisplay({
   currentPlayerId,
   playerNames,
   showAnteInRound = true,
+  usePoints = false,
 }: {
   round: RoundGroup;
   roundIndex: number;
@@ -97,6 +98,7 @@ function RoundDisplay({
   currentPlayerId?: string;
   playerNames?: Map<string, string>;
   showAnteInRound?: boolean;
+  usePoints?: boolean;
 }) {
   const hasCribbageEvents = round.cribbageEvents && round.cribbageEvents.length > 0;
   // For cribbage, don't show player cards separately - they're shown in CribbageEventDisplay counting sections
@@ -259,6 +261,7 @@ function RoundDisplay({
                 label={label}
                 description={description}
                 delta={chipChange}
+                usePoints={usePoints}
               />
             );
           })}
@@ -335,7 +338,7 @@ export function HandAccordionContent({
       {/* Metadata */}
       {group.gameType !== "cribbage" && (
         <div className="text-xs text-muted-foreground mb-2">
-          {group.totalPot > 0 && `Pot: $${formatChipValue(group.totalPot)} • `}
+          {!isGinRummy && group.totalPot > 0 && `Pot: $${formatChipValue(group.totalPot)} • `}
           {new Date(group.latestTimestamp).toLocaleTimeString()}
         </div>
       )}
@@ -398,6 +401,7 @@ export function HandAccordionContent({
                   currentPlayerId={currentPlayerId}
                   playerNames={playerNames}
                   showAnteInRound={!is357}
+                  usePoints={isGinRummy}
                 />
               </div>
             ))}

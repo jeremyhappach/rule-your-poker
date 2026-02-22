@@ -8,11 +8,13 @@ export function HandHistoryEventRow({
   description,
   delta,
   tone = "muted",
+  usePoints = false,
 }: {
   label: string;
   description: string;
   delta?: number | null;
   tone?: Tone;
+  usePoints?: boolean;
 }) {
   // Normalize labels for display (shorter versions for compact view)
   const displayLabel = label === 'Showdown' ? 'Win' : label;
@@ -38,7 +40,7 @@ export function HandHistoryEventRow({
         )}
       >
         {delta !== null && delta !== undefined && delta !== 0 && (
-          <>{delta > 0 ? "+" : ""}{formatChipValue(delta)}</>
+          <>{delta > 0 ? "+" : ""}{formatChipValue(delta)}{usePoints ? " pts" : ""}</>
         )}
       </span>
     </div>
