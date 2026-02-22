@@ -97,6 +97,22 @@ export function compactHandDescription(
     return winnerName ? `${winnerName}: beat Chucky` : 'beat Chucky';
   }
   
+  // Gin Rummy descriptions: "PlayerName: Knock (5 vs 44) +39 pts" or "PlayerName: Gin! +34 pts"
+  // Strip the player name prefix and "+N pts" suffix (handled separately in delta column)
+  const ginKnockMatch = description.match(/^[^:]+:\s*(Knock\s*\([^)]+\))/i);
+  if (ginKnockMatch) {
+    return ginKnockMatch[1]; // e.g. "Knock (5 vs 44)"
+  }
+  const ginMatch = description.match(/^[^:]+:\s*(Gin!)/i);
+  if (ginMatch) {
+    return ginMatch[1]; // "Gin!"
+  }
+  // Gin Rummy match-end: "PlayerName wins 104-59 +$2"
+  const ginWinsMatch = description.match(/^([^:]+)\s+wins\s+(\d+-\d+)\s+\+\$(\d+)/i);
+  if (ginWinsMatch) {
+    return `wins ${ginWinsMatch[2]} (+$${ginWinsMatch[3]})`;
+  }
+
   // Fallback: just return a truncated version
   if (description.length > 30) {
     return description.substring(0, 27) + '...';
