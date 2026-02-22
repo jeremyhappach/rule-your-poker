@@ -1196,7 +1196,7 @@ export const DealerGameSetup = ({
     { id: 'holm-game', name: 'Holm', description: 'Beat Chucky!', category: 'cards', enabled: true },
     { id: '3-5-7', name: '3-5-7', description: 'Classic wild card poker', category: 'cards', enabled: true },
     { id: 'cribbage', name: 'Cribbage', description: 'Pegging to 121', category: 'cards', enabled: true, maxPlayers: 4 },
-    { id: 'gin-rummy', name: 'Gin Rummy', description: 'Knock, gin, undercut', category: 'cards', enabled: true, maxPlayers: 2 },
+    { id: 'gin-rummy', name: 'Gin Rummy', description: 'Meld & knock', category: 'cards', enabled: true, maxPlayers: 2 },
     
     // Dice Games
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
