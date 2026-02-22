@@ -455,6 +455,7 @@ export function useHandHistoryData({
       const gameType = dealerGame?.game_type || dgResults[0]?.game_type || null;
       const isDiceGame = gameType === "horses" || gameType === "ship-captain-crew";
       const isCribbage = gameType === "cribbage";
+      const isGinRummy = gameType === "gin-rummy";
 
       // For cribbage games, collect all cribbage events for all rounds in this dealer game
       let allCribbageEventsForDealerGame: CribbageEventRecord[] = [];
@@ -917,6 +918,24 @@ export function useHandHistoryData({
           } else {
             totalChipChange = viewerIsWinner ? stakes : -stakes;
           }
+        }
+      }
+
+      // Gin Rummy: chips only transfer at match end, not per hand.
+      // Each hand's game_result records the ante as chip_changes, but summing them
+      // overstates the result. The actual transfer is a single ante payment at match conclusion.
+      if (isGinRummy) {
+        // Look for a match-end event (description contains "wins")
+        const matchEndEvent = outcomeEvents.find(e =>
+          e.winning_hand_description?.includes('wins')
+        );
+        
+        if (matchEndEvent) {
+          // Use the match-end event's chip change as the authoritative total
+          totalChipChange = getViewerChipChange(matchEndEvent.player_chip_changes);
+        } else {
+          // Match still in progress — no chips have transferred yet
+          totalChipChange = 0;
         }
       }
 
