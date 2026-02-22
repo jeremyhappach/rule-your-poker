@@ -12,13 +12,34 @@ interface HandAccordionContentProps {
   playerNames?: Map<string, string>;
 }
 
+// Extract point value from gin rummy description like "Knock (7 vs 21) +14 pts"
+function extractGinRummyPoints(
+  description: string | null | undefined,
+  currentPlayerId?: string,
+  winnerPlayerId?: string | null,
+): number | null {
+  if (!description) return null;
+  const match = description.match(/\+(\d+)\s*pts/);
+  if (!match) return null;
+  const points = parseInt(match[1], 10);
+  if (!currentPlayerId || !winnerPlayerId) return points;
+  // If current player is the winner, positive; otherwise negative
+  return currentPlayerId === winnerPlayerId ? points : -points;
+}
+
 // Format event for display
 function formatEventDescription(
   event: GameResultRecord,
   currentPlayerId?: string,
-  playerNames?: Map<string, string>
+  playerNames?: Map<string, string>,
+  usePoints?: boolean,
 ): { label: string; description: string; chipChange: number | null } {
   const chipChange = currentPlayerId ? (event.player_chip_changes[currentPlayerId] ?? null) : null;
+  
+  // For Gin Rummy per-hand events, extract points from description instead of using chip changes
+  const effectiveDelta = usePoints
+    ? extractGinRummyPoints(event.winning_hand_description, currentPlayerId, event.winner_player_id) ?? chipChange
+    : chipChange;
 
   if (event.winner_username === "Ante") {
     const compactDesc = compactHandDescription(event.winning_hand_description);
@@ -49,7 +70,7 @@ function formatEventDescription(
     : (event.winner_username || "Unknown");
   const finalDesc = desc ? `${resolvedWinner}: ${desc}` : resolvedWinner;
 
-  return { label: "Win", description: finalDesc || "Unknown", chipChange };
+  return { label: "Win", description: finalDesc || "Unknown", chipChange: effectiveDelta };
 }
 
 // Get card count label for 3-5-7 rounds
@@ -254,7 +275,7 @@ function RoundDisplay({
       {hasEvents && (
         <div className="space-y-1">
           {displayEvents.map((event) => {
-            const { label, description, chipChange } = formatEventDescription(event, currentPlayerId, playerNames);
+            const { label, description, chipChange } = formatEventDescription(event, currentPlayerId, playerNames, usePoints);
             return (
               <HandHistoryEventRow
                 key={event.id}
