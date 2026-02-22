@@ -48,7 +48,7 @@ export const GameSelection = ({
     {
       id: "gin-rummy",
       name: "Gin Rummy",
-      description: "Knock or go gin",
+      description: "Meld & knock",
       enabled: true,
       maxPlayers: 2,
     },
