@@ -31,8 +31,8 @@ export const GinRummyPegBoard = ({
         const score = ginState.matchScores[pid] || 0;
         const percentage = Math.min(100, (score / ginState.pointsToWin) * 100);
         const displayName = getPlayerUsername(pid);
-        // Ensure a minimum width so "0" is always readable
-        const barWidth = Math.max(12, percentage);
+        // Only show fill when there are actual points
+        const barWidth = score === 0 ? 0 : Math.max(12, percentage);
 
         return (
           <div key={pid} className="flex items-center gap-1.5">
