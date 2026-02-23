@@ -3660,25 +3660,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             }
 
             // Horses: proceed by starting a new Horses round (not startRound)
+            // NOTE: Do NOT pre-claim awaiting_next_round here — startHorsesRound / startSCCRound
+            // have their own atomic rollover claim guards. Pre-consuming the flag here causes
+            // startHorsesRound to see awaiting_next_round=false and hit BLOCKED_NOT_READY.
             if (freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew') {
-              const isDiceGame = freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew';
               console.log('[AWAITING_NEXT_ROUND] Dice game detected — starting next hand (re-ante)', freshGame?.game_type);
-
-              const { data: updateResult } = await supabase
-                .from('games')
-                .update({
-                  awaiting_next_round: false,
-                  next_round_number: null,
-                  last_round_result: null,
-                })
-                .eq('id', gameId)
-                .eq('awaiting_next_round', true)
-                .select();
-
-              if (!updateResult || updateResult.length === 0) {
-                console.log('[AWAITING_NEXT_ROUND] Another process already proceeding (dice game), skipping');
-                return;
-              }
 
               // Capture pre-ante chips BEFORE startRound deducts them
               const { data: playersBeforeAnte } = await supabase
@@ -3701,7 +3687,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               const currentPot = freshGame?.pot || 0;
               const expectedPot = currentPot + (perPlayerAmount * activeCount);
 
-              // Start the appropriate round type
+              // Start the appropriate round type — these functions handle their own
+              // atomic guards for awaiting_next_round and multi-client deduplication
               if (freshGame?.game_type === 'ship-captain-crew') {
                 await startSCCRound(gameId);
               } else {
