@@ -813,9 +813,62 @@ export const GinRummyGameTable = ({
   };
 
   if (!ginState || !currentPlayerId || !currentPlayer) {
+    // During ante_decision (no roundId), show the table felt with "Awaiting ante" banner
+    // instead of a generic "Loading..." that confuses users for 7-10 seconds
+    const isAwaitingAnte = !roundId;
+    const opponentPlayer = players.find(p => p.user_id !== currentUserId);
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-poker-gold">Loading Gin Rummy...</div>
+      <div className="h-full flex flex-col">
+        <div
+          className="relative flex items-start justify-center pt-1"
+          style={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            backgroundImage: `url(${peoriaBridgeMobile})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        >
+          <div className="flex flex-col items-center w-full">
+            {/* Opponent chip area */}
+            <div className="flex items-center gap-2 mb-1 mt-1">
+              <span className="text-xs text-amber-200/80 font-medium">
+                {opponentPlayer?.profiles?.username || 'Opponent'}
+              </span>
+              <span className="text-xs text-amber-100/70">
+                ${formatChipValue(opponentPlayer?.chips ?? 0)}
+              </span>
+            </div>
+            {/* Circular table */}
+            <div
+              className="rounded-full border-4 border-amber-900/80 shadow-lg flex items-center justify-center"
+              style={{
+                width: 220,
+                height: 220,
+                background: `radial-gradient(ellipse at center, ${tableColors.color}, ${tableColors.darkColor})`,
+              }}
+            >
+              <p className="text-sm font-bold text-poker-gold animate-pulse">
+                {isAwaitingAnte ? 'Awaiting ante decisions...' : 'Loading...'}
+              </p>
+            </div>
+            {/* Current player chip area */}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-amber-200/80 font-medium">
+                {currentPlayer?.profiles?.username || players.find(p => p.user_id === currentUserId)?.profiles?.username || 'You'}
+              </span>
+              <span className="text-xs text-amber-100/70">
+                ${formatChipValue(currentPlayer?.chips ?? players.find(p => p.user_id === currentUserId)?.chips ?? 0)}
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* Bottom tab area placeholder */}
+        <div className="bg-slate-900 border-t border-amber-900/30 px-2 py-3 text-center">
+          <p className="text-sm font-bold text-poker-gold">
+            {isAwaitingAnte ? 'Awaiting ante decisions...' : 'Preparing game...'}
+          </p>
+        </div>
       </div>
     );
   }
