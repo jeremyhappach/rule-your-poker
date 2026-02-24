@@ -157,18 +157,21 @@ export const GinRummyGameTable = ({
     setShowGinOverlay(false);
     prevPhaseRef.current = null;
     ginOverlayFiredRef.current = false;
+    knockOverlayFiredRef.current = false;
   }, [roundId]);
 
-  // Guard: only allow one gin overlay per round (prevents re-fire from re-renders)
+  // Guards: only allow one overlay per round (prevents re-fire from polls/re-renders)
   const ginOverlayFiredRef = useRef(false);
+  const knockOverlayFiredRef = useRef(false);
 
   // Play knock sound + show overlay when phase transitions to 'knocking'
   // Show gin overlay when knockResult indicates gin
   useEffect(() => {
     if (!ginState) return;
     const currentPhase = ginState.phase;
-    if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay) {
+    if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
+      knockOverlayFiredRef.current = true;
       setTimeout(() => playKnock(), 100);
       setShowKnockOverlay(true);
     }
@@ -718,6 +721,7 @@ export const GinRummyGameTable = ({
       let newState = declareKnock(ginState, currentPlayerId, card);
       if (newState.phase === 'scoring') {
         // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
         // Write to DB so opponent sees gin phase and gets overlay too
         supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
@@ -728,6 +732,7 @@ export const GinRummyGameTable = ({
       } else if (newState.phase === 'knocking') {
         // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
         setTimeout(() => playKnock(), 100);
+        knockOverlayFiredRef.current = true;
         setShowKnockOverlay(true);
         // Write to DB so opponent sees knocking phase and gets overlay too
         supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
