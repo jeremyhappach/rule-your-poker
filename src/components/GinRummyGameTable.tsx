@@ -643,8 +643,9 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
-    // Suppress realtime/poll overwrites for 500ms so the optimistic state isn't clobbered
-    optimisticUntilRef.current = Date.now() + 500;
+    // Suppress realtime/poll overwrites for 1.5s so the optimistic state isn't clobbered
+    // (500ms was too short — DB write + poll round-trip often exceeds it, causing card hop)
+    optimisticUntilRef.current = Date.now() + 1500;
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
@@ -653,9 +654,14 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
+      // Re-assert optimistic state after write succeeds so any poll that fires
+      // between now and guard expiry sees the correct state
+      setGinState(newState);
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
+      // On error, clear guard so polls can recover to real state
+      optimisticUntilRef.current = 0;
     } finally {
       setIsProcessing(false);
     }
