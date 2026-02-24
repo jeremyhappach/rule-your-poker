@@ -2,6 +2,7 @@ import { cn, formatChipValue } from "@/lib/utils";
 import { HandHistoryEventRow } from "./HandHistoryEventRow";
 import { MiniCardRow, MiniPlayingCard } from "./MiniPlayingCard";
 import { CribbageEventDisplay } from "./CribbageEventDisplay";
+import { GinRummyHandDisplay } from "./GinRummyHandDisplay";
 import { compactHandDescription, compactLegDescription } from "@/lib/handDescriptionUtils";
 import type { DealerGameGroup, RoundGroup, GameResultRecord, CribbageEventRecord, CardData, HandGroup } from "./types";
 
@@ -107,6 +108,7 @@ function RoundDisplay({
   roundIndex,
   totalRounds,
   is357,
+  isGinRummy,
   currentPlayerId,
   playerNames,
   showAnteInRound = true,
@@ -116,14 +118,16 @@ function RoundDisplay({
   roundIndex: number;
   totalRounds: number;
   is357: boolean;
+  isGinRummy?: boolean;
   currentPlayerId?: string;
   playerNames?: Map<string, string>;
   showAnteInRound?: boolean;
   usePoints?: boolean;
 }) {
   const hasCribbageEvents = round.cribbageEvents && round.cribbageEvents.length > 0;
-  // For cribbage, don't show player cards separately - they're shown in CribbageEventDisplay counting sections
-  const hasCards = !hasCribbageEvents && round.visiblePlayerCards.length > 0;
+  const hasGinRummyState = isGinRummy && round.ginRummyState?.knockResult;
+  // For cribbage/gin rummy, don't show player cards separately
+  const hasCards = !hasCribbageEvents && !hasGinRummyState && round.visiblePlayerCards.length > 0;
   const hasCommunityCards = round.communityCards.length > 0;
   const hasChuckyCards = round.chuckyCards.length > 0;
   
@@ -268,6 +272,16 @@ function RoundDisplay({
             cards: pc.cards,
           }))}
           pointsToWin={round.cribbagePointsToWin}
+        />
+      )}
+
+      {/* Gin Rummy hand display - shows both players' hands with melds/deadwood */}
+      {hasGinRummyState && playerNames && (
+        <GinRummyHandDisplay
+          playerStates={round.ginRummyState.playerStates}
+          knockResult={round.ginRummyState.knockResult}
+          playerNames={playerNames}
+          currentPlayerId={currentPlayerId}
         />
       )}
 
@@ -419,6 +433,7 @@ export function HandAccordionContent({
                   roundIndex={roundIdx}
                   totalRounds={hand.rounds.length}
                   is357={is357}
+                  isGinRummy={isGinRummy}
                   currentPlayerId={currentPlayerId}
                   playerNames={playerNames}
                   showAnteInRound={!is357}

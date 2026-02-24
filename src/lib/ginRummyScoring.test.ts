@@ -134,6 +134,38 @@ describe('scoreKnock', () => {
     expect(result.isUndercut).toBe(true);
     expect(result.winnerId).toBe('p2');
   });
+
+  it('scores undercut with correct diff + bonus (9 vs 8 = 26)', () => {
+    // Knocker has 9 deadwood (A♣=1 + 8♣=8), opponent has 8 deadwood (3♦=3 + 5♦=5)
+    const knockerHand = [
+      c('A', '♠'), c('2', '♠'), c('3', '♠'), // run = 0
+      c('7', '♥'), c('7', '♦'), c('7', '♣'), // set = 0
+      c('10', '♠'), c('J', '♠'), c('Q', '♠'), // run = 0
+      // deadwood below (not part of any meld)
+    ];
+    // Replace last card to get 9 deadwood: 9♥ alone = 9 dw
+    knockerHand.pop(); // remove Q♠
+    knockerHand.push(c('9', '♥')); // 9 deadwood
+    // Actually rebuild: 3 melds + 1 deadwood card
+    const knocker = [
+      c('A', '♠'), c('2', '♠'), c('3', '♠'), // run
+      c('7', '♥'), c('7', '♦'), c('7', '♣'), // set
+      c('J', '♠'), c('Q', '♠'), c('K', '♠'), // run
+      c('9', '♥'), // 9 deadwood
+    ];
+    const opponent = [
+      c('A', '♥'), c('2', '♥'), c('3', '♥'), // run
+      c('10', '♥'), c('10', '♦'), c('10', '♣'), // set
+      c('4', '♦'), c('5', '♦'), c('6', '♦'), // run
+      c('8', '♣'), // 8 deadwood
+    ];
+    const result = scoreKnock('p1', 'p2', knocker, opponent, [], false);
+    expect(result.isUndercut).toBe(true);
+    expect(result.winnerId).toBe('p2');
+    expect(result.knockerDeadwood).toBe(9);
+    expect(result.opponentDeadwood).toBe(8);
+    expect(result.pointsAwarded).toBe(26); // diff(1) + bonus(25)
+  });
 });
 
 describe('canLayOff', () => {

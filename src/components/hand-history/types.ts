@@ -36,6 +36,7 @@ export interface RoundRecord {
   dealer_game_id?: string | null;
   community_cards?: any;
   chucky_cards?: any;
+  gin_rummy_state?: any;
 }
 
 export interface PlayerCardRecord {
@@ -77,6 +78,8 @@ export interface RoundGroup {
   cribbagePointsToWin?: number;
   // Stay/fold decisions - public info visible to all
   playerDecisions?: PlayerActionRecord[];
+  // Gin Rummy state for hand display
+  ginRummyState?: any;
 }
 
 export interface HandGroup {

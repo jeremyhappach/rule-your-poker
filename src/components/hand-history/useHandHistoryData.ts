@@ -147,7 +147,7 @@ export function useHandHistoryData({
       const { data: roundsData } = await supabase
         .from("rounds")
         .select(
-          "id, game_id, round_number, hand_number, pot, status, created_at, horses_state, dealer_game_id, community_cards, chucky_cards"
+          "id, game_id, round_number, hand_number, pot, status, created_at, horses_state, dealer_game_id, community_cards, chucky_cards, gin_rummy_state"
         )
         .eq("game_id", gameId)
         .order("created_at", { ascending: true });
@@ -719,6 +719,7 @@ export function useHandHistoryData({
             cribbageEvents,
             cribbagePointsToWin,
             playerDecisions: playerDecisions.length > 0 ? playerDecisions : undefined,
+            ginRummyState: isGinRummy ? (round as any).gin_rummy_state : undefined,
           });
         });
 
