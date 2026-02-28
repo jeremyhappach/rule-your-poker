@@ -1,18 +1,20 @@
 /**
- * YahtzeeGameTable – mirrors HorsesGameTable layout exactly (mobile only).
+ * YahtzeeGameTable – mirrors HorsesGameTable mobile layout exactly.
  *
  * Two differences from Horses:
- *  1. During MY roll → my scorecard shows on the felt (below the dice)
- *  2. During OPPONENT's roll → their scorecard shows in the active player area
+ *  1. During MY roll → scorecard replaces the "result badge" in the active player area
+ *  2. During OPPONENT's roll → their scorecard replaces the "rolling..." status in the active player area
+ *
+ * The felt is identical to Horses:
+ *  - My turn: "You are rolling" text on felt (dice are in active player area below)
+ *  - Opponent turn: their dice fly in on the felt via DiceTableLayout
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
-import { DiceTableLayout } from "./DiceTableLayout";
 import { HorsesPlayerArea } from "./HorsesPlayerArea";
-import { TurnSpotlight } from "./TurnSpotlight";
 import { MusicToggleButton } from "./MusicToggleButton";
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
@@ -29,10 +31,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn } from "@/lib/utils";
-import { Dice5, RotateCcw } from "lucide-react";
+import { Dice5, RotateCcw, Lock } from "lucide-react";
 import { recordGameResult } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
-import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -74,10 +75,6 @@ async function updateYahtzeeState(roundId: string, state: YahtzeeState): Promise
   return error;
 }
 
-function toHorsesDice(dice: YahtzeeDie[]): HorsesDieType[] {
-  return dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
-}
-
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -88,11 +85,15 @@ export function YahtzeeGameTable({
 }: YahtzeeGameTableProps) {
 
   const [isRolling, setIsRolling] = useState(false);
+  const [uiRolling, setUiRolling] = useState(false);
+  const uiRollingTimerRef = useRef<number | null>(null);
+  const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
   const localRollKeyRef = useRef<number | undefined>(undefined);
   const lastLocalEditAtRef = useRef<number>(0);
   const LOCAL_STATE_PROTECTION_MS = 2000;
-  const ROLL_ANIMATION_MS = 1300;
+  const FIRST_ROLL_MS = 1300;
+  const ROLL_AGAIN_MS = 1800;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Local dice state for smoother interaction during my turn
@@ -122,6 +123,19 @@ export function YahtzeeGameTable({
     })), [yahtzeeState?.playerStates]);
   const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
 
+  const rolling = uiRolling || isRolling;
+  const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
+  const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (uiRollingTimerRef.current != null) {
+        window.clearTimeout(uiRollingTimerRef.current);
+      }
+    };
+  }, []);
+
   /* ---- Sync local dice with DB ---- */
   useEffect(() => {
     if (!isMyTurn || !myPlayer || !yahtzeeState) return;
@@ -134,9 +148,15 @@ export function YahtzeeGameTable({
 
   /* ---- Roll ---- */
   const handleRoll = useCallback(async () => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || isRolling) return;
+    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining <= 0) return;
+
+    const isFirstRoll = myPs.rollsRemaining === 3;
+    const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
+
+    // Snapshot held state before roll
+    heldSnapshotRef.current = localDice.map(d => d.isHeld);
 
     const t = Date.now();
     localRollKeyRef.current = t;
@@ -145,7 +165,15 @@ export function YahtzeeGameTable({
     const newPs = rollYahtzeeDice(myPs);
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
-    setIsRolling(true);
+
+    // Start UI rolling mask
+    setUiRolling(true);
+    if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
+    uiRollingTimerRef.current = window.setTimeout(() => {
+      setUiRolling(false);
+      heldSnapshotRef.current = null;
+      uiRollingTimerRef.current = null;
+    }, duration);
 
     const newState = {
       ...yahtzeeState,
@@ -155,12 +183,11 @@ export function YahtzeeGameTable({
       },
     };
     await updateYahtzeeState(currentRoundId, newState);
-    setTimeout(() => setIsRolling(false), ROLL_ANIMATION_MS);
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, isRolling]);
+  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, localDice]);
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback(async (dieIndex: number) => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer) return;
+    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
 
@@ -173,7 +200,7 @@ export function YahtzeeGameTable({
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
     };
     await updateYahtzeeState(currentRoundId, newState);
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer]);
+  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
@@ -262,27 +289,21 @@ export function YahtzeeGameTable({
     return () => clearTimeout(timer);
   }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase]);
 
-  /* ---- Derived display values ---- */
-  const displayDice = isMyTurn ? localDice : (currentTurnState?.dice || []);
-  const displayRolls = isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 3);
-  const displayRollKey = isMyTurn ? localRollKeyRef.current : (currentTurnState as any)?.rollKey;
-  const hasRolled = displayDice.some(d => d.value !== 0);
-
   /* ---- Scorecard renderer ---- */
-  const renderScorecard = (playerId: string, isActive: boolean) => {
+  const renderScorecard = (playerId: string, isInteractive: boolean) => {
     const ps = yahtzeeState?.playerStates?.[playerId];
     if (!ps) return null;
 
-    const diceValues = isActive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
-    const rollsUsed = isActive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
-    const potentials = isActive && rollsUsed < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
+    const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
+    const rollsUsed = isInteractive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
+    const potentials = isInteractive && rollsUsed < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
 
     const renderRow = (categories: YahtzeeCategory[], extra?: React.ReactNode) => (
       <div className="flex gap-0.5">
         {categories.map(cat => {
           const scored = ps.scorecard.scores[cat];
           const potential = potentials[cat];
-          const isAvailable = scored === undefined && isActive && isMyTurn && rollsUsed < 3;
+          const isAvailable = scored === undefined && isInteractive && isMyTurn && rollsUsed < 3;
 
           return (
             <button
@@ -346,7 +367,7 @@ export function YahtzeeGameTable({
   }
 
   /* ================================================================ */
-  /*  RENDER – mirrors HorsesGameTable mobile layout exactly          */
+  /*  RENDER – identical to HorsesGameTable mobile layout             */
   /* ================================================================ */
   return (
     <div
@@ -358,7 +379,7 @@ export function YahtzeeGameTable({
       }}
     >
       <div className="grid h-full grid-rows-[auto_1fr_auto_auto]">
-        {/* -------- HEADER -------- */}
+        {/* -------- HEADER (identical to Horses) -------- */}
         <header className="px-4 pt-4 pb-2 text-center">
           <h1 className="text-xl font-bold text-poker-gold">
             ${anteAmount} YAHTZEE
@@ -371,7 +392,7 @@ export function YahtzeeGameTable({
           </div>
         </header>
 
-        {/* -------- TABLE (felt + seat row) -------- */}
+        {/* -------- TABLE (seat row + felt) – identical to Horses -------- */}
         <main className="px-3 pb-2 overflow-hidden" aria-label="Yahtzee game table">
           <div className="flex h-full flex-col">
             {/* Other players row */}
@@ -410,44 +431,29 @@ export function YahtzeeGameTable({
               })}
             </section>
 
-            {/* Felt area */}
+            {/* Felt area – identical to Horses */}
             <section className="flex-1 flex items-end justify-center pb-3" aria-label="Felt">
               <div className="w-full max-w-[560px] rounded-[32px] border border-border/40 bg-background/10 p-4 backdrop-blur-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]">
                 <div className="flex flex-col items-center gap-3">
-                  {/* Dice display area */}
                   <div className="flex gap-2">
                     {(() => {
                       if (gamePhase !== "playing" || !currentPlayer) return null;
 
-                      // My turn – show my dice inline (same as Horses shows them for the roller)
+                      // MY TURN: "You are rolling" on the felt (dice are in active player area below)
                       if (isMyTurn) {
-                        if (!hasRolled) {
-                          return (
-                            <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                              You are rolling
-                            </p>
-                          );
-                        }
-                        // Show dice inline after rolling
-                        return localDice
-                          .filter(d => d.value !== 0)
-                          .map((die, idx) => (
-                            <HorsesDie
-                              key={idx}
-                              value={die.value}
-                              isHeld={die.isHeld}
-                              isRolling={isRolling && !die.isHeld}
-                              canToggle={displayRolls < 3 && displayRolls > 0}
-                              onToggle={() => handleToggleHold(idx)}
-                              size="md"
-                              showWildHighlight={false}
-                            />
-                          ));
+                        return (
+                          <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                            You are rolling
+                          </p>
+                        );
                       }
 
-                      // Opponent's turn – show their dice on the felt
+                      // OPPONENT TURN: Show their dice on the felt (inline, like Horses)
+                      const opponentDice = currentTurnState?.dice || [];
+                      const hasRolled = opponentDice.some(d => d.value !== 0);
                       if (!hasRolled) return null;
-                      return displayDice
+
+                      return opponentDice
                         .filter(d => d.value !== 0)
                         .map((die, idx) => (
                           <HorsesDie
@@ -456,25 +462,13 @@ export function YahtzeeGameTable({
                             isHeld={false}
                             isRolling={false}
                             canToggle={false}
-                            onToggle={() => { }}
+                            onToggle={() => {}}
                             size="md"
                             showWildHighlight={false}
                           />
                         ));
                     })()}
                   </div>
-
-                  {/* Hold hint */}
-                  {isMyTurn && hasRolled && displayRolls > 0 && displayRolls < 3 && (
-                    <p className="text-xs text-amber-200/70">Tap dice to hold/unhold</p>
-                  )}
-
-                  {/* MY TURN: Scorecard on the felt */}
-                  {isMyTurn && myPlayer && hasRolled && (
-                    <div className="w-full mt-1">
-                      {renderScorecard(myPlayer.id, true)}
-                    </div>
-                  )}
 
                   {/* Game complete */}
                   {gamePhase === "complete" && (
@@ -498,33 +492,87 @@ export function YahtzeeGameTable({
           </div>
         </main>
 
-        {/* -------- ACTIVE PLAYER AREA -------- */}
+        {/* -------- ACTIVE PLAYER AREA (replaces HorsesMobileCardsTab) -------- */}
         <section className="px-3 pb-2" aria-label="Active player">
           <div className="flex justify-center">
             <div className="w-full max-w-sm flex flex-col items-center gap-2">
               {currentPlayer ? (
                 isMyTurn ? (
-                  /* My turn: show my player area with score (no scorecard – that's on the felt) */
-                  <div className={cn(
-                    "relative flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 min-w-[140px]",
-                    "border-yellow-500 bg-yellow-500/10",
-                    "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
-                  )}>
-                    <Dice5 className="w-4 h-4 text-yellow-400 animate-bounce absolute -top-3" />
-                    <span className="text-xs text-amber-200 font-medium">
-                      {getPlayerUsername(currentPlayer)} (You)
-                    </span>
-                    <span className={cn(
-                      "text-lg font-bold tabular-nums",
-                      (myPlayer && getTotalScore(yahtzeeState.playerStates[myPlayer.id]?.scorecard) === maxTotal && maxTotal > 0)
-                        ? "text-poker-gold" : "text-muted-foreground"
-                    )}>
-                      {myPlayer ? getTotalScore(yahtzeeState.playerStates[myPlayer.id]?.scorecard) : 0}
-                    </span>
+                  /* ═══════ MY TURN: dice + roll buttons + scorecard (replaces result badge) ═══════ */
+                  <div className="px-2 flex flex-col flex-1 w-full">
+                    {/* Dice area – identical to HorsesMobileCardsTab */}
+                    <div className="flex items-center justify-center mb-1 gap-1 min-h-[60px]">
+                      {showMyDice ? (
+                        localDice.map((die, idx) => {
+                          const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
+                          const shouldAnimate = rolling && !heldAtRollStart;
+                          const showHeldStyling = localRollsRemaining > 0 && die.isHeld && !shouldAnimate;
+
+                          return (
+                            <HorsesDie
+                              key={idx}
+                              value={die.value}
+                              isHeld={showHeldStyling}
+                              isRolling={shouldAnimate}
+                              canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
+                              onToggle={() => handleToggleHold(idx)}
+                              size="lg"
+                              showWildHighlight={false}
+                            />
+                          );
+                        })
+                      ) : (
+                        <div className="h-[52px]" />
+                      )}
+                    </div>
+
+                    {/* Action buttons – identical to HorsesMobileCardsTab */}
+                    <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
+                      {localRollsRemaining > 0 ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="h-9 w-9" aria-hidden="true" />
+                          <Button
+                            size="default"
+                            onClick={handleRoll}
+                            disabled={rolling}
+                            className="font-bold text-sm h-9 px-6"
+                          >
+                            <RotateCcw className="mr-2 w-4 h-4 animate-slow-pulse-red" />
+                            Roll {rollNumber}
+                          </Button>
+                          {localRollsRemaining < 3 ? (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                // Lock in: score must be selected, so just show scorecard
+                              }}
+                              className="h-9 w-9"
+                              title="Lock In"
+                              disabled
+                            >
+                              <Lock className="w-4 h-4" />
+                            </Button>
+                          ) : (
+                            <div className="h-9 w-9" aria-hidden="true" />
+                          )}
+                        </div>
+                      ) : (
+                        <Badge className="text-sm px-3 py-1.5 font-medium">Select a category</Badge>
+                      )}
+                    </div>
+
+                    {/* Scorecard – replaces the result badge area */}
+                    {showMyDice && myPlayer && (
+                      <div className="w-full mt-1">
+                        {renderScorecard(myPlayer.id, true)}
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  /* Opponent's turn: show their player area + their scorecard */
+                  /* ═══════ OPPONENT TURN: their scorecard replaces "rolling..." status ═══════ */
                   <div className="w-full flex flex-col items-center gap-2">
+                    {/* Player card header (same as Horses HorsesPlayerArea for the active turn) */}
                     <div className={cn(
                       "relative flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 min-w-[140px]",
                       "border-yellow-500 bg-yellow-500/10",
@@ -534,14 +582,15 @@ export function YahtzeeGameTable({
                         {getPlayerUsername(currentPlayer)}
                       </span>
                       <span className={cn(
-                        "text-lg font-bold tabular-nums",
+                        "text-sm font-bold tabular-nums",
                         (getTotalScore(yahtzeeState.playerStates[currentTurnPlayerId!]?.scorecard) === maxTotal && maxTotal > 0)
                           ? "text-poker-gold" : "text-muted-foreground"
                       )}>
                         {getTotalScore(yahtzeeState.playerStates[currentTurnPlayerId!]?.scorecard)}
                       </span>
                     </div>
-                    {/* Opponent's scorecard in the active area */}
+
+                    {/* Their scorecard (read-only) – replaces "Player X is rolling..." */}
                     <div className="w-full">
                       {renderScorecard(currentTurnPlayerId!, false)}
                     </div>
@@ -556,29 +605,13 @@ export function YahtzeeGameTable({
           </div>
         </section>
 
-        {/* -------- FOOTER (actions) -------- */}
+        {/* -------- FOOTER (music toggle) – identical to Horses -------- */}
         <footer
           className="px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
           aria-label="Actions"
         >
           <div className="flex items-center justify-center gap-3">
             <MusicToggleButton variant="compact" />
-
-            {isMyTurn && gamePhase === "playing" ? (
-              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
-                <Button
-                  onClick={handleRoll}
-                  disabled={displayRolls <= 0 || isRolling}
-                  size="sm"
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
-                  Roll{displayRolls === 3 ? "" : " Again"}
-                </Button>
-              </div>
-            ) : (
-              <div className="h-10" />
-            )}
           </div>
         </footer>
       </div>
