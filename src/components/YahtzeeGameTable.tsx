@@ -31,7 +31,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn } from "@/lib/utils";
-import { Dice5, RotateCcw, Lock } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { recordGameResult } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 
@@ -311,7 +311,7 @@ export function YahtzeeGameTable({
               onClick={() => isAvailable ? handleScoreCategory(cat) : undefined}
               disabled={!isAvailable}
               className={cn(
-                "flex-1 flex flex-col items-center py-1 px-0.5 rounded text-xs border transition-all min-w-0",
+                "flex-1 flex flex-col items-center py-1.5 px-1 rounded text-xs border transition-all min-w-0",
                 scored !== undefined
                   ? "bg-amber-900/40 border-amber-700/50"
                   : isAvailable
@@ -319,9 +319,9 @@ export function YahtzeeGameTable({
                     : "bg-muted/20 border-muted-foreground/20"
               )}
             >
-              <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
+              <span className="font-bold text-amber-200 text-[11px] leading-tight">{CATEGORY_LABELS[cat]}</span>
               <span className={cn(
-                "font-bold tabular-nums text-xs leading-tight",
+                "font-bold tabular-nums text-sm leading-tight",
                 scored !== undefined ? "text-foreground" : potential !== undefined ? "text-poker-gold/70" : "text-muted-foreground/40"
               )}>
                 {scored !== undefined ? scored : potential !== undefined ? potential : '—'}
@@ -336,19 +336,19 @@ export function YahtzeeGameTable({
     const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (ps.scorecard.scores[c] ?? 0), 0);
 
     return (
-      <div className="w-full space-y-0.5">
+      <div className="w-full space-y-1">
         {renderRow(UPPER_CATEGORIES, (
-          <div className="flex-1 flex flex-col items-center py-1 px-0.5 rounded text-xs border bg-muted/10 border-muted-foreground/20 min-w-0">
-            <span className="font-bold text-amber-200/60 text-[10px] leading-tight">BN</span>
-            <span className="font-bold text-muted-foreground/60 tabular-nums text-xs leading-tight">
+          <div className="flex-1 flex flex-col items-center py-1.5 px-1 rounded text-xs border bg-muted/10 border-muted-foreground/20 min-w-0">
+            <span className="font-bold text-amber-200/60 text-[11px] leading-tight">BN</span>
+            <span className="font-bold text-muted-foreground/60 tabular-nums text-sm leading-tight">
               {upperSum >= 63 ? '35' : `${upperSum}/63`}
             </span>
           </div>
         ))}
         {renderRow(LOWER_CATEGORIES, (
-          <div className="flex-1 flex flex-col items-center py-1 px-0.5 rounded text-xs border bg-poker-gold/20 border-poker-gold/50 min-w-0">
-            <span className="font-bold text-poker-gold text-[10px] leading-tight">TOT</span>
-            <span className="font-bold text-poker-gold tabular-nums text-xs leading-tight">
+          <div className="flex-1 flex flex-col items-center py-1.5 px-1 rounded text-xs border bg-poker-gold/20 border-poker-gold/50 min-w-0">
+            <span className="font-bold text-poker-gold text-[11px] leading-tight">TOT</span>
+            <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
               {getTotalScore(ps.scorecard)}
             </span>
           </div>
@@ -384,48 +384,35 @@ export function YahtzeeGameTable({
           <h1 className="text-xl font-bold text-poker-gold">
             ${anteAmount} YAHTZEE
           </h1>
-          <div className="mt-2 flex justify-center">
-            <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
-              <span className="text-amber-200 text-sm">Pot:</span>
-              <span className="text-lg font-bold text-poker-gold">${pot}</span>
-            </div>
-          </div>
         </header>
 
         {/* -------- TABLE (seat row + felt) – identical to Horses -------- */}
         <main className="px-3 pb-2 overflow-hidden" aria-label="Yahtzee game table">
           <div className="flex h-full flex-col">
-            {/* Other players row */}
+            {/* Other players row – uses HorsesPlayerArea like Horses does */}
             <section className="flex gap-3 overflow-x-auto pb-2" aria-label="Players">
               {mobileSeatPlayers.map((player) => {
                 const ps = yahtzeeState.playerStates[player.id];
                 const total = ps ? getTotalScore(ps.scorecard) : 0;
-                const isWinning = total > 0 && total === maxTotal;
+                const isWinning = total > 0 && total === maxTotal && gamePhase === "complete";
                 const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
                 const isMe = player.user_id === currentUserId;
+                const hasCompleted = false; // Yahtzee turns don't "complete" in the same way
 
                 return (
                   <div key={player.id} className="shrink-0">
-                    <div className={cn(
-                      "relative flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 min-w-[80px]",
-                      isCurrent && "border-yellow-500 bg-yellow-500/10",
-                      isWinning && !isCurrent && "border-green-500 bg-green-500/20",
-                      !isCurrent && !isWinning && "border-border/50 bg-black/30",
-                      isMe && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
-                    )}>
-                      {isCurrent && (
-                        <Dice5 className="w-4 h-4 text-yellow-400 animate-bounce absolute -top-3" />
-                      )}
-                      <span className="text-xs text-amber-200 font-medium truncate max-w-[80px]">
-                        {getPlayerUsername(player)}
-                      </span>
-                      <span className={cn(
-                        "text-sm font-bold tabular-nums",
-                        isWinning ? "text-poker-gold" : "text-muted-foreground"
-                      )}>
-                        {total}
-                      </span>
-                    </div>
+                    <HorsesPlayerArea
+                      username={getPlayerUsername(player)}
+                      position={player.position}
+                      isCurrentTurn={isCurrent}
+                      isCurrentUser={isMe}
+                      handResult={total > 0 ? { description: `${total}`, rank: total, tiebreaker: [] } as any : null}
+                      isWinningHand={isWinning}
+                      hasTurnCompleted={total > 0}
+                      gameType="yahtzee"
+                      isBot={player.is_bot}
+                      onClick={isHost && player.is_bot && onPlayerClick ? () => onPlayerClick(player) : undefined}
+                    />
                   </div>
                 );
               })}
@@ -501,15 +488,14 @@ export function YahtzeeGameTable({
           </div>
         </main>
 
-        {/* -------- ACTIVE PLAYER AREA (replaces HorsesMobileCardsTab) -------- */}
+        {/* -------- ACTIVE PLAYER AREA -------- */}
         <section className="px-3 pb-2" aria-label="Active player">
           <div className="flex justify-center">
             <div className="w-full max-w-sm flex flex-col items-center gap-2">
               {currentPlayer ? (
                 isMyTurn ? (
-                  /* ═══════ MY TURN: dice + roll buttons (scorecard is on the felt) ═══════ */
+                  /* ═══════ MY TURN: dice inline (scorecard is on the felt) ═══════ */
                   <div className="px-2 flex flex-col flex-1 w-full">
-                    {/* Dice area – identical to HorsesMobileCardsTab */}
                     <div className="flex items-center justify-center mb-1 gap-1 min-h-[60px]">
                       {showMyDice ? (
                         localDice.map((die, idx) => {
@@ -534,43 +520,14 @@ export function YahtzeeGameTable({
                         <div className="h-[52px]" />
                       )}
                     </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
-                      {localRollsRemaining > 0 ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="h-9 w-9" aria-hidden="true" />
-                          <Button
-                            size="default"
-                            onClick={handleRoll}
-                            disabled={rolling}
-                            className="font-bold text-sm h-9 px-6"
-                          >
-                            <RotateCcw className="mr-2 w-4 h-4 animate-slow-pulse-red" />
-                            Roll {rollNumber}
-                          </Button>
-                          {localRollsRemaining < 3 ? (
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => {}}
-                              className="h-9 w-9"
-                              title="Lock In"
-                              disabled
-                            >
-                              <Lock className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <div className="h-9 w-9" aria-hidden="true" />
-                          )}
-                        </div>
-                      ) : (
+                    {localRollsRemaining === 0 && (
+                      <div className="flex justify-center">
                         <Badge className="text-sm px-3 py-1.5 font-medium">Select a category above</Badge>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  /* ═══════ OPPONENT TURN: their scorecard (read-only) in my active player area ═══════ */
+                  /* ═══════ OPPONENT TURN: their scorecard (read-only) ═══════ */
                   <div className="w-full">
                     {renderScorecard(currentTurnPlayerId!, false)}
                   </div>
@@ -584,13 +541,29 @@ export function YahtzeeGameTable({
           </div>
         </section>
 
-        {/* -------- FOOTER (music toggle) – identical to Horses -------- */}
+        {/* -------- FOOTER – identical to Horses -------- */}
         <footer
           className="px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
           aria-label="Actions"
         >
           <div className="flex items-center justify-center gap-3">
             <MusicToggleButton variant="compact" />
+
+            {isMyTurn && gamePhase === "playing" ? (
+              <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 backdrop-blur-sm">
+                <Button
+                  onClick={handleRoll}
+                  disabled={localRollsRemaining <= 0 || rolling}
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
+                  Roll{localRollsRemaining === 3 ? "" : " Again"}
+                </Button>
+              </div>
+            ) : (
+              <div className="h-10" />
+            )}
           </div>
         </footer>
       </div>
