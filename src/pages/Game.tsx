@@ -13,6 +13,7 @@ import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
 import { TriviaGameTable } from "@/components/TriviaGameTable";
 import { GinRummyGameTable } from "@/components/GinRummyGameTable";
+import { YahtzeeGameTable } from "@/components/YahtzeeGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
