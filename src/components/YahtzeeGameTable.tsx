@@ -1,15 +1,15 @@
 /**
- * YahtzeeGameTable - Placeholder component for Yahtzee dice game
- * Will be expanded with full scorecard, dice area, and turn management
+ * YahtzeeGameTable - Dice game using the same felt layout as Horses/SCC.
+ * Uses DiceTableLayout for scatter + fly-in animation and player circles for scores.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { HorsesDie } from "./HorsesDie";
+import { Badge } from "@/components/ui/badge";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { TurnSpotlight } from "./TurnSpotlight";
 import { YahtzeeState, YahtzeeCategory, CATEGORY_LABELS, UPPER_CATEGORIES, LOWER_CATEGORIES } from "@/lib/yahtzeeTypes";
-import { rollYahtzeeDice, toggleYahtzeeHold, scoreYahtzeeCategory, advanceYahtzeeTurn } from "@/lib/yahtzeeGameLogic";
+import { rollYahtzeeDice, toggleYahtzeeHold, scoreYahtzeeCategory, advanceYahtzeeTurn, createInitialPlayerState } from "@/lib/yahtzeeGameLogic";
 import { getPotentialScores, getTotalScore } from "@/lib/yahtzeeScoring";
 import { getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling } from "@/lib/yahtzeeBotLogic";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,8 @@ import { Dice5, Lock } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { recordGameResult } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
+import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
+import { YahtzeeDie, YahtzeePlayerState } from "@/lib/yahtzeeTypes";
 
 interface Player {
   id: string;
@@ -53,6 +55,11 @@ async function updateYahtzeeState(roundId: string, state: YahtzeeState): Promise
   return error;
 }
 
+/** Convert YahtzeeDie[] to HorsesDieType[] for DiceTableLayout compatibility */
+function toHorsesDice(dice: YahtzeeDie[]): HorsesDieType[] {
+  return dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+}
+
 export function YahtzeeGameTable({
   gameId,
   players,
@@ -69,6 +76,14 @@ export function YahtzeeGameTable({
   const isMobile = useIsMobile();
   const [isRolling, setIsRolling] = useState(false);
   const botProcessingRef = useRef(false);
+  const localRollKeyRef = useRef<number | undefined>(undefined);
+  const lastLocalEditAtRef = useRef<number>(0);
+  const LOCAL_STATE_PROTECTION_MS = 2000;
+  const initializingRef = useRef(false);
+
+  // Local dice state for the active player (smoother interaction)
+  const [localDice, setLocalDice] = useState<YahtzeeDie[]>([]);
+  const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
   const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
@@ -80,18 +95,31 @@ export function YahtzeeGameTable({
   const gamePhase = yahtzeeState?.gamePhase || 'waiting';
 
   const getPlayerUsername = (player: Player) => {
-    if (player.is_bot) {
-      return getBotAlias(players, player.user_id);
-    }
+    if (player.is_bot) return getBotAlias(players, player.user_id);
     return player.profiles?.username || 'Player';
   };
 
   // Get highest total score for highlighting
-  const allTotals = Object.entries(yahtzeeState?.playerStates || {}).map(([pid, ps]) => ({
-    pid,
-    total: getTotalScore(ps.scorecard),
-  }));
+  const allTotals = useMemo(() =>
+    Object.entries(yahtzeeState?.playerStates || {}).map(([pid, ps]) => ({
+      pid,
+      total: getTotalScore(ps.scorecard),
+    })),
+    [yahtzeeState?.playerStates]
+  );
   const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
+
+  // Sync local dice with DB state when it's my turn
+  useEffect(() => {
+    if (!isMyTurn || !myPlayer || !yahtzeeState) return;
+    const timeSinceEdit = Date.now() - lastLocalEditAtRef.current;
+    if (timeSinceEdit < LOCAL_STATE_PROTECTION_MS) return;
+
+    const ps = yahtzeeState.playerStates[myPlayer.id];
+    if (!ps) return;
+    setLocalDice(ps.dice);
+    setLocalRollsRemaining(ps.rollsRemaining);
+  }, [isMyTurn, myPlayer?.id, yahtzeeState?.playerStates, currentTurnPlayerId]);
 
   // Handle roll
   const handleRoll = useCallback(async () => {
@@ -99,15 +127,26 @@ export function YahtzeeGameTable({
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining <= 0) return;
 
-    setIsRolling(true);
+    const rollStartTime = Date.now();
+    localRollKeyRef.current = rollStartTime;
+    lastLocalEditAtRef.current = rollStartTime;
+
     const newPs = rollYahtzeeDice(myPs);
+    setLocalDice(newPs.dice);
+    setLocalRollsRemaining(newPs.rollsRemaining);
+    setIsRolling(true);
+
+    // Save to DB immediately for observers
     const newState = {
       ...yahtzeeState,
-      playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
+      playerStates: {
+        ...yahtzeeState.playerStates,
+        [myPlayer.id]: { ...newPs, rollKey: rollStartTime },
+      },
     };
-
     await updateYahtzeeState(currentRoundId, newState);
-    setTimeout(() => setIsRolling(false), 800);
+
+    setTimeout(() => setIsRolling(false), 1300);
   }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, isRolling]);
 
   // Handle hold toggle
@@ -116,7 +155,10 @@ export function YahtzeeGameTable({
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
 
+    lastLocalEditAtRef.current = Date.now();
     const newPs = toggleYahtzeeHold(myPs, dieIndex);
+    setLocalDice(newPs.dice);
+
     const newState = {
       ...yahtzeeState,
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
@@ -137,11 +179,13 @@ export function YahtzeeGameTable({
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
     };
 
-    // Advance turn
     newState = advanceYahtzeeTurn(newState);
     await updateYahtzeeState(currentRoundId, newState);
 
-    // Check if game is over
+    // Reset local state for next turn
+    setLocalDice(newPs.dice);
+    setLocalRollsRemaining(newPs.rollsRemaining);
+
     if (newState.gamePhase === 'complete') {
       handleGameComplete(newState);
     }
@@ -166,20 +210,17 @@ export function YahtzeeGameTable({
       const winnerPlayer = players.find(p => p.id === winnerId);
       const winnerName = winnerPlayer ? getPlayerUsername(winnerPlayer) : 'Unknown';
 
-      // Award pot
       await supabase.rpc('increment_player_chips', {
         p_player_id: winnerId,
         p_amount: pot,
       });
 
-      // Record result
       const chipChanges: Record<string, number> = {};
       chipChanges[winnerId] = pot;
       recordGameResult(
         gameId, yahtzeeState?.currentRound || 1, winnerId,
         `${winnerName} wins`, `Score: ${maxScore}`,
-        pot, chipChanges, false, 'yahtzee',
-        null,
+        pot, chipChanges, false, 'yahtzee', null,
       );
 
       await endYahtzeeRound(gameId, winnerId, `${winnerName} wins with ${maxScore}!`);
@@ -202,20 +243,24 @@ export function YahtzeeGameTable({
         let state = { ...yahtzeeState };
         let ps = { ...state.playerStates[currentTurnPlayerId] };
 
-        // Roll up to 3 times
         for (let roll = 0; roll < 3; roll++) {
           if (ps.rollsRemaining <= 0) break;
 
-          // Roll
+          const rollTime = Date.now();
           ps = rollYahtzeeDice(ps);
-          state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
+          state = {
+            ...state,
+            playerStates: {
+              ...state.playerStates,
+              [currentTurnPlayerId]: { ...ps, rollKey: rollTime },
+            },
+          };
           await updateYahtzeeState(currentRoundId, state);
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 1500));
 
           if (ps.rollsRemaining <= 0) break;
           if (shouldBotStopRolling(ps)) break;
 
-          // Hold decision
           const holds = getBotHoldDecision(ps);
           const newDice = ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] }));
           ps = { ...ps, dice: newDice };
@@ -224,7 +269,6 @@ export function YahtzeeGameTable({
           await new Promise(r => setTimeout(r, 800));
         }
 
-        // Score
         const category = getBotCategoryChoice(ps);
         ps = scoreYahtzeeCategory(ps, category);
         state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
@@ -243,9 +287,12 @@ export function YahtzeeGameTable({
     return () => clearTimeout(timer);
   }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase]);
 
-  // Dice display for current turn
-  const displayDice = currentTurnState?.dice || [];
-  const displayRolls = currentTurnState?.rollsRemaining ?? 3;
+  // Determine dice to display
+  const displayDice = isMyTurn ? localDice : (currentTurnState?.dice || []);
+  const displayRolls = isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 3);
+  const displayRollKey = isMyTurn
+    ? localRollKeyRef.current
+    : (currentTurnState as any)?.rollKey;
 
   // Loading state
   if (!yahtzeeState || !currentRoundId) {
@@ -261,8 +308,9 @@ export function YahtzeeGameTable({
     const ps = yahtzeeState.playerStates[playerId];
     if (!ps) return null;
 
-    const diceValues = ps.dice.map(d => d.value);
-    const potentials = isActive && ps.rollsRemaining < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
+    const diceValues = isActive ? (isMyTurn ? localDice : ps.dice).map(d => d.value) : ps.dice.map(d => d.value);
+    const rollsUsed = isActive ? (isMyTurn ? localRollsRemaining : ps.rollsRemaining) : ps.rollsRemaining;
+    const potentials = isActive && rollsUsed < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
 
     return (
       <div className="w-full space-y-1">
@@ -271,7 +319,7 @@ export function YahtzeeGameTable({
           {UPPER_CATEGORIES.map(cat => {
             const scored = ps.scorecard.scores[cat];
             const potential = potentials[cat];
-            const isAvailable = scored === undefined && isActive && isMyTurn && ps.rollsRemaining < 3;
+            const isAvailable = scored === undefined && isActive && isMyTurn && rollsUsed < 3;
 
             return (
               <button
@@ -290,7 +338,7 @@ export function YahtzeeGameTable({
                 <span className="font-bold text-amber-200 text-[10px]">{CATEGORY_LABELS[cat]}</span>
                 <span className={cn(
                   "font-bold tabular-nums",
-                  scored !== undefined ? "text-white" : potential !== undefined ? "text-poker-gold/70" : "text-muted-foreground/40"
+                  scored !== undefined ? "text-foreground" : potential !== undefined ? "text-poker-gold/70" : "text-muted-foreground/40"
                 )}>
                   {scored !== undefined ? scored : potential !== undefined ? potential : '—'}
                 </span>
@@ -313,7 +361,7 @@ export function YahtzeeGameTable({
           {LOWER_CATEGORIES.map(cat => {
             const scored = ps.scorecard.scores[cat];
             const potential = potentials[cat];
-            const isAvailable = scored === undefined && isActive && isMyTurn && ps.rollsRemaining < 3;
+            const isAvailable = scored === undefined && isActive && isMyTurn && rollsUsed < 3;
 
             return (
               <button
@@ -332,7 +380,7 @@ export function YahtzeeGameTable({
                 <span className="font-bold text-amber-200 text-[10px]">{CATEGORY_LABELS[cat]}</span>
                 <span className={cn(
                   "font-bold tabular-nums",
-                  scored !== undefined ? "text-white" : potential !== undefined ? "text-poker-gold/70" : "text-muted-foreground/40"
+                  scored !== undefined ? "text-foreground" : potential !== undefined ? "text-poker-gold/70" : "text-muted-foreground/40"
                 )}>
                   {scored !== undefined ? scored : potential !== undefined ? potential : '—'}
                 </span>
@@ -351,91 +399,201 @@ export function YahtzeeGameTable({
     );
   };
 
+  // Has the current turn player rolled at least once?
+  const hasRolled = displayDice.some(d => d.value !== 0);
+
   return (
-    <div className="h-full flex flex-col items-center justify-center relative">
-      {/* Player scores around the edges */}
-      <div className="absolute top-2 left-0 right-0 flex justify-center gap-4 px-4">
-        {activePlayers.map(player => {
-          const ps = yahtzeeState.playerStates[player.id];
-          if (!ps) return null;
-          const total = getTotalScore(ps.scorecard);
-          const isWinning = total > 0 && total === maxTotal;
-          const isTurn = player.id === currentTurnPlayerId;
-          return (
-            <div key={player.id} className={cn(
-              "flex items-center gap-2 px-3 py-1 rounded-lg border",
-              isTurn ? "border-poker-gold bg-amber-900/40" : "border-muted-foreground/20 bg-muted/10"
-            )}>
-              <span className="text-amber-200 text-xs font-medium">{getPlayerUsername(player)}</span>
-              <span className={cn(
-                "font-bold tabular-nums text-sm",
-                isWinning ? "text-poker-gold" : "text-muted-foreground"
-              )}>
-                {total}
-              </span>
-            </div>
-          );
-        })}
+    <div className="h-full flex flex-col relative">
+      {/* Header */}
+      <header className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+        <h1 className="text-xl font-bold text-poker-gold">
+          ${anteAmount} YAHTZEE
+        </h1>
+      </header>
+
+      {/* Pot display */}
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 z-10">
+        <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
+          <span className="text-amber-200 text-sm">Pot:</span>
+          <span className="text-lg font-bold text-poker-gold">${pot}</span>
+        </div>
       </div>
 
-      {/* Center: Dice area */}
-      <div className="flex flex-col items-center gap-3 mt-12">
-        {/* Current player indicator */}
-        <div className="text-center">
-          <span className="text-poker-gold font-bold text-sm">
-            {currentPlayer ? getPlayerUsername(currentPlayer) : ''}
-            {isMyTurn ? ' (You)' : "'s turn"}
-          </span>
-          <span className="text-amber-200/60 text-xs ml-2">
-            Roll {3 - displayRolls}/3
-          </span>
+      {/* Turn status */}
+      {gamePhase === "playing" && currentPlayer && (
+        <div className="absolute top-[72px] left-1/2 -translate-x-1/2 z-10">
+          <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
+            <Dice5 className="h-4 w-4 text-amber-300" />
+            <span className="text-sm text-foreground/90">
+              {isMyTurn ? "Your turn" : `${getPlayerUsername(currentPlayer)}'s turn`}
+            </span>
+            <Badge variant="secondary" className="text-xs">
+              Rolls: {displayRolls}
+            </Badge>
+          </div>
         </div>
+      )}
 
-        {/* Dice */}
-        <div className="flex gap-2">
-          {displayDice.map((die, idx) => (
-            <HorsesDie
-              key={idx}
-              value={die.value}
-              isHeld={die.isHeld}
-              isRolling={isRolling && !die.isHeld}
-              canToggle={isMyTurn && displayRolls < 3 && displayRolls > 0}
-              onToggle={() => handleToggleHold(idx)}
-              size="lg"
-              showWildHighlight={false}
-            />
-          ))}
+      {/* Main felt area */}
+      <main className={cn("absolute inset-0 pt-28", isMobile ? "px-3 pb-48" : "p-4 pb-40")} aria-label="Yahtzee dice table">
+        <div className="relative w-full h-full">
+          {/* Player circles around the table */}
+          {activePlayers.map((player, idx) => {
+            const ps = yahtzeeState.playerStates[player.id];
+            const total = ps ? getTotalScore(ps.scorecard) : 0;
+            const isWinning = total > 0 && total === maxTotal;
+            const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
+            const isMe = player.user_id === currentUserId;
+
+            // Calculate position around the table (desktop ring)
+            const totalPlayers = activePlayers.length;
+            const angle = (idx / totalPlayers) * 2 * Math.PI - Math.PI / 2;
+            const centerX = 50;
+            const centerY = 48;
+            const radiusX = 40;
+            const radiusY = 28;
+            const x = centerX + radiusX * Math.cos(angle);
+            const y = centerY + radiusY * Math.sin(angle);
+
+            return (
+              <div
+                key={player.id}
+                className="absolute z-[105] transform -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${x}%`, top: `${y}%` }}
+                onClick={isHost && player.is_bot && onPlayerClick ? () => onPlayerClick(player) : undefined}
+              >
+                <div className={cn(
+                  "relative flex flex-col items-center gap-1 p-2 rounded-lg border-2 min-w-[80px]",
+                  isCurrent && "border-yellow-500 bg-yellow-500/10 z-[110]",
+                  isWinning && !isCurrent && "border-green-500 bg-green-500/20",
+                  !isCurrent && !isWinning && "border-border/50 bg-black/30",
+                  isMe && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
+                  isHost && player.is_bot && onPlayerClick && "cursor-pointer hover:bg-white/5 transition-colors"
+                )}>
+                  {/* Bouncing dice icon for current turn */}
+                  {isCurrent && (
+                    <Dice5 className="w-4 h-4 text-yellow-400 animate-bounce absolute -top-3" />
+                  )}
+
+                  <span className="text-xs text-amber-200 font-medium truncate max-w-[80px]">
+                    {getPlayerUsername(player)}
+                  </span>
+
+                  {/* Score display */}
+                  <span className={cn(
+                    "text-lg font-bold tabular-nums",
+                    isWinning ? "text-poker-gold" : "text-muted-foreground"
+                  )}>
+                    {total}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Dice on the felt center - observer view */}
+          {gamePhase === "playing" && currentPlayer && !isMyTurn && hasRolled && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
+              <DiceTableLayout
+                key={currentTurnPlayerId ?? "no-turn"}
+                dice={toHorsesDice(displayDice)}
+                isRolling={false}
+                canToggle={false}
+                size="sm"
+                gameType="yahtzee"
+                showWildHighlight={false}
+                isObserver={true}
+                hideUnrolledDice={true}
+                rollKey={displayRollKey}
+                cacheKey={currentTurnPlayerId ?? "no-turn"}
+              />
+            </div>
+          )}
+
+          {/* My turn - "You are rolling" message on felt */}
+          {isMyTurn && gamePhase === "playing" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+              <DiceTableLayout
+                dice={[]}
+                isRolling={false}
+                canToggle={false}
+                size="sm"
+                gameType="yahtzee"
+                showRollingMessage={true}
+              />
+            </div>
+          )}
+
+          {/* Game complete message */}
+          {gamePhase === "complete" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="text-center p-6 bg-amber-900/50 rounded-xl border-2 border-amber-600 backdrop-blur-sm">
+                <h3 className="text-2xl font-bold text-poker-gold mb-2">Yahtzee Complete!</h3>
+                <p className="text-amber-200">
+                  {(() => {
+                    const results = Object.entries(yahtzeeState.playerStates).map(([pid, ps]) => ({
+                      pid, total: getTotalScore(ps.scorecard),
+                    }));
+                    results.sort((a, b) => b.total - a.total);
+                    const best = results[0];
+                    const winner = players.find(p => p.id === best.pid);
+                    return winner ? `${getPlayerUsername(winner)} wins with ${best.total}!` : "Winner determined!";
+                  })()}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
+      </main>
 
-        {/* Roll button */}
-        {isMyTurn && displayRolls > 0 && (
-          <Button
-            onClick={handleRoll}
-            disabled={isRolling}
-            className="bg-poker-gold text-black hover:bg-amber-400 font-bold px-6"
-          >
-            <Dice5 className="w-4 h-4 mr-2" />
-            {displayRolls === 3 ? 'Roll' : 'Roll Again'}
-          </Button>
-        )}
+      {/* Footer: My dice + scorecard (when it's my turn) OR opponent scorecard */}
+      <footer className="absolute bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-sm border-t border-border/30 px-3 py-2">
+        {isMyTurn && myPlayer && gamePhase === "playing" ? (
+          <div className="flex flex-col items-center gap-2 max-w-lg mx-auto">
+            {/* My dice with DiceTableLayout */}
+            <div className="relative w-full h-24">
+              <DiceTableLayout
+                dice={toHorsesDice(localDice)}
+                isRolling={isRolling}
+                canToggle={displayRolls < 3 && displayRolls > 0}
+                onToggleHold={handleToggleHold}
+                size="md"
+                gameType="yahtzee"
+                showWildHighlight={false}
+                rollKey={localRollKeyRef.current}
+                cacheKey={myPlayer.id}
+              />
+            </div>
 
-        {/* Scorecard below dice */}
-        {isMyTurn && myPlayer && (
-          <div className="w-full max-w-lg mt-2">
+            {/* Roll button */}
+            {displayRolls > 0 && (
+              <Button
+                onClick={handleRoll}
+                disabled={isRolling}
+                className="bg-poker-gold text-black hover:bg-amber-400 font-bold px-6"
+              >
+                <Dice5 className="w-4 h-4 mr-2" />
+                {displayRolls === 3 ? 'Roll' : 'Roll Again'}
+              </Button>
+            )}
+
+            {/* Scorecard */}
             {renderScorecard(myPlayer.id, true)}
           </div>
-        )}
-
-        {/* When not my turn, show opponent's scorecard */}
-        {!isMyTurn && currentTurnPlayerId && (
-          <div className="w-full max-w-lg mt-2">
+        ) : currentTurnPlayerId && gamePhase === "playing" ? (
+          <div className="max-w-lg mx-auto">
             <p className="text-amber-200/60 text-xs text-center mb-1">
               {currentPlayer ? getPlayerUsername(currentPlayer) : ''}'s Scorecard
             </p>
             {renderScorecard(currentTurnPlayerId, false)}
           </div>
-        )}
-      </div>
+        ) : myPlayer ? (
+          <div className="max-w-lg mx-auto">
+            <p className="text-amber-200/60 text-xs text-center mb-1">Your Scorecard</p>
+            {renderScorecard(myPlayer.id, false)}
+          </div>
+        ) : null}
+      </footer>
     </div>
   );
 }
