@@ -833,7 +833,7 @@ export const GinRummyGameTable = ({
             {/* Opponent chip area */}
             <div className="flex items-center gap-2 mb-1 mt-1">
               <span className="text-xs text-amber-200/80 font-medium">
-                {opponentPlayer?.profiles?.username || 'Opponent'}
+                {opponentPlayer ? getDisplayName(players, opponentPlayer, opponentPlayer.profiles?.username || 'Opponent') : 'Opponent'}
               </span>
               <span className="text-xs text-amber-100/70">
                 ${formatChipValue(opponentPlayer?.chips ?? 0)}
