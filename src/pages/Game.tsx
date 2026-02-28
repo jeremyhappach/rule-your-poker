@@ -2060,7 +2060,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Call immediately - no delay needed for bots
       makeBotAnteDecisions(gameId!);
     }
-  }, [game?.status, game?.is_paused, gameId]);
+  }, [game?.status, game?.is_paused, gameId, game?.current_game_uuid]);
 
   // CRITICAL: Aggressive polling fallback for realtime reliability issues
   // This handles: newly active players needing cards, ante dialog not showing, game_over stuck
