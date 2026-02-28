@@ -402,17 +402,174 @@ export function YahtzeeGameTable({
   // Has the current turn player rolled at least once?
   const hasRolled = displayDice.some(d => d.value !== 0);
 
+  // Mobile layout: stacked vertically with scorecard at bottom
+  if (isMobile) {
+    return (
+      <div className="h-full flex flex-col overflow-hidden">
+        {/* Compact header: title + pot on one line */}
+        <div className="flex items-center justify-between px-3 py-2 shrink-0">
+          <h1 className="text-base font-bold text-poker-gold">
+            ${anteAmount} YAHTZEE
+          </h1>
+          <div className="flex items-center gap-1.5 bg-amber-900/60 px-2.5 py-1 rounded-lg border border-amber-600/50">
+            <span className="text-amber-200 text-xs">Pot:</span>
+            <span className="text-sm font-bold text-poker-gold">${pot}</span>
+          </div>
+        </div>
+
+        {/* Player score chips - horizontal scroll */}
+        <div className="flex gap-2 px-3 pb-2 overflow-x-auto shrink-0">
+          {activePlayers.map(player => {
+            const ps = yahtzeeState.playerStates[player.id];
+            const total = ps ? getTotalScore(ps.scorecard) : 0;
+            const isWinning = total > 0 && total === maxTotal;
+            const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
+            const isMe = player.user_id === currentUserId;
+
+            return (
+              <div
+                key={player.id}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border-2 shrink-0",
+                  isCurrent ? "border-yellow-500 bg-yellow-500/10" : "border-border/50 bg-black/30",
+                  isWinning && !isCurrent && "border-green-500 bg-green-500/20",
+                  isMe && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
+                )}
+              >
+                <span className="text-xs text-amber-200 font-medium whitespace-nowrap">
+                  {getPlayerUsername(player)}
+                </span>
+                <span className={cn(
+                  "text-sm font-bold tabular-nums",
+                  isWinning ? "text-poker-gold" : "text-muted-foreground"
+                )}>
+                  {total}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Felt area with dice */}
+        <div className="flex-1 relative min-h-0">
+          {/* Turn indicator */}
+          {gamePhase === "playing" && currentPlayer && (
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+              <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/40 px-3 py-1 backdrop-blur-sm">
+                <Dice5 className="h-3.5 w-3.5 text-amber-300" />
+                <span className="text-xs text-foreground/90">
+                  {isMyTurn ? "Your turn" : `${getPlayerUsername(currentPlayer)}'s turn`}
+                </span>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {displayRolls}/3
+                </Badge>
+              </div>
+            </div>
+          )}
+
+          {/* Center dice - observer view */}
+          {gamePhase === "playing" && !isMyTurn && hasRolled && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
+              <DiceTableLayout
+                key={currentTurnPlayerId ?? "no-turn"}
+                dice={toHorsesDice(displayDice)}
+                isRolling={false}
+                canToggle={false}
+                size="sm"
+                gameType="yahtzee"
+                showWildHighlight={false}
+                isObserver={true}
+                hideUnrolledDice={true}
+                rollKey={displayRollKey}
+                cacheKey={currentTurnPlayerId ?? "no-turn"}
+              />
+            </div>
+          )}
+
+          {/* My turn - dice on felt */}
+          {isMyTurn && gamePhase === "playing" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+              <DiceTableLayout
+                dice={toHorsesDice(localDice)}
+                isRolling={isRolling}
+                canToggle={displayRolls < 3 && displayRolls > 0}
+                onToggleHold={handleToggleHold}
+                size="sm"
+                gameType="yahtzee"
+                showWildHighlight={false}
+                rollKey={localRollKeyRef.current}
+                cacheKey={myPlayer?.id ?? "me"}
+              />
+            </div>
+          )}
+
+          {/* Game complete */}
+          {gamePhase === "complete" && (
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="text-center p-4 bg-amber-900/50 rounded-xl border-2 border-amber-600 backdrop-blur-sm">
+                <h3 className="text-xl font-bold text-poker-gold mb-1">Yahtzee Complete!</h3>
+                <p className="text-amber-200 text-sm">
+                  {(() => {
+                    const results = Object.entries(yahtzeeState.playerStates).map(([pid, ps]) => ({
+                      pid, total: getTotalScore(ps.scorecard),
+                    }));
+                    results.sort((a, b) => b.total - a.total);
+                    const best = results[0];
+                    const winner = players.find(p => p.id === best.pid);
+                    return winner ? `${getPlayerUsername(winner)} wins with ${best.total}!` : "Winner determined!";
+                  })()}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom section: Roll button + scorecard */}
+        <div className="shrink-0 px-3 pb-2 pt-1 border-t border-border/30 bg-background/60 backdrop-blur-sm">
+          {/* Roll button when it's my turn */}
+          {isMyTurn && gamePhase === "playing" && displayRolls > 0 && (
+            <div className="flex justify-center mb-2">
+              <Button
+                onClick={handleRoll}
+                disabled={isRolling}
+                className="bg-poker-gold text-black hover:bg-amber-400 font-bold px-6"
+                size="sm"
+              >
+                <Dice5 className="w-4 h-4 mr-1" />
+                {displayRolls === 3 ? 'Roll' : 'Roll Again'}
+              </Button>
+            </div>
+          )}
+
+          {/* Scorecard - always visible */}
+          <div className="max-w-lg mx-auto">
+            {!isMyTurn && currentTurnPlayerId && gamePhase === "playing" && (
+              <p className="text-amber-200/60 text-[10px] text-center mb-0.5">
+                {currentPlayer ? getPlayerUsername(currentPlayer) : ''}'s Scorecard
+              </p>
+            )}
+            {renderScorecard(
+              isMyTurn && myPlayer ? myPlayer.id : (currentTurnPlayerId || myPlayer?.id || ''),
+              isMyTurn && gamePhase === "playing"
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop layout: matches Horses/SCC felt pattern
   return (
-    <div className="h-full flex flex-col relative">
+    <>
       {/* Header */}
-      <header className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+      <header className="absolute top-3 left-1/2 -translate-x-1/2">
         <h1 className="text-xl font-bold text-poker-gold">
           ${anteAmount} YAHTZEE
         </h1>
       </header>
 
       {/* Pot display */}
-      <div className="absolute top-10 left-1/2 -translate-x-1/2 z-10">
+      <div className="absolute top-10 left-1/2 -translate-x-1/2">
         <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
           <span className="text-amber-200 text-sm">Pot:</span>
           <span className="text-lg font-bold text-poker-gold">${pot}</span>
@@ -421,7 +578,7 @@ export function YahtzeeGameTable({
 
       {/* Turn status */}
       {gamePhase === "playing" && currentPlayer && (
-        <div className="absolute top-[72px] left-1/2 -translate-x-1/2 z-10">
+        <div className="absolute top-[72px] left-1/2 -translate-x-1/2">
           <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/20 px-3 py-1 backdrop-blur-sm">
             <Dice5 className="h-4 w-4 text-amber-300" />
             <span className="text-sm text-foreground/90">
@@ -435,7 +592,7 @@ export function YahtzeeGameTable({
       )}
 
       {/* Main felt area */}
-      <main className={cn("absolute inset-0 pt-28", isMobile ? "px-3 pb-48" : "p-4 pb-40")} aria-label="Yahtzee dice table">
+      <main className="absolute inset-0 pt-28 p-4 pb-52" aria-label="Yahtzee dice table">
         <div className="relative w-full h-full">
           {/* Player circles around the table */}
           {activePlayers.map((player, idx) => {
@@ -445,13 +602,12 @@ export function YahtzeeGameTable({
             const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
             const isMe = player.user_id === currentUserId;
 
-            // Calculate position around the table (desktop ring)
             const totalPlayers = activePlayers.length;
             const angle = (idx / totalPlayers) * 2 * Math.PI - Math.PI / 2;
             const centerX = 50;
             const centerY = 48;
             const radiusX = 40;
-            const radiusY = 28;
+            const radiusY = 32;
             const x = centerX + radiusX * Math.cos(angle);
             const y = centerY + radiusY * Math.sin(angle);
 
@@ -470,16 +626,12 @@ export function YahtzeeGameTable({
                   isMe && "ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent",
                   isHost && player.is_bot && onPlayerClick && "cursor-pointer hover:bg-white/5 transition-colors"
                 )}>
-                  {/* Bouncing dice icon for current turn */}
                   {isCurrent && (
                     <Dice5 className="w-4 h-4 text-yellow-400 animate-bounce absolute -top-3" />
                   )}
-
                   <span className="text-xs text-amber-200 font-medium truncate max-w-[80px]">
                     {getPlayerUsername(player)}
                   </span>
-
-                  {/* Score display */}
                   <span className={cn(
                     "text-lg font-bold tabular-nums",
                     isWinning ? "text-poker-gold" : "text-muted-foreground"
@@ -491,7 +643,7 @@ export function YahtzeeGameTable({
             );
           })}
 
-          {/* Dice on the felt center - observer view */}
+          {/* Dice on felt center - observer view */}
           {gamePhase === "playing" && currentPlayer && !isMyTurn && hasRolled && (
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none">
               <DiceTableLayout
@@ -524,7 +676,7 @@ export function YahtzeeGameTable({
             </div>
           )}
 
-          {/* Game complete message */}
+          {/* Game complete */}
           {gamePhase === "complete" && (
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="text-center p-6 bg-amber-900/50 rounded-xl border-2 border-amber-600 backdrop-blur-sm">
@@ -546,54 +698,50 @@ export function YahtzeeGameTable({
         </div>
       </main>
 
-      {/* Footer: My dice + scorecard (when it's my turn) OR opponent scorecard */}
-      <footer className="absolute bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-sm border-t border-border/30 px-3 py-2">
-        {isMyTurn && myPlayer && gamePhase === "playing" ? (
-          <div className="flex flex-col items-center gap-2 max-w-lg mx-auto">
-            {/* My dice with DiceTableLayout */}
-            <div className="relative w-full h-24">
-              <DiceTableLayout
-                dice={toHorsesDice(localDice)}
-                isRolling={isRolling}
-                canToggle={displayRolls < 3 && displayRolls > 0}
-                onToggleHold={handleToggleHold}
-                size="md"
-                gameType="yahtzee"
-                showWildHighlight={false}
-                rollKey={localRollKeyRef.current}
-                cacheKey={myPlayer.id}
-              />
+      {/* Footer: dice (my turn) + scorecard */}
+      <footer className="absolute bottom-0 left-0 right-0 z-20 border-t border-border/30 bg-background/80 backdrop-blur-sm">
+        <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
+          {/* My dice + roll button when it's my turn */}
+          {isMyTurn && myPlayer && gamePhase === "playing" && (
+            <div className="flex items-center justify-center gap-4">
+              <div className="relative w-64 h-20">
+                <DiceTableLayout
+                  dice={toHorsesDice(localDice)}
+                  isRolling={isRolling}
+                  canToggle={displayRolls < 3 && displayRolls > 0}
+                  onToggleHold={handleToggleHold}
+                  size="md"
+                  gameType="yahtzee"
+                  showWildHighlight={false}
+                  rollKey={localRollKeyRef.current}
+                  cacheKey={myPlayer.id}
+                />
+              </div>
+              {displayRolls > 0 && (
+                <Button
+                  onClick={handleRoll}
+                  disabled={isRolling}
+                  className="bg-poker-gold text-black hover:bg-amber-400 font-bold px-5"
+                >
+                  <Dice5 className="w-4 h-4 mr-1.5" />
+                  {displayRolls === 3 ? 'Roll' : 'Roll Again'}
+                </Button>
+              )}
             </div>
+          )}
 
-            {/* Roll button */}
-            {displayRolls > 0 && (
-              <Button
-                onClick={handleRoll}
-                disabled={isRolling}
-                className="bg-poker-gold text-black hover:bg-amber-400 font-bold px-6"
-              >
-                <Dice5 className="w-4 h-4 mr-2" />
-                {displayRolls === 3 ? 'Roll' : 'Roll Again'}
-              </Button>
-            )}
-
-            {/* Scorecard */}
-            {renderScorecard(myPlayer.id, true)}
-          </div>
-        ) : currentTurnPlayerId && gamePhase === "playing" ? (
-          <div className="max-w-lg mx-auto">
-            <p className="text-amber-200/60 text-xs text-center mb-1">
+          {/* Scorecard */}
+          {!isMyTurn && currentTurnPlayerId && gamePhase === "playing" && (
+            <p className="text-amber-200/60 text-xs text-center">
               {currentPlayer ? getPlayerUsername(currentPlayer) : ''}'s Scorecard
             </p>
-            {renderScorecard(currentTurnPlayerId, false)}
-          </div>
-        ) : myPlayer ? (
-          <div className="max-w-lg mx-auto">
-            <p className="text-amber-200/60 text-xs text-center mb-1">Your Scorecard</p>
-            {renderScorecard(myPlayer.id, false)}
-          </div>
-        ) : null}
+          )}
+          {renderScorecard(
+            isMyTurn && myPlayer ? myPlayer.id : (currentTurnPlayerId || myPlayer?.id || ''),
+            isMyTurn && gamePhase === "playing"
+          )}
+        </div>
       </footer>
-    </div>
+    </>
   );
 }
