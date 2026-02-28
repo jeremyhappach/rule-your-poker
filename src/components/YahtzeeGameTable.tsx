@@ -367,7 +367,7 @@ export function YahtzeeGameTable({
   }
 
   /* ================================================================ */
-  /*  RENDER – identical to HorsesGameTable mobile layout             */
+  /*  RENDER – EXACT copy of HorsesGameTable mobile layout            */
   /* ================================================================ */
   return (
     <div
@@ -384,12 +384,19 @@ export function YahtzeeGameTable({
           <h1 className="text-xl font-bold text-poker-gold">
             ${anteAmount} YAHTZEE
           </h1>
+
+          <div className="mt-2 flex justify-center">
+            <div className="flex items-center gap-2 bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-600/50">
+              <span className="text-amber-200 text-sm">Pot:</span>
+              <span className="text-lg font-bold text-poker-gold">${pot}</span>
+            </div>
+          </div>
         </header>
 
         {/* -------- TABLE (seat row + felt) – identical to Horses -------- */}
         <main className="px-3 pb-2 overflow-hidden" aria-label="Yahtzee game table">
           <div className="flex h-full flex-col">
-            {/* Other players row – uses HorsesPlayerArea like Horses does */}
+            {/* Other players row – uses HorsesPlayerArea exactly like Horses */}
             <section className="flex gap-3 overflow-x-auto pb-2" aria-label="Players">
               {mobileSeatPlayers.map((player) => {
                 const ps = yahtzeeState.playerStates[player.id];
@@ -397,7 +404,6 @@ export function YahtzeeGameTable({
                 const isWinning = total > 0 && total === maxTotal && gamePhase === "complete";
                 const isCurrent = player.id === currentTurnPlayerId && gamePhase === "playing";
                 const isMe = player.user_id === currentUserId;
-                const hasCompleted = false; // Yahtzee turns don't "complete" in the same way
 
                 return (
                   <div key={player.id} className="shrink-0">
@@ -406,9 +412,11 @@ export function YahtzeeGameTable({
                       position={player.position}
                       isCurrentTurn={isCurrent}
                       isCurrentUser={isMe}
-                      handResult={total > 0 ? { description: `${total}`, rank: total, tiebreaker: [] } as any : null}
+                      handResult={gamePhase === "complete" && total > 0
+                        ? { description: `Score: ${total}`, rank: total, tiebreaker: [] } as any
+                        : null}
                       isWinningHand={isWinning}
-                      hasTurnCompleted={total > 0}
+                      hasTurnCompleted={gamePhase === "complete"}
                       gameType="yahtzee"
                       isBot={player.is_bot}
                       onClick={isHost && player.is_bot && onPlayerClick ? () => onPlayerClick(player) : undefined}
@@ -418,13 +426,12 @@ export function YahtzeeGameTable({
               })}
             </section>
 
-            {/* Felt area – identical to Horses */}
+            {/* Felt (rolls happen here) – identical oval to Horses */}
             <section className="flex-1 flex items-end justify-center pb-3" aria-label="Felt">
               <div className="w-full max-w-[560px] rounded-[32px] border border-border/40 bg-background/10 p-4 backdrop-blur-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]">
                 <div className="flex flex-col items-center gap-3">
                   {(() => {
                     if (gamePhase !== "playing" || !currentPlayer) {
-                      // Game complete
                       if (gamePhase === "complete") {
                         const results = Object.entries(yahtzeeState.playerStates)
                           .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
@@ -452,17 +459,18 @@ export function YahtzeeGameTable({
                       );
                     }
 
-                    // OPPONENT TURN: Show their dice on the felt (inline, like Horses)
+                    // OPPONENT TURN: Show "rolling" text OR their dice on the felt (like Horses)
                     const opponentDice = currentTurnState?.dice || [];
                     const hasRolled = opponentDice.some(d => d.value !== 0);
                     if (!hasRolled) {
                       return (
                         <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                          {getPlayerUsername(currentPlayer)} is rolling...
+                          {getPlayerUsername(currentPlayer)} is rolling
                         </p>
                       );
                     }
 
+                    // Show opponent dice inline on felt (identical to Horses mobile)
                     return (
                       <div className="flex gap-2">
                         {opponentDice
@@ -488,15 +496,29 @@ export function YahtzeeGameTable({
           </div>
         </main>
 
-        {/* -------- ACTIVE PLAYER AREA -------- */}
+        {/* -------- ACTIVE PLAYER (fixed section) – identical to Horses -------- */}
         <section className="px-3 pb-2" aria-label="Active player">
           <div className="flex justify-center">
             <div className="w-full max-w-sm flex flex-col items-center gap-2">
               {currentPlayer ? (
                 isMyTurn ? (
-                  /* ═══════ MY TURN: dice inline (scorecard is on the felt) ═══════ */
-                  <div className="px-2 flex flex-col flex-1 w-full">
-                    <div className="flex items-center justify-center mb-1 gap-1 min-h-[60px]">
+                  /* MY TURN: dice + controls in active player area (like Horses shows your dice here) */
+                  <div className="w-full">
+                    {/* HorsesPlayerArea for me as active player */}
+                    <HorsesPlayerArea
+                      username={getPlayerUsername(currentPlayer)}
+                      position={currentPlayer.position}
+                      isCurrentTurn={true}
+                      isCurrentUser={true}
+                      handResult={null}
+                      isWinningHand={false}
+                      hasTurnCompleted={false}
+                      myStatus={localRollsRemaining === 3 ? 'rolling' : localRollsRemaining > 0 ? 'rolling' : 'done'}
+                      gameType="yahtzee"
+                      isBot={false}
+                    />
+                    {/* My dice inline below my player area */}
+                    <div className="mt-2 flex items-center justify-center gap-1 min-h-[60px]">
                       {showMyDice ? (
                         localDice.map((die, idx) => {
                           const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
@@ -521,15 +543,29 @@ export function YahtzeeGameTable({
                       )}
                     </div>
                     {localRollsRemaining === 0 && (
-                      <div className="flex justify-center">
+                      <div className="flex justify-center mt-1">
                         <Badge className="text-sm px-3 py-1.5 font-medium">Select a category above</Badge>
                       </div>
                     )}
                   </div>
                 ) : (
-                  /* ═══════ OPPONENT TURN: their scorecard (read-only) ═══════ */
+                  /* OPPONENT TURN: their HorsesPlayerArea + their read-only scorecard */
                   <div className="w-full">
-                    {renderScorecard(currentTurnPlayerId!, false)}
+                    <HorsesPlayerArea
+                      username={getPlayerUsername(currentPlayer)}
+                      position={currentPlayer.position}
+                      isCurrentTurn={true}
+                      isCurrentUser={false}
+                      handResult={null}
+                      isWinningHand={false}
+                      hasTurnCompleted={false}
+                      gameType="yahtzee"
+                      isBot={currentPlayer.is_bot}
+                      onClick={isHost && currentPlayer.is_bot && onPlayerClick ? () => onPlayerClick(currentPlayer) : undefined}
+                    />
+                    <div className="mt-2">
+                      {renderScorecard(currentTurnPlayerId!, false)}
+                    </div>
                   </div>
                 )
               ) : (
