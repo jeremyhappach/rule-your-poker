@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
-import { ChipStack } from "./ChipStack";
+// ChipStack removed – using MobileGameTable-style circular chip divs
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
@@ -404,6 +404,7 @@ export function YahtzeeGameTable({
   };
 
   /* ---- Render chip stack for a player ---- */
+  /* Matches MobileGameTable's circular chip pattern exactly */
   const renderPlayerChip = (player: Player) => {
     const isTheirTurn = player.id === currentTurnPlayerId && gamePhase === 'playing';
     const isMe = player.user_id === currentUserId;
@@ -414,20 +415,25 @@ export function YahtzeeGameTable({
     return (
       <div className="flex flex-col items-center gap-0.5">
         <span className={cn(
-          "text-[11px] font-semibold truncate max-w-[64px] text-center",
-          isMe ? "text-foreground" : "text-foreground/80"
+          "text-[11px] font-semibold truncate max-w-[70px] text-white drop-shadow-md font-semibold"
         )}>
           {getPlayerUsername(player)}
         </span>
-        <div className={cn(
-          "relative transition-all duration-300",
-          isTheirTurn && "ring-2 ring-amber-400 ring-offset-1 ring-offset-transparent rounded-full"
-        )}>
-          <ChipStack
-            amount={player.chips}
-            size={52 as any}
-            showDollarSign={true}
-          />
+        <div className="relative">
+          {isTheirTurn && (
+            <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
+          )}
+          <div className={cn(
+            "relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50 bg-slate-300",
+            isTheirTurn && "animate-turn-pulse",
+          )}>
+            <span className={cn(
+              "font-bold text-sm leading-none",
+              player.chips < 0 ? "text-red-600" : "text-slate-800"
+            )}>
+              ${formatChipValue(Math.round(player.chips))}
+            </span>
+          </div>
         </div>
         {gamePhase === 'complete' && total > 0 && (
           <span className={cn(
