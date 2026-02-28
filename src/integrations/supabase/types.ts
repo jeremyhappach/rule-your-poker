@@ -1134,6 +1134,7 @@ export type Database = {
           pot: number | null
           round_number: number
           status: string
+          yahtzee_state: Json | null
         }
         Insert: {
           bet_amount?: number | null
@@ -1156,6 +1157,7 @@ export type Database = {
           pot?: number | null
           round_number: number
           status?: string
+          yahtzee_state?: Json | null
         }
         Update: {
           bet_amount?: number | null
@@ -1178,6 +1180,7 @@ export type Database = {
           pot?: number | null
           round_number?: number
           status?: string
+          yahtzee_state?: Json | null
         }
         Relationships: [
           {

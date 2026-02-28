@@ -1122,12 +1122,13 @@ export const DealerGameSetup = ({
       case 'ship-captain-crew': return 'Ship';
       case 'sports-trivia': return 'Trivia';
       case 'gin-rummy': return 'Gin Rummy';
+      case 'yahtzee': return 'Yahtzee';
       default: return gameType;
     }
   };
   
   const isDiceGame = (gameType: string) => {
-    return gameType === 'horses' || gameType === 'ship-captain-crew';
+    return gameType === 'horses' || gameType === 'ship-captain-crew' || gameType === 'yahtzee';
   };
   
   const isSimpleAnteGame = (gameType: string) => {
@@ -1201,6 +1202,7 @@ export const DealerGameSetup = ({
     // Dice Games
     { id: 'horses', name: 'Horses', description: '5 dice, best hand wins', category: 'dice', enabled: true },
     { id: 'ship-captain-crew', name: 'Ship Captain Crew', description: '6-5-4', category: 'dice', enabled: true },
+    { id: 'yahtzee', name: 'Yahtzee', description: 'Fill your scorecard', category: 'dice', enabled: true },
   ];
 
   const cardGames = allGames.filter(g => g.category === 'cards');
@@ -1239,6 +1241,7 @@ export const DealerGameSetup = ({
     const gameTypeName = gameTypeToSubmit === 'ship-captain-crew' ? 'Ship' : 
                          gameTypeToSubmit === 'horses' ? 'Horses' : 
                          gameTypeToSubmit === 'sports-trivia' ? 'Trivia' : 
+                         gameTypeToSubmit === 'yahtzee' ? 'Yahtzee' :
                          isCribbage ? 'Cribbage' : gameTypeToSubmit;
     console.log(`[DEALER SETUP] Submitting ${gameTypeName} game config, game_type:`, gameTypeToSubmit);
     
@@ -1651,8 +1654,9 @@ export const DealerGameSetup = ({
       const isTrivia = selectedGameType === 'sports-trivia';
       const isCribbage = selectedGameType === 'cribbage';
       const isGinRummy = selectedGameType === 'gin-rummy';
+      const isYahtzee = selectedGameType === 'yahtzee';
       
-      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isTrivia ? 'Trivia' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : selectedGameType;
+      const gameDisplayName = isSCC ? 'Ship' : isHorses ? 'Horses' : isTrivia ? 'Trivia' : isCribbage ? 'Cribbage' : isGinRummy ? 'Gin Rummy' : isYahtzee ? 'Yahtzee' : selectedGameType;
       const gameRulesText = isSCC 
         ? '5 dice • Up to 3 rolls • Get 6-5-4 (Ship-Captain-Crew) • Max cargo wins'
         : isHorses 
