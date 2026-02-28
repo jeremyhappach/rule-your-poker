@@ -273,6 +273,13 @@ export function YahtzeeGameTable({
   };
 
   /* ---- Bot logic ---- */
+  // Safety: reset botProcessingRef when turn changes away from a bot
+  useEffect(() => {
+    if (!currentPlayer?.is_bot) {
+      botProcessingRef.current = false;
+    }
+  }, [currentTurnPlayerId]);
+
   useEffect(() => {
     if (!currentRoundId || !yahtzeeState || gamePhase !== 'playing') return;
     if (!currentTurnPlayerId || !currentPlayer?.is_bot) return;
@@ -281,20 +288,22 @@ export function YahtzeeGameTable({
     if (controllerUserId && controllerUserId !== currentUserId) return;
 
     botProcessingRef.current = true;
+    let cancelled = false;
+
     const runBot = async () => {
       try {
         let state = { ...yahtzeeState };
         let ps = { ...state.playerStates[currentTurnPlayerId] };
 
         for (let roll = 0; roll < 3; roll++) {
-          if (ps.rollsRemaining <= 0) break;
+          if (cancelled || ps.rollsRemaining <= 0) break;
           const t = Date.now();
           ps = rollYahtzeeDice(ps);
           state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: { ...ps, rollKey: t } } };
           await updateYahtzeeState(currentRoundId, state);
           await new Promise(r => setTimeout(r, 1500));
 
-          if (ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) break;
+          if (cancelled || ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) break;
           const holds = getBotHoldDecision(ps);
           ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
           state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
@@ -302,6 +311,7 @@ export function YahtzeeGameTable({
           await new Promise(r => setTimeout(r, 800));
         }
 
+        if (cancelled) return;
         const category = getBotCategoryChoice(ps);
         ps = scoreYahtzeeCategory(ps, category);
         state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
@@ -314,7 +324,10 @@ export function YahtzeeGameTable({
     };
 
     const timer = setTimeout(runBot, 1500);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase]);
 
   /* ---- Felt dice for observer view ---- */
@@ -496,7 +509,7 @@ export function YahtzeeGameTable({
           </div>
         </div>
 
-        {/* Dice on felt (observer view) OR "You are rolling" message */}
+        {/* Dice on felt (observer view) OR scorecard (my turn) */}
         {gamePhase === 'playing' && currentPlayer && (() => {
           if (isMyTurn && myPlayer) {
             // My turn: show interactive scorecard ON the felt
@@ -507,16 +520,28 @@ export function YahtzeeGameTable({
             );
           }
 
+          // Opponent's turn: show dice if they've rolled, or a waiting message
           const diceState = getCurrentTurnDice();
-          if (!diceState) return null;
-          const hasRolled = diceState.dice.some(d => d.value !== 0);
-          if (!hasRolled) return null;
+          const hasRolled = diceState?.dice.some(d => d.value !== 0);
+
+          if (!hasRolled) {
+            // Show waiting message on felt while opponent hasn't rolled yet
+            return (
+              <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] text-center">
+                <div className="bg-black/50 rounded-xl px-5 py-3 border border-amber-600/40 backdrop-blur-sm">
+                  <p className="text-amber-200/90 font-semibold text-base animate-pulse">
+                    {getPlayerUsername(currentPlayer)} is rolling...
+                  </p>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110]">
               <DiceTableLayout
                 key={currentTurnPlayerId ?? "no-turn"}
-                dice={diceState.dice}
+                dice={diceState!.dice}
                 isRolling={false}
                 canToggle={false}
                 size="md"
@@ -525,7 +550,7 @@ export function YahtzeeGameTable({
                 isObserver={true}
                 hideUnrolledDice={true}
                 animationOrigin={getDiceAnimationOrigin()}
-                rollKey={diceState.rollKey}
+                rollKey={diceState!.rollKey}
                 cacheKey={currentTurnPlayerId ?? "no-turn"}
               />
             </div>
