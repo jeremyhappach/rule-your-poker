@@ -32,7 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn } from "@/lib/utils";
-import { Lock, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { recordGameResult } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
@@ -611,19 +611,6 @@ export function YahtzeeGameTable({
                   <RotateCcw className="w-4 h-4 mr-1 animate-slow-pulse-red" />
                   Roll{localRollsRemaining === 3 ? "" : " Again"}
                 </Button>
-
-                {localRollsRemaining < 3 && localRollsRemaining > 0 && (
-                  <Button
-                    onClick={() => {/* Lock in not needed for Yahtzee - must pick category */}}
-                    size="sm"
-                    variant="outline"
-                    className="border-amber-500 text-amber-400 hover:bg-amber-500/20"
-                    disabled
-                  >
-                    <Lock className="w-4 h-4 mr-1" />
-                    Lock In
-                  </Button>
-                )}
               </div>
             ) : (
               <div className="h-10" />
