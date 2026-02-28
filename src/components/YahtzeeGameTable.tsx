@@ -498,12 +498,11 @@ export function YahtzeeGameTable({
 
         {/* Dice on felt (observer view) OR "You are rolling" message */}
         {gamePhase === 'playing' && currentPlayer && (() => {
-          if (isMyTurn) {
+          if (isMyTurn && myPlayer) {
+            // My turn: show interactive scorecard ON the felt
             return (
-              <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2">
-                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                  You are rolling
-                </p>
+              <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
+                {renderScorecard(myPlayer.id, true)}
               </div>
             );
           }
@@ -730,10 +729,22 @@ export function YahtzeeGameTable({
               )}
             </div>
 
-            {/* Scorecard */}
-            {myPlayer && (
+            {/* Opponent scorecard when it's not my turn */}
+            {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && (
               <div className="mt-1 px-1">
-                {renderScorecard(isMyTurn ? myPlayer.id : (currentTurnPlayerId || myPlayer.id), isMyTurn)}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-semibold text-muted-foreground">
+                    {currentPlayer ? getPlayerUsername(currentPlayer) : 'Opponent'}'s Scorecard
+                  </span>
+                </div>
+                {renderScorecard(currentTurnPlayerId, false)}
+              </div>
+            )}
+
+            {/* My scorecard (read-only summary) when it IS my turn - interactive one is on felt */}
+            {isMyTurn && myPlayer && (
+              <div className="mt-1 px-1 opacity-60">
+                <span className="text-xs text-muted-foreground">Your scorecard is on the table above</span>
               </div>
             )}
 
