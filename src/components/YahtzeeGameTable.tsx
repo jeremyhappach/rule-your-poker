@@ -435,57 +435,66 @@ export function YahtzeeGameTable({
             <section className="flex-1 flex items-end justify-center pb-3" aria-label="Felt">
               <div className="w-full max-w-[560px] rounded-[32px] border border-border/40 bg-background/10 p-4 backdrop-blur-sm shadow-[inset_0_0_60px_rgba(0,0,0,0.35)]">
                 <div className="flex flex-col items-center gap-3">
-                  <div className="flex gap-2">
-                    {(() => {
-                      if (gamePhase !== "playing" || !currentPlayer) return null;
-
-                      // MY TURN: "You are rolling" on the felt (dice are in active player area below)
-                      if (isMyTurn) {
+                  {(() => {
+                    if (gamePhase !== "playing" || !currentPlayer) {
+                      // Game complete
+                      if (gamePhase === "complete") {
+                        const results = Object.entries(yahtzeeState.playerStates)
+                          .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
+                          .sort((a, b) => b.total - a.total);
+                        const best = results[0];
+                        const winner = players.find(p => p.id === best.pid);
                         return (
-                          <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                            You are rolling
-                          </p>
+                          <div className="mt-1 text-center p-4 bg-amber-900/50 rounded-xl border-2 border-amber-600 w-full">
+                            <h3 className="text-xl font-bold text-poker-gold mb-1">Yahtzee Complete!</h3>
+                            <p className="text-amber-200 text-sm">
+                              {winner ? `${getPlayerUsername(winner)} wins with ${best.total}!` : "Winner determined!"}
+                            </p>
+                          </div>
                         );
                       }
+                      return null;
+                    }
 
-                      // OPPONENT TURN: Show their dice on the felt (inline, like Horses)
-                      const opponentDice = currentTurnState?.dice || [];
-                      const hasRolled = opponentDice.some(d => d.value !== 0);
-                      if (!hasRolled) return null;
+                    // MY TURN: My interactive scorecard on the felt
+                    if (isMyTurn && myPlayer) {
+                      return (
+                        <div className="w-full">
+                          {renderScorecard(myPlayer.id, true)}
+                        </div>
+                      );
+                    }
 
-                      return opponentDice
-                        .filter(d => d.value !== 0)
-                        .map((die, idx) => (
-                          <HorsesDie
-                            key={idx}
-                            value={die.value}
-                            isHeld={false}
-                            isRolling={false}
-                            canToggle={false}
-                            onToggle={() => {}}
-                            size="md"
-                            showWildHighlight={false}
-                          />
-                        ));
-                    })()}
-                  </div>
+                    // OPPONENT TURN: Show their dice on the felt (inline, like Horses)
+                    const opponentDice = currentTurnState?.dice || [];
+                    const hasRolled = opponentDice.some(d => d.value !== 0);
+                    if (!hasRolled) {
+                      return (
+                        <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                          {getPlayerUsername(currentPlayer)} is rolling...
+                        </p>
+                      );
+                    }
 
-                  {/* Game complete */}
-                  {gamePhase === "complete" && (
-                    <div className="mt-1 text-center p-4 bg-amber-900/50 rounded-xl border-2 border-amber-600 w-full">
-                      <h3 className="text-xl font-bold text-poker-gold mb-1">Yahtzee Complete!</h3>
-                      <p className="text-amber-200 text-sm">
-                        {(() => {
-                          const results = Object.entries(yahtzeeState.playerStates)
-                            .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
-                            .sort((a, b) => b.total - a.total);
-                          const best = results[0];
-                          const winner = players.find(p => p.id === best.pid);
-                          return winner ? `${getPlayerUsername(winner)} wins with ${best.total}!` : "Winner determined!";
-                        })()}
-                      </p>
-                    </div>
-                  )}
+                    return (
+                      <div className="flex gap-2">
+                        {opponentDice
+                          .filter(d => d.value !== 0)
+                          .map((die, idx) => (
+                            <HorsesDie
+                              key={idx}
+                              value={die.value}
+                              isHeld={false}
+                              isRolling={false}
+                              canToggle={false}
+                              onToggle={() => {}}
+                              size="md"
+                              showWildHighlight={false}
+                            />
+                          ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </section>
@@ -498,7 +507,7 @@ export function YahtzeeGameTable({
             <div className="w-full max-w-sm flex flex-col items-center gap-2">
               {currentPlayer ? (
                 isMyTurn ? (
-                  /* ═══════ MY TURN: dice + roll buttons + scorecard (replaces result badge) ═══════ */
+                  /* ═══════ MY TURN: dice + roll buttons (scorecard is on the felt) ═══════ */
                   <div className="px-2 flex flex-col flex-1 w-full">
                     {/* Dice area – identical to HorsesMobileCardsTab */}
                     <div className="flex items-center justify-center mb-1 gap-1 min-h-[60px]">
@@ -526,7 +535,7 @@ export function YahtzeeGameTable({
                       )}
                     </div>
 
-                    {/* Action buttons – identical to HorsesMobileCardsTab */}
+                    {/* Action buttons */}
                     <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
                       {localRollsRemaining > 0 ? (
                         <div className="flex items-center justify-center gap-2">
@@ -544,9 +553,7 @@ export function YahtzeeGameTable({
                             <Button
                               variant="outline"
                               size="icon"
-                              onClick={() => {
-                                // Lock in: score must be selected, so just show scorecard
-                              }}
+                              onClick={() => {}}
                               className="h-9 w-9"
                               title="Lock In"
                               disabled
@@ -558,42 +565,14 @@ export function YahtzeeGameTable({
                           )}
                         </div>
                       ) : (
-                        <Badge className="text-sm px-3 py-1.5 font-medium">Select a category</Badge>
+                        <Badge className="text-sm px-3 py-1.5 font-medium">Select a category above</Badge>
                       )}
                     </div>
-
-                    {/* Scorecard – replaces the result badge area */}
-                    {showMyDice && myPlayer && (
-                      <div className="w-full mt-1">
-                        {renderScorecard(myPlayer.id, true)}
-                      </div>
-                    )}
                   </div>
                 ) : (
-                  /* ═══════ OPPONENT TURN: their scorecard replaces "rolling..." status ═══════ */
-                  <div className="w-full flex flex-col items-center gap-2">
-                    {/* Player card header (same as Horses HorsesPlayerArea for the active turn) */}
-                    <div className={cn(
-                      "relative flex flex-col items-center gap-0.5 p-2 rounded-lg border-2 min-w-[140px]",
-                      "border-yellow-500 bg-yellow-500/10",
-                    )}>
-                      <Dice5 className="w-4 h-4 text-yellow-400 animate-bounce absolute -top-3" />
-                      <span className="text-xs text-amber-200 font-medium">
-                        {getPlayerUsername(currentPlayer)}
-                      </span>
-                      <span className={cn(
-                        "text-sm font-bold tabular-nums",
-                        (getTotalScore(yahtzeeState.playerStates[currentTurnPlayerId!]?.scorecard) === maxTotal && maxTotal > 0)
-                          ? "text-poker-gold" : "text-muted-foreground"
-                      )}>
-                        {getTotalScore(yahtzeeState.playerStates[currentTurnPlayerId!]?.scorecard)}
-                      </span>
-                    </div>
-
-                    {/* Their scorecard (read-only) – replaces "Player X is rolling..." */}
-                    <div className="w-full">
-                      {renderScorecard(currentTurnPlayerId!, false)}
-                    </div>
+                  /* ═══════ OPPONENT TURN: their scorecard (read-only) in my active player area ═══════ */
+                  <div className="w-full">
+                    {renderScorecard(currentTurnPlayerId!, false)}
                   </div>
                 )
               ) : (
