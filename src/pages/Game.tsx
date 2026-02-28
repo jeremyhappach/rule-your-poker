@@ -34,6 +34,7 @@ import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
+import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
@@ -893,7 +894,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Get current round for deadline updates.
     // CRITICAL: Must be scoped to dealer_game_id, otherwise 3-5-7 Round 1 can be mistaken for Holm Round 1.
-    const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses' || game.game_type === 'ship-captain-crew')
+    const currentRoundData = (game.game_type === 'holm-game' || game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee')
       ? pickActiveSingleRoundGameRound(game.rounds, {
           dealerGameId: game.current_game_uuid,
           currentRoundNumber: game.current_round,
@@ -2654,7 +2655,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     }
 
-    if (game.game_type === "horses" || game.game_type === "ship-captain-crew") {
+    if (game.game_type === "horses" || game.game_type === "ship-captain-crew" || game.game_type === "yahtzee") {
       // Dice games: current_round is authoritative; never show the previous round during the creation gap.
       if (typeof game.current_round === "number") {
         // CRITICAL: ALWAYS filter by dealer_game_id when available - NO fallback to unscoped rounds
@@ -3663,7 +3664,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // NOTE: Do NOT pre-claim awaiting_next_round here — startHorsesRound / startSCCRound
             // have their own atomic rollover claim guards. Pre-consuming the flag here causes
             // startHorsesRound to see awaiting_next_round=false and hit BLOCKED_NOT_READY.
-            if (freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew') {
+            if (freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew' || freshGame?.game_type === 'yahtzee') {
               console.log('[AWAITING_NEXT_ROUND] Dice game detected — starting next hand (re-ante)', freshGame?.game_type);
 
               // Capture pre-ante chips BEFORE startRound deducts them
@@ -3691,6 +3692,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // atomic guards for awaiting_next_round and multi-client deduplication
               if (freshGame?.game_type === 'ship-captain-crew') {
                 await startSCCRound(gameId);
+              } else if (freshGame?.game_type === 'yahtzee') {
+                await startYahtzeeRound(gameId);
               } else {
                 await startHorsesRound(gameId);
               }
@@ -4148,7 +4151,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // CRITICAL: Pick the correct round for timer calculations.
       // For dice games, never fall back to the previous round while the new round row is still being created.
       const isHolm = gameData.game_type === 'holm-game';
-      const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew';
+      const isDice = gameData.game_type === 'horses' || gameData.game_type === 'ship-captain-crew' || gameData.game_type === 'yahtzee';
       const isCribbage = gameData.game_type === 'cribbage';
       const isGinRummy = gameData.game_type === 'gin-rummy';
 
@@ -5770,14 +5773,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // After transitioning from 3-5-7 to Holm, React state may still have old game_type
           const isHolmGame = freshGame?.game_type === 'holm-game' || freshGame?.game_type === 'holm';
           const isHorsesGame = freshGame?.game_type === 'horses' || freshGame?.game_type === 'ship-captain-crew';
+          const isYahtzeeGame = freshGame?.game_type === 'yahtzee';
           const isCribbageGame = freshGame?.game_type === 'cribbage';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
           const activePlayersBefore = players.filter(p => !p.sitting_out);
           const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
 
-          // Skip ante animation for cribbage - it doesn't use the chip animation pattern
-          if (!isCribbageGame && perPlayerAmount > 0 && activePlayersBefore.length > 0) {
+          // Skip ante animation for cribbage and yahtzee - they don't use the chip animation pattern
+          if (!isCribbageGame && !isYahtzeeGame && perPlayerAmount > 0 && activePlayersBefore.length > 0) {
             const preChipsSnapshot: Record<string, number> = {};
             const expectedChips: Record<string, number> = {};
             activePlayersBefore.forEach(p => {
@@ -5817,6 +5821,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             } else {
               await startHorsesRound(gameId, true);
             }
+          } else if (isYahtzeeGame) {
+            console.log('[ANTE][YAHTZEE] Starting yahtzee round');
+            await startYahtzeeRound(gameId!, true);
+            await fetchGameData();
           } else if (isCribbageGame) {
             // Cribbage: transition to dealer selection phase (high-card animation)
             // The round will be created after dealer selection completes
@@ -6960,6 +6968,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 horsesState={horsesState}
                 onRefetch={fetchGameData}
                 gameType={game.game_type || 'horses'}
+                isHost={isCreator}
+                onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
+              />
+            );
+          }
+
+          // YAHTZEE GAME
+          if (isInProgress && game.game_type === 'yahtzee') {
+            const yahtzeeState = (currentRound as any)?.yahtzee_state as import('@/lib/yahtzeeTypes').YahtzeeState | null;
+            return (
+              <YahtzeeGameTable
+                gameId={gameId!}
+                players={players}
+                currentUserId={user?.id}
+                pot={potForDisplay}
+                anteAmount={game.ante_amount || 1}
+                dealerPosition={game.dealer_position || 1}
+                currentRoundId={currentRound?.id || null}
+                yahtzeeState={yahtzeeState}
+                onRefetch={fetchGameData}
                 isHost={isCreator}
                 onPlayerClick={(player) => { setSelectedPlayer(player as Player); setShowPlayerOptions(true); }}
               />

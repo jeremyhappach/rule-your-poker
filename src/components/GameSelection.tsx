@@ -73,6 +73,12 @@ export const GameSelection = ({
       description: "6-5-4",
       enabled: true,
     },
+    {
+      id: "yahtzee",
+      name: "Yahtzee",
+      description: "Fill your scorecard",
+      enabled: true,
+    },
   ];
 
   const getGameDisplayName = (gameType: string) => {
@@ -84,6 +90,7 @@ export const GameSelection = ({
       case 'sports-trivia': return 'Trivia';
       case 'cribbage': return 'Cribbage';
       case 'gin-rummy': return 'Gin Rummy';
+      case 'yahtzee': return 'Yahtzee';
       default: return gameType;
     }
   };
@@ -124,7 +131,7 @@ export const GameSelection = ({
   // Determine which tab to default to based on last game type
   const getDefaultTab = () => {
     if (lastGameType) {
-      return lastGameType === 'horses' || lastGameType === 'ship-captain-crew' ? 'dice' : 'cards';
+      return lastGameType === 'horses' || lastGameType === 'ship-captain-crew' || lastGameType === 'yahtzee' ? 'dice' : 'cards';
     }
     return 'cards';
   };
