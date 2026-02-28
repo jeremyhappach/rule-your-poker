@@ -611,7 +611,7 @@ export function YahtzeeGameTable({
       </div>
 
       {/* ===== BOTTOM SECTION ===== */}
-      <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-t from-background via-background to-background/95 border-t border-border overflow-hidden">
 
         {/* Timer / status area */}
         <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
@@ -678,7 +678,7 @@ export function YahtzeeGameTable({
 
         {/* CARDS/DICE TAB */}
         {activeTab === 'cards' && (
-          <div className="px-2 flex flex-col flex-1 overflow-y-auto">
+          <div className="px-2 flex-1 min-h-0 overflow-y-auto">
             {/* Dice area */}
             <div className="flex items-center justify-center gap-1 min-h-[60px] mb-1">
               {showMyDice ? (
