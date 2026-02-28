@@ -299,7 +299,7 @@ export function YahtzeeGameTable({
     const potentials = isInteractive && rollsUsed < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
 
     const renderRow = (categories: YahtzeeCategory[], extra?: React.ReactNode) => (
-      <div className="flex gap-0.5">
+      <div className="flex gap-1">
         {categories.map(cat => {
           const scored = ps.scorecard.scores[cat];
           const potential = potentials[cat];
@@ -311,18 +311,18 @@ export function YahtzeeGameTable({
               onClick={() => isAvailable ? handleScoreCategory(cat) : undefined}
               disabled={!isAvailable}
               className={cn(
-                "flex-1 flex flex-col items-center py-1.5 px-1 rounded text-xs border transition-all min-w-0",
+                "flex-1 flex flex-col items-center py-2 px-1 rounded-md border-2 transition-all min-w-0",
                 scored !== undefined
-                  ? "bg-amber-900/40 border-amber-700/50"
+                  ? "bg-amber-900/50 border-amber-700/60"
                   : isAvailable
-                    ? "bg-amber-800/30 border-poker-gold hover:bg-amber-700/50 cursor-pointer animate-pulse"
-                    : "bg-muted/20 border-muted-foreground/20"
+                    ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer animate-pulse"
+                    : "bg-muted/20 border-muted-foreground/30"
               )}
             >
-              <span className="font-bold text-amber-200 text-[11px] leading-tight">{CATEGORY_LABELS[cat]}</span>
+              <span className="font-bold text-amber-200 text-sm leading-tight">{CATEGORY_LABELS[cat]}</span>
               <span className={cn(
-                "font-bold tabular-nums text-sm leading-tight",
-                scored !== undefined ? "text-foreground" : potential !== undefined ? "text-poker-gold/70" : "text-muted-foreground/40"
+                "font-bold tabular-nums text-base leading-tight mt-0.5",
+                scored !== undefined ? "text-foreground" : potential !== undefined ? "text-poker-gold/80" : "text-muted-foreground/50"
               )}>
                 {scored !== undefined ? scored : potential !== undefined ? potential : '—'}
               </span>
@@ -336,19 +336,19 @@ export function YahtzeeGameTable({
     const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (ps.scorecard.scores[c] ?? 0), 0);
 
     return (
-      <div className="w-full space-y-1">
+      <div className="w-full space-y-1.5">
         {renderRow(UPPER_CATEGORIES, (
-          <div className="flex-1 flex flex-col items-center py-1.5 px-1 rounded text-xs border bg-muted/10 border-muted-foreground/20 min-w-0">
-            <span className="font-bold text-amber-200/60 text-[11px] leading-tight">BN</span>
-            <span className="font-bold text-muted-foreground/60 tabular-nums text-sm leading-tight">
+          <div className="flex-1 flex flex-col items-center py-2 px-1 rounded-md border-2 bg-muted/10 border-muted-foreground/30 min-w-0">
+            <span className="font-bold text-amber-200/70 text-sm leading-tight">BN</span>
+            <span className="font-bold text-muted-foreground/70 tabular-nums text-base leading-tight mt-0.5">
               {upperSum >= 63 ? '35' : `${upperSum}/63`}
             </span>
           </div>
         ))}
         {renderRow(LOWER_CATEGORIES, (
-          <div className="flex-1 flex flex-col items-center py-1.5 px-1 rounded text-xs border bg-poker-gold/20 border-poker-gold/50 min-w-0">
-            <span className="font-bold text-poker-gold text-[11px] leading-tight">TOT</span>
-            <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
+          <div className="flex-1 flex flex-col items-center py-2 px-1 rounded-md border-2 bg-poker-gold/20 border-poker-gold/60 min-w-0">
+            <span className="font-bold text-poker-gold text-sm leading-tight">TOT</span>
+            <span className="font-bold text-poker-gold tabular-nums text-base leading-tight mt-0.5">
               {getTotalScore(ps.scorecard)}
             </span>
           </div>
@@ -450,16 +450,46 @@ export function YahtzeeGameTable({
                       return null;
                     }
 
-                    // MY TURN: My interactive scorecard on the felt
+                    // MY TURN: Show my dice on the felt (like Horses shows "You are rolling")
                     if (isMyTurn && myPlayer) {
+                      if (!showMyDice) {
+                        return (
+                          <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                            You are rolling
+                          </p>
+                        );
+                      }
+                      // Show my dice on the felt
                       return (
-                        <div className="w-full">
-                          {renderScorecard(myPlayer.id, true)}
-                        </div>
+                        <>
+                          <div className="flex gap-2">
+                            {localDice.map((die, idx) => {
+                              const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
+                              const shouldAnimate = rolling && !heldAtRollStart;
+                              const showHeldStyling = localRollsRemaining > 0 && die.isHeld && !shouldAnimate;
+
+                              return (
+                                <HorsesDie
+                                  key={idx}
+                                  value={die.value}
+                                  isHeld={showHeldStyling}
+                                  isRolling={shouldAnimate}
+                                  canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
+                                  onToggle={() => handleToggleHold(idx)}
+                                  size="lg"
+                                  showWildHighlight={false}
+                                />
+                              );
+                            })}
+                          </div>
+                          {localRollsRemaining > 0 && localRollsRemaining < 3 && (
+                            <p className="text-xs text-amber-200/70">Tap dice to hold/unhold</p>
+                          )}
+                        </>
                       );
                     }
 
-                    // OPPONENT TURN: Show "rolling" text OR their dice on the felt (like Horses)
+                    // OPPONENT TURN: Show their dice on the felt (like Horses)
                     const opponentDice = currentTurnState?.dice || [];
                     const hasRolled = opponentDice.some(d => d.value !== 0);
                     if (!hasRolled) {
@@ -470,7 +500,6 @@ export function YahtzeeGameTable({
                       );
                     }
 
-                    // Show opponent dice inline on felt (identical to Horses mobile)
                     return (
                       <div className="flex gap-2">
                         {opponentDice
@@ -496,83 +525,33 @@ export function YahtzeeGameTable({
           </div>
         </main>
 
-        {/* -------- ACTIVE PLAYER (fixed section) – identical to Horses -------- */}
+        {/* -------- ACTIVE PLAYER (fixed section) -------- */}
         <section className="px-3 pb-2" aria-label="Active player">
           <div className="flex justify-center">
-            <div className="w-full max-w-sm flex flex-col items-center gap-2">
-              {currentPlayer ? (
-                isMyTurn ? (
-                  /* MY TURN: dice + controls in active player area (like Horses shows your dice here) */
-                  <div className="w-full">
-                    {/* HorsesPlayerArea for me as active player */}
-                    <HorsesPlayerArea
-                      username={getPlayerUsername(currentPlayer)}
-                      position={currentPlayer.position}
-                      isCurrentTurn={true}
-                      isCurrentUser={true}
-                      handResult={null}
-                      isWinningHand={false}
-                      hasTurnCompleted={false}
-                      myStatus={localRollsRemaining === 3 ? 'rolling' : localRollsRemaining > 0 ? 'rolling' : 'done'}
-                      gameType="yahtzee"
-                      isBot={false}
-                    />
-                    {/* My dice inline below my player area */}
-                    <div className="mt-2 flex items-center justify-center gap-1 min-h-[60px]">
-                      {showMyDice ? (
-                        localDice.map((die, idx) => {
-                          const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
-                          const shouldAnimate = rolling && !heldAtRollStart;
-                          const showHeldStyling = localRollsRemaining > 0 && die.isHeld && !shouldAnimate;
-
-                          return (
-                            <HorsesDie
-                              key={idx}
-                              value={die.value}
-                              isHeld={showHeldStyling}
-                              isRolling={shouldAnimate}
-                              canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
-                              onToggle={() => handleToggleHold(idx)}
-                              size="lg"
-                              showWildHighlight={false}
-                            />
-                          );
-                        })
-                      ) : (
-                        <div className="h-[52px]" />
-                      )}
-                    </div>
-                    {localRollsRemaining === 0 && (
-                      <div className="flex justify-center mt-1">
-                        <Badge className="text-sm px-3 py-1.5 font-medium">Select a category above</Badge>
-                      </div>
+            <div className="w-full flex flex-col items-center gap-1">
+              {currentPlayer && gamePhase === "playing" ? (
+                <div className="w-full">
+                  {/* Active player name label */}
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <span className="text-sm font-semibold text-poker-gold">
+                      {isMyTurn ? getPlayerUsername(currentPlayer) : getPlayerUsername(currentPlayer)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Seat {currentPlayer.position}</span>
+                    {isMyTurn && localRollsRemaining === 0 && (
+                      <Badge variant="outline" className="text-xs border-poker-gold text-poker-gold">Pick a category</Badge>
+                    )}
+                    {!isMyTurn && (
+                      <span className="text-xs text-amber-400 animate-pulse">Rolling...</span>
                     )}
                   </div>
-                ) : (
-                  /* OPPONENT TURN: their HorsesPlayerArea + their read-only scorecard */
-                  <div className="w-full">
-                    <HorsesPlayerArea
-                      username={getPlayerUsername(currentPlayer)}
-                      position={currentPlayer.position}
-                      isCurrentTurn={true}
-                      isCurrentUser={false}
-                      handResult={null}
-                      isWinningHand={false}
-                      hasTurnCompleted={false}
-                      gameType="yahtzee"
-                      isBot={currentPlayer.is_bot}
-                      onClick={isHost && currentPlayer.is_bot && onPlayerClick ? () => onPlayerClick(currentPlayer) : undefined}
-                    />
-                    <div className="mt-2">
-                      {renderScorecard(currentTurnPlayerId!, false)}
-                    </div>
-                  </div>
-                )
-              ) : (
+                  {/* Scorecard - interactive for me, read-only for opponent */}
+                  {renderScorecard(isMyTurn ? myPlayer!.id : currentTurnPlayerId!, isMyTurn)}
+                </div>
+              ) : !currentPlayer ? (
                 <div className="rounded-lg border border-border/50 bg-background/15 px-4 py-3 text-sm text-muted-foreground">
                   Waiting for the next turn...
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </section>
