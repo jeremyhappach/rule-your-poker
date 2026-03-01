@@ -105,6 +105,8 @@ export function YahtzeeGameTable({
 
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
+  const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
+  const [scoringInProgress, setScoringInProgress] = useState(false);
   const uiRollingTimerRef = useRef<number | null>(null);
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
@@ -237,22 +239,33 @@ export function YahtzeeGameTable({
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer) return;
+    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || scoringInProgress) return;
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
 
+    // Highlight the chosen category and pause for clarity
+    setScoringInProgress(true);
+    setLastScoredCategory(category);
+
     const newPs = scoreYahtzeeCategory(myPs, category);
+    setLocalDice(newPs.dice);
+    setLocalRollsRemaining(newPs.rollsRemaining);
+
+    // Wait 2 seconds so the player can see their selection highlighted
+    await new Promise(r => setTimeout(r, 2000));
+
     let newState = {
       ...yahtzeeState,
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
     };
     newState = advanceYahtzeeTurn(newState);
     await updateYahtzeeState(currentRoundId, newState);
-    setLocalDice(newPs.dice);
-    setLocalRollsRemaining(newPs.rollsRemaining);
+
+    setLastScoredCategory(null);
+    setScoringInProgress(false);
 
     if (newState.gamePhase === 'complete') handleGameComplete(newState);
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer]);
+  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, scoringInProgress]);
 
   /* ---- Game complete ---- */
   const handleGameComplete = async (finalState: YahtzeeState) => {
@@ -373,18 +386,22 @@ export function YahtzeeGameTable({
           const potential = potentials[cat];
           const isAvailable = scored === undefined && isInteractive && isMyTurn && rollsUsed < 3;
 
+          const justScored = lastScoredCategory === cat;
+
           return (
             <button
               key={cat}
-              onClick={() => isAvailable ? handleScoreCategory(cat) : undefined}
-              disabled={!isAvailable}
+              onClick={() => isAvailable && !scoringInProgress ? handleScoreCategory(cat) : undefined}
+              disabled={!isAvailable || scoringInProgress}
               className={cn(
                 "flex-1 flex flex-col items-center py-1.5 px-0.5 rounded-md border transition-all min-w-0",
-                scored !== undefined
-                  ? "bg-amber-900/50 border-amber-700/60"
-                  : isAvailable
-                    ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer animate-pulse"
-                    : "bg-muted/20 border-muted-foreground/30"
+                justScored
+                  ? "bg-green-700/70 border-green-400 ring-2 ring-green-400 scale-105"
+                  : scored !== undefined
+                    ? "bg-amber-900/50 border-amber-700/60"
+                    : isAvailable && !scoringInProgress
+                      ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer animate-pulse"
+                      : "bg-muted/20 border-muted-foreground/30"
               )}
             >
               <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
@@ -427,12 +444,26 @@ export function YahtzeeGameTable({
 
   /* ---- Render chip stack for a player ---- */
   /* Matches MobileGameTable's circular chip pattern exactly */
-  const renderPlayerChip = (player: Player) => {
+  const renderPlayerChip = (player: Player, compact = false) => {
     const isTheirTurn = player.id === currentTurnPlayerId && gamePhase === 'playing';
     const isMe = player.user_id === currentUserId;
     const ps = yahtzeeState?.playerStates?.[player.id];
     const total = ps ? getTotalScore(ps.scorecard) : 0;
     const isWinning = total > 0 && total === maxTotal && gamePhase === 'complete';
+
+    // Compact mode: just a small name badge, no chip circle (saves space during opponent roll)
+    if (compact) {
+      return (
+        <div className="flex flex-col items-center gap-0.5">
+          <span className={cn(
+            "text-[10px] font-bold truncate max-w-[60px] text-amber-200 drop-shadow-md px-1.5 py-0.5 rounded bg-black/40",
+            isTheirTurn && "animate-pulse ring-1 ring-yellow-400"
+          )}>
+            {getPlayerUsername(player)}
+          </span>
+        </div>
+      );
+    }
 
     return (
       <div className="flex flex-col items-center gap-0.5">
@@ -586,35 +617,38 @@ export function YahtzeeGameTable({
         })()}
 
         {/* Players arranged around the table (chip stacks) */}
-        {myPlayer ? (
+        {/* Use compact mode (no big circle) when it's not my turn to save space */}
+        {(() => {
+          const useCompact = !isMyTurn && gamePhase === 'playing';
+          return myPlayer ? (
           <>
             {/* Slot 0: Bottom-left */}
             <div className="absolute bottom-2 left-10 z-[105]">
-              {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!)}
+              {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, useCompact)}
             </div>
             {/* Slot 1: Middle-left */}
             <div className="absolute left-0 top-1/2 -translate-y-1/2 z-[105]">
-              {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!)}
+              {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, useCompact)}
             </div>
             {/* Slot 2: Top-left */}
             {getPlayerAtSlot(3) && (
               <div className="absolute left-10 top-4 z-[105]">
-                {renderPlayerChip(getPlayerAtSlot(3)!)}
+                {renderPlayerChip(getPlayerAtSlot(3)!, useCompact)}
               </div>
             )}
             {/* Slot 3: Top-right */}
             {getPlayerAtSlot(4) && (
               <div className="absolute right-10 top-4 z-[105]">
-                {renderPlayerChip(getPlayerAtSlot(4)!)}
+                {renderPlayerChip(getPlayerAtSlot(4)!, useCompact)}
               </div>
             )}
             {/* Slot 4: Middle-right */}
             <div className="absolute right-0 top-1/2 -translate-y-1/2 z-[105]">
-              {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!)}
+              {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, useCompact)}
             </div>
             {/* Slot 5: Bottom-right */}
             <div className="absolute bottom-2 right-10 z-[105]">
-              {getPlayerAtSlot(6) && renderPlayerChip(getPlayerAtSlot(6)!)}
+              {getPlayerAtSlot(6) && renderPlayerChip(getPlayerAtSlot(6)!, useCompact)}
             </div>
           </>
         ) : (
@@ -631,7 +665,8 @@ export function YahtzeeGameTable({
               </div>
             );
           })
-        )}
+        );
+        })()}
 
         {/* Dealer button on felt for current player */}
         {myPlayer && dealerPosition === myPlayer.position && (
