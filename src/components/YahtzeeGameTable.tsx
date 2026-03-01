@@ -8,6 +8,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
@@ -20,6 +24,7 @@ import {
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie,
   UPPER_BONUS_THRESHOLD,
 } from "@/lib/yahtzeeTypes";
+import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import {
   rollYahtzeeDice, toggleYahtzeeHold,
   scoreYahtzeeCategory, advanceYahtzeeTurn,
@@ -109,6 +114,7 @@ export function YahtzeeGameTable({
   const [uiRolling, setUiRolling] = useState(false);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
   const [scoringInProgress, setScoringInProgress] = useState(false);
+  const [pendingZeroCategory, setPendingZeroCategory] = useState<YahtzeeCategory | null>(null);
   const uiRollingTimerRef = useRef<number | null>(null);
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
@@ -287,6 +293,22 @@ export function YahtzeeGameTable({
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
 
+    // Check if this would score zero — ask for confirmation
+    const diceValues = myPs.dice.map(d => d.value);
+    const potentialScore = calculateCategoryScore(category, diceValues);
+    if (potentialScore === 0) {
+      setPendingZeroCategory(category);
+      return;
+    }
+
+    await commitScoreCategory(category);
+  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, scoringInProgress]);
+
+  const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
+    if (!currentRoundId || !yahtzeeState || !myPlayer) return;
+    const myPs = yahtzeeState.playerStates[myPlayer.id];
+    if (!myPs) return;
+
     // Highlight the chosen category and pause for clarity
     setScoringInProgress(true);
     setLastScoredCategory(category);
@@ -309,7 +331,7 @@ export function YahtzeeGameTable({
     setScoringInProgress(false);
 
     if (newState.gamePhase === 'complete') handleGameComplete(newState);
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, scoringInProgress]);
+  }, [currentRoundId, yahtzeeState, myPlayer]);
 
   /* ---- Game complete ---- */
   const handleGameComplete = async (finalState: YahtzeeState) => {
@@ -639,6 +661,38 @@ export function YahtzeeGameTable({
           onDone={() => setWinnerOverlay(null)}
         />
       )}
+
+      {/* Zero-score confirmation dialog */}
+      <AlertDialog open={!!pendingZeroCategory} onOpenChange={(open) => { if (!open) setPendingZeroCategory(null); }}>
+        <AlertDialogContent className="bg-gradient-to-br from-amber-950 to-amber-900 border-2 border-amber-500">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-amber-100 text-lg">
+              Take a zero?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-amber-200 text-base">
+              Are you sure you want to take 0 for {pendingZeroCategory ? CATEGORY_LABELS[pendingZeroCategory] : ''}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel
+              onClick={() => setPendingZeroCategory(null)}
+              className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const cat = pendingZeroCategory;
+                setPendingZeroCategory(null);
+                if (cat) commitScoreCategory(cat);
+              }}
+              className="bg-red-600 hover:bg-red-500 text-white font-bold"
+            >
+              Yes, take 0
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
