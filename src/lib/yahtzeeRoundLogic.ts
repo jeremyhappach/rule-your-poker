@@ -170,8 +170,8 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     botControllerUserId: controllerUserId,
   };
 
-  const newAnteTotal = activePlayers.length * anteAmount;
-  const potForRound = (isFirstHand ? 0 : (game.pot || 0)) + newAnteTotal;
+  // Yahtzee doesn't collect antes — chips transfer at end based on score difference
+  const potForRound = 0;
 
   // Create round
   const { error: roundError } = await supabase
@@ -212,36 +212,7 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     })
     .eq('id', gameId);
 
-  // Collect antes
-  if (activePlayers.length > 0 && anteAmount > 0) {
-    const playerIds = activePlayers.map(p => p.id);
-    const { error: anteError } = await supabase.rpc('decrement_player_chips', {
-      player_ids: playerIds,
-      amount: anteAmount,
-    });
-
-    if (anteError) {
-      console.error('[YAHTZEE] ERROR collecting antes:', anteError);
-    } else {
-      const anteChipChanges: Record<string, number> = {};
-      for (const player of activePlayers) {
-        anteChipChanges[player.id] = -anteAmount;
-      }
-
-      recordGameResult(
-        gameId,
-        newHandNumber,
-        null,
-        'Ante',
-        `${activePlayers.length} players anted $${anteAmount}`,
-        0,
-        anteChipChanges,
-        false,
-        'yahtzee',
-        dealerGameId || null,
-      );
-    }
-  }
+  // No ante collection in Yahtzee — chips transfer at end based on score
 
   console.log('[YAHTZEE] ✅ Round started, pot:', potForRound);
 }
