@@ -300,9 +300,14 @@ export function YahtzeeGameTable({
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
 
     lastLocalEditAtRef.current = Date.now();
-    const newPs = toggleYahtzeeHold(myPs, dieIndex);
-    setLocalDice(newPs.dice);
+    // Use localDice (not DB state) so rapid holds don't overwrite each other
+    const updatedDice = localDice.map((die, idx) => ({
+      ...die,
+      isHeld: idx === dieIndex ? !die.isHeld : die.isHeld,
+    }));
+    setLocalDice(updatedDice);
 
+    const newPs = { ...myPs, dice: updatedDice };
     const newState = {
       ...yahtzeeState,
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
@@ -793,9 +798,11 @@ export function YahtzeeGameTable({
           <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
             ${anteAmount} YAHTZEE
           </span>
-          <span className="text-poker-gold/50 font-bold text-xs">
-            Pot: ${pot}
-          </span>
+          {gamePhase !== 'complete' && (
+            <span className="text-poker-gold/50 font-bold text-xs">
+              Pot: ${pot}
+            </span>
+          )}
           {gamePhase === 'playing' && (
             <div className="flex gap-3 mt-1">
               {activePlayers.map(p => {

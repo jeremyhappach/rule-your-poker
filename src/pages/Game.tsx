@@ -5559,7 +5559,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, gameId, handleGameOverComplete, fetchGameData]);
 
-  // CRIBBAGE DEALER SELECTION COMPLETE HANDLER
+  // YAHTZEE game_over transition
+  // Yahtzee handles its own win overlay/animation internally, then sets game to game_over.
+  // After a delay, transition to next game.
+  const yahtzeeGameOverProcessedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (game?.game_type !== 'yahtzee' || game?.status !== 'game_over') {
+      if (game?.status !== 'game_over') yahtzeeGameOverProcessedRef.current = null;
+      return;
+    }
+    const resultKey = game?.last_round_result || 'unknown';
+    if (yahtzeeGameOverProcessedRef.current === resultKey) return;
+    yahtzeeGameOverProcessedRef.current = resultKey;
+
+    console.log('[YAHTZEE GAME OVER] Detected game_over, transitioning after delay');
+    const timer = setTimeout(async () => {
+      await handleGameOverComplete();
+    }, 4000); // 4s delay to let winner overlay + chip animation play
+
+    return () => clearTimeout(timer);
+  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
+
+
   // When high-card dealer selection finishes, transition to in_progress and create round 1
   const handleCribbageDealerSelectionComplete = useCallback(async (dealerPosition: number) => {
     if (!gameId) return;
@@ -6835,8 +6856,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy'))) && (() => {
-          const isInProgress = game.status === 'in_progress';
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
+          const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
