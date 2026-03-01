@@ -497,7 +497,7 @@ export function YahtzeeGameTable({
 
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
     const rollsUsed = isInteractive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
-    const potentials = isInteractive && rollsUsed < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
+    const potentials: Partial<Record<YahtzeeCategory, number>> = {};
     const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (ps.scorecard.scores[c] ?? 0), 0);
     const gotBonus = upperSum >= UPPER_BONUS_THRESHOLD;
 
@@ -529,9 +529,9 @@ export function YahtzeeGameTable({
               <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
               <span className={cn(
                 "font-bold tabular-nums text-sm leading-tight",
-                scored !== undefined ? "text-white" : potential !== undefined ? "text-poker-gold/80" : "text-muted-foreground/50"
+                scored !== undefined ? "text-white" : "text-transparent"
               )}>
-                {scored !== undefined ? scored : potential !== undefined ? potential : '—'}
+                {scored !== undefined ? scored : ''}
               </span>
             </button>
           );
@@ -728,7 +728,7 @@ export function YahtzeeGameTable({
         </div>
 
         {/* Game name + pot + player scores on felt */}
-        <div className="absolute top-1 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
+        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
           <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
             ${anteAmount} YAHTZEE
           </span>
