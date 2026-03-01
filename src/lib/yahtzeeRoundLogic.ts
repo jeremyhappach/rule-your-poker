@@ -264,13 +264,22 @@ export async function endYahtzeeRound(
       })
       .eq('id', gameId);
   } else if (winnerId) {
-    await supabase
+    // Use atomic guard: only transition if still in_progress
+    const { data: claim } = await supabase
       .from('games')
       .update({
         status: 'game_over',
         last_round_result: winnerDescription,
         game_over_at: new Date().toISOString(),
+        awaiting_next_round: true,
       })
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .eq('status', 'in_progress')
+      .select('id');
+
+    if (!claim || claim.length === 0) {
+      console.log('[YAHTZEE] Another client already ended this round');
+      return;
+    }
   }
 }

@@ -275,17 +275,22 @@ export function YahtzeeGameTable({
     const maxScore = results[0].total;
     const winners = results.filter(r => r.total === maxScore);
 
+    // Build score summary string (e.g. "307-225")
+    const scoreSummary = results.map(r => r.total).join('-');
+
     if (winners.length > 1) {
-      await endYahtzeeRound(gameId, null, 'Tie', true);
+      await endYahtzeeRound(gameId, null, `Tie ${scoreSummary}`, true);
     } else {
       const winnerId = winners[0].pid;
       const winnerPlayer = players.find(p => p.id === winnerId);
       const winnerName = winnerPlayer ? getPlayerUsername(winnerPlayer) : 'Unknown';
+      // Await chip award for integrity
       await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: pot });
       const chipChanges: Record<string, number> = { [winnerId]: pot };
+      // Fire-and-forget result recording
       recordGameResult(gameId, yahtzeeState?.currentRound || 1, winnerId,
-        `${winnerName} wins`, `Score: ${maxScore}`, pot, chipChanges, false, 'yahtzee', null);
-      await endYahtzeeRound(gameId, winnerId, `${winnerName} wins with ${maxScore}!`);
+        `${winnerName} wins`, `Score: ${scoreSummary}`, pot, chipChanges, false, 'yahtzee', null);
+      await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
     }
   };
 
@@ -618,13 +623,19 @@ export function YahtzeeGameTable({
             .sort((a, b) => b.total - a.total);
           const best = results[0];
           const winner = players.find(p => p.id === best.pid);
+          const scoreLine = results.map(r => {
+            const p = players.find(pl => pl.id === r.pid);
+            const name = p ? getPlayerUsername(p) : '?';
+            return `${name}: ${r.total}`;
+          }).join('  •  ');
           return (
             <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] text-center">
-              <div className="bg-amber-900/80 rounded-xl px-6 py-4 border-2 border-amber-600">
-                <h3 className="text-xl font-bold text-poker-gold mb-1">Yahtzee Complete!</h3>
-                <p className="text-amber-200 text-sm">
-                  {winner ? `${getPlayerUsername(winner)} wins with ${best.total}!` : "Winner determined!"}
-                </p>
+              <div className="bg-amber-900/80 rounded-xl px-6 py-4 border-2 border-amber-600 min-w-[200px]">
+                <h3 className="text-xl font-bold text-poker-gold mb-1">
+                  {winner ? `${getPlayerUsername(winner)} Wins!` : 'Yahtzee Complete!'}
+                </h3>
+                <p className="text-amber-200 text-sm font-semibold">{scoreLine}</p>
+                <p className="text-amber-200/60 text-xs mt-1">Pot: ${pot}</p>
               </div>
             </div>
           );
