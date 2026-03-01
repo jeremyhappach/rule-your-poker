@@ -271,10 +271,10 @@ export function YahtzeeGameTable({
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
-    // Check for Yahtzee roll
+    // Check for Yahtzee roll — delay overlay until dice animation finishes
     const diceValues = newPs.dice.map(d => d.value);
     if (isYahtzee(diceValues) && diceValues[0] !== 0) {
-      setShowYahtzeeOverlay(getPlayerUsername(myPlayer));
+      setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
     }
 
     setUiRolling(true);
