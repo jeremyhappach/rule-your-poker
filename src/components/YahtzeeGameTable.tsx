@@ -333,8 +333,22 @@ export function YahtzeeGameTable({
 
         if (cancelled) return;
         const category = getBotCategoryChoice(ps);
+
+        // Highlight the bot's chosen category for 2 seconds (same UX as human)
+        setLastScoredCategory(category);
+        setScoringInProgress(true);
+
         ps = scoreYahtzeeCategory(ps, category);
+        // Write scored state (but don't advance turn yet) so scorecard updates visually
         state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
+        await updateYahtzeeState(currentRoundId, state);
+
+        await new Promise(r => setTimeout(r, 2000));
+        if (cancelled) { setLastScoredCategory(null); setScoringInProgress(false); return; }
+
+        setLastScoredCategory(null);
+        setScoringInProgress(false);
+
         state = advanceYahtzeeTurn(state);
         await updateYahtzeeState(currentRoundId, state);
         if (state.gamePhase === 'complete') await handleGameComplete(state);
