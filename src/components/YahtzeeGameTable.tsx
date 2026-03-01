@@ -827,7 +827,7 @@ export function YahtzeeGameTable({
           if (isMyTurn && myPlayer) {
             // My turn: show interactive scorecard ON the felt
             return (
-              <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
+              <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
                 {renderScorecard(myPlayer.id, true)}
               </div>
             );
