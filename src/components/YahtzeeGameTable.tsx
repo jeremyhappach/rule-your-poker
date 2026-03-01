@@ -530,8 +530,10 @@ export function YahtzeeGameTable({
             >
               <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
               <span className={cn(
-                "font-bold tabular-nums text-sm leading-tight",
-                scored !== undefined ? "text-white" : "text-transparent"
+                "font-bold tabular-nums leading-tight",
+                justScored
+                  ? "text-white text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                  : scored !== undefined ? "text-white text-sm" : "text-transparent text-sm"
               )}>
                 {scored !== undefined ? scored : '\u00A0'}
               </span>
