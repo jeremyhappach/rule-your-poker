@@ -604,9 +604,9 @@ export function YahtzeeGameTable({
                     ? (effectiveScored === 0)
                       ? "bg-amber-900/50 border-red-500/70 border-2"
                       : "bg-amber-900/50 border-green-500/70 border-2"
-                    : isAvailable && !scoringInProgress
+                    : isAvailable && !scoringInProgress && localRollsRemaining === 0
                       ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer opacity-70"
-                      : "bg-muted/20 border-muted-foreground/30"
+                      : "bg-muted/20 border-muted-foreground/30 opacity-50"
               )}
             >
               <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
