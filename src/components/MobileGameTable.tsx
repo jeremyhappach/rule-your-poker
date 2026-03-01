@@ -3351,15 +3351,15 @@ export const MobileGameTable = ({
         {/* Game name on felt - single line for dice games - hide during waiting phase */}
         {!isWaitingPhase && (
           <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-            {isDiceGame ? (
-              // Single line format: "$200 SHIP" or "$5 HORSES"
+            {isDiceGame || gameType === 'yahtzee' ? (
+              // Single line format: "$200 SHIP" or "$5 HORSES" or "$5 YAHTZEE"
               <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : 'HORSES'}
+                ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : gameType === 'yahtzee' ? 'YAHTZEE' : 'HORSES'}
               </span>
             ) : (
               <>
                 <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                  {gameType === 'holm-game' ? 'Holm' : '3-5-7'}
+                  {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
                 </span>
                 {/* Only show No Limit/Max for non-dice games */}
                 <span className="text-white/40 text-xs font-medium">
