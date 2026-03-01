@@ -1073,7 +1073,7 @@ export function YahtzeeGameTable({
             </div>
 
             {/* Roll button — only shown on my turn */}
-            {gamePhase === 'playing' && isMyTurn && (
+            {gamePhase === 'playing' && isMyTurn && !scoringInProgress && (
               <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
                 {localRollsRemaining > 0 ? (
                   <Button
