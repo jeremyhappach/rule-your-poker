@@ -773,10 +773,10 @@ export function YahtzeeGameTable({
               )}
             </div>
 
-            {/* Roll button */}
-            <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
-              {gamePhase === 'playing' && isMyTurn ? (
-                localRollsRemaining > 0 ? (
+            {/* Roll button — only shown on my turn */}
+            {gamePhase === 'playing' && isMyTurn && (
+              <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
+                {localRollsRemaining > 0 ? (
                   <Button
                     size="default"
                     onClick={handleRoll}
@@ -788,24 +788,13 @@ export function YahtzeeGameTable({
                   </Button>
                 ) : (
                   <Badge className="text-sm px-3 py-1.5 font-medium">Pick a category below</Badge>
-                )
-              ) : gamePhase === 'playing' && !isMyTurn ? (
-                <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
-                  Waiting — {currentPlayer ? `${getPlayerUsername(currentPlayer)}'s turn` : "Next turn"}
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">Ready</Badge>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
-            {/* Opponent scorecard when it's not my turn */}
-            {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && (
+            {/* Opponent scorecard when it's not my turn — no waiting message, just scorecard */}
+            {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
               <div className="mt-1 px-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    {currentPlayer ? getPlayerUsername(currentPlayer) : 'Opponent'}'s Scorecard
-                  </span>
-                </div>
                 {renderScorecard(currentTurnPlayerId, false)}
               </div>
             )}
