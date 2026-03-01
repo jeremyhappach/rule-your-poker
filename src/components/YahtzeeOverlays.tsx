@@ -84,27 +84,37 @@ interface WinnerOverlayProps {
 }
 
 export function WinnerOverlay({ winnerName, scores, isWinnerMe, visible, onDone }: WinnerOverlayProps) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    if (!visible) { firedRef.current = false; return; }
+    if (firedRef.current) return;
+    firedRef.current = true;
+
+    // Confetti only for the winner's screen — fire a few bursts, not every frame
+    if (isWinnerMe) {
+      const bursts = [0, 300, 600, 1000, 1500, 2000];
+      const timers = bursts.map(delay =>
+        setTimeout(() => {
+          confetti({
+            particleCount: 100,
+            startVelocity: 30,
+            spread: 140,
+            origin: { x: Math.random(), y: Math.random() * 0.4 },
+          });
+        }, delay)
+      );
+      return () => { timers.forEach(clearTimeout); };
+    }
+  }, [visible, isWinnerMe]);
+
   useEffect(() => {
     if (!visible) return;
-
-    // Confetti only for the winner's screen
-    if (isWinnerMe) {
-      const end = Date.now() + 2500;
-      const fire = () => {
-        confetti({
-          particleCount: 80,
-          startVelocity: 30,
-          spread: 120,
-          origin: { x: Math.random(), y: Math.random() * 0.4 },
-        });
-        if (Date.now() < end) requestAnimationFrame(fire);
-      };
-      fire();
-    }
-
-    const t = setTimeout(onDone, 4000);
+    const t = setTimeout(() => onDoneRef.current(), 4000);
     return () => clearTimeout(t);
-  }, [visible, isWinnerMe, onDone]);
+  }, [visible]);
 
   if (!visible) return null;
 
