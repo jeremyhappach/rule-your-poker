@@ -301,18 +301,21 @@ export function YahtzeeGameTable({
 
         for (let roll = 0; roll < 3; roll++) {
           if (cancelled || ps.rollsRemaining <= 0) break;
+
+          // Decide holds BEFORE rolling (except first roll)
+          if (roll > 0) {
+            const holds = getBotHoldDecision(ps);
+            ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
+            // Don't write holds to DB separately — combine with the roll below
+          }
+
           const t = Date.now();
           ps = rollYahtzeeDice(ps);
           state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: { ...ps, rollKey: t } } };
           await updateYahtzeeState(currentRoundId, state);
-          await new Promise(r => setTimeout(r, 1500));
+          await new Promise(r => setTimeout(r, 1800));
 
           if (cancelled || ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) break;
-          const holds = getBotHoldDecision(ps);
-          ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
-          state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
-          await updateYahtzeeState(currentRoundId, state);
-          await new Promise(r => setTimeout(r, 800));
         }
 
         if (cancelled) return;
@@ -387,7 +390,7 @@ export function YahtzeeGameTable({
               <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
               <span className={cn(
                 "font-bold tabular-nums text-sm leading-tight",
-                scored !== undefined ? "text-foreground" : potential !== undefined ? "text-poker-gold/80" : "text-muted-foreground/50"
+                scored !== undefined ? "text-white" : potential !== undefined ? "text-poker-gold/80" : "text-muted-foreground/50"
               )}>
                 {scored !== undefined ? scored : potential !== undefined ? potential : '—'}
               </span>
