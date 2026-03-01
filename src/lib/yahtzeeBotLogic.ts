@@ -136,10 +136,23 @@ export function getBotCategoryChoice(state: YahtzeePlayerState): YahtzeeCategory
     return 'chance'; // Shouldn't happen, but fallback
   }
 
-  // Sort by score descending, with preference for non-zero scores
+  // Priority: prefer harder categories when scores tie
+  // Higher priority = prefer this category when scores are equal
+  const CATEGORY_PRIORITY: Record<YahtzeeCategory, number> = {
+    yahtzee: 13,
+    large_straight: 12,
+    small_straight: 11,
+    full_house: 10,
+    four_of_a_kind: 9,
+    three_of_a_kind: 8,
+    chance: 7,
+    sixes: 6, fives: 5, fours: 4, threes: 3, twos: 2, ones: 1,
+  };
+
+  // Sort by score descending, then by category priority descending (harder first)
   const scored = available
     .map(cat => ({ cat, score: potentials[cat] ?? 0 }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || CATEGORY_PRIORITY[b.cat] - CATEGORY_PRIORITY[a.cat]);
 
   // If best score is 0, we need to sacrifice a category
   // Prefer sacrificing the lowest-value upper category we haven't filled
