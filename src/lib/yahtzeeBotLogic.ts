@@ -88,7 +88,8 @@ export function getBotCategoryChoice(state: YahtzeePlayerState): YahtzeeCategory
 
 /**
  * Should the bot stop rolling early?
- * Yes if we have a Yahtzee, large straight, or high-scoring hand.
+ * Only stop if we have a Yahtzee (always) or a large straight with ≤1 rolls left.
+ * Never stop after just one roll for lesser hands — always use at least 2 rolls.
  */
 export function shouldBotStopRolling(state: YahtzeePlayerState): boolean {
   const diceValues = state.dice.map(d => d.value);
@@ -96,11 +97,14 @@ export function shouldBotStopRolling(state: YahtzeePlayerState): boolean {
   // Always stop if all dice are the same (Yahtzee!)
   if (diceValues.every(d => d === diceValues[0])) return true;
   
+  // Only consider stopping early if we've used at least 2 rolls
+  if (state.rollsRemaining >= 2) return false;
+  
   // Stop on large straight
   if (calculateCategoryScore('large_straight', diceValues) > 0) return true;
   
-  // Stop on full house
-  if (calculateCategoryScore('full_house', diceValues) > 0 && state.rollsRemaining <= 1) return true;
+  // Stop on full house with no rolls left
+  if (calculateCategoryScore('full_house', diceValues) > 0 && state.rollsRemaining <= 0) return true;
   
   return false;
 }

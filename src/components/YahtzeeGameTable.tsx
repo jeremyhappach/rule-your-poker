@@ -114,6 +114,7 @@ export function YahtzeeGameTable({
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
+  const [lastScoredValue, setLastScoredValue] = useState<number | null>(null);
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [pendingZeroCategory, setPendingZeroCategory] = useState<YahtzeeCategory | null>(null);
   const uiRollingTimerRef = useRef<number | null>(null);
@@ -323,6 +324,8 @@ export function YahtzeeGameTable({
     // Highlight the chosen category and pause for clarity
     setScoringInProgress(true);
     setLastScoredCategory(category);
+    const pendingScore = calculateCategoryScore(category, myPs.dice.map(d => d.value));
+    setLastScoredValue(pendingScore);
 
     const newPs = scoreYahtzeeCategory(myPs, category);
     setLocalDice(newPs.dice);
@@ -339,6 +342,7 @@ export function YahtzeeGameTable({
     await updateYahtzeeState(currentRoundId, newState);
 
     setLastScoredCategory(null);
+    setLastScoredValue(null);
     setScoringInProgress(false);
 
     if (newState.gamePhase === 'complete') handleGameComplete(newState);
@@ -451,9 +455,10 @@ export function YahtzeeGameTable({
         await updateYahtzeeState(currentRoundId, state);
 
         await new Promise(r => setTimeout(r, 2000));
-        if (cancelled) { setLastScoredCategory(null); setScoringInProgress(false); return; }
+        if (cancelled) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); return; }
 
         setLastScoredCategory(null);
+        setLastScoredValue(null);
         setScoringInProgress(false);
 
         state = advanceYahtzeeTurn(state);
@@ -535,7 +540,7 @@ export function YahtzeeGameTable({
                   ? "text-white text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
                   : scored !== undefined ? "text-white text-sm" : "text-transparent text-sm"
               )}>
-                {scored !== undefined ? scored : '\u00A0'}
+                {justScored && lastScoredValue !== null ? lastScoredValue : scored !== undefined ? scored : '\u00A0'}
               </span>
             </button>
           );
