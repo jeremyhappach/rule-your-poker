@@ -43,13 +43,13 @@ export const CATEGORY_LABELS: Record<YahtzeeCategory, string> = {
   fours: '4s',
   fives: '5s',
   sixes: '6s',
-  three_of_a_kind: '3K',
-  four_of_a_kind: '4K',
+  three_of_a_kind: '3x',
+  four_of_a_kind: '4x',
   full_house: 'FH',
   small_straight: 'SM',
   large_straight: 'LG',
   yahtzee: 'YZ',
-  chance: 'CH',
+  chance: '🃏',
 };
 
 /** Full display names */
