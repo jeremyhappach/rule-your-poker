@@ -296,25 +296,38 @@ export function YahtzeeGameTable({
   }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, localDice]);
 
   /* ---- Hold toggle ---- */
+  const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleToggleHold = useCallback(async (dieIndex: number) => {
     if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
 
     lastLocalEditAtRef.current = Date.now();
-    // Use localDice (not DB state) so rapid holds don't overwrite each other
-    const updatedDice = localDice.map((die, idx) => ({
-      ...die,
-      isHeld: idx === dieIndex ? !die.isHeld : die.isHeld,
-    }));
-    setLocalDice(updatedDice);
+    // Use functional updater so rapid taps always read latest local state
+    setLocalDice(prev => {
+      const updatedDice = prev.map((die, idx) => ({
+        ...die,
+        isHeld: idx === dieIndex ? !die.isHeld : die.isHeld,
+      }));
 
-    const newPs = { ...myPs, dice: updatedDice };
-    const newState = {
-      ...yahtzeeState,
-      playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
-    };
-    await updateYahtzeeState(currentRoundId, newState);
+      // Debounce the DB write so rapid holds batch into one update
+      if (pendingHoldUpdateRef.current) clearTimeout(pendingHoldUpdateRef.current);
+      pendingHoldUpdateRef.current = setTimeout(() => {
+        pendingHoldUpdateRef.current = null;
+        // Read latest local dice at persist time via a hidden ref
+        setLocalDice(latest => {
+          const newPs = { ...myPs, dice: latest };
+          const newState = {
+            ...yahtzeeState,
+            playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
+          };
+          updateYahtzeeState(currentRoundId, newState);
+          return latest; // no change
+        });
+      }, 300);
+
+      return updatedDice;
+    });
   }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling]);
 
   /* ---- Score category ---- */
