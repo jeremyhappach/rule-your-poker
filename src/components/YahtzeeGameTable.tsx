@@ -24,6 +24,7 @@ import {
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie,
   UPPER_BONUS_THRESHOLD,
 } from "@/lib/yahtzeeTypes";
+import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
 import {
   rollYahtzeeDice, toggleYahtzeeHold,
@@ -555,7 +556,6 @@ export function YahtzeeGameTable({
               </>
             ) : (
               <>
-                <span className="font-bold text-white text-[10px] leading-tight">BN</span>
                 <span className="font-bold text-white tabular-nums text-sm leading-tight">
                   {upperSum}/63
                 </span>
@@ -564,14 +564,16 @@ export function YahtzeeGameTable({
           </div>
         ))}
         {renderRow(LOWER_CATEGORIES)}
-        <div className="flex justify-center">
-          <div className="flex flex-col items-center py-1.5 px-3 rounded-md border bg-poker-gold/20 border-poker-gold/60">
-            <span className="font-bold text-poker-gold text-[10px] leading-tight">TOTAL</span>
-            <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
-              {getTotalScore(ps.scorecard)}
-            </span>
+        {isInteractive && (
+          <div className="flex justify-center">
+            <div className="flex flex-col items-center py-1.5 px-3 rounded-md border bg-poker-gold/20 border-poker-gold/60">
+              <span className="font-bold text-poker-gold text-[10px] leading-tight">TOTAL</span>
+              <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
+                {getTotalScore(ps.scorecard)}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
@@ -681,7 +683,7 @@ export function YahtzeeGameTable({
               Take a zero?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-amber-200 text-base">
-              Are you sure you want to take 0 for {pendingZeroCategory ? CATEGORY_LABELS[pendingZeroCategory] : ''}?
+              Are you sure you want to take 0 for {pendingZeroCategory ? CATEGORY_FULL_NAMES[pendingZeroCategory] : ''}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
@@ -725,7 +727,7 @@ export function YahtzeeGameTable({
           />
         </div>
 
-        {/* Game name + pot amount on felt (no separate pot box) */}
+        {/* Game name + pot + player scores on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             ${anteAmount} YAHTZEE
@@ -733,6 +735,23 @@ export function YahtzeeGameTable({
           <span className="text-poker-gold/50 font-bold text-sm">
             Pot: ${pot}
           </span>
+          {gamePhase === 'playing' && (
+            <div className="flex gap-3 mt-1">
+              {activePlayers.map(p => {
+                const ps = yahtzeeState?.playerStates?.[p.id];
+                const total = ps ? getTotalScore(ps.scorecard) : 0;
+                const isTurn = p.id === currentTurnPlayerId;
+                return (
+                  <span key={p.id} className={cn(
+                    "text-[11px] font-bold tabular-nums",
+                    isTurn ? "text-poker-gold" : "text-white/50"
+                  )}>
+                    {getPlayerUsername(p)}: {total}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
