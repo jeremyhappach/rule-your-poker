@@ -174,7 +174,11 @@ export function YahtzeeGameTable({
     if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
     const ps = yahtzeeState.playerStates[myPlayer.id];
     if (!ps) return;
-    setLocalDice(ps.dice);
+    // Preserve local hold state when syncing from DB to prevent held dice from resetting
+    setLocalDice(prev => ps.dice.map((dbDie, i) => ({
+      ...dbDie,
+      isHeld: prev[i]?.isHeld ?? dbDie.isHeld,
+    })));
     setLocalRollsRemaining(ps.rollsRemaining);
   }, [isMyTurn, myPlayer?.id, yahtzeeState?.playerStates, currentTurnPlayerId]);
 
@@ -318,9 +322,11 @@ export function YahtzeeGameTable({
         state = advanceYahtzeeTurn(state);
         await updateYahtzeeState(currentRoundId, state);
         if (state.gamePhase === 'complete') await handleGameComplete(state);
-      } finally {
+      } catch (e) {
+        console.error('[YAHTZEE] Bot error:', e);
         botProcessingRef.current = false;
       }
+      // Don't reset botProcessingRef here — the safety useEffect resets it on turn change
     };
 
     const timer = setTimeout(runBot, 1500);
