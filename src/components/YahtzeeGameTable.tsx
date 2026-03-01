@@ -242,7 +242,17 @@ export function YahtzeeGameTable({
     localRollKeyRef.current = t;
     lastLocalEditAtRef.current = t;
 
-    const newPs = rollYahtzeeDice(myPs);
+    // CRITICAL: Apply local hold state to the player state before rolling.
+    // The DB state may be stale if the user toggled holds that haven't synced yet.
+    const psWithLocalHolds = {
+      ...myPs,
+      dice: myPs.dice.map((d, i) => ({
+        ...d,
+        isHeld: localDice[i]?.isHeld ?? d.isHeld,
+      })),
+    };
+
+    const newPs = rollYahtzeeDice(psWithLocalHolds);
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
@@ -511,7 +521,7 @@ export function YahtzeeGameTable({
                   : scored !== undefined
                     ? "bg-amber-900/50 border-amber-700/60"
                     : isAvailable && !scoringInProgress
-                      ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer animate-pulse"
+                      ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer opacity-70"
                       : "bg-muted/20 border-muted-foreground/30"
               )}
             >

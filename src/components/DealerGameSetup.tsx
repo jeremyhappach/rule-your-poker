@@ -1665,7 +1665,9 @@ export const DealerGameSetup = ({
             ? 'Answer trivia questions • Win the pot'
             : isGinRummy
               ? '10 cards • Draw & discard • Knock at ≤10 deadwood • Match to target'
-              : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
+              : isYahtzee
+                ? '5 dice • 13 categories • Highest total wins'
+                : 'First to 121 • Skunk (2x) if loser < 91 • Double-skunk (3x) if < 61';
       
       return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
