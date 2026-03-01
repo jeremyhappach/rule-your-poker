@@ -404,21 +404,30 @@ export function YahtzeeGameTable({
       // Show winner overlay with confetti
       setWinnerOverlay({ winnerName, scores: scoreDetails, isWinnerMe });
 
-      // Chip transfer animation: losers → winner
+      // Chip transfer: each loser pays ante to winner
+      const losers = activePlayers.filter(p => p.id !== winnerId);
+      const winAmount = losers.length * anteAmount;
+
       if (winnerPlayer) {
-        const losers = activePlayers.filter(p => p.id !== winnerId);
         setChipTransferWinnerPos(winnerPlayer.position);
         setChipTransferLoserPositions(losers.map(p => p.position));
         setChipTransferLoserIds(losers.map(p => p.id));
         setChipTransferTriggerId(`yahtzee-win-${Date.now()}`);
       }
 
-      // Await chip award for integrity
-      await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: pot });
-      const chipChanges: Record<string, number> = { [winnerId]: pot };
+      // Award winner and deduct from losers
+      await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: winAmount });
+      if (losers.length > 0) {
+        await supabase.rpc('decrement_player_chips', {
+          player_ids: losers.map(p => p.id),
+          amount: anteAmount,
+        });
+      }
+      const chipChanges: Record<string, number> = { [winnerId]: winAmount };
+      losers.forEach(l => { chipChanges[l.id] = -anteAmount; });
       // Fire-and-forget result recording
       recordGameResult(gameId, yahtzeeState?.currentRound || 1, winnerId,
-        `${winnerName} wins`, `Score: ${scoreSummary}`, pot, chipChanges, false, 'yahtzee', null);
+        `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', null);
       await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
     }
   };
@@ -884,7 +893,7 @@ export function YahtzeeGameTable({
         {/* Chip transfer animation */}
         <ChipTransferAnimation
           triggerId={chipTransferTriggerId}
-          amount={pot}
+          amount={anteAmount}
           winnerPosition={chipTransferWinnerPos}
           loserPositions={chipTransferLoserPositions}
           loserPlayerIds={chipTransferLoserIds}
