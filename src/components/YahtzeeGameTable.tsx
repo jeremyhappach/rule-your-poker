@@ -516,11 +516,13 @@ export function YahtzeeGameTable({
               onClick={() => isAvailable && !scoringInProgress ? handleScoreCategory(cat) : undefined}
               disabled={!isAvailable || scoringInProgress}
               className={cn(
-                "flex-1 flex flex-col items-center py-1.5 px-0.5 rounded-md border transition-all min-w-0",
+                "flex-1 flex flex-col items-center justify-center py-2.5 px-0.5 rounded-md border transition-all min-w-0 min-h-[44px]",
                 justScored
                   ? "bg-green-700/70 border-green-400 ring-2 ring-green-400 scale-105"
                   : scored !== undefined
-                    ? "bg-amber-900/50 border-amber-700/60"
+                    ? scored === 0
+                      ? "bg-amber-900/50 border-red-500/70 border-2"
+                      : "bg-amber-900/50 border-green-500/70 border-2"
                     : isAvailable && !scoringInProgress
                       ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer opacity-70"
                       : "bg-muted/20 border-muted-foreground/30"
@@ -531,7 +533,7 @@ export function YahtzeeGameTable({
                 "font-bold tabular-nums text-sm leading-tight",
                 scored !== undefined ? "text-white" : "text-transparent"
               )}>
-                {scored !== undefined ? scored : ''}
+                {scored !== undefined ? scored : '\u00A0'}
               </span>
             </button>
           );
