@@ -245,9 +245,15 @@ export function YahtzeeGameTable({
 
   /* ---- Roll ---- */
   const handleRoll = useCallback(async () => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
+    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
+      console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasState: !!yahtzeeState, hasPlayer: !!myPlayer, rolling });
+      return;
+    }
     const myPs = yahtzeeState.playerStates[myPlayer.id];
-    if (!myPs || myPs.rollsRemaining <= 0) return;
+    if (!myPs || myPs.rollsRemaining <= 0) {
+      console.warn('[YAHTZEE] handleRoll blocked: no player state or no rolls', { hasPs: !!myPs, rolls: myPs?.rollsRemaining });
+      return;
+    }
 
     const isFirstRoll = myPs.rollsRemaining === 3;
     const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
