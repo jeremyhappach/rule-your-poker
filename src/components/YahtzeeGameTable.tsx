@@ -563,14 +563,15 @@ export function YahtzeeGameTable({
             )}
           </div>
         ))}
-        {renderRow(LOWER_CATEGORIES, (
-          <div className="flex-1 flex flex-col items-center py-1.5 px-0.5 rounded-md border bg-poker-gold/20 border-poker-gold/60 min-w-0">
-            <span className="font-bold text-poker-gold text-[10px] leading-tight">TOT</span>
+        {renderRow(LOWER_CATEGORIES)}
+        <div className="flex justify-center">
+          <div className="flex flex-col items-center py-1.5 px-3 rounded-md border bg-poker-gold/20 border-poker-gold/60">
+            <span className="font-bold text-poker-gold text-[10px] leading-tight">TOTAL</span>
             <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
               {getTotalScore(ps.scorecard)}
             </span>
           </div>
-        ))}
+        </div>
       </div>
     );
   };
