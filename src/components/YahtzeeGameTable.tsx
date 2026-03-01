@@ -22,7 +22,7 @@ import { YahtzeeRollOverlay, UpperBonusOverlay, WinnerOverlay } from "./YahtzeeO
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie,
-  UPPER_BONUS_THRESHOLD,
+  UPPER_BONUS_THRESHOLD, UPPER_BONUS_VALUE,
 } from "@/lib/yahtzeeTypes";
 import { CATEGORY_FULL_NAMES } from "@/lib/yahtzeeTypes";
 import { calculateCategoryScore } from "@/lib/yahtzeeScoring";
@@ -115,6 +115,8 @@ export function YahtzeeGameTable({
   const [uiRolling, setUiRolling] = useState(false);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
   const [lastScoredValue, setLastScoredValue] = useState<number | null>(null);
+  // Optimistic scorecard overlay: keeps the scored value visible until DB catches up
+  const [optimisticScore, setOptimisticScore] = useState<{ playerId: string; category: YahtzeeCategory; value: number } | null>(null);
   const [scoringInProgress, setScoringInProgress] = useState(false);
   const [pendingZeroCategory, setPendingZeroCategory] = useState<YahtzeeCategory | null>(null);
   const uiRollingTimerRef = useRef<number | null>(null);
@@ -211,6 +213,15 @@ export function YahtzeeGameTable({
     })));
     setLocalRollsRemaining(ps.rollsRemaining);
   }, [isMyTurn, myPlayer?.id, yahtzeeState?.playerStates, currentTurnPlayerId]);
+
+  // Clear optimistic score once DB has caught up
+  useEffect(() => {
+    if (!optimisticScore || !yahtzeeState) return;
+    const ps = yahtzeeState.playerStates[optimisticScore.playerId];
+    if (ps?.scorecard.scores[optimisticScore.category] !== undefined) {
+      setOptimisticScore(null);
+    }
+  }, [yahtzeeState?.playerStates, optimisticScore]);
 
   /* ---- Detect Yahtzee rolls & upper bonus from DB state changes ---- */
   useEffect(() => {
@@ -350,6 +361,9 @@ export function YahtzeeGameTable({
     };
     newState = advanceYahtzeeTurn(newState);
     await updateYahtzeeState(currentRoundId, newState);
+
+    // Keep optimistic score visible until DB subscription catches up
+    setOptimisticScore({ playerId: myPlayer.id, category, value: pendingScore });
 
     setLastScoredCategory(null);
     setLastScoredValue(null);
@@ -513,23 +527,35 @@ export function YahtzeeGameTable({
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
     const rollsUsed = isInteractive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
     const potentials: Partial<Record<YahtzeeCategory, number>> = {};
-    // Include pending score during green highlight so progress updates instantly
-    const upperSum = UPPER_CATEGORIES.reduce((s, c) => {
-      if (isInteractive && lastScoredCategory === c && lastScoredValue !== null && ps.scorecard.scores[c] === undefined) {
-        return s + lastScoredValue;
+
+    // Helper: get effective score for a category, considering optimistic + highlight states
+    const getEffectiveScore = (cat: YahtzeeCategory): number | undefined => {
+      if (isInteractive && lastScoredCategory === cat && lastScoredValue !== null && ps.scorecard.scores[cat] === undefined) {
+        return lastScoredValue;
       }
-      return s + (ps.scorecard.scores[c] ?? 0);
-    }, 0);
+      if (ps.scorecard.scores[cat] !== undefined) return ps.scorecard.scores[cat];
+      // Optimistic: DB hasn't caught up yet but we already scored this
+      if (optimisticScore && optimisticScore.playerId === playerId && optimisticScore.category === cat) {
+        return optimisticScore.value;
+      }
+      return undefined;
+    };
+
+    const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (getEffectiveScore(c) ?? 0), 0);
     const gotBonus = upperSum >= UPPER_BONUS_THRESHOLD;
+    const allUpperFilled = UPPER_CATEGORIES.every(c => getEffectiveScore(c) !== undefined);
+    const bonusFailed = allUpperFilled && !gotBonus;
 
     const renderRow = (categories: YahtzeeCategory[], extra?: React.ReactNode) => (
       <div className="flex gap-1">
         {categories.map(cat => {
           const scored = ps.scorecard.scores[cat];
+          const effectiveScored = getEffectiveScore(cat);
           const potential = potentials[cat];
-          const isAvailable = scored === undefined && isInteractive && isMyTurn && rollsUsed < 3;
-
+          const isAvailable = effectiveScored === undefined && isInteractive && isMyTurn && rollsUsed < 3;
           const justScored = lastScoredCategory === cat;
+          // Show optimistic value when DB hasn't caught up
+          const isOptimistic = optimisticScore?.playerId === playerId && optimisticScore?.category === cat && scored === undefined;
 
           return (
             <button
@@ -540,8 +566,8 @@ export function YahtzeeGameTable({
                 "flex-1 flex flex-col items-center justify-center py-2.5 px-0.5 rounded-md border transition-all min-w-0 min-h-[44px]",
                 justScored
                   ? "bg-green-700/70 border-green-400 ring-2 ring-green-400 scale-105"
-                  : scored !== undefined
-                    ? scored === 0
+                  : (scored !== undefined || isOptimistic)
+                    ? (effectiveScored === 0)
                       ? "bg-amber-900/50 border-red-500/70 border-2"
                       : "bg-amber-900/50 border-green-500/70 border-2"
                     : isAvailable && !scoringInProgress
@@ -554,9 +580,9 @@ export function YahtzeeGameTable({
                 "font-bold tabular-nums leading-tight",
                 justScored
                   ? "text-white text-base drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-                  : scored !== undefined ? "text-white text-sm" : "text-transparent text-sm"
+                  : (scored !== undefined || isOptimistic) ? "text-white text-sm" : "text-transparent text-sm"
               )}>
-                {justScored && lastScoredValue !== null ? lastScoredValue : scored !== undefined ? scored : '\u00A0'}
+                {justScored && lastScoredValue !== null ? lastScoredValue : effectiveScored !== undefined ? effectiveScored : '\u00A0'}
               </span>
             </button>
           );
@@ -572,19 +598,21 @@ export function YahtzeeGameTable({
             "flex-1 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-md border min-w-0 min-h-[44px]",
             gotBonus
               ? "bg-green-800/60 border-green-400"
-              : "bg-muted/20 border-muted-foreground/40"
+              : bonusFailed
+                ? "bg-amber-900/50 border-red-500/70 border-2"
+                : "bg-muted/20 border-muted-foreground/40"
           )}>
             {gotBonus ? (
               <>
                 <Check className="w-3.5 h-3.5 text-green-400" />
                 <span className="font-bold text-green-400 tabular-nums text-sm leading-tight">+35</span>
               </>
+            ) : bonusFailed ? (
+              <span className="font-bold text-red-400 tabular-nums text-sm leading-tight">0</span>
             ) : (
-              <>
-                <span className="font-bold text-white tabular-nums text-sm leading-tight">
-                  {upperSum}/63
-                </span>
-              </>
+              <span className="font-bold text-white tabular-nums text-sm leading-tight">
+                {upperSum}/63
+              </span>
             )}
           </div>
         ))}
@@ -594,7 +622,15 @@ export function YahtzeeGameTable({
             <div className="flex flex-col items-center py-1.5 px-3 rounded-md border bg-poker-gold/20 border-poker-gold/60">
               <span className="font-bold text-poker-gold text-[10px] leading-tight">TOTAL</span>
               <span className="font-bold text-poker-gold tabular-nums text-sm leading-tight">
-                {getTotalScore(ps.scorecard)}
+                {(() => {
+                  let total = getTotalScore(ps.scorecard);
+                  if (optimisticScore?.playerId === playerId && ps.scorecard.scores[optimisticScore.category] === undefined) {
+                    total += optimisticScore.value;
+                    // If this optimistic score triggers upper bonus
+                    if (gotBonus && !hasUpperBonus(ps.scorecard)) total += UPPER_BONUS_VALUE;
+                  }
+                  return total;
+                })()}
               </span>
             </div>
           </div>
