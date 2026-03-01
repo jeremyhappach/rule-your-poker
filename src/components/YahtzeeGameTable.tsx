@@ -327,6 +327,16 @@ export function YahtzeeGameTable({
     const pendingScore = calculateCategoryScore(category, myPs.dice.map(d => d.value));
     setLastScoredValue(pendingScore);
 
+    // If this upper category pushes us to the bonus threshold, fire the overlay now
+    if (UPPER_CATEGORIES.includes(category) && myPs.scorecard.scores[category] === undefined) {
+      const currentUpperSum = UPPER_CATEGORIES.reduce((s, c) => s + (myPs.scorecard.scores[c] ?? 0), 0);
+      const hadBonus = currentUpperSum >= UPPER_BONUS_THRESHOLD;
+      const newUpperSum = currentUpperSum + pendingScore;
+      if (!hadBonus && newUpperSum >= UPPER_BONUS_THRESHOLD) {
+        setShowBonusOverlay(getPlayerUsername(myPlayer));
+      }
+    }
+
     const newPs = scoreYahtzeeCategory(myPs, category);
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
@@ -503,7 +513,13 @@ export function YahtzeeGameTable({
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
     const rollsUsed = isInteractive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
     const potentials: Partial<Record<YahtzeeCategory, number>> = {};
-    const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (ps.scorecard.scores[c] ?? 0), 0);
+    // Include pending score during green highlight so progress updates instantly
+    const upperSum = UPPER_CATEGORIES.reduce((s, c) => {
+      if (isInteractive && lastScoredCategory === c && lastScoredValue !== null && ps.scorecard.scores[c] === undefined) {
+        return s + lastScoredValue;
+      }
+      return s + (ps.scorecard.scores[c] ?? 0);
+    }, 0);
     const gotBonus = upperSum >= UPPER_BONUS_THRESHOLD;
 
     const renderRow = (categories: YahtzeeCategory[], extra?: React.ReactNode) => (
