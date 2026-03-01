@@ -2,7 +2,7 @@
  * YahtzeeOverlays – Brief overlays for Yahtzee! roll, Upper Bonus earned, and game winner.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
@@ -17,11 +17,14 @@ interface YahtzeeRollOverlayProps {
 }
 
 export function YahtzeeRollOverlay({ playerName, visible, onDone }: YahtzeeRollOverlayProps) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   useEffect(() => {
     if (!visible) return;
-    const t = setTimeout(onDone, 2500);
+    const t = setTimeout(() => onDoneRef.current(), 2500);
     return () => clearTimeout(t);
-  }, [visible, onDone]);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -45,11 +48,14 @@ interface UpperBonusOverlayProps {
 }
 
 export function UpperBonusOverlay({ playerName, visible, onDone }: UpperBonusOverlayProps) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
   useEffect(() => {
     if (!visible) return;
-    const t = setTimeout(onDone, 2500);
+    const t = setTimeout(() => onDoneRef.current(), 2500);
     return () => clearTimeout(t);
-  }, [visible, onDone]);
+  }, [visible]);
 
   if (!visible) return null;
 

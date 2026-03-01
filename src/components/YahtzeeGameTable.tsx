@@ -431,13 +431,13 @@ export function YahtzeeGameTable({
           state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: { ...ps, rollKey: t } } };
           await updateYahtzeeState(currentRoundId, state);
 
-          // Check for Yahtzee
+          await new Promise(r => setTimeout(r, 1800));
+
+          // Check for Yahtzee after dice animation has landed
           const diceValues = ps.dice.map(d => d.value);
           if (isYahtzee(diceValues) && diceValues[0] !== 0) {
             setShowYahtzeeOverlay(botName);
           }
-
-          await new Promise(r => setTimeout(r, 1800));
 
           if (cancelled || ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) break;
         }
