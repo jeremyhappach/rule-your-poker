@@ -728,11 +728,11 @@ export function YahtzeeGameTable({
         </div>
 
         {/* Game name + pot + player scores on felt */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-          <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+        <div className="absolute top-1 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
+          <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
             ${anteAmount} YAHTZEE
           </span>
-          <span className="text-poker-gold/50 font-bold text-sm">
+          <span className="text-poker-gold/50 font-bold text-xs">
             Pot: ${pot}
           </span>
           {gamePhase === 'playing' && (
@@ -759,7 +759,7 @@ export function YahtzeeGameTable({
           if (isMyTurn && myPlayer) {
             // My turn: show interactive scorecard ON the felt
             return (
-              <div className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
+              <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
                 {renderScorecard(myPlayer.id, true)}
               </div>
             );
@@ -819,7 +819,7 @@ export function YahtzeeGameTable({
         {/* Players arranged around the table (chip stacks) */}
         {/* Use compact mode (no big circle) when it's not my turn to save space */}
         {(() => {
-          const useCompact = !isMyTurn && gamePhase === 'playing';
+          const useCompact = false;
           return myPlayer ? (
           <>
             {/* Slot 0: Bottom-left */}
