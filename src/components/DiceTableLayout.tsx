@@ -1028,6 +1028,7 @@ export function DiceTableLayout({
           size={effectiveSize}
           isSCC={isSCC}
           scatterYOffset={unheldYOffset}
+          showWildHighlight={showWildHighlight}
         />
       )}
 

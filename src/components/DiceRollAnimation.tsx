@@ -22,6 +22,8 @@ interface DiceRollAnimationProps {
   scatterYOffset?: number;
   /** Run identifier to force a new animation even when animatingIndices are identical */
   runKey?: string | number;
+  /** Whether to show wild highlight on 1s (default: !isSCC) */
+  showWildHighlight?: boolean;
 }
 
 // Animation duration in ms (reduced for snappier feel)
@@ -50,6 +52,7 @@ export function DiceRollAnimation({
   isSCC = false,
   scatterYOffset = 50,
   runKey,
+  showWildHighlight,
 }: DiceRollAnimationProps) {
   const [phase, setPhase] = useState<"flying" | "landing">("flying");
   const [flyProgress, setFlyProgress] = useState(0);
@@ -211,7 +214,7 @@ export function DiceRollAnimation({
               canToggle={false}
               onToggle={() => {}}
               size={size}
-              showWildHighlight={!isSCC}
+              showWildHighlight={showWildHighlight ?? !isSCC}
               isSCCDie={isSCCDie}
             />
           </div>

@@ -10,26 +10,28 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
-// ChipStack removed – using MobileGameTable-style circular chip divs
+import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
+import { YahtzeeRollOverlay, UpperBonusOverlay, WinnerOverlay } from "./YahtzeeOverlays";
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie,
+  UPPER_BONUS_THRESHOLD,
 } from "@/lib/yahtzeeTypes";
 import {
   rollYahtzeeDice, toggleYahtzeeHold,
   scoreYahtzeeCategory, advanceYahtzeeTurn,
 } from "@/lib/yahtzeeGameLogic";
-import { getPotentialScores, getTotalScore } from "@/lib/yahtzeeScoring";
+import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUpperBonus } from "@/lib/yahtzeeScoring";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
-import { RotateCcw, MessageSquare, User, Clock } from "lucide-react";
+import { RotateCcw, MessageSquare, User, Clock, Check } from "lucide-react";
 import { recordGameResult } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
@@ -117,6 +119,24 @@ export function YahtzeeGameTable({
   const ROLL_AGAIN_MS = 1800;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  // Overlay states
+  const [showYahtzeeOverlay, setShowYahtzeeOverlay] = useState<string | null>(null); // playerName
+  const [showBonusOverlay, setShowBonusOverlay] = useState<string | null>(null); // playerName
+  const [winnerOverlay, setWinnerOverlay] = useState<{
+    winnerName: string;
+    scores: { name: string; total: number }[];
+    isWinnerMe: boolean;
+  } | null>(null);
+
+  // Chip transfer animation
+  const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
+  const [chipTransferWinnerPos, setChipTransferWinnerPos] = useState<number>(0);
+  const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
+  const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
+
+  // Track upper bonus per player to detect when earned
+  const prevUpperBonusRef = useRef<Record<string, boolean>>({});
+
   // Tab state
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
 
@@ -184,6 +204,24 @@ export function YahtzeeGameTable({
     setLocalRollsRemaining(ps.rollsRemaining);
   }, [isMyTurn, myPlayer?.id, yahtzeeState?.playerStates, currentTurnPlayerId]);
 
+  /* ---- Detect Yahtzee rolls & upper bonus from DB state changes ---- */
+  useEffect(() => {
+    if (!yahtzeeState) return;
+    for (const [pid, ps] of Object.entries(yahtzeeState.playerStates)) {
+      const player = players.find(p => p.id === pid);
+      if (!player) continue;
+      const name = getPlayerUsername(player);
+
+      // Check upper bonus (only fire once per player)
+      const hadBonus = prevUpperBonusRef.current[pid] ?? false;
+      const nowHasBonus = hasUpperBonus(ps.scorecard);
+      if (nowHasBonus && !hadBonus) {
+        setShowBonusOverlay(name);
+      }
+      prevUpperBonusRef.current[pid] = nowHasBonus;
+    }
+  }, [yahtzeeState?.playerStates]);
+
   /* ---- Roll ---- */
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
@@ -201,6 +239,12 @@ export function YahtzeeGameTable({
     const newPs = rollYahtzeeDice(myPs);
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
+
+    // Check for Yahtzee roll
+    const diceValues = newPs.dice.map(d => d.value);
+    if (isYahtzee(diceValues) && diceValues[0] !== 0) {
+      setShowYahtzeeOverlay(getPlayerUsername(myPlayer));
+    }
 
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
@@ -275,8 +319,11 @@ export function YahtzeeGameTable({
     const maxScore = results[0].total;
     const winners = results.filter(r => r.total === maxScore);
 
-    // Build score summary string (e.g. "307-225")
     const scoreSummary = results.map(r => r.total).join('-');
+    const scoreDetails = results.map(r => {
+      const p = players.find(pl => pl.id === r.pid);
+      return { name: p ? getPlayerUsername(p) : '?', total: r.total };
+    });
 
     if (winners.length > 1) {
       await endYahtzeeRound(gameId, null, `Tie ${scoreSummary}`, true);
@@ -284,6 +331,20 @@ export function YahtzeeGameTable({
       const winnerId = winners[0].pid;
       const winnerPlayer = players.find(p => p.id === winnerId);
       const winnerName = winnerPlayer ? getPlayerUsername(winnerPlayer) : 'Unknown';
+      const isWinnerMe = winnerPlayer?.user_id === currentUserId;
+
+      // Show winner overlay with confetti
+      setWinnerOverlay({ winnerName, scores: scoreDetails, isWinnerMe });
+
+      // Chip transfer animation: losers → winner
+      if (winnerPlayer) {
+        const losers = activePlayers.filter(p => p.id !== winnerId);
+        setChipTransferWinnerPos(winnerPlayer.position);
+        setChipTransferLoserPositions(losers.map(p => p.position));
+        setChipTransferLoserIds(losers.map(p => p.id));
+        setChipTransferTriggerId(`yahtzee-win-${Date.now()}`);
+      }
+
       // Await chip award for integrity
       await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: pot });
       const chipChanges: Record<string, number> = { [winnerId]: pot };
@@ -316,6 +377,8 @@ export function YahtzeeGameTable({
       try {
         let state = { ...yahtzeeState };
         let ps = { ...state.playerStates[currentTurnPlayerId] };
+        const botPlayer = players.find(p => p.id === currentTurnPlayerId);
+        const botName = botPlayer ? getPlayerUsername(botPlayer) : 'Bot';
 
         for (let roll = 0; roll < 3; roll++) {
           if (cancelled || ps.rollsRemaining <= 0) break;
@@ -324,13 +387,19 @@ export function YahtzeeGameTable({
           if (roll > 0) {
             const holds = getBotHoldDecision(ps);
             ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
-            // Don't write holds to DB separately — combine with the roll below
           }
 
           const t = Date.now();
           ps = rollYahtzeeDice(ps);
           state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: { ...ps, rollKey: t } } };
           await updateYahtzeeState(currentRoundId, state);
+
+          // Check for Yahtzee
+          const diceValues = ps.dice.map(d => d.value);
+          if (isYahtzee(diceValues) && diceValues[0] !== 0) {
+            setShowYahtzeeOverlay(botName);
+          }
+
           await new Promise(r => setTimeout(r, 1800));
 
           if (cancelled || ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) break;
@@ -361,7 +430,6 @@ export function YahtzeeGameTable({
         console.error('[YAHTZEE] Bot error:', e);
         botProcessingRef.current = false;
       }
-      // Don't reset botProcessingRef here — the safety useEffect resets it on turn change
     };
 
     const timer = setTimeout(runBot, 1500);
@@ -397,6 +465,8 @@ export function YahtzeeGameTable({
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
     const rollsUsed = isInteractive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
     const potentials = isInteractive && rollsUsed < 3 ? getPotentialScores(ps.scorecard, diceValues) : {};
+    const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (ps.scorecard.scores[c] ?? 0), 0);
+    const gotBonus = upperSum >= UPPER_BONUS_THRESHOLD;
 
     const renderRow = (categories: YahtzeeCategory[], extra?: React.ReactNode) => (
       <div className="flex gap-1">
@@ -437,16 +507,28 @@ export function YahtzeeGameTable({
       </div>
     );
 
-    const upperSum = UPPER_CATEGORIES.reduce((s, c) => s + (ps.scorecard.scores[c] ?? 0), 0);
-
     return (
       <div className="w-full space-y-1">
         {renderRow(UPPER_CATEGORIES, (
-          <div className="flex-1 flex flex-col items-center py-1.5 px-0.5 rounded-md border bg-muted/10 border-muted-foreground/30 min-w-0">
-            <span className="font-bold text-amber-200/70 text-[10px] leading-tight">BN</span>
-            <span className="font-bold text-muted-foreground/70 tabular-nums text-sm leading-tight">
-              {upperSum >= 63 ? '35' : `${upperSum}/63`}
-            </span>
+          <div className={cn(
+            "flex-1 flex flex-col items-center py-1.5 px-0.5 rounded-md border min-w-0",
+            gotBonus
+              ? "bg-green-800/60 border-green-400"
+              : "bg-muted/20 border-muted-foreground/40"
+          )}>
+            {gotBonus ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-green-400" />
+                <span className="font-bold text-green-400 tabular-nums text-sm leading-tight">+35</span>
+              </>
+            ) : (
+              <>
+                <span className="font-bold text-white text-[10px] leading-tight">BN</span>
+                <span className="font-bold text-white tabular-nums text-sm leading-tight">
+                  {upperSum}/63
+                </span>
+              </>
+            )}
           </div>
         ))}
         {renderRow(LOWER_CATEGORIES, (
@@ -462,7 +544,6 @@ export function YahtzeeGameTable({
   };
 
   /* ---- Render chip stack for a player ---- */
-  /* Matches MobileGameTable's circular chip pattern exactly */
   const renderPlayerChip = (player: Player, compact = false) => {
     const isTheirTurn = player.id === currentTurnPlayerId && gamePhase === 'playing';
     const isMe = player.user_id === currentUserId;
@@ -470,7 +551,7 @@ export function YahtzeeGameTable({
     const total = ps ? getTotalScore(ps.scorecard) : 0;
     const isWinning = total > 0 && total === maxTotal && gamePhase === 'complete';
 
-    // Compact mode: just a small name badge, no chip circle (saves space during opponent roll)
+    // Compact mode: small name badge with score, no chip circle
     if (compact) {
       return (
         <div className="flex flex-col items-center gap-0.5">
@@ -480,6 +561,9 @@ export function YahtzeeGameTable({
           )}>
             {getPlayerUsername(player)}
           </span>
+          {total > 0 && (
+            <span className="text-[9px] font-bold text-white/70">{total}pts</span>
+          )}
         </div>
       );
     }
@@ -487,7 +571,7 @@ export function YahtzeeGameTable({
     return (
       <div className="flex flex-col items-center gap-0.5">
         <span className={cn(
-          "text-[11px] font-semibold truncate max-w-[70px] text-white drop-shadow-md font-semibold"
+          "text-[11px] font-semibold truncate max-w-[70px] text-white drop-shadow-md"
         )}>
           {getPlayerUsername(player)}
         </span>
@@ -507,10 +591,11 @@ export function YahtzeeGameTable({
             </span>
           </div>
         </div>
-        {gamePhase === 'complete' && total > 0 && (
+        {/* Always show score during playing phase too */}
+        {total > 0 && (
           <span className={cn(
             "text-[10px] font-bold",
-            isWinning ? "text-green-400" : "text-muted-foreground"
+            isWinning ? "text-green-400" : "text-white/70"
           )}>
             {total}pts
           </span>
@@ -534,6 +619,27 @@ export function YahtzeeGameTable({
   return (
     <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
 
+      {/* Overlays */}
+      <YahtzeeRollOverlay
+        playerName={showYahtzeeOverlay || ''}
+        visible={!!showYahtzeeOverlay}
+        onDone={() => setShowYahtzeeOverlay(null)}
+      />
+      <UpperBonusOverlay
+        playerName={showBonusOverlay || ''}
+        visible={!!showBonusOverlay}
+        onDone={() => setShowBonusOverlay(null)}
+      />
+      {winnerOverlay && (
+        <WinnerOverlay
+          winnerName={winnerOverlay.winnerName}
+          scores={winnerOverlay.scores}
+          isWinnerMe={winnerOverlay.isWinnerMe}
+          visible={true}
+          onDone={() => setWinnerOverlay(null)}
+        />
+      )}
+
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
 
@@ -554,18 +660,14 @@ export function YahtzeeGameTable({
           />
         </div>
 
-        {/* Game name on felt */}
+        {/* Game name + pot amount on felt (no separate pot box) */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
             ${anteAmount} YAHTZEE
           </span>
-        </div>
-
-        {/* Pot on felt */}
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1 rounded-full border border-amber-600/40">
-            <span className="text-poker-gold font-bold text-lg">${pot}</span>
-          </div>
+          <span className="text-poker-gold/50 font-bold text-sm">
+            Pot: ${pot}
+          </span>
         </div>
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
@@ -584,7 +686,6 @@ export function YahtzeeGameTable({
           const hasRolled = diceState?.dice.some(d => d.value !== 0);
 
           if (!hasRolled) {
-            // Show waiting message on felt while opponent hasn't rolled yet
             return (
               <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] text-center">
                 <div className="bg-black/50 rounded-xl px-5 py-3 border border-amber-600/40 backdrop-blur-sm">
@@ -616,30 +717,20 @@ export function YahtzeeGameTable({
           );
         })()}
 
-        {/* Game complete message on felt */}
-        {gamePhase === 'complete' && (() => {
-          const results = Object.entries(yahtzeeState.playerStates)
-            .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
-            .sort((a, b) => b.total - a.total);
-          const best = results[0];
-          const winner = players.find(p => p.id === best.pid);
-          const scoreLine = results.map(r => {
-            const p = players.find(pl => pl.id === r.pid);
-            const name = p ? getPlayerUsername(p) : '?';
-            return `${name}: ${r.total}`;
-          }).join('  •  ');
-          return (
-            <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] text-center">
-              <div className="bg-amber-900/80 rounded-xl px-6 py-4 border-2 border-amber-600 min-w-[200px]">
-                <h3 className="text-xl font-bold text-poker-gold mb-1">
-                  {winner ? `${getPlayerUsername(winner)} Wins!` : 'Yahtzee Complete!'}
-                </h3>
-                <p className="text-amber-200 text-sm font-semibold">{scoreLine}</p>
-                <p className="text-amber-200/60 text-xs mt-1">Pot: ${pot}</p>
-              </div>
-            </div>
-          );
-        })()}
+        {/* Game complete — no static overlay here, WinnerOverlay handles it */}
+
+        {/* Chip transfer animation */}
+        <ChipTransferAnimation
+          triggerId={chipTransferTriggerId}
+          amount={pot}
+          winnerPosition={chipTransferWinnerPos}
+          loserPositions={chipTransferLoserPositions}
+          loserPlayerIds={chipTransferLoserIds}
+          currentPlayerPosition={myPlayer?.position ?? null}
+          getClockwiseDistance={getClockwiseDistance}
+          containerRef={tableContainerRef}
+          onAnimationEnd={() => setChipTransferTriggerId(null)}
+        />
 
         {/* Players arranged around the table (chip stacks) */}
         {/* Use compact mode (no big circle) when it's not my turn to save space */}
@@ -812,7 +903,7 @@ export function YahtzeeGameTable({
                     Roll {rollNumber}
                   </Button>
                 ) : (
-                  <Badge className="text-sm px-3 py-1.5 font-medium">Pick a category below</Badge>
+                  <Badge className="text-sm px-3 py-1.5 font-medium">Pick a category</Badge>
                 )}
               </div>
             )}
