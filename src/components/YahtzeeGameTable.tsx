@@ -548,7 +548,7 @@ export function YahtzeeGameTable({
       <div className="w-full space-y-1">
         {renderRow(UPPER_CATEGORIES, (
           <div className={cn(
-            "flex-1 flex flex-col items-center py-1.5 px-0.5 rounded-md border min-w-0",
+            "flex-1 flex flex-col items-center justify-center py-1.5 px-0.5 rounded-md border min-w-0 min-h-[44px]",
             gotBonus
               ? "bg-green-800/60 border-green-400"
               : "bg-muted/20 border-muted-foreground/40"
