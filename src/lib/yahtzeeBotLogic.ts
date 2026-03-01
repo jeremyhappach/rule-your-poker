@@ -82,13 +82,27 @@ export function getBotHoldDecision(state: YahtzeePlayerState): boolean[] {
   // Check for straight potential if straight categories are open
   const unique = new Set(dice);
   if (straightOpen && unique.size >= 4) {
-    // Hold all unique dice for straight attempt
-    const seen = new Set<number>();
-    return dice.map(d => {
-      if (seen.has(d)) return false;
-      seen.add(d);
-      return true;
-    });
+    // Only hold for straight if the unique values form a near-consecutive run
+    // (i.e., the span of unique values is at most 5, meaning a straight is achievable)
+    const sorted = [...unique].sort((a, b) => a - b);
+    const span = sorted[sorted.length - 1] - sorted[0];
+    // A valid straight attempt needs span <= 4 (e.g., 2-3-4-5 span=3, 1-3-4-5 span=4)
+    // Also check we have at least 3 consecutive values in the run
+    let maxRun = 1, curRun = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      curRun = sorted[i] === sorted[i - 1] + 1 ? curRun + 1 : 1;
+      maxRun = Math.max(maxRun, curRun);
+    }
+    
+    if (span <= 4 && maxRun >= 3) {
+      // Hold all unique dice for straight attempt
+      const seen = new Set<number>();
+      return dice.map(d => {
+        if (seen.has(d)) return false;
+        seen.add(d);
+        return true;
+      });
+    }
   }
 
   // If upper categories matching our best value are open, hold those
