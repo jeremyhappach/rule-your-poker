@@ -790,7 +790,7 @@ export function YahtzeeGameTable({
 
         {/* Game name + player scores on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
-          <span className="text-white/30 font-bold text-xs uppercase tracking-wider">
+          <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
             ${anteAmount} YAHTZEE
           </span>
           {gamePhase === 'playing' && (
@@ -894,48 +894,47 @@ export function YahtzeeGameTable({
           onAnimationEnd={() => setChipTransferTriggerId(null)}
         />
 
-        {/* Players arranged around the table (chip stacks) */}
-        {/* Use compact mode (no big circle) when it's not my turn to save space */}
+        {/* Players arranged around the table (chip stacks) — corner positions to avoid scorecard overlap */}
         {(() => {
           const useCompact = false;
           return myPlayer ? (
           <>
-            {/* Slot 0: Bottom-left */}
-            <div className="absolute bottom-2 left-10 z-[105]">
+            {/* Slot 0: Bottom-left corner */}
+            <div className="absolute bottom-1 left-2 z-[105]">
               {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, useCompact)}
             </div>
-            {/* Slot 1: Middle-left */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 z-[105]">
+            {/* Slot 1: Top-left corner */}
+            <div className="absolute left-2 top-1 z-[105]">
               {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, useCompact)}
             </div>
-            {/* Slot 2: Top-left */}
+            {/* Slot 2: Top-left-center */}
             {getPlayerAtSlot(3) && (
-              <div className="absolute left-10 top-4 z-[105]">
+              <div className="absolute left-[25%] top-1 z-[105]">
                 {renderPlayerChip(getPlayerAtSlot(3)!, useCompact)}
               </div>
             )}
-            {/* Slot 3: Top-right */}
+            {/* Slot 3: Top-right-center */}
             {getPlayerAtSlot(4) && (
-              <div className="absolute right-10 top-4 z-[105]">
+              <div className="absolute right-[25%] top-1 z-[105]">
                 {renderPlayerChip(getPlayerAtSlot(4)!, useCompact)}
               </div>
             )}
-            {/* Slot 4: Middle-right */}
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 z-[105]">
+            {/* Slot 4: Top-right corner */}
+            <div className="absolute right-2 top-1 z-[105]">
               {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, useCompact)}
             </div>
-            {/* Slot 5: Bottom-right */}
-            <div className="absolute bottom-2 right-10 z-[105]">
+            {/* Slot 5: Bottom-right corner */}
+            <div className="absolute bottom-1 right-2 z-[105]">
               {getPlayerAtSlot(6) && renderPlayerChip(getPlayerAtSlot(6)!, useCompact)}
             </div>
           </>
         ) : (
-          // Observer mode: absolute positions
+          // Observer mode: corner positions
           activePlayers.filter(p => p.user_id !== currentUserId).map((player, idx) => {
             const positions = [
-              'top-4 left-10', 'left-0 top-1/2 -translate-y-1/2',
-              'bottom-2 left-10', 'bottom-2 right-10',
-              'right-0 top-1/2 -translate-y-1/2', 'top-4 right-10',
+              'top-1 left-2', 'top-1 right-2',
+              'bottom-1 left-2', 'bottom-1 right-2',
+              'top-1 left-[25%]', 'top-1 right-[25%]',
             ];
             return (
               <div key={player.id} className={`absolute z-[105] ${positions[idx % positions.length]}`}>
