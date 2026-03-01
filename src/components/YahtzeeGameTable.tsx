@@ -788,26 +788,21 @@ export function YahtzeeGameTable({
           />
         </div>
 
-        {/* Game name + pot + player scores on felt */}
+        {/* Game name + player scores on felt */}
         <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
-          <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
+          <span className="text-white/30 font-bold text-xs uppercase tracking-wider">
             ${anteAmount} YAHTZEE
           </span>
-          {gamePhase !== 'complete' && (
-            <span className="text-poker-gold/50 font-bold text-xs">
-              Pot: ${pot}
-            </span>
-          )}
           {gamePhase === 'playing' && (
-            <div className="flex gap-3 mt-1">
+            <div className="flex gap-4 mt-0.5">
               {activePlayers.map(p => {
                 const ps = yahtzeeState?.playerStates?.[p.id];
                 const total = ps ? getTotalScore(ps.scorecard) : 0;
                 const isTurn = p.id === currentTurnPlayerId;
                 return (
                   <span key={p.id} className={cn(
-                    "text-[11px] font-bold tabular-nums",
-                    isTurn ? "text-poker-gold" : "text-white/50"
+                    "text-base font-extrabold tabular-nums",
+                    isTurn ? "text-poker-gold" : "text-white/60"
                   )}>
                     {getPlayerUsername(p)}: {total}
                   </span>
