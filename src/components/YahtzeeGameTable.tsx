@@ -123,6 +123,8 @@ export function YahtzeeGameTable({
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
   const localRollKeyRef = useRef<number | undefined>(undefined);
+  // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
+  const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
   const lastLocalEditAtRef = useRef<number>(0);
   const LOCAL_STATE_PROTECTION_MS = 2000;
   const FIRST_ROLL_MS = 1300;
@@ -474,6 +476,10 @@ export function YahtzeeGameTable({
         if (cancelled) return;
         const category = getBotCategoryChoice(ps);
 
+        // Cache bot's dice so they stay visible on felt during scoring highlight
+        const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: false }));
+        setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: currentTurnPlayerId });
+
         // Highlight the bot's chosen category for 2 seconds (same UX as human)
         setLastScoredCategory(category);
         setScoringInProgress(true);
@@ -484,11 +490,12 @@ export function YahtzeeGameTable({
         await updateYahtzeeState(currentRoundId, state);
 
         await new Promise(r => setTimeout(r, 2000));
-        if (cancelled) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); return; }
+        if (cancelled) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); setCachedOpponentDice(null); return; }
 
         setLastScoredCategory(null);
         setLastScoredValue(null);
         setScoringInProgress(false);
+        setCachedOpponentDice(null);
 
         state = advanceYahtzeeTurn(state);
         await updateYahtzeeState(currentRoundId, state);
@@ -652,7 +659,7 @@ export function YahtzeeGameTable({
     const total = ps ? getTotalScore(ps.scorecard) : 0;
     const isWinning = total > 0 && total === maxTotal && gamePhase === 'complete';
 
-    // Compact mode: small name badge with score, no chip circle
+    // Compact mode: small name badge, no chip circle
     if (compact) {
       return (
         <div className="flex flex-col items-center gap-0.5">
@@ -662,9 +669,6 @@ export function YahtzeeGameTable({
           )}>
             {getPlayerUsername(player)}
           </span>
-          {total > 0 && (
-            <span className="text-[9px] font-bold text-white/70">{total}pts</span>
-          )}
         </div>
       );
     }
@@ -692,15 +696,6 @@ export function YahtzeeGameTable({
             </span>
           </div>
         </div>
-        {/* Always show score during playing phase too */}
-        {total > 0 && (
-          <span className={cn(
-            "text-[10px] font-bold",
-            isWinning ? "text-green-400" : "text-white/70"
-          )}>
-            {total}pts
-          </span>
-        )}
       </div>
     );
   };
@@ -827,9 +822,29 @@ export function YahtzeeGameTable({
           if (isMyTurn && myPlayer) {
             // My turn: show interactive scorecard ON the felt
             return (
-              <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
-                {renderScorecard(myPlayer.id, true)}
-              </div>
+              <>
+                <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
+                  {renderScorecard(myPlayer.id, true)}
+                </div>
+                {/* Show cached opponent dice during scoring highlight transition */}
+                {cachedOpponentDice && scoringInProgress && (
+                  <div className="absolute left-1/2 top-[25%] -translate-x-1/2 -translate-y-1/2 z-[109]">
+                    <DiceTableLayout
+                      key={cachedOpponentDice.playerId}
+                      dice={cachedOpponentDice.dice}
+                      isRolling={false}
+                      canToggle={false}
+                      size="sm"
+                      gameType="yahtzee"
+                      showWildHighlight={false}
+                      isObserver={true}
+                      hideUnrolledDice={true}
+                      rollKey={cachedOpponentDice.rollKey}
+                      cacheKey={cachedOpponentDice.playerId + '-cached'}
+                    />
+                  </div>
+                )}
+              </>
             );
           }
 
