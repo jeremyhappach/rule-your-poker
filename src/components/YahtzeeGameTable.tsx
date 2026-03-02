@@ -30,7 +30,7 @@ import {
   rollYahtzeeDice, toggleYahtzeeHold,
   scoreYahtzeeCategory, advanceYahtzeeTurn,
 } from "@/lib/yahtzeeGameLogic";
-import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUpperBonus } from "@/lib/yahtzeeScoring";
+import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUpperBonus, getJokerValidCategories, getJokerScore } from "@/lib/yahtzeeScoring";
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
@@ -364,9 +364,14 @@ export function YahtzeeGameTable({
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
 
-    // Check if this would score zero — ask for confirmation
     const diceValues = myPs.dice.map(d => d.value);
-    const potentialScore = calculateCategoryScore(category, diceValues);
+
+    // Enforce Joker rules: restrict category choices when applicable
+    const jokerValid = getJokerValidCategories(myPs.scorecard, diceValues);
+    if (jokerValid && !jokerValid.includes(category)) return;
+
+    // Check if this would score zero — ask for confirmation (use Joker score if applicable)
+    const potentialScore = jokerValid ? getJokerScore(category, diceValues) : calculateCategoryScore(category, diceValues);
     if (potentialScore === 0) {
       setPendingZeroCategory(category);
       return;
@@ -609,6 +614,8 @@ export function YahtzeeGameTable({
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
     const rollsUsed = isInteractive && isMyTurn ? localRollsRemaining : ps.rollsRemaining;
     const potentials: Partial<Record<YahtzeeCategory, number>> = {};
+    // Joker rule: restrict valid categories when applicable
+    const jokerValid = getJokerValidCategories(ps.scorecard, diceValues);
 
     // Helper: get effective score for a category, considering optimistic + highlight states
     const getEffectiveScore = (cat: YahtzeeCategory): number | undefined => {
@@ -634,7 +641,8 @@ export function YahtzeeGameTable({
           const scored = ps.scorecard.scores[cat];
           const effectiveScored = getEffectiveScore(cat);
           const potential = potentials[cat];
-          const isAvailable = effectiveScored === undefined && isInteractive && isMyTurn && rollsUsed < 3;
+          const jokerBlocked = jokerValid && !jokerValid.includes(cat);
+          const isAvailable = effectiveScored === undefined && isInteractive && isMyTurn && rollsUsed < 3 && !jokerBlocked;
           const justScored = lastScoredCategory === cat;
           // Show optimistic value when DB hasn't caught up
           const isOptimistic = optimisticScore?.playerId === playerId && optimisticScore?.category === cat && scored === undefined;
@@ -666,6 +674,14 @@ export function YahtzeeGameTable({
               )}>
                 {justScored && lastScoredValue !== null ? lastScoredValue : effectiveScored !== undefined ? effectiveScored : '\u00A0'}
               </span>
+              {/* Yahtzee bonus checkmarks inside the YZ cell */}
+              {cat === 'yahtzee' && ps.scorecard.yahtzeeBonuses > 0 && (
+                <div className="flex gap-0.5 mt-0.5">
+                  {Array.from({ length: ps.scorecard.yahtzeeBonuses }, (_, i) => (
+                    <Check key={i} className="w-2.5 h-2.5 text-poker-gold" />
+                  ))}
+                </div>
+              )}
             </button>
           );
         })}
@@ -698,15 +714,6 @@ export function YahtzeeGameTable({
             )}
           </div>
         ))}
-        {/* Yahtzee bonus indicator row */}
-        {ps.scorecard.yahtzeeBonuses > 0 && (
-          <div className="flex justify-center">
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-800/60 border border-poker-gold/50">
-              <span className="text-poker-gold text-[10px] font-bold">YZ BONUS</span>
-              <span className="text-poker-gold text-sm font-extrabold">+{ps.scorecard.yahtzeeBonuses * 100}</span>
-            </div>
-          </div>
-        )}
         {renderRow(LOWER_CATEGORIES)}
         {isInteractive && (
           <div className="flex justify-center">
