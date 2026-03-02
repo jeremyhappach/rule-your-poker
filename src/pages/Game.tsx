@@ -5562,6 +5562,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // YAHTZEE game_over transition
   // Yahtzee handles its own win overlay/animation internally, then sets game to game_over.
   // After a brief delay, transition to next game.
+  // IMPORTANT: Use a ref for handleGameOverComplete so the effect cleanup doesn't cancel
+  // our timers when `game` object changes and causes handleGameOverComplete to get a new reference.
+  const handleGameOverCompleteRef = useRef(handleGameOverComplete);
+  handleGameOverCompleteRef.current = handleGameOverComplete;
+
   const yahtzeeGameOverProcessedRef = useRef<string | null>(null);
   useEffect(() => {
     if (game?.game_type !== 'yahtzee' || game?.status !== 'game_over') {
@@ -5573,13 +5578,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     yahtzeeGameOverProcessedRef.current = resultKey;
 
     console.log('[YAHTZEE GAME OVER] Detected game_over, transitioning after delay. result:', resultKey);
-    // YahtzeeGameTable already delays 2.5s before setting game_over,
-    // so only a short delay here for the winner overlay to finish (it auto-dismisses at 4s)
     const timer = setTimeout(async () => {
       console.log('[YAHTZEE GAME OVER] Delay complete, calling handleGameOverComplete');
-      // Safety: ensure transition ref isn't stuck from a previous game
       gameOverTransitionRef.current = false;
-      await handleGameOverComplete();
+      await handleGameOverCompleteRef.current();
     }, 2000);
 
     // Safety fallback: if still stuck after 8s, force retry
@@ -5588,12 +5590,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (g?.status === 'game_over') {
         console.warn('[YAHTZEE GAME OVER] Still stuck after 8s, forcing transition');
         gameOverTransitionRef.current = false;
-        await handleGameOverComplete();
+        await handleGameOverCompleteRef.current();
       }
     }, 8000);
 
     return () => { clearTimeout(timer); clearTimeout(fallback); };
-  }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
+  }, [game?.status, game?.game_type, game?.last_round_result, gameId]);
 
 
   // When high-card dealer selection finishes, transition to in_progress and create round 1
