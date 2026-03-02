@@ -753,6 +753,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                     : game.game_type === 'gin-rummy' ? 'Gin Rummy'
                                     : game.game_type === 'horses' ? 'Horses'
                                     : game.game_type === 'ship-captain-crew' ? 'SCC'
+                                    : game.game_type === 'yahtzee' ? 'Yahtzee'
                                     : '3-5-7'}
                                   {game.real_money && <span className="text-green-400 ml-1">$</span>}
                                 </span>
