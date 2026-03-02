@@ -5577,10 +5577,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // so only a short delay here for the winner overlay to finish (it auto-dismisses at 4s)
     const timer = setTimeout(async () => {
       console.log('[YAHTZEE GAME OVER] Delay complete, calling handleGameOverComplete');
+      // Safety: ensure transition ref isn't stuck from a previous game
+      gameOverTransitionRef.current = false;
       await handleGameOverComplete();
     }, 2000);
 
-    return () => clearTimeout(timer);
+    // Safety fallback: if still stuck after 8s, force retry
+    const fallback = setTimeout(async () => {
+      const { data: g } = await supabase.from('games').select('status').eq('id', gameId).maybeSingle();
+      if (g?.status === 'game_over') {
+        console.warn('[YAHTZEE GAME OVER] Still stuck after 8s, forcing transition');
+        gameOverTransitionRef.current = false;
+        await handleGameOverComplete();
+      }
+    }, 8000);
+
+    return () => { clearTimeout(timer); clearTimeout(fallback); };
   }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
 
 

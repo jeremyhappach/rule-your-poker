@@ -249,8 +249,29 @@ export async function endYahtzeeRound(
       .select('id');
 
     if (!claim || claim.length === 0) {
-      console.log('[YAHTZEE] Another client already ended this round');
-      return;
+      // Atomic guard missed — check if game is already game_over (another client beat us)
+      const { data: freshGame } = await supabase
+        .from('games')
+        .select('status')
+        .eq('id', gameId)
+        .maybeSingle();
+
+      if (freshGame?.status === 'game_over') {
+        console.log('[YAHTZEE] Game already in game_over, no action needed');
+        return;
+      }
+
+      // Status is something unexpected — force transition to game_over so we don't get stuck
+      console.warn('[YAHTZEE] Atomic guard missed but game not game_over (status:', freshGame?.status, '), forcing transition');
+      await supabase
+        .from('games')
+        .update({
+          status: 'game_over',
+          last_round_result: winnerDescription,
+          game_over_at: new Date().toISOString(),
+          awaiting_next_round: true,
+        })
+        .eq('id', gameId);
     }
   }
 }
