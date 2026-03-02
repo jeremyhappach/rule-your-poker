@@ -781,15 +781,7 @@ export function YahtzeeGameTable({
         visible={!!showBonusOverlay}
         onDone={() => setShowBonusOverlay(null)}
       />
-      {winnerOverlay && (
-        <WinnerOverlay
-          winnerName={winnerOverlay.winnerName}
-          scores={winnerOverlay.scores}
-          isWinnerMe={winnerOverlay.isWinnerMe}
-          visible={true}
-          onDone={() => setWinnerOverlay(null)}
-        />
-      )}
+      {/* WinnerOverlay removed — dealer announcement handles win display */}
 
       {/* Zero-score confirmation dialog */}
       <AlertDialog open={!!pendingZeroCategory} onOpenChange={(open) => { if (!open) setPendingZeroCategory(null); }}>
@@ -903,15 +895,8 @@ export function YahtzeeGameTable({
           const hasRolled = diceState?.dice.some(d => d.value !== 0);
 
           if (!hasRolled) {
-            return (
-              <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] text-center">
-                <div className="bg-black/50 rounded-xl px-5 py-3 border border-amber-600/40 backdrop-blur-sm">
-                  <p className="text-amber-200/90 font-semibold text-base animate-pulse">
-                    {getPlayerUsername(currentPlayer)} is rolling...
-                  </p>
-                </div>
-              </div>
-            );
+            // No felt message — the rolling status is shown in the active player box below
+            return null;
           }
 
           return (
@@ -954,32 +939,32 @@ export function YahtzeeGameTable({
           const useCompact = false;
           return myPlayer ? (
           <>
-            {/* Slot 0: Bottom-left corner */}
-            <div className="absolute bottom-1 left-2 z-[105]">
+            {/* Slot 0: Bottom-left — pushed outward */}
+            <div className="absolute bottom-0 -left-1 z-[105]">
               {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, useCompact)}
             </div>
-            {/* Slot 1: Top-left corner */}
-            <div className="absolute left-2 top-1 z-[105]">
+            {/* Slot 1: Top-left — pushed outward */}
+            <div className="absolute -left-1 -top-1 z-[105]">
               {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, useCompact)}
             </div>
-            {/* Slot 2: Top-left-center */}
+            {/* Slot 2: Top-left-center — pushed outward */}
             {getPlayerAtSlot(3) && (
-              <div className="absolute left-[25%] top-1 z-[105]">
+              <div className="absolute left-[18%] -top-1 z-[105]">
                 {renderPlayerChip(getPlayerAtSlot(3)!, useCompact)}
               </div>
             )}
-            {/* Slot 3: Top-right-center */}
+            {/* Slot 3: Top-right-center — pushed outward */}
             {getPlayerAtSlot(4) && (
-              <div className="absolute right-[25%] top-1 z-[105]">
+              <div className="absolute right-[18%] -top-1 z-[105]">
                 {renderPlayerChip(getPlayerAtSlot(4)!, useCompact)}
               </div>
             )}
-            {/* Slot 4: Top-right corner */}
-            <div className="absolute right-2 top-1 z-[105]">
+            {/* Slot 4: Top-right — pushed outward */}
+            <div className="absolute -right-1 -top-1 z-[105]">
               {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, useCompact)}
             </div>
-            {/* Slot 5: Bottom-right corner */}
-            <div className="absolute bottom-1 right-2 z-[105]">
+            {/* Slot 5: Bottom-right — pushed outward */}
+            <div className="absolute bottom-0 -right-1 z-[105]">
               {getPlayerAtSlot(6) && renderPlayerChip(getPlayerAtSlot(6)!, useCompact)}
             </div>
           </>
@@ -1124,10 +1109,26 @@ export function YahtzeeGameTable({
               </div>
             )}
 
-            {/* Opponent scorecard when it's not my turn — no waiting message, just scorecard */}
+            {/* Opponent scorecard when it's not my turn */}
             {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
               <div className="mt-1 px-1">
-                {renderScorecard(currentTurnPlayerId, false)}
+                {/* Rolling status message in the player box */}
+                {(() => {
+                  const oppPlayer = players.find(p => p.id === currentTurnPlayerId);
+                  const diceState = getCurrentTurnDice();
+                  const hasRolled = diceState?.dice.some(d => d.value !== 0);
+                  if (!hasRolled && oppPlayer) {
+                    return (
+                      <p className="text-amber-400 font-semibold text-sm text-center animate-pulse mb-1">
+                        {getPlayerUsername(oppPlayer)} is rolling...
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+                <div className="yahtzee-opponent-scorecard">
+                  {renderScorecard(currentTurnPlayerId, false)}
+                </div>
               </div>
             )}
 

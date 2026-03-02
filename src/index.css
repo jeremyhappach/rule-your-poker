@@ -125,3 +125,11 @@ All colors MUST be HSL.
 .animate-slow-pulse-red {
   animation: slow-pulse-red 1.5s ease-in-out infinite;
 }
+
+/* Opponent scorecard in active player box: darken unfilled category labels for readability */
+.yahtzee-opponent-scorecard .bg-muted\/20 span.text-amber-200 {
+  color: hsl(0 0% 35%) !important;
+}
+.yahtzee-opponent-scorecard .opacity-50 span.text-amber-200 {
+  color: hsl(0 0% 35%) !important;
+}
