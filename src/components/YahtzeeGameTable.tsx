@@ -140,11 +140,10 @@ export function YahtzeeGameTable({
     scores: { name: string; total: number }[];
     isWinnerMe: boolean;
   } | null>(null);
-  // Stable turn ref to prevent flickering during transitions
-  const lastTurnRef = useRef<string | null>(null);
-  // Turn transition suppression: briefly suppress rendering when turn changes
-  const turnTransitionUntilRef = useRef<number>(0);
-  const [, forceRender] = useState(0);
+  // Ready-gate pattern: only advance the displayed turn once the new player's state is ready.
+  // This prevents flicker caused by intermediate DB states where the turn ID changed but
+  // the new player's scorecard/dice haven't settled yet.
+  const displayTurnRef = useRef<string | null>(null);
 
   // Chip transfer animation
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -155,7 +154,7 @@ export function YahtzeeGameTable({
   // Guard: prevent double-execution of handleGameComplete
   const gameCompleteProcessedRef = useRef(false);
   // Reset guard when a new round starts
-  useEffect(() => { gameCompleteProcessedRef.current = false; }, [currentRoundId]);
+  useEffect(() => { gameCompleteProcessedRef.current = false; displayTurnRef.current = null; }, [currentRoundId]);
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
@@ -171,21 +170,32 @@ export function YahtzeeGameTable({
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
   const gamePhase = yahtzeeState?.gamePhase || 'waiting';
   const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
-  // Stabilize turn: suppress brief flicker during transitions
-  useEffect(() => {
-    if (currentTurnPlayerId && currentTurnPlayerId !== lastTurnRef.current) {
-      // Turn changed — suppress rendering for 300ms so dice/scorecard settle
-      turnTransitionUntilRef.current = Date.now() + 300;
-      lastTurnRef.current = currentTurnPlayerId;
-      // Schedule a re-render after the suppression window
-      const t = setTimeout(() => forceRender(n => n + 1), 320);
-      return () => clearTimeout(t);
+
+  // Ready-gate: only advance displayTurnRef once the new player's state looks ready.
+  // A turn is "ready" when the new player has rollsRemaining === 3 (fresh turn).
+  // During the gap (score committed → turn advanced → new state synced), we keep
+  // showing the previous player's view, eliminating flicker entirely.
+  if (currentTurnPlayerId) {
+    if (!displayTurnRef.current) {
+      // First turn ever — accept immediately
+      displayTurnRef.current = currentTurnPlayerId;
+    } else if (currentTurnPlayerId !== displayTurnRef.current) {
+      // Turn changed — only accept if new player's state is ready
+      const newPs = yahtzeeState?.playerStates?.[currentTurnPlayerId];
+      if (newPs && newPs.rollsRemaining === 3) {
+        displayTurnRef.current = currentTurnPlayerId;
+      }
+      // Otherwise keep displaying the old turn until ready
     }
-  }, [currentTurnPlayerId]);
-  const isInTurnTransition = Date.now() < turnTransitionUntilRef.current;
-  const stableTurnPlayerId = currentTurnPlayerId || lastTurnRef.current;
+  }
+  // If game is complete, always show the latest
+  if (gamePhase === 'complete' && currentTurnPlayerId === null) {
+    displayTurnRef.current = null;
+  }
+
+  const stableTurnPlayerId = displayTurnRef.current;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
-  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing' && !isInTurnTransition;
+  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? yahtzeeState?.playerStates?.[stableTurnPlayerId] : null;
 
@@ -952,9 +962,7 @@ export function YahtzeeGameTable({
             );
           }
 
-          // Suppress during turn transition to prevent flash of empty dice
-          if (isInTurnTransition) return null;
-
+          // No suppression needed — ready-gate handles transition smoothly
           // Opponent's turn: show dice if they've rolled, or a waiting message
           const diceState = getCurrentTurnDice();
           const hasRolled = diceState?.dice.some(d => d.value !== 0);
