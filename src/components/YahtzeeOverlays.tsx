@@ -73,6 +73,39 @@ export function UpperBonusOverlay({ playerName, visible, onDone }: UpperBonusOve
 }
 
 /* ------------------------------------------------------------------ */
+/*  Yahtzee Bonus overlay (+100 for second+ Yahtzee)                   */
+/* ------------------------------------------------------------------ */
+interface YahtzeeBonusOverlayProps {
+  playerName: string;
+  bonusCount: number; // which bonus (1st = +100, 2nd = +200 total, etc.)
+  visible: boolean;
+  onDone: () => void;
+}
+
+export function YahtzeeBonusOverlay({ playerName, bonusCount, visible, onDone }: YahtzeeBonusOverlayProps) {
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(() => onDoneRef.current(), 2500);
+    return () => clearTimeout(t);
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none animate-fade-in">
+      <div className="bg-amber-900/90 rounded-2xl px-8 py-5 border-2 border-poker-gold shadow-2xl text-center animate-scale-in">
+        <p className="text-2xl font-black text-poker-gold tracking-wider mb-1">YAHTZEE BONUS!</p>
+        <p className="text-amber-200 text-base font-bold">+100 points</p>
+        <p className="text-amber-300/80 text-sm font-semibold mt-1">{playerName}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Winner overlay with confetti                                       */
 /* ------------------------------------------------------------------ */
 interface WinnerOverlayProps {

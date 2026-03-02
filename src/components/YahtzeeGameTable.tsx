@@ -18,7 +18,7 @@ import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
-import { YahtzeeRollOverlay, UpperBonusOverlay, WinnerOverlay } from "./YahtzeeOverlays";
+import { YahtzeeRollOverlay, UpperBonusOverlay, WinnerOverlay, YahtzeeBonusOverlay } from "./YahtzeeOverlays";
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie,
@@ -134,11 +134,14 @@ export function YahtzeeGameTable({
   // Overlay states
   const [showYahtzeeOverlay, setShowYahtzeeOverlay] = useState<string | null>(null); // playerName
   const [showBonusOverlay, setShowBonusOverlay] = useState<string | null>(null); // playerName
+  const [showYahtzeeBonusOverlay, setShowYahtzeeBonusOverlay] = useState<{ playerName: string; count: number } | null>(null);
   const [winnerOverlay, setWinnerOverlay] = useState<{
     winnerName: string;
     scores: { name: string; total: number }[];
     isWinnerMe: boolean;
   } | null>(null);
+  // Stable turn ref to prevent flickering during transitions
+  const lastTurnRef = useRef<string | null>(null);
 
   // Chip transfer animation
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -153,7 +156,8 @@ export function YahtzeeGameTable({
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
-
+  // Track Yahtzee bonus counts per player to detect new bonuses
+  const prevYahtzeeBonusRef = useRef<Record<string, number>>({});
   // Tab state
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
 
@@ -162,12 +166,17 @@ export function YahtzeeGameTable({
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
-  const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
-  const currentPlayer = players.find(p => p.id === currentTurnPlayerId);
-  const isMyTurn = currentPlayer?.user_id === currentUserId;
-  const myPlayer = players.find(p => p.user_id === currentUserId);
-  const currentTurnState = currentTurnPlayerId ? yahtzeeState?.playerStates?.[currentTurnPlayerId] : null;
   const gamePhase = yahtzeeState?.gamePhase || 'waiting';
+  const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
+  // Stabilize turn: only update when we get a genuinely new turn (prevents flicker from stale DB snapshots)
+  useEffect(() => {
+    if (currentTurnPlayerId) lastTurnRef.current = currentTurnPlayerId;
+  }, [currentTurnPlayerId]);
+  const stableTurnPlayerId = currentTurnPlayerId || lastTurnRef.current;
+  const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
+  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+  const myPlayer = players.find(p => p.user_id === currentUserId);
+  const currentTurnState = stableTurnPlayerId ? yahtzeeState?.playerStates?.[stableTurnPlayerId] : null;
 
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
@@ -245,6 +254,14 @@ export function YahtzeeGameTable({
         setShowBonusOverlay(name);
       }
       prevUpperBonusRef.current[pid] = nowHasBonus;
+
+      // Check Yahtzee bonus (detect new +100 bonuses)
+      const prevBonusCount = prevYahtzeeBonusRef.current[pid] ?? 0;
+      const nowBonusCount = ps.scorecard.yahtzeeBonuses;
+      if (nowBonusCount > prevBonusCount) {
+        setShowYahtzeeBonusOverlay({ playerName: name, count: nowBonusCount });
+      }
+      prevYahtzeeBonusRef.current[pid] = nowBonusCount;
     }
   }, [yahtzeeState?.playerStates]);
 
@@ -675,12 +692,21 @@ export function YahtzeeGameTable({
             ) : bonusFailed ? (
               <span className="font-bold text-red-400 tabular-nums text-sm leading-tight">0</span>
             ) : (
-              <span className="font-bold text-white tabular-nums text-sm leading-tight">
+              <span className="font-bold text-white tabular-nums text-sm leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 {upperSum}/63
               </span>
             )}
           </div>
         ))}
+        {/* Yahtzee bonus indicator row */}
+        {ps.scorecard.yahtzeeBonuses > 0 && (
+          <div className="flex justify-center">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-800/60 border border-poker-gold/50">
+              <span className="text-poker-gold text-[10px] font-bold">YZ BONUS</span>
+              <span className="text-poker-gold text-sm font-extrabold">+{ps.scorecard.yahtzeeBonuses * 100}</span>
+            </div>
+          </div>
+        )}
         {renderRow(LOWER_CATEGORIES)}
         {isInteractive && (
           <div className="flex justify-center">
@@ -781,8 +807,20 @@ export function YahtzeeGameTable({
         visible={!!showBonusOverlay}
         onDone={() => setShowBonusOverlay(null)}
       />
-      {/* WinnerOverlay removed — dealer announcement handles win display */}
-
+      <YahtzeeBonusOverlay
+        playerName={showYahtzeeBonusOverlay?.playerName || ''}
+        bonusCount={showYahtzeeBonusOverlay?.count || 0}
+        visible={!!showYahtzeeBonusOverlay}
+        onDone={() => setShowYahtzeeBonusOverlay(null)}
+      />
+      {/* Re-enable WinnerOverlay */}
+      <WinnerOverlay
+        winnerName={winnerOverlay?.winnerName || ''}
+        scores={winnerOverlay?.scores || []}
+        isWinnerMe={winnerOverlay?.isWinnerMe || false}
+        visible={!!winnerOverlay}
+        onDone={() => setWinnerOverlay(null)}
+      />
       {/* Zero-score confirmation dialog */}
       <AlertDialog open={!!pendingZeroCategory} onOpenChange={(open) => { if (!open) setPendingZeroCategory(null); }}>
         <AlertDialogContent className="bg-gradient-to-br from-amber-950 to-amber-900 border-2 border-amber-500">
@@ -1013,7 +1051,19 @@ export function YahtzeeGameTable({
           ) : gamePhase === 'complete' ? (
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
-                Game Complete!
+                {(() => {
+                  const results = Object.entries(yahtzeeState?.playerStates || {})
+                    .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
+                    .sort((a, b) => b.total - a.total);
+                  if (results.length === 0) return 'Game Complete!';
+                  const winner = players.find(p => p.id === results[0].pid);
+                  const winnerName = winner ? getPlayerUsername(winner) : '?';
+                  const scoreLine = results.map(r => {
+                    const p = players.find(pl => pl.id === r.pid);
+                    return `${p ? getPlayerUsername(p) : '?'}: ${r.total}`;
+                  }).join(' • ');
+                  return `${winnerName} Wins! ${scoreLine}`;
+                })()}
               </p>
             </div>
           ) : null}
