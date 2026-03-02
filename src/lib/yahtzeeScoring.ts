@@ -9,6 +9,7 @@ import {
   YahtzeeCategory,
   YahtzeeScorecard,
   UPPER_CATEGORIES,
+  LOWER_CATEGORIES,
   ALL_CATEGORIES,
   UPPER_BONUS_THRESHOLD,
   UPPER_BONUS_VALUE,
@@ -137,12 +138,14 @@ export function scoreCategory(
   };
 
   // Check for Yahtzee bonus
-  if (isYahtzee(dice) && scorecard.scores.yahtzee === 50) {
+  const rolledYahtzee = isYahtzee(dice) && dice[0] !== 0;
+  if (rolledYahtzee && scorecard.scores.yahtzee === 50) {
     newScorecard.yahtzeeBonuses += 1;
   }
 
-  // Score the chosen category
-  const score = calculateCategoryScore(category, dice);
+  // Use Joker scoring for lower categories when applicable
+  const jokerActive = rolledYahtzee && scorecard.scores.yahtzee === 50;
+  const score = jokerActive ? getJokerScore(category, dice) : calculateCategoryScore(category, dice);
   newScorecard.scores[category] = score;
 
   return newScorecard;
@@ -164,6 +167,56 @@ export function getPotentialScores(
   }
 
   return potentials;
+}
+
+/**
+ * Official Yahtzee Joker Rules:
+ * When rolling a Yahtzee and the Yahtzee category already has 50 (bonus earned):
+ * 1. Must score in the matching upper category (e.g., all 3s → Threes) if open
+ * 2. If that upper category is filled, may score in ANY open lower category with full value
+ *    (Full House = 25, Sm Straight = 30, Lg Straight = 40 regardless of dice)
+ * 3. If all lower categories are filled, may score in any open upper category (normal score)
+ * 4. If Yahtzee was scratched (scored 0), no bonus and normal rules apply
+ */
+export function getJokerValidCategories(
+  scorecard: YahtzeeScorecard,
+  dice: number[],
+): YahtzeeCategory[] | null {
+  // Only applies when dice are a Yahtzee AND the Yahtzee category already has 50
+  if (!isYahtzee(dice) || dice[0] === 0) return null;
+  if (scorecard.scores.yahtzee !== 50) return null;
+
+  const available = getAvailableCategories(scorecard);
+  const matchingUpper = UPPER_CATEGORIES[dice[0] - 1]; // ones=0, twos=1, etc.
+
+  // Rule 1: Must use matching upper if open
+  if (available.includes(matchingUpper)) {
+    return [matchingUpper];
+  }
+
+  // Rule 2: Any open lower category (with forced full value — handled in scoreJokerCategory)
+  const openLower = available.filter(c => LOWER_CATEGORIES.includes(c));
+  if (openLower.length > 0) return openLower;
+
+  // Rule 3: Any open upper category
+  const openUpper = available.filter(c => UPPER_CATEGORIES.includes(c));
+  if (openUpper.length > 0) return openUpper;
+
+  return available; // fallback
+}
+
+/**
+ * Score a Joker Yahtzee in a lower category with forced full values.
+ * Per official rules, when using a Joker in lower section:
+ * Full House = 25, Small Straight = 30, Large Straight = 40, regardless of dice.
+ */
+export function getJokerScore(category: YahtzeeCategory, dice: number[]): number {
+  switch (category) {
+    case 'full_house': return 25;
+    case 'small_straight': return 30;
+    case 'large_straight': return 40;
+    default: return calculateCategoryScore(category, dice);
+  }
 }
 
 /** Create a fresh empty scorecard */

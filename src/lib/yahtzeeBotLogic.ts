@@ -8,7 +8,7 @@
  */
 
 import { YahtzeePlayerState, YahtzeeCategory, UPPER_CATEGORIES } from './yahtzeeTypes';
-import { getPotentialScores, getAvailableCategories, calculateCategoryScore } from './yahtzeeScoring';
+import { getPotentialScores, getAvailableCategories, calculateCategoryScore, getJokerValidCategories, getJokerScore } from './yahtzeeScoring';
 
 /** Max possible score for a category (used to judge "is this hand already perfect?") */
 const MAX_CATEGORY_SCORE: Partial<Record<YahtzeeCategory, number>> = {
@@ -129,15 +129,27 @@ export function getBotHoldDecision(state: YahtzeePlayerState): boolean[] {
  */
 export function getBotCategoryChoice(state: YahtzeePlayerState): YahtzeeCategory {
   const diceValues = state.dice.map(d => d.value);
-  const potentials = getPotentialScores(state.scorecard, diceValues);
   const available = getAvailableCategories(state.scorecard);
 
   if (available.length === 0) {
     return 'chance'; // Shouldn't happen, but fallback
   }
 
+  // Official Joker rule: if rolling a second+ Yahtzee, must follow forced placement
+  const jokerValid = getJokerValidCategories(state.scorecard, diceValues);
+  if (jokerValid) {
+    // If only one option, take it
+    if (jokerValid.length === 1) return jokerValid[0];
+    // Among valid Joker options, pick the highest-scoring one
+    const scored = jokerValid
+      .map(cat => ({ cat, score: getJokerScore(cat, diceValues) }))
+      .sort((a, b) => b.score - a.score);
+    return scored[0].cat;
+  }
+
+  const potentials = getPotentialScores(state.scorecard, diceValues);
+
   // Priority: prefer harder categories when scores tie
-  // Higher priority = prefer this category when scores are equal
   const CATEGORY_PRIORITY: Record<YahtzeeCategory, number> = {
     yahtzee: 13,
     large_straight: 12,
@@ -155,7 +167,6 @@ export function getBotCategoryChoice(state: YahtzeePlayerState): YahtzeeCategory
     .sort((a, b) => b.score - a.score || CATEGORY_PRIORITY[b.cat] - CATEGORY_PRIORITY[a.cat]);
 
   // If best score is 0, we need to sacrifice a category
-  // Prefer sacrificing the lowest-value upper category we haven't filled
   if (scored[0].score === 0) {
     const upperSacrifice = scored.find(s => 
       ['ones', 'twos', 'threes'].includes(s.cat) && s.score === 0
