@@ -142,6 +142,9 @@ export function YahtzeeGameTable({
   } | null>(null);
   // Stable turn ref to prevent flickering during transitions
   const lastTurnRef = useRef<string | null>(null);
+  // Turn transition suppression: briefly suppress rendering when turn changes
+  const turnTransitionUntilRef = useRef<number>(0);
+  const [, forceRender] = useState(0);
 
   // Chip transfer animation
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -168,13 +171,21 @@ export function YahtzeeGameTable({
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
   const gamePhase = yahtzeeState?.gamePhase || 'waiting';
   const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
-  // Stabilize turn: only update when we get a genuinely new turn (prevents flicker from stale DB snapshots)
+  // Stabilize turn: suppress brief flicker during transitions
   useEffect(() => {
-    if (currentTurnPlayerId) lastTurnRef.current = currentTurnPlayerId;
+    if (currentTurnPlayerId && currentTurnPlayerId !== lastTurnRef.current) {
+      // Turn changed — suppress rendering for 300ms so dice/scorecard settle
+      turnTransitionUntilRef.current = Date.now() + 300;
+      lastTurnRef.current = currentTurnPlayerId;
+      // Schedule a re-render after the suppression window
+      const t = setTimeout(() => forceRender(n => n + 1), 320);
+      return () => clearTimeout(t);
+    }
   }, [currentTurnPlayerId]);
+  const isInTurnTransition = Date.now() < turnTransitionUntilRef.current;
   const stableTurnPlayerId = currentTurnPlayerId || lastTurnRef.current;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
-  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing' && !isInTurnTransition;
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? yahtzeeState?.playerStates?.[stableTurnPlayerId] : null;
 
@@ -572,6 +583,7 @@ export function YahtzeeGameTable({
         setScoringInProgress(false);
         setCachedOpponentDice(null);
 
+        // Combine advance turn into a single DB write to prevent intermediate flicker
         state = advanceYahtzeeTurn(state);
         await updateYahtzeeState(currentRoundId, state);
         if (state.gamePhase === 'complete') await handleGameComplete(state);
@@ -939,6 +951,9 @@ export function YahtzeeGameTable({
               </>
             );
           }
+
+          // Suppress during turn transition to prevent flash of empty dice
+          if (isInTurnTransition) return null;
 
           // Opponent's turn: show dice if they've rolled, or a waiting message
           const diceState = getCurrentTurnDice();
