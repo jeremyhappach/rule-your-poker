@@ -725,7 +725,7 @@ export function YahtzeeGameTable({
             ) : bonusFailed ? (
               <span className="font-bold text-red-400 tabular-nums text-sm leading-tight">0</span>
             ) : (
-              <span className="font-bold text-white tabular-nums text-sm leading-tight">
+              <span className="font-bold text-amber-200 tabular-nums text-sm leading-tight">
                 {upperSum}/63
               </span>
             )}
