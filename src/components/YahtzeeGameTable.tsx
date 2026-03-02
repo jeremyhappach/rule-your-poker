@@ -665,7 +665,7 @@ export function YahtzeeGameTable({
               onClick={() => isAvailable && !scoringInProgress ? handleScoreCategory(cat) : undefined}
               disabled={!isAvailable || scoringInProgress}
               className={cn(
-                "flex-1 flex flex-col items-center justify-center py-2.5 px-0.5 rounded-md border transition-all min-w-0 min-h-[44px]",
+                "relative flex-1 flex flex-col items-center justify-center py-2.5 px-0.5 rounded-md border transition-all min-w-0 min-h-[44px]",
                 justScored
                   ? "bg-green-700/70 border-green-400 ring-2 ring-green-400 scale-105"
                   : (scored !== undefined || isOptimistic)
@@ -691,9 +691,9 @@ export function YahtzeeGameTable({
               )}>
                 {justScored && lastScoredValue !== null ? lastScoredValue : effectiveScored !== undefined ? effectiveScored : '\u00A0'}
               </span>
-              {/* Yahtzee bonus checkmarks inside the YZ cell */}
+              {/* Yahtzee bonus checkmarks – overlaid so they don't add height */}
               {cat === 'yahtzee' && ps.scorecard.yahtzeeBonuses > 0 && (
-                <div className="flex gap-0.5 mt-0.5">
+                <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                   {Array.from({ length: ps.scorecard.yahtzeeBonuses }, (_, i) => (
                     <Check key={i} className="w-2.5 h-2.5 text-poker-gold" />
                   ))}
