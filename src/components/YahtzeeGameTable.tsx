@@ -661,11 +661,16 @@ export function YahtzeeGameTable({
                       ? "bg-amber-900/50 border-red-500/70 border-2"
                       : "bg-amber-900/50 border-green-500/70 border-2"
                     : isAvailable && !scoringInProgress && localRollsRemaining === 0
-                      ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer opacity-70"
+                      ? "bg-amber-800/40 border-poker-gold hover:bg-amber-700/50 cursor-pointer opacity-50"
                       : "bg-muted/20 border-muted-foreground/30 opacity-50"
               )}
             >
-              <span className="font-bold text-amber-200 text-[10px] leading-tight">{CATEGORY_LABELS[cat]}</span>
+              <span className={cn(
+                "font-bold text-[10px] leading-tight",
+                isAvailable && !scoringInProgress && localRollsRemaining === 0
+                  ? "text-white"
+                  : "text-amber-200"
+              )}>{CATEGORY_LABELS[cat]}</span>
               <span className={cn(
                 "font-bold tabular-nums leading-tight",
                 justScored
@@ -708,7 +713,7 @@ export function YahtzeeGameTable({
             ) : bonusFailed ? (
               <span className="font-bold text-red-400 tabular-nums text-sm leading-tight">0</span>
             ) : (
-              <span className="font-bold text-white tabular-nums text-sm leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="font-bold text-white tabular-nums text-sm leading-tight">
                 {upperSum}/63
               </span>
             )}
@@ -984,32 +989,32 @@ export function YahtzeeGameTable({
           const useCompact = false;
           return myPlayer ? (
           <>
-            {/* Slot 0: Bottom-left — extreme corner */}
-            <div className="absolute bottom-0 -left-3 z-[105]">
+            {/* Slot 0: Bottom-left */}
+            <div className="absolute bottom-0 left-0 z-[105]">
               {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, useCompact)}
             </div>
-            {/* Slot 1: Top-left — extreme corner */}
-            <div className="absolute -left-3 -top-3 z-[105]">
+            {/* Slot 1: Top-left */}
+            <div className="absolute left-0 top-0 z-[105]">
               {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, useCompact)}
             </div>
-            {/* Slot 2: Top-left-center — pushed to edge */}
+            {/* Slot 2: Top-left-center */}
             {getPlayerAtSlot(3) && (
-              <div className="absolute left-[10%] -top-3 z-[105]">
+              <div className="absolute left-[15%] top-0 z-[105]">
                 {renderPlayerChip(getPlayerAtSlot(3)!, useCompact)}
               </div>
             )}
-            {/* Slot 3: Top-right-center — pushed to edge */}
+            {/* Slot 3: Top-right-center */}
             {getPlayerAtSlot(4) && (
-              <div className="absolute right-[10%] -top-3 z-[105]">
+              <div className="absolute right-[15%] top-0 z-[105]">
                 {renderPlayerChip(getPlayerAtSlot(4)!, useCompact)}
               </div>
             )}
-            {/* Slot 4: Top-right — extreme corner */}
-            <div className="absolute -right-3 -top-3 z-[105]">
+            {/* Slot 4: Top-right */}
+            <div className="absolute right-0 top-0 z-[105]">
               {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, useCompact)}
             </div>
-            {/* Slot 5: Bottom-right — extreme corner */}
-            <div className="absolute bottom-0 -right-3 z-[105]">
+            {/* Slot 5: Bottom-right */}
+            <div className="absolute bottom-0 right-0 z-[105]">
               {getPlayerAtSlot(6) && renderPlayerChip(getPlayerAtSlot(6)!, useCompact)}
             </div>
           </>
@@ -1017,9 +1022,9 @@ export function YahtzeeGameTable({
           // Observer mode: extreme corner positions
           activePlayers.filter(p => p.user_id !== currentUserId).map((player, idx) => {
             const positions = [
-              '-top-3 -left-3', '-top-3 -right-3',
-              'bottom-0 -left-3', 'bottom-0 -right-3',
-              '-top-3 left-[10%]', '-top-3 right-[10%]',
+              'top-0 left-0', 'top-0 right-0',
+              'bottom-0 left-0', 'bottom-0 right-0',
+              'top-0 left-[15%]', 'top-0 right-[15%]',
             ];
             return (
               <div key={player.id} className={`absolute z-[105] ${positions[idx % positions.length]}`}>
