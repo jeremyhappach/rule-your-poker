@@ -21,11 +21,14 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
         </DialogHeader>
         
         <Tabs defaultValue="357" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="357" className="text-xs sm:text-sm px-1 sm:px-3">3-5-7</TabsTrigger>
-            <TabsTrigger value="holm" className="text-xs sm:text-sm px-1 sm:px-3">Holm</TabsTrigger>
-            <TabsTrigger value="horses" className="text-xs sm:text-sm px-1 sm:px-3">Horses</TabsTrigger>
-            <TabsTrigger value="scc" className="text-xs sm:text-sm px-1 sm:px-3">SCC</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="357" className="text-[10px] sm:text-sm px-0.5 sm:px-2">3-5-7</TabsTrigger>
+            <TabsTrigger value="holm" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Holm</TabsTrigger>
+            <TabsTrigger value="horses" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Horses</TabsTrigger>
+            <TabsTrigger value="scc" className="text-[10px] sm:text-sm px-0.5 sm:px-2">SCC</TabsTrigger>
+            <TabsTrigger value="cribbage" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Crib</TabsTrigger>
+            <TabsTrigger value="gin-rummy" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Gin</TabsTrigger>
+            <TabsTrigger value="yahtzee" className="text-[10px] sm:text-sm px-0.5 sm:px-2">Yahtzee</TabsTrigger>
           </TabsList>
           
           <ScrollArea className="h-[60vh] mt-4">
@@ -274,6 +277,196 @@ export const GameRules = ({ open, onOpenChange }: GameRulesProps) => {
                   <li>Qualified hands always beat NQ hands</li>
                   <li><strong>Tie:</strong> Everyone re-antes and rolls again (pot carries over)</li>
                   <li><strong>All NQ:</strong> Everyone re-antes and rolls again (pot carries over)</li>
+                </ul>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cribbage" className="mt-0 space-y-4 pr-4">
+              <div className="space-y-3">
+                <h3 className="font-bold text-lg text-primary">Cribbage Overview</h3>
+                <p className="text-sm text-muted-foreground">
+                  A classic card game combining pegging and hand-counting. First to the target score wins!
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Setup</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>2–4 players; dealer rotates each hand</li>
+                  <li>Players draw for the button (Ace high) to determine first dealer</li>
+                  <li>Game modes: Full (121), Half (61), Quick (45), Sprint (31)</li>
+                  <li>All players ante to start</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">The Deal & Crib</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>2 players: 6 cards each, discard 2 to the <strong>crib</strong></li>
+                  <li>3 players: 5 cards each, discard 1 to the crib (+ 1 from the deck)</li>
+                  <li>4 players: 5 cards each, discard 1 to the crib</li>
+                  <li>The crib belongs to the dealer and is scored at the end</li>
+                  <li>A <strong>starter card</strong> (cut card) is flipped from the deck — if it's a Jack, dealer pegs 2 ("His Heels")</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Pegging (The Play)</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>Players alternate playing cards, keeping a running count (max 31)</li>
+                  <li><strong>15:</strong> 2 points for hitting exactly 15</li>
+                  <li><strong>31:</strong> 2 points for hitting exactly 31</li>
+                  <li><strong>Pairs:</strong> 2 pts (pair), 6 pts (three of a kind), 12 pts (four of a kind)</li>
+                  <li><strong>Runs:</strong> 1 pt per card in a run of 3+ (cards don't need to be in order)</li>
+                  <li><strong>Go:</strong> If you can't play without exceeding 31, say "Go" — opponent pegs 1</li>
+                  <li><strong>Last Card:</strong> 1 point for playing the last card (if not 31)</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Counting (Hand Scoring)</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>After pegging, hands are scored using 4 hand cards + the starter card</li>
+                  <li><strong>15s:</strong> 2 pts for each combination totaling 15</li>
+                  <li><strong>Pairs:</strong> 2 pts per pair</li>
+                  <li><strong>Runs:</strong> 1 pt per card in runs of 3+</li>
+                  <li><strong>Flush:</strong> 4 pts if all hand cards match suit (5 if starter matches too)</li>
+                  <li><strong>"His Nobs":</strong> 1 pt for a Jack in hand matching the starter's suit</li>
+                  <li>Order: Non-dealer → Dealer's hand → Dealer's crib</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Skunking</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li><strong>Skunk:</strong> If the loser fails to pass the skunk threshold, the winner earns a 2× multiplier on the ante</li>
+                  <li><strong>Double Skunk:</strong> If enabled, failing to pass a lower threshold earns a 3× multiplier</li>
+                  <li>Available in Full (121) and Half (61) game modes</li>
+                </ul>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="gin-rummy" className="mt-0 space-y-4 pr-4">
+              <div className="space-y-3">
+                <h3 className="font-bold text-lg text-primary">Gin Rummy Overview</h3>
+                <p className="text-sm text-muted-foreground">
+                  A two-player card game where you form melds (sets and runs) to reduce deadwood. First to the match target wins!
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Setup</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>2 players; dealer alternates each hand</li>
+                  <li>10 cards dealt to each player</li>
+                  <li>One card placed face-up to start the discard pile</li>
+                  <li>Match targets: 50 or 100 points</li>
+                  <li>Players ante at the start of the match</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Gameplay</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>On your turn, <strong>draw</strong> from the stock pile or the discard pile</li>
+                  <li>Then <strong>discard</strong> one card</li>
+                  <li>Form <strong>melds</strong>: sets (3–4 of same rank) or runs (3+ consecutive same suit)</li>
+                  <li><strong>Deadwood:</strong> Cards not in melds — face cards = 10, Ace = 1, others = face value</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Knocking & Gin</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li><strong>Knock:</strong> End the hand if your deadwood ≤ 10 points</li>
+                  <li><strong>Gin:</strong> Knock with 0 deadwood — earns a bonus (configurable, default 25 pts)</li>
+                  <li>After a knock, the opponent can <strong>lay off</strong> their deadwood cards onto the knocker's melds</li>
+                  <li>Layoffs are <strong>not</strong> allowed against Gin</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Scoring</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li><strong>Knock win:</strong> Difference between deadwood totals</li>
+                  <li><strong>Undercut:</strong> If opponent's deadwood ≤ knocker's after layoffs, opponent wins the difference + undercut bonus (configurable, default 25 pts)</li>
+                  <li><strong>Gin bonus:</strong> Knocker's bonus + opponent's full deadwood</li>
+                  <li>Points accumulate across hands until the match target is reached</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Winning</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>First player to reach the match target (50 or 100 pts) wins</li>
+                  <li>Winner collects the ante from the loser</li>
+                </ul>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="yahtzee" className="mt-0 space-y-4 pr-4">
+              <div className="space-y-3">
+                <h3 className="font-bold text-lg text-primary">Yahtzee Overview</h3>
+                <p className="text-sm text-muted-foreground">
+                  A classic dice game with 13 scoring categories. Highest total score wins!
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Setup</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>2+ players; all ante to start</li>
+                  <li>Each player takes 13 turns (one per category)</li>
+                  <li>5 dice, up to 3 rolls per turn</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Rolling</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>Roll all 5 dice on your first roll</li>
+                  <li>After each roll, hold any dice you want to keep</li>
+                  <li>Re-roll the rest (up to 3 total rolls)</li>
+                  <li>After your rolls, choose a scoring category</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Upper Section</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li><strong>Ones–Sixes:</strong> Sum of the matching dice (e.g., three 4s = 12)</li>
+                  <li><strong>Bonus:</strong> Score 63+ in the upper section to earn a <span className="text-primary font-medium">+35 bonus</span></li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Lower Section</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li><strong>Three of a Kind:</strong> 3 matching dice → sum of all dice</li>
+                  <li><strong>Four of a Kind:</strong> 4 matching dice → sum of all dice</li>
+                  <li><strong>Full House:</strong> 3 of one + 2 of another → <span className="text-primary font-medium">25 pts</span></li>
+                  <li><strong>Sm Straight:</strong> 4 sequential dice → <span className="text-primary font-medium">30 pts</span></li>
+                  <li><strong>Lg Straight:</strong> 5 sequential dice → <span className="text-primary font-medium">40 pts</span></li>
+                  <li><strong>Yahtzee:</strong> All 5 dice match → <span className="text-primary font-medium">50 pts</span></li>
+                  <li><strong>Chance:</strong> Sum of all dice (no requirements)</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Yahtzee Bonus & Joker Rules</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>If you already scored 50 in Yahtzee and roll another, you earn a <span className="text-primary font-medium">+100 bonus</span></li>
+                  <li><strong>Joker rule:</strong> You must use the matching upper category if it's open</li>
+                  <li>If the matching upper is filled, you may use any open lower category at <strong>full value</strong> (e.g., Full House = 25 even without the right shape)</li>
+                  <li>If all lower categories are filled, use any open upper category</li>
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-semibold">Winning</h4>
+                <ul className="text-sm space-y-1 list-disc list-inside text-muted-foreground">
+                  <li>After all 13 categories are filled, totals are calculated</li>
+                  <li>Highest total score wins the pot</li>
                 </ul>
               </div>
             </TabsContent>
