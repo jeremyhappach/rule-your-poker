@@ -5561,7 +5561,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // YAHTZEE game_over transition
   // Yahtzee handles its own win overlay/animation internally, then sets game to game_over.
-  // After a delay, transition to next game.
+  // After a brief delay, transition to next game.
   const yahtzeeGameOverProcessedRef = useRef<string | null>(null);
   useEffect(() => {
     if (game?.game_type !== 'yahtzee' || game?.status !== 'game_over') {
@@ -5572,10 +5572,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (yahtzeeGameOverProcessedRef.current === resultKey) return;
     yahtzeeGameOverProcessedRef.current = resultKey;
 
-    console.log('[YAHTZEE GAME OVER] Detected game_over, transitioning after delay');
+    console.log('[YAHTZEE GAME OVER] Detected game_over, transitioning after delay. result:', resultKey);
+    // YahtzeeGameTable already delays 2.5s before setting game_over,
+    // so only a short delay here for the winner overlay to finish (it auto-dismisses at 4s)
     const timer = setTimeout(async () => {
+      console.log('[YAHTZEE GAME OVER] Delay complete, calling handleGameOverComplete');
       await handleGameOverComplete();
-    }, 4000); // 4s delay to let winner overlay + chip animation play
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);

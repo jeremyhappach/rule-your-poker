@@ -146,6 +146,11 @@ export function YahtzeeGameTable({
   const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
   const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
 
+  // Guard: prevent double-execution of handleGameComplete
+  const gameCompleteProcessedRef = useRef(false);
+  // Reset guard when a new round starts
+  useEffect(() => { gameCompleteProcessedRef.current = false; }, [currentRoundId]);
+
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
 
@@ -400,6 +405,14 @@ export function YahtzeeGameTable({
 
   /* ---- Game complete ---- */
   const handleGameComplete = async (finalState: YahtzeeState) => {
+    // Guard: prevent double-execution (bot controller + human can both see gamePhase=complete)
+    if (gameCompleteProcessedRef.current) {
+      console.log('[YAHTZEE] handleGameComplete already processed, skipping');
+      return;
+    }
+    gameCompleteProcessedRef.current = true;
+    console.log('[YAHTZEE] 🏆 handleGameComplete starting');
+
     const results = Object.entries(finalState.playerStates)
       .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
       .sort((a, b) => b.total - a.total);
@@ -413,6 +426,7 @@ export function YahtzeeGameTable({
     });
 
     if (winners.length > 1) {
+      console.log('[YAHTZEE] Tie detected, ending round as tie');
       await endYahtzeeRound(gameId, null, `Tie ${scoreSummary}`, true);
     } else {
       const winnerId = winners[0].pid;
@@ -438,6 +452,7 @@ export function YahtzeeGameTable({
       }
 
       // Award winner and deduct from losers
+      console.log('[YAHTZEE] Awarding chips:', { winnerId, winAmount, loserCount: losers.length });
       await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: winAmount });
       if (losers.length > 0) {
         await supabase.rpc('decrement_player_chips', {
@@ -453,8 +468,11 @@ export function YahtzeeGameTable({
 
       // Delay endYahtzeeRound so winner overlay + chip animation play fully before
       // Game.tsx's game_over handler fires and potentially unmounts YahtzeeGameTable
-      await new Promise(r => setTimeout(r, 3000));
+      console.log('[YAHTZEE] Waiting 2.5s before ending round...');
+      await new Promise(r => setTimeout(r, 2500));
+      console.log('[YAHTZEE] Calling endYahtzeeRound now');
       await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
+      console.log('[YAHTZEE] endYahtzeeRound completed, Game.tsx should handle transition');
     }
   };
 
