@@ -778,7 +778,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                                     <span className="text-amber-400/50">•</span>
                                     <span>{game.points_to_win || 25} pts</span>
                                   </>
-                                ) : game.game_type === 'horses' || game.game_type === 'ship-captain-crew' ? (
+                                ) : game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee' ? (
                                   <></>
                                 ) : (
                                   <>
