@@ -428,10 +428,13 @@ export function YahtzeeGameTable({
       const winAmount = losers.length * anteAmount;
 
       if (winnerPlayer) {
-        setChipTransferWinnerPos(winnerPlayer.position);
-        setChipTransferLoserPositions(losers.map(p => p.position));
-        setChipTransferLoserIds(losers.map(p => p.id));
-        setChipTransferTriggerId(`yahtzee-win-${Date.now()}`);
+        // Small delay so DOM has rendered chip positions before animation starts
+        setTimeout(() => {
+          setChipTransferWinnerPos(winnerPlayer.position);
+          setChipTransferLoserPositions(losers.map(p => p.position));
+          setChipTransferLoserIds(losers.map(p => p.id));
+          setChipTransferTriggerId(`yahtzee-win-${Date.now()}`);
+        }, 300);
       }
 
       // Award winner and deduct from losers
@@ -447,6 +450,10 @@ export function YahtzeeGameTable({
       // Fire-and-forget result recording
       recordGameResult(gameId, yahtzeeState?.currentRound || 1, winnerId,
         `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', null);
+
+      // Delay endYahtzeeRound so winner overlay + chip animation play fully before
+      // Game.tsx's game_over handler fires and potentially unmounts YahtzeeGameTable
+      await new Promise(r => setTimeout(r, 3000));
       await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
     }
   };
@@ -702,7 +709,7 @@ export function YahtzeeGameTable({
     }
 
     return (
-      <div className="flex flex-col items-center gap-0.5">
+      <div className="flex flex-col items-center gap-0.5" data-seat-chip-position={player.position}>
         <span className={cn(
           "text-[11px] font-semibold truncate max-w-[70px] text-white drop-shadow-md"
         )}>
@@ -712,7 +719,9 @@ export function YahtzeeGameTable({
           {isTheirTurn && (
             <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
           )}
-          <div className={cn(
+          <div
+            data-chip-center={player.position}
+            className={cn(
             "relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50 bg-slate-300",
             isTheirTurn && "animate-turn-pulse",
           )}>
