@@ -3138,7 +3138,12 @@ export const MobileGameTable = ({
     // In REGULAR mode (not showdown), upper corners should show name below chipstack for readability
     const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
     
-    const cardsElement = isShowdown && !shouldHideForTabling && !hasFolded ? (
+    // CRITICAL: Only show face-up cards for players who explicitly STAYED.
+    // Using !hasFolded alone isn't enough because current_decision can be null (cleared between hands),
+    // which would pass the !hasFolded check. This prevents sporadic card exposure during hand transitions
+    // (especially after solo-vs-Chucky losses where decisions get cleared before the next hand).
+    const playerExplicitlyStayed = gameType === 'holm-game' ? playerDecision === 'stay' : true;
+    const cardsElement = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
       <div className={`flex scale-100 origin-top relative z-40 ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
         <PlayerHand 
           cards={cards} 
