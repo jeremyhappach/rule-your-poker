@@ -140,10 +140,8 @@ export function YahtzeeGameTable({
     scores: { name: string; total: number }[];
     isWinnerMe: boolean;
   } | null>(null);
-  // Ready-gate pattern: only advance the displayed turn once the new player's state is ready.
-  // This prevents flicker caused by intermediate DB states where the turn ID changed but
-  // the new player's scorecard/dice haven't settled yet.
-  const displayTurnRef = useRef<string | null>(null);
+  // Previous turn ref — used only to detect turn changes for cache clearing
+  const prevTurnRef = useRef<string | null>(null);
 
   // Chip transfer animation
   const [chipTransferTriggerId, setChipTransferTriggerId] = useState<string | null>(null);
@@ -154,7 +152,7 @@ export function YahtzeeGameTable({
   // Guard: prevent double-execution of handleGameComplete
   const gameCompleteProcessedRef = useRef(false);
   // Reset guard when a new round starts
-  useEffect(() => { gameCompleteProcessedRef.current = false; displayTurnRef.current = null; }, [currentRoundId]);
+  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; }, [currentRoundId]);
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
@@ -171,29 +169,9 @@ export function YahtzeeGameTable({
   const gamePhase = yahtzeeState?.gamePhase || 'waiting';
   const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
 
-  // Ready-gate: only advance displayTurnRef once the new player's state looks ready.
-  // A turn is "ready" when the new player has rollsRemaining === 3 (fresh turn).
-  // During the gap (score committed → turn advanced → new state synced), we keep
-  // showing the previous player's view, eliminating flicker entirely.
-  if (currentTurnPlayerId) {
-    if (!displayTurnRef.current) {
-      // First turn ever — accept immediately
-      displayTurnRef.current = currentTurnPlayerId;
-    } else if (currentTurnPlayerId !== displayTurnRef.current) {
-      // Turn changed — only accept if new player's state is ready
-      const newPs = yahtzeeState?.playerStates?.[currentTurnPlayerId];
-      if (newPs && newPs.rollsRemaining === 3) {
-        displayTurnRef.current = currentTurnPlayerId;
-      }
-      // Otherwise keep displaying the old turn until ready
-    }
-  }
-  // If game is complete, always show the latest
-  if (gamePhase === 'complete' && currentTurnPlayerId === null) {
-    displayTurnRef.current = null;
-  }
-
-  const stableTurnPlayerId = displayTurnRef.current;
+  // Direct turn usage — no ready-gate. Scoring + turn advance are atomic writes,
+  // so there is no intermediate state to cause flicker.
+  const stableTurnPlayerId = currentTurnPlayerId || null;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
   const myPlayer = players.find(p => p.user_id === currentUserId);
