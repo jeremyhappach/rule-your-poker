@@ -3138,7 +3138,7 @@ export const MobileGameTable = ({
     // In REGULAR mode (not showdown), upper corners should show name below chipstack for readability
     const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
     
-    const cardsElement = isShowdown && !shouldHideForTabling ? (
+    const cardsElement = isShowdown && !shouldHideForTabling && !hasFolded ? (
       <div className={`flex scale-100 origin-top relative z-40 ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
         <PlayerHand 
           cards={cards} 
