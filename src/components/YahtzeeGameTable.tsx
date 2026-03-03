@@ -593,7 +593,14 @@ export function YahtzeeGameTable({
     if (!currentTurnPlayerId || !yahtzeeState) return null;
     const ps = yahtzeeState.playerStates[currentTurnPlayerId];
     if (!ps) return null;
-    return { dice: toHorsesDice(ps.dice), rollKey: ps.rollKey };
+    // After all rolls are used (rollsRemaining === 0), force all dice to appear held
+    // so they stay in their held-row positions while the player chooses a category.
+    const forceAllHeld = ps.rollsRemaining === 0;
+    const dice = ps.dice.map(d => ({
+      value: d.value,
+      isHeld: forceAllHeld ? true : d.isHeld,
+    }));
+    return { dice: dice as HorsesDieType[], rollKey: ps.rollKey };
   }, [currentTurnPlayerId, yahtzeeState]);
 
   /* ---- Animation origin ---- */
