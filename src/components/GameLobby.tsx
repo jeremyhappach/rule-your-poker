@@ -64,6 +64,7 @@ interface Game {
   chucky_cards?: number;
   points_to_win?: number;
   real_money?: boolean;
+  is_paused?: boolean;
   player_count?: number;
   is_creator?: boolean;
   is_player?: boolean;
@@ -696,12 +697,14 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
                           <div className="flex gap-1 flex-1">
                             <Badge 
                               variant={isInProgress ? 'default' : 'secondary'}
-                              className={`text-xs ${isInProgress 
-                                ? 'bg-green-600/80 text-white border-0' 
-                                : 'bg-amber-600/30 text-amber-300 border-amber-600/50'
+                              className={`text-xs ${game.is_paused
+                                ? 'bg-yellow-600/80 text-yellow-100 border-0'
+                                : isInProgress 
+                                  ? 'bg-green-600/80 text-white border-0' 
+                                  : 'bg-amber-600/30 text-amber-300 border-amber-600/50'
                               }`}
                             >
-                              {game.status === 'waiting' ? 'Waiting' : 'Active'}
+                              {game.is_paused ? 'Paused' : game.status === 'waiting' ? 'Waiting' : 'Active'}
                             </Badge>
                             {game.is_player && (
                               <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/50 text-xs">
