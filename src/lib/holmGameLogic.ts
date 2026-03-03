@@ -542,6 +542,33 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     deck[cardIndex++]
   ];
 
+  // CRITICAL FIX: Reset player decisions and game flags BEFORE creating the round.
+  // Previously these happened AFTER the round insert, causing a race condition:
+  // The round INSERT fires a realtime event and the client sees the new round immediately,
+  // but decision_locked is still true and all_decisions_in is still true from the previous hand.
+  // This means canDecide evaluates to false → no stay/fold buttons → player times out.
+  console.log('[HOLM] Pre-clearing player decisions and game flags before round creation');
+  
+  await supabase
+    .from('players')
+    .update({ 
+      current_decision: null,
+      decision_locked: false
+    })
+    .eq('game_id', gameId);
+
+  await supabase
+    .from('games')
+    .update({
+      all_decisions_in: false,
+      last_round_result: null,
+      is_first_hand: false,
+      // Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
+      config_deadline: null,
+      ante_decision_deadline: null,
+    })
+    .eq('id', gameId);
+
   // Always create a new round for each hand - unique round_id prevents stale card fetching
   const { data: round, error: roundError } = await supabase
     .from('rounds')
@@ -565,8 +592,6 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   if (roundError || !round) {
     const code = (roundError as any)?.code;
     if (code === '23505') {
-      // Another client likely created this same (game_id, round_number) already.
-      // Don't throw here — it would freeze the table UI waiting for a round transition.
       console.warn('[HOLM] Duplicate round insert blocked by DB (23505). Skipping startHolmRound.', {
         gameId,
         nextRoundNumber,
@@ -578,15 +603,6 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   }
   
   const roundId = round.id;
-
-  // Reset player decisions
-  await supabase
-    .from('players')
-    .update({ 
-      current_decision: null,
-      decision_locked: false
-    })
-    .eq('game_id', gameId);
 
   // BATCH: Deal 4 cards to each player in a single insert
   const playerCardInserts: Array<{ player_id: string; round_id: string; cards: any }> = [];
@@ -621,21 +637,14 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
 
   // Update game status AND current_round for Holm games
   // CRITICAL: current_round MUST be updated so MobileGameTable can detect new rounds
-  // Also set is_first_hand = false after first hand is dealt
-  console.log('[HOLM] Updating game status with current_round:', round.round_number, 'is_first_hand will be set to false');
+  console.log('[HOLM] Updating game status with current_round:', round.round_number);
   const { error: gameUpdateError } = await supabase
     .from('games')
     .update({
       status: 'in_progress',
-      current_round: round.round_number, // Use inserted row to prevent hand/round drift
+      current_round: round.round_number,
       buck_position: buckPosition,
-      total_hands: round.hand_number, // Use inserted row to prevent hand/round drift
-      all_decisions_in: false,
-      last_round_result: null,
-      is_first_hand: false, // CRITICAL: Clear flag after first hand is dealt
-      // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
-      config_deadline: null,
-      ante_decision_deadline: null,
+      total_hands: round.hand_number,
     })
     .eq('id', gameId);
 
