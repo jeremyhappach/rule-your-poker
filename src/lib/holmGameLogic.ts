@@ -797,11 +797,14 @@ export async function endHolmRound(gameId: string) {
       if (stayedPlayers.length >= 2) {
         // Fire-and-forget: Ensure visibility is correct (idempotent)
         // Also set is_public = true since cards are tabled (exposed to everyone)
+        // CRITICAL: Only mark STAYED players' cards as public - folded players' cards must stay hidden
         const seatedUserIds = (players || []).map((p: any) => p.user_id);
+        const stayedPlayerIds = stayedPlayers.map((p: any) => p.id);
         supabase
           .from('player_cards')
           .update({ visible_to_user_ids: seatedUserIds, is_public: true })
           .eq('round_id', round.id)
+          .in('player_id', stayedPlayerIds)
           .then(({ error }) => { if (error) console.error('[HOLM] is_public update error:', error); });
 
         const roundPot = round.pot || game.pot || 0;
@@ -1227,15 +1230,17 @@ export async function endHolmRound(gameId: string) {
       })
       .eq('id', capturedRoundId);
 
-    // VISIBILITY: At Holm showdown, ALL seated players can see ALL cards
-    // Also set is_public = true for solo play vs Chucky
+    // VISIBILITY: Only the STAYED player's cards should be public in solo vs Chucky
+    // Folded players' cards must remain hidden
     // Fire-and-forget: visibility update is for history only
     const seatedUserIds = players.map(p => p.user_id);
-    console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length, 'and is_public=true');
+    const soloPlayerId = stayedPlayers[0].id;
+    console.log('[HOLM END] Setting card visibility for solo player only:', soloPlayerId);
     supabase
       .from('player_cards')
       .update({ visible_to_user_ids: seatedUserIds, is_public: true })
       .eq('round_id', capturedRoundId)
+      .eq('player_id', soloPlayerId)
       .then(({ error }) => { if (error) console.error('[HOLM END] is_public update error:', error); });
 
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
@@ -1348,15 +1353,17 @@ export async function endHolmRound(gameId: string) {
     .update({ status: 'showdown', decision_deadline: showdownLockDeadline })
     .eq('id', capturedRoundId);
   
-  // VISIBILITY: At Holm multi-player showdown, ALL seated players can see ALL cards
-  // Also set is_public = true since cards are tabled/exposed to everyone
+  // VISIBILITY: Only STAYED players' cards should be public at showdown
+  // Folded players' cards must remain hidden
   // Fire-and-forget: visibility update is for history only
   const seatedUserIds = players.map(p => p.user_id);
-  console.log('[HOLM END] Setting card visibility to all seated players:', seatedUserIds.length, 'and is_public=true');
+  const stayedPlayerIds = stayedPlayers.map(p => p.id);
+  console.log('[HOLM END] Setting card visibility for stayed players only:', stayedPlayerIds.length, 'of', players.length);
   supabase
     .from('player_cards')
     .update({ visible_to_user_ids: seatedUserIds, is_public: true })
     .eq('round_id', capturedRoundId)
+    .in('player_id', stayedPlayerIds)
     .then(({ error }) => { if (error) console.error('[HOLM END] is_public update error:', error); });
   
   // 3 second delay for players to read exposed cards before revealing hidden community cards
