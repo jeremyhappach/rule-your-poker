@@ -918,50 +918,31 @@ export function YahtzeeGameTable({
                 <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
                   {renderScorecard(myPlayer.id, true)}
                 </div>
-                {/* Show cached opponent dice during scoring highlight transition */}
-                {cachedOpponentDice && scoringInProgress && (
-                  <div className="absolute left-1/2 top-[25%] -translate-x-1/2 -translate-y-1/2 z-[109]">
-                    <DiceTableLayout
-                      key={cachedOpponentDice.playerId}
-                      dice={cachedOpponentDice.dice}
-                      isRolling={false}
-                      canToggle={false}
-                      size="sm"
-                      gameType="yahtzee"
-                      showWildHighlight={false}
-                      isObserver={true}
-                      hideUnrolledDice={true}
-                      rollKey={cachedOpponentDice.rollKey}
-                      cacheKey={cachedOpponentDice.playerId + '-cached'}
-                    />
-                  </div>
-                )}
+                {/* Cached opponent dice removed — single render path at top-50% handles it */}
               </>
             );
           }
 
-          // Opponent's turn: show dice on felt.
-          // When the bot scores, dice reset to zeros in DB. Use cachedOpponentDice
-          // to keep showing the last valid dice during the scoring highlight instead
-          // of unmounting the DiceTableLayout (which caused flicker/stale dice).
           const diceState = getCurrentTurnDice();
           const hasRolled = diceState?.dice.some(d => d.value !== 0);
 
-          // Prefer cached dice during scoring transition (dice are zeros in DB)
+          // During scoring transition, dice reset to zeros in DB — use cached values
           const useCached = !hasRolled && cachedOpponentDice && scoringInProgress;
 
           if (!hasRolled && !useCached) {
-            // Truly no dice to show yet (opponent hasn't rolled)
             return null;
           }
 
           const feltDice = useCached ? cachedOpponentDice!.dice : diceState!.dice;
-          const feltRollKey = useCached ? cachedOpponentDice!.rollKey : diceState!.rollKey;
+          // When using cached dice, pass undefined rollKey so no fly-in animation plays
+          const feltRollKey = useCached ? undefined : diceState!.rollKey;
+          // Stable cache key prevents remount when switching live→cached
+          const stableCacheKey = useCached ? cachedOpponentDice!.playerId : (currentTurnPlayerId ?? "no-turn");
 
           return (
             <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110]">
               <DiceTableLayout
-                key={currentTurnPlayerId ?? "no-turn"}
+                key={stableCacheKey}
                 dice={feltDice}
                 isRolling={false}
                 canToggle={false}
@@ -970,9 +951,9 @@ export function YahtzeeGameTable({
                 showWildHighlight={false}
                 isObserver={true}
                 hideUnrolledDice={true}
-                animationOrigin={getDiceAnimationOrigin()}
+                animationOrigin={useCached ? undefined : getDiceAnimationOrigin()}
                 rollKey={feltRollKey}
-                cacheKey={currentTurnPlayerId ?? "no-turn"}
+                cacheKey={stableCacheKey}
               />
             </div>
           );
