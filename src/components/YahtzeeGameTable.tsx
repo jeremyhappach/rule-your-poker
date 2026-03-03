@@ -940,21 +940,29 @@ export function YahtzeeGameTable({
             );
           }
 
-          // No suppression needed — ready-gate handles transition smoothly
-          // Opponent's turn: show dice if they've rolled, or a waiting message
+          // Opponent's turn: show dice on felt.
+          // When the bot scores, dice reset to zeros in DB. Use cachedOpponentDice
+          // to keep showing the last valid dice during the scoring highlight instead
+          // of unmounting the DiceTableLayout (which caused flicker/stale dice).
           const diceState = getCurrentTurnDice();
           const hasRolled = diceState?.dice.some(d => d.value !== 0);
 
-          if (!hasRolled) {
-            // No felt message — the rolling status is shown in the active player box below
+          // Prefer cached dice during scoring transition (dice are zeros in DB)
+          const useCached = !hasRolled && cachedOpponentDice && scoringInProgress;
+
+          if (!hasRolled && !useCached) {
+            // Truly no dice to show yet (opponent hasn't rolled)
             return null;
           }
+
+          const feltDice = useCached ? cachedOpponentDice!.dice : diceState!.dice;
+          const feltRollKey = useCached ? cachedOpponentDice!.rollKey : diceState!.rollKey;
 
           return (
             <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110]">
               <DiceTableLayout
                 key={currentTurnPlayerId ?? "no-turn"}
-                dice={diceState!.dice}
+                dice={feltDice}
                 isRolling={false}
                 canToggle={false}
                 size="md"
@@ -963,7 +971,7 @@ export function YahtzeeGameTable({
                 isObserver={true}
                 hideUnrolledDice={true}
                 animationOrigin={getDiceAnimationOrigin()}
-                rollKey={diceState!.rollKey}
+                rollKey={feltRollKey}
                 cacheKey={currentTurnPlayerId ?? "no-turn"}
               />
             </div>
