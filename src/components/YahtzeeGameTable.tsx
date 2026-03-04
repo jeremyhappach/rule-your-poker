@@ -38,7 +38,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
 import { RotateCcw, MessageSquare, User, Clock, Check } from "lucide-react";
-import { recordGameResult } from "@/lib/gameLogic";
+import { recordGameResult, snapshotPlayerChips } from "@/lib/gameLogic";
 import { endYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { HandHistory } from "./HandHistory";
@@ -487,6 +487,10 @@ export function YahtzeeGameTable({
       // Fire-and-forget result recording
       recordGameResult(gameId, yahtzeeState?.currentRound || 1, winnerId,
         `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', dealerGameId);
+
+      // Snapshot chips after payout for accurate session results
+      snapshotPlayerChips(gameId, yahtzeeState?.currentRound || 1).catch(err =>
+        console.error('[YAHTZEE] Failed to snapshot chips:', err));
 
       // Delay endYahtzeeRound so winner overlay + chip animation play fully before
       // Game.tsx's game_over handler fires and potentially unmounts YahtzeeGameTable

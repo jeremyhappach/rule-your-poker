@@ -402,6 +402,9 @@ export async function endGinRummyGame(
     });
     if (awardError) console.error('[GIN-RUMMY] Failed to award winner:', awardError);
 
+    // Small delay to ensure chip RPCs are fully committed before snapshot reads
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     // Get winner display name
     const { data: winner } = await supabase
       .from('players')
@@ -450,8 +453,8 @@ export async function endGinRummyGame(
       });
     if (resultError) console.error('[GIN-RUMMY] Failed to record result:', resultError);
 
-    // Snapshot chips — awaited to ensure history exists before player leaves
-    await snapshotPlayerChips(gameId, handNumber).catch((err) => {
+    // Snapshot chips AFTER match payout — use handNumber+1 to distinguish from per-hand snapshot
+    await snapshotPlayerChips(gameId, handNumber + 1).catch((err) => {
       console.error('[GIN-RUMMY] Failed to snapshot chips:', err);
     });
 
