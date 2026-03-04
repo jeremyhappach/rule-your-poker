@@ -615,6 +615,10 @@ export const MobileGameTable = ({
   const [soloVsChuckyPlayerIdLocked, setSoloVsChuckyPlayerIdLocked] = useState<string | null>(null);
   // Track if tabled cards have already animated (to prevent re-animation on re-render)
   const soloVsChuckyAnimatedRef = useRef(false);
+  // Track which handContextId the solo-vs-Chucky lock was captured for.
+  // CRITICAL: Prevents stale re-capture during hand transitions where isSoloVsChuckyRaw
+  // is momentarily true from previous hand's lingering current_decision='stay'.
+  const soloVsChuckyLockHandRef = useRef<string | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
@@ -1552,12 +1556,28 @@ export const MobileGameTable = ({
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
+    // Mark this handContextId so the capture effect knows not to re-capture stale data
+    soloVsChuckyLockHandRef.current = handContextId ?? null;
   }, [handContextId]);
 
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
   useEffect(() => {
     if (soloVsChuckyPlayerIdLocked) return;
     if (!(isSoloVsChuckyRaw || soloVsChuckyTableLocked || holmWinPotTriggerId)) return;
+
+    // CRITICAL FIX: Don't capture if isSoloVsChuckyRaw is true but the handContextId hasn't
+    // been confirmed yet. During hand transitions, stale current_decision='stay' from the
+    // PREVIOUS hand makes isSoloVsChuckyRaw momentarily true. Without this guard, the capture
+    // effect locks the WRONG player (from the previous hand), and the "if locked, return" guard
+    // above prevents it from ever correcting to the right player.
+    //
+    // We detect this stale state by checking: if isSoloVsChuckyRaw is driving the capture
+    // (not holmWinPotTriggerId), and the chucky_active flag is NOT set yet, and the round
+    // is still in an early phase (betting/pending/ante), then this is stale data — skip.
+    const isEarlyPhaseForCapture = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
+    if (isSoloVsChuckyRaw && !holmWinPotTriggerId && !chuckyActive && isEarlyPhaseForCapture) {
+      return;
+    }
 
     // Prefer the actual stayed player while decisions are still present; fall back to parsing the winner from lastRoundResult.
     const stayed = players.find(p => p.current_decision === 'stay');
@@ -1588,7 +1608,7 @@ export const MobileGameTable = ({
         }
       }
     }
-  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult]);
+  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive]);
 
   // Reset of solo-vs-Chucky locks is also handled inside resetHandUiCaches (and is deferred during animations)
   // so tabled cards can't snap back mid pot-to-player animation.
