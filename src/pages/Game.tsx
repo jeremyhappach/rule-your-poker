@@ -1615,9 +1615,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
 
-          // If horses_state changed, patch it into local state immediately so dice animations can start
-          // as soon as the realtime event arrives (no waiting on fetchGameData).
-          if (payload.eventType === 'UPDATE' && payload.new && 'horses_state' in (payload.new as any)) {
+          // If horses_state or yahtzee_state changed, patch it into local state immediately so
+          // dice animations / scorecard updates can start as soon as the realtime event arrives
+          // (no waiting on fetchGameData). Critical for human-vs-human Yahtzee.
+          if (payload.eventType === 'UPDATE' && payload.new && 
+              ('horses_state' in (payload.new as any) || 'yahtzee_state' in (payload.new as any))) {
             applyRoundRealtimePatch(payload.new);
             // Still refetch (debounced) to keep the rest of the game state consistent.
             debouncedFetch();
