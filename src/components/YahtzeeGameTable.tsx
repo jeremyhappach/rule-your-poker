@@ -68,6 +68,7 @@ interface YahtzeeGameTableProps {
   anteAmount: number;
   dealerPosition: number;
   currentRoundId: string | null;
+  dealerGameId: string | null;
   yahtzeeState: YahtzeeState | null;
   onRefetch: () => void;
   isHost?: boolean;
@@ -108,7 +109,7 @@ const DiceIcon = ({ className }: { className?: string }) => (
 
 export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
-  currentRoundId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
+  currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
 
   const [isRolling, setIsRolling] = useState(false);
@@ -485,7 +486,7 @@ export function YahtzeeGameTable({
       losers.forEach(l => { chipChanges[l.id] = -anteAmount; });
       // Fire-and-forget result recording
       recordGameResult(gameId, yahtzeeState?.currentRound || 1, winnerId,
-        `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', null);
+        `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', dealerGameId);
 
       // Delay endYahtzeeRound so winner overlay + chip animation play fully before
       // Game.tsx's game_over handler fires and potentially unmounts YahtzeeGameTable
