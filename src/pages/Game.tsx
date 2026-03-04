@@ -7027,6 +7027,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 anteAmount={game.ante_amount || 1}
                 dealerPosition={game.dealer_position || 1}
                 currentRoundId={currentRound?.id || null}
+                dealerGameId={currentRound?.dealer_game_id || null}
                 yahtzeeState={yahtzeeState}
                 onRefetch={fetchGameData}
                 isHost={isCreator}

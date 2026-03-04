@@ -934,6 +934,13 @@ export function useHandHistoryData({
         if (matchEndEvent) {
           // Use the match-end event's chip change as the authoritative total
           totalChipChange = getViewerChipChange(matchEndEvent.player_chip_changes);
+        } else if (outcomeEvents.length > 0) {
+          // No explicit match-end event recorded (race condition / client disconnect).
+          // Fall back to the last per-hand event's chip change as best approximation
+          // (each per-hand event records the ante as the chip change, so the last one
+          // reflects the correct single-ante transfer direction).
+          const lastOutcomeEvt = outcomeEvents[outcomeEvents.length - 1];
+          totalChipChange = getViewerChipChange(lastOutcomeEvt.player_chip_changes);
         } else {
           // Match still in progress — no chips have transferred yet
           totalChipChange = 0;
