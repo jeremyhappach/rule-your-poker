@@ -551,7 +551,7 @@ export function YahtzeeGameTable({
         const category = getBotCategoryChoice(ps);
 
         // Cache bot's dice so they stay visible on felt during scoring highlight
-        const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: false }));
+        const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
         setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: currentTurnPlayerId });
 
         // Highlight the bot's chosen category for 2 seconds (same UX as human)
@@ -593,12 +593,11 @@ export function YahtzeeGameTable({
     if (!currentTurnPlayerId || !yahtzeeState) return null;
     const ps = yahtzeeState.playerStates[currentTurnPlayerId];
     if (!ps) return null;
-    // After all rolls are used (rollsRemaining === 0), force all dice to appear held
-    // so they stay in their held-row positions while the player chooses a category.
-    const forceAllHeld = ps.rollsRemaining === 0;
+    // Preserve each die's actual isHeld state so dice stay where the player left them
+    // (held dice in held row, rolled dice in scatter) while they choose a category.
     const dice = ps.dice.map(d => ({
       value: d.value,
-      isHeld: forceAllHeld ? true : d.isHeld,
+      isHeld: d.isHeld,
     }));
     return { dice: dice as HorsesDieType[], rollKey: ps.rollKey };
   }, [currentTurnPlayerId, yahtzeeState]);
