@@ -1543,8 +1543,13 @@ export const MobileGameTable = ({
     }
   }, [isSoloVsChuckyRaw, holmWinPotTriggerId]);
 
-  // Reset solo-vs-Chucky player lock on hand transition to prevent stale cross-hand tabling
+  // Reset ALL solo-vs-Chucky locks on hand transition to prevent stale cross-hand tabling.
+  // CRITICAL: soloVsChuckyTableLocked MUST be reset here too — if only the player ID is cleared
+  // but the table lock persists, the capture effect (below) will fire with stale lastRoundResult
+  // and lock the WRONG player, causing the folded player's cards to table and the stayed player's
+  // cards to render at the chip stack instead of the tabled position.
   useEffect(() => {
+    setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
   }, [handContextId]);
