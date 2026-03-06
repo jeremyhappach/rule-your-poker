@@ -1244,25 +1244,11 @@ export function HorsesGameTable({
     // Prevent duplicate processing
     if (processedWinRoundRef.current === currentRoundId) return;
 
-    // Determine who should process this win:
-    // 1. If I'm the winner (human win)
-    // 2. If winner is a bot AND I'm the bot controller
-    // 3. If it's a tie, any tied human player OR the bot controller can process
-    //    (atomic guard ensures only one succeeds - this provides redundancy if bot controller client has issues)
+    // ANY human player can attempt processing — atomic DB guards prevent duplicates.
+    // This eliminates freezes where only the winner's client was allowed to process
+    // but that client had connectivity/timing issues.
     const myPlayerId = myPlayer?.id;
-    const winnerId = winningPlayerIds.length === 1 ? winningPlayerIds[0] : null;
-    const isWinner = winnerId && myPlayerId === winnerId;
-    const winnerPlayer = winnerId ? players.find((p) => p.id === winnerId) : null;
-    const winnerIsBot = winnerPlayer?.is_bot;
-    const iAmBotController = candidateBotControllerUserId === currentUserId;
-    const isTie = winningPlayerIds.length > 1;
-    const iAmPartOfTie = isTie && myPlayerId && winningPlayerIds.includes(myPlayerId);
-    
-    // Human winner processes their own win
-    // Bot wins are handled by bot controller
-    // Ties: any tied human player OR bot controller can attempt processing (atomic guard prevents duplicates)
-    const shouldProcess = isWinner || (winnerIsBot && iAmBotController) || (isTie && (iAmPartOfTie || iAmBotController));
-    if (!shouldProcess) return;
+    if (!myPlayerId) return; // Must be a seated player
 
     const processWin = async () => {
       // Mark as processed IMMEDIATELY
