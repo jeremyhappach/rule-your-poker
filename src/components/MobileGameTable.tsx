@@ -1575,7 +1575,11 @@ export const MobileGameTable = ({
     // (not holmWinPotTriggerId), and the chucky_active flag is NOT set yet, and the round
     // is still in an early phase (betting/pending/ante), then this is stale data — skip.
     const isEarlyPhaseForCapture = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
-    if (isSoloVsChuckyRaw && !holmWinPotTriggerId && !chuckyActive && isEarlyPhaseForCapture) {
+    // CRITICAL: If allDecisionsIn is true, we're past the stale-decision danger zone — allow capture
+    // even if roundStatus hasn't transitioned yet. Without this, the showdown cache populates cards
+    // (via isShowdownActive) but the lock never fires, causing dual display: face-up at chip stack
+    // AND tabled in center.
+    if (isSoloVsChuckyRaw && !holmWinPotTriggerId && !chuckyActive && isEarlyPhaseForCapture && !allDecisionsIn) {
       return;
     }
 
@@ -1608,7 +1612,7 @@ export const MobileGameTable = ({
         }
       }
     }
-  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive]);
+  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive, allDecisionsIn]);
 
   // Reset of solo-vs-Chucky locks is also handled inside resetHandUiCaches (and is deferred during animations)
   // so tabled cards can't snap back mid pot-to-player animation.
