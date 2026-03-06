@@ -1732,22 +1732,11 @@ export function useHorsesMobileController({
       console.log("[HORSES] Win processing blocked - game is paused");
       return;
     }
-    
-    // GUARD: Ensure all active players have completed results before processing
-    // This prevents premature win processing from stale/cached state
-    const activePlayerCount = activePlayers.length;
-    if (completedResults.length < activePlayerCount) {
-      console.log("[HORSES] Not all players complete yet:", completedResults.length, "/", activePlayerCount);
-      return;
-    }
 
     // Prevent duplicate processing
     if (processedWinRoundRef.current === currentRoundId) return;
 
-    // Determine who should process this win:
     // ANY human player can attempt processing — atomic DB guards prevent duplicates.
-    // This eliminates freezes where only the winner's client was allowed to process
-    // but that client had connectivity/timing issues.
     const myPlayerId = myPlayer?.id;
     if (!myPlayerId) return; // Must be a seated player
 
@@ -1903,8 +1892,51 @@ export function useHorsesMobileController({
     getPlayerUsername,
     myPlayer,
     isPaused,
-    activePlayers.length,
   ]);
+
+  // RECOVERY: If gamePhase is "playing" but ALL players in turnOrder have isComplete,
+  // force transition to "complete". This handles cases where the advance RPC succeeded
+  // but the state update was lost or the RPC set currentTurnPlayerId to null without
+  // setting gamePhase to "complete".
+  const allCompleteRecoveryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    if (gamePhase !== "playing") return;
+    if (!currentRoundId || !gameId) return;
+    if (!turnOrder.length) return;
+
+    const playerStates = horsesState?.playerStates ?? {};
+    const allComplete = turnOrder.every(pid => playerStates[pid]?.isComplete);
+    if (!allComplete) return;
+
+    const key = `allcomplete:${currentRoundId}`;
+    if (allCompleteRecoveryRef.current === key) return;
+    allCompleteRecoveryRef.current = key;
+
+    console.warn("[HORSES] All players complete but gamePhase still 'playing' - forcing complete");
+    
+    const forceComplete = async () => {
+      // Fetch latest state from DB to avoid clobbering
+      const { data: roundRow } = await supabase
+        .from("rounds")
+        .select("horses_state")
+        .eq("id", currentRoundId)
+        .single();
+
+      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
+      if (!latestState) return;
+
+      await updateHorsesState(currentRoundId, {
+        ...latestState,
+        currentTurnPlayerId: null,
+        gamePhase: "complete",
+      });
+    };
+
+    // Small delay to avoid racing with normal advance
+    const t = window.setTimeout(forceComplete, 2000);
+    return () => window.clearTimeout(t);
+  }, [enabled, gamePhase, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
 
   const rawFeltDice = useMemo(() => {
     const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;

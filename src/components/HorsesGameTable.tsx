@@ -1445,6 +1445,45 @@ export function HorsesGameTable({
     processWin();
   }, [gamePhase, winningPlayerIds, pot, players, currentUserId, gameId, turnOrder, completedResults, currentRoundId, anteAmount, horsesState?.playerStates, gameType, isPaused]);
 
+  // RECOVERY: If gamePhase is "playing" but ALL players in turnOrder have isComplete,
+  // force transition to "complete". Handles cases where advance RPC didn't transition phase.
+  const allCompleteRecoveryRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gamePhase !== "playing") return;
+    if (!currentRoundId || !gameId) return;
+    if (!turnOrder.length) return;
+
+    const playerStates = horsesState?.playerStates ?? {};
+    const allComplete = turnOrder.every(pid => playerStates[pid]?.isComplete);
+    if (!allComplete) return;
+
+    const key = `allcomplete:${currentRoundId}`;
+    if (allCompleteRecoveryRef.current === key) return;
+    allCompleteRecoveryRef.current = key;
+
+    console.warn("[HORSES] Desktop: All players complete but gamePhase still 'playing' - forcing complete");
+    
+    const forceComplete = async () => {
+      const { data: roundRow } = await supabase
+        .from("rounds")
+        .select("horses_state")
+        .eq("id", currentRoundId)
+        .single();
+
+      const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
+      if (!latestState) return;
+
+      await updateHorsesState(currentRoundId, {
+        ...latestState,
+        currentTurnPlayerId: null,
+        gamePhase: "complete",
+      });
+    };
+
+    const t = window.setTimeout(forceComplete, 2000);
+    return () => window.clearTimeout(t);
+  }, [gamePhase, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
+
   // Get username for player
   const getPlayerUsername = (player: Player) => {
     if (player.is_bot) {
