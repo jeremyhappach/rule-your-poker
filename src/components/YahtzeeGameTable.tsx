@@ -126,6 +126,10 @@ export function YahtzeeGameTable({
   const localRollKeyRef = useRef<number | undefined>(undefined);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
+  // Always track last non-zero dice for current turn player (used to cache for scoring transition)
+  const lastNonZeroDiceRef = useRef<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
+  // Track opponent scorecard to detect when a new category is scored remotely
+  const prevOpponentScorecardRef = useRef<Record<string, Record<string, number | undefined>>>({});
   const lastLocalEditAtRef = useRef<number>(0);
   const LOCAL_STATE_PROTECTION_MS = 2000;
   const FIRST_ROLL_MS = 1300;
@@ -153,7 +157,7 @@ export function YahtzeeGameTable({
   // Guard: prevent double-execution of handleGameComplete
   const gameCompleteProcessedRef = useRef(false);
   // Reset guard when a new round starts
-  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; }, [currentRoundId]);
+  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; lastNonZeroDiceRef.current = null; }, [currentRoundId]);
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
@@ -265,7 +269,79 @@ export function YahtzeeGameTable({
     }
   }, [yahtzeeState?.playerStates]);
 
-  /* ---- Roll ---- */
+  /* ---- Track opponent's last non-zero dice for caching during scoring ---- */
+  useEffect(() => {
+    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!ps) return;
+    const hasNonZero = ps.dice.some(d => d.value !== 0);
+    if (hasNonZero) {
+      lastNonZeroDiceRef.current = {
+        dice: ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld })),
+        rollKey: ps.rollKey,
+        playerId: currentTurnPlayerId,
+      };
+    }
+  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+
+  /* ---- Detect remote opponent scoring (new category appears in their scorecard) ---- */
+  useEffect(() => {
+    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!ps) return;
+
+    const prevScores = prevOpponentScorecardRef.current[currentTurnPlayerId] || {};
+    const currentScores = ps.scorecard.scores;
+
+    // Find newly scored category
+    const allCats = [...UPPER_CATEGORIES, ...LOWER_CATEGORIES] as YahtzeeCategory[];
+    let newCat: YahtzeeCategory | null = null;
+    for (const cat of allCats) {
+      if (currentScores[cat] !== undefined && prevScores[cat] === undefined) {
+        newCat = cat;
+        break;
+      }
+    }
+
+    // Always update tracked scorecard
+    prevOpponentScorecardRef.current[currentTurnPlayerId] = { ...currentScores };
+
+    if (newCat) {
+      // Opponent just scored this category — show highlight
+      setLastScoredCategory(newCat);
+      setLastScoredValue(currentScores[newCat]!);
+      setScoringInProgress(true);
+
+      // Use cached non-zero dice so they stay visible on felt
+      if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
+        setCachedOpponentDice(lastNonZeroDiceRef.current);
+      }
+
+      // Auto-clear after 2.5s (in case turn advance hasn't arrived yet)
+      const timer = setTimeout(() => {
+        setLastScoredCategory(null);
+        setLastScoredValue(null);
+        setScoringInProgress(false);
+        setCachedOpponentDice(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+
+  /* ---- Clear opponent scoring highlight when turn changes ---- */
+  useEffect(() => {
+    if (prevTurnRef.current && prevTurnRef.current !== currentTurnPlayerId) {
+      // Turn changed — clear any lingering opponent highlight
+      if (scoringInProgress && lastScoredCategory) {
+        setLastScoredCategory(null);
+        setLastScoredValue(null);
+        setScoringInProgress(false);
+        setCachedOpponentDice(null);
+      }
+    }
+    prevTurnRef.current = currentTurnPlayerId || null;
+  }, [currentTurnPlayerId]);
+
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasState: !!yahtzeeState, hasPlayer: !!myPlayer, rolling });
@@ -405,15 +481,19 @@ export function YahtzeeGameTable({
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
-    // Wait 2 seconds so the player can see their selection highlighted
-    await new Promise(r => setTimeout(r, 2000));
+    // Cache dice for opponent to see during scoring highlight (like bot logic)
+    const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+    setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
 
-    let newState = {
+    // FIRST WRITE: scored state only (no turn advance) — opponent sees category choice
+    let scoredState = {
       ...yahtzeeState,
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
     };
-    newState = advanceYahtzeeTurn(newState);
-    await updateYahtzeeState(currentRoundId, newState);
+    await updateYahtzeeState(currentRoundId, scoredState);
+
+    // Wait 2 seconds so both players can see the selection highlighted
+    await new Promise(r => setTimeout(r, 2000));
 
     // Keep optimistic score visible until DB subscription catches up
     setOptimisticScore({ playerId: myPlayer.id, category, value: pendingScore });
@@ -421,8 +501,13 @@ export function YahtzeeGameTable({
     setLastScoredCategory(null);
     setLastScoredValue(null);
     setScoringInProgress(false);
+    setCachedOpponentDice(null);
 
-    if (newState.gamePhase === 'complete') handleGameComplete(newState);
+    // SECOND WRITE: advance turn (opponent sees turn change after highlight)
+    const advancedState = advanceYahtzeeTurn(scoredState);
+    await updateYahtzeeState(currentRoundId, advancedState);
+
+    if (advancedState.gamePhase === 'complete') handleGameComplete(advancedState);
   }, [currentRoundId, yahtzeeState, myPlayer]);
 
   /* ---- Game complete ---- */
