@@ -49,6 +49,7 @@ export const AnteUpDialog = ({
   const isTriviaGame = gameType === 'sports-trivia';
   const isCribbageGame = gameType === 'cribbage';
   const isGinRummyGame = gameType === 'gin-rummy' || gameType === 'ginrummy';
+  const isYahtzeeGame = gameType === 'yahtzee';
   
   const getGameDisplayName = () => {
     if (isHolmGame) return 'Holm Game';
@@ -57,6 +58,7 @@ export const AnteUpDialog = ({
     if (isTriviaGame) return 'Sports Trivia';
     if (isCribbageGame) return 'Cribbage';
     if (isGinRummyGame) return 'Gin Rummy';
+    if (isYahtzeeGame) return 'Yahtzee';
     return '3-5-7';
   };
   const gameDisplayName = getGameDisplayName();
