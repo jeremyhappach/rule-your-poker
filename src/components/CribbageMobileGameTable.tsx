@@ -1210,9 +1210,49 @@ export const CribbageMobileGameTable = ({
     let lastSyncTimestamp: string | null = null;
     let isActive = true;
 
+    /**
+     * Compute a monotonic "progress" score for a cribbage state.
+     * Used to reject stale realtime/poll updates that are BEHIND
+     * the locally-optimistic state (e.g. after discard/play/go).
+     */
+    const getStateProgress = (state: CribbageState): number => {
+      const phaseOrder: Record<string, number> = {
+        'discarding': 0, 'cutting': 1, 'pegging': 2, 'counting': 3, 'complete': 4,
+      };
+      const phase = phaseOrder[state.phase] ?? 0;
+      const playedCards = state.pegging.playedCards.length;
+      const cribSize = state.crib.length;
+      // Count total discarded cards across all players
+      const totalDiscarded = Object.values(state.playerStates)
+        .reduce((sum, ps) => sum + (ps.discardedToCrib?.length ?? 0), 0);
+      const totalScore = Object.values(state.playerStates)
+        .reduce((sum, ps) => sum + (ps.pegScore ?? 0), 0);
+      // Weight phase heavily, then granular details
+      return phase * 100000 + playedCards * 1000 + totalDiscarded * 100 + cribSize * 10 + totalScore;
+    };
+
     // Handler for state updates (from realtime or polling)
     const handleStateUpdate = (newCribbageState: CribbageState, fromRealtime: boolean) => {
       if (!isActive) return;
+      
+      // CRITICAL: Reject stale updates that are BEHIND our current local state.
+      // After an optimistic write (discard/play/go), the realtime subscription or poll
+      // may deliver the pre-write state, causing cards to snap back and scores to flash.
+      // Only accept updates that represent equal or forward progress.
+      const timeSinceWrite = Date.now() - lastOptimisticWriteRef.current;
+      if (timeSinceWrite < 3000 && cribbageStateRef.current) {
+        const currentProgress = getStateProgress(cribbageStateRef.current);
+        const newProgress = getStateProgress(newCribbageState);
+        if (newProgress < currentProgress) {
+          console.log('[CRIBBAGE_SYNC] Rejected stale update', {
+            fromRealtime,
+            currentProgress,
+            newProgress,
+            timeSinceWrite,
+          });
+          return;
+        }
+      }
       
       setCribbageState(newCribbageState);
       
