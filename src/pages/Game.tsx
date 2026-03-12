@@ -2735,7 +2735,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // DEBUG: Log when rounds are unexpectedly empty during active game
   // Also trigger a refetch as safeguard
-  const roundsRefetchRef = useRef<NodeJS.Timeout | null>(null);
+  const roundsRefetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cribbageRoundBootstrapRef = useRef<string | null>(null);
   
   // REMOVED: The aggressive recovery refetch was causing race conditions
