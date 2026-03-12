@@ -8,7 +8,7 @@ import { isClientDeadlineEnforcementDisabled } from '@/lib/debugFlags';
  */
 export const useDeadlineEnforcer = (gameId: string | undefined, gameStatus: string | undefined) => {
   const lastCallRef = useRef<number>(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (isClientDeadlineEnforcementDisabled()) {

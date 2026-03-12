@@ -1884,7 +1884,7 @@ export const MobileGameTable = ({
   // This is similar to the Cribbage pattern - a short transition period ensures old cards disappear
   // before new cards are shown, avoiding the "switch" visual.
   const [isHandTransitioning, setIsHandTransitioning] = useState(false);
-  const handTransitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHandContextForTransitionRef = useRef<string | null>(null);
   
   useEffect(() => {

@@ -2922,7 +2922,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // CRITICAL: Healing poll for missing round/community cards/player cards in Holm games
   // When we're in_progress with a Holm game but have no community cards OR player cards, poll until we get them
-  const roundHealingRef = useRef<NodeJS.Timeout | null>(null);
+  const roundHealingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';

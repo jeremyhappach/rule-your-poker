@@ -14,7 +14,7 @@ interface TracerState {
   userId: string | null;
   gameId: string | null;
   buffer: TraceEntry[];
-  flushTimeout: NodeJS.Timeout | null;
+  flushTimeout: ReturnType<typeof setTimeout> | null;
 }
 
 const state: TracerState = {

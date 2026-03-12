@@ -28,7 +28,7 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
   const [renderTrigger, setRenderTrigger] = useState(0);
   
   const lastRevealedRef = useRef<number>(0);
-  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const isFirstMountRef = useRef<boolean>(true);
   
   const clearTimeouts = () => {

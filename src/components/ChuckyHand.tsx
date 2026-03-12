@@ -13,7 +13,7 @@ interface ChuckyHandProps {
 export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: ChuckyHandProps) => {
   const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set());
   const prevRevealedRef = useRef(revealed);
-  const flipTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const flipTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const cardsKeyRef = useRef(0);
   // Track the cards identity to detect true new hands vs prop fluctuations
   const cardsIdentityRef = useRef<string>('');

@@ -17,7 +17,7 @@ export const LegEarnedAnimation = ({ show, playerName, legValue = 0, targetPosit
   const animationCycleIdRef = useRef<string | null>(null);
   // Track if the current cycle has completed (prevents restart on prop flicker)
   const cycleCompletedRef = useRef(false);
-  const activeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const activeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Keep ref updated
   onCompleteRef.current = onComplete;
