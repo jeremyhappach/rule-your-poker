@@ -190,7 +190,7 @@ export const AnteUpDialog = ({
               </>
             )}
             
-            {!isHolmGame && !isHorsesGame && !isSCCGame && !isTriviaGame && !isCribbageGame && !isGinRummyGame && (
+            {!isHolmGame && !isHorsesGame && !isSCCGame && !isTriviaGame && !isCribbageGame && !isGinRummyGame && !isYahtzeeGame && (
               <>
                 <div className="font-semibold">Leg Value:</div>
                 <div className="text-right">${legValue}</div>
