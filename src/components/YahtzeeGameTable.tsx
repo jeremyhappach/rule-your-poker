@@ -409,15 +409,19 @@ export function YahtzeeGameTable({
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
-    // Wait 2 seconds so the player can see their selection highlighted
-    await new Promise(r => setTimeout(r, 2000));
+    // Cache dice for opponent to see during scoring highlight (like bot logic)
+    const diceForCache: HorsesDieType[] = myPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+    setCachedOpponentDice({ dice: diceForCache, rollKey: myPs.rollKey, playerId: myPlayer.id });
 
-    let newState = {
+    // FIRST WRITE: scored state only (no turn advance) — opponent sees category choice
+    let scoredState = {
       ...yahtzeeState,
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
     };
-    newState = advanceYahtzeeTurn(newState);
-    await updateYahtzeeState(currentRoundId, newState);
+    await updateYahtzeeState(currentRoundId, scoredState);
+
+    // Wait 2 seconds so both players can see the selection highlighted
+    await new Promise(r => setTimeout(r, 2000));
 
     // Keep optimistic score visible until DB subscription catches up
     setOptimisticScore({ playerId: myPlayer.id, category, value: pendingScore });
@@ -425,8 +429,13 @@ export function YahtzeeGameTable({
     setLastScoredCategory(null);
     setLastScoredValue(null);
     setScoringInProgress(false);
+    setCachedOpponentDice(null);
 
-    if (newState.gamePhase === 'complete') handleGameComplete(newState);
+    // SECOND WRITE: advance turn (opponent sees turn change after highlight)
+    const advancedState = advanceYahtzeeTurn(scoredState);
+    await updateYahtzeeState(currentRoundId, advancedState);
+
+    if (advancedState.gamePhase === 'complete') handleGameComplete(advancedState);
   }, [currentRoundId, yahtzeeState, myPlayer]);
 
   /* ---- Game complete ---- */
