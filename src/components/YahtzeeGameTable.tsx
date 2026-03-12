@@ -126,6 +126,10 @@ export function YahtzeeGameTable({
   const localRollKeyRef = useRef<number | undefined>(undefined);
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
+  // Always track last non-zero dice for current turn player (used to cache for scoring transition)
+  const lastNonZeroDiceRef = useRef<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
+  // Track opponent scorecard to detect when a new category is scored remotely
+  const prevOpponentScorecardRef = useRef<Record<string, Record<string, number | undefined>>>({});
   const lastLocalEditAtRef = useRef<number>(0);
   const LOCAL_STATE_PROTECTION_MS = 2000;
   const FIRST_ROLL_MS = 1300;
