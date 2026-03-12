@@ -689,8 +689,9 @@ export const GinRummyGameTable = ({
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
-      // On error, clear guard so polls can recover to real state
+       // On error, clear guard so polls can recover to real state
       optimisticUntilRef.current = 0;
+      optimisticSnapshotRef.current = null;
     } finally {
       setIsProcessing(false);
     }
