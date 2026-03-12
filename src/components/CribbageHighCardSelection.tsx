@@ -71,7 +71,7 @@ export const CribbageHighCardSelection = ({
   const [winnerPlayerId, setWinnerPlayerId] = useState<string | null>(null);
   const hasCompletedRef = useRef(false);
   const deckRef = useRef<CribbageCard[]>([]);
-  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const clearTimeouts = useCallback(() => {
     timeoutsRef.current.forEach(t => clearTimeout(t));

@@ -324,7 +324,7 @@ const Game = () => {
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track timer interval for cleanup
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
@@ -2735,7 +2735,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   
   // DEBUG: Log when rounds are unexpectedly empty during active game
   // Also trigger a refetch as safeguard
-  const roundsRefetchRef = useRef<NodeJS.Timeout | null>(null);
+  const roundsRefetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cribbageRoundBootstrapRef = useRef<string | null>(null);
   
   // REMOVED: The aggressive recovery refetch was causing race conditions
@@ -2922,7 +2922,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // CRITICAL: Healing poll for missing round/community cards/player cards in Holm games
   // When we're in_progress with a Holm game but have no community cards OR player cards, poll until we get them
-  const roundHealingRef = useRef<NodeJS.Timeout | null>(null);
+  const roundHealingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';

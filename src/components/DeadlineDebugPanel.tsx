@@ -59,7 +59,7 @@ export const DeadlineDebugPanel = ({ gameId, userId }: DeadlineDebugPanelProps) 
   const [snapshot, setSnapshot] = useState<DebugSnapshot | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchSnapshot = useCallback(async () => {
     if (!gameId) return;

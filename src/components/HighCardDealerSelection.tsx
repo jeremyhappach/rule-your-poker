@@ -69,7 +69,7 @@ export const HighCardDealerSelection = ({
   onWinnerPositionUpdate
 }: HighCardDealerSelectionProps) => {
   const hasInitializedRef = useRef(false);
-  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);

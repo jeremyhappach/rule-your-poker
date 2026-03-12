@@ -1273,7 +1273,7 @@ export const MobileGameTable = ({
   });
   // Track which handContextId the approved community cards belong to (prevents stale card flash)
   const [approvedHandContextId, setApprovedHandContextId] = useState<string | null>(null);
-  const communityCardsDelayRef = useRef<NodeJS.Timeout | null>(null);
+  const communityCardsDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastDetectedRoundRef = useRef<number | null>(
     isDealerConfigPhase ? null : (externalCommunityCardsCache?.current?.round || null)
   ); // Track which round we've detected (to prevent re-triggering)
@@ -1884,7 +1884,7 @@ export const MobileGameTable = ({
   // This is similar to the Cribbage pattern - a short transition period ensures old cards disappear
   // before new cards are shown, avoiding the "switch" visual.
   const [isHandTransitioning, setIsHandTransitioning] = useState(false);
-  const handTransitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const handTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHandContextForTransitionRef = useRef<string | null>(null);
   
   useEffect(() => {
