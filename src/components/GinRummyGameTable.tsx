@@ -665,9 +665,16 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
-    // Suppress realtime/poll overwrites for 1.5s so the optimistic state isn't clobbered
-    // (500ms was too short — DB write + poll round-trip often exceeds it, causing card hop)
-    optimisticUntilRef.current = Date.now() + 1500;
+     // Suppress realtime/poll overwrites for 2.5s (increased for slow connections)
+    optimisticUntilRef.current = Date.now() + 2500;
+    // Snapshot the expected state so we can detect stale updates granularly
+    const myHand = newState.playerStates[currentPlayerId]?.hand;
+    optimisticSnapshotRef.current = {
+      handSize: myHand?.length ?? 0,
+      discardLen: newState.discardPile?.length ?? 0,
+      turnPlayer: newState.currentTurnPlayerId ?? '',
+      phase: newState.phase,
+    };
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
