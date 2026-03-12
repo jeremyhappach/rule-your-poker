@@ -128,8 +128,9 @@ export const GinRummyGameTable = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
-  // Guard: suppress realtime/poll overwrites briefly after an optimistic local update
+   // Guard: suppress realtime/poll overwrites briefly after an optimistic local update
   const optimisticUntilRef = useRef<number>(0);
+  const optimisticSnapshotRef = useRef<{ handSize: number; discardLen: number; turnPlayer: string; phase: string } | null>(null);
   const [showKnockOverlay, setShowKnockOverlay] = useState(false);
   const [showGinOverlay, setShowGinOverlay] = useState(false);
 
