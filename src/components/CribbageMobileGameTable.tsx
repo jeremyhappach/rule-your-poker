@@ -335,6 +335,10 @@ export const CribbageMobileGameTable = ({
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
 
+  // Timestamp of the last optimistic write - used to reject stale realtime/poll updates
+  // that arrive before the server confirms our write, preventing card snap-back and score flicker.
+  const lastOptimisticWriteRef = useRef<number>(0);
+
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
   const winKeyFor = (winnerId: string) => `${gameId}:${dealerGameId ?? 'unknown-dealer'}:${winnerId}`;
