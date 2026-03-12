@@ -269,7 +269,73 @@ export function YahtzeeGameTable({
     }
   }, [yahtzeeState?.playerStates]);
 
-  /* ---- Roll ---- */
+  /* ---- Track opponent's last non-zero dice for caching during scoring ---- */
+  useEffect(() => {
+    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!ps) return;
+    const hasNonZero = ps.dice.some(d => d.value !== 0);
+    if (hasNonZero) {
+      lastNonZeroDiceRef.current = {
+        dice: ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld })),
+        rollKey: ps.rollKey,
+        playerId: currentTurnPlayerId,
+      };
+    }
+  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+
+  /* ---- Detect remote opponent scoring (new category appears in their scorecard) ---- */
+  useEffect(() => {
+    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!ps) return;
+
+    const prevScores = prevOpponentScorecardRef.current[currentTurnPlayerId] || {};
+    const currentScores = ps.scorecard.scores;
+
+    // Find newly scored category
+    const allCats = [...UPPER_CATEGORIES, ...LOWER_CATEGORIES] as YahtzeeCategory[];
+    for (const cat of allCats) {
+      if (currentScores[cat] !== undefined && prevScores[cat] === undefined) {
+        // Opponent just scored this category — show highlight
+        setLastScoredCategory(cat);
+        setLastScoredValue(currentScores[cat]!);
+        setScoringInProgress(true);
+
+        // Use cached non-zero dice so they stay visible on felt
+        if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
+          setCachedOpponentDice(lastNonZeroDiceRef.current);
+        }
+
+        // Auto-clear after 2.5s (in case turn advance hasn't arrived yet)
+        const timer = setTimeout(() => {
+          setLastScoredCategory(null);
+          setLastScoredValue(null);
+          setScoringInProgress(false);
+          setCachedOpponentDice(null);
+        }, 2500);
+        return () => clearTimeout(timer);
+      }
+    }
+
+    // Update tracked scorecard
+    prevOpponentScorecardRef.current[currentTurnPlayerId] = { ...currentScores };
+  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+
+  /* ---- Clear opponent scoring highlight when turn changes ---- */
+  useEffect(() => {
+    if (prevTurnRef.current && prevTurnRef.current !== currentTurnPlayerId) {
+      // Turn changed — clear any lingering opponent highlight
+      if (scoringInProgress && lastScoredCategory) {
+        setLastScoredCategory(null);
+        setLastScoredValue(null);
+        setScoringInProgress(false);
+        setCachedOpponentDice(null);
+      }
+    }
+    prevTurnRef.current = currentTurnPlayerId || null;
+  }, [currentTurnPlayerId]);
+
   const handleRoll = useCallback(async () => {
     if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
       console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasState: !!yahtzeeState, hasPlayer: !!myPlayer, rolling });
