@@ -295,31 +295,37 @@ export function YahtzeeGameTable({
 
     // Find newly scored category
     const allCats = [...UPPER_CATEGORIES, ...LOWER_CATEGORIES] as YahtzeeCategory[];
+    let newCat: YahtzeeCategory | null = null;
     for (const cat of allCats) {
       if (currentScores[cat] !== undefined && prevScores[cat] === undefined) {
-        // Opponent just scored this category — show highlight
-        setLastScoredCategory(cat);
-        setLastScoredValue(currentScores[cat]!);
-        setScoringInProgress(true);
-
-        // Use cached non-zero dice so they stay visible on felt
-        if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
-          setCachedOpponentDice(lastNonZeroDiceRef.current);
-        }
-
-        // Auto-clear after 2.5s (in case turn advance hasn't arrived yet)
-        const timer = setTimeout(() => {
-          setLastScoredCategory(null);
-          setLastScoredValue(null);
-          setScoringInProgress(false);
-          setCachedOpponentDice(null);
-        }, 2500);
-        return () => clearTimeout(timer);
+        newCat = cat;
+        break;
       }
     }
 
-    // Update tracked scorecard
+    // Always update tracked scorecard
     prevOpponentScorecardRef.current[currentTurnPlayerId] = { ...currentScores };
+
+    if (newCat) {
+      // Opponent just scored this category — show highlight
+      setLastScoredCategory(newCat);
+      setLastScoredValue(currentScores[newCat]!);
+      setScoringInProgress(true);
+
+      // Use cached non-zero dice so they stay visible on felt
+      if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
+        setCachedOpponentDice(lastNonZeroDiceRef.current);
+      }
+
+      // Auto-clear after 2.5s (in case turn advance hasn't arrived yet)
+      const timer = setTimeout(() => {
+        setLastScoredCategory(null);
+        setLastScoredValue(null);
+        setScoringInProgress(false);
+        setCachedOpponentDice(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
   }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
 
   /* ---- Clear opponent scoring highlight when turn changes ---- */
