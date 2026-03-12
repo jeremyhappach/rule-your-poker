@@ -324,7 +324,7 @@ const Game = () => {
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null); // Track timer interval for cleanup
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
