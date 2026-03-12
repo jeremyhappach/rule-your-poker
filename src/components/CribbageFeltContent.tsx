@@ -111,6 +111,7 @@ export const CribbageFeltContent = ({
           players={players}
           playerStates={cribbageState.playerStates}
           winningScore={cribbageState.pointsToWin}
+          overrideScores={countingScoreOverrides}
         />
       </div>
 
