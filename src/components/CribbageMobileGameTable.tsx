@@ -1508,6 +1508,12 @@ export const CribbageMobileGameTable = ({
   const updateState = async (newState: CribbageState) => {
     if (!currentRoundId) return;
     setIsProcessing(true);
+    
+    // Set optimistic state IMMEDIATELY and stamp the write time.
+    // This prevents stale realtime/poll updates from overwriting our local state.
+    setCribbageState(newState);
+    lastOptimisticWriteRef.current = Date.now();
+    
     try {
       const { error } = await supabase
         .from('rounds')
@@ -1515,10 +1521,21 @@ export const CribbageMobileGameTable = ({
         .eq('id', currentRoundId);
 
       if (error) throw error;
-      setCribbageState(newState);
+      // State already set optimistically above
     } catch (err) {
       console.error('[CRIBBAGE] Error updating state:', err);
       toast.error('Failed to update game state');
+      // On failure, force-refetch from DB to get authoritative state
+      try {
+        const { data } = await supabase
+          .from('rounds')
+          .select('cribbage_state')
+          .eq('id', currentRoundId)
+          .single();
+        if (data?.cribbage_state) {
+          setCribbageState(data.cribbage_state as unknown as CribbageState);
+        }
+      } catch { /* ignore refetch errors */ }
     } finally {
       setIsProcessing(false);
     }
