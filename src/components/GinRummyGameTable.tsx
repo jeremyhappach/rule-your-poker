@@ -248,18 +248,36 @@ export const GinRummyGameTable = ({
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
       // Skip stale realtime/poll updates that arrive right after an optimistic local update
-      // BUT allow through updates where the phase has advanced (bot acted after our pass)
-      if (Date.now() < optimisticUntilRef.current) {
-        const currentPhase = ginState?.phase;
+      // Compare granular state progress — not just phase — to catch H2H draw/discard staleness
+      if (Date.now() < optimisticUntilRef.current && optimisticSnapshotRef.current) {
+        const snap = optimisticSnapshotRef.current;
         const incomingPhase = state.phase;
-        const phaseAdvanced = currentPhase && incomingPhase && incomingPhase !== currentPhase;
+        const phaseAdvanced = snap.phase && incomingPhase !== snap.phase;
+        
         if (!phaseAdvanced) {
-          console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard)`);
-          return;
+          // Check if the incoming state is at least as progressed as what we wrote
+          const myHandSize = state.playerStates[currentPlayerId]?.hand?.length ?? 0;
+          const discardLen = state.discardPile?.length ?? 0;
+          const turnPlayer = state.currentTurnPlayerId ?? '';
+          
+          const handSizeRegressed = myHandSize !== snap.handSize && 
+            // After draw: hand should be bigger; after discard: hand should be smaller
+            // Just check if it differs from what we wrote — if same as snapshot, it's current
+            myHandSize !== snap.handSize;
+          const discardRegressed = discardLen !== snap.discardLen && discardLen < snap.discardLen;
+          const turnRegressed = snap.turnPlayer && turnPlayer !== snap.turnPlayer && turnPlayer !== state.currentTurnPlayerId;
+          
+          // If the incoming state doesn't match our optimistic snapshot, it's stale
+          const isStale = (myHandSize !== snap.handSize) || (discardLen !== snap.discardLen);
+          if (isStale) {
+            console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard: hand ${myHandSize} vs ${snap.handSize}, discard ${discardLen} vs ${snap.discardLen})`);
+            return;
+          }
         }
-        // Phase advanced — bot responded, clear the guard and let it through
+        // State matches or phase advanced — clear the guard and let it through
         optimisticUntilRef.current = 0;
-        console.log(`[GIN-RUMMY] Phase advanced (${currentPhase} → ${incomingPhase}), allowing ${source} update through optimistic guard`);
+        optimisticSnapshotRef.current = null;
+        console.log(`[GIN-RUMMY] Allowing ${source} update through optimistic guard`);
       }
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
