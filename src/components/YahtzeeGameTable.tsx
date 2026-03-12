@@ -157,7 +157,7 @@ export function YahtzeeGameTable({
   // Guard: prevent double-execution of handleGameComplete
   const gameCompleteProcessedRef = useRef(false);
   // Reset guard when a new round starts
-  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; }, [currentRoundId]);
+  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; lastNonZeroDiceRef.current = null; }, [currentRoundId]);
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
