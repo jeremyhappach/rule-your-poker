@@ -159,6 +159,53 @@ export function YahtzeeGameTable({
   // Reset guard when a new round starts
   useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; lastNonZeroDiceRef.current = null; }, [currentRoundId]);
 
+  /* ---- Fallback polling for opponent dice (guards against missed realtime events) ---- */
+  useEffect(() => {
+    if (!currentRoundId || gamePhase !== 'playing') return;
+    // Only poll when observing (not my turn)
+    if (isMyTurn) return;
+
+    let active = true;
+    let pollInterval = 2000;
+    let lastKnownUpdatedAt: string | null = null;
+
+    const poll = async () => {
+      if (!active) return;
+      try {
+        const { data } = await supabase
+          .from('rounds')
+          .select('yahtzee_state, updated_at')
+          .eq('id', currentRoundId)
+          .maybeSingle();
+
+        if (!active || !data?.yahtzee_state) {
+          pollInterval = Math.min(pollInterval * 1.5, 10000);
+          return;
+        }
+
+        // Only apply if data is newer than what we last saw
+        if (data.updated_at !== lastKnownUpdatedAt) {
+          lastKnownUpdatedAt = data.updated_at;
+          pollInterval = 2000; // reset on fresh data
+          // Trigger a refetch so parent state updates
+          onRefetch();
+        } else {
+          pollInterval = Math.min(pollInterval * 1.5, 10000);
+        }
+      } catch {
+        pollInterval = Math.min(pollInterval * 1.5, 10000);
+      }
+      if (active) timeoutId = setTimeout(poll, pollInterval);
+    };
+
+    let timeoutId = setTimeout(poll, pollInterval);
+
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+    };
+  }, [currentRoundId, gamePhase, isMyTurn, onRefetch]);
+
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
   // Track Yahtzee bonus counts per player to detect new bonuses
