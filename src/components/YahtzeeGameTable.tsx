@@ -160,34 +160,41 @@ export function YahtzeeGameTable({
   useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; lastNonZeroDiceRef.current = null; }, [currentRoundId]);
 
   /* ---- Fallback polling for opponent dice (guards against missed realtime events) ---- */
+  const pollActiveRef = useRef(false);
   useEffect(() => {
-    if (!currentRoundId || gamePhase !== 'playing') return;
-    // Only poll when observing (not my turn)
-    if (isMyTurn) return;
+    const phase = yahtzeeState?.gamePhase || 'waiting';
+    const turnPlayerId = yahtzeeState?.currentTurnPlayerId;
+    const myTurn = players.find(p => p.id === turnPlayerId)?.user_id === currentUserId && phase === 'playing';
 
+    if (!currentRoundId || phase !== 'playing' || myTurn) {
+      pollActiveRef.current = false;
+      return;
+    }
+
+    pollActiveRef.current = true;
     let active = true;
-    let pollInterval = 2000;
-    let lastKnownUpdatedAt: string | null = null;
+    let pollInterval = 2500;
+    let lastKnownJson: string | null = null;
 
     const poll = async () => {
       if (!active) return;
       try {
         const { data } = await supabase
           .from('rounds')
-          .select('yahtzee_state, updated_at')
+          .select('yahtzee_state')
           .eq('id', currentRoundId)
           .maybeSingle();
 
         if (!active || !data?.yahtzee_state) {
           pollInterval = Math.min(pollInterval * 1.5, 10000);
+          if (active) timeoutId = setTimeout(poll, pollInterval);
           return;
         }
 
-        // Only apply if data is newer than what we last saw
-        if (data.updated_at !== lastKnownUpdatedAt) {
-          lastKnownUpdatedAt = data.updated_at;
-          pollInterval = 2000; // reset on fresh data
-          // Trigger a refetch so parent state updates
+        const json = JSON.stringify(data.yahtzee_state);
+        if (json !== lastKnownJson) {
+          lastKnownJson = json;
+          pollInterval = 2500;
           onRefetch();
         } else {
           pollInterval = Math.min(pollInterval * 1.5, 10000);
@@ -204,7 +211,7 @@ export function YahtzeeGameTable({
       active = false;
       clearTimeout(timeoutId);
     };
-  }, [currentRoundId, gamePhase, isMyTurn, onRefetch]);
+  }, [currentRoundId, yahtzeeState?.gamePhase, yahtzeeState?.currentTurnPlayerId, currentUserId, onRefetch]);
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
