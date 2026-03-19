@@ -420,6 +420,7 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
+        yahtzeeSync.unfreezePresentation();
       }
     }
     prevTurnRef.current = currentTurnPlayerId || null;
