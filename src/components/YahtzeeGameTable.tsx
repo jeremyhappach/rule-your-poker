@@ -264,11 +264,11 @@ export function YahtzeeGameTable({
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
 
-  // Scores
+  // Scores — derived from viewState for render stability
   const allTotals = useMemo(() =>
-    Object.entries(yahtzeeState?.playerStates || {}).map(([pid, ps]) => ({
+    Object.entries(viewState?.playerStates || {}).map(([pid, ps]) => ({
       pid, total: getTotalScore(ps.scorecard),
-    })), [yahtzeeState?.playerStates]);
+    })), [viewState?.playerStates]);
   const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
 
   const rolling = uiRolling || isRolling;
