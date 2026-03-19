@@ -774,7 +774,7 @@ export const GinRummyGameTable = ({
       if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
       const newState = passFirstDraw(fresh, currentPlayerId);
       // Longer optimistic guard — bot needs 1-2s to decide after our pass
-      optimisticUntilRef.current = Date.now() + 2500;
+      // Optimistic guard handled by updateState → ginSync.applyOptimistic
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
