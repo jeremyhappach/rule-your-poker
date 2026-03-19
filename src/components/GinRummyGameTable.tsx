@@ -409,7 +409,7 @@ export const GinRummyGameTable = ({
             state = passFirstDraw(state, botId);
             // After pass, if turn moved to human, write and stop
             if (state.currentTurnPlayerId !== botId) {
-              optimisticUntilRef.current = Date.now() + 1200;
+              ginSync.applyOptimistic(state);
               await supabase
                 .from('rounds')
                 .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
