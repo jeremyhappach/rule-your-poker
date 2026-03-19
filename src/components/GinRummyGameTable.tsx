@@ -2,6 +2,7 @@
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
@@ -111,6 +112,21 @@ export const GinRummyGameTable = ({
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
+
+  // ── Shared anti-regression sync framework ──────────────────────
+  const ginSync = useGameStateSync<GinRummyState | null>(null, {
+    getProgress: (s) => s ? getGinRummyProgress(s) : [0, 0, 0, 0],
+    optimisticTimeoutMs: 3000,
+    isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+  });
+
+  // Feed ginState changes through the anti-regression gate
+  useEffect(() => {
+    if (ginState) {
+      ginSync.receiveAuthoritativeUpdate(ginState);
+    }
+  }, [ginState]);
+
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -128,9 +144,6 @@ export const GinRummyGameTable = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
-   // Guard: suppress realtime/poll overwrites briefly after an optimistic local update
-  const optimisticUntilRef = useRef<number>(0);
-  const optimisticSnapshotRef = useRef<{ handSize: number; discardLen: number; turnPlayer: string; phase: string } | null>(null);
   const [showKnockOverlay, setShowKnockOverlay] = useState(false);
   const [showGinOverlay, setShowGinOverlay] = useState(false);
 
@@ -247,38 +260,13 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
-      // Skip stale realtime/poll updates that arrive right after an optimistic local update
-      // Compare granular state progress — not just phase — to catch H2H draw/discard staleness
-      if (Date.now() < optimisticUntilRef.current && optimisticSnapshotRef.current) {
-        const snap = optimisticSnapshotRef.current;
-        const incomingPhase = state.phase;
-        const phaseAdvanced = snap.phase && incomingPhase !== snap.phase;
-        
-        if (!phaseAdvanced) {
-          // Check if the incoming state is at least as progressed as what we wrote
-          const myHandSize = state.playerStates[currentPlayerId]?.hand?.length ?? 0;
-          const discardLen = state.discardPile?.length ?? 0;
-          const turnPlayer = state.currentTurnPlayerId ?? '';
-          
-          const handSizeRegressed = myHandSize !== snap.handSize && 
-            // After draw: hand should be bigger; after discard: hand should be smaller
-            // Just check if it differs from what we wrote — if same as snapshot, it's current
-            myHandSize !== snap.handSize;
-          const discardRegressed = discardLen !== snap.discardLen && discardLen < snap.discardLen;
-          const turnRegressed = snap.turnPlayer && turnPlayer !== snap.turnPlayer && turnPlayer !== state.currentTurnPlayerId;
-          
-          // If the incoming state doesn't match our optimistic snapshot, it's stale
-          const isStale = (myHandSize !== snap.handSize) || (discardLen !== snap.discardLen);
-          if (isStale) {
-            console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard: hand ${myHandSize} vs ${snap.handSize}, discard ${discardLen} vs ${snap.discardLen})`);
-            return;
-          }
-        }
-        // State matches or phase advanced — clear the guard and let it through
-        optimisticUntilRef.current = 0;
-        optimisticSnapshotRef.current = null;
-        console.log(`[GIN-RUMMY] Allowing ${source} update through optimistic guard`);
-      }
+      // Use the shared sync framework's progress-vector gate instead of ad hoc timer
+      // The framework will reject regressive snapshots automatically via receiveAuthoritativeUpdate
+      console.log(`[GIN-RUMMY] State update from ${source}`, {
+        phase: state.phase,
+        turn: state.currentTurnPlayerId?.slice(0, 8),
+        firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
+      });
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
         turn: state.currentTurnPlayerId?.slice(0, 8),
@@ -421,7 +409,7 @@ export const GinRummyGameTable = ({
             state = passFirstDraw(state, botId);
             // After pass, if turn moved to human, write and stop
             if (state.currentTurnPlayerId !== botId) {
-              optimisticUntilRef.current = Date.now() + 1200;
+              ginSync.applyOptimistic(state);
               await supabase
                 .from('rounds')
                 .update({ gin_rummy_state: JSON.parse(JSON.stringify(state)) })
@@ -665,16 +653,8 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
-     // Suppress realtime/poll overwrites for 2.5s (increased for slow connections)
-    optimisticUntilRef.current = Date.now() + 2500;
-    // Snapshot the expected state so we can detect stale updates granularly
-    const myHand = newState.playerStates[currentPlayerId]?.hand;
-    optimisticSnapshotRef.current = {
-      handSize: myHand?.length ?? 0,
-      discardLen: newState.discardPile?.length ?? 0,
-      turnPlayer: newState.currentTurnPlayerId ?? '',
-      phase: newState.phase,
-    };
+    // Apply optimistic override — sync framework will reject stale realtime/poll updates
+    ginSync.applyOptimistic(newState);
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
@@ -683,15 +663,13 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      // Re-assert optimistic state after write succeeds so any poll that fires
-      // between now and guard expiry sees the correct state
+      // Re-assert optimistic state after write succeeds
       setGinState(newState);
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
-       // On error, clear guard so polls can recover to real state
-      optimisticUntilRef.current = 0;
-      optimisticSnapshotRef.current = null;
+      // On error, clear optimistic so polls can recover to real state
+      ginSync.clearOptimistic();
     } finally {
       setIsProcessing(false);
     }
@@ -752,7 +730,7 @@ export const GinRummyGameTable = ({
         setShowGinOverlay(true);
         // Write to DB so opponent sees gin phase and gets overlay too
         supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
-        optimisticUntilRef.current = Date.now() + 4000;
+        ginSync.applyOptimistic(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
         await updateState(newState);
         newState = scoreHand(newState);
@@ -763,7 +741,7 @@ export const GinRummyGameTable = ({
         setShowKnockOverlay(true);
         // Write to DB so opponent sees knocking phase and gets overlay too
         supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
-        optimisticUntilRef.current = Date.now() + 3300;
+        ginSync.applyOptimistic(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
         await updateState(newState);
       }
@@ -781,7 +759,7 @@ export const GinRummyGameTable = ({
       if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
       const newState = takeFirstDrawCard(fresh, currentPlayerId);
       // Longer optimistic guard — we're transitioning to discard phase, no bot race
-      optimisticUntilRef.current = Date.now() + 1500;
+      // Optimistic guard handled by updateState → ginSync.applyOptimistic
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
@@ -796,7 +774,7 @@ export const GinRummyGameTable = ({
       if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
       const newState = passFirstDraw(fresh, currentPlayerId);
       // Longer optimistic guard — bot needs 1-2s to decide after our pass
-      optimisticUntilRef.current = Date.now() + 2500;
+      // Optimistic guard handled by updateState → ginSync.applyOptimistic
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);

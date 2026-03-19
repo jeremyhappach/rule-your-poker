@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useGameStateSync, getYahtzeeProgress } from "@/lib/gameStateSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -112,6 +113,31 @@ export function YahtzeeGameTable({
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
 
+  // ── Shared anti-regression sync framework ──────────────────────
+  const yahtzeeSync = useGameStateSync<YahtzeeState>(
+    yahtzeeState ?? ({
+      currentTurnPlayerId: null,
+      playerStates: {},
+      gamePhase: 'waiting',
+      turnOrder: [],
+      currentRound: 0,
+    } as YahtzeeState),
+    {
+      getProgress: getYahtzeeProgress,
+      optimisticTimeoutMs: 3000,
+    },
+  );
+
+  // Feed incoming prop updates through the anti-regression gate
+  useEffect(() => {
+    if (yahtzeeState) {
+      yahtzeeSync.receiveAuthoritativeUpdate(yahtzeeState);
+    }
+  }, [yahtzeeState]);
+
+  // The state the UI should render — frozen during animations, anti-regressed
+  const stableYahtzeeState = yahtzeeSync.presentationState;
+
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
@@ -124,16 +150,12 @@ export function YahtzeeGameTable({
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
   const localRollKeyRef = useRef<number | undefined>(undefined);
+  // Track opponent scorecard to detect when a new category is scored remotely
+  const prevOpponentScorecardRef = useRef<Record<string, Record<string, number | undefined>>>({});
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
   const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
   // Always track last non-zero dice for current turn player (used to cache for scoring transition)
   const lastNonZeroDiceRef = useRef<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
-  // Track opponent scorecard to detect when a new category is scored remotely
-  const prevOpponentScorecardRef = useRef<Record<string, Record<string, number | undefined>>>({});
-  const lastLocalEditAtRef = useRef<number>(0);
-  const LOCAL_STATE_PROTECTION_MS = 2000;
-  const FIRST_ROLL_MS = 1300;
-  const ROLL_AGAIN_MS = 1800;
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Overlay states
@@ -157,7 +179,7 @@ export function YahtzeeGameTable({
   // Guard: prevent double-execution of handleGameComplete
   const gameCompleteProcessedRef = useRef(false);
   // Reset guard when a new round starts
-  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; lastNonZeroDiceRef.current = null; }, [currentRoundId]);
+  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [currentRoundId]);
 
   /* ---- Fallback polling for opponent dice (guards against missed realtime events) ---- */
   const pollActiveRef = useRef(false);
@@ -274,11 +296,14 @@ export function YahtzeeGameTable({
     };
   }, []);
 
-  /* ---- Sync local dice with DB ---- */
+  /* ---- Sync local dice with DB (gated by sync framework — no timer needed) ---- */
+  const FIRST_ROLL_MS = 1300;
+  const ROLL_AGAIN_MS = 1800;
   useEffect(() => {
-    if (!isMyTurn || !myPlayer || !yahtzeeState) return;
-    if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
-    const ps = yahtzeeState.playerStates[myPlayer.id];
+    if (!isMyTurn || !myPlayer || !stableYahtzeeState) return;
+    // If we have an active optimistic override, skip DB sync — framework handles it
+    if (yahtzeeSync.isOptimistic) return;
+    const ps = stableYahtzeeState.playerStates[myPlayer.id];
     if (!ps) return;
     // Preserve local hold state when syncing from DB to prevent held dice from resetting
     setLocalDice(prev => ps.dice.map((dbDie, i) => ({
@@ -286,7 +311,7 @@ export function YahtzeeGameTable({
       isHeld: prev[i]?.isHeld ?? dbDie.isHeld,
     })));
     setLocalRollsRemaining(ps.rollsRemaining);
-  }, [isMyTurn, myPlayer?.id, yahtzeeState?.playerStates, currentTurnPlayerId]);
+  }, [isMyTurn, myPlayer?.id, stableYahtzeeState?.playerStates, currentTurnPlayerId, yahtzeeSync.isOptimistic]);
 
   // Clear optimistic score once DB has caught up
   useEffect(() => {
@@ -366,6 +391,9 @@ export function YahtzeeGameTable({
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
 
+      // FREEZE presentation so dice don't disappear when DB resets them to zeros
+      yahtzeeSync.freezePresentation();
+
       // Use cached non-zero dice so they stay visible on felt
       if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
         setCachedOpponentDice(lastNonZeroDiceRef.current);
@@ -377,6 +405,7 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
+        yahtzeeSync.unfreezePresentation();
       }, 2500);
       return () => clearTimeout(timer);
     }
@@ -391,6 +420,7 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
+        yahtzeeSync.unfreezePresentation();
       }
     }
     prevTurnRef.current = currentTurnPlayerId || null;
@@ -413,7 +443,6 @@ export function YahtzeeGameTable({
     heldSnapshotRef.current = localDice.map(d => d.isHeld);
     const t = Date.now();
     localRollKeyRef.current = t;
-    lastLocalEditAtRef.current = t;
 
     // CRITICAL: Apply local hold state to the player state before rolling.
     // The DB state may be stale if the user toggled holds that haven't synced yet.
@@ -435,12 +464,15 @@ export function YahtzeeGameTable({
       setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
     }
 
+    // Freeze presentation during roll animation so observer doesn't see stale intermediate states
+    yahtzeeSync.freezePresentation();
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
     uiRollingTimerRef.current = window.setTimeout(() => {
       setUiRolling(false);
       heldSnapshotRef.current = null;
       uiRollingTimerRef.current = null;
+      yahtzeeSync.unfreezePresentation();
     }, duration);
 
     const newState = {
@@ -450,6 +482,8 @@ export function YahtzeeGameTable({
         [myPlayer.id]: { ...newPs, rollKey: t },
       },
     };
+    // Apply optimistic override — sync framework will reject stale DB updates until caught up
+    yahtzeeSync.applyOptimistic(newState);
     await updateYahtzeeState(currentRoundId, newState);
   }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, localDice]);
 
@@ -460,7 +494,7 @@ export function YahtzeeGameTable({
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
 
-    lastLocalEditAtRef.current = Date.now();
+    // Apply optimistic guard — the sync framework will reject stale DB hold states
     // Use functional updater so rapid taps always read latest local state
     setLocalDice(prev => {
       const updatedDice = prev.map((die, idx) => ({
