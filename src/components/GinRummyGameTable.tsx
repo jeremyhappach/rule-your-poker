@@ -976,7 +976,7 @@ export const GinRummyGameTable = ({
 
             {/* Knock Overlay — shown to all clients */}
             {showKnockOverlay && (() => {
-              const knockerEntry = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked);
+              const knockerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked);
               if (!knockerEntry) return null;
               const [knockerId, knockerState] = knockerEntry;
               return (
