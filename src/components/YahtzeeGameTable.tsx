@@ -464,12 +464,15 @@ export function YahtzeeGameTable({
       setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
     }
 
+    // Freeze presentation during roll animation so observer doesn't see stale intermediate states
+    yahtzeeSync.freezePresentation();
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
     uiRollingTimerRef.current = window.setTimeout(() => {
       setUiRolling(false);
       heldSnapshotRef.current = null;
       uiRollingTimerRef.current = null;
+      yahtzeeSync.unfreezePresentation();
     }, duration);
 
     const newState = {
