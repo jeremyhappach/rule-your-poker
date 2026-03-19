@@ -1179,7 +1179,7 @@ export const GinRummyGameTable = ({
         <div className="flex-1 overflow-hidden">
           {activeTab === 'cards' && currentPlayer && (
             <GinRummyMobileCardsTab
-              ginState={ginState}
+              ginState={viewState}
               currentPlayerId={currentPlayerId}
               isProcessing={isProcessing}
               onDrawStock={handleDrawStock}
