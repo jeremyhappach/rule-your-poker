@@ -438,7 +438,6 @@ export function YahtzeeGameTable({
     heldSnapshotRef.current = localDice.map(d => d.isHeld);
     const t = Date.now();
     localRollKeyRef.current = t;
-    lastLocalEditAtRef.current = t;
 
     // CRITICAL: Apply local hold state to the player state before rolling.
     // The DB state may be stale if the user toggled holds that haven't synced yet.
