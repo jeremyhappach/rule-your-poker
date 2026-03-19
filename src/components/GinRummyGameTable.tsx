@@ -1080,8 +1080,8 @@ export const GinRummyGameTable = ({
         {/* Dealer Announcements Area */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
-            if (ginState.phase === 'complete' && ginState.knockResult) {
-              const r = ginState.knockResult;
+            if (viewState.phase === 'complete' && viewState.knockResult) {
+              const r = viewState.knockResult;
               const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
               const bonus = r.isGin ? ` (${dwDiff} dw + 25 gin bonus)` :
                             r.isUndercut ? ` (${dwDiff} dw + 25 undercut bonus)` :
@@ -1095,7 +1095,7 @@ export const GinRummyGameTable = ({
               );
             }
 
-            if (ginState.phase === 'complete' && !ginState.knockResult) {
+            if (viewState.phase === 'complete' && !viewState.knockResult) {
               return (
                 <div className="w-full bg-muted/80 backdrop-blur-sm rounded-md px-3 py-1.5">
                   <p className="text-muted-foreground font-bold text-[11px] text-center">
@@ -1105,10 +1105,10 @@ export const GinRummyGameTable = ({
               );
             }
 
-            if (ginState.phase === 'knocking' || ginState.phase === 'laying_off') {
-              const knockerId = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
+            if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
+              const knockerId = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
               if (knockerId) {
-                const knockerState = ginState.playerStates[knockerId];
+                const knockerState = viewState.playerStates[knockerId];
                 const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
                 return (
                   <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
