@@ -137,6 +137,8 @@ export function YahtzeeGameTable({
 
   // The state the UI should render — frozen during animations, anti-regressed
   const stableYahtzeeState = yahtzeeSync.presentationState;
+  // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
+  const viewState = stableYahtzeeState;
 
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
