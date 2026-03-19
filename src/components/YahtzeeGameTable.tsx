@@ -474,6 +474,8 @@ export function YahtzeeGameTable({
         [myPlayer.id]: { ...newPs, rollKey: t },
       },
     };
+    // Apply optimistic override — sync framework will reject stale DB updates until caught up
+    yahtzeeSync.applyOptimistic(newState);
     await updateYahtzeeState(currentRoundId, newState);
   }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, localDice]);
 
