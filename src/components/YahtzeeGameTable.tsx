@@ -1081,7 +1081,7 @@ export function YahtzeeGameTable({
           {gamePhase === 'playing' && (
             <div className="flex gap-4 mt-0.5">
               {activePlayers.map(p => {
-                const ps = yahtzeeState?.playerStates?.[p.id];
+                const ps = viewState?.playerStates?.[p.id];
                 const total = ps ? getTotalScore(ps.scorecard) : 0;
                 const isTurn = p.id === currentTurnPlayerId;
                 return (
