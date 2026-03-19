@@ -741,7 +741,7 @@ export const GinRummyGameTable = ({
         setShowKnockOverlay(true);
         // Write to DB so opponent sees knocking phase and gets overlay too
         supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
-        optimisticUntilRef.current = Date.now() + 3300;
+        ginSync.applyOptimistic(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
         await updateState(newState);
       }
