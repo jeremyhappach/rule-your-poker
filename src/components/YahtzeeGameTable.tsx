@@ -292,11 +292,14 @@ export function YahtzeeGameTable({
     };
   }, []);
 
-  /* ---- Sync local dice with DB ---- */
+  /* ---- Sync local dice with DB (gated by sync framework — no timer needed) ---- */
+  const FIRST_ROLL_MS = 1300;
+  const ROLL_AGAIN_MS = 1800;
   useEffect(() => {
-    if (!isMyTurn || !myPlayer || !yahtzeeState) return;
-    if (Date.now() - lastLocalEditAtRef.current < LOCAL_STATE_PROTECTION_MS) return;
-    const ps = yahtzeeState.playerStates[myPlayer.id];
+    if (!isMyTurn || !myPlayer || !stableYahtzeeState) return;
+    // If we have an active optimistic override, skip DB sync — framework handles it
+    if (yahtzeeSync.isOptimistic) return;
+    const ps = stableYahtzeeState.playerStates[myPlayer.id];
     if (!ps) return;
     // Preserve local hold state when syncing from DB to prevent held dice from resetting
     setLocalDice(prev => ps.dice.map((dbDie, i) => ({
@@ -304,7 +307,7 @@ export function YahtzeeGameTable({
       isHeld: prev[i]?.isHeld ?? dbDie.isHeld,
     })));
     setLocalRollsRemaining(ps.rollsRemaining);
-  }, [isMyTurn, myPlayer?.id, yahtzeeState?.playerStates, currentTurnPlayerId]);
+  }, [isMyTurn, myPlayer?.id, stableYahtzeeState?.playerStates, currentTurnPlayerId, yahtzeeSync.isOptimistic]);
 
   // Clear optimistic score once DB has caught up
   useEffect(() => {
