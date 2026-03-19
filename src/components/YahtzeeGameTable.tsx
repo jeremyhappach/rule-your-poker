@@ -982,7 +982,7 @@ export function YahtzeeGameTable({
   };
 
   /* ---- Loading ---- */
-  if (!yahtzeeState || !currentRoundId) {
+  if (!viewState || !currentRoundId) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-poker-gold animate-pulse text-lg font-bold">Loading Yahtzee...</p>
