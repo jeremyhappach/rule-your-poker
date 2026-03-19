@@ -821,7 +821,7 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
-  if (!ginState || !currentPlayerId || !currentPlayer) {
+  if (!viewState || !currentPlayerId || !currentPlayer) {
     // During ante_decision (no roundId), show the table felt with "Awaiting ante" banner
     // instead of a generic "Loading..." that confuses users for 7-10 seconds
     const isAwaitingAnte = !roundId;
