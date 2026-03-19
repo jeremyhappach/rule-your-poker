@@ -486,7 +486,7 @@ export function YahtzeeGameTable({
     const myPs = yahtzeeState.playerStates[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.rollsRemaining === 0) return;
 
-    lastLocalEditAtRef.current = Date.now();
+    // Apply optimistic guard — the sync framework will reject stale DB hold states
     // Use functional updater so rapid taps always read latest local state
     setLocalDice(prev => {
       const updatedDice = prev.map((die, idx) => ({
