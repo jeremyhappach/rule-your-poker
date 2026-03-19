@@ -260,38 +260,13 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
-      // Skip stale realtime/poll updates that arrive right after an optimistic local update
-      // Compare granular state progress — not just phase — to catch H2H draw/discard staleness
-      if (Date.now() < optimisticUntilRef.current && optimisticSnapshotRef.current) {
-        const snap = optimisticSnapshotRef.current;
-        const incomingPhase = state.phase;
-        const phaseAdvanced = snap.phase && incomingPhase !== snap.phase;
-        
-        if (!phaseAdvanced) {
-          // Check if the incoming state is at least as progressed as what we wrote
-          const myHandSize = state.playerStates[currentPlayerId]?.hand?.length ?? 0;
-          const discardLen = state.discardPile?.length ?? 0;
-          const turnPlayer = state.currentTurnPlayerId ?? '';
-          
-          const handSizeRegressed = myHandSize !== snap.handSize && 
-            // After draw: hand should be bigger; after discard: hand should be smaller
-            // Just check if it differs from what we wrote — if same as snapshot, it's current
-            myHandSize !== snap.handSize;
-          const discardRegressed = discardLen !== snap.discardLen && discardLen < snap.discardLen;
-          const turnRegressed = snap.turnPlayer && turnPlayer !== snap.turnPlayer && turnPlayer !== state.currentTurnPlayerId;
-          
-          // If the incoming state doesn't match our optimistic snapshot, it's stale
-          const isStale = (myHandSize !== snap.handSize) || (discardLen !== snap.discardLen);
-          if (isStale) {
-            console.log(`[GIN-RUMMY] Suppressed ${source} update (optimistic guard: hand ${myHandSize} vs ${snap.handSize}, discard ${discardLen} vs ${snap.discardLen})`);
-            return;
-          }
-        }
-        // State matches or phase advanced — clear the guard and let it through
-        optimisticUntilRef.current = 0;
-        optimisticSnapshotRef.current = null;
-        console.log(`[GIN-RUMMY] Allowing ${source} update through optimistic guard`);
-      }
+      // Use the shared sync framework's progress-vector gate instead of ad hoc timer
+      // The framework will reject regressive snapshots automatically via receiveAuthoritativeUpdate
+      console.log(`[GIN-RUMMY] State update from ${source}`, {
+        phase: state.phase,
+        turn: state.currentTurnPlayerId?.slice(0, 8),
+        firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
+      });
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
         turn: state.currentTurnPlayerId?.slice(0, 8),
