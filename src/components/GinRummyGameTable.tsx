@@ -210,7 +210,7 @@ export const GinRummyGameTable = ({
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
 
-  // Detect opponent draw actions and trigger animation
+  // Detect opponent draw actions and trigger animation + freeze presentation
   useEffect(() => {
     if (!ginState || !currentPlayerId) return;
     const action = ginState.lastAction;
@@ -226,11 +226,16 @@ export const GinRummyGameTable = ({
       setOpponentDrawCard(null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
+      // Freeze presentation during opponent draw animation to prevent hand-count flicker
+      ginSync.freezePresentation();
+      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     } else if (action.type === 'draw_discard') {
       setOpponentDrawSource('discard');
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
+      ginSync.freezePresentation();
+      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     }
   }, [ginState?.lastAction, currentPlayerId]);
 
