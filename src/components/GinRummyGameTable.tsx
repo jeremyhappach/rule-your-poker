@@ -958,9 +958,9 @@ export const GinRummyGameTable = ({
             />
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
-            {(ginState.phase === 'knocking' || ginState.phase === 'laying_off' || ginState.phase === 'scoring' || (ginState.phase === 'complete' && !!ginState.knockResult)) && (
+            {(viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
               <GinRummyKnockDisplay
-                ginState={ginState}
+                ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
                 currentPlayerId={currentPlayerId}
                 layOffSelectedCardIndex={layOffSelectedCardIndex}
