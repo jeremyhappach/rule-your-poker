@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useGameStateSync, getYahtzeeProgress } from "@/lib/gameStateSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {

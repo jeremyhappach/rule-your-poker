@@ -2,6 +2,7 @@
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
