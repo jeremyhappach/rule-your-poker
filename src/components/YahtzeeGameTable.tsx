@@ -769,10 +769,10 @@ export function YahtzeeGameTable({
     };
   }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase]);
 
-  /* ---- Felt dice for observer view ---- */
+  /* ---- Felt dice for observer view — reads from viewState (presentation layer) ---- */
   const getCurrentTurnDice = useCallback(() => {
-    if (!currentTurnPlayerId || !yahtzeeState) return null;
-    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!currentTurnPlayerId || !viewState) return null;
+    const ps = viewState.playerStates[currentTurnPlayerId];
     if (!ps) return null;
     // Preserve each die's actual isHeld state so dice stay where the player left them
     // (held dice in held row, rolled dice in scatter) while they choose a category.
@@ -781,7 +781,7 @@ export function YahtzeeGameTable({
       isHeld: d.isHeld,
     }));
     return { dice: dice as HorsesDieType[], rollKey: ps.rollKey };
-  }, [currentTurnPlayerId, yahtzeeState]);
+  }, [currentTurnPlayerId, viewState]);
 
   /* ---- Animation origin ---- */
   const getDiceAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
