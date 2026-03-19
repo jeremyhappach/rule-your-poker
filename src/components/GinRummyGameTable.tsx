@@ -817,8 +817,8 @@ export const GinRummyGameTable = ({
   };
 
   const isCribDealer = (playerId: string | undefined) => {
-    if (!ginState || !playerId) return false;
-    return ginState.dealerPlayerId === playerId;
+    if (!viewState || !playerId) return false;
+    return viewState.dealerPlayerId === playerId;
   };
 
   if (!ginState || !currentPlayerId || !currentPlayer) {
