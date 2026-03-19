@@ -882,7 +882,7 @@ export const GinRummyGameTable = ({
     );
   }
 
-  const opponentState = ginState.playerStates[opponentId];
+  const opponentState = viewState.playerStates[opponentId];
 
   return (
     <div className="h-full flex flex-col">
