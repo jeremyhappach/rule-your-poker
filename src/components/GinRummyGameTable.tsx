@@ -1058,7 +1058,7 @@ export const GinRummyGameTable = ({
             )}
 
                 {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
-                {opponent && opponentState && opponentState.hand.length > 0 && ginState.phase !== 'knocking' && ginState.phase !== 'laying_off' && ginState.phase !== 'scoring' && !(ginState.phase === 'complete' && ginState.knockResult) && (
+                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (
                   <div className="absolute top-14 left-6 mt-[58px] flex -space-x-3">
                     {opponentState.hand.map((_, i) => (
                       <div
