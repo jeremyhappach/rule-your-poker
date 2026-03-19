@@ -1005,9 +1005,9 @@ export const GinRummyGameTable = ({
             })()}
 
             {/* Match Winner Celebration */}
-            {ginState.phase === 'complete' && ginState.winnerPlayerId && (
+            {viewState.phase === 'complete' && viewState.winnerPlayerId && (
               <GinRummyMatchWinner
-                ginState={ginState}
+                ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
               />
             )}
