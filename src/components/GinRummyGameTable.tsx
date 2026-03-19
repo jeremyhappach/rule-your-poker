@@ -932,7 +932,7 @@ export const GinRummyGameTable = ({
             {/* Game Title */}
             <div className="absolute top-3 left-0 right-0 z-20 flex items-center justify-center">
               <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({ginState.pointsToWin})</span>
+                ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({viewState.pointsToWin})</span>
               </h2>
             </div>
 
