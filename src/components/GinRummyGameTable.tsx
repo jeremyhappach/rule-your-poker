@@ -161,10 +161,11 @@ export const GinRummyGameTable = ({
   const currentPlayerId = currentPlayer?.id;
 
   // Derive opponent
-  const opponentId = ginState
-    ? (currentPlayerId === ginState.dealerPlayerId
-      ? ginState.nonDealerPlayerId
-      : ginState.dealerPlayerId)
+  // Derive opponent from viewState (render-stable)
+  const opponentId = viewState
+    ? (currentPlayerId === viewState.dealerPlayerId
+      ? viewState.nonDealerPlayerId
+      : viewState.dealerPlayerId)
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
