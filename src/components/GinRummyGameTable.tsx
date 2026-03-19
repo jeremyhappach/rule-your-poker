@@ -271,11 +271,6 @@ export const GinRummyGameTable = ({
         turn: state.currentTurnPlayerId?.slice(0, 8),
         firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
       });
-      console.log(`[GIN-RUMMY] State update from ${source}`, {
-        phase: state.phase,
-        turn: state.currentTurnPlayerId?.slice(0, 8),
-        firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
-      });
       setGinState(state);
       if (state.phase === 'complete' && state.winnerPlayerId) {
         onGameCompleteRef.current();
