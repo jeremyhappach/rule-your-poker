@@ -1414,7 +1414,7 @@ export function YahtzeeGameTable({
         {activeTab === 'lobby' && (
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {activePlayers.map(player => {
-              const ps = yahtzeeState.playerStates[player.id];
+              const ps = viewState.playerStates[player.id];
               const total = ps ? getTotalScore(ps.scorecard) : 0;
               return (
                 <div key={player.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
