@@ -653,16 +653,8 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
-     // Suppress realtime/poll overwrites for 2.5s (increased for slow connections)
-    optimisticUntilRef.current = Date.now() + 2500;
-    // Snapshot the expected state so we can detect stale updates granularly
-    const myHand = newState.playerStates[currentPlayerId]?.hand;
-    optimisticSnapshotRef.current = {
-      handSize: myHand?.length ?? 0,
-      discardLen: newState.discardPile?.length ?? 0,
-      turnPlayer: newState.currentTurnPlayerId ?? '',
-      phase: newState.phase,
-    };
+    // Apply optimistic override — sync framework will reject stale realtime/poll updates
+    ginSync.applyOptimistic(newState);
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
@@ -671,15 +663,13 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      // Re-assert optimistic state after write succeeds so any poll that fires
-      // between now and guard expiry sees the correct state
+      // Re-assert optimistic state after write succeeds
       setGinState(newState);
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
-       // On error, clear guard so polls can recover to real state
-      optimisticUntilRef.current = 0;
-      optimisticSnapshotRef.current = null;
+      // On error, clear optimistic so polls can recover to real state
+      ginSync.clearOptimistic();
     } finally {
       setIsProcessing(false);
     }
