@@ -794,8 +794,9 @@ export function YahtzeeGameTable({
   }, [currentPlayer, activePlayers]);
 
   /* ---- Scorecard renderer ---- */
+  /* ---- Scorecard renderer — reads from viewState for visual stability ---- */
   const renderScorecard = (playerId: string, isInteractive: boolean) => {
-    const ps = yahtzeeState?.playerStates?.[playerId];
+    const ps = viewState?.playerStates?.[playerId];
     if (!ps) return null;
 
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
