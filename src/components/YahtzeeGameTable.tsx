@@ -249,8 +249,9 @@ export function YahtzeeGameTable({
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
-  const gamePhase = yahtzeeState?.gamePhase || 'waiting';
-  const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
+  // Render-facing derived values use viewState (presentationState) for visual stability
+  const gamePhase = viewState?.gamePhase || 'waiting';
+  const currentTurnPlayerId = viewState?.currentTurnPlayerId;
 
   // Direct turn usage — no ready-gate. Scoring + turn advance are atomic writes,
   // so there is no intermediate state to cause flicker.
@@ -258,7 +259,7 @@ export function YahtzeeGameTable({
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
   const myPlayer = players.find(p => p.user_id === currentUserId);
-  const currentTurnState = stableTurnPlayerId ? yahtzeeState?.playerStates?.[stableTurnPlayerId] : null;
+  const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
 
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
