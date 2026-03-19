@@ -127,6 +127,9 @@ export const GinRummyGameTable = ({
     }
   }, [ginState]);
 
+  // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
+  const viewState = ginSync.presentationState;
+
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
