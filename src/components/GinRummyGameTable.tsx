@@ -112,6 +112,21 @@ export const GinRummyGameTable = ({
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
+
+  // ── Shared anti-regression sync framework ──────────────────────
+  const ginSync = useGameStateSync<GinRummyState | null>(null, {
+    getProgress: (s) => s ? getGinRummyProgress(s) : [0, 0, 0, 0],
+    optimisticTimeoutMs: 3000,
+    isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+  });
+
+  // Feed ginState changes through the anti-regression gate
+  useEffect(() => {
+    if (ginState) {
+      ginSync.receiveAuthoritativeUpdate(ginState);
+    }
+  }, [ginState]);
+
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -129,9 +144,6 @@ export const GinRummyGameTable = ({
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
-   // Guard: suppress realtime/poll overwrites briefly after an optimistic local update
-  const optimisticUntilRef = useRef<number>(0);
-  const optimisticSnapshotRef = useRef<{ handSize: number; discardLen: number; turnPlayer: string; phase: string } | null>(null);
   const [showKnockOverlay, setShowKnockOverlay] = useState(false);
   const [showGinOverlay, setShowGinOverlay] = useState(false);
 
