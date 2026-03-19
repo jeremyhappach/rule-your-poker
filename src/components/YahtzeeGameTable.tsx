@@ -934,7 +934,7 @@ export function YahtzeeGameTable({
   const renderPlayerChip = (player: Player, compact = false) => {
     const isTheirTurn = player.id === currentTurnPlayerId && gamePhase === 'playing';
     const isMe = player.user_id === currentUserId;
-    const ps = yahtzeeState?.playerStates?.[player.id];
+    const ps = viewState?.playerStates?.[player.id];
     const total = ps ? getTotalScore(ps.scorecard) : 0;
     const isWinning = total > 0 && total === maxTotal && gamePhase === 'complete';
 
