@@ -759,7 +759,7 @@ export const GinRummyGameTable = ({
       if (!fresh || fresh.phase !== 'first_draw' || fresh.firstDrawOfferedTo !== currentPlayerId) return;
       const newState = takeFirstDrawCard(fresh, currentPlayerId);
       // Longer optimistic guard — we're transitioning to discard phase, no bot race
-      optimisticUntilRef.current = Date.now() + 1500;
+      // Optimistic guard handled by updateState → ginSync.applyOptimistic
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
