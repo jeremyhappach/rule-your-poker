@@ -938,13 +938,13 @@ export const GinRummyGameTable = ({
 
             {/* Felt Content */}
             <GinRummyFeltContent
-              ginState={ginState}
+              ginState={viewState}
               currentPlayerId={currentPlayerId}
               opponentId={opponentId}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               onDrawStock={handleDrawStock}
-              onDrawDiscard={ginState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
+              onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
               isProcessing={isProcessing}
             />
 
