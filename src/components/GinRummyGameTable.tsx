@@ -730,7 +730,7 @@ export const GinRummyGameTable = ({
         setShowGinOverlay(true);
         // Write to DB so opponent sees gin phase and gets overlay too
         supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
-        optimisticUntilRef.current = Date.now() + 4000;
+        ginSync.applyOptimistic(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
         await updateState(newState);
         newState = scoreHand(newState);
