@@ -1358,7 +1358,7 @@ export function YahtzeeGameTable({
                   if (!oppPlayer) return null;
                   const diceState = getCurrentTurnDice();
                   const hasRolled = diceState?.dice.some(d => d.value !== 0);
-                  const oppPs = yahtzeeState?.playerStates?.[currentTurnPlayerId];
+                  const oppPs = viewState?.playerStates?.[currentTurnPlayerId];
                   const rollsLeft = oppPs?.rollsRemaining ?? 3;
                   const statusText = !hasRolled || rollsLeft === 3
                     ? `${getPlayerUsername(oppPlayer)} is rolling...`
