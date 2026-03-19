@@ -391,6 +391,9 @@ export function YahtzeeGameTable({
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
 
+      // FREEZE presentation so dice don't disappear when DB resets them to zeros
+      yahtzeeSync.freezePresentation();
+
       // Use cached non-zero dice so they stay visible on felt
       if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
         setCachedOpponentDice(lastNonZeroDiceRef.current);
@@ -402,6 +405,7 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
+        yahtzeeSync.unfreezePresentation();
       }, 2500);
       return () => clearTimeout(timer);
     }
