@@ -1242,7 +1242,7 @@ export function YahtzeeGameTable({
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
                 {(() => {
-                  const results = Object.entries(yahtzeeState?.playerStates || {})
+                  const results = Object.entries(viewState?.playerStates || {})
                     .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
                     .sort((a, b) => b.total - a.total);
                   if (results.length === 0) return 'Game Complete!';
