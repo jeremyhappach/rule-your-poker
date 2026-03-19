@@ -127,6 +127,9 @@ export const GinRummyGameTable = ({
     }
   }, [ginState]);
 
+  // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
+  const viewState = ginSync.presentationState;
+
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -158,10 +161,11 @@ export const GinRummyGameTable = ({
   const currentPlayerId = currentPlayer?.id;
 
   // Derive opponent
-  const opponentId = ginState
-    ? (currentPlayerId === ginState.dealerPlayerId
-      ? ginState.nonDealerPlayerId
-      : ginState.dealerPlayerId)
+  // Derive opponent from viewState (render-stable)
+  const opponentId = viewState
+    ? (currentPlayerId === viewState.dealerPlayerId
+      ? viewState.nonDealerPlayerId
+      : viewState.dealerPlayerId)
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
@@ -206,7 +210,7 @@ export const GinRummyGameTable = ({
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
 
-  // Detect opponent draw actions and trigger animation
+  // Detect opponent draw actions and trigger animation + freeze presentation
   useEffect(() => {
     if (!ginState || !currentPlayerId) return;
     const action = ginState.lastAction;
@@ -222,11 +226,16 @@ export const GinRummyGameTable = ({
       setOpponentDrawCard(null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
+      // Freeze presentation during opponent draw animation to prevent hand-count flicker
+      ginSync.freezePresentation();
+      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     } else if (action.type === 'draw_discard') {
       setOpponentDrawSource('discard');
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
+      ginSync.freezePresentation();
+      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     }
   }, [ginState?.lastAction, currentPlayerId]);
 
@@ -262,11 +271,6 @@ export const GinRummyGameTable = ({
       if (!isActive) return;
       // Use the shared sync framework's progress-vector gate instead of ad hoc timer
       // The framework will reject regressive snapshots automatically via receiveAuthoritativeUpdate
-      console.log(`[GIN-RUMMY] State update from ${source}`, {
-        phase: state.phase,
-        turn: state.currentTurnPlayerId?.slice(0, 8),
-        firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
-      });
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
         turn: state.currentTurnPlayerId?.slice(0, 8),
@@ -813,11 +817,11 @@ export const GinRummyGameTable = ({
   };
 
   const isCribDealer = (playerId: string | undefined) => {
-    if (!ginState || !playerId) return false;
-    return ginState.dealerPlayerId === playerId;
+    if (!viewState || !playerId) return false;
+    return viewState.dealerPlayerId === playerId;
   };
 
-  if (!ginState || !currentPlayerId || !currentPlayer) {
+  if (!viewState || !currentPlayerId || !currentPlayer) {
     // During ante_decision (no roundId), show the table felt with "Awaiting ante" banner
     // instead of a generic "Loading..." that confuses users for 7-10 seconds
     const isAwaitingAnte = !roundId;
@@ -878,7 +882,7 @@ export const GinRummyGameTable = ({
     );
   }
 
-  const opponentState = ginState.playerStates[opponentId];
+  const opponentState = viewState.playerStates[opponentId];
 
   return (
     <div className="h-full flex flex-col">
@@ -928,19 +932,19 @@ export const GinRummyGameTable = ({
             {/* Game Title */}
             <div className="absolute top-3 left-0 right-0 z-20 flex items-center justify-center">
               <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({ginState.pointsToWin})</span>
+                ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({viewState.pointsToWin})</span>
               </h2>
             </div>
 
             {/* Felt Content */}
             <GinRummyFeltContent
-              ginState={ginState}
+              ginState={viewState}
               currentPlayerId={currentPlayerId}
               opponentId={opponentId}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               onDrawStock={handleDrawStock}
-              onDrawDiscard={ginState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
+              onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
               isProcessing={isProcessing}
             />
 
@@ -954,9 +958,9 @@ export const GinRummyGameTable = ({
             />
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
-            {(ginState.phase === 'knocking' || ginState.phase === 'laying_off' || ginState.phase === 'scoring' || (ginState.phase === 'complete' && !!ginState.knockResult)) && (
+            {(viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
               <GinRummyKnockDisplay
-                ginState={ginState}
+                ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
                 currentPlayerId={currentPlayerId}
                 layOffSelectedCardIndex={layOffSelectedCardIndex}
@@ -972,7 +976,7 @@ export const GinRummyGameTable = ({
 
             {/* Knock Overlay — shown to all clients */}
             {showKnockOverlay && (() => {
-              const knockerEntry = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked);
+              const knockerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked);
               if (!knockerEntry) return null;
               const [knockerId, knockerState] = knockerEntry;
               return (
@@ -986,11 +990,11 @@ export const GinRummyGameTable = ({
 
             {/* Gin Overlay — cool blue with record scratch */}
             {showGinOverlay && (() => {
-              const ginnerEntry = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasGin);
+              const ginnerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasGin);
               const winnerId = ginnerEntry?.[0]
-                || ginState.knockResult?.winnerId
-                || (ginState.lastAction?.type === 'gin' ? ginState.lastAction.playerId : '')
-                || ginState.currentTurnPlayerId
+                || viewState.knockResult?.winnerId
+                || (viewState.lastAction?.type === 'gin' ? viewState.lastAction.playerId : '')
+                || viewState.currentTurnPlayerId
                 || '';
               return (
                 <GinRummyGinOverlay
@@ -1001,9 +1005,9 @@ export const GinRummyGameTable = ({
             })()}
 
             {/* Match Winner Celebration */}
-            {ginState.phase === 'complete' && ginState.winnerPlayerId && (
+            {viewState.phase === 'complete' && viewState.winnerPlayerId && (
               <GinRummyMatchWinner
-                ginState={ginState}
+                ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
               />
             )}
@@ -1019,7 +1023,7 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
-            {isCribDealer(currentPlayerId) && ginState.phase === 'playing' && (
+            {isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                 <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-[10px]">D</span>
@@ -1054,7 +1058,7 @@ export const GinRummyGameTable = ({
             )}
 
                 {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
-                {opponent && opponentState && opponentState.hand.length > 0 && ginState.phase !== 'knocking' && ginState.phase !== 'laying_off' && ginState.phase !== 'scoring' && !(ginState.phase === 'complete' && ginState.knockResult) && (
+                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (
                   <div className="absolute top-14 left-6 mt-[58px] flex -space-x-3">
                     {opponentState.hand.map((_, i) => (
                       <div
@@ -1076,8 +1080,8 @@ export const GinRummyGameTable = ({
         {/* Dealer Announcements Area */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
-            if (ginState.phase === 'complete' && ginState.knockResult) {
-              const r = ginState.knockResult;
+            if (viewState.phase === 'complete' && viewState.knockResult) {
+              const r = viewState.knockResult;
               const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
               const bonus = r.isGin ? ` (${dwDiff} dw + 25 gin bonus)` :
                             r.isUndercut ? ` (${dwDiff} dw + 25 undercut bonus)` :
@@ -1091,7 +1095,7 @@ export const GinRummyGameTable = ({
               );
             }
 
-            if (ginState.phase === 'complete' && !ginState.knockResult) {
+            if (viewState.phase === 'complete' && !viewState.knockResult) {
               return (
                 <div className="w-full bg-muted/80 backdrop-blur-sm rounded-md px-3 py-1.5">
                   <p className="text-muted-foreground font-bold text-[11px] text-center">
@@ -1101,10 +1105,10 @@ export const GinRummyGameTable = ({
               );
             }
 
-            if (ginState.phase === 'knocking' || ginState.phase === 'laying_off') {
-              const knockerId = Object.entries(ginState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
+            if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
+              const knockerId = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
               if (knockerId) {
-                const knockerState = ginState.playerStates[knockerId];
+                const knockerState = viewState.playerStates[knockerId];
                 const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
                 return (
                   <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
@@ -1175,7 +1179,7 @@ export const GinRummyGameTable = ({
         <div className="flex-1 overflow-hidden">
           {activeTab === 'cards' && currentPlayer && (
             <GinRummyMobileCardsTab
-              ginState={ginState}
+              ginState={viewState}
               currentPlayerId={currentPlayerId}
               isProcessing={isProcessing}
               onDrawStock={handleDrawStock}

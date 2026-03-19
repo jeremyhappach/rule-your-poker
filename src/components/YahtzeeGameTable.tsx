@@ -137,6 +137,8 @@ export function YahtzeeGameTable({
 
   // The state the UI should render — frozen during animations, anti-regressed
   const stableYahtzeeState = yahtzeeSync.presentationState;
+  // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
+  const viewState = stableYahtzeeState;
 
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
@@ -247,8 +249,9 @@ export function YahtzeeGameTable({
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
-  const gamePhase = yahtzeeState?.gamePhase || 'waiting';
-  const currentTurnPlayerId = yahtzeeState?.currentTurnPlayerId;
+  // Render-facing derived values use viewState (presentationState) for visual stability
+  const gamePhase = viewState?.gamePhase || 'waiting';
+  const currentTurnPlayerId = viewState?.currentTurnPlayerId;
 
   // Direct turn usage — no ready-gate. Scoring + turn advance are atomic writes,
   // so there is no intermediate state to cause flicker.
@@ -256,16 +259,16 @@ export function YahtzeeGameTable({
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
   const myPlayer = players.find(p => p.user_id === currentUserId);
-  const currentTurnState = stableTurnPlayerId ? yahtzeeState?.playerStates?.[stableTurnPlayerId] : null;
+  const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
 
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
 
-  // Scores
+  // Scores — derived from viewState for render stability
   const allTotals = useMemo(() =>
-    Object.entries(yahtzeeState?.playerStates || {}).map(([pid, ps]) => ({
+    Object.entries(viewState?.playerStates || {}).map(([pid, ps]) => ({
       pid, total: getTotalScore(ps.scorecard),
-    })), [yahtzeeState?.playerStates]);
+    })), [viewState?.playerStates]);
   const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
 
   const rolling = uiRolling || isRolling;
@@ -766,10 +769,10 @@ export function YahtzeeGameTable({
     };
   }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase]);
 
-  /* ---- Felt dice for observer view ---- */
+  /* ---- Felt dice for observer view — reads from viewState (presentation layer) ---- */
   const getCurrentTurnDice = useCallback(() => {
-    if (!currentTurnPlayerId || !yahtzeeState) return null;
-    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!currentTurnPlayerId || !viewState) return null;
+    const ps = viewState.playerStates[currentTurnPlayerId];
     if (!ps) return null;
     // Preserve each die's actual isHeld state so dice stay where the player left them
     // (held dice in held row, rolled dice in scatter) while they choose a category.
@@ -778,7 +781,7 @@ export function YahtzeeGameTable({
       isHeld: d.isHeld,
     }));
     return { dice: dice as HorsesDieType[], rollKey: ps.rollKey };
-  }, [currentTurnPlayerId, yahtzeeState]);
+  }, [currentTurnPlayerId, viewState]);
 
   /* ---- Animation origin ---- */
   const getDiceAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
@@ -791,8 +794,9 @@ export function YahtzeeGameTable({
   }, [currentPlayer, activePlayers]);
 
   /* ---- Scorecard renderer ---- */
+  /* ---- Scorecard renderer — reads from viewState for visual stability ---- */
   const renderScorecard = (playerId: string, isInteractive: boolean) => {
-    const ps = yahtzeeState?.playerStates?.[playerId];
+    const ps = viewState?.playerStates?.[playerId];
     if (!ps) return null;
 
     const diceValues = isInteractive && isMyTurn ? localDice.map(d => d.value) : ps.dice.map(d => d.value);
@@ -930,7 +934,7 @@ export function YahtzeeGameTable({
   const renderPlayerChip = (player: Player, compact = false) => {
     const isTheirTurn = player.id === currentTurnPlayerId && gamePhase === 'playing';
     const isMe = player.user_id === currentUserId;
-    const ps = yahtzeeState?.playerStates?.[player.id];
+    const ps = viewState?.playerStates?.[player.id];
     const total = ps ? getTotalScore(ps.scorecard) : 0;
     const isWinning = total > 0 && total === maxTotal && gamePhase === 'complete';
 
@@ -978,7 +982,7 @@ export function YahtzeeGameTable({
   };
 
   /* ---- Loading ---- */
-  if (!yahtzeeState || !currentRoundId) {
+  if (!viewState || !currentRoundId) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-poker-gold animate-pulse text-lg font-bold">Loading Yahtzee...</p>
@@ -1077,7 +1081,7 @@ export function YahtzeeGameTable({
           {gamePhase === 'playing' && (
             <div className="flex gap-4 mt-0.5">
               {activePlayers.map(p => {
-                const ps = yahtzeeState?.playerStates?.[p.id];
+                const ps = viewState?.playerStates?.[p.id];
                 const total = ps ? getTotalScore(ps.scorecard) : 0;
                 const isTurn = p.id === currentTurnPlayerId;
                 return (
@@ -1238,7 +1242,7 @@ export function YahtzeeGameTable({
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
               <p className="text-slate-900 font-bold text-sm text-center truncate">
                 {(() => {
-                  const results = Object.entries(yahtzeeState?.playerStates || {})
+                  const results = Object.entries(viewState?.playerStates || {})
                     .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
                     .sort((a, b) => b.total - a.total);
                   if (results.length === 0) return 'Game Complete!';
@@ -1354,7 +1358,7 @@ export function YahtzeeGameTable({
                   if (!oppPlayer) return null;
                   const diceState = getCurrentTurnDice();
                   const hasRolled = diceState?.dice.some(d => d.value !== 0);
-                  const oppPs = yahtzeeState?.playerStates?.[currentTurnPlayerId];
+                  const oppPs = viewState?.playerStates?.[currentTurnPlayerId];
                   const rollsLeft = oppPs?.rollsRemaining ?? 3;
                   const statusText = !hasRolled || rollsLeft === 3
                     ? `${getPlayerUsername(oppPlayer)} is rolling...`
@@ -1410,7 +1414,7 @@ export function YahtzeeGameTable({
         {activeTab === 'lobby' && (
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {activePlayers.map(player => {
-              const ps = yahtzeeState.playerStates[player.id];
+              const ps = viewState.playerStates[player.id];
               const total = ps ? getTotalScore(ps.scorecard) : 0;
               return (
                 <div key={player.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
