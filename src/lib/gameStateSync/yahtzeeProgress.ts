@@ -32,25 +32,43 @@ export const getYahtzeeProgress: GetProgressFn<YahtzeeState> = (state) => {
     totalCategoriesFilled += Object.keys(ps.scorecard.scores).length;
   }
 
-  const playerCount = state.turnOrder.length;
-  const currentTurnIdx = state.currentTurnPlayerId
-    ? state.turnOrder.indexOf(state.currentTurnPlayerId)
-    : -1;
+  const incompletePlayers = state.turnOrder
+    .map((playerId) => state.playerStates[playerId])
+    .filter((ps): ps is NonNullable<typeof ps> => Boolean(ps) && !ps.isComplete);
 
-  // Expected turn after all completed scores have handed off.
-  // During the split score flow, the scored snapshot still points at the scorer,
-  // while the advanced snapshot points at the next player. This flag makes the
-  // second snapshot strictly forward even when turn order wraps backwards.
-  const expectedTurnIdx = playerCount > 0
-    ? totalCategoriesFilled % playerCount
-    : -1;
-  const handoffPhase = currentTurnIdx === expectedTurnIdx ? 1 : 0;
+  const minFilledAmongIncomplete = incompletePlayers.length > 0
+    ? Math.min(...incompletePlayers.map((ps) => Object.keys(ps.scorecard.scores).length))
+    : null;
 
-  // Rolls used: 0 = hasn't rolled, 3 = all rolls used
-  const currentPs = state.currentTurnPlayerId
+  const currentTurnPlayerState = state.currentTurnPlayerId
     ? state.playerStates[state.currentTurnPlayerId]
     : null;
-  const rollsUsed = currentPs ? (3 - currentPs.rollsRemaining) : 0;
+  const currentTurnFilled = currentTurnPlayerState
+    ? Object.keys(currentTurnPlayerState.scorecard.scores).length
+    : null;
+
+  // IMPORTANT:
+  // We cannot derive handoff from totalCategoriesFilled % turnOrder.length because
+  // completed players are skipped during advanceYahtzeeTurn(). In the final-turn
+  // edge case (one player already complete, one player still active), modulo-based
+  // math can mark the sole remaining player's live turn as "pre-handoff", causing
+  // valid post-handoff / post-roll snapshots to compare incorrectly.
+  //
+  // Instead, use scorecard parity among INCOMPLETE players:
+  // - scored snapshot before handoff: current player has one more filled category
+  //   than at least one other incomplete player → handoffPhase = 0
+  // - live turn snapshot after handoff: current player is one of the players with
+  //   the minimum filled-count among incomplete players → handoffPhase = 1
+  // - when only one incomplete player remains (final-turn case), that player is
+  //   always the live turn holder, so handoffPhase stays 1 and rolls can progress.
+  const handoffPhase = (
+    minFilledAmongIncomplete !== null
+    && currentTurnFilled !== null
+    && currentTurnFilled === minFilledAmongIncomplete
+  ) ? 1 : 0;
+
+  // Rolls used: 0 = hasn't rolled, 3 = all rolls used
+  const rollsUsed = currentTurnPlayerState ? (3 - currentTurnPlayerState.rollsRemaining) : 0;
 
   return [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed];
 };
