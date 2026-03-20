@@ -100,20 +100,31 @@ function describeYahtzeeSnapshot(state: YahtzeeState | null | undefined) {
     totalCategoriesFilled += Object.keys(ps.scorecard.scores).length;
   }
 
-  const playerCount = state.turnOrder?.length ?? 0;
   const currentTurnIdx = state.currentTurnPlayerId
     ? state.turnOrder.indexOf(state.currentTurnPlayerId)
     : -1;
-  const expectedTurnIdx = playerCount > 0 ? totalCategoriesFilled % playerCount : -1;
+  const incompletePlayers = (state.turnOrder || [])
+    .map((playerId) => state.playerStates?.[playerId])
+    .filter((ps): ps is NonNullable<typeof ps> => Boolean(ps) && !ps.isComplete);
+  const minFilledAmongIncomplete = incompletePlayers.length > 0
+    ? Math.min(...incompletePlayers.map((ps) => Object.keys(ps.scorecard.scores).length))
+    : null;
   const currentPs = state.currentTurnPlayerId ? state.playerStates[state.currentTurnPlayerId] : null;
+  const currentTurnFilled = currentPs ? Object.keys(currentPs.scorecard.scores).length : null;
+  const handoffPhase = (
+    minFilledAmongIncomplete !== null
+    && currentTurnFilled !== null
+    && currentTurnFilled === minFilledAmongIncomplete
+  ) ? 1 : 0;
 
   return {
     phase: state.gamePhase,
     currentTurnPlayerId: state.currentTurnPlayerId,
     totalCategoriesFilled,
     currentTurnIdx,
-    expectedTurnIdx,
-    handoffPhase: currentTurnIdx === expectedTurnIdx ? 1 : 0,
+    minFilledAmongIncomplete,
+    currentTurnFilled,
+    handoffPhase,
     rollsUsed: currentPs ? (3 - currentPs.rollsRemaining) : 0,
     rollsRemaining: currentPs?.rollsRemaining ?? null,
   };
@@ -167,6 +178,7 @@ export function YahtzeeGameTable({
 
   // The state the UI should render — frozen during animations, anti-regressed
   const stableYahtzeeState = yahtzeeSync.presentationState;
+  const authoritativeYahtzeeState = yahtzeeSync.authoritativeState;
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
 
@@ -458,13 +470,19 @@ export function YahtzeeGameTable({
   }, [currentTurnPlayerId]);
 
   const handleRoll = useCallback(async () => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) {
-      console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasState: !!yahtzeeState, hasPlayer: !!myPlayer, rolling });
+    if (!isMyTurn || !currentRoundId || !myPlayer || rolling) {
+      console.warn('[YAHTZEE] handleRoll blocked:', { isMyTurn, hasRoundId: !!currentRoundId, hasPlayer: !!myPlayer, rolling });
       return;
     }
-    const myPs = yahtzeeState.playerStates[myPlayer.id];
+    const rawState = authoritativeYahtzeeState;
+    const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs || myPs.rollsRemaining <= 0) {
-      console.warn('[YAHTZEE] handleRoll blocked: no player state or no rolls', { hasPs: !!myPs, rolls: myPs?.rollsRemaining });
+      console.warn('[YAHTZEE] handleRoll blocked: no player state or no rolls', {
+        hasRawState: !!rawState,
+        hasPs: !!myPs,
+        rolls: myPs?.rollsRemaining,
+        snapshot: describeYahtzeeSnapshot(rawState),
+      });
       return;
     }
 
@@ -510,16 +528,17 @@ export function YahtzeeGameTable({
     }, duration);
 
     const newState = {
-      ...yahtzeeState,
+      ...rawState,
       playerStates: {
-        ...yahtzeeState.playerStates,
+        ...rawState.playerStates,
         [myPlayer.id]: { ...newPs, rollKey: t },
       },
     };
     // Apply optimistic override — sync framework will reject stale DB updates until caught up
+    console.log('[YAHTZEE_SYNC] Local optimistic roll snapshot', describeYahtzeeSnapshot(newState));
     yahtzeeSync.applyOptimistic(newState);
     await updateYahtzeeState(currentRoundId, newState);
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, localDice]);
+  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, rolling, localDice]);
 
   /* ---- Hold toggle ---- */
   const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -558,8 +577,9 @@ export function YahtzeeGameTable({
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || scoringInProgress) return;
-    const myPs = yahtzeeState.playerStates[myPlayer.id];
+    if (!isMyTurn || !currentRoundId || !myPlayer || scoringInProgress) return;
+    const rawState = authoritativeYahtzeeState;
+    const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs || myPs.rollsRemaining === 3 || myPs.scorecard.scores[category] !== undefined) return;
 
     const diceValues = myPs.dice.map(d => d.value);
@@ -576,11 +596,12 @@ export function YahtzeeGameTable({
     }
 
     await commitScoreCategory(category);
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, scoringInProgress]);
+  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, scoringInProgress]);
 
   const commitScoreCategory = useCallback(async (category: YahtzeeCategory) => {
-    if (!currentRoundId || !yahtzeeState || !myPlayer) return;
-    const myPs = yahtzeeState.playerStates[myPlayer.id];
+    if (!currentRoundId || !myPlayer) return;
+    const rawState = authoritativeYahtzeeState;
+    const myPs = rawState?.playerStates?.[myPlayer.id];
     if (!myPs) return;
 
     // Highlight the chosen category and pause for clarity
@@ -609,8 +630,8 @@ export function YahtzeeGameTable({
 
     // FIRST WRITE: scored state only (no turn advance) — opponent sees category choice
     let scoredState = {
-      ...yahtzeeState,
-      playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
+      ...rawState,
+      playerStates: { ...rawState.playerStates, [myPlayer.id]: newPs },
     };
     console.log('[YAHTZEE_SYNC] Writing scored snapshot', describeYahtzeeSnapshot(scoredState));
     yahtzeeSync.applyOptimistic(scoredState);
@@ -634,7 +655,7 @@ export function YahtzeeGameTable({
     await updateYahtzeeState(currentRoundId, advancedState);
 
     if (advancedState.gamePhase === 'complete') handleGameComplete(advancedState);
-  }, [currentRoundId, yahtzeeState, myPlayer]);
+  }, [currentRoundId, authoritativeYahtzeeState, myPlayer]);
 
   /* ---- Game complete ---- */
   const handleGameComplete = async (finalState: YahtzeeState) => {
@@ -722,10 +743,10 @@ export function YahtzeeGameTable({
   }, [currentTurnPlayerId]);
 
   useEffect(() => {
-    if (!currentRoundId || !yahtzeeState || gamePhase !== 'playing') return;
+    if (!currentRoundId || !authoritativeYahtzeeState || gamePhase !== 'playing') return;
     if (!currentTurnPlayerId || !currentPlayer?.is_bot) return;
     if (botProcessingRef.current) return;
-    const controllerUserId = yahtzeeState.botControllerUserId;
+    const controllerUserId = authoritativeYahtzeeState.botControllerUserId;
     if (controllerUserId && controllerUserId !== currentUserId) return;
 
     botProcessingRef.current = true;
@@ -733,7 +754,7 @@ export function YahtzeeGameTable({
 
     const runBot = async () => {
       try {
-        let state = { ...yahtzeeState };
+        let state = { ...authoritativeYahtzeeState };
         let ps = { ...state.playerStates[currentTurnPlayerId] };
         const botPlayer = players.find(p => p.id === currentTurnPlayerId);
         const botName = botPlayer ? getPlayerUsername(botPlayer) : 'Bot';
@@ -802,7 +823,7 @@ export function YahtzeeGameTable({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase]);
+  }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase, authoritativeYahtzeeState, currentUserId]);
 
   /* ---- Felt dice for observer view — reads from viewState (presentation layer) ---- */
   const getCurrentTurnDice = useCallback(() => {
