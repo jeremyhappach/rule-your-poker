@@ -286,113 +286,39 @@ export function YahtzeeGameTable({
   // Tab state
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
 
-  // Local dice state
+  // Local dice state — OWNED by the active player during their turn.
+  // Seeded from DB once on turn start; after that, only local actions mutate it.
   const [localDice, setLocalDice] = useState<YahtzeeDie[]>([]);
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
-  // Cooldown: block DB→localDice sync briefly after rolls / during pending holds
-  // to prevent stale DB snapshots from overwriting valid local state.
-  const syncCooldownRef = useRef(false);
-  const syncCooldownTimerRef = useRef<number | null>(null);
-  // Ref for pending debounced hold DB write — declared early so sync effect can check it
+  // Ref for pending debounced hold DB write (batches rapid toggles into one write)
   const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
-  // Render-facing derived values use viewState (presentationState) for visual stability
-  const gamePhase = viewState?.gamePhase || 'waiting';
-  const currentTurnPlayerId = viewState?.currentTurnPlayerId;
+  // Track which turn we've already seeded localDice for, so we seed exactly once per turn.
+  const turnSeededKeyRef = useRef<string | null>(null);
 
-  // Direct turn usage — no ready-gate. Scoring + turn advance are atomic writes,
-  // so there is no intermediate state to cause flicker.
-  const stableTurnPlayerId = currentTurnPlayerId || null;
-  const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
-  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
-  const myPlayer = players.find(p => p.user_id === currentUserId);
-  const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
-
-  const getPlayerUsername = (player: Player) =>
-    player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
-
-  // Scores — derived from viewState for render stability
-  const allTotals = useMemo(() =>
-    Object.entries(viewState?.playerStates || {}).map(([pid, ps]) => ({
-      pid, total: getTotalScore(ps.scorecard),
-    })), [viewState?.playerStates]);
-  const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
-
-  const rolling = uiRolling || isRolling;
-  const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
-  const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
-
-  // Clockwise distance for seat positioning
-  const getClockwiseDistance = useCallback((targetPosition: number) => {
-    if (!myPlayer) return 0;
-    const myPos = myPlayer.position;
-    if (targetPosition === myPos) return 0;
-    const diff = targetPosition - myPos;
-    return diff > 0 ? diff : diff + 7;
-  }, [myPlayer?.position]);
-
-  // Get player at slot (clockwise from current player)
-  const getPlayerAtSlot = useCallback((slotIndex: number) => {
-    if (!myPlayer) return null;
-    const myPos = myPlayer.position;
-    const targetPos = ((myPos + slotIndex) % 7) + 1;
-    return activePlayers.find(p => p.position === targetPos && p.id !== myPlayer.id) || null;
-  }, [myPlayer, activePlayers]);
-
-  // Cleanup
+  /* ---- Seed local dice ONCE when my turn starts (or on reconnect) ---- */
+  // After seeding, localDice is the sole source of truth for the active player's dice.
+  // No mid-turn DB→localDice sync — rolls, holds, and scores all mutate localDice directly.
+  // DB writes are fire-and-forget persistence; the UI never reads back from DB mid-turn.
   useEffect(() => {
-    return () => {
-      if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
-    };
-  }, []);
+    if (!isMyTurn || !myPlayer || !stableYahtzeeState) {
+      // Not my turn — clear the seed key so we re-seed when it becomes my turn again
+      turnSeededKeyRef.current = null;
+      return;
+    }
 
-  /* ---- Sync local dice with DB (gated by sync framework + cooldown) ---- */
-  const FIRST_ROLL_MS = 1300;
-  const ROLL_AGAIN_MS = 1800;
+    const turnKey = `${currentTurnPlayerId}-${currentRoundId}`;
+    if (turnSeededKeyRef.current === turnKey) return; // Already seeded for this turn
 
-  // Helper: start a sync cooldown (blocks DB→localDice overwrites for `ms`)
-  const startSyncCooldown = useCallback((ms: number) => {
-    syncCooldownRef.current = true;
-    if (syncCooldownTimerRef.current) clearTimeout(syncCooldownTimerRef.current);
-    syncCooldownTimerRef.current = window.setTimeout(() => {
-      syncCooldownRef.current = false;
-      syncCooldownTimerRef.current = null;
-    }, ms);
-  }, []);
-
-  // Cleanup cooldown timer on unmount
-  useEffect(() => {
-    return () => {
-      if (syncCooldownTimerRef.current) clearTimeout(syncCooldownTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isMyTurn || !myPlayer || !stableYahtzeeState) return;
-    // If we have an active optimistic override, skip DB sync — framework handles it
-    if (yahtzeeSync.isOptimistic) return;
-    // CRITICAL: Skip sync during roll animation and pending hold writes.
-    // Without this, stale DB snapshots can briefly overwrite valid local dice,
-    // causing dice to disappear/flash after landing or hop during hold transitions.
-    if (syncCooldownRef.current) return;
-    if (pendingHoldUpdateRef.current) return;
     const ps = stableYahtzeeState.playerStates[myPlayer.id];
     if (!ps) return;
 
-    // Additional guard: if local dice have valid non-zero values but DB dice are all zeros
-    // (scoring reset), skip — local state is more recent.
-    const localHasValues = localDice.some(d => d.value !== 0);
-    const dbAllZeros = ps.dice.every(d => d.value === 0);
-    if (localHasValues && dbAllZeros) return;
-
-    // Preserve local hold state when syncing from DB to prevent held dice from resetting
-    setLocalDice(prev => ps.dice.map((dbDie, i) => ({
-      ...dbDie,
-      isHeld: prev[i]?.isHeld ?? dbDie.isHeld,
-    })));
+    // Seed localDice from the DB state
+    turnSeededKeyRef.current = turnKey;
+    setLocalDice(ps.dice);
     setLocalRollsRemaining(ps.rollsRemaining);
-  }, [isMyTurn, myPlayer?.id, stableYahtzeeState?.playerStates, currentTurnPlayerId, yahtzeeSync.isOptimistic]);
+    console.log('[YAHTZEE] Turn seeded from DB', { turnKey, rollsRemaining: ps.rollsRemaining });
+  }, [isMyTurn, myPlayer?.id, stableYahtzeeState?.playerStates, currentTurnPlayerId, currentRoundId]);
 
   // Clear optimistic score once DB has caught up
   useEffect(() => {
