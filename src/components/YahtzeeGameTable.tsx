@@ -581,7 +581,6 @@ export function YahtzeeGameTable({
   }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, rolling, localDice]);
 
   /* ---- Hold toggle ---- */
-  const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleToggleHold = useCallback(async (dieIndex: number) => {
     if (!isMyTurn || !currentRoundId || !yahtzeeState || !myPlayer || rolling) return;
     const myPs = yahtzeeState.playerStates[myPlayer.id];
