@@ -345,15 +345,45 @@ export function YahtzeeGameTable({
     };
   }, []);
 
-  /* ---- Sync local dice with DB (gated by sync framework — no timer needed) ---- */
+  /* ---- Sync local dice with DB (gated by sync framework + cooldown) ---- */
   const FIRST_ROLL_MS = 1300;
   const ROLL_AGAIN_MS = 1800;
+
+  // Helper: start a sync cooldown (blocks DB→localDice overwrites for `ms`)
+  const startSyncCooldown = useCallback((ms: number) => {
+    syncCooldownRef.current = true;
+    if (syncCooldownTimerRef.current) clearTimeout(syncCooldownTimerRef.current);
+    syncCooldownTimerRef.current = window.setTimeout(() => {
+      syncCooldownRef.current = false;
+      syncCooldownTimerRef.current = null;
+    }, ms);
+  }, []);
+
+  // Cleanup cooldown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (syncCooldownTimerRef.current) clearTimeout(syncCooldownTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!isMyTurn || !myPlayer || !stableYahtzeeState) return;
     // If we have an active optimistic override, skip DB sync — framework handles it
     if (yahtzeeSync.isOptimistic) return;
+    // CRITICAL: Skip sync during roll animation and pending hold writes.
+    // Without this, stale DB snapshots can briefly overwrite valid local dice,
+    // causing dice to disappear/flash after landing or hop during hold transitions.
+    if (syncCooldownRef.current) return;
+    if (pendingHoldUpdateRef.current) return;
     const ps = stableYahtzeeState.playerStates[myPlayer.id];
     if (!ps) return;
+
+    // Additional guard: if local dice have valid non-zero values but DB dice are all zeros
+    // (scoring reset), skip — local state is more recent.
+    const localHasValues = localDice.some(d => d.value !== 0);
+    const dbAllZeros = ps.dice.every(d => d.value === 0);
+    if (localHasValues && dbAllZeros) return;
+
     // Preserve local hold state when syncing from DB to prevent held dice from resetting
     setLocalDice(prev => ps.dice.map((dbDie, i) => ({
       ...dbDie,
