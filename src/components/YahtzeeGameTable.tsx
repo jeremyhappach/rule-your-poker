@@ -394,10 +394,10 @@ export function YahtzeeGameTable({
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
 
-      // FREEZE presentation so dice don't disappear when DB resets them to zeros
-      yahtzeeSync.freezePresentation();
-
-      // Use cached non-zero dice so they stay visible on felt
+      // Use cached non-zero dice so they stay visible on felt during scoring transition.
+      // NOTE: We do NOT freeze the whole presentationState — that would block turn banner,
+      // rolls badge, and status text from updating. The cachedOpponentDice packet handles
+      // dice-only visual stability during this window.
       if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
         setCachedOpponentDice(lastNonZeroDiceRef.current);
       }
@@ -408,7 +408,6 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
-        yahtzeeSync.unfreezePresentation();
       }, 2500);
       return () => clearTimeout(timer);
     }
@@ -423,7 +422,6 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
-        yahtzeeSync.unfreezePresentation();
       }
     }
     prevTurnRef.current = currentTurnPlayerId || null;
@@ -467,15 +465,18 @@ export function YahtzeeGameTable({
       setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
     }
 
-    // Freeze presentation during roll animation so observer doesn't see stale intermediate states
-    yahtzeeSync.freezePresentation();
+    // NOTE: We do NOT freeze the whole presentationState during roll animations.
+    // The acting client renders from localDice (not viewState), so it's already stable.
+    // The observer renders opponent dice from viewState via getCurrentTurnDice + DiceTableLayout's
+    // own fly-in animation, so it handles the visual transition naturally.
+    // Freezing the entire viewState would block turn banner, rolls badge, and status text
+    // from updating on the observer — causing the "stuck on Rolls: 3" bug.
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
     uiRollingTimerRef.current = window.setTimeout(() => {
       setUiRolling(false);
       heldSnapshotRef.current = null;
       uiRollingTimerRef.current = null;
-      yahtzeeSync.unfreezePresentation();
     }, duration);
 
     const newState = {
