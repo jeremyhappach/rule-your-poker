@@ -296,6 +296,61 @@ export function YahtzeeGameTable({
   // Track which turn we've already seeded localDice for, so we seed exactly once per turn.
   const turnSeededKeyRef = useRef<string | null>(null);
 
+  const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
+  // Render-facing derived values use viewState (presentationState) for visual stability
+  const gamePhase = viewState?.gamePhase || 'waiting';
+  const currentTurnPlayerId = viewState?.currentTurnPlayerId;
+
+  // Direct turn usage — no ready-gate. Scoring + turn advance are atomic writes,
+  // so there is no intermediate state to cause flicker.
+  const stableTurnPlayerId = currentTurnPlayerId || null;
+  const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
+  const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+  const myPlayer = players.find(p => p.user_id === currentUserId);
+  const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
+
+  const getPlayerUsername = (player: Player) =>
+    player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
+
+  // Scores — derived from viewState for render stability
+  const allTotals = useMemo(() =>
+    Object.entries(viewState?.playerStates || {}).map(([pid, ps]) => ({
+      pid, total: getTotalScore(ps.scorecard),
+    })), [viewState?.playerStates]);
+  const maxTotal = Math.max(0, ...allTotals.map(t => t.total));
+
+  const rolling = uiRolling || isRolling;
+  const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
+  const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
+
+  // Clockwise distance for seat positioning
+  const getClockwiseDistance = useCallback((targetPosition: number) => {
+    if (!myPlayer) return 0;
+    const myPos = myPlayer.position;
+    if (targetPosition === myPos) return 0;
+    const diff = targetPosition - myPos;
+    return diff > 0 ? diff : diff + 7;
+  }, [myPlayer?.position]);
+
+  // Get player at slot (clockwise from current player)
+  const getPlayerAtSlot = useCallback((slotIndex: number) => {
+    if (!myPlayer) return null;
+    const myPos = myPlayer.position;
+    const targetPos = ((myPos + slotIndex) % 7) + 1;
+    return activePlayers.find(p => p.position === targetPos && p.id !== myPlayer.id) || null;
+  }, [myPlayer, activePlayers]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
+    };
+  }, []);
+
+  /* ---- Dice animation timing constants ---- */
+  const FIRST_ROLL_MS = 1300;
+  const ROLL_AGAIN_MS = 1800;
+
   /* ---- Seed local dice ONCE when my turn starts (or on reconnect) ---- */
   // After seeding, localDice is the sole source of truth for the active player's dice.
   // No mid-turn DB→localDice sync — rolls, holds, and scores all mutate localDice directly.
