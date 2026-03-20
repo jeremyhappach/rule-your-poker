@@ -293,6 +293,8 @@ export function YahtzeeGameTable({
   // to prevent stale DB snapshots from overwriting valid local state.
   const syncCooldownRef = useRef(false);
   const syncCooldownTimerRef = useRef<number | null>(null);
+  // Ref for pending debounced hold DB write — declared early so sync effect can check it
+  const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
   // Render-facing derived values use viewState (presentationState) for visual stability
