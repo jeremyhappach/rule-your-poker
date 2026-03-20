@@ -578,9 +578,6 @@ export function YahtzeeGameTable({
       if (pendingHoldUpdateRef.current) clearTimeout(pendingHoldUpdateRef.current);
       pendingHoldUpdateRef.current = setTimeout(() => {
         pendingHoldUpdateRef.current = null;
-        // Block DB→localDice sync for 500ms after the write fires,
-        // giving the DB round-trip time to settle before we allow sync.
-        startSyncCooldown(500);
         // Read latest local dice at persist time via a hidden ref
         setLocalDice(latest => {
           const newPs = { ...myPs, dice: latest };
@@ -595,7 +592,7 @@ export function YahtzeeGameTable({
 
       return updatedDice;
     });
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, startSyncCooldown]);
+  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
