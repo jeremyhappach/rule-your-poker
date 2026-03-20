@@ -441,6 +441,7 @@ export function discardCard(
     currentTurnPlayerId: opponentId,
     turnPhase: 'draw',
     drawSource: null,
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'discard',
       playerId,
