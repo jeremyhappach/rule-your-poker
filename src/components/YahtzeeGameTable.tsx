@@ -465,15 +465,18 @@ export function YahtzeeGameTable({
       setTimeout(() => setShowYahtzeeOverlay(getPlayerUsername(myPlayer)), duration + 200);
     }
 
-    // Freeze presentation during roll animation so observer doesn't see stale intermediate states
-    yahtzeeSync.freezePresentation();
+    // NOTE: We do NOT freeze the whole presentationState during roll animations.
+    // The acting client renders from localDice (not viewState), so it's already stable.
+    // The observer renders opponent dice from viewState via getCurrentTurnDice + DiceTableLayout's
+    // own fly-in animation, so it handles the visual transition naturally.
+    // Freezing the entire viewState would block turn banner, rolls badge, and status text
+    // from updating on the observer — causing the "stuck on Rolls: 3" bug.
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
     uiRollingTimerRef.current = window.setTimeout(() => {
       setUiRolling(false);
       heldSnapshotRef.current = null;
       uiRollingTimerRef.current = null;
-      yahtzeeSync.unfreezePresentation();
     }, duration);
 
     const newState = {
