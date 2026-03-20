@@ -33,6 +33,12 @@ export interface GameStateSyncConfig<T> {
   /** Extract a progress vector from a game state snapshot. */
   getProgress: GetProgressFn<T>;
 
+  /** Optional label used in debug logging. */
+  debugLabel?: string;
+
+  /** Optional lightweight snapshot description for debug logging. */
+  describeState?: (state: T) => unknown;
+
   /**
    * Maximum time (ms) an optimistic override stays active before falling
    * back to authoritative state. Default: 3000.
