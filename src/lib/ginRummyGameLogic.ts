@@ -255,6 +255,7 @@ export function passFirstDraw(
       currentTurnPlayerId: state.dealerPlayerId,
       firstDrawOfferedTo: state.dealerPlayerId,
       firstDrawPassed: newPassed,
+      actionCount: bumpAction(state),
       lastAction: {
         type: 'pass_first_draw',
         playerId,
