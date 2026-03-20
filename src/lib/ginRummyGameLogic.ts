@@ -540,6 +540,7 @@ export function declareKnock(
       },
     },
     discardPile: newDiscard,
+    actionCount: bumpAction(state),
     lastAction: {
       type: isGin ? 'gin' : 'knock',
       playerId,
