@@ -1,12 +1,14 @@
 /**
  * Gin Rummy progress vector extractor for the anti-regression framework.
  *
- * Vector: [phaseOrdinal, totalCardsPlayed, discardPileLen, handSizeSum]
+ * Vector: [phaseOrdinal, actionCount]
  *
  * - phaseOrdinal: monotonically increases as game advances through phases
- * - totalCardsPlayed: sum of actions that have occurred (draws + discards)
- * - discardPileLen: grows with discards, shrinks with discard-draws (secondary signal)
- * - handSizeSum: total cards across both players (changes on draw/discard)
+ * - actionCount: explicit monotonic counter incremented on every player action
+ *
+ * Previous vector used discardPileLen which is NON-monotonic (decreases on
+ * discard-pile draws), causing the framework to reject valid draw-from-discard
+ * snapshots as "regressive" and leaving the UI stuck on stale state.
  */
 
 import type { GinRummyState, GinRummyPhase } from '@/lib/ginRummyTypes';
@@ -24,20 +26,7 @@ const PHASE_ORDER: Record<GinRummyPhase, number> = {
 
 export const getGinRummyProgress: GetProgressFn<GinRummyState> = (state) => {
   const phaseOrd = PHASE_ORDER[state.phase] ?? 0;
+  const actionCount = state.actionCount ?? 0;
 
-  // Total cards in all player hands — changes on every draw/discard
-  let handSizeSum = 0;
-  for (const ps of Object.values(state.playerStates)) {
-    handSizeSum += ps.hand?.length ?? 0;
-  }
-
-  const discardLen = state.discardPile?.length ?? 0;
-  const stockLen = state.stockPile?.length ?? 0;
-
-  // A composite counter: as the game progresses, cards move from stock → hands → discard.
-  // Total cards dealt from stock is a monotonic-ish measure of progress within a phase.
-  // Initial stock is 31 (52 - 10 - 10 - 1 upcard), so cardsDealtFromStock = 31 - stockLen.
-  const cardsDealtFromStock = Math.max(0, 31 - stockLen);
-
-  return [phaseOrd, cardsDealtFromStock, discardLen, handSizeSum];
+  return [phaseOrd, actionCount];
 };
