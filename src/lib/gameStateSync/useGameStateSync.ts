@@ -62,8 +62,13 @@ export function useGameStateSync<T>(
 
     // Reject regressive updates
     if (cmp === -1) {
+      console.log('[GameStateSync] ❌ Rejected regressive update',
+        { current: currentProgress, incoming: incomingProgress });
       return false;
     }
+
+    console.log('[GameStateSync] ✅ Accepted update',
+      { current: currentProgress, incoming: incomingProgress, relation: cmp === 1 ? 'forward' : 'equal' });
 
     // Accept: update authoritative
     authRef.current = incoming;
@@ -76,6 +81,8 @@ export function useGameStateSync<T>(
 
       // DB caught up or surpassed optimistic → clear optimistic
       if (incomingVsOpt >= 0) {
+        console.log('[GameStateSync] Optimistic cleared — DB caught up',
+          { opt: optProgress, incoming: incomingProgress });
         optRef.current = null;
         setOptimistic(null);
         if (optimisticTimerRef.current) {
