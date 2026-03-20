@@ -690,6 +690,7 @@ export function scoreHand(state: GinRummyState): GinRummyState {
     knockResult: result,
     matchScores: newMatchScores,
     winnerPlayerId: matchWinner,
+    actionCount: bumpAction(state),
     playerStates: {
       ...state.playerStates,
       [opponentId]: {
