@@ -553,6 +553,10 @@ export function YahtzeeGameTable({
     // own fly-in animation, so it handles the visual transition naturally.
     // Freezing the entire viewState would block turn banner, rolls badge, and status text
     // from updating on the observer — causing the "stuck on Rolls: 3" bug.
+    // Block DB→localDice sync during roll animation + 500ms grace after landing.
+    // This prevents stale DB snapshots (or optimistic timeout) from overwriting local dice.
+    startSyncCooldown(duration + 500);
+
     setUiRolling(true);
     if (uiRollingTimerRef.current != null) window.clearTimeout(uiRollingTimerRef.current);
     uiRollingTimerRef.current = window.setTimeout(() => {
