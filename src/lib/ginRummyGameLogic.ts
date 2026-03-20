@@ -23,6 +23,10 @@ import {
 } from './ginRummyScoring';
 import { isGinRiggedDealEnabled } from './debugFlags';
 
+/** Bump the monotonic action counter used by the anti-regression framework. */
+function bumpAction(state: GinRummyState): number {
+  return (state.actionCount ?? 0) + 1;
+}
 // ─── State Factory ──────────────────────────────────────────────
 
 /** Create the initial Gin Rummy state for a new hand */
@@ -220,6 +224,7 @@ export function takeFirstDrawCard(
     drawSource: 'discard',
     firstDrawOfferedTo: null,
     firstDrawPassed: [],
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_discard',
       playerId,
@@ -250,6 +255,7 @@ export function passFirstDraw(
       currentTurnPlayerId: state.dealerPlayerId,
       firstDrawOfferedTo: state.dealerPlayerId,
       firstDrawPassed: newPassed,
+      actionCount: bumpAction(state),
       lastAction: {
         type: 'pass_first_draw',
         playerId,
@@ -280,6 +286,7 @@ export function passFirstDraw(
     drawSource: 'stock',
     firstDrawOfferedTo: null,
     firstDrawPassed: [],
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_stock',
       playerId: nonDealer,
@@ -318,6 +325,7 @@ export function drawFromStock(
     stockPile: newStock,
     turnPhase: 'discard',
     drawSource: 'stock',
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_stock',
       playerId,
@@ -354,6 +362,7 @@ export function drawFromDiscard(
     discardPile: newDiscard,
     turnPhase: 'discard',
     drawSource: 'discard',
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_discard',
       playerId,
@@ -432,6 +441,7 @@ export function discardCard(
     currentTurnPlayerId: opponentId,
     turnPhase: 'draw',
     drawSource: null,
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'discard',
       playerId,
@@ -530,6 +540,7 @@ export function declareKnock(
       },
     },
     discardPile: newDiscard,
+    actionCount: bumpAction(state),
     lastAction: {
       type: isGin ? 'gin' : 'knock',
       playerId,
@@ -604,6 +615,7 @@ export function layOffCard(
         melds: knockerMelds,
       },
     },
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'lay_off',
       playerId,
@@ -625,6 +637,7 @@ export function finishLayingOff(
   return {
     ...state,
     phase: 'scoring',
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'decline_lay_off',
       playerId,
@@ -677,6 +690,7 @@ export function scoreHand(state: GinRummyState): GinRummyState {
     knockResult: result,
     matchScores: newMatchScores,
     winnerPlayerId: matchWinner,
+    actionCount: bumpAction(state),
     playerStates: {
       ...state.playerStates,
       [opponentId]: {

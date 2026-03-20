@@ -66,6 +66,10 @@ export interface GinRummyState {
   // Knock result (populated during scoring)
   knockResult: KnockResult | null;
 
+  // Monotonic action counter — increments on every player action (draw, discard, pass, knock, layoff, etc.)
+  // Used by the anti-regression framework to detect forward progress regardless of non-monotonic pile sizes.
+  actionCount?: number;
+
   // UX helpers
   lastAction?: GinRummyAction | null;
   winnerPlayerId: string | null;
