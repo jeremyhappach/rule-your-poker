@@ -362,6 +362,7 @@ export function drawFromDiscard(
     discardPile: newDiscard,
     turnPhase: 'discard',
     drawSource: 'discard',
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_discard',
       playerId,
