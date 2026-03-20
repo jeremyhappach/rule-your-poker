@@ -637,6 +637,7 @@ export function finishLayingOff(
   return {
     ...state,
     phase: 'scoring',
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'decline_lay_off',
       playerId,
