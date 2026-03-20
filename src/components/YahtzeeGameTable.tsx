@@ -615,7 +615,7 @@ export function YahtzeeGameTable({
 
       return updatedDice;
     });
-  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling]);
+  }, [isMyTurn, currentRoundId, yahtzeeState, myPlayer, rolling, startSyncCooldown]);
 
   /* ---- Score category ---- */
   const handleScoreCategory = useCallback(async (category: YahtzeeCategory) => {
