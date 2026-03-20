@@ -289,6 +289,10 @@ export function YahtzeeGameTable({
   // Local dice state
   const [localDice, setLocalDice] = useState<YahtzeeDie[]>([]);
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
+  // Cooldown: block DB→localDice sync briefly after rolls / during pending holds
+  // to prevent stale DB snapshots from overwriting valid local state.
+  const syncCooldownRef = useRef(false);
+  const syncCooldownTimerRef = useRef<number | null>(null);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
   // Render-facing derived values use viewState (presentationState) for visual stability
