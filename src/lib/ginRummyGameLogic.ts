@@ -224,6 +224,7 @@ export function takeFirstDrawCard(
     drawSource: 'discard',
     firstDrawOfferedTo: null,
     firstDrawPassed: [],
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_discard',
       playerId,
