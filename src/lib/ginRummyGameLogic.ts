@@ -325,6 +325,7 @@ export function drawFromStock(
     stockPile: newStock,
     turnPhase: 'discard',
     drawSource: 'stock',
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_stock',
       playerId,
