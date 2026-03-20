@@ -394,10 +394,10 @@ export function YahtzeeGameTable({
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
 
-      // FREEZE presentation so dice don't disappear when DB resets them to zeros
-      yahtzeeSync.freezePresentation();
-
-      // Use cached non-zero dice so they stay visible on felt
+      // Use cached non-zero dice so they stay visible on felt during scoring transition.
+      // NOTE: We do NOT freeze the whole presentationState — that would block turn banner,
+      // rolls badge, and status text from updating. The cachedOpponentDice packet handles
+      // dice-only visual stability during this window.
       if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
         setCachedOpponentDice(lastNonZeroDiceRef.current);
       }
@@ -408,7 +408,6 @@ export function YahtzeeGameTable({
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
-        yahtzeeSync.unfreezePresentation();
       }, 2500);
       return () => clearTimeout(timer);
     }
