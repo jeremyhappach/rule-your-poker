@@ -23,6 +23,10 @@ import {
 } from './ginRummyScoring';
 import { isGinRiggedDealEnabled } from './debugFlags';
 
+/** Bump the monotonic action counter used by the anti-regression framework. */
+function bumpAction(state: GinRummyState): number {
+  return (state.actionCount ?? 0) + 1;
+}
 // ─── State Factory ──────────────────────────────────────────────
 
 /** Create the initial Gin Rummy state for a new hand */
