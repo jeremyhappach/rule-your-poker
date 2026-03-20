@@ -587,6 +587,61 @@ export const GinRummyGameTable = ({
     const timeout = setTimeout(runBotAction, 300);
     return () => clearTimeout(timeout);
   }, [ginState, currentPlayerId, isProcessing, players, roundId]);
+  // ─── Scoring Safety Net ────────────────────────────────────────
+  // scoreHand is deterministic — both clients can independently compute the same result.
+  // If the acting client's inline scoreHand (inside handleKnock) fails or its DB write
+  // is lost, this effect ensures ANY client that sees 'scoring' phase auto-advances to 'complete'.
+  const scoringAutoProgressRef = useRef(false);
+  useEffect(() => {
+    if (!ginState || ginState.phase !== 'scoring' || scoringAutoProgressRef.current) return;
+    if (!roundId) return;
+
+    // Short delay: give the acting client's inline scoreHand time to write 'complete' first.
+    // If 'complete' arrives via realtime/poll within this window, this effect becomes a no-op.
+    const timer = setTimeout(async () => {
+      // Re-check: ginState may have advanced during the delay
+      if (scoringAutoProgressRef.current) return;
+      scoringAutoProgressRef.current = true;
+
+      try {
+        // Fetch fresh state from DB to avoid stale closures
+        const { data } = await supabase
+          .from('rounds')
+          .select('gin_rummy_state')
+          .eq('id', roundId)
+          .single();
+
+        const freshState = data?.gin_rummy_state as unknown as GinRummyState | null;
+        if (!freshState || freshState.phase !== 'scoring') {
+          // Already advanced past scoring — nothing to do
+          scoringAutoProgressRef.current = false;
+          return;
+        }
+
+        console.log('[GIN-RUMMY] Scoring safety-net: auto-advancing from scoring → complete');
+        const completedState = scoreHand(freshState);
+        const { error } = await supabase
+          .from('rounds')
+          .update({ gin_rummy_state: JSON.parse(JSON.stringify(completedState)) })
+          .eq('id', roundId);
+
+        if (!error) {
+          setGinState(completedState);
+        }
+      } catch (err) {
+        console.error('[GIN-RUMMY] Scoring safety-net error:', err);
+      } finally {
+        scoringAutoProgressRef.current = false;
+      }
+    }, 2000); // 2s grace period for the acting client's inline path
+
+    return () => clearTimeout(timer);
+  }, [ginState?.phase, roundId]);
+
+  // Reset scoring guard when round changes (new hand)
+  useEffect(() => {
+    scoringAutoProgressRef.current = false;
+  }, [roundId]);
 
   // ─── Hand Completion & Next Hand ──────────────────────────────
   const handCompletionInProgress = useRef(false);
