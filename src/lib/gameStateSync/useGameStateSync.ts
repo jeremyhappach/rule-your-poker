@@ -20,7 +20,14 @@ export function useGameStateSync<T>(
   initialState: T,
   config: GameStateSyncConfig<T>,
 ): GameStateSyncHandle<T> {
-  const { getProgress, optimisticTimeoutMs = DEFAULT_OPTIMISTIC_TIMEOUT, isEqual = jsonEqual } = config;
+  const {
+    getProgress,
+    optimisticTimeoutMs = DEFAULT_OPTIMISTIC_TIMEOUT,
+    isEqual = jsonEqual,
+    debugLabel,
+    describeState,
+  } = config;
+  const logPrefix = debugLabel ? `[GameStateSync:${debugLabel}]` : '[GameStateSync]';
 
   // ── Core state layers ────────────────────────────────────────
   const [authoritative, setAuthoritative] = useState<T>(initialState);
@@ -62,13 +69,22 @@ export function useGameStateSync<T>(
 
     // Reject regressive updates
     if (cmp === -1) {
-      console.log('[GameStateSync] ❌ Rejected regressive update',
-        { current: currentProgress, incoming: incomingProgress });
+      console.log(`${logPrefix} ❌ Rejected regressive update`, {
+        current: currentProgress,
+        incoming: incomingProgress,
+        currentState: describeState?.(currentAuth),
+        incomingState: describeState?.(incoming),
+      });
       return false;
     }
 
-    console.log('[GameStateSync] ✅ Accepted update',
-      { current: currentProgress, incoming: incomingProgress, relation: cmp === 1 ? 'forward' : 'equal' });
+    console.log(`${logPrefix} ✅ Accepted update`, {
+      current: currentProgress,
+      incoming: incomingProgress,
+      relation: cmp === 1 ? 'forward' : 'equal',
+      currentState: describeState?.(currentAuth),
+      incomingState: describeState?.(incoming),
+    });
 
     // Accept: update authoritative
     authRef.current = incoming;
@@ -81,8 +97,12 @@ export function useGameStateSync<T>(
 
       // DB caught up or surpassed optimistic → clear optimistic
       if (incomingVsOpt >= 0) {
-        console.log('[GameStateSync] Optimistic cleared — DB caught up',
-          { opt: optProgress, incoming: incomingProgress });
+        console.log(`${logPrefix} Optimistic cleared — DB caught up`, {
+          opt: optProgress,
+          incoming: incomingProgress,
+          optimisticState: describeState?.(optRef.current),
+          incomingState: describeState?.(incoming),
+        });
         optRef.current = null;
         setOptimistic(null);
         if (optimisticTimerRef.current) {

@@ -92,6 +92,33 @@ function toHorsesDice(dice: YahtzeeDie[]): HorsesDieType[] {
   return dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
 }
 
+function describeYahtzeeSnapshot(state: YahtzeeState | null | undefined) {
+  if (!state) return null;
+
+  let totalCategoriesFilled = 0;
+  for (const ps of Object.values(state.playerStates || {})) {
+    totalCategoriesFilled += Object.keys(ps.scorecard.scores).length;
+  }
+
+  const playerCount = state.turnOrder?.length ?? 0;
+  const currentTurnIdx = state.currentTurnPlayerId
+    ? state.turnOrder.indexOf(state.currentTurnPlayerId)
+    : -1;
+  const expectedTurnIdx = playerCount > 0 ? totalCategoriesFilled % playerCount : -1;
+  const currentPs = state.currentTurnPlayerId ? state.playerStates[state.currentTurnPlayerId] : null;
+
+  return {
+    phase: state.gamePhase,
+    currentTurnPlayerId: state.currentTurnPlayerId,
+    totalCategoriesFilled,
+    currentTurnIdx,
+    expectedTurnIdx,
+    handoffPhase: currentTurnIdx === expectedTurnIdx ? 1 : 0,
+    rollsUsed: currentPs ? (3 - currentPs.rollsRemaining) : 0,
+    rollsRemaining: currentPs?.rollsRemaining ?? null,
+  };
+}
+
 // Custom dice icon matching MobileGameTable
 const DiceIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className={className} fill="currentColor" stroke="currentColor" strokeWidth="0">
@@ -125,12 +152,15 @@ export function YahtzeeGameTable({
     {
       getProgress: getYahtzeeProgress,
       optimisticTimeoutMs: 3000,
+      debugLabel: 'yahtzee',
+      describeState: describeYahtzeeSnapshot,
     },
   );
 
   // Feed incoming prop updates through the anti-regression gate
   useEffect(() => {
     if (yahtzeeState) {
+      console.log('[YAHTZEE_SYNC] Incoming authoritative snapshot', describeYahtzeeSnapshot(yahtzeeState));
       yahtzeeSync.receiveAuthoritativeUpdate(yahtzeeState);
     }
   }, [yahtzeeState]);
@@ -582,6 +612,8 @@ export function YahtzeeGameTable({
       ...yahtzeeState,
       playerStates: { ...yahtzeeState.playerStates, [myPlayer.id]: newPs },
     };
+    console.log('[YAHTZEE_SYNC] Writing scored snapshot', describeYahtzeeSnapshot(scoredState));
+    yahtzeeSync.applyOptimistic(scoredState);
     await updateYahtzeeState(currentRoundId, scoredState);
 
     // Wait 2 seconds so both players can see the selection highlighted
@@ -597,6 +629,8 @@ export function YahtzeeGameTable({
 
     // SECOND WRITE: advance turn (opponent sees turn change after highlight)
     const advancedState = advanceYahtzeeTurn(scoredState);
+    console.log('[YAHTZEE_SYNC] Writing turn-advance snapshot', describeYahtzeeSnapshot(advancedState));
+    yahtzeeSync.applyOptimistic(advancedState);
     await updateYahtzeeState(currentRoundId, advancedState);
 
     if (advancedState.gamePhase === 'complete') handleGameComplete(advancedState);
