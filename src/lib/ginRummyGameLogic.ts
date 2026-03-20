@@ -615,6 +615,7 @@ export function layOffCard(
         melds: knockerMelds,
       },
     },
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'lay_off',
       playerId,
