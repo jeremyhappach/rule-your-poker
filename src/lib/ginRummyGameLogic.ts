@@ -286,6 +286,7 @@ export function passFirstDraw(
     drawSource: 'stock',
     firstDrawOfferedTo: null,
     firstDrawPassed: [],
+    actionCount: bumpAction(state),
     lastAction: {
       type: 'draw_stock',
       playerId: nonDealer,
