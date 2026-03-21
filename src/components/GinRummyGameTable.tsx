@@ -720,11 +720,11 @@ export const GinRummyGameTable = ({
     processCompletion();
   }, [ginState?.phase, ginState?.winnerPlayerId]);
 
-  const updateState = async (newState: GinRummyState) => {
+  const updateState = async (newState: GinRummyState, traceId?: string) => {
     setIsProcessing(true);
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
-      eventType: 'gin:optimistic_applied',
+      eventType: 'gin:optimistic_applied', traceId,
       payload: ginStateSummary(newState),
     });
     // Apply optimistic override — sync framework will reject stale realtime/poll updates
@@ -734,7 +734,7 @@ export const GinRummyGameTable = ({
     try {
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
-        eventType: 'gin:db_write_start',
+        eventType: 'gin:db_write_start', traceId,
         payload: ginStateSummary(newState),
       });
       const { error } = await supabase
@@ -744,7 +744,7 @@ export const GinRummyGameTable = ({
       if (error) throw error;
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
-        eventType: 'gin:db_write_success',
+        eventType: 'gin:db_write_success', traceId,
         payload: ginStateSummary(newState),
       });
       // DB write succeeded — promote to authoritative
@@ -752,7 +752,7 @@ export const GinRummyGameTable = ({
     } catch (err) {
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
-        eventType: 'gin:db_write_failure',
+        eventType: 'gin:db_write_failure', traceId,
         payload: ginStateSummary(newState, { error: String(err) }),
       });
       console.error('[GIN-RUMMY] Error updating state:', err);
