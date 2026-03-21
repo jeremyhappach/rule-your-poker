@@ -1408,6 +1408,15 @@ export function useHorsesMobileController({
       if (isPaused) return; // Block all actions when game is paused
       if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3 || localHand.rollsRemaining <= 0) return;
 
+      logDebugEvent({
+        gameId: gameId ?? '',
+        roundId: currentRoundId,
+        userId: currentUserId,
+        clientRole: 'actor',
+        eventType: 'horses:input:hold',
+        payload: { dieIndex: index, rollsRemaining: localHand.rollsRemaining, holdSeq: localHoldSeqRef.current + 1 },
+      });
+
       // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
       // Cargo dice (non-SCC) CAN be toggled - player can hold individual cargo dice
       if (isSCC) {
