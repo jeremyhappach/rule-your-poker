@@ -184,6 +184,14 @@ export function useHorsesMobileController({
     prevRoundIdForSyncRef.current = currentRoundId;
     acceptedStateRef.current = null;
     acceptedProgressRef.current = [0, 0, 0, 0];
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'observer',
+      eventType: 'horses:sync_reset',
+      payload: { reason: 'round_boundary', newRoundId: currentRoundId },
+    });
     console.log(`[HORSES_SYNC] Round boundary reset: ${currentRoundId}`);
   }
 
