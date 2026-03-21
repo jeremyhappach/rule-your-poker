@@ -1503,14 +1503,18 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(timeout);
   }, [cribbageState, isProcessing, players, roundId]);
 
-  const updateState = async (newState: CribbageState) => {
+  const updateState = async (newState: CribbageState, traceId?: string) => {
     if (!currentRoundId) return;
     setIsProcessing(true);
     
-    // Set optimistic state IMMEDIATELY and stamp the write time.
-    // This prevents stale realtime/poll updates from overwriting our local state.
+    const tid = traceId ?? newTraceId();
+    logCribbageDebug(debugCtx, 'optimistic_applied', cribbageStateSummary(newState), tid);
+    
+    // Apply optimistic state through sync framework
+    syncHandle.applyOptimistic(newState);
     setCribbageState(newState);
-    lastOptimisticWriteRef.current = Date.now();
+    
+    logCribbageDebug(debugCtx, 'db_write_start', cribbageStateSummary(newState), tid);
     
     try {
       const { error } = await supabase
@@ -1519,10 +1523,16 @@ export const CribbageMobileGameTable = ({
         .eq('id', currentRoundId);
 
       if (error) throw error;
-      // State already set optimistically above
+      
+      logCribbageDebug(debugCtx, 'db_write_success', {}, tid);
+      
+      // Immediate authoritative promotion — prevents stale snapshots from overwriting
+      syncHandle.receiveAuthoritativeUpdate(newState);
     } catch (err) {
       console.error('[CRIBBAGE] Error updating state:', err);
+      logCribbageDebug(debugCtx, 'db_write_failure', { error: (err as Error).message }, tid);
       toast.error('Failed to update game state');
+      syncHandle.clearOptimistic();
       // On failure, force-refetch from DB to get authoritative state
       try {
         const { data } = await supabase
@@ -1531,7 +1541,9 @@ export const CribbageMobileGameTable = ({
           .eq('id', currentRoundId)
           .single();
         if (data?.cribbage_state) {
-          setCribbageState(data.cribbage_state as unknown as CribbageState);
+          const freshState = data.cribbage_state as unknown as CribbageState;
+          setCribbageState(freshState);
+          syncHandle.receiveAuthoritativeUpdate(freshState);
         }
       } catch { /* ignore refetch errors */ }
     } finally {
