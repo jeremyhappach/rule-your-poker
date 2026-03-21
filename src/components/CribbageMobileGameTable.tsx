@@ -709,6 +709,8 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = countingStartKey;
     countingHandKeyRef.current = countingStartKey;
     setCountingStateSnapshot(state);
+    // Freeze sync framework presentation so authoritative updates don't clobber the counting UI
+    syncHandle.freezePresentation();
 
     // Initialize counting score overrides with the pegging baseline IMMEDIATELY.
     // IMPORTANT: The final pegging +1 ("Last" / "Go") is often applied on the SAME
@@ -1555,6 +1557,9 @@ export const CribbageMobileGameTable = ({
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
     
+    const tid = newTraceId();
+    logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
+    
     try {
       // CRITICAL: Fetch fresh state from DB to prevent stale card decisions.
       // Without this, a player can discard cards from a PREVIOUS hand's state
@@ -1597,14 +1602,17 @@ export const CribbageMobileGameTable = ({
       }
       
       const newState = discardToCrib(freshState, currentPlayerId, cardIndices);
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId]);
+  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx]);
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
+
+    const tid = newTraceId();
+    logCribbageDebug(debugCtx, 'input:play_card', { cardIndex, phase: cribbageState.phase, turn: cribbageState.pegging.currentTurnPlayerId?.slice(0, 8) }, tid);
 
     try {
       // CRITICAL: Fetch the latest state from DB to prevent stale state issues
@@ -1652,14 +1660,17 @@ export const CribbageMobileGameTable = ({
         logHisHeelsEvent(eventCtx, newState);
       }
       
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
+
+    const tid = newTraceId();
+    logCribbageDebug(debugCtx, 'input:go', { phase: cribbageState.phase, count: cribbageState.pegging.currentCount }, tid);
 
     try {
       // CRITICAL: Fetch fresh state from DB to prevent stale subscription state issues.
@@ -1676,7 +1687,7 @@ export const CribbageMobileGameTable = ({
         // Fall back to subscription state
         const newState = callGo(cribbageState, currentPlayerId);
         logGoPointEvent(eventCtx, cribbageState, newState);
-        await updateState(newState);
+        await updateState(newState, tid);
         return;
       }
       
@@ -1708,11 +1719,11 @@ export const CribbageMobileGameTable = ({
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       logGoPointEvent(eventCtx, freshState, newState);
       
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
 
   // Keep handleGoRef updated to the latest callback
   useEffect(() => {
@@ -1763,6 +1774,8 @@ export const CribbageMobileGameTable = ({
     // the counting init effect can re-run and replay the scoring sequence.
     setCountingStateSnapshot(null);
     setCountingWinFrozen(false);
+    // Unfreeze sync framework presentation so new-hand state flows through
+    syncHandle.unfreezePresentation();
     
     // IMPORTANT: Do NOT clear countingScoreOverrides here.
     // The override should persist with the final counting scores until either:
@@ -2562,6 +2575,7 @@ export const CribbageMobileGameTable = ({
               currentPlayer={currentPlayer}
               gameId={gameId}
               isDealer={isCribDealer(currentPlayerId)}
+              roundId={currentRoundId}
             />
           )}
           
