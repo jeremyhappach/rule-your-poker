@@ -11,7 +11,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { GameStateSyncConfig, GameStateSyncHandle } from './types';
+import type { GameStateSyncConfig, GameStateSyncHandle, AuthoritativeUpdateResult } from './types';
 import { compareProgress, jsonEqual } from './stateProgress';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
