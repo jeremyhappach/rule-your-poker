@@ -266,13 +266,17 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: `gin:snapshot_received:${source}`,
+        payload: ginStateSummary(state),
+      });
       // Route ALL external updates through the sync framework's progress-vector gate.
-      // This prevents regressive snapshots from overwriting optimistic or forward state.
       const accepted = ginSync.receiveAuthoritativeUpdate(state);
-      console.log(`[GIN-RUMMY] State update from ${source}`, {
-        phase: state.phase,
-        actionCount: state.actionCount ?? 0,
-        accepted,
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: accepted ? 'gin:snapshot_accepted' : 'gin:snapshot_rejected',
+        payload: ginStateSummary(state, { source }),
       });
       if (accepted) {
         setGinState(state);
