@@ -164,6 +164,21 @@ export function useGameStateSync<T>(
     setPresentation(state);
   }, []);
 
+  // ── Full reset (hand/round boundary) ─────────────────────────
+  const reset = useCallback((newInitial: T) => {
+    authRef.current = newInitial;
+    optRef.current = null;
+    frozenRef.current = false;
+    setAuthoritative(newInitial);
+    setOptimistic(null);
+    setPresentation(newInitial);
+    setFrozen(false);
+    if (optimisticTimerRef.current) {
+      clearTimeout(optimisticTimerRef.current);
+      optimisticTimerRef.current = null;
+    }
+  }, []);
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
@@ -185,5 +200,6 @@ export function useGameStateSync<T>(
     freezePresentation,
     unfreezePresentation,
     commitToPresentation,
+    reset,
   };
 }

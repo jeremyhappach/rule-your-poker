@@ -117,9 +117,16 @@ export interface GameStateSyncHandle<T> {
    */
   unfreezePresentation: () => void;
 
-  /**
-   * Force-commit a specific state to presentation (e.g., after
-   * an animation sequence completes and you want a specific frame).
-   */
-  commitToPresentation: (state: T) => void;
+   /**
+    * Force-commit a specific state to presentation (e.g., after
+    * an animation sequence completes and you want a specific frame).
+    */
+   commitToPresentation: (state: T) => void;
+
+   /**
+    * Full reset for hand/round boundaries. Clears all layers
+    * (authoritative, optimistic, presentation, frozen) to the
+    * given initial state. Cancels any pending optimistic timers.
+    */
+   reset: (newInitial: T) => void;
 }
