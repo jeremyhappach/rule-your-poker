@@ -166,13 +166,23 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
-  // Reset overlay flags when roundId changes (new hand)
+  // Reset ALL state when roundId changes (new hand boundary)
   useEffect(() => {
+    // Reset sync framework — clears stale presentation/authoritative/freeze
+    ginSync.reset(null);
+    // Reset local state
+    setGinState(null);
+    setIsProcessing(false);
+    setLayOffSelectedCardIndex(null);
+    // Reset overlay flags
     setShowKnockOverlay(false);
     setShowGinOverlay(false);
     prevPhaseRef.current = null;
     ginOverlayFiredRef.current = false;
     knockOverlayFiredRef.current = false;
+    // Reset opponent draw animation
+    setOpponentDrawTriggerId(null);
+    prevLastActionRef.current = null;
   }, [roundId]);
 
   // Guards: only allow one overlay per round (prevents re-fire from polls/re-renders)
