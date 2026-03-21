@@ -776,39 +776,42 @@ export const GinRummyGameTable = ({
 
   // Action handlers
   const handleDrawStock = async () => {
+    const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
-      eventType: 'gin:input:draw_stock',
+      eventType: 'gin:input:draw_stock', traceId: tid,
       payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
     });
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = drawFromStock(ginState, currentPlayerId);
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
   };
 
   const handleDrawDiscard = async () => {
+    const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
-      eventType: 'gin:input:draw_discard',
+      eventType: 'gin:input:draw_discard', traceId: tid,
       payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
     });
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = drawFromDiscard(ginState, currentPlayerId);
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
   };
 
   const handleDiscard = async (index: number) => {
+    const tid = newTraceId();
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
-      eventType: 'gin:input:discard',
+      eventType: 'gin:input:discard', traceId: tid,
       payload: ginStateSummary(ginState, { isProcessing, cardIndex: index }),
     });
     if (!ginState || !currentPlayerId || isProcessing) return;
@@ -816,7 +819,7 @@ export const GinRummyGameTable = ({
     if (!card) return;
     try {
       const newState = discardCard(ginState, currentPlayerId, card);
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
