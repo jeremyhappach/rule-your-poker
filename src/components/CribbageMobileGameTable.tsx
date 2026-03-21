@@ -1555,6 +1555,9 @@ export const CribbageMobileGameTable = ({
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
     
+    const tid = newTraceId();
+    logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
+    
     try {
       // CRITICAL: Fetch fresh state from DB to prevent stale card decisions.
       // Without this, a player can discard cards from a PREVIOUS hand's state
@@ -1597,11 +1600,11 @@ export const CribbageMobileGameTable = ({
       }
       
       const newState = discardToCrib(freshState, currentPlayerId, cardIndices);
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId]);
+  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx]);
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
