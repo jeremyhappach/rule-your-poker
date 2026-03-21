@@ -2562,6 +2562,7 @@ export const CribbageMobileGameTable = ({
               currentPlayer={currentPlayer}
               gameId={gameId}
               isDealer={isCribDealer(currentPlayerId)}
+              roundId={currentRoundId}
             />
           )}
           
