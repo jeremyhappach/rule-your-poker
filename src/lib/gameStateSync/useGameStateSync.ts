@@ -200,5 +200,6 @@ export function useGameStateSync<T>(
     freezePresentation,
     unfreezePresentation,
     commitToPresentation,
+    reset,
   };
 }
