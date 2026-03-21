@@ -86,6 +86,9 @@ export async function startGinRummyRound(
       ? (existingRounds[0].hand_number || 0) + 1
       : 1;
 
+    // Stamp handNumber into state for the sync progress vector
+    ginState = { ...ginState, handNumber };
+
     // Create round record
     const { data: round, error: roundError } = await supabase
       .from('rounds')
