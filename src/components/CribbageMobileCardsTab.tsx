@@ -41,9 +41,19 @@ export const CribbageMobileCardsTab = ({
   currentPlayer,
   gameId,
   isDealer,
+  roundId,
 }: CribbageMobileCardsTabProps) => {
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [isEmoticonSending, setIsEmoticonSending] = useState(false);
+
+  // Reset selectedCards on hand boundary (roundId change) to prevent stale selections
+  const prevRoundIdRef = useRef<string | undefined>(roundId);
+  useEffect(() => {
+    if (roundId && roundId !== prevRoundIdRef.current) {
+      prevRoundIdRef.current = roundId;
+      setSelectedCards([]);
+    }
+  }, [roundId]);
   
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
