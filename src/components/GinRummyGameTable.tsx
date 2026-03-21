@@ -120,12 +120,8 @@ export const GinRummyGameTable = ({
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
   });
 
-  // Feed ginState changes through the anti-regression gate
-  useEffect(() => {
-    if (ginState) {
-      ginSync.receiveAuthoritativeUpdate(ginState);
-    }
-  }, [ginState]);
+  // Sync framework is now fed directly by applyState (realtime/poll handler).
+  // Local mutations feed it via ginSync.applyOptimistic() / updateState().
 
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
