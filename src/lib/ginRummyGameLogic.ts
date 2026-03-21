@@ -35,7 +35,8 @@ export function createInitialGinRummyState(
   nonDealerPlayerId: string,
   anteAmount: number,
   pointsToWin: number,
-  existingMatchScores?: Record<string, number>
+  existingMatchScores?: Record<string, number>,
+  handNumber?: number,
 ): GinRummyState {
   return {
     phase: 'dealing',
