@@ -790,23 +790,25 @@ export const GinRummyGameTable = ({
         // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
         ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
-        // Write to DB so opponent sees gin phase and gets overlay too
-        supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        // Write scoring state to DB so opponent sees gin phase and gets overlay too
+        await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
         ginSync.applyOptimistic(newState);
+        setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
-        await updateState(newState);
+        // Transition scoring → complete in one shot (no redundant scoring write)
         newState = scoreHand(newState);
       } else if (newState.phase === 'knocking') {
         // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
         setTimeout(() => playKnock(), 100);
         knockOverlayFiredRef.current = true;
         setShowKnockOverlay(true);
-        // Write to DB so opponent sees knocking phase and gets overlay too
-        supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        // Write knocking state to DB so opponent sees overlay too
+        await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
         ginSync.applyOptimistic(newState);
+        setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
-        await updateState(newState);
       }
+      // Single authoritative DB write of the final state (complete or post-knock tabling)
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
