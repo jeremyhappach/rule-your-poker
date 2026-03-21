@@ -27,6 +27,8 @@ interface CribbageMobileCardsTabProps {
   currentPlayer: Player;
   gameId: string;
   isDealer: boolean;
+  /** Used to reset selectedCards on hand boundary transitions */
+  roundId?: string;
 }
 
 export const CribbageMobileCardsTab = ({

@@ -1214,15 +1214,16 @@ export const CribbageMobileGameTable = ({
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
-  // CRITICAL: When currentRoundId changes, immediately clear stale cribbage state.
-  // This prevents old cards from being visible AND interactive during the gap before
-  // the realtime subscription delivers the new round's state.
+  // CRITICAL: When currentRoundId changes, immediately clear stale cribbage state
+  // and reset the sync framework baseline so new-hand snapshots are accepted.
   const prevRoundIdRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
-    console.log('[CRIBBAGE] currentRoundId changed, clearing stale state', { oldId, newId: currentRoundId });
+    console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
+    // Reset sync framework — clears authoritative, optimistic, presentation, frozen
+    syncHandle.reset(null);
     setCribbageState(null);
     cribbageStateRef.current = null;
     setIsTransitioning(true);
