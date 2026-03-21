@@ -11,7 +11,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { GameStateSyncConfig, GameStateSyncHandle } from './types';
+import type { GameStateSyncConfig, GameStateSyncHandle, AuthoritativeUpdateResult } from './types';
 import { compareProgress, jsonEqual } from './stateProgress';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
@@ -57,14 +57,17 @@ export function useGameStateSync<T>(
   }, [effective, frozen]);
 
   // ── Receive authoritative update (from realtime / poll) ──────
-  const receiveAuthoritativeUpdate = useCallback((incoming: T): boolean => {
+  const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
     const currentAuth = authRef.current;
-
-    // Skip identical snapshots
-    if (isEqual(currentAuth, incoming)) return false;
 
     const currentProgress = getProgress(currentAuth);
     const incomingProgress = getProgress(incoming);
+
+    // Skip identical snapshots
+    if (isEqual(currentAuth, incoming)) {
+      return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0 };
+    }
+
     const cmp = compareProgress(currentProgress, incomingProgress);
 
     // Reject regressive updates
@@ -75,7 +78,7 @@ export function useGameStateSync<T>(
         currentState: describeState?.(currentAuth),
         incomingState: describeState?.(incoming),
       });
-      return false;
+      return { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp };
     }
 
     console.log(`${logPrefix} ✅ Accepted update`, {
@@ -112,7 +115,7 @@ export function useGameStateSync<T>(
       }
     }
 
-    return true;
+    return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp };
   }, [getProgress, isEqual]);
 
   // ── Apply optimistic local state ─────────────────────────────

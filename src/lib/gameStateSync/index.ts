@@ -11,6 +11,7 @@ export { getYahtzeeProgress } from './yahtzeeProgress';
 export { getGinRummyProgress } from './ginRummyProgress';
 export type {
   ProgressVector,
+  AuthoritativeUpdateResult,
   GetProgressFn,
   GameStateSyncConfig,
   GameStateSyncHandle,

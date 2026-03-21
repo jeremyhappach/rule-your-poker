@@ -14,6 +14,17 @@
 /** Numeric progress vector — compared element by element, left to right. */
 export type ProgressVector = number[];
 
+/** Result of receiveAuthoritativeUpdate with diagnostic details. */
+export interface AuthoritativeUpdateResult {
+  accepted: boolean;
+  /** 'forward' | 'equal' | 'regressive' | 'identical' */
+  reason: string;
+  previousProgress: ProgressVector;
+  incomingProgress: ProgressVector;
+  /** -1 regressive, 0 equal, 1 forward */
+  comparison: number;
+}
+
 /**
  * Game-specific function that extracts a progress vector from state.
  * The vector must be monotonically non-decreasing as the game advances.
@@ -73,9 +84,9 @@ export interface GameStateSyncHandle<T> {
   /**
    * Feed an incoming DB snapshot (from realtime or poll).
    * The framework decides whether to accept, reject, or queue it.
-   * Returns true if accepted, false if rejected as regressive.
+   * Returns a result with accepted flag and progress vector details.
    */
-  receiveAuthoritativeUpdate: (incoming: T) => boolean;
+  receiveAuthoritativeUpdate: (incoming: T) => AuthoritativeUpdateResult;
 
   /**
    * Apply a local optimistic state. The framework will prefer this
