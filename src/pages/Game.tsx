@@ -7306,6 +7306,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       </AlertDialogContent>
       </AlertDialog>
 
+    <DebugLogToggle />
     </div>
     </VisualPreferencesProvider>
   );
