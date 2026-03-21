@@ -187,15 +187,13 @@ export async function startNextGinRummyHand(
       ? previousState.nonDealerPlayerId
       : previousState.dealerPlayerId;
 
-    // Create new hand state with preserved match scores
-    // handNumber is set after DB insert below to use authoritative value
+    // Create new hand state with preserved match scores (handNumber set after DB query)
     let newState = createInitialGinRummyState(
       nextDealerId,
       nextNonDealerId,
       previousState.anteAmount,
       previousState.pointsToWin,
       previousState.matchScores,
-      handNumber, // preliminary — overwritten with DB-authoritative value below
     );
     newState = dealHand(newState);
 
