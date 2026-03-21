@@ -120,12 +120,8 @@ export const GinRummyGameTable = ({
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
   });
 
-  // Feed ginState changes through the anti-regression gate
-  useEffect(() => {
-    if (ginState) {
-      ginSync.receiveAuthoritativeUpdate(ginState);
-    }
-  }, [ginState]);
+  // Sync framework is now fed directly by applyState (realtime/poll handler).
+  // Local mutations feed it via ginSync.applyOptimistic() / updateState().
 
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
@@ -269,16 +265,19 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
-      // Use the shared sync framework's progress-vector gate instead of ad hoc timer
-      // The framework will reject regressive snapshots automatically via receiveAuthoritativeUpdate
+      // Route ALL external updates through the sync framework's progress-vector gate.
+      // This prevents regressive snapshots from overwriting optimistic or forward state.
+      const accepted = ginSync.receiveAuthoritativeUpdate(state);
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
-        turn: state.currentTurnPlayerId?.slice(0, 8),
-        firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
+        actionCount: state.actionCount ?? 0,
+        accepted,
       });
-      setGinState(state);
-      if (state.phase === 'complete' && state.winnerPlayerId) {
-        onGameCompleteRef.current();
+      if (accepted) {
+        setGinState(state);
+        if (state.phase === 'complete' && state.winnerPlayerId) {
+          onGameCompleteRef.current();
+        }
       }
     };
 
@@ -722,8 +721,9 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      // Re-assert optimistic state after write succeeds
-      setGinState(newState);
+      // DB write succeeded — promote to authoritative so the sync framework
+      // knows this is the real DB state and will clear optimistic + accept polls at this level
+      ginSync.receiveAuthoritativeUpdate(newState);
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
@@ -787,23 +787,25 @@ export const GinRummyGameTable = ({
         // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
         ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
-        // Write to DB so opponent sees gin phase and gets overlay too
-        supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        // Write scoring state to DB so opponent sees gin phase and gets overlay too
+        await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
         ginSync.applyOptimistic(newState);
+        setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
-        await updateState(newState);
+        // Transition scoring → complete in one shot (no redundant scoring write)
         newState = scoreHand(newState);
       } else if (newState.phase === 'knocking') {
         // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
         setTimeout(() => playKnock(), 100);
         knockOverlayFiredRef.current = true;
         setShowKnockOverlay(true);
-        // Write to DB so opponent sees knocking phase and gets overlay too
-        supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        // Write knocking state to DB so opponent sees overlay too
+        await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
         ginSync.applyOptimistic(newState);
+        setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
-        await updateState(newState);
       }
+      // Single authoritative DB write of the final state (complete or post-knock tabling)
       await updateState(newState);
     } catch (err) {
       toast.error((err as Error).message);
