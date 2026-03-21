@@ -65,7 +65,9 @@ export async function startGinRummyRound(
       dealerPlayer.id,
       nonDealerPlayer.id,
       anteAmount,
-      pointsToWin
+      pointsToWin,
+      undefined,
+      handNumber, // pass hand number into state for progress vector
     );
     ginState = dealHand(ginState);
 
