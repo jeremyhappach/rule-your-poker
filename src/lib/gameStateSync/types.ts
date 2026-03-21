@@ -27,13 +27,17 @@ export interface AuthoritativeUpdateResult {
 
 /**
  * Game-specific function that extracts a progress vector from state.
- * The vector must be monotonically non-decreasing as the game advances.
+ * The vector must be monotonically non-decreasing as the game advances
+ * across the ENTIRE match lifecycle, not just a single hand/round.
  *
- * Example for Yahtzee:
- *   [currentRound, turnIndex, 3 - rollsRemaining, categoriesFilled]
+ * For multi-hand games, the highest-priority (leftmost) dimension MUST be
+ * the hand/round number so that new-hand resets are always forward progress.
  *
- * Example for Gin Rummy:
- *   [handNumber, phaseOrdinal, totalCardsPlayed]
+ * Example for Yahtzee (single continuous game):
+ *   [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed]
+ *
+ * Example for Gin Rummy (multi-hand match):
+ *   [handNumber, phaseOrdinal, actionCount]
  */
 export type GetProgressFn<T> = (state: T) => ProgressVector;
 
