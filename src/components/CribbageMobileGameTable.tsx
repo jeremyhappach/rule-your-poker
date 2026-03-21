@@ -709,6 +709,8 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = countingStartKey;
     countingHandKeyRef.current = countingStartKey;
     setCountingStateSnapshot(state);
+    // Freeze sync framework presentation so authoritative updates don't clobber the counting UI
+    syncHandle.freezePresentation();
 
     // Initialize counting score overrides with the pegging baseline IMMEDIATELY.
     // IMPORTANT: The final pegging +1 ("Last" / "Go") is often applied on the SAME
