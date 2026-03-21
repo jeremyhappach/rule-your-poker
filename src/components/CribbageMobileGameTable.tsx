@@ -1609,6 +1609,9 @@ export const CribbageMobileGameTable = ({
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    const tid = newTraceId();
+    logCribbageDebug(debugCtx, 'input:play_card', { cardIndex, phase: cribbageState.phase, turn: cribbageState.pegging.currentTurnPlayerId?.slice(0, 8) }, tid);
+
     try {
       // CRITICAL: Fetch the latest state from DB to prevent stale state issues
       // This guards against race conditions where bot's move hasn't propagated yet
@@ -1655,11 +1658,11 @@ export const CribbageMobileGameTable = ({
         logHisHeelsEvent(eventCtx, newState);
       }
       
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
