@@ -184,6 +184,14 @@ export function useHorsesMobileController({
     prevRoundIdForSyncRef.current = currentRoundId;
     acceptedStateRef.current = null;
     acceptedProgressRef.current = [0, 0, 0, 0];
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'observer',
+      eventType: 'horses:sync_reset',
+      payload: { reason: 'round_boundary', newRoundId: currentRoundId },
+    });
     console.log(`[HORSES_SYNC] Round boundary reset: ${currentRoundId}`);
   }
 
@@ -1271,6 +1279,20 @@ export function useHorsesMobileController({
     if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    const traceId = newTraceId();
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'actor',
+      eventType: 'horses:input:roll',
+      traceId,
+      payload: horsesStateSummary(horsesState as any, {
+        rollsRemaining: localHand.rollsRemaining,
+        playerId: myPlayer?.id,
+      }),
+    });
+
     const rollStartTime = Date.now();
     // Unique per-roll key so all clients can trigger DiceTableLayout fly-in animations.
     localRollKeyRef.current = rollStartTime;
@@ -1314,11 +1336,28 @@ export function useHorsesMobileController({
     console.log(`[ROLL_DEBUG] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
     logDebug("roll_state", "setIsRolling(true)", { rollStartTime });
 
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'actor',
+      eventType: 'horses:db_write_start',
+      traceId,
+      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current },
+    });
+
     // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
-    // This fixes the 1-2 second desync where active player's animation was ahead of observers.
-    // IMPORTANT: Do this for ALL rolls (including the final roll), otherwise observers can miss the last fly-in and
-    // "skip" straight to the result.
-    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll);
+    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll).then(() => {
+      logDebugEvent({
+        gameId: gameId ?? '',
+        roundId: currentRoundId,
+        userId: currentUserId,
+        clientRole: 'actor',
+        eventType: 'horses:db_write_success',
+        traceId,
+        payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining },
+      });
+    });
 
     setTimeout(async () => {
       const animationEndTime = Date.now();
@@ -1377,6 +1416,15 @@ export function useHorsesMobileController({
       if (isPaused) return; // Block all actions when game is paused
       if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3 || localHand.rollsRemaining <= 0) return;
 
+      logDebugEvent({
+        gameId: gameId ?? '',
+        roundId: currentRoundId,
+        userId: currentUserId,
+        clientRole: 'actor',
+        eventType: 'horses:input:hold',
+        payload: { dieIndex: index, rollsRemaining: localHand.rollsRemaining, holdSeq: localHoldSeqRef.current + 1 },
+      });
+
       // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
       // Cargo dice (non-SCC) CAN be toggled - player can hold individual cargo dice
       if (isSCC) {
@@ -1426,6 +1474,20 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
+
+    const traceId = newTraceId();
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'actor',
+      eventType: 'horses:input:lockin',
+      traceId,
+      payload: horsesStateSummary(horsesState as any, {
+        rollsRemaining: localHand.rollsRemaining,
+        playerId: myPlayer?.id,
+      }),
+    });
 
     // Freeze layout to what it was at the START of the most recent roll.
     const heldMaskBeforeComplete =
