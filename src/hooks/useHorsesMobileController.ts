@@ -1271,6 +1271,20 @@ export function useHorsesMobileController({
     if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    const traceId = newTraceId();
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'actor',
+      eventType: 'horses:input:roll',
+      traceId,
+      payload: horsesStateSummary(horsesState as any, {
+        rollsRemaining: localHand.rollsRemaining,
+        playerId: myPlayer?.id,
+      }),
+    });
+
     const rollStartTime = Date.now();
     // Unique per-roll key so all clients can trigger DiceTableLayout fly-in animations.
     localRollKeyRef.current = rollStartTime;
@@ -1314,11 +1328,28 @@ export function useHorsesMobileController({
     console.log(`[ROLL_DEBUG] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
     logDebug("roll_state", "setIsRolling(true)", { rollStartTime });
 
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'actor',
+      eventType: 'horses:db_write_start',
+      traceId,
+      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current },
+    });
+
     // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
-    // This fixes the 1-2 second desync where active player's animation was ahead of observers.
-    // IMPORTANT: Do this for ALL rolls (including the final roll), otherwise observers can miss the last fly-in and
-    // "skip" straight to the result.
-    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll);
+    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll).then(() => {
+      logDebugEvent({
+        gameId: gameId ?? '',
+        roundId: currentRoundId,
+        userId: currentUserId,
+        clientRole: 'actor',
+        eventType: 'horses:db_write_success',
+        traceId,
+        payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining },
+      });
+    });
 
     setTimeout(async () => {
       const animationEndTime = Date.now();
