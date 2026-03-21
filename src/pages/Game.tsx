@@ -45,6 +45,7 @@ import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
+import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
