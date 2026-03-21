@@ -770,6 +770,11 @@ export const GinRummyGameTable = ({
 
   // Action handlers
   const handleDrawStock = async () => {
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:input:draw_stock',
+      payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
+    });
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = drawFromStock(ginState, currentPlayerId);
@@ -780,6 +785,11 @@ export const GinRummyGameTable = ({
   };
 
   const handleDrawDiscard = async () => {
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:input:draw_discard',
+      payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
+    });
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = drawFromDiscard(ginState, currentPlayerId);
@@ -790,6 +800,11 @@ export const GinRummyGameTable = ({
   };
 
   const handleDiscard = async (index: number) => {
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:input:discard',
+      payload: ginStateSummary(ginState, { isProcessing, cardIndex: index }),
+    });
     if (!ginState || !currentPlayerId || isProcessing) return;
     const card = ginState.playerStates[currentPlayerId]?.hand[index];
     if (!card) return;
