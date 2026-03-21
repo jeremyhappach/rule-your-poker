@@ -10,6 +10,7 @@ export { compareProgress, isProgressForwardOrEqual, isProgressStrictlyForward, j
 export { getYahtzeeProgress } from './yahtzeeProgress';
 export { getGinRummyProgress } from './ginRummyProgress';
 export { getHorsesProgress } from './horsesProgress';
+export { getCribbageProgress } from './cribbageProgress';
 export type {
   ProgressVector,
   AuthoritativeUpdateResult,

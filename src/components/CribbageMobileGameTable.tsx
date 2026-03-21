@@ -41,6 +41,9 @@ import {
   logCountingScoringEvents,
   logCutCardEvent
 } from '@/lib/useCribbageEventLogging';
+import { useGameStateSync } from '@/lib/gameStateSync';
+import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
+import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 
 interface Player {
   id: string;
@@ -207,6 +210,29 @@ export const CribbageMobileGameTable = ({
     cribbageStateRef.current = cribbageState;
   }, [cribbageState]);
 
+  // ── Sync Framework ──────────────────────────────────────────
+  // Provides three-layer state management: authoritative, optimistic, presentation.
+  // Replaces the hand-rolled lastOptimisticWriteRef + getStateProgress pattern.
+  const syncHandle = useGameStateSync<CribbageState | null>(null, {
+    getProgress: (state) => getCribbageProgress(state, currentHandNumber),
+    debugLabel: 'Cribbage',
+    describeState: (state) => state ? cribbageStateSummary(state) : null,
+    optimisticTimeoutMs: 3000,
+  });
+
+  // The state the UI should render — presentation state from the sync framework
+  const viewState = syncHandle.presentationState;
+  // For action legality checks and rendering, use effective state (optimistic ?? authoritative)
+  const effectiveState = syncHandle.effectiveState;
+
+  // Debug logging context
+  const debugCtx = useMemo<CribbageDebugContext>(() => ({
+    gameId,
+    roundId: currentRoundId,
+    userId: currentUserId,
+    handNumber: currentHandNumber,
+  }), [gameId, currentRoundId, currentUserId, currentHandNumber]);
+
   // High card dealer selection state - only for first hand
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
@@ -335,9 +361,7 @@ export const CribbageMobileGameTable = ({
   // Source-level guard for starting next hand to prevent double-firing on same client
   const startNextHandFiredRef = useRef<string | null>(null);
 
-  // Timestamp of the last optimistic write - used to reject stale realtime/poll updates
-  // that arrive before the server confirms our write, preventing card snap-back and score flicker.
-  const lastOptimisticWriteRef = useRef<number>(0);
+  // Sync framework handles optimistic write protection — no manual timestamp needed.
 
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
@@ -1190,15 +1214,16 @@ export const CribbageMobileGameTable = ({
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
-  // CRITICAL: When currentRoundId changes, immediately clear stale cribbage state.
-  // This prevents old cards from being visible AND interactive during the gap before
-  // the realtime subscription delivers the new round's state.
+  // CRITICAL: When currentRoundId changes, immediately clear stale cribbage state
+  // and reset the sync framework baseline so new-hand snapshots are accepted.
   const prevRoundIdRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
-    console.log('[CRIBBAGE] currentRoundId changed, clearing stale state', { oldId, newId: currentRoundId });
+    console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
+    // Reset sync framework — clears authoritative, optimistic, presentation, frozen
+    syncHandle.reset(null);
     setCribbageState(null);
     cribbageStateRef.current = null;
     setIsTransitioning(true);
@@ -1214,63 +1239,37 @@ export const CribbageMobileGameTable = ({
     let lastSyncTimestamp: string | null = null;
     let isActive = true;
 
-    /**
-     * Compute a monotonic "progress" score for a cribbage state.
-     * Used to reject stale realtime/poll updates that are BEHIND
-     * the locally-optimistic state (e.g. after discard/play/go).
-     */
-    const getStateProgress = (state: CribbageState): number => {
-      const phaseOrder: Record<string, number> = {
-        'discarding': 0, 'cutting': 1, 'pegging': 2, 'counting': 3, 'complete': 4,
-      };
-      const phase = phaseOrder[state.phase] ?? 0;
-      const playedCards = state.pegging.playedCards.length;
-      const cribSize = state.crib.length;
-      // Count total discarded cards across all players
-      const totalDiscarded = Object.values(state.playerStates)
-        .reduce((sum, ps) => sum + (ps.discardedToCrib?.length ?? 0), 0);
-      const totalScore = Object.values(state.playerStates)
-        .reduce((sum, ps) => sum + (ps.pegScore ?? 0), 0);
-      // Weight phase heavily, then granular details
-      return phase * 100000 + playedCards * 1000 + totalDiscarded * 100 + cribSize * 10 + totalScore;
-    };
-
-    // Handler for state updates (from realtime or polling)
+    // Handler for state updates (from realtime or polling) — routes through sync framework.
     const handleStateUpdate = (newCribbageState: CribbageState, fromRealtime: boolean) => {
       if (!isActive) return;
       
-      // CRITICAL: Reject stale updates that are BEHIND our current local state.
-      // After an optimistic write (discard/play/go), the realtime subscription or poll
-      // may deliver the pre-write state, causing cards to snap back and scores to flash.
-      // Only accept updates that represent equal or forward progress.
-      const timeSinceWrite = Date.now() - lastOptimisticWriteRef.current;
-      if (timeSinceWrite < 3000 && cribbageStateRef.current) {
-        const currentProgress = getStateProgress(cribbageStateRef.current);
-        const newProgress = getStateProgress(newCribbageState);
-        if (newProgress < currentProgress) {
-          console.log('[CRIBBAGE_SYNC] Rejected stale update', {
-            fromRealtime,
-            currentProgress,
-            newProgress,
-            timeSinceWrite,
-          });
-          return;
-        }
-      }
+      const source = fromRealtime ? 'realtime' : 'poll';
+      const traceId = newTraceId();
       
-      setCribbageState(newCribbageState);
+      // Log snapshot received
+      logCribbageDebug(debugCtx, `snapshot_received:${source}`, cribbageStateSummary(newCribbageState), traceId);
+      
+      // Route through sync framework — it handles stale rejection, optimistic clearing, etc.
+      const result = syncHandle.receiveAuthoritativeUpdate(newCribbageState);
+      
+      // Log accept/reject
+      logCribbageDebug(debugCtx, result.accepted ? 'snapshot_accepted' : 'snapshot_rejected', {
+        reason: result.reason,
+        prevVector: result.previousProgress,
+        incomingVector: result.incomingProgress,
+        comparison: result.comparison,
+        source,
+      }, traceId);
+      
+      if (result.accepted) {
+        // Update the legacy cribbageState/ref for components that still read it directly
+        setCribbageState(newCribbageState);
+      }
       
       // Reset poll interval when realtime works
       if (fromRealtime) {
         pollInterval = 2000;
       }
-      
-      // IMPORTANT: Win sequence is now ONLY triggered via handleCountingComplete callback.
-      // The counting animation must always play out fully, with the winning combo highlighted
-      // and scores incrementing on the peg board, BEFORE the win celebration begins.
-      // This preserves the suspense and allows players to see the exact combo that won.
-      // 
-      // The realtime handler should NOT trigger win sequence - that's the counting animation's job.
     };
 
     // Use a simple state signature since rounds doesn't have updated_at
@@ -1505,14 +1504,18 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(timeout);
   }, [cribbageState, isProcessing, players, roundId]);
 
-  const updateState = async (newState: CribbageState) => {
+  const updateState = async (newState: CribbageState, traceId?: string) => {
     if (!currentRoundId) return;
     setIsProcessing(true);
     
-    // Set optimistic state IMMEDIATELY and stamp the write time.
-    // This prevents stale realtime/poll updates from overwriting our local state.
+    const tid = traceId ?? newTraceId();
+    logCribbageDebug(debugCtx, 'optimistic_applied', cribbageStateSummary(newState), tid);
+    
+    // Apply optimistic state through sync framework
+    syncHandle.applyOptimistic(newState);
     setCribbageState(newState);
-    lastOptimisticWriteRef.current = Date.now();
+    
+    logCribbageDebug(debugCtx, 'db_write_start', cribbageStateSummary(newState), tid);
     
     try {
       const { error } = await supabase
@@ -1521,10 +1524,16 @@ export const CribbageMobileGameTable = ({
         .eq('id', currentRoundId);
 
       if (error) throw error;
-      // State already set optimistically above
+      
+      logCribbageDebug(debugCtx, 'db_write_success', {}, tid);
+      
+      // Immediate authoritative promotion — prevents stale snapshots from overwriting
+      syncHandle.receiveAuthoritativeUpdate(newState);
     } catch (err) {
       console.error('[CRIBBAGE] Error updating state:', err);
+      logCribbageDebug(debugCtx, 'db_write_failure', { error: (err as Error).message }, tid);
       toast.error('Failed to update game state');
+      syncHandle.clearOptimistic();
       // On failure, force-refetch from DB to get authoritative state
       try {
         const { data } = await supabase
@@ -1533,7 +1542,9 @@ export const CribbageMobileGameTable = ({
           .eq('id', currentRoundId)
           .single();
         if (data?.cribbage_state) {
-          setCribbageState(data.cribbage_state as unknown as CribbageState);
+          const freshState = data.cribbage_state as unknown as CribbageState;
+          setCribbageState(freshState);
+          syncHandle.receiveAuthoritativeUpdate(freshState);
         }
       } catch { /* ignore refetch errors */ }
     } finally {
