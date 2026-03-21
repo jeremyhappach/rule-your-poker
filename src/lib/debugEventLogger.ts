@@ -36,6 +36,16 @@ export function refreshDebugEventFlag(): void {
   _enabled = isEnabled();
 }
 
+// ── Trace ID ──────────────────────────────────────────────────
+
+let _traceSeq = 0;
+
+/** Generate a short trace ID to group all events from one local action chain. */
+export function newTraceId(): string {
+  _traceSeq += 1;
+  return `t${Date.now().toString(36)}-${_traceSeq}`;
+}
+
 // ── Deduplication ─────────────────────────────────────────────
 
 const recentKeys = new Set<string>();
@@ -56,6 +66,7 @@ export interface DebugEventParams {
   userId?: string | null;
   clientRole?: string;       // 'actor' | 'observer' | 'bot-controller'
   eventType: string;
+  traceId?: string;
   payload?: Record<string, unknown>;
 }
 
@@ -66,6 +77,10 @@ export function logDebugEvent(params: DebugEventParams): void {
   const dedupKey = `${params.gameId}:${params.eventType}:${JSON.stringify(params.payload?.actionCount ?? '')}`;
   if (isDuplicate(dedupKey)) return;
 
+  const fullPayload = params.traceId
+    ? { _traceId: params.traceId, ...params.payload }
+    : params.payload ?? {};
+
   // Fire-and-forget — no await, no error surfacing
   supabase
     .from('debug_events' as any)
@@ -75,7 +90,7 @@ export function logDebugEvent(params: DebugEventParams): void {
       user_id: params.userId ?? null,
       client_role: params.clientRole ?? null,
       event_type: params.eventType,
-      payload: params.payload ?? {},
+      payload: fullPayload,
     } as any)
     .then(({ error }) => {
       if (error) console.warn('[debug_events] write failed:', error.message);
