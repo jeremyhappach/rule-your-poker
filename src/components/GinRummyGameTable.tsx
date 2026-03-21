@@ -269,16 +269,19 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
-      // Use the shared sync framework's progress-vector gate instead of ad hoc timer
-      // The framework will reject regressive snapshots automatically via receiveAuthoritativeUpdate
+      // Route ALL external updates through the sync framework's progress-vector gate.
+      // This prevents regressive snapshots from overwriting optimistic or forward state.
+      const accepted = ginSync.receiveAuthoritativeUpdate(state);
       console.log(`[GIN-RUMMY] State update from ${source}`, {
         phase: state.phase,
-        turn: state.currentTurnPlayerId?.slice(0, 8),
-        firstDrawOfferedTo: state.firstDrawOfferedTo?.slice(0, 8),
+        actionCount: state.actionCount ?? 0,
+        accepted,
       });
-      setGinState(state);
-      if (state.phase === 'complete' && state.winnerPlayerId) {
-        onGameCompleteRef.current();
+      if (accepted) {
+        setGinState(state);
+        if (state.phase === 'complete' && state.winnerPlayerId) {
+          onGameCompleteRef.current();
+        }
       }
     };
 
