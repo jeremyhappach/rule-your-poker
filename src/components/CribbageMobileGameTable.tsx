@@ -1238,63 +1238,37 @@ export const CribbageMobileGameTable = ({
     let lastSyncTimestamp: string | null = null;
     let isActive = true;
 
-    /**
-     * Compute a monotonic "progress" score for a cribbage state.
-     * Used to reject stale realtime/poll updates that are BEHIND
-     * the locally-optimistic state (e.g. after discard/play/go).
-     */
-    const getStateProgress = (state: CribbageState): number => {
-      const phaseOrder: Record<string, number> = {
-        'discarding': 0, 'cutting': 1, 'pegging': 2, 'counting': 3, 'complete': 4,
-      };
-      const phase = phaseOrder[state.phase] ?? 0;
-      const playedCards = state.pegging.playedCards.length;
-      const cribSize = state.crib.length;
-      // Count total discarded cards across all players
-      const totalDiscarded = Object.values(state.playerStates)
-        .reduce((sum, ps) => sum + (ps.discardedToCrib?.length ?? 0), 0);
-      const totalScore = Object.values(state.playerStates)
-        .reduce((sum, ps) => sum + (ps.pegScore ?? 0), 0);
-      // Weight phase heavily, then granular details
-      return phase * 100000 + playedCards * 1000 + totalDiscarded * 100 + cribSize * 10 + totalScore;
-    };
-
-    // Handler for state updates (from realtime or polling)
+    // Handler for state updates (from realtime or polling) — routes through sync framework.
     const handleStateUpdate = (newCribbageState: CribbageState, fromRealtime: boolean) => {
       if (!isActive) return;
       
-      // CRITICAL: Reject stale updates that are BEHIND our current local state.
-      // After an optimistic write (discard/play/go), the realtime subscription or poll
-      // may deliver the pre-write state, causing cards to snap back and scores to flash.
-      // Only accept updates that represent equal or forward progress.
-      const timeSinceWrite = Date.now() - lastOptimisticWriteRef.current;
-      if (timeSinceWrite < 3000 && cribbageStateRef.current) {
-        const currentProgress = getStateProgress(cribbageStateRef.current);
-        const newProgress = getStateProgress(newCribbageState);
-        if (newProgress < currentProgress) {
-          console.log('[CRIBBAGE_SYNC] Rejected stale update', {
-            fromRealtime,
-            currentProgress,
-            newProgress,
-            timeSinceWrite,
-          });
-          return;
-        }
-      }
+      const source = fromRealtime ? 'realtime' : 'poll';
+      const traceId = newTraceId();
       
-      setCribbageState(newCribbageState);
+      // Log snapshot received
+      logCribbageDebug(debugCtx, `snapshot_received:${source}`, cribbageStateSummary(newCribbageState), traceId);
+      
+      // Route through sync framework — it handles stale rejection, optimistic clearing, etc.
+      const result = syncHandle.receiveAuthoritativeUpdate(newCribbageState);
+      
+      // Log accept/reject
+      logCribbageDebug(debugCtx, result.accepted ? 'snapshot_accepted' : 'snapshot_rejected', {
+        reason: result.reason,
+        prevVector: result.previousProgress,
+        incomingVector: result.incomingProgress,
+        comparison: result.comparison,
+        source,
+      }, traceId);
+      
+      if (result.accepted) {
+        // Update the legacy cribbageState/ref for components that still read it directly
+        setCribbageState(newCribbageState);
+      }
       
       // Reset poll interval when realtime works
       if (fromRealtime) {
         pollInterval = 2000;
       }
-      
-      // IMPORTANT: Win sequence is now ONLY triggered via handleCountingComplete callback.
-      // The counting animation must always play out fully, with the winning combo highlighted
-      // and scores incrementing on the peg board, BEFORE the win celebration begins.
-      // This preserves the suspense and allows players to see the exact combo that won.
-      // 
-      // The realtime handler should NOT trigger win sequence - that's the counting animation's job.
     };
 
     // Use a simple state signature since rounds doesn't have updated_at
