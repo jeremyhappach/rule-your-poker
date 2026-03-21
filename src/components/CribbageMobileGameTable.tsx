@@ -210,6 +210,29 @@ export const CribbageMobileGameTable = ({
     cribbageStateRef.current = cribbageState;
   }, [cribbageState]);
 
+  // ── Sync Framework ──────────────────────────────────────────
+  // Provides three-layer state management: authoritative, optimistic, presentation.
+  // Replaces the hand-rolled lastOptimisticWriteRef + getStateProgress pattern.
+  const syncHandle = useGameStateSync<CribbageState | null>(null, {
+    getProgress: (state) => getCribbageProgress(state, currentHandNumber),
+    debugLabel: 'Cribbage',
+    describeState: (state) => state ? cribbageStateSummary(state) : null,
+    optimisticTimeoutMs: 3000,
+  });
+
+  // The state the UI should render — presentation state from the sync framework
+  const viewState = syncHandle.presentationState;
+  // For action legality checks and rendering, use effective state (optimistic ?? authoritative)
+  const effectiveState = syncHandle.effectiveState;
+
+  // Debug logging context
+  const debugCtx = useMemo<CribbageDebugContext>(() => ({
+    gameId,
+    roundId: currentRoundId,
+    userId: currentUserId,
+    handNumber: currentHandNumber,
+  }), [gameId, currentRoundId, currentUserId, currentHandNumber]);
+
   // High card dealer selection state - only for first hand
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
