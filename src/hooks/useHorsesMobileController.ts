@@ -1467,6 +1467,20 @@ export function useHorsesMobileController({
     if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
+    const traceId = newTraceId();
+    logDebugEvent({
+      gameId: gameId ?? '',
+      roundId: currentRoundId,
+      userId: currentUserId,
+      clientRole: 'actor',
+      eventType: 'horses:input:lockin',
+      traceId,
+      payload: horsesStateSummary(horsesState as any, {
+        rollsRemaining: localHand.rollsRemaining,
+        playerId: myPlayer?.id,
+      }),
+    });
+
     // Freeze layout to what it was at the START of the most recent roll.
     const heldMaskBeforeComplete =
       heldMaskAtLastRollStartRef.current ?? localHand.dice.map((d: any) => !!d.isHeld);
