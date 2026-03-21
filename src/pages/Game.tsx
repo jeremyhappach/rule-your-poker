@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { MobileGameTable } from "@/components/MobileGameTable";
-import { HorsesGameTable, HorsesStateFromDB } from "@/components/HorsesGameTable";
+import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
 import { TriviaGameTable } from "@/components/TriviaGameTable";
