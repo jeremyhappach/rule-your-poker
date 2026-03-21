@@ -236,9 +236,9 @@ export function useHorsesMobileController({
     return horsesState;
   }, [horsesState, gameId, currentRoundId, currentUserId]);
 
-  // Use gatedHorsesState everywhere instead of raw horsesState
-  // (Aliased to keep downstream code changes minimal)
-  const effectiveHorsesState = gatedHorsesState;
+  // Shadow the parameter: all downstream code reads from the gated version.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-var
+  horsesState = gatedHorsesState; // eslint-disable-line no-param-reassign
   
   // Local state for dice rolling animation (only used by the local user when it's their turn)
   // Use union type to support both game types
