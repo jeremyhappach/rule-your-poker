@@ -41,6 +41,9 @@ import {
   logCountingScoringEvents,
   logCutCardEvent
 } from '@/lib/useCribbageEventLogging';
+import { useGameStateSync } from '@/lib/gameStateSync';
+import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
+import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 
 interface Player {
   id: string;
