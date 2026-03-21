@@ -62,6 +62,8 @@ export function createInitialGinRummyState(
       [nonDealerPlayerId]: 0,
     },
     knockResult: null,
+    actionCount: 0,
+    handNumber: handNumber ?? 1,
     lastAction: null,
     winnerPlayerId: null,
   };
