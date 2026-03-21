@@ -1667,6 +1667,9 @@ export const CribbageMobileGameTable = ({
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    const tid = newTraceId();
+    logCribbageDebug(debugCtx, 'input:go', { phase: cribbageState.phase, count: cribbageState.pegging.currentCount }, tid);
+
     try {
       // CRITICAL: Fetch fresh state from DB to prevent stale subscription state issues.
       // Same pattern as handlePlayCard - prevents missed Go points when subscription
@@ -1682,7 +1685,7 @@ export const CribbageMobileGameTable = ({
         // Fall back to subscription state
         const newState = callGo(cribbageState, currentPlayerId);
         logGoPointEvent(eventCtx, cribbageState, newState);
-        await updateState(newState);
+        await updateState(newState, tid);
         return;
       }
       
@@ -1714,11 +1717,11 @@ export const CribbageMobileGameTable = ({
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       logGoPointEvent(eventCtx, freshState, newState);
       
-      await updateState(newState);
+      await updateState(newState, tid);
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
 
   // Keep handleGoRef updated to the latest callback
   useEffect(() => {
