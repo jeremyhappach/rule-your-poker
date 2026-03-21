@@ -4,6 +4,10 @@ import { toast } from "sonner";
 import { getBotAlias } from "@/lib/botAlias";
 import { snapshotPlayerChips } from "@/lib/gameLogic";
 import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
+import { getHorsesProgress } from "@/lib/gameStateSync/horsesProgress";
+import { compareProgress } from "@/lib/gameStateSync/stateProgress";
+import { logDebugEvent, newTraceId, horsesStateSummary } from "@/lib/debugEventLogger";
+import type { ProgressVector } from "@/lib/gameStateSync/types";
 import {
   HorsesHand,
   HorsesHandResult,
@@ -167,6 +171,74 @@ export function useHorsesMobileController({
 }: UseHorsesMobileControllerArgs) {
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
+
+  // ── Sync Framework: Progress-vector gating ──────────────────
+  // Gate incoming horsesState snapshots to prevent stale realtime/poll
+  // updates from regressing visible state.
+  const acceptedStateRef = useRef<HorsesStateFromDB | null>(null);
+  const acceptedProgressRef = useRef<ProgressVector>([0, 0, 0, 0]);
+  const prevRoundIdForSyncRef = useRef<string | null>(null);
+
+  // Reset sync baseline when roundId changes (new hand / rollover)
+  if (currentRoundId !== prevRoundIdForSyncRef.current) {
+    prevRoundIdForSyncRef.current = currentRoundId;
+    acceptedStateRef.current = null;
+    acceptedProgressRef.current = [0, 0, 0, 0];
+    console.log(`[HORSES_SYNC] Round boundary reset: ${currentRoundId}`);
+  }
+
+  // Gate the incoming horsesState prop through progress comparison
+  const gatedHorsesState = useMemo(() => {
+    if (!horsesState) return acceptedStateRef.current;
+
+    const incomingProgress = getHorsesProgress(horsesState);
+    const currentProgress = acceptedProgressRef.current;
+    const cmp = compareProgress(currentProgress, incomingProgress);
+
+    if (cmp === -1) {
+      // Regressive - reject
+      logDebugEvent({
+        gameId: gameId ?? '',
+        roundId: currentRoundId,
+        userId: currentUserId,
+        clientRole: 'observer',
+        eventType: 'horses:snapshot_rejected',
+        payload: horsesStateSummary(horsesState as any, {
+          prevVector: currentProgress,
+          incomingVector: incomingProgress,
+          comparison: cmp,
+          reason: 'regressive',
+        }),
+      });
+      console.log(`[HORSES_SYNC] ❌ Rejected regressive snapshot`, { currentProgress, incomingProgress });
+      return acceptedStateRef.current;
+    }
+
+    // Accept: forward or equal
+    if (cmp === 1) {
+      logDebugEvent({
+        gameId: gameId ?? '',
+        roundId: currentRoundId,
+        userId: currentUserId,
+        clientRole: 'observer',
+        eventType: 'horses:snapshot_accepted',
+        payload: horsesStateSummary(horsesState as any, {
+          prevVector: currentProgress,
+          incomingVector: incomingProgress,
+          comparison: cmp,
+          reason: 'forward',
+        }),
+      });
+    }
+
+    acceptedStateRef.current = horsesState;
+    acceptedProgressRef.current = incomingProgress;
+    return horsesState;
+  }, [horsesState, gameId, currentRoundId, currentUserId]);
+
+  // Shadow the parameter: all downstream code reads from the gated version.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-var
+  horsesState = gatedHorsesState; // eslint-disable-line no-param-reassign
   
   // Local state for dice rolling animation (only used by the local user when it's their turn)
   // Use union type to support both game types
