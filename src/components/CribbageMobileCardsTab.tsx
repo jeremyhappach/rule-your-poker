@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn, formatChipValue } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
