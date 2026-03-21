@@ -209,6 +209,9 @@ export async function startNextGinRummyHand(
       ? (existingRounds[0].hand_number || 0) + 1
       : 1;
 
+    // Stamp handNumber into state for the sync progress vector
+    newState = { ...newState, handNumber };
+
     // Atomic insert (unique constraint guard)
     const { data: round, error: roundError } = await supabase
       .from('rounds')
