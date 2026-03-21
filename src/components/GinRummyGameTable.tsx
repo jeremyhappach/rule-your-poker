@@ -716,20 +716,39 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:optimistic_applied',
+      payload: ginStateSummary(newState),
+    });
     // Apply optimistic override — sync framework will reject stale realtime/poll updates
     ginSync.applyOptimistic(newState);
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: 'gin:db_write_start',
+        payload: ginStateSummary(newState),
+      });
       const { error } = await supabase
         .from('rounds')
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      // DB write succeeded — promote to authoritative so the sync framework
-      // knows this is the real DB state and will clear optimistic + accept polls at this level
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: 'gin:db_write_success',
+        payload: ginStateSummary(newState),
+      });
+      // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
     } catch (err) {
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: 'gin:db_write_failure',
+        payload: ginStateSummary(newState, { error: String(err) }),
+      });
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
       // On error, clear optimistic so polls can recover to real state
