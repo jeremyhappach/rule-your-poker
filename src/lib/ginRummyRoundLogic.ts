@@ -60,14 +60,12 @@ export async function startGinRummyRound(
     const anteAmount = game.ante_amount || 1;
     const pointsToWin = game.points_to_win ?? 100;
 
-    // Initialize and deal
+    // Initialize and deal (handNumber set after DB query below)
     let ginState = createInitialGinRummyState(
       dealerPlayer.id,
       nonDealerPlayer.id,
       anteAmount,
       pointsToWin,
-      undefined,
-      handNumber, // pass hand number into state for progress vector
     );
     ginState = dealHand(ginState);
 
