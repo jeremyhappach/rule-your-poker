@@ -9,6 +9,7 @@ export { useGameStateSync } from './useGameStateSync';
 export { compareProgress, isProgressForwardOrEqual, isProgressStrictlyForward, jsonEqual } from './stateProgress';
 export { getYahtzeeProgress } from './yahtzeeProgress';
 export { getGinRummyProgress } from './ginRummyProgress';
+export { getHorsesProgress } from './horsesProgress';
 export type {
   ProgressVector,
   AuthoritativeUpdateResult,
