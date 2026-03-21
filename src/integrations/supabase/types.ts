@@ -240,6 +240,39 @@ export type Database = {
           },
         ]
       }
+      debug_events: {
+        Row: {
+          client_role: string | null
+          created_at: string
+          event_type: string
+          game_id: string
+          id: string
+          payload: Json
+          round_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          client_role?: string | null
+          created_at?: string
+          event_type: string
+          game_id: string
+          id?: string
+          payload?: Json
+          round_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          client_role?: string | null
+          created_at?: string
+          event_type?: string
+          game_id?: string
+          id?: string
+          payload?: Json
+          round_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       dice_roll_audit: {
         Row: {
           created_at: string

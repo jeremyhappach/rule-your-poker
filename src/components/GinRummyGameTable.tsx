@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { supabase } from '@/integrations/supabase/client';
+import { logDebugEvent, ginStateSummary } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
@@ -265,13 +266,17 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: `gin:snapshot_received:${source}`,
+        payload: ginStateSummary(state),
+      });
       // Route ALL external updates through the sync framework's progress-vector gate.
-      // This prevents regressive snapshots from overwriting optimistic or forward state.
       const accepted = ginSync.receiveAuthoritativeUpdate(state);
-      console.log(`[GIN-RUMMY] State update from ${source}`, {
-        phase: state.phase,
-        actionCount: state.actionCount ?? 0,
-        accepted,
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: accepted ? 'gin:snapshot_accepted' : 'gin:snapshot_rejected',
+        payload: ginStateSummary(state, { source }),
       });
       if (accepted) {
         setGinState(state);
@@ -711,20 +716,39 @@ export const GinRummyGameTable = ({
 
   const updateState = async (newState: GinRummyState) => {
     setIsProcessing(true);
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:optimistic_applied',
+      payload: ginStateSummary(newState),
+    });
     // Apply optimistic override — sync framework will reject stale realtime/poll updates
     ginSync.applyOptimistic(newState);
     // Set local state immediately to prevent stale card flash
     setGinState(newState);
     try {
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: 'gin:db_write_start',
+        payload: ginStateSummary(newState),
+      });
       const { error } = await supabase
         .from('rounds')
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      // DB write succeeded — promote to authoritative so the sync framework
-      // knows this is the real DB state and will clear optimistic + accept polls at this level
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: 'gin:db_write_success',
+        payload: ginStateSummary(newState),
+      });
+      // DB write succeeded — promote to authoritative
       ginSync.receiveAuthoritativeUpdate(newState);
     } catch (err) {
+      logDebugEvent({
+        gameId, roundId, userId: currentUserId, clientRole: 'actor',
+        eventType: 'gin:db_write_failure',
+        payload: ginStateSummary(newState, { error: String(err) }),
+      });
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
       // On error, clear optimistic so polls can recover to real state
@@ -746,6 +770,11 @@ export const GinRummyGameTable = ({
 
   // Action handlers
   const handleDrawStock = async () => {
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:input:draw_stock',
+      payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
+    });
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = drawFromStock(ginState, currentPlayerId);
@@ -756,6 +785,11 @@ export const GinRummyGameTable = ({
   };
 
   const handleDrawDiscard = async () => {
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:input:draw_discard',
+      payload: ginStateSummary(ginState, { isProcessing, hasPlayer: !!currentPlayerId }),
+    });
     if (!ginState || !currentPlayerId || isProcessing) return;
     try {
       const newState = drawFromDiscard(ginState, currentPlayerId);
@@ -766,6 +800,11 @@ export const GinRummyGameTable = ({
   };
 
   const handleDiscard = async (index: number) => {
+    logDebugEvent({
+      gameId, roundId, userId: currentUserId, clientRole: 'actor',
+      eventType: 'gin:input:discard',
+      payload: ginStateSummary(ginState, { isProcessing, cardIndex: index }),
+    });
     if (!ginState || !currentPlayerId || isProcessing) return;
     const card = ginState.playerStates[currentPlayerId]?.hand[index];
     if (!card) return;
