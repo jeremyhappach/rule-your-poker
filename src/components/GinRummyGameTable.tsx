@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { supabase } from '@/integrations/supabase/client';
+import { logDebugEvent, ginStateSummary } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
