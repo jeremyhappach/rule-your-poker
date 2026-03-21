@@ -73,9 +73,9 @@ export interface GameStateSyncHandle<T> {
   /**
    * Feed an incoming DB snapshot (from realtime or poll).
    * The framework decides whether to accept, reject, or queue it.
-   * Returns true if accepted, false if rejected as regressive.
+   * Returns a result with accepted flag and progress vector details.
    */
-  receiveAuthoritativeUpdate: (incoming: T) => boolean;
+  receiveAuthoritativeUpdate: (incoming: T) => AuthoritativeUpdateResult;
 
   /**
    * Apply a local optimistic state. The framework will prefer this
