@@ -1774,6 +1774,8 @@ export const CribbageMobileGameTable = ({
     // the counting init effect can re-run and replay the scoring sequence.
     setCountingStateSnapshot(null);
     setCountingWinFrozen(false);
+    // Unfreeze sync framework presentation so new-hand state flows through
+    syncHandle.unfreezePresentation();
     
     // IMPORTANT: Do NOT clear countingScoreOverrides here.
     // The override should persist with the final counting scores until either:
