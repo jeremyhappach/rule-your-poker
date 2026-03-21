@@ -721,8 +721,9 @@ export const GinRummyGameTable = ({
         .update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       if (error) throw error;
-      // Re-assert optimistic state after write succeeds
-      setGinState(newState);
+      // DB write succeeded — promote to authoritative so the sync framework
+      // knows this is the real DB state and will clear optimistic + accept polls at this level
+      ginSync.receiveAuthoritativeUpdate(newState);
     } catch (err) {
       console.error('[GIN-RUMMY] Error updating state:', err);
       toast.error('Failed to update game state');
