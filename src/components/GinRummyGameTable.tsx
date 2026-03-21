@@ -272,13 +272,19 @@ export const GinRummyGameTable = ({
         payload: ginStateSummary(state),
       });
       // Route ALL external updates through the sync framework's progress-vector gate.
-      const accepted = ginSync.receiveAuthoritativeUpdate(state);
+      const result = ginSync.receiveAuthoritativeUpdate(state);
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
-        eventType: accepted ? 'gin:snapshot_accepted' : 'gin:snapshot_rejected',
-        payload: ginStateSummary(state, { source }),
+        eventType: result.accepted ? 'gin:snapshot_accepted' : 'gin:snapshot_rejected',
+        payload: ginStateSummary(state, {
+          source,
+          reason: result.reason,
+          prevVector: result.previousProgress,
+          incomingVector: result.incomingProgress,
+          comparison: result.comparison,
+        }),
       });
-      if (accepted) {
+      if (result.accepted) {
         setGinState(state);
         if (state.phase === 'complete' && state.winnerPlayerId) {
           onGameCompleteRef.current();
