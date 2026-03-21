@@ -60,12 +60,12 @@ export async function startGinRummyRound(
     const anteAmount = game.ante_amount || 1;
     const pointsToWin = game.points_to_win ?? 100;
 
-    // Initialize and deal
+    // Initialize and deal (handNumber set after DB query below)
     let ginState = createInitialGinRummyState(
       dealerPlayer.id,
       nonDealerPlayer.id,
       anteAmount,
-      pointsToWin
+      pointsToWin,
     );
     ginState = dealHand(ginState);
 
@@ -85,6 +85,9 @@ export async function startGinRummyRound(
     const handNumber = existingRounds && existingRounds.length > 0
       ? (existingRounds[0].hand_number || 0) + 1
       : 1;
+
+    // Stamp handNumber into state for the sync progress vector
+    ginState = { ...ginState, handNumber };
 
     // Create round record
     const { data: round, error: roundError } = await supabase
@@ -184,13 +187,13 @@ export async function startNextGinRummyHand(
       ? previousState.nonDealerPlayerId
       : previousState.dealerPlayerId;
 
-    // Create new hand state with preserved match scores
+    // Create new hand state with preserved match scores (handNumber set after DB query)
     let newState = createInitialGinRummyState(
       nextDealerId,
       nextNonDealerId,
       previousState.anteAmount,
       previousState.pointsToWin,
-      previousState.matchScores
+      previousState.matchScores,
     );
     newState = dealHand(newState);
 
@@ -205,6 +208,9 @@ export async function startNextGinRummyHand(
     const handNumber = existingRounds && existingRounds.length > 0
       ? (existingRounds[0].hand_number || 0) + 1
       : 1;
+
+    // Stamp handNumber into state for the sync progress vector
+    newState = { ...newState, handNumber };
 
     // Atomic insert (unique constraint guard)
     const { data: round, error: roundError } = await supabase

@@ -116,7 +116,7 @@ export const GinRummyGameTable = ({
 
   // ── Shared anti-regression sync framework ──────────────────────
   const ginSync = useGameStateSync<GinRummyState | null>(null, {
-    getProgress: (s) => s ? getGinRummyProgress(s) : [0, 0, 0, 0],
+    getProgress: (s) => s ? getGinRummyProgress(s) : [0, 0, 0],
     optimisticTimeoutMs: 3000,
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
   });

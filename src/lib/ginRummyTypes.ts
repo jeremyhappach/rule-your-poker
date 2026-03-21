@@ -70,6 +70,11 @@ export interface GinRummyState {
   // Used by the anti-regression framework to detect forward progress regardless of non-monotonic pile sizes.
   actionCount?: number;
 
+  // Match-level hand number — monotonically increasing across the entire match.
+  // Used as the highest-priority dimension in the sync progress vector so that
+  // new-hand snapshots (with reset actionCount / phase) are always accepted as forward progress.
+  handNumber?: number;
+
   // UX helpers
   lastAction?: GinRummyAction | null;
   winnerPlayerId: string | null;
