@@ -287,6 +287,10 @@ export const CribbageMobileGameTable = ({
   // Signal to counting phase to freeze when win is detected reactively via score subscription
   const [countingWinFrozen, setCountingWinFrozen] = useState(false);
 
+  // Forward-only lifecycle latch: true after counting completes but before next hand arrives.
+  // Prevents banner from reverting to "Scoring hands..." during the transition gap.
+  const [postCountingTransitionActive, setPostCountingTransitionActive] = useState(false);
+
   // If another client advances the hand while we are still animating counting, immediately
   // cancel the local counting overlay so it can't complete and write stale state into the NEW round.
   const lastRoundPropsRef = useRef<{ roundId: string; handNumber: number } | null>(null);
