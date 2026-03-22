@@ -261,6 +261,8 @@ export function DiceTableLayout({
   const stableScatterByDieRef = useRef<
     Map<number, { x: number; y: number; rotate: number }>
   >(new Map());
+  const stableHeldRollKeyRef = useRef<string | number | undefined>(undefined);
+  const stableHeldSlotByDieRef = useRef<Map<number, number>>(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
   const renderDecisionByDieRef = useRef<
@@ -324,6 +326,8 @@ export function DiceTableLayout({
     })) as any;
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
+    stableHeldRollKeyRef.current = undefined;
+    stableHeldSlotByDieRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
     lastScatterTransformByDieRef.current = new Map();
 
@@ -446,6 +450,9 @@ export function DiceTableLayout({
 
     prevRollKeyRef.current = rollKey;
     if (cacheKeyStr) lastSeenRollKeyByCacheKey.set(cacheKeyStr, rollKey);
+
+    stableHeldRollKeyRef.current = rollKey;
+    stableHeldSlotByDieRef.current = new Map();
 
     // Reset completion transition when a new roll starts
     setIsInCompletionTransition(false);
@@ -997,6 +1004,7 @@ export function DiceTableLayout({
   }
   
   const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
+  const stableHeldPositions = getHeldPositions(orderedDice.length, dieWidth, gap);
 
   const scatterLayoutByOriginalIndex = new Map<number, { x: number; y: number; rotate: number }>();
   layoutUnheldDice.forEach((item, displayIdx) => {
@@ -1034,6 +1042,28 @@ export function DiceTableLayout({
     });
   }
 
+  if (stableHeldRollKeyRef.current !== rollKey) {
+    stableHeldRollKeyRef.current = rollKey;
+    stableHeldSlotByDieRef.current = new Map();
+  }
+
+  const stableHeldSlotOrder = getHeldSlotOrder(orderedDice.length);
+  const getStableHeldPos = (originalIndex: number) => {
+    if (!isObserver || rollKey === undefined) return undefined;
+
+    const existingSlot = stableHeldSlotByDieRef.current.get(originalIndex);
+    if (existingSlot !== undefined) {
+      return stableHeldPositions[existingSlot];
+    }
+
+    const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
+    const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
+    if (nextSlot === undefined) return undefined;
+
+    stableHeldSlotByDieRef.current.set(originalIndex, nextSlot);
+    return stableHeldPositions[nextSlot];
+  };
+
   orderedDice.forEach((item) => {
     const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
     const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
@@ -1043,7 +1073,9 @@ export function DiceTableLayout({
         : undefined;
 
     if (item.die.isHeld) {
+      const stableHeldPos = getStableHeldPos(item.originalIndex);
       const committedHeldPos =
+        stableHeldPos ??
         layoutHeldPos ??
         lastHeldTransformByDieRef.current.get(item.originalIndex) ??
         (() => {
@@ -1106,12 +1138,13 @@ export function DiceTableLayout({
         // This prevents dice from jumping to scatter after animation completes when they were just held.
         const actuallyHeld = item.die.isHeld;
         const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+        const stableHeldPos = actuallyHeld ? getStableHeldPos(item.originalIndex) : undefined;
         const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
         const cachedScatterPos = lastScatterTransformByDieRef.current.get(item.originalIndex);
         
         // If die is actually held but doesn't have a layout position yet (transition moment),
         // compute a position based on its index among all currently-held dice
-        let heldPos = layoutHeldPos ?? (actuallyHeld ? cachedHeldPos : undefined);
+        let heldPos = stableHeldPos ?? layoutHeldPos ?? (actuallyHeld ? cachedHeldPos : undefined);
         if (actuallyHeld && !heldPos) {
           // Find this die's index among all actually-held dice
           const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
@@ -1161,7 +1194,9 @@ export function DiceTableLayout({
         const useInstantTransform = isObserver && !isAnimatingFlyIn;
 
         const transformOwner = isHeldInLayout
-          ? layoutHeldPos
+          ? stableHeldPos
+            ? "held:stable-slot"
+            : layoutHeldPos
             ? "held:layout"
             : cachedHeldPos
               ? "held:cache"
@@ -1285,4 +1320,15 @@ function getHeldPositions(count: number, dieWidth: number, gap: number): { x: nu
     x: startX + i * (dieWidth + tightGap),
     y: 0,
   }));
+}
+
+function getHeldSlotOrder(count: number): number[] {
+  if (count <= 0) return [];
+
+  const center = (count - 1) / 2;
+  return Array.from({ length: count }, (_, index) => index).sort((a, b) => {
+    const distanceDiff = Math.abs(a - center) - Math.abs(b - center);
+    if (distanceDiff !== 0) return distanceDiff;
+    return a - b;
+  });
 }
