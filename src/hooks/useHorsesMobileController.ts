@@ -187,23 +187,11 @@ export function useHorsesMobileController({
   const prevRoundIdForSyncRef = useRef<string | null>(null);
 
   // Reset sync baseline when roundId changes (new hand / rollover)
+  // NOTE: Ref cleanup for later-declared refs is done in a useEffect below (boundaryCleanupRoundRef).
   if (currentRoundId !== prevRoundIdForSyncRef.current) {
     prevRoundIdForSyncRef.current = currentRoundId;
     acceptedStateRef.current = null;
     acceptedProgressRef.current = [0, 0, 0, 0];
-    
-    // BOUNDARY HYGIENE: Clear all presentation owners/caches on round change
-    // This prevents stale animation/display state from leaking across hands.
-    // Using direct ref mutations (not setState) since this runs during render.
-    lastObservedRollKeyRef.current = {};
-    lastObservedRollsRemainingRef.current = {};
-    maxSeenRollKeyRef.current = {};
-    maxHoldSeqPerRollKeyRef.current = {};
-    lastFeltDiceRef.current = null;
-    lastFeltDiceAtRef.current = 0;
-    lastCompletedTurnKeyRef.current = null;
-    announcedTurnsRef.current = new Set();
-    stuckAdvanceKeyRef.current = null;
     
     logDebugEvent({
       gameId: gameId ?? '',
@@ -213,7 +201,7 @@ export function useHorsesMobileController({
       eventType: 'horses:sync_reset',
       payload: { reason: 'round_boundary', newRoundId: currentRoundId },
     });
-    console.log(`[HORSES_SYNC] Round boundary reset (full cleanup): ${currentRoundId}`);
+    console.log(`[HORSES_SYNC] Round boundary reset: ${currentRoundId}`);
   }
 
   // Gate the incoming horsesState prop through progress comparison
