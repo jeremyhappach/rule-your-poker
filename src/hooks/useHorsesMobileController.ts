@@ -2303,50 +2303,31 @@ export function useHorsesMobileController({
       const sameRoll =
         typeof dbRollKey === "number" && typeof observerDisplayState.rollKey === "number" && dbRollKey === observerDisplayState.rollKey;
 
-      // FIX #2: Stricter DB acceptance to prevent held↔scatter flicker
-      // Prefer DB dice ONLY once they diverge from the pre-roll snapshot, and never let DB regress held state.
-      // The regression is what creates the held↔scatter jump when out-of-order realtime snapshots arrive.
-      // CRITICAL: For the SAME rollKey, require that dbSig actually differs from preRollSig.
-      // This prevents the case where isRolling just flipped to false but DB still has pre-roll data.
-      const sameRollWithStaleDb = sameRoll && observerDisplayState.preRollSig && dbSig === observerDisplayState.preRollSig;
-      
-      // Use holdSeq for monotonicity guard - this correctly handles unhold actions
-      // (player can hold 3 dice then unhold to 2, which is valid if holdSeq increases)
-      const rollKeyStr = `${currentTurnPlayerId}:${dbRollKey}`;
-      const dbHoldSeq = (dbState as any)?.holdSeq ?? 0;
-      // IMPORTANT: compare against what's CURRENTLY displayed, so we reject stale updates during render.
-      // (Relying on refs updated in effects can be one-render late and still flicker.)
-      const displayedHoldSeq = observerDisplayState?.holdSeq ?? 0;
-      const maxSeenHoldSeq = Math.max(maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0, displayedHoldSeq);
-      const dbHoldSeqWouldRegress = sameRoll && dbHoldSeq < maxSeenHoldSeq;
-      
+      // FIX: For same-roll updates, NEVER mix DB dice into observerDisplayState.
+      // The observer effect at line ~2652 already handles same-roll DB updates with proper
+      // holdSeq monotonicity guards. Mixing DB dice here causes 1-frame held↔scatter hops
+      // because the useMemo re-runs when horsesState updates BEFORE the observer effect
+      // has processed the same update through its guards.
+      // Only allow DB dice through for NEW rolls (different rollKey).
+      if (sameRoll) {
+        return {
+          ...observerDisplayState,
+          // Always use observerDisplayState.dice for same-roll — it's already guarded by holdSeq
+        };
+      }
+
+      // Different rollKey: check if DB has a newer roll
+      const dbRollKeyIsStale = typeof dbRollKey === "number" && dbRollKey < maxSeenRollKey;
+
       const shouldUseDb =
         Array.isArray(dbDice) &&
         dbDice.length > 0 &&
-        !dbRollKeyIsStale && // Never accept DB data from an older rollKey
-        !sameRollWithStaleDb &&
-        !dbHoldSeqWouldRegress && // Never accept DB data with older holdSeq
-        (!observerDisplayState.isRolling || !observerDisplayState.preRollSig || dbSig !== observerDisplayState.preRollSig);
+        !dbRollKeyIsStale;
 
       const dice = shouldUseDb ? ((dbDice as any) ?? observerDisplayState.dice) : observerDisplayState.dice;
 
-      // TRACE: Observer dice decision
-      if (isDiceTraceRecording()) {
-        pushDiceTrace("rawFeltDice:observer", {
-          playerId: currentTurnPlayerId,
-          rollKey: observerDisplayState.rollKey,
-          isRolling: observerDisplayState.isRolling,
-          preRollSig: observerDisplayState.preRollSig,
-          dbSig: dbSig ?? undefined,
-          heldCount: prevHeldCount,
-          dbHeldCount,
-          shouldUseDb,
-          extra: { sameRoll, dbRollKey },
-        });
-      }
-
       console.log(
-        `${logPrefix} OBSERVER DISPLAY returning observerDisplayState: dice=${JSON.stringify((dice as any[]).map((d: any) => d.value))}, isRolling=${observerDisplayState.isRolling}, rollKey=${observerDisplayState.rollKey}`,
+        `${logPrefix} OBSERVER DISPLAY returning: dice=${JSON.stringify((dice as any[]).map((d: any) => d.value))}, isRolling=${observerDisplayState.isRolling}, rollKey=${observerDisplayState.rollKey}, dbRollKey=${dbRollKey}`,
       );
 
       return {
