@@ -701,6 +701,7 @@ export const CribbageMobileGameTable = ({
 
   // Delay showing counting phase by 2 seconds to allow final pegging announcement to display.
   // IMPORTANT: depends ONLY on a stable key to avoid cleanup cancelling the timer mid-delay.
+  // On reconnect (countingStartedAt elapsed > 0), skip the delay so animation starts immediately.
   useEffect(() => {
     const state = cribbageStateRef.current;
     if (!state) return;
@@ -712,6 +713,12 @@ export const CribbageMobileGameTable = ({
 
     // Only snapshot once per counting phase instance
     if (countingDelayFiredRef.current === countingStartKey) return;
+
+    // ── Reconnect / late-join eligibility check ──────────────────────
+    // If countingStartedAt exists and significant time has elapsed, this is a reconnect.
+    // Determine whether counting animation is still worth showing or should be skipped entirely.
+    const countingStartedAt = state.countingStartedAt;
+    const isReconnect = !!countingStartedAt && (Date.now() - new Date(countingStartedAt).getTime()) > 2500;
 
     // Mark counting animation as active
     countingAnimationActiveRef.current = true;
@@ -726,11 +733,8 @@ export const CribbageMobileGameTable = ({
     // transition that flips phase to 'counting'. That means our "phase === pegging" cache
     // can be 1 point behind.
     //
-    // Heuristic:
-    // - Prefer the live state scores if they only differ by a small non-negative delta (<=2)
-    //   from the cached pegging scores.
-    // - Otherwise, fall back to cached pegging scores (protects against any unexpected
-    //   pre-applied counting totals in the backend).
+    // On reconnect, the cached pegging scores won't exist (fresh mount), so we must
+    // reverse-engineer the baseline from the DB state using calculateCountingBaselineScores.
     const stateScores: Record<string, number> = {};
     for (const [playerId, ps] of Object.entries(state.playerStates)) {
       stateScores[playerId] = ps.pegScore ?? 0;
@@ -738,17 +742,28 @@ export const CribbageMobileGameTable = ({
 
     const cachedScores = lastPeggingScoresRef.current;
     const baselineScores = (() => {
-      if (!cachedScores) return stateScores;
+      if (cachedScores) {
+        // Normal flow: compare cached pegging scores with live state
+        const deltas = Object.keys(stateScores).map((pid) => (stateScores[pid] ?? 0) - (cachedScores[pid] ?? 0));
+        const maxDelta = deltas.length ? Math.max(...deltas) : 0;
+        const minDelta = deltas.length ? Math.min(...deltas) : 0;
 
-      const deltas = Object.keys(stateScores).map((pid) => (stateScores[pid] ?? 0) - (cachedScores[pid] ?? 0));
-      const maxDelta = deltas.length ? Math.max(...deltas) : 0;
-      const minDelta = deltas.length ? Math.min(...deltas) : 0;
+        // Accept small forward-only drift (e.g., the missing "Last" point) and use the live state.
+        if (minDelta >= 0 && maxDelta <= 2) return stateScores;
 
-      // Accept small forward-only drift (e.g., the missing "Last" point) and use the live state.
-      if (minDelta >= 0 && maxDelta <= 2) return stateScores;
+        // Otherwise, trust the cached pegging scores.
+        return cachedScores;
+      }
 
-      // Otherwise, trust the cached pegging scores.
-      return cachedScores;
+      // Reconnect / fresh mount: no cached pegging scores.
+      // The DB pegScore may already include counting points if the other client has been scoring.
+      // Reverse-engineer the pre-counting baseline by subtracting hand+crib totals.
+      if (isReconnect) {
+        return calculateCountingBaselineScores(state);
+      }
+
+      // First-time mount with no cache — use state scores directly
+      return stateScores;
     })();
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
@@ -758,16 +773,26 @@ export const CribbageMobileGameTable = ({
     lastPeggingScoresRef.current = baselineScores;
     setCountingScoreOverrides(baselineScores);
 
-    // Start delay - counting phase will be hidden until delay completes
-    setCountingDelayActive(true);
-    const timer = setTimeout(() => {
+    if (isReconnect) {
+      // On reconnect, skip the 2-second pegging announcement delay entirely.
+      // The pegging phase is long past — go straight to counting animation.
+      console.log('[CRIBBAGE] Reconnect detected — skipping counting delay', {
+        countingStartedAt,
+        elapsedMs: Date.now() - new Date(countingStartedAt!).getTime(),
+      });
       setCountingDelayActive(false);
-    }, 2000);
+    } else {
+      // Normal flow: 2-second delay to let final pegging announcement display
+      setCountingDelayActive(true);
+      const timer = setTimeout(() => {
+        setCountingDelayActive(false);
+      }, 2000);
 
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [countingStartKey]);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [countingStartKey, calculateCountingBaselineScores]);
 
   // Clear counting overrides when starting a fresh hand (discarding phase).
   // This prevents stale override values from affecting the pegboard in non-counting phases.
