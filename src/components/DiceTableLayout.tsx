@@ -1199,13 +1199,22 @@ export function DiceTableLayout({
             item.die.isHeld ? "held" : "unheld",
             isHeldInLayout ? "layout-held" : "layout-scatter",
             transformOwner,
+            transform,
             String(rollKey ?? ""),
             String(cacheKey ?? ""),
           ].join("|");
 
           const previous = renderDecisionByDieRef.current.get(item.originalIndex);
           if (previous?.summary !== summary) {
-            pushDiceTrace("DiceTableLayout:renderDecision", traceData);
+            pushDiceTrace("DiceTableLayout:renderDecision", {
+              ...traceData,
+              extra: {
+                ...traceData.extra,
+                previousTransformOwner: previous?.data?.transformOwner,
+                previousTransform: previous?.data?.transform,
+                previousIsHeldInLayout: previous?.data?.isHeldInLayout,
+              },
+            });
           }
           renderDecisionByDieRef.current.set(item.originalIndex, { summary, data: traceData.extra });
         }

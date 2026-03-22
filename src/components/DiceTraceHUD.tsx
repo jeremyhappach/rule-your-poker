@@ -28,7 +28,7 @@ interface DiceTraceHUDProps {
 }
 
 // Global ring buffer and controls so any component can push events
-const MAX_EVENTS = 500;
+const MAX_EVENTS = 5000;
 let globalBuffer: DiceTraceEvent[] = [];
 let globalSeq = 0;
 let isRecording = false;
