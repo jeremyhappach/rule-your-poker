@@ -623,6 +623,10 @@ function advanceToCounting(state: CribbageState): CribbageState {
     phase: 'counting',
     // Shared counting sync anchor — written once so reconnecting clients can skip ahead
     countingStartedAt: new Date().toISOString(),
+    // Counting progress fields — initialized at start, updated during animation
+    countingHandKey: null, // Set by the UI layer with dealerGameId:handNumber
+    countingTargetIndex: 0,
+    countingBeatIndex: -1,
     // Clear any stale winner fields; counting determines the winner via UI progression.
     winnerPlayerId: null,
     loserScore: null,
