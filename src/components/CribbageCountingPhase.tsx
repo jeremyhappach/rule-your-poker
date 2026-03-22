@@ -348,190 +348,112 @@ export const CribbageCountingPhase = ({
 
     const scoresToInit = { ...initialScoresRef.current };
     const baselineScores = { ...initialScoresRef.current };
-    const authoritativeScores = Object.fromEntries(
-      Object.entries(cribbageState.playerStates).map(([playerId, playerState]) => [playerId, playerState.pegScore ?? 0])
-    ) as Record<string, number>;
 
-    // ── Skip-ahead via beat timeline ─────────────────────────────
+    // ── Skip-ahead via PERSISTED counting progress ──────────────
+    // The authoritative source of truth for counting position is
+    // persistedTargetIndex / persistedBeatIndex from the DB state,
+    // NOT score deltas (which are not written incrementally).
     let skipTargetIndex = 0;
     let skipComboIndex = -1;
     let skipPhase: TransitionPhase = 'entering';
     let skipIsTerminal = false;
-    let derivedCompletedTargetIndex = -1;
-    let derivedResumeTargetIndex = 0;
     let completedCombosPreApplied = 0;
 
-    if (countingStartedAt && !skipAheadAppliedRef.current) {
-      const rawElapsed = Date.now() - new Date(countingStartedAt).getTime();
-      // Clamp: negative elapsed (clock skew) → no skip
-      const elapsedMs = Math.max(0, rawElapsed);
+    const hasPersistedProgress = persistedTargetIndex != null && persistedTargetIndex > 0;
+    const hasPersistedBeat = persistedBeatIndex != null && persistedBeatIndex > -1;
 
-      // Include the 2s pre-counting delay from parent
-      const PRE_DELAY = 2000;
-      const timeIntoAnimation = elapsedMs - PRE_DELAY;
-
+    if ((hasPersistedProgress || hasPersistedBeat) && !skipAheadAppliedRef.current) {
+      const pTargetIdx = persistedTargetIndex ?? 0;
+      const pBeatIdx = persistedBeatIndex ?? -1;
       const { beats, targets: targetTimelines, totalDuration } = buildBeatTimeline();
-      const rawScoreDeltas = Object.fromEntries(
-        Object.keys(authoritativeScores).map((playerId) => [
-          playerId,
-          Math.max(0, (authoritativeScores[playerId] ?? 0) - (baselineScores[playerId] ?? 0)),
-        ])
-      ) as Record<string, number>;
 
-      const consumedByPlayer: Record<string, number> = {};
-      let committedPointsWithinTarget = 0;
-
-      for (let ti = 0; ti < targetTimelines.length; ti++) {
-        const target = targetTimelines[ti];
-        const playerConsumed = consumedByPlayer[target.playerId] ?? 0;
-        const rawDeltaForTargetPlayer = rawScoreDeltas[target.playerId] ?? 0;
-        const availableForTarget = Math.max(0, rawDeltaForTargetPlayer - playerConsumed);
-        const laterPositiveDeltaExists = targetTimelines.slice(ti + 1).some(
-          (laterTarget) => (rawScoreDeltas[laterTarget.playerId] ?? 0) > 0,
-        );
-
-        if (target.totalPoints <= 0) {
-          const zeroPointTargetElapsed = timeIntoAnimation > target.endMs;
-          if (laterPositiveDeltaExists || zeroPointTargetElapsed) {
-            derivedCompletedTargetIndex = ti;
-            derivedResumeTargetIndex = ti + 1;
-            continue;
-          }
-
-          derivedResumeTargetIndex = ti;
-          committedPointsWithinTarget = 0;
-          break;
-        }
-
-        if (availableForTarget >= target.totalPoints) {
-          consumedByPlayer[target.playerId] = playerConsumed + target.totalPoints;
-          derivedCompletedTargetIndex = ti;
-          derivedResumeTargetIndex = ti + 1;
-          continue;
-        }
-
-        derivedResumeTargetIndex = ti;
-        committedPointsWithinTarget = availableForTarget;
-        break;
-      }
-
-      const allTargetsScoreCompleted = targetTimelines.length > 0 && derivedResumeTargetIndex >= targetTimelines.length;
-
-      for (let ti = 0; ti <= derivedCompletedTargetIndex; ti++) {
-        const target = targetTimelines[ti];
-        scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + target.totalPoints;
-        completedCombosPreApplied += target.combos.length;
-      }
-
-      if (allTargetsScoreCompleted || (timeIntoAnimation >= totalDuration && derivedResumeTargetIndex >= targetTimelines.length - 1)) {
+      // Terminal check: if persisted target is beyond all targets, skip to completion
+      if (pTargetIdx >= targetTimelines.length) {
         skipIsTerminal = true;
-      } else if (timeIntoAnimation > 0 && targetTimelines.length > 0) {
-        const clampedResumeTargetIndex = Math.min(derivedResumeTargetIndex, targetTimelines.length - 1);
-        const resumeTarget = targetTimelines[clampedResumeTargetIndex];
-        const committedComboCount = countCompletedCombos(resumeTarget.combos, committedPointsWithinTarget);
+      } else {
+        // Pre-apply all completed targets' scores to baseline
+        for (let ti = 0; ti < pTargetIdx; ti++) {
+          const target = targetTimelines[ti];
+          scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + target.totalPoints;
+          completedCombosPreApplied += target.combos.length;
+        }
 
-        for (let ci = 0; ci < committedComboCount; ci++) {
+        // Within the current target, pre-apply completed combos
+        const resumeTarget = targetTimelines[pTargetIdx];
+        const combosToPreApply = Math.max(0, pBeatIdx);
+        for (let ci = 0; ci < Math.min(combosToPreApply, resumeTarget.combos.length); ci++) {
           scoresToInit[resumeTarget.playerId] = (scoresToInit[resumeTarget.playerId] || 0) + resumeTarget.combos[ci].points;
+          completedCombosPreApplied++;
         }
 
-        const targetElapsedMs = Math.max(0, Math.min(timeIntoAnimation - resumeTarget.startMs, Math.max(0, resumeTarget.endMs - resumeTarget.startMs - 1)));
+        skipTargetIndex = pTargetIdx;
 
-        let localBeatElapsed = 0;
-        let activeBeatIndex = resumeTarget.beatStartIndex;
-        let activeBeat = beats[resumeTarget.beatStartIndex];
-
-        for (let bi = resumeTarget.beatStartIndex; bi <= resumeTarget.beatEndIndex; bi++) {
-          const beat = beats[bi];
-          if (localBeatElapsed + beat.durationMs > targetElapsedMs) {
-            activeBeatIndex = bi;
-            activeBeat = beat;
-            break;
-          }
-          localBeatElapsed += beat.durationMs;
-        }
-
-        const timeCompletedCombosWithinTarget = beats
-          .slice(resumeTarget.beatStartIndex, activeBeatIndex)
-          .filter((beat) => beat.type === 'combo')
-          .length;
-        const combosToPreApplyWithinTarget = Math.max(committedComboCount, timeCompletedCombosWithinTarget);
-
-        for (let ci = committedComboCount; ci < combosToPreApplyWithinTarget; ci++) {
-          scoresToInit[resumeTarget.playerId] = (scoresToInit[resumeTarget.playerId] || 0) + resumeTarget.combos[ci].points;
-        }
-
-        completedCombosPreApplied += combosToPreApplyWithinTarget;
-        skipTargetIndex = clampedResumeTargetIndex;
-
-        if (activeBeat.type === 'enter' && combosToPreApplyWithinTarget === 0) {
+        // Map persisted beat index to animation state
+        if (pBeatIdx <= -1) {
+          // Still entering
           skipComboIndex = -1;
           skipPhase = 'entering';
-        } else if (activeBeat.type === 'initial' || activeBeat.type === 'zero') {
-          skipComboIndex = combosToPreApplyWithinTarget > 0 ? combosToPreApplyWithinTarget : -1;
+        } else if (pBeatIdx === 0) {
+          // At first combo, start scoring
+          skipComboIndex = 0;
           skipPhase = 'scoring';
-        } else if (activeBeat.type === 'combo') {
-          skipComboIndex = Math.max(combosToPreApplyWithinTarget, activeBeat.comboIndex);
+        } else if (pBeatIdx < resumeTarget.combos.length) {
+          // Mid-combo
+          skipComboIndex = pBeatIdx;
           skipPhase = 'scoring';
-        } else if (activeBeat.type === 'total') {
+        } else {
+          // Past all combos — show total then exit
           skipComboIndex = resumeTarget.combos.length;
           skipPhase = 'scoring';
-        } else if (activeBeat.type === 'exit' || activeBeat.type === 'complete') {
-          skipComboIndex = -1;
-          skipPhase = 'exiting';
         }
-
-        console.log('[CribbageCountingPhase] Score-anchored skip-ahead applied', {
-          elapsedMs,
-          activeBeatIndex,
-          activeBeatType: activeBeat.type,
-          derivedCompletedTargetIndex,
-          derivedResumeTargetIndex: clampedResumeTargetIndex,
-          skipTargetIndex,
-          skipComboIndex,
-          skipPhase,
-          completedCombosPreApplied,
-        });
-
-        logCountingDebug('crib:counting_resume_skip_compute', {
-          elapsedMs,
-          timeIntoAnimation,
-          activeBeatIndex,
-          activeBeatType: activeBeat.type,
-          computedTargetIndex: skipTargetIndex,
-          computedComboIndex: skipComboIndex,
-          computedTransitionPhase: skipPhase,
-          completedCombosPreApplied,
-          totalBeats: beats.length,
-          totalDuration,
-          baselineScores,
-          authoritativeScores,
-          poneTotal: targetTimelines[0]?.totalPoints ?? null,
-          dealerTotal: targetTimelines[1]?.totalPoints ?? null,
-          derivedCompletedTargetIndex,
-          derivedResumeTargetIndex: clampedResumeTargetIndex,
-          baselineScoresUsed: { ...scoresToInit },
-        });
-      } else {
-        logCountingDebug('crib:counting_resume_skip_compute', {
-          elapsedMs,
-          timeIntoAnimation,
-          activeBeatIndex: null,
-          activeBeatType: 'pre-delay',
-          computedTargetIndex: skipTargetIndex,
-          computedComboIndex: skipComboIndex,
-          computedTransitionPhase: skipPhase,
-          completedCombosPreApplied,
-          totalBeats: 0,
-          totalDuration,
-          baselineScores,
-          authoritativeScores,
-          poneTotal: targetTimelines[0]?.totalPoints ?? null,
-          dealerTotal: targetTimelines[1]?.totalPoints ?? null,
-          derivedCompletedTargetIndex,
-          derivedResumeTargetIndex,
-          baselineScoresUsed: { ...scoresToInit },
-        });
       }
+
+      console.log('[CribbageCountingPhase] Persisted-progress skip-ahead applied', {
+        persistedTargetIndex: pTargetIdx,
+        persistedBeatIndex: pBeatIdx,
+        skipTargetIndex,
+        skipComboIndex,
+        skipPhase,
+        skipIsTerminal,
+        completedCombosPreApplied,
+      });
+
+      logCountingDebug('crib:counting_resume_skip_compute', {
+        source: 'persisted_progress',
+        persistedTargetIndex: pTargetIdx,
+        persistedBeatIndex: pBeatIdx,
+        persistedHandKey: persistedHandKey ?? null,
+        computedTargetIndex: skipTargetIndex,
+        computedComboIndex: skipComboIndex,
+        computedTransitionPhase: skipPhase,
+        completedCombosPreApplied,
+        skipIsTerminal,
+        baselineScores,
+        baselineScoresUsed: { ...scoresToInit },
+      });
+
+      skipAheadAppliedRef.current = true;
+    } else if (countingStartedAt && !skipAheadAppliedRef.current) {
+      // Fallback: time-based skip for cases where persisted progress is 0/0
+      // (i.e., the writing client hasn't advanced yet but time has elapsed)
+      const rawElapsed = Date.now() - new Date(countingStartedAt).getTime();
+      const elapsedMs = Math.max(0, rawElapsed);
+      const PRE_DELAY = 2000;
+      const timeIntoAnimation = elapsedMs - PRE_DELAY;
+      const { totalDuration } = buildBeatTimeline();
+
+      if (timeIntoAnimation >= totalDuration && totalDuration > 0) {
+        skipIsTerminal = true;
+      }
+
+      logCountingDebug('crib:counting_resume_skip_compute', {
+        source: 'time_fallback',
+        elapsedMs,
+        timeIntoAnimation,
+        totalDuration,
+        skipIsTerminal,
+        baselineScores,
+      });
 
       skipAheadAppliedRef.current = true;
     }
@@ -548,10 +470,12 @@ export const CribbageCountingPhase = ({
     // ── Debug: crib:counting_resume_mount ──────────────────────
     logCountingDebug('crib:counting_resume_mount', {
       countingStartedAt: countingStartedAt ?? null,
+      persistedTargetIndex: persistedTargetIndex ?? null,
+      persistedBeatIndex: persistedBeatIndex ?? null,
+      persistedHandKey: persistedHandKey ?? null,
       initialTargetIndex: skipIsTerminal ? 'terminal' : skipTargetIndex,
       initialComboIndex: skipIsTerminal ? 'terminal' : skipComboIndex,
       initialTransitionPhase: skipIsTerminal ? 'terminal' : skipPhase,
-      hadCountingStartedAt: !!countingStartedAt,
       skipAheadRan: skipAheadAppliedRef.current,
       isTerminal: skipIsTerminal,
       baselineScores,
