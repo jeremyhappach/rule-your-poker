@@ -188,6 +188,11 @@ export function HorsesMobileCardsTab({
     (horses.completedTurnHold.expiresAt - Date.now() < 1500);
 
   const isSCC = gameType === "ship-captain-crew";
+  const canLockEarly =
+    horses.localHand.rollsRemaining > 0 &&
+    horses.localHand.rollsRemaining < 3 &&
+    horses.localHand.dice.length > 0 &&
+    horses.localHand.dice.every((die: any) => !!die?.isHeld);
 
   // STICKY RESULT: Cache the result so it persists through game phase transitions (win animation)
   // Once I've completed my turn, keep showing my result badge until a new round starts
@@ -341,21 +346,28 @@ export function HorsesMobileCardsTab({
 
               <Button
                 size="default"
-                onClick={handleRollClick}
+                onClick={canLockEarly ? horses.handleLockIn : handleRollClick}
                 disabled={rolling}
                 className={cn(
                   "font-bold",
                   isTablet || isDesktop ? "text-xl h-14 px-10" : "text-sm h-9 px-6"
                 )}
               >
-                <RotateCcw className={cn(
-                  "mr-2 animate-slow-pulse-red",
-                  isTablet || isDesktop ? "w-6 h-6" : "w-4 h-4"
-                )} />
-                Roll {rollNumber}
+                {canLockEarly ? (
+                  <Lock className={cn(
+                    "mr-2",
+                    isTablet || isDesktop ? "w-6 h-6" : "w-4 h-4"
+                  )} />
+                ) : (
+                  <RotateCcw className={cn(
+                    "mr-2 animate-slow-pulse-red",
+                    isTablet || isDesktop ? "w-6 h-6" : "w-4 h-4"
+                  )} />
+                )}
+                {canLockEarly ? "Lock In" : `Roll ${rollNumber}`}
               </Button>
 
-              {horses.localHand.rollsRemaining < 3 ? (
+              {!canLockEarly && horses.localHand.rollsRemaining < 3 ? (
                 <Button
                   variant="outline"
                   size="icon"
