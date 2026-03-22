@@ -263,6 +263,16 @@ export function useHorsesMobileController({
     isSCC ? createInitialSCCHand() : createInitialHand()
   );
   
+  // REF mirror of localHand — always points to the latest value.
+  // Critical for handleToggleHold: rapid holds in the same React render frame
+  // would otherwise read stale `localHand` from the useCallback closure,
+  // causing the second hold to drop the first hold's state.
+  const localHandRef = useRef<HorsesHand | SCCHand>(localHand);
+  localHandRef.current = localHand;
+  
+  // Debounced DB write for hold toggling.
+  const holdSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   // Track when we last reset local state for a new turn (prevents stale state blocking sync)
   const lastResetTurnKeyRef = useRef<string | null>(null);
   
@@ -1508,7 +1518,8 @@ export function useHorsesMobileController({
     (index: number) => {
       if (!enabled) return;
       if (isPaused) return; // Block all actions when game is paused
-      if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining === 3 || localHand.rollsRemaining <= 0) return;
+      const currentHand = localHandRef.current;
+      if (!isMyTurn || currentHand.isComplete || currentHand.rollsRemaining === 3 || currentHand.rollsRemaining <= 0) return;
 
       logDebugEvent({
         gameId: gameId ?? '',
@@ -1516,13 +1527,13 @@ export function useHorsesMobileController({
         userId: currentUserId,
         clientRole: 'actor',
         eventType: 'horses:input:hold',
-        payload: { dieIndex: index, rollsRemaining: localHand.rollsRemaining, holdSeq: localHoldSeqRef.current + 1 },
+        payload: { dieIndex: index, rollsRemaining: currentHand.rollsRemaining, holdSeq: localHoldSeqRef.current + 1 },
       });
 
       // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
       // Cargo dice (non-SCC) CAN be toggled - player can hold individual cargo dice
       if (isSCC) {
-        const sccHand = localHand as SCCHand;
+        const sccHand = currentHand as SCCHand;
         const die = sccHand.dice[index];
         
         // Ship/Captain/Crew are auto-frozen and cannot be unheld
@@ -1543,7 +1554,12 @@ export function useHorsesMobileController({
         };
         
         setLocalHand(nextHand);
-        void saveMyState(nextHand, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
+        localHandRef.current = nextHand;
+        if (holdSaveTimerRef.current) clearTimeout(holdSaveTimerRef.current);
+        holdSaveTimerRef.current = setTimeout(() => {
+          holdSaveTimerRef.current = null;
+          void saveMyState(localHandRef.current, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
+        }, 150);
         return;
       }
 
@@ -1554,14 +1570,17 @@ export function useHorsesMobileController({
 
       // IMPORTANT (mobile): persist holds immediately.
       // Otherwise the next realtime/DB sync can overwrite local holds and it feels like it "won't hold".
-      const nextHand = toggleHold(localHand as HorsesHand, index);
+      const nextHand = toggleHold(currentHand as HorsesHand, index);
       setLocalHand(nextHand);
+      localHandRef.current = nextHand;
 
-      // Preserve the held-mask captured at the start of the last roll so observers' layout/animations
-      // don't get reset by realtime hold toggles between rolls.
-      void saveMyState(nextHand, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
+      if (holdSaveTimerRef.current) clearTimeout(holdSaveTimerRef.current);
+      holdSaveTimerRef.current = setTimeout(() => {
+        holdSaveTimerRef.current = null;
+        void saveMyState(localHandRef.current, false, undefined, heldMaskAtLastRollStartRef.current ?? undefined);
+      }, 150);
     },
-    [enabled, isPaused, isMyTurn, localHand, saveMyState, isSCC],
+    [enabled, isPaused, isMyTurn, saveMyState, isSCC],
   );
 
   const handleLockIn = useCallback(async () => {
