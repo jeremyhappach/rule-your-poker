@@ -2343,6 +2343,7 @@ export const CribbageMobileGameTable = ({
                 // IMPORTANT: Always start from the pegging baseline, never from the animated overrides.
                 initialScores={countingBaselineScoresRef.current ?? undefined}
                 winFrozen={countingWinFrozen}
+                countingStartedAt={countingStateSnapshot.countingStartedAt}
               />
             )}
 
