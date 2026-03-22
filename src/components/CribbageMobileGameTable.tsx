@@ -287,6 +287,10 @@ export const CribbageMobileGameTable = ({
   // Signal to counting phase to freeze when win is detected reactively via score subscription
   const [countingWinFrozen, setCountingWinFrozen] = useState(false);
 
+  // Forward-only lifecycle latch: true after counting completes but before next hand arrives.
+  // Prevents banner from reverting to "Scoring hands..." during the transition gap.
+  const [postCountingTransitionActive, setPostCountingTransitionActive] = useState(false);
+
   // If another client advances the hand while we are still animating counting, immediately
   // cancel the local counting overlay so it can't complete and write stale state into the NEW round.
   const lastRoundPropsRef = useRef<{ roundId: string; handNumber: number } | null>(null);
@@ -312,6 +316,7 @@ export const CribbageMobileGameTable = ({
     setCountingDelayActive(false);
     setCountingWinFrozen(false);
     setCountingStateSnapshot(null);
+    setPostCountingTransitionActive(false);
     // CRITICAL: Unfreeze presentation so the new-hand snapshot flows through.
     // Without this, the frozen client stays stuck on the old hand indefinitely.
     syncHandle.unfreezePresentation();
@@ -333,6 +338,7 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = null;
     countingBaselineScoresRef.current = null;
     countingHandKeyRef.current = null;
+    setPostCountingTransitionActive(false);
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
   // Win sequence state
@@ -1788,6 +1794,9 @@ export const CribbageMobileGameTable = ({
     // the counting init effect can re-run and replay the scoring sequence.
     setCountingStateSnapshot(null);
     setCountingWinFrozen(false);
+    // Activate forward-only lifecycle latch so banner shows "Dealing Next Hand"
+    // instead of reverting to "Scoring hands..." during the transition gap.
+    setPostCountingTransitionActive(true);
     // Unfreeze sync framework presentation so new-hand state flows through
     syncHandle.unfreezePresentation();
     
@@ -2490,7 +2499,7 @@ export const CribbageMobileGameTable = ({
           // CRITICAL: Only show "Dealing Next Hand" if counting has actually started AND the delay has elapsed
           // AND the counting animation has fully completed (snapshot cleared).
           // Without the !countingStateSnapshot check, "Dealing Next Hand" flashes during the 2s pre-counting delay.
-          const isCountingComplete = effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot;
+          const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
           
           const shouldShowBanner = (
             (effectivePhase === 'counting' && !isCountingComplete) || 
