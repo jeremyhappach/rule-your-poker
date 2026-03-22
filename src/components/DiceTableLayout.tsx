@@ -263,6 +263,15 @@ export function DiceTableLayout({
   >(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
+  const renderDecisionByDieRef = useRef<
+    Map<
+      number,
+      {
+        summary: string;
+        data: Record<string, unknown>;
+      }
+    >
+  >(new Map());
 
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
@@ -1032,54 +1041,42 @@ export function DiceTableLayout({
     });
   }
 
-  const renderDecisionByDieRef = useRef<
-    Map<
-      number,
-      {
-        summary: string;
-        data: Record<string, unknown>;
+  orderedDice.forEach((item) => {
+    const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+    const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
+    const stableScatterPos =
+      stableScatterRollKeyRef.current === rollKey
+        ? stableScatterByDieRef.current.get(item.originalIndex)
+        : undefined;
+
+    if (item.die.isHeld) {
+      const committedHeldPos =
+        layoutHeldPos ??
+        lastHeldTransformByDieRef.current.get(item.originalIndex) ??
+        (() => {
+          const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
+          const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+          if (heldIdx < 0) return undefined;
+          return getHeldPositions(actuallyHeldDice.length, dieWidth, gap)[heldIdx];
+        })();
+
+      if (committedHeldPos) {
+        lastHeldTransformByDieRef.current.set(item.originalIndex, committedHeldPos);
+        lastScatterTransformByDieRef.current.delete(item.originalIndex);
       }
-    >
-  >(new Map());
+      return;
+    }
 
-  useLayoutEffect(() => {
-    orderedDice.forEach((item) => {
-      const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
-      const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
-      const stableScatterPos =
-        stableScatterRollKeyRef.current === rollKey
-          ? stableScatterByDieRef.current.get(item.originalIndex)
-          : undefined;
+    const committedScatterPos =
+      stableScatterPos ??
+      layoutScatterPos ??
+      lastScatterTransformByDieRef.current.get(item.originalIndex);
 
-      if (item.die.isHeld) {
-        const committedHeldPos =
-          layoutHeldPos ??
-          lastHeldTransformByDieRef.current.get(item.originalIndex) ??
-          (() => {
-            const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
-            const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
-            if (heldIdx < 0) return undefined;
-            return getHeldPositions(actuallyHeldDice.length, dieWidth, gap)[heldIdx];
-          })();
-
-        if (committedHeldPos) {
-          lastHeldTransformByDieRef.current.set(item.originalIndex, committedHeldPos);
-          lastScatterTransformByDieRef.current.delete(item.originalIndex);
-        }
-        return;
-      }
-
-      const committedScatterPos =
-        stableScatterPos ??
-        layoutScatterPos ??
-        lastScatterTransformByDieRef.current.get(item.originalIndex);
-
-      if (committedScatterPos) {
-        lastScatterTransformByDieRef.current.set(item.originalIndex, committedScatterPos);
-        lastHeldTransformByDieRef.current.delete(item.originalIndex);
-      }
-    });
-  }, [orderedDice, heldPositionByOriginalIndex, scatterLayoutByOriginalIndex, rollKey, dieWidth, gap]);
+    if (committedScatterPos) {
+      lastScatterTransformByDieRef.current.set(item.originalIndex, committedScatterPos);
+      lastHeldTransformByDieRef.current.delete(item.originalIndex);
+    }
+  });
 
   return (
     <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
