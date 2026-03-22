@@ -332,6 +332,7 @@ export function DiceTableLayout({
     stableScatterByDieRef.current = new Map();
     stableHeldRollKeyRef.current = undefined;
     stableHeldSlotByDieRef.current = new Map();
+    pendingReleaseCountRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
     lastScatterTransformByDieRef.current = new Map();
 
