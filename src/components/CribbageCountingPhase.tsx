@@ -609,7 +609,12 @@ export const CribbageCountingPhase = ({
 
         // Advance to the next combo after a delay
         innerTimer = setTimeout(() => {
-          if (!winFrozenRef.current) setCurrentComboIndex((prev) => prev + 1);
+          if (!winFrozenRef.current) {
+            const nextCombo = currentComboIndex + 1;
+            setCurrentComboIndex(nextCombo);
+            // Persist progress: advanced to next combo within target
+            onProgressUpdate?.(currentTargetIndex, nextCombo);
+          }
         }, COMBO_DELAY_MS);
         return;
       }
