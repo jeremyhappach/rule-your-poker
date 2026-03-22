@@ -274,13 +274,12 @@ export function useHorsesMobileController({
   // with stale held state, and then this line would clobber the ref, causing
   // the pending save to write stale data back → unhold appears to not work.
   const localHandRef = useRef<HorsesHand | SCCHand>(localHand);
+  // Debounced DB write for hold toggling.
+  const holdSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Only sync ref from state when no hold save is pending
   if (!holdSaveTimerRef.current) {
     localHandRef.current = localHand;
   }
-  
-  // Debounced DB write for hold toggling.
-  const holdSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Track when we last reset local state for a new turn (prevents stale state blocking sync)
   const lastResetTurnKeyRef = useRef<string | null>(null);
