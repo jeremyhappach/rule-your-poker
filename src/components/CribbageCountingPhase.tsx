@@ -3,6 +3,7 @@ import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { getHandScoringCombos, getTotalFromCombos, type ScoringCombo } from '@/lib/cribbageScoringDetails';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { getDisplayName } from '@/lib/botAlias';
+import { logDebugEvent } from '@/lib/debugEventLogger';
 
 interface Player {
   id: string;
@@ -34,6 +35,13 @@ interface CribbageCountingPhaseProps {
   winFrozen?: boolean;
   /** ISO timestamp from DB: when counting began. Used to skip ahead on reconnect/late join. */
   countingStartedAt?: string | null;
+  /** Debug context for trace instrumentation */
+  debugContext?: {
+    gameId: string;
+    roundId: string | null;
+    userId: string | null;
+    handNumber: number;
+  };
 }
 
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
@@ -50,6 +58,7 @@ export const CribbageCountingPhase = ({
   initialScores,
   winFrozen = false,
   countingStartedAt,
+  debugContext,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
@@ -72,6 +81,22 @@ export const CribbageCountingPhase = ({
   const initialScoresRef = useRef<Record<string, number> | null>(null);
   // Avoid stale closures inside timeouts when parent freezes the win.
   const winFrozenRef = useRef(winFrozen);
+
+  // ── Debug helper ────────────────────────────────────────────
+  const logCountingDebug = useCallback((eventType: string, payload: Record<string, unknown>) => {
+    if (!debugContext) return;
+    logDebugEvent({
+      gameId: debugContext.gameId,
+      roundId: debugContext.roundId,
+      userId: debugContext.userId,
+      clientRole: 'actor',
+      eventType,
+      payload: { handNumber: debugContext.handNumber, ...payload },
+    });
+  }, [debugContext]);
+
+  // Track previous target/combo/phase to detect resets after resume
+  const prevResumeStateRef = useRef<{ targetIndex: number; comboIndex: number; phase: string } | null>(null);
 
   useEffect(() => {
     winFrozenRef.current = winFrozen;
@@ -345,6 +370,21 @@ export const CribbageCountingPhase = ({
               totalBeats: beats.length,
               completedCombosPreApplied: beats.slice(0, activeBeatIndex).filter(b => b.type === 'combo').length,
             });
+
+            // ── Debug: crib:counting_resume_skip_compute ────────
+            logCountingDebug('crib:counting_resume_skip_compute', {
+              elapsedMs,
+              timeIntoAnimation,
+              activeBeatIndex,
+              activeBeatType: activeBeat.type,
+              computedTargetIndex: skipTargetIndex,
+              computedComboIndex: skipComboIndex,
+              computedTransitionPhase: skipPhase,
+              completedCombosPreApplied: beats.slice(0, activeBeatIndex).filter(b => b.type === 'combo').length,
+              totalBeats: beats.length,
+              totalDuration,
+              baselineScoresUsed: { ...scoresToInit },
+            });
           }
         }
       }
@@ -360,6 +400,18 @@ export const CribbageCountingPhase = ({
     }
 
     setBaselineInitialized(true);
+
+    // ── Debug: crib:counting_resume_mount ──────────────────────
+    logCountingDebug('crib:counting_resume_mount', {
+      countingStartedAt: countingStartedAt ?? null,
+      initialTargetIndex: skipIsTerminal ? 'terminal' : skipTargetIndex,
+      initialComboIndex: skipIsTerminal ? 'terminal' : skipComboIndex,
+      initialTransitionPhase: skipIsTerminal ? 'terminal' : skipPhase,
+      hadCountingStartedAt: !!countingStartedAt,
+      skipAheadRan: skipAheadAppliedRef.current,
+      isTerminal: skipIsTerminal,
+      baselineScores: { ...scoresToInit },
+    });
 
     // ── Terminal: skip directly to completion ───────────────────
     if (skipIsTerminal) {
@@ -378,6 +430,15 @@ export const CribbageCountingPhase = ({
       setCurrentTargetIndex(skipTargetIndex);
       setCurrentComboIndex(skipComboIndex);
       setTransitionPhase(skipPhase);
+
+      // ── Debug: crib:counting_resume_state_apply ─────────────
+      logCountingDebug('crib:counting_resume_state_apply', {
+        targetIndexApplied: skipTargetIndex,
+        comboIndexApplied: skipComboIndex,
+        transitionPhaseApplied: skipPhase,
+        animatedScoresAfterApply: { ...scoresToInit },
+      });
+      prevResumeStateRef.current = { targetIndex: skipTargetIndex, comboIndex: skipComboIndex, phase: skipPhase };
     }
 
     // Start entering animation (skip if already past enter phase)
@@ -388,6 +449,44 @@ export const CribbageCountingPhase = ({
       }, ENTER_ANIMATION_MS);
     }
   }, [baselineInitialized, onScoreUpdate]);
+
+  // ── Debug: crib:counting_resume_state_reset ─────────────────
+  useEffect(() => {
+    if (!baselineInitialized) return;
+    const prev = prevResumeStateRef.current;
+    if (!prev) {
+      prevResumeStateRef.current = { targetIndex: currentTargetIndex, comboIndex: currentComboIndex, phase: transitionPhase };
+      return;
+    }
+    if (prev.targetIndex === currentTargetIndex && prev.comboIndex === currentComboIndex && prev.phase === transitionPhase) return;
+    logCountingDebug('crib:counting_resume_state_reset', {
+      prevTargetIndex: prev.targetIndex,
+      prevComboIndex: prev.comboIndex,
+      prevPhase: prev.phase,
+      nextTargetIndex: currentTargetIndex,
+      nextComboIndex: currentComboIndex,
+      nextPhase: transitionPhase,
+    });
+    prevResumeStateRef.current = { targetIndex: currentTargetIndex, comboIndex: currentComboIndex, phase: transitionPhase };
+  }, [currentTargetIndex, currentComboIndex, transitionPhase, baselineInitialized, logCountingDebug]);
+
+  // ── Debug: crib:counting_resume_render ──────────────────────
+  const lastRenderDebugRef = useRef<string>('');
+  useEffect(() => {
+    if (!baselineInitialized) return;
+    const key = `${currentTargetIndex}:${currentComboIndex}:${transitionPhase}`;
+    if (key === lastRenderDebugRef.current) return;
+    lastRenderDebugRef.current = key;
+    const target = countingTargets[currentTargetIndex];
+    logCountingDebug('crib:counting_resume_render', {
+      renderedTargetLabel: target?.label ?? 'none',
+      currentTargetIndex,
+      currentComboIndex,
+      transitionPhase,
+      displayedPegboardScores: { ...animatedScores },
+      isComplete,
+    });
+  }, [currentTargetIndex, currentComboIndex, transitionPhase, baselineInitialized, animatedScores, isComplete, logCountingDebug, countingTargets]);
 
   // Animation loop - only runs during 'scoring' phase
   // When winFrozen is true, we stop advancing but keep current cards highlighted
