@@ -724,7 +724,19 @@ export const CribbageMobileGameTable = ({
     countingAnimationActiveRef.current = true;
     countingDelayFiredRef.current = countingStartKey;
     countingHandKeyRef.current = countingStartKey;
-    setCountingStateSnapshot(state);
+    // Write countingHandKey to state so reconnecting clients can validate
+    const stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
+    setCountingStateSnapshot(stateWithHandKey);
+    // Persist countingHandKey to DB (fire-and-forget)
+    if (currentRoundId) {
+      supabase
+        .from('rounds')
+        .update({ cribbage_state: JSON.parse(JSON.stringify({ ...state, countingHandKey: countingStartKey })) })
+        .eq('id', currentRoundId)
+        .then(({ error }) => {
+          if (error) console.warn('[CRIBBAGE] Failed to persist countingHandKey:', error.message);
+        });
+    }
     // Freeze sync framework presentation so authoritative updates don't clobber the counting UI
     syncHandle.freezePresentation();
 
