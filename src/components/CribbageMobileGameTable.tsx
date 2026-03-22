@@ -338,6 +338,7 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = null;
     countingBaselineScoresRef.current = null;
     countingHandKeyRef.current = null;
+    setPostCountingTransitionActive(false);
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
   // Win sequence state
