@@ -2369,6 +2369,7 @@ export const CribbageMobileGameTable = ({
                 initialScores={countingBaselineScoresRef.current ?? undefined}
                 winFrozen={countingWinFrozen}
                 countingStartedAt={countingStateSnapshot.countingStartedAt}
+                debugContext={debugCtx}
               />
             )}
 
