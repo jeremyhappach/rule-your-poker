@@ -1047,23 +1047,35 @@ export function DiceTableLayout({
     stableHeldSlotByDieRef.current = new Map();
   }
 
+  // --- AUTHORITATIVE HELD SLOT REGISTRY ---
+  // Registration pass: only ADD newly-held dice to the registry.
+  // For observers, slots are NEVER released within a rollKey.
+  // This prevents transient isHeld=false (stale-closure DB writes) from causing
+  // held→scatter→held hops on observer clients.
   const stableHeldSlotOrder = getHeldSlotOrder(orderedDice.length);
-  const getStableHeldPos = (originalIndex: number) => {
+  if (isObserver && rollKey !== undefined) {
+    orderedDice.forEach((item) => {
+      if (item.die.isHeld && !stableHeldSlotByDieRef.current.has(item.originalIndex)) {
+        const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
+        const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
+        if (nextSlot !== undefined) {
+          stableHeldSlotByDieRef.current.set(item.originalIndex, nextSlot);
+        }
+      }
+    });
+  }
+
+  // Lookup helper: returns the stable held position for a die IF it has a registered slot.
+  // For observers: always returns position if slot exists (even if die.isHeld is transiently false).
+  // For roller: returns undefined (roller uses dynamic layout for immediate feedback).
+  const getStableHeldPos = (originalIndex: number): { x: number; y: number } | undefined => {
     if (!isObserver || rollKey === undefined) return undefined;
-
     const existingSlot = stableHeldSlotByDieRef.current.get(originalIndex);
-    if (existingSlot !== undefined) {
-      return stableHeldPositions[existingSlot];
-    }
-
-    const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
-    const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
-    if (nextSlot === undefined) return undefined;
-
-    stableHeldSlotByDieRef.current.set(originalIndex, nextSlot);
-    return stableHeldPositions[nextSlot];
+    if (existingSlot === undefined) return undefined;
+    return stableHeldPositions[existingSlot];
   };
 
+  // Cache management: update last-known transforms for smooth transitions
   orderedDice.forEach((item) => {
     const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
     const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
@@ -1072,8 +1084,12 @@ export function DiceTableLayout({
         ? stableScatterByDieRef.current.get(item.originalIndex)
         : undefined;
 
-    if (item.die.isHeld) {
-      const stableHeldPos = getStableHeldPos(item.originalIndex);
+    // For observers: if die has a registered slot, treat as held for caching purposes
+    const registryHeldPos = getStableHeldPos(item.originalIndex);
+    const effectivelyHeld = item.die.isHeld || !!registryHeldPos;
+
+    if (effectivelyHeld) {
+      const stableHeldPos = registryHeldPos;
       const committedHeldPos =
         stableHeldPos ??
         layoutHeldPos ??
