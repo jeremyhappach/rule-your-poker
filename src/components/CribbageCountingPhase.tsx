@@ -657,8 +657,11 @@ export const CribbageCountingPhase = ({
       if (winFrozenRef.current) return;
 
       if (currentTargetIndex < countingTargets.length - 1) {
-        setCurrentTargetIndex(prev => prev + 1);
+        const nextTarget = currentTargetIndex + 1;
+        setCurrentTargetIndex(nextTarget);
         setCurrentComboIndex(-1);
+        // Persist progress: advanced to next target
+        onProgressUpdate?.(nextTarget, -1);
         setHighlightedCards([]);
         setExitingCards([]);
         setTransitionPhase('entering');
