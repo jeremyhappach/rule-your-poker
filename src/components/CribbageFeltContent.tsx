@@ -36,6 +36,7 @@ export const CribbageFeltContent = ({
   countingScoreOverrides,
   countingOutroActive = false,
   thirtyOneDelayActive = false,
+  handBoundaryKey,
 }: CribbageFeltContentProps) => {
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
 
