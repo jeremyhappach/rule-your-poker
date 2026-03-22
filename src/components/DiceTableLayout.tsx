@@ -275,13 +275,6 @@ export function DiceTableLayout({
 
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
-  const tracedDieIndex = useMemo(() => {
-    if (typeof window === "undefined") return null;
-    const value = new URLSearchParams(window.location.search).get("diceTraceDie");
-    if (value == null) return null;
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) ? parsed : null;
-  }, []);
 
   // Track whether unheld dice should be visible
   // NOTE: Unheld dice should remain visible after landing; we only hide them during
@@ -1211,8 +1204,7 @@ export function DiceTableLayout({
           ].join("|");
 
           const previous = renderDecisionByDieRef.current.get(item.originalIndex);
-          const shouldTraceThisDie = tracedDieIndex == null || tracedDieIndex === item.originalIndex;
-          if (shouldTraceThisDie && previous?.summary !== summary) {
+          if (previous?.summary !== summary) {
             pushDiceTrace("DiceTableLayout:renderDecision", traceData);
           }
           renderDecisionByDieRef.current.set(item.originalIndex, { summary, data: traceData.extra });
