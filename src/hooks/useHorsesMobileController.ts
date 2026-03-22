@@ -2335,15 +2335,19 @@ export function useHorsesMobileController({
         const rollKeyStr = `${currentTurnPlayerId}:${dbRollKey}`;
         const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
         const canStillHold = (dbState?.rollsRemaining ?? 0) > 0;
+        const nextDice = (dbDice as (HorsesDieType | SCCDieType)[] | undefined) ?? observerDisplayState.dice;
+        const nextHeldSig = nextDice.map((d: any) => (d?.isHeld ? 1 : 0)).join("|");
+        const prevHeldSig = observerDisplayState.dice.map((d: any) => (d?.isHeld ? 1 : 0)).join("|");
+        const equalSeqHeldRegression = canStillHold && dbHoldSeq === maxSeenHoldSeq && nextHeldSig !== prevHeldSig;
 
         // Use DB dice if holdSeq is monotonically advancing (not stale)
-        if (!canStillHold || dbHoldSeq >= maxSeenHoldSeq) {
+        if (!equalSeqHeldRegression && (!canStillHold || dbHoldSeq >= maxSeenHoldSeq)) {
           if (dbHoldSeq > maxSeenHoldSeq) {
             maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
           }
           return {
             ...observerDisplayState,
-            dice: (dbDice as (HorsesDieType | SCCDieType)[]) ?? observerDisplayState.dice,
+            dice: nextDice,
             rollsRemaining: dbState?.rollsRemaining ?? observerDisplayState.rollsRemaining,
             heldMaskBeforeComplete: (dbState as any)?.heldMaskBeforeComplete ?? observerDisplayState.heldMaskBeforeComplete,
             heldCountBeforeComplete: (dbState as any)?.heldCountBeforeComplete ?? observerDisplayState.heldCountBeforeComplete,
@@ -2680,6 +2684,8 @@ export function useHorsesMobileController({
       const nextDice = state.dice as any[];
       const nextSig = nextDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
       const prevSig = (prev.dice as any[]).map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+      const nextHeldSig = nextDice.map((d) => (d?.isHeld ? 1 : 0)).join("|");
+      const prevHeldSig = (prev.dice as any[]).map((d) => (d?.isHeld ? 1 : 0)).join("|");
 
       // While the roll animation is running, do NOT replace our masked dice with the pre-roll values.
       // Only accept updates once the DB dice actually change vs the roll-start snapshot.
@@ -2707,6 +2713,13 @@ export function useHorsesMobileController({
         // Stale update - has older sequence number. Reject it.
         console.log(
           `[OBSERVER_ROLL] Rejecting same-rollKey update: holdSeq (${nextHoldSeq}) < maxSeenHoldSeq (${maxSeenHoldSeq})`,
+        );
+        return prev;
+      }
+
+      if (canStillHold && nextHoldSeq === maxSeenHoldSeq && nextHeldSig !== prevHeldSig) {
+        console.log(
+          `[OBSERVER_ROLL] Rejecting same-rollKey equal-holdSeq held regression: holdSeq (${nextHoldSeq}) heldSig ${prevHeldSig} -> ${nextHeldSig}`,
         );
         return prev;
       }
