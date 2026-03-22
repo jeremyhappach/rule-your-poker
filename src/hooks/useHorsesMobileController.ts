@@ -985,6 +985,13 @@ export function useHorsesMobileController({
         });
       }
       setCompletedTurnHold(null);
+      // FIX: Also clear observerDisplayState for this player to prevent rawFeltDice from
+      // falling back to stale observer/DB state, which causes the result badge to flicker
+      // (badge → stale dice briefly → badge again).
+      setObserverDisplayState((prev) => {
+        if (prev?.playerId === currentTurnPlayerId) return null;
+        return prev;
+      });
       completedTurnHoldTimerRef.current = null;
     }, holdDuration);
   }, [
