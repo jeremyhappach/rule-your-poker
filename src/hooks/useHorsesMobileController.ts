@@ -67,6 +67,10 @@ export interface HorsesPlayerDiceState {
   rollKey?: number;
   /** Monotonically increasing counter for hold/unhold actions within a roll - used for ordering realtime updates */
   holdSeq?: number;
+  /** ISO timestamp when the roll started — observers use this to derive animation position */
+  rollStartedAt?: string;
+  /** ISO timestamp — active roller may not proceed to next action until this time has passed */
+  rollAnimationMinEndAt?: string;
 }
 export interface HorsesStateFromDB {
   currentTurnPlayerId: string | null;
@@ -151,6 +155,9 @@ export interface UseHorsesMobileControllerArgs {
 const HORSES_FIRST_ROLL_ANIMATION_MS = 1300;   // Roll 1: ~1.3s
 const HORSES_ROLL_AGAIN_ANIMATION_MS = 1800;   // Rolls 2/3: ~1.8s (was 2500 - too long)
 const HORSES_POST_TURN_PAUSE_MS = 400;         // Pause after lock-in before advancing (was 650)
+// Authoritative animation barrier: minimum time observers must have to see the fly-in.
+// The active roller cannot proceed until this time has elapsed from rollStartedAt.
+const ROLL_ANIMATION_BARRIER_MS = 1200;         // ~1.2s authoritative minimum
 // Local state protection: prevent DB overwrites during animation
 const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200;
 const HORSES_TURN_TIMER_SECONDS = 30;
@@ -180,10 +187,12 @@ export function useHorsesMobileController({
   const prevRoundIdForSyncRef = useRef<string | null>(null);
 
   // Reset sync baseline when roundId changes (new hand / rollover)
+  // NOTE: Ref cleanup for later-declared refs is done in a useEffect below (boundaryCleanupRoundRef).
   if (currentRoundId !== prevRoundIdForSyncRef.current) {
     prevRoundIdForSyncRef.current = currentRoundId;
     acceptedStateRef.current = null;
     acceptedProgressRef.current = [0, 0, 0, 0];
+    
     logDebugEvent({
       gameId: gameId ?? '',
       roundId: currentRoundId,
@@ -813,6 +822,7 @@ export function useHorsesMobileController({
       completed: boolean,
       result?: HorsesHandResult | SCCHandResult,
       heldMaskBeforeComplete?: boolean[],
+      rollAnimationMeta?: { rollStartedAt: string; rollAnimationMinEndAt: string },
     ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
@@ -830,6 +840,10 @@ export function useHorsesMobileController({
         heldCountBeforeComplete,
         rollKey: localRollKeyRef.current,
         holdSeq: localHoldSeqRef.current,
+        ...(rollAnimationMeta ? {
+          rollStartedAt: rollAnimationMeta.rollStartedAt,
+          rollAnimationMinEndAt: rollAnimationMeta.rollAnimationMinEndAt,
+        } : {}),
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
@@ -885,6 +899,35 @@ export function useHorsesMobileController({
       }
     };
   }, []);
+
+  // BOUNDARY HYGIENE: Clear all presentation owners/caches on round change.
+  // This runs as an effect (not during render) because the refs are declared after the sync block.
+  const boundaryCleanupRoundRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentRoundId === boundaryCleanupRoundRef.current) return;
+    boundaryCleanupRoundRef.current = currentRoundId;
+    
+    // Clear observer/bot display, completed turn holds, felt caches, monotonic refs
+    lastObservedRollKeyRef.current = {};
+    lastObservedRollsRemainingRef.current = {};
+    maxSeenRollKeyRef.current = {};
+    maxHoldSeqPerRollKeyRef.current = {};
+    lastFeltDiceRef.current = null;
+    lastFeltDiceAtRef.current = 0;
+    lastCompletedTurnKeyRef.current = null;
+    announcedTurnsRef.current = new Set();
+    stuckAdvanceKeyRef.current = null;
+    noQualifyShownForRef.current = new Set();
+    midnightShownForRef.current = new Set();
+    
+    // Clear state-based display caches
+    setObserverDisplayState(null);
+    setBotDisplayState(null);
+    setCompletedTurnHold(null);
+    setBotTurnActiveId(null);
+    
+    console.log(`[HORSES_SYNC] Boundary cleanup: cleared all presentation caches for round ${currentRoundId}`);
+  }, [currentRoundId]);
 
   // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
   // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
@@ -1279,6 +1322,20 @@ export function useHorsesMobileController({
     if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    // AUTHORITATIVE ANIMATION BARRIER: Check if previous roll's animation window is still active.
+    // This prevents the roller from firing rolls faster than observers can animate.
+    if (myPlayer) {
+      const myState = horsesState?.playerStates?.[myPlayer.id];
+      const prevMinEnd = (myState as any)?.rollAnimationMinEndAt;
+      if (prevMinEnd) {
+        const msRemaining = new Date(prevMinEnd).getTime() - Date.now();
+        if (msRemaining > 0) {
+          console.log(`[ROLL_DEBUG] Blocked by animation barrier: ${msRemaining}ms remaining`);
+          return;
+        }
+      }
+    }
+
     const traceId = newTraceId();
     logDebugEvent({
       gameId: gameId ?? '',
@@ -1294,12 +1351,14 @@ export function useHorsesMobileController({
     });
 
     const rollStartTime = Date.now();
+    const rollStartedAt = new Date(rollStartTime).toISOString();
+    const rollAnimationMinEndAt = new Date(rollStartTime + ROLL_ANIMATION_BARRIER_MS).toISOString();
     // Unique per-roll key so all clients can trigger DiceTableLayout fly-in animations.
     localRollKeyRef.current = rollStartTime;
     // Reset hold sequence for new roll
     localHoldSeqRef.current = 0;
 
-    console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
+    console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${rollStartedAt} (barrier until ${rollAnimationMinEndAt}) =====`);
 
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
     const isFirstRoll = localHand.rollsRemaining === 3;
@@ -1343,11 +1402,13 @@ export function useHorsesMobileController({
       clientRole: 'actor',
       eventType: 'horses:db_write_start',
       traceId,
-      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current },
+      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current, rollStartedAt, rollAnimationMinEndAt },
     });
 
-    // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
-    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll).then(() => {
+    // CRITICAL: Save state IMMEDIATELY with animation metadata so observers get rollKey + rollStartedAt
+    // right away and can start fly-in animation in sync.
+    const rollAnimMeta = { rollStartedAt, rollAnimationMinEndAt };
+    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll, rollAnimMeta).then(() => {
       logDebugEvent({
         gameId: gameId ?? '',
         roundId: currentRoundId,
@@ -2483,7 +2544,43 @@ export function useHorsesMobileController({
 
       // Don't animate on the first observation (no baseline)
       if (prevRollKey !== undefined) {
-        const durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+        // AUTHORITATIVE ANIMATION TIMING: Use rollStartedAt from DB if available,
+        // falling back to local timer duration. This ensures observers animate in sync
+        // with the roller's authoritative timeline, not just local guesses.
+        const rollStartedAt = (state as any)?.rollStartedAt;
+        const rollAnimationMinEndAt = (state as any)?.rollAnimationMinEndAt;
+        let durationMs: number;
+        
+        if (rollStartedAt) {
+          const rollStartTime = new Date(rollStartedAt).getTime();
+          const elapsed = Date.now() - rollStartTime;
+          
+          if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
+            // Roll happened too long ago — snap to post-animation state, don't replay
+            console.log(`[OBSERVER_ROLL] Late observer: elapsed=${elapsed}ms > max, snapping to final state`);
+            const finalDice = (state.dice as any[]) ?? [];
+            const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
+            lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+            lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
+            setObserverDisplayState({
+              playerId: currentTurnPlayerId,
+              dice: finalDice as (HorsesDieType | SCCDieType)[],
+              rollsRemaining: state.rollsRemaining,
+              isRolling: false,
+              heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+              heldCountBeforeComplete: derivedHeldCount2,
+              rollKey: newRollKey,
+              preRollSig: undefined,
+            });
+            return;
+          }
+          
+          // Use remaining time in the animation window
+          const localDuration = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+          durationMs = Math.max(200, localDuration - elapsed);
+        } else {
+          durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+        }
 
         // TRACE: Observer new roll detected
         if (isDiceTraceRecording()) {
