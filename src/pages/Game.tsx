@@ -630,11 +630,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
       if (cancelled) return;
 
-      const code = (error as any)?.code;
-      const isMissing = !data || code === 'PGRST116';
+      // CRITICAL: Distinguish "game doesn't exist" from "query failed" (e.g. network/auth error on reconnect).
+      // Only treat as missing when there's NO error and NO data, or the specific PGRST116 "0 rows" code.
+      // If there's a network/auth error, data will be null but the game may still exist.
+      if (error) {
+        const code = (error as any)?.code;
+        if (code === 'PGRST116') {
+          // Explicit "0 rows" - game is genuinely missing
+        } else {
+          // Network/auth/other error - do NOT treat as deletion
+          console.warn('[CHECK GAME] Query error (not treating as deletion):', error.message);
+          return;
+        }
+      }
+
+      const isMissing = !data;
 
       if (isMissing && !missingGameHandledRef.current) {
         missingGameHandledRef.current = true;
+        console.log('[CHECK GAME] Game confirmed missing from DB - navigating to home');
         setGame(null);
         setPlayers([]);
         toast({
