@@ -2569,8 +2569,8 @@ export const CribbageMobileGameTable = ({
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
-          {/* Hide cards tab while counting animation is active to prevent new hand cards from showing */}
-          {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && (
+          {/* Hide cards tab while counting animation is active, transitioning, or when state is stale (old hand still rendering) */}
+          {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (
             <CribbageMobileCardsTab
               key={currentHandKey} // Force remount on hand change to prevent stale card flash
               cribbageState={cribbageState}
