@@ -27,6 +27,15 @@ export const CribbageCutCardReveal = ({
   // This persists across re-renders and phase transitions
   const revealedCardsRef = useRef<Set<string>>(new Set());
   const currentCardKeyRef = useRef<string | null>(null);
+  const lastBoundaryKeyRef = useRef<string | undefined>(handBoundaryKey);
+
+  // Reset the revealed-cards cache when hand boundary changes (prevents re-flip on remount)
+  if (handBoundaryKey !== lastBoundaryKeyRef.current) {
+    lastBoundaryKeyRef.current = handBoundaryKey;
+    // Don't clear if the current card is still the same — only on true hand change
+    revealedCardsRef.current = new Set();
+    currentCardKeyRef.current = null;
+  }
 
   useEffect(() => {
     // Generate stable key for current card
