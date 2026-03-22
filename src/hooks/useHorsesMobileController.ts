@@ -67,6 +67,10 @@ export interface HorsesPlayerDiceState {
   rollKey?: number;
   /** Monotonically increasing counter for hold/unhold actions within a roll - used for ordering realtime updates */
   holdSeq?: number;
+  /** ISO timestamp when the roll started — observers use this to derive animation position */
+  rollStartedAt?: string;
+  /** ISO timestamp — active roller may not proceed to next action until this time has passed */
+  rollAnimationMinEndAt?: string;
 }
 export interface HorsesStateFromDB {
   currentTurnPlayerId: string | null;
