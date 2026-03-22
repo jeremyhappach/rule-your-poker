@@ -5946,6 +5946,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   };
 
   // Handle auto_fold toggle - player can disable their auto_fold status
+  // When opting back in (auto_fold=false), also extend the turn deadline so the
+  // enforce-deadlines edge function doesn't immediately re-set auto_fold=true.
   const handleAutoFoldChange = async (playerId: string, autoFold: boolean) => {
     console.log('[AUTO_FOLD] Changing auto_fold for player:', playerId, 'to:', autoFold);
     const { error } = await supabase
@@ -5955,6 +5957,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     if (error) {
       console.error('[AUTO_FOLD] Error updating auto_fold:', error);
+      return;
+    }
+
+    // When player opts back in, extend the turn deadline so they have time to act
+    // before the deadline enforcer re-triggers auto_fold.
+    if (!autoFold && currentRound?.id && game?.game_type && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+      const horsesState = currentRound?.horses_state as any;
+      if (horsesState) {
+        const extendedDeadline = new Date(Date.now() + (game.ante_decision_timer_seconds || 30) * 1000).toISOString();
+        await supabase
+          .from('rounds')
+          .update({
+            horses_state: {
+              ...horsesState,
+              turnDeadline: extendedDeadline,
+            },
+          })
+          .eq('id', currentRound.id);
+        console.log('[AUTO_FOLD] Extended turn deadline after opt-back-in:', extendedDeadline);
+      }
     }
   };
 
