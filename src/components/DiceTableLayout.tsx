@@ -1153,6 +1153,13 @@ export function DiceTableLayout({
         const justBecameHeld = allHeld && !isAnimatingFlyIn && !isHeldInLayout;
         const shouldSkipTransition = justBecameHeld;
 
+        // CRITICAL FIX: Observers should NOT use CSS transitions for held↔scatter changes.
+        // The roller's rapid hold toggles arrive as separate realtime updates ~150ms apart.
+        // With a 300ms CSS transition, each update interrupts the in-progress animation,
+        // causing dice to visibly "hop" (start moving to scatter, then reverse back to held).
+        // Fly-in animation uses the DiceRollAnimation overlay, not CSS transitions, so it's unaffected.
+        const useInstantTransform = isObserver && !isAnimatingFlyIn;
+
         const transformOwner = isHeldInLayout
           ? layoutHeldPos
             ? "held:layout"
@@ -1228,7 +1235,7 @@ export function DiceTableLayout({
             data-die-held-layout={isHeldInLayout}
             className={cn(
               "absolute will-change-transform",
-              !shouldSkipTransition && "transition-transform duration-300 ease-out",
+              !shouldSkipTransition && !useInstantTransform && "transition-transform duration-300 ease-out",
             )}
             style={{
               left: "50%",
