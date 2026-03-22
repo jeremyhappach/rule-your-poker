@@ -1286,6 +1286,20 @@ export function useHorsesMobileController({
     if (isPaused) return; // Block all actions when game is paused
     if (!isMyTurn || localHand.isComplete || localHand.rollsRemaining <= 0) return;
 
+    // AUTHORITATIVE ANIMATION BARRIER: Check if previous roll's animation window is still active.
+    // This prevents the roller from firing rolls faster than observers can animate.
+    if (myPlayer) {
+      const myState = horsesState?.playerStates?.[myPlayer.id];
+      const prevMinEnd = (myState as any)?.rollAnimationMinEndAt;
+      if (prevMinEnd) {
+        const msRemaining = new Date(prevMinEnd).getTime() - Date.now();
+        if (msRemaining > 0) {
+          console.log(`[ROLL_DEBUG] Blocked by animation barrier: ${msRemaining}ms remaining`);
+          return;
+        }
+      }
+    }
+
     const traceId = newTraceId();
     logDebugEvent({
       gameId: gameId ?? '',
