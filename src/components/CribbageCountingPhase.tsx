@@ -32,6 +32,8 @@ interface CribbageCountingPhaseProps {
   initialScores?: Record<string, number>;
   /** When true, the counting animation should freeze - parent detected a win via score subscription */
   winFrozen?: boolean;
+  /** ISO timestamp from DB: when counting began. Used to skip ahead on reconnect/late join. */
+  countingStartedAt?: string | null;
 }
 
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
