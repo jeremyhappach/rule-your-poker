@@ -1051,21 +1051,37 @@ export function DiceTableLayout({
   if (stableHeldRollKeyRef.current !== rollKey) {
     stableHeldRollKeyRef.current = rollKey;
     stableHeldSlotByDieRef.current = new Map();
+    pendingReleaseCountRef.current = new Map();
   }
 
   // --- AUTHORITATIVE HELD SLOT REGISTRY ---
-  // Registration pass: only ADD newly-held dice to the registry.
-  // For observers, slots are NEVER released within a rollKey.
-  // This prevents transient isHeld=false (stale-closure DB writes) from causing
-  // held→scatter→held hops on observer clients.
+  // Registration pass: ADD newly-held dice, RELEASE dice that are consistently unheld.
+  // For observers: a die must be isHeld=false for 2 consecutive renders before its slot is released.
+  // This prevents transient single-frame isHeld=false (from stale DB snapshots) from causing hops,
+  // while allowing legitimate user unholds to propagate to observers.
   const stableHeldSlotOrder = getHeldSlotOrder(orderedDice.length);
   if (isObserver && rollKey !== undefined) {
     orderedDice.forEach((item) => {
-      if (item.die.isHeld && !stableHeldSlotByDieRef.current.has(item.originalIndex)) {
-        const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
-        const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
-        if (nextSlot !== undefined) {
-          stableHeldSlotByDieRef.current.set(item.originalIndex, nextSlot);
+      const hasSlot = stableHeldSlotByDieRef.current.has(item.originalIndex);
+      if (item.die.isHeld) {
+        // Die is held: register if new, clear any pending release
+        pendingReleaseCountRef.current.delete(item.originalIndex);
+        if (!hasSlot) {
+          const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
+          const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
+          if (nextSlot !== undefined) {
+            stableHeldSlotByDieRef.current.set(item.originalIndex, nextSlot);
+          }
+        }
+      } else if (hasSlot) {
+        // Die is NOT held but HAS a registered slot: increment pending release counter
+        const count = (pendingReleaseCountRef.current.get(item.originalIndex) ?? 0) + 1;
+        if (count >= 2) {
+          // Confirmed unhold: release the slot
+          stableHeldSlotByDieRef.current.delete(item.originalIndex);
+          pendingReleaseCountRef.current.delete(item.originalIndex);
+        } else {
+          pendingReleaseCountRef.current.set(item.originalIndex, count);
         }
       }
     });
