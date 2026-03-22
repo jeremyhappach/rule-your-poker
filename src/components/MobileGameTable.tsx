@@ -463,6 +463,7 @@ export const MobileGameTable = ({
     horsesState: (horsesState as any) ?? null,
     gameType: gameType ?? 'horses',
     isPaused: isPaused ?? false,
+    decisionTimerSeconds: maxTime,
   });
 
   // Tab state - use external if provided, otherwise internal

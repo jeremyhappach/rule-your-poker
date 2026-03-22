@@ -148,6 +148,7 @@ export interface UseHorsesMobileControllerArgs {
   horsesState: HorsesStateFromDB | null;
   gameType?: string; // 'horses' or 'ship-captain-crew'
   isPaused?: boolean; // When true, timers freeze and no timeouts are enforced
+  decisionTimerSeconds?: number; // Configurable turn timer from game_defaults (default 30)
 }
 
 // === DICE ANIMATION TIMING CONSTANTS (SINGLE SOURCE OF TRUTH) ===
@@ -160,7 +161,7 @@ const HORSES_POST_TURN_PAUSE_MS = 400;         // Pause after lock-in before adv
 const ROLL_ANIMATION_BARRIER_MS = 1200;         // ~1.2s authoritative minimum
 // Local state protection: prevent DB overwrites during animation
 const LOCAL_STATE_PROTECTION_MS = HORSES_ROLL_AGAIN_ANIMATION_MS + 200;
-const HORSES_TURN_TIMER_SECONDS = 30;
+const DEFAULT_HORSES_TURN_TIMER_SECONDS = 30;
 const BOT_TURN_START_DELAY_MS = 400;           // Bot start delay (was 500)
 
 export function useHorsesMobileController({
@@ -175,7 +176,10 @@ export function useHorsesMobileController({
   horsesState,
   gameType = 'horses',
   isPaused = false,
+  decisionTimerSeconds: configuredTimerSeconds,
 }: UseHorsesMobileControllerArgs) {
+  // Use configured timer or fallback to default
+  const HORSES_TURN_TIMER_SECONDS = configuredTimerSeconds ?? DEFAULT_HORSES_TURN_TIMER_SECONDS;
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
 
