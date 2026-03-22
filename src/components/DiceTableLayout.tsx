@@ -1047,23 +1047,35 @@ export function DiceTableLayout({
     stableHeldSlotByDieRef.current = new Map();
   }
 
+  // --- AUTHORITATIVE HELD SLOT REGISTRY ---
+  // Registration pass: only ADD newly-held dice to the registry.
+  // For observers, slots are NEVER released within a rollKey.
+  // This prevents transient isHeld=false (stale-closure DB writes) from causing
+  // held→scatter→held hops on observer clients.
   const stableHeldSlotOrder = getHeldSlotOrder(orderedDice.length);
-  const getStableHeldPos = (originalIndex: number) => {
+  if (isObserver && rollKey !== undefined) {
+    orderedDice.forEach((item) => {
+      if (item.die.isHeld && !stableHeldSlotByDieRef.current.has(item.originalIndex)) {
+        const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
+        const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
+        if (nextSlot !== undefined) {
+          stableHeldSlotByDieRef.current.set(item.originalIndex, nextSlot);
+        }
+      }
+    });
+  }
+
+  // Lookup helper: returns the stable held position for a die IF it has a registered slot.
+  // For observers: always returns position if slot exists (even if die.isHeld is transiently false).
+  // For roller: returns undefined (roller uses dynamic layout for immediate feedback).
+  const getStableHeldPos = (originalIndex: number): { x: number; y: number } | undefined => {
     if (!isObserver || rollKey === undefined) return undefined;
-
     const existingSlot = stableHeldSlotByDieRef.current.get(originalIndex);
-    if (existingSlot !== undefined) {
-      return stableHeldPositions[existingSlot];
-    }
-
-    const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
-    const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
-    if (nextSlot === undefined) return undefined;
-
-    stableHeldSlotByDieRef.current.set(originalIndex, nextSlot);
-    return stableHeldPositions[nextSlot];
+    if (existingSlot === undefined) return undefined;
+    return stableHeldPositions[existingSlot];
   };
 
+  // Cache management: update last-known transforms for smooth transitions
   orderedDice.forEach((item) => {
     const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
     const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
@@ -1072,8 +1084,12 @@ export function DiceTableLayout({
         ? stableScatterByDieRef.current.get(item.originalIndex)
         : undefined;
 
-    if (item.die.isHeld) {
-      const stableHeldPos = getStableHeldPos(item.originalIndex);
+    // For observers: if die has a registered slot, treat as held for caching purposes
+    const registryHeldPos = getStableHeldPos(item.originalIndex);
+    const effectivelyHeld = item.die.isHeld || !!registryHeldPos;
+
+    if (effectivelyHeld) {
+      const stableHeldPos = registryHeldPos;
       const committedHeldPos =
         stableHeldPos ??
         layoutHeldPos ??
@@ -1132,21 +1148,22 @@ export function DiceTableLayout({
         const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
         if (isThisDieAnimating) return null;
 
-        // CRITICAL FIX: Prioritize ACTUAL held state over layout held state.
-        // If a die is currently held (die.isHeld = true), it should ALWAYS render in the held row,
-        // even if stableScatter positions exist for it from a previous roll.
-        // This prevents dice from jumping to scatter after animation completes when they were just held.
+        // --- AUTHORITATIVE LAYOUT DECISION ---
+        // For observers: the held slot registry is the sole authority.
+        // If a die has a registered slot, it renders in the held row regardless of transient isHeld flips.
+        // For roller (non-observer): use actual die.isHeld for immediate feedback.
         const actuallyHeld = item.die.isHeld;
+        const registryHeldPos = getStableHeldPos(item.originalIndex);
         const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
-        const stableHeldPos = actuallyHeld ? getStableHeldPos(item.originalIndex) : undefined;
         const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
         const cachedScatterPos = lastScatterTransformByDieRef.current.get(item.originalIndex);
-        
-        // If die is actually held but doesn't have a layout position yet (transition moment),
-        // compute a position based on its index among all currently-held dice
-        let heldPos = stableHeldPos ?? layoutHeldPos ?? (actuallyHeld ? cachedHeldPos : undefined);
-        if (actuallyHeld && !heldPos) {
-          // Find this die's index among all actually-held dice
+
+        // Observer: registry is authoritative (prevents transient hop to scatter)
+        // Roller: actuallyHeld is authoritative (immediate toggle feedback)
+        const effectivelyHeld = isObserver ? (!!registryHeldPos || actuallyHeld) : actuallyHeld;
+
+        let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
+        if (effectivelyHeld && !heldPos) {
           const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
           const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
           if (heldIdx >= 0) {
@@ -1155,13 +1172,12 @@ export function DiceTableLayout({
           }
         }
         
-        // Die is in held position if it's actually held AND we have a position for it
-        const isHeldInLayout = actuallyHeld && !!heldPos;
+        // Die is in held layout if effectively held AND we have a position
+        const isHeldInLayout = effectivelyHeld && !!heldPos;
 
-        // CRITICAL FIX: Only use stable scatter positions if they're for THIS rollKey
-        // AND the die is NOT currently held. Once a die becomes held, ignore scatter positions.
+        // Scatter positions: only for dice NOT in held layout
         const hasValidStablePos =
-          !actuallyHeld &&
+          !isHeldInLayout &&
           stableScatterRollKeyRef.current === rollKey &&
           stableScatterByDieRef.current.has(item.originalIndex);
         const stablePos = hasValidStablePos
@@ -1194,7 +1210,7 @@ export function DiceTableLayout({
         const useInstantTransform = isObserver && !isAnimatingFlyIn;
 
         const transformOwner = isHeldInLayout
-          ? stableHeldPos
+          ? registryHeldPos
             ? "held:stable-slot"
             : layoutHeldPos
             ? "held:layout"
