@@ -148,6 +148,7 @@ export interface UseHorsesMobileControllerArgs {
   horsesState: HorsesStateFromDB | null;
   gameType?: string; // 'horses' or 'ship-captain-crew'
   isPaused?: boolean; // When true, timers freeze and no timeouts are enforced
+  decisionTimerSeconds?: number; // Configurable turn timer from game_defaults (default 30)
 }
 
 // === DICE ANIMATION TIMING CONSTANTS (SINGLE SOURCE OF TRUTH) ===
