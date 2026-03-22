@@ -49,6 +49,7 @@ export const CribbageCountingPhase = ({
   onScoreUpdate,
   initialScores,
   winFrozen = false,
+  countingStartedAt,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
