@@ -177,6 +177,67 @@ export const CribbageCountingPhase = ({
     }
   }
 
+  // ── Deterministic beat timeline model ────────────────────────────
+  // A "beat" is any discrete animation step. The timeline is a flat list
+  // derived identically on every client from the same cribbage state.
+  //
+  // Beat ordering guarantee:
+  //   Target order: turnOrder (non-dealer first, clockwise) → dealer hand → crib
+  //   Combo order within each target: fifteens → pairs/trips/quads → runs → flush → nobs
+  //   (see getHandScoringCombos — deterministic from card values)
+  //
+  // Beat types per target:
+  //   ENTER      — cards fly in (ENTER_ANIMATION_MS)
+  //   INITIAL    — 500ms pause before first combo
+  //   COMBO(n)   — display nth combo (COMBO_DELAY_MS)
+  //   ZERO       — "0 points" for hands with no combos (1000ms)
+  //   TOTAL      — total display after last combo (1500ms)
+  //   EXIT       — cards fly out (EXIT_ANIMATION_MS)
+  //   COMPLETE   — 1000ms final pause after last target's exit
+  //
+  // Each beat has a duration. Cumulative start times let us binary-search
+  // elapsed time → current beat in O(n) at mount.
+
+  type BeatType = 'enter' | 'initial' | 'combo' | 'zero' | 'total' | 'exit' | 'complete';
+  interface Beat {
+    type: BeatType;
+    targetIndex: number;
+    comboIndex: number; // -1 for non-combo beats
+    durationMs: number;
+    /** Points this beat awards (only for 'combo' type) */
+    points: number;
+    /** Player who receives points */
+    playerId: string;
+  }
+
+  const buildBeatTimeline = useCallback((): Beat[] => {
+    const beats: Beat[] = [];
+    for (let ti = 0; ti < countingTargets.length; ti++) {
+      const target = countingTargets[ti];
+      const combos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
+
+      beats.push({ type: 'enter', targetIndex: ti, comboIndex: -1, durationMs: ENTER_ANIMATION_MS, points: 0, playerId: target.playerId });
+      beats.push({ type: 'initial', targetIndex: ti, comboIndex: -1, durationMs: 500, points: 0, playerId: target.playerId });
+
+      if (combos.length === 0) {
+        beats.push({ type: 'zero', targetIndex: ti, comboIndex: -1, durationMs: 1000, points: 0, playerId: target.playerId });
+      } else {
+        for (let ci = 0; ci < combos.length; ci++) {
+          beats.push({ type: 'combo', targetIndex: ti, comboIndex: ci, durationMs: COMBO_DELAY_MS, points: combos[ci].points, playerId: target.playerId });
+        }
+        beats.push({ type: 'total', targetIndex: ti, comboIndex: -1, durationMs: 1500, points: 0, playerId: target.playerId });
+      }
+
+      beats.push({ type: 'exit', targetIndex: ti, comboIndex: -1, durationMs: EXIT_ANIMATION_MS, points: 0, playerId: target.playerId });
+    }
+    // Final completion pause
+    if (countingTargets.length > 0) {
+      const lastTarget = countingTargets[countingTargets.length - 1];
+      beats.push({ type: 'complete', targetIndex: countingTargets.length - 1, comboIndex: -1, durationMs: 1000, points: 0, playerId: lastTarget.playerId });
+    }
+    return beats;
+  }, [countingTargets, cribbageState.cutCard]);
+
   // Initialize animated scores from baseline, apply skip-ahead if needed, and propagate to parent
   useEffect(() => {
     if (baselineInitialized) return;
@@ -184,136 +245,143 @@ export const CribbageCountingPhase = ({
 
     const scoresToInit = { ...initialScoresRef.current };
 
-    // ── Skip-ahead computation ───────────────────────────────────
-    // If countingStartedAt is available, compute elapsed time and jump to the
-    // approximate target/combo position so reconnecting clients don't replay from zero.
+    // ── Skip-ahead via beat timeline ─────────────────────────────
     let skipTargetIndex = 0;
-    let skipComboIndex = -1; // -1 = pre-combo (entering phase)
+    let skipComboIndex = -1;
     let skipPhase: TransitionPhase = 'entering';
+    let skipIsTerminal = false;
 
     if (countingStartedAt && !skipAheadAppliedRef.current) {
-      const elapsedMs = Date.now() - new Date(countingStartedAt).getTime();
+      const rawElapsed = Date.now() - new Date(countingStartedAt).getTime();
+      // Clamp: negative elapsed (clock skew) → no skip
+      const elapsedMs = Math.max(0, rawElapsed);
+
       // Include the 2s pre-counting delay from parent
       const PRE_DELAY = 2000;
-      let budget = elapsedMs - PRE_DELAY;
+      const timeIntoAnimation = elapsedMs - PRE_DELAY;
 
-      if (budget > 0) {
-        // Walk through targets, consuming time budget
-        for (let ti = 0; ti < countingTargets.length && budget > 0; ti++) {
-          const target = countingTargets[ti];
-          const combos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
-          
-          // Time for entering this target
-          const enterTime = ENTER_ANIMATION_MS; // 800ms
-          budget -= enterTime;
-          if (budget <= 0) {
-            skipTargetIndex = ti;
-            skipComboIndex = -1;
-            skipPhase = 'entering';
-            break;
+      if (timeIntoAnimation > 0) {
+        const beats = buildBeatTimeline();
+        const totalDuration = beats.reduce((sum, b) => sum + b.durationMs, 0);
+
+        if (timeIntoAnimation >= totalDuration) {
+          // ── TERMINAL: counting is fully elapsed ──────────────────
+          // Pre-apply ALL combo scores, then immediately complete.
+          for (const beat of beats) {
+            if (beat.type === 'combo') {
+              scoresToInit[beat.playerId] = (scoresToInit[beat.playerId] || 0) + beat.points;
+            }
+          }
+          skipIsTerminal = true;
+          console.log('[CribbageCountingPhase] Skip-ahead TERMINAL — counting fully elapsed', {
+            elapsedMs, totalDuration, beatsCount: beats.length,
+          });
+        } else {
+          // ── Find the active beat ─────────────────────────────────
+          let cumulativeMs = 0;
+          let activeBeatIndex = 0;
+
+          for (let bi = 0; bi < beats.length; bi++) {
+            if (cumulativeMs + beats[bi].durationMs > timeIntoAnimation) {
+              activeBeatIndex = bi;
+              break;
+            }
+            cumulativeMs += beats[bi].durationMs;
           }
 
-          // Initial 500ms delay before first combo
-          budget -= 500;
-          if (budget <= 0) {
-            skipTargetIndex = ti;
+          const activeBeat = beats[activeBeatIndex];
+
+          // Pre-apply scores for all COMPLETED combo beats (before the active beat)
+          // The active beat's points are NOT pre-applied — they commit when the beat completes.
+          for (let bi = 0; bi < activeBeatIndex; bi++) {
+            if (beats[bi].type === 'combo') {
+              scoresToInit[beats[bi].playerId] = (scoresToInit[beats[bi].playerId] || 0) + beats[bi].points;
+            }
+          }
+
+          // Map active beat to component state
+          skipTargetIndex = activeBeat.targetIndex;
+
+          if (activeBeat.type === 'enter') {
+            skipComboIndex = -1;
+            skipPhase = 'entering';
+          } else if (activeBeat.type === 'initial' || activeBeat.type === 'zero') {
             skipComboIndex = -1;
             skipPhase = 'scoring';
-            break;
-          }
-
-          if (combos.length === 0) {
-            // "0 points" display + 1000ms + exit 1500ms
-            budget -= 1000 + EXIT_ANIMATION_MS;
-            if (budget <= 0) {
-              skipTargetIndex = ti;
-              skipComboIndex = -1;
-              skipPhase = 'scoring';
-              break;
-            }
-            continue; // Target fully elapsed, move to next
-          }
-
-          // Walk through combos
-          let reachedEnd = false;
-          for (let ci = 0; ci < combos.length && budget > 0; ci++) {
-            budget -= COMBO_DELAY_MS; // 2000ms per combo
-            if (budget <= 0) {
-              // We're mid-combo — land on this combo
-              skipTargetIndex = ti;
-              skipComboIndex = ci;
-              skipPhase = 'scoring';
-              // Pre-apply scores for ALL combos up to and including this one
-              for (let pci = 0; pci <= ci; pci++) {
-                scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + combos[pci].points;
-              }
-              reachedEnd = true;
-              break;
-            }
-            // Combo elapsed, accumulate its score
-            scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + combos[ci].points;
-          }
-          if (reachedEnd) break;
-
-          // Total display (1500ms) + exit (1500ms)
-          budget -= 1500 + EXIT_ANIMATION_MS;
-          if (budget <= 0) {
-            // Past all combos, about to exit — skip to next target entering
-            skipTargetIndex = Math.min(ti + 1, countingTargets.length - 1);
+          } else if (activeBeat.type === 'combo') {
+            // Land on this combo — it's the ACTIVE combo, not yet committed
+            skipComboIndex = activeBeat.comboIndex;
+            skipPhase = 'scoring';
+          } else if (activeBeat.type === 'total') {
+            // Past all combos, showing total — land at last combo + 1 (triggers total display)
+            const targetCombos = getHandScoringCombos(
+              countingTargets[activeBeat.targetIndex].hand,
+              cribbageState.cutCard,
+              countingTargets[activeBeat.targetIndex].type === 'crib'
+            );
+            skipComboIndex = targetCombos.length; // past-end triggers total in animation loop
+            skipPhase = 'scoring';
+          } else if (activeBeat.type === 'exit') {
             skipComboIndex = -1;
-            skipPhase = 'entering';
-            break;
-          }
-          // Target fully elapsed
-        }
-
-        // If budget consumed all targets, counting is effectively done
-        if (budget > 0 && skipTargetIndex === 0 && skipComboIndex === -1) {
-          // All targets consumed — skip to end
-          skipTargetIndex = countingTargets.length - 1;
-          skipComboIndex = -1;
-          skipPhase = 'scoring';
-          // Pre-apply ALL scores
-          for (const target of countingTargets) {
-            const combos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
-            for (const combo of combos) {
-              scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + combo.points;
+            skipPhase = 'exiting';
+          } else if (activeBeat.type === 'complete') {
+            // Very late — just let terminal path handle it
+            for (let bi = activeBeatIndex; bi < beats.length; bi++) {
+              if (beats[bi].type === 'combo') {
+                scoresToInit[beats[bi].playerId] = (scoresToInit[beats[bi].playerId] || 0) + beats[bi].points;
+              }
             }
+            skipIsTerminal = true;
+          }
+
+          if (!skipIsTerminal) {
+            console.log('[CribbageCountingPhase] Skip-ahead applied', {
+              elapsedMs,
+              activeBeatIndex,
+              activeBeatType: activeBeat.type,
+              skipTargetIndex,
+              skipComboIndex,
+              skipPhase,
+              totalBeats: beats.length,
+              completedCombosPreApplied: beats.slice(0, activeBeatIndex).filter(b => b.type === 'combo').length,
+            });
           }
         }
       }
 
       skipAheadAppliedRef.current = true;
-
-      // Only apply skip-ahead if we're actually skipping past the start
-      if (skipTargetIndex > 0 || skipComboIndex > -1) {
-        console.log('[CribbageCountingPhase] Skip-ahead applied', {
-          elapsedMs: elapsedMs,
-          skipTargetIndex,
-          skipComboIndex,
-          skipPhase,
-          totalTargets: countingTargets.length,
-        });
-        setCurrentTargetIndex(skipTargetIndex);
-        setCurrentComboIndex(skipComboIndex);
-        setTransitionPhase(skipPhase);
-      }
     }
 
     setAnimatedScores(scoresToInit);
 
-    // Propagate initial baseline scores to parent for peg board sync BEFORE any animation
+    // Propagate to parent for peg board sync
     if (onScoreUpdate) {
       onScoreUpdate(scoresToInit);
     }
-    
+
     setBaselineInitialized(true);
-    
-    // Start entering animation after baseline is set
-    // If we skipped ahead to 'scoring', skip the enter delay
-    if (skipPhase === 'scoring' && (skipTargetIndex > 0 || skipComboIndex > -1)) {
-      // Already in scoring phase from skip-ahead
-    } else {
+
+    // ── Terminal: skip directly to completion ───────────────────
+    if (skipIsTerminal) {
+      completedRef.current = true;
+      setIsComplete(true);
+      setAnnouncementData(null);
+      // Fire completion callback after a brief frame to let state settle
+      completeTimerRef.current = setTimeout(() => {
+        if (!winFrozenRef.current) onCountingComplete(false);
+      }, 100);
+      return;
+    }
+
+    // Apply skip-ahead state if we're past the start
+    if (skipTargetIndex > 0 || skipComboIndex > -1) {
+      setCurrentTargetIndex(skipTargetIndex);
+      setCurrentComboIndex(skipComboIndex);
+      setTransitionPhase(skipPhase);
+    }
+
+    // Start entering animation (skip if already past enter phase)
+    if (skipPhase !== 'scoring' && skipPhase !== 'exiting') {
       enterToScoringTimerRef.current = setTimeout(() => {
         if (winFrozenRef.current) return;
         setTransitionPhase('scoring');
