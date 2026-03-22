@@ -35,6 +35,12 @@ interface CribbageCountingPhaseProps {
   winFrozen?: boolean;
   /** ISO timestamp from DB: when counting began. Used to skip ahead on reconnect/late join. */
   countingStartedAt?: string | null;
+  /** Persisted counting progress from DB — authoritative target/beat for reconnect resume. */
+  persistedTargetIndex?: number | null;
+  persistedBeatIndex?: number | null;
+  persistedHandKey?: string | null;
+  /** Callback to persist counting progress to DB. Fires on target/combo advancement. */
+  onProgressUpdate?: (targetIndex: number, beatIndex: number) => void;
   /** Debug context for trace instrumentation */
   debugContext?: {
     gameId: string;
