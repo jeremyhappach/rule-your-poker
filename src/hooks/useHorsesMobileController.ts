@@ -191,7 +191,7 @@ export function useHorsesMobileController({
   if (currentRoundId !== prevRoundIdForSyncRef.current) {
     prevRoundIdForSyncRef.current = currentRoundId;
     acceptedStateRef.current = null;
-    acceptedProgressRef.current = [0, 0, 0, 0];
+    acceptedProgressRef.current = [0, 0, 0, 0, 0];
     
     logDebugEvent({
       gameId: gameId ?? '',
