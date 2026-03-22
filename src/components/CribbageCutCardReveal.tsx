@@ -5,6 +5,8 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 interface CribbageCutCardRevealProps {
   card: CribbageCard | null;
   cardBackColors: { color: string; darkColor: string };
+  /** When provided, clearing the revealed-cards cache on change prevents re-flip after remount */
+  handBoundaryKey?: string;
 }
 
 /**
