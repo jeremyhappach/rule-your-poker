@@ -820,6 +820,7 @@ export function useHorsesMobileController({
       completed: boolean,
       result?: HorsesHandResult | SCCHandResult,
       heldMaskBeforeComplete?: boolean[],
+      rollAnimationMeta?: { rollStartedAt: string; rollAnimationMinEndAt: string },
     ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
@@ -837,6 +838,10 @@ export function useHorsesMobileController({
         heldCountBeforeComplete,
         rollKey: localRollKeyRef.current,
         holdSeq: localHoldSeqRef.current,
+        ...(rollAnimationMeta ? {
+          rollStartedAt: rollAnimationMeta.rollStartedAt,
+          rollAnimationMinEndAt: rollAnimationMeta.rollAnimationMinEndAt,
+        } : {}),
       };
 
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
