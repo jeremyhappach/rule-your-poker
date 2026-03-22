@@ -18,6 +18,7 @@ interface CribbageCutCardRevealProps {
 export const CribbageCutCardReveal = ({
   card,
   cardBackColors,
+  handBoundaryKey,
 }: CribbageCutCardRevealProps) => {
   const [isFlipping, setIsFlipping] = useState(false);
   const [showFace, setShowFace] = useState(false);
