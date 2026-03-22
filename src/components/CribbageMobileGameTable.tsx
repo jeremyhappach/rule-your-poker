@@ -316,6 +316,7 @@ export const CribbageMobileGameTable = ({
     setCountingDelayActive(false);
     setCountingWinFrozen(false);
     setCountingStateSnapshot(null);
+    setPostCountingTransitionActive(false);
     // CRITICAL: Unfreeze presentation so the new-hand snapshot flows through.
     // Without this, the frozen client stays stuck on the old hand indefinitely.
     syncHandle.unfreezePresentation();
