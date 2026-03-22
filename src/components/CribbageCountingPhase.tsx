@@ -510,7 +510,7 @@ export const CribbageCountingPhase = ({
     }
 
     // Start entering animation (skip if already past enter phase)
-    if (skipPhase !== 'scoring' && skipPhase !== 'exiting') {
+    if ((skipPhase as TransitionPhase) !== 'scoring' && (skipPhase as TransitionPhase) !== 'exiting') {
       enterToScoringTimerRef.current = setTimeout(() => {
         if (winFrozenRef.current) return;
         setTransitionPhase('scoring');
