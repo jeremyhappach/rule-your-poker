@@ -22,6 +22,8 @@ interface CribbageFeltContentProps {
   countingOutroActive?: boolean;
   /** When true, we're in the 31 delay - show count as 31 and keep cards visible */
   thirtyOneDelayActive?: boolean;
+  /** Stable key that changes on hand boundaries — passed to CribbageCutCardReveal to prevent re-flip */
+  handBoundaryKey?: string;
 }
 
 export const CribbageFeltContent = ({
