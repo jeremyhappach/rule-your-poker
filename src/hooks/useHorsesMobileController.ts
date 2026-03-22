@@ -1320,12 +1320,14 @@ export function useHorsesMobileController({
     });
 
     const rollStartTime = Date.now();
+    const rollStartedAt = new Date(rollStartTime).toISOString();
+    const rollAnimationMinEndAt = new Date(rollStartTime + ROLL_ANIMATION_BARRIER_MS).toISOString();
     // Unique per-roll key so all clients can trigger DiceTableLayout fly-in animations.
     localRollKeyRef.current = rollStartTime;
     // Reset hold sequence for new roll
     localHoldSeqRef.current = 0;
 
-    console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${new Date(rollStartTime).toISOString()} =====`);
+    console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${rollStartedAt} (barrier until ${rollAnimationMinEndAt}) =====`);
 
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
     const isFirstRoll = localHand.rollsRemaining === 3;
@@ -1369,11 +1371,13 @@ export function useHorsesMobileController({
       clientRole: 'actor',
       eventType: 'horses:db_write_start',
       traceId,
-      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current },
+      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current, rollStartedAt, rollAnimationMinEndAt },
     });
 
-    // CRITICAL: Save state IMMEDIATELY so observers get rollKey right away and can start fly-in animation in sync.
-    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll).then(() => {
+    // CRITICAL: Save state IMMEDIATELY with animation metadata so observers get rollKey + rollStartedAt
+    // right away and can start fly-in animation in sync.
+    const rollAnimMeta = { rollStartedAt, rollAnimationMinEndAt };
+    void saveMyState(newHand, false, undefined, heldMaskBeforeRoll, rollAnimMeta).then(() => {
       logDebugEvent({
         gameId: gameId ?? '',
         roundId: currentRoundId,
