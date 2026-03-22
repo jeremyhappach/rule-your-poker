@@ -279,6 +279,14 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   const activePlayers = (freshPlayers || []).filter((p) => !p.sitting_out);
   const anteAmount = game.ante_amount || 1;
 
+  // Read configurable turn timer from game_defaults
+  const { data: gameDefaultsData } = await supabase
+    .from('game_defaults')
+    .select('decision_timer_seconds')
+    .eq('game_type', gameType)
+    .maybeSingle();
+  const turnTimerSeconds = gameDefaultsData?.decision_timer_seconds ?? 30;
+
   // Pre-initialize horses_state so dice games can start even if the client can't UPDATE rounds (RLS-safe).
   const sortedActive = [...activePlayers].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const dealerPos = (game as any)?.dealer_position as number | null; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -320,7 +328,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     botControllerUserId: controllerUserId,
     turnDeadline: firstTurnPlayer?.is_bot
       ? null
-      : new Date(Date.now() + 30_000).toISOString(),
+      : new Date(Date.now() + turnTimerSeconds * 1000).toISOString(),
   };
 
   // Calculate pot: previous pot (for re-ante/tie) + new antes
