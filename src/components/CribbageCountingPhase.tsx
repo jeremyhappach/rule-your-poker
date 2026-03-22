@@ -325,21 +325,7 @@ export const CribbageCountingPhase = ({
     return { beats, targets, totalDuration: timelineMs };
   }, [targetSummaries]);
 
-  const countCompletedCombos = useCallback((combos: ScoringCombo[], appliedPoints: number) => {
-    let totalApplied = 0;
-    let completed = 0;
-
-    for (const combo of combos) {
-      if (totalApplied + combo.points <= appliedPoints) {
-        totalApplied += combo.points;
-        completed += 1;
-      } else {
-        break;
-      }
-    }
-
-    return completed;
-  }, []);
+  // (countCompletedCombos removed — no longer needed with persisted-progress resume)
 
   // Initialize animated scores from baseline, apply skip-ahead if needed, and propagate to parent
   useEffect(() => {
