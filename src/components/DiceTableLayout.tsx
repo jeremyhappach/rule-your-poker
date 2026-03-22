@@ -1210,7 +1210,7 @@ export function DiceTableLayout({
         const useInstantTransform = isObserver && !isAnimatingFlyIn;
 
         const transformOwner = isHeldInLayout
-          ? stableHeldPos
+          ? registryHeldPos
             ? "held:stable-slot"
             : layoutHeldPos
             ? "held:layout"
