@@ -74,6 +74,9 @@ export interface CribbageState {
   // UX / debugging helpers
   lastEvent?: CribbageEvent | null;
   lastHandCount?: CribbageHandCountSummary | null;
+  /** ISO timestamp written once when counting phase begins — used as a shared sync anchor
+   *  so reconnecting clients can skip ahead to the approximate counting position. */
+  countingStartedAt?: string | null;
   // Skunk tracking
   winnerPlayerId: string | null;
   loserScore: number | null; // For determining skunk/double-skunk

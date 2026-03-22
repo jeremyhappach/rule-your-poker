@@ -32,6 +32,8 @@ interface CribbageCountingPhaseProps {
   initialScores?: Record<string, number>;
   /** When true, the counting animation should freeze - parent detected a win via score subscription */
   winFrozen?: boolean;
+  /** ISO timestamp from DB: when counting began. Used to skip ahead on reconnect/late join. */
+  countingStartedAt?: string | null;
 }
 
 const COMBO_DELAY_MS = 2000; // 2 seconds per combo
@@ -47,6 +49,7 @@ export const CribbageCountingPhase = ({
   onScoreUpdate,
   initialScores,
   winFrozen = false,
+  countingStartedAt,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
   const [currentComboIndex, setCurrentComboIndex] = useState(-1); // -1 = showing hand, not combo yet
@@ -58,6 +61,7 @@ export const CribbageCountingPhase = ({
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
   const [baselineInitialized, setBaselineInitialized] = useState(false);
+  const skipAheadAppliedRef = useRef(false);
   
   const completedRef = useRef(false);
   const enterToScoringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,46 +103,8 @@ export const CribbageCountingPhase = ({
     onAnnouncementChange?.(null, null);
   }, [winFrozen, onAnnouncementChange]);
 
-  // CRITICAL: Always use initialScores prop as the authoritative baseline.
-  // The parent (CribbageMobileGameTable) captures the correct pegging-phase scores BEFORE
-  // phase transition and passes them here. Recalculating from cribbageState is unreliable
-  // because the DB pegScore may already reflect post-counting values due to race conditions.
-  if (!initialScoresRef.current) {
-    if (initialScores) {
-      initialScoresRef.current = initialScores;
-    } else {
-      // Fallback: use current pegScore (should rarely happen if parent passes initialScores)
-      const scores: Record<string, number> = {};
-      for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
-        scores[playerId] = ps.pegScore ?? 0;
-      }
-      initialScoresRef.current = scores;
-    }
-  }
-
-  // Initialize animated scores from baseline and propagate to parent IMMEDIATELY
-  useEffect(() => {
-    if (baselineInitialized) return;
-    if (!initialScoresRef.current) return; // Wait until baseline is set
-
-    const scoresToInit = initialScoresRef.current;
-    setAnimatedScores(scoresToInit);
-
-    // Propagate initial baseline scores to parent for peg board sync BEFORE any animation
-    if (onScoreUpdate) {
-      onScoreUpdate(scoresToInit);
-    }
-    
-    setBaselineInitialized(true);
-    
-    // Start entering animation after baseline is set
-    enterToScoringTimerRef.current = setTimeout(() => {
-      if (winFrozenRef.current) return;
-      setTransitionPhase('scoring');
-    }, ENTER_ANIMATION_MS);
-  }, [baselineInitialized, onScoreUpdate]);
-
   // Build counting order: left of dealer first, then clockwise, dealer's hand, then crib
+  // MOVED ABOVE baseline init so skip-ahead can reference targets.
   const countingTargets: CountingTarget[] = (() => {
     const targets: CountingTarget[] = [];
     const dealerId = cribbageState.dealerPlayerId;
@@ -193,6 +159,167 @@ export const CribbageCountingPhase = ({
   const currentCombos = currentTarget 
     ? getHandScoringCombos(currentTarget.hand, cribbageState.cutCard, currentTarget.type === 'crib')
     : [];
+
+  // CRITICAL: Always use initialScores prop as the authoritative baseline.
+  // The parent (CribbageMobileGameTable) captures the correct pegging-phase scores BEFORE
+  // phase transition and passes them here. Recalculating from cribbageState is unreliable
+  // because the DB pegScore may already reflect post-counting values due to race conditions.
+  if (!initialScoresRef.current) {
+    if (initialScores) {
+      initialScoresRef.current = initialScores;
+    } else {
+      // Fallback: use current pegScore (should rarely happen if parent passes initialScores)
+      const scores: Record<string, number> = {};
+      for (const [playerId, ps] of Object.entries(cribbageState.playerStates)) {
+        scores[playerId] = ps.pegScore ?? 0;
+      }
+      initialScoresRef.current = scores;
+    }
+  }
+
+  // Initialize animated scores from baseline, apply skip-ahead if needed, and propagate to parent
+  useEffect(() => {
+    if (baselineInitialized) return;
+    if (!initialScoresRef.current) return;
+
+    const scoresToInit = { ...initialScoresRef.current };
+
+    // ── Skip-ahead computation ───────────────────────────────────
+    // If countingStartedAt is available, compute elapsed time and jump to the
+    // approximate target/combo position so reconnecting clients don't replay from zero.
+    let skipTargetIndex = 0;
+    let skipComboIndex = -1; // -1 = pre-combo (entering phase)
+    let skipPhase: TransitionPhase = 'entering';
+
+    if (countingStartedAt && !skipAheadAppliedRef.current) {
+      const elapsedMs = Date.now() - new Date(countingStartedAt).getTime();
+      // Include the 2s pre-counting delay from parent
+      const PRE_DELAY = 2000;
+      let budget = elapsedMs - PRE_DELAY;
+
+      if (budget > 0) {
+        // Walk through targets, consuming time budget
+        for (let ti = 0; ti < countingTargets.length && budget > 0; ti++) {
+          const target = countingTargets[ti];
+          const combos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
+          
+          // Time for entering this target
+          const enterTime = ENTER_ANIMATION_MS; // 800ms
+          budget -= enterTime;
+          if (budget <= 0) {
+            skipTargetIndex = ti;
+            skipComboIndex = -1;
+            skipPhase = 'entering';
+            break;
+          }
+
+          // Initial 500ms delay before first combo
+          budget -= 500;
+          if (budget <= 0) {
+            skipTargetIndex = ti;
+            skipComboIndex = -1;
+            skipPhase = 'scoring';
+            break;
+          }
+
+          if (combos.length === 0) {
+            // "0 points" display + 1000ms + exit 1500ms
+            budget -= 1000 + EXIT_ANIMATION_MS;
+            if (budget <= 0) {
+              skipTargetIndex = ti;
+              skipComboIndex = -1;
+              skipPhase = 'scoring';
+              break;
+            }
+            continue; // Target fully elapsed, move to next
+          }
+
+          // Walk through combos
+          let reachedEnd = false;
+          for (let ci = 0; ci < combos.length && budget > 0; ci++) {
+            budget -= COMBO_DELAY_MS; // 2000ms per combo
+            if (budget <= 0) {
+              // We're mid-combo — land on this combo
+              skipTargetIndex = ti;
+              skipComboIndex = ci;
+              skipPhase = 'scoring';
+              // Pre-apply scores for ALL combos up to and including this one
+              for (let pci = 0; pci <= ci; pci++) {
+                scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + combos[pci].points;
+              }
+              reachedEnd = true;
+              break;
+            }
+            // Combo elapsed, accumulate its score
+            scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + combos[ci].points;
+          }
+          if (reachedEnd) break;
+
+          // Total display (1500ms) + exit (1500ms)
+          budget -= 1500 + EXIT_ANIMATION_MS;
+          if (budget <= 0) {
+            // Past all combos, about to exit — skip to next target entering
+            skipTargetIndex = Math.min(ti + 1, countingTargets.length - 1);
+            skipComboIndex = -1;
+            skipPhase = 'entering';
+            break;
+          }
+          // Target fully elapsed
+        }
+
+        // If budget consumed all targets, counting is effectively done
+        if (budget > 0 && skipTargetIndex === 0 && skipComboIndex === -1) {
+          // All targets consumed — skip to end
+          skipTargetIndex = countingTargets.length - 1;
+          skipComboIndex = -1;
+          skipPhase = 'scoring';
+          // Pre-apply ALL scores
+          for (const target of countingTargets) {
+            const combos = getHandScoringCombos(target.hand, cribbageState.cutCard, target.type === 'crib');
+            for (const combo of combos) {
+              scoresToInit[target.playerId] = (scoresToInit[target.playerId] || 0) + combo.points;
+            }
+          }
+        }
+      }
+
+      skipAheadAppliedRef.current = true;
+
+      // Only apply skip-ahead if we're actually skipping past the start
+      if (skipTargetIndex > 0 || skipComboIndex > -1) {
+        console.log('[CribbageCountingPhase] Skip-ahead applied', {
+          elapsedMs: elapsedMs,
+          skipTargetIndex,
+          skipComboIndex,
+          skipPhase,
+          totalTargets: countingTargets.length,
+        });
+        setCurrentTargetIndex(skipTargetIndex);
+        setCurrentComboIndex(skipComboIndex);
+        setTransitionPhase(skipPhase);
+      }
+    }
+
+    setAnimatedScores(scoresToInit);
+
+    // Propagate initial baseline scores to parent for peg board sync BEFORE any animation
+    if (onScoreUpdate) {
+      onScoreUpdate(scoresToInit);
+    }
+    
+    setBaselineInitialized(true);
+    
+    // Start entering animation after baseline is set
+    // If we skipped ahead to 'scoring', skip the enter delay
+    if (skipPhase === 'scoring' && (skipTargetIndex > 0 || skipComboIndex > -1)) {
+      // Already in scoring phase from skip-ahead
+    } else {
+      enterToScoringTimerRef.current = setTimeout(() => {
+        if (winFrozenRef.current) return;
+        setTransitionPhase('scoring');
+      }, ENTER_ANIMATION_MS);
+    }
+  }, [baselineInitialized, onScoreUpdate]);
 
   // Animation loop - only runs during 'scoring' phase
   // When winFrozen is true, we stop advancing but keep current cards highlighted

@@ -621,6 +621,8 @@ function advanceToCounting(state: CribbageState): CribbageState {
   return {
     ...state,
     phase: 'counting',
+    // Shared counting sync anchor — written once so reconnecting clients can skip ahead
+    countingStartedAt: new Date().toISOString(),
     // Clear any stale winner fields; counting determines the winner via UI progression.
     winnerPlayerId: null,
     loserScore: null,
