@@ -2299,16 +2299,35 @@ export function useHorsesMobileController({
       const sameRoll =
         typeof dbRollKey === "number" && typeof observerDisplayState.rollKey === "number" && dbRollKey === observerDisplayState.rollKey;
 
-      // FIX: For same-roll updates, NEVER mix DB dice into observerDisplayState.
-      // The observer effect at line ~2652 already handles same-roll DB updates with proper
-      // holdSeq monotonicity guards. Mixing DB dice here causes 1-frame held↔scatter hops
-      // because the useMemo re-runs when horsesState updates BEFORE the observer effect
-      // has processed the same update through its guards.
-      // Only allow DB dice through for NEW rolls (different rollKey).
+      // FIX: For same-roll updates, use DB dice directly when they pass the holdSeq guard.
+      // Previously we blocked DB dice here and waited for the observer effect to update
+      // observerDisplayState, but that created a 1-frame lag where stale isHeld values
+      // caused dice to hop between scatter ↔ held positions.
+      // By applying the holdSeq guard inline, the useMemo returns correct dice immediately.
       if (sameRoll) {
+        const dbHoldSeq = (dbState as any)?.holdSeq ?? 0;
+        const rollKeyStr = `${currentTurnPlayerId}:${dbRollKey}`;
+        const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
+        const canStillHold = (dbState?.rollsRemaining ?? 0) > 0;
+
+        // Use DB dice if holdSeq is monotonically advancing (not stale)
+        if (!canStillHold || dbHoldSeq >= maxSeenHoldSeq) {
+          if (dbHoldSeq > maxSeenHoldSeq) {
+            maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
+          }
+          return {
+            ...observerDisplayState,
+            dice: (dbDice as (HorsesDieType | SCCDieType)[]) ?? observerDisplayState.dice,
+            rollsRemaining: dbState?.rollsRemaining ?? observerDisplayState.rollsRemaining,
+            heldMaskBeforeComplete: (dbState as any)?.heldMaskBeforeComplete ?? observerDisplayState.heldMaskBeforeComplete,
+            heldCountBeforeComplete: (dbState as any)?.heldCountBeforeComplete ?? observerDisplayState.heldCountBeforeComplete,
+            holdSeq: dbHoldSeq,
+          };
+        }
+
+        // Stale DB update — keep current observerDisplayState
         return {
           ...observerDisplayState,
-          // Always use observerDisplayState.dice for same-roll — it's already guarded by holdSeq
         };
       }
 
