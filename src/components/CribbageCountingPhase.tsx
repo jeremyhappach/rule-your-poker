@@ -64,6 +64,10 @@ export const CribbageCountingPhase = ({
   initialScores,
   winFrozen = false,
   countingStartedAt,
+  persistedTargetIndex,
+  persistedBeatIndex,
+  persistedHandKey,
+  onProgressUpdate,
   debugContext,
 }: CribbageCountingPhaseProps) => {
   const [currentTargetIndex, setCurrentTargetIndex] = useState(0);
