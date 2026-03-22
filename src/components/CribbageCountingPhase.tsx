@@ -580,6 +580,8 @@ export const CribbageCountingPhase = ({
           }, 1000);
         } else {
           setCurrentComboIndex(0);
+          // Persist progress: entering first combo of current target
+          onProgressUpdate?.(currentTargetIndex, 0);
         }
         return;
       }
