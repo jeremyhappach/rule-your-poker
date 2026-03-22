@@ -2513,7 +2513,43 @@ export function useHorsesMobileController({
 
       // Don't animate on the first observation (no baseline)
       if (prevRollKey !== undefined) {
-        const durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+        // AUTHORITATIVE ANIMATION TIMING: Use rollStartedAt from DB if available,
+        // falling back to local timer duration. This ensures observers animate in sync
+        // with the roller's authoritative timeline, not just local guesses.
+        const rollStartedAt = (state as any)?.rollStartedAt;
+        const rollAnimationMinEndAt = (state as any)?.rollAnimationMinEndAt;
+        let durationMs: number;
+        
+        if (rollStartedAt) {
+          const rollStartTime = new Date(rollStartedAt).getTime();
+          const elapsed = Date.now() - rollStartTime;
+          
+          if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
+            // Roll happened too long ago — snap to post-animation state, don't replay
+            console.log(`[OBSERVER_ROLL] Late observer: elapsed=${elapsed}ms > max, snapping to final state`);
+            const finalDice = (state.dice as any[]) ?? [];
+            const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
+            lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+            lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
+            setObserverDisplayState({
+              playerId: currentTurnPlayerId,
+              dice: finalDice as (HorsesDieType | SCCDieType)[],
+              rollsRemaining: state.rollsRemaining,
+              isRolling: false,
+              heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+              heldCountBeforeComplete: derivedHeldCount2,
+              rollKey: newRollKey,
+              preRollSig: undefined,
+            });
+            return;
+          }
+          
+          // Use remaining time in the animation window
+          const localDuration = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+          durationMs = Math.max(200, localDuration - elapsed);
+        } else {
+          durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+        }
 
         // TRACE: Observer new roll detected
         if (isDiceTraceRecording()) {
