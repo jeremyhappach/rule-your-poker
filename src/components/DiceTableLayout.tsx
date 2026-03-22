@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef, useCallback, useEffect } from "react";
+import { useState, useLayoutEffect, useRef, useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { HorsesDie } from "./HorsesDie";
 import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGameLogic";
@@ -266,6 +266,13 @@ export function DiceTableLayout({
 
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
+  const tracedDieIndex = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    const value = new URLSearchParams(window.location.search).get("diceTraceDie");
+    if (value == null) return null;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, []);
 
   // Track whether unheld dice should be visible
   // NOTE: Unheld dice should remain visible after landing; we only hide them during
@@ -989,6 +996,14 @@ export function DiceTableLayout({
   
   const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
 
+  const scatterLayoutByOriginalIndex = new Map<number, { x: number; y: number; rotate: number }>();
+  layoutUnheldDice.forEach((item, displayIdx) => {
+    scatterLayoutByOriginalIndex.set(
+      item.originalIndex,
+      getUnheldPosition(displayIdx, layoutUnheldDice.length),
+    );
+  });
+
   // Build quick lookup maps so a die can smoothly transition between scatter and held row
   // CRITICAL FIX for Issue #2: Include ALL currently-held dice in the position map, not just layout dice.
   // This ensures that dice which were held BEFORE the roll (and remain held) always have a valid
@@ -1017,33 +1032,54 @@ export function DiceTableLayout({
     });
   }
 
-  orderedDice.forEach((item) => {
-    const pos = heldPositionByOriginalIndex.get(item.originalIndex);
-    if (item.die.isHeld && pos) {
-      lastHeldTransformByDieRef.current.set(item.originalIndex, pos);
-      lastScatterTransformByDieRef.current.delete(item.originalIndex);
-    } else {
-      const hasStableScatter =
-        stableScatterRollKeyRef.current === rollKey &&
-        stableScatterByDieRef.current.has(item.originalIndex);
-      const unheldDisplayIdx = layoutUnheldDice.findIndex((d) => d.originalIndex === item.originalIndex);
-      const scatterPos = hasStableScatter
-        ? stableScatterByDieRef.current.get(item.originalIndex)
-        : unheldDisplayIdx >= 0
-          ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
-          : lastScatterTransformByDieRef.current.get(item.originalIndex);
+  const renderDecisionByDieRef = useRef<
+    Map<
+      number,
+      {
+        summary: string;
+        data: Record<string, unknown>;
+      }
+    >
+  >(new Map());
 
-      if (scatterPos) {
-        lastScatterTransformByDieRef.current.set(item.originalIndex, scatterPos);
-        // Only clear held ownership once the die has a real scatter layout slot/cached transform.
+  useLayoutEffect(() => {
+    orderedDice.forEach((item) => {
+      const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+      const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
+      const stableScatterPos =
+        stableScatterRollKeyRef.current === rollKey
+          ? stableScatterByDieRef.current.get(item.originalIndex)
+          : undefined;
+
+      if (item.die.isHeld) {
+        const committedHeldPos =
+          layoutHeldPos ??
+          lastHeldTransformByDieRef.current.get(item.originalIndex) ??
+          (() => {
+            const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
+            const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+            if (heldIdx < 0) return undefined;
+            return getHeldPositions(actuallyHeldDice.length, dieWidth, gap)[heldIdx];
+          })();
+
+        if (committedHeldPos) {
+          lastHeldTransformByDieRef.current.set(item.originalIndex, committedHeldPos);
+          lastScatterTransformByDieRef.current.delete(item.originalIndex);
+        }
+        return;
+      }
+
+      const committedScatterPos =
+        stableScatterPos ??
+        layoutScatterPos ??
+        lastScatterTransformByDieRef.current.get(item.originalIndex);
+
+      if (committedScatterPos) {
+        lastScatterTransformByDieRef.current.set(item.originalIndex, committedScatterPos);
         lastHeldTransformByDieRef.current.delete(item.originalIndex);
       }
-    }
-
-    if (!item.die.isHeld && !lastScatterTransformByDieRef.current.has(item.originalIndex)) {
-      lastHeldTransformByDieRef.current.delete(item.originalIndex);
-    }
-  });
+    });
+  }, [orderedDice, heldPositionByOriginalIndex, scatterLayoutByOriginalIndex, rollKey, dieWidth, gap]);
 
   return (
     <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
@@ -1109,13 +1145,12 @@ export function DiceTableLayout({
           ? stableScatterByDieRef.current.get(item.originalIndex)
           : undefined;
 
-        // For scatter positions, we need the die's index among *layoutUnheldDice*
-        const unheldDisplayIdx = layoutUnheldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+        const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
         const scatterPos =
           stablePos ??
-          (unheldDisplayIdx >= 0
-            ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
-            : cachedScatterPos ?? getUnheldPosition(0, Math.max(1, layoutUnheldDice.length)));
+          layoutScatterPos ??
+          cachedScatterPos ??
+          getUnheldPosition(0, Math.max(1, layoutUnheldDice.length));
 
         // Hide unheld dice when showUnheldDice is false (after 1s delay from held dice moving)
         const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
@@ -1128,9 +1163,26 @@ export function DiceTableLayout({
         const justBecameHeld = allHeld && !isAnimatingFlyIn && !isHeldInLayout;
         const shouldSkipTransition = justBecameHeld;
 
-        // TRACE: Dice render position (sampled - only first die to avoid flood)
-        if (isDiceTraceRecording() && item.originalIndex === 0) {
-          pushDiceTrace("DiceTableLayout:render", {
+        const transformOwner = isHeldInLayout
+          ? layoutHeldPos
+            ? "held:layout"
+            : cachedHeldPos
+              ? "held:cache"
+              : "held:derived"
+          : stablePos
+            ? "scatter:stable"
+            : layoutScatterPos
+              ? "scatter:layout"
+              : cachedScatterPos
+                ? "scatter:cache"
+                : "scatter:default";
+
+        const transform = isHeldInLayout
+          ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
+          : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
+
+        if (isDiceTraceRecording()) {
+          const traceData = {
             rollKey,
             isRolling,
             isAnimatingFlyIn,
@@ -1142,16 +1194,32 @@ export function DiceTableLayout({
               dieIsHeld: item.die.isHeld,
               isHeldInLayout,
               actuallyHeld,
-              hasLayoutPos: !!heldPos,
-              hasStableScatter: hasValidStablePos,
+              layoutHeldPosPresent: !!layoutHeldPos,
+              cachedHeldPosPresent: !!cachedHeldPos,
+              layoutScatterPosPresent: !!layoutScatterPos,
+              stablePosPresent: !!stablePos,
+              cachedScatterPosPresent: !!cachedScatterPos,
               allHeld,
+              transformOwner,
+              transform,
             },
-          });
-        }
+          };
 
-        const transform = isHeldInLayout
-          ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
-          : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
+          const summary = [
+            item.die.isHeld ? "held" : "unheld",
+            isHeldInLayout ? "layout-held" : "layout-scatter",
+            transformOwner,
+            String(rollKey ?? ""),
+            String(cacheKey ?? ""),
+          ].join("|");
+
+          const previous = renderDecisionByDieRef.current.get(item.originalIndex);
+          const shouldTraceThisDie = tracedDieIndex == null || tracedDieIndex === item.originalIndex;
+          if (shouldTraceThisDie && previous?.summary !== summary) {
+            pushDiceTrace("DiceTableLayout:renderDecision", traceData);
+          }
+          renderDecisionByDieRef.current.set(item.originalIndex, { summary, data: traceData.extra });
+        }
 
         return (
           <div
