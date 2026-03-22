@@ -37,7 +37,7 @@ export interface HorsesStateForProgress {
   gamePhase?: 'waiting' | 'playing' | 'complete' | null;
   currentTurnPlayerId?: string | null;
   turnOrder?: string[];
-  playerStates?: Record<string, { isComplete?: boolean; rollsRemaining?: number; rollKey?: number }>;
+  playerStates?: Record<string, { isComplete?: boolean; rollsRemaining?: number; rollKey?: number; holdSeq?: number }>;
 }
 
 const PHASE_ORD: Record<string, number> = {
@@ -47,7 +47,7 @@ const PHASE_ORD: Record<string, number> = {
 };
 
 export function getHorsesProgress(state: HorsesStateForProgress | null): ProgressVector {
-  if (!state) return [0, 0, 0, 0];
+  if (!state) return [0, 0, 0, 0, 0];
 
   const phaseOrd = PHASE_ORD[state.gamePhase ?? 'waiting'] ?? 0;
 
@@ -72,5 +72,8 @@ export function getHorsesProgress(state: HorsesStateForProgress | null): Progres
     ? 3 - (currentPlayerState.rollsRemaining ?? 3)
     : 0;
 
-  return [phaseOrd, completedCount, turnIdx, rollProgress];
+  // Hold sequence: monotonically increasing within a roll, resets on new roll
+  const holdSeq = currentPlayerState?.holdSeq ?? 0;
+
+  return [phaseOrd, completedCount, turnIdx, rollProgress, holdSeq];
 }
