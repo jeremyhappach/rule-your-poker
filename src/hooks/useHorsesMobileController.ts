@@ -2293,19 +2293,8 @@ export function useHorsesMobileController({
       const dbState = horsesState?.playerStates?.[currentTurnPlayerId];
       const dbDice = (dbState?.dice as any[] | undefined) ?? undefined;
 
-      const dbSig = Array.isArray(dbDice)
-        ? dbDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|")
-        : null;
-
-      const prevHeldCount = (observerDisplayState.dice as any[]).filter((d: any) => !!d?.isHeld).length;
-      const dbHeldCount = Array.isArray(dbDice) ? (dbDice as any[]).filter((d: any) => !!d?.isHeld).length : 0;
       const dbRollKey = typeof (dbState as any)?.rollKey === "number" ? (dbState as any).rollKey : undefined;
-      const currentDisplayRollKey = observerDisplayState.rollKey ?? 0;
       const maxSeenRollKey = maxSeenRollKeyRef.current[currentTurnPlayerId] ?? 0;
-      
-      // MONOTONICITY CHECK: Reject DB data if it has an older rollKey than what we've already processed.
-      // This is the key fix for the "held dice reverting to scatter" issue.
-      const dbRollKeyIsStale = typeof dbRollKey === "number" && dbRollKey < maxSeenRollKey;
       
       const sameRoll =
         typeof dbRollKey === "number" && typeof observerDisplayState.rollKey === "number" && dbRollKey === observerDisplayState.rollKey;
