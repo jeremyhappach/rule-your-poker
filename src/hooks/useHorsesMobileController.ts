@@ -267,11 +267,19 @@ export function useHorsesMobileController({
   // Critical for handleToggleHold: rapid holds in the same React render frame
   // would otherwise read stale `localHand` from the useCallback closure,
   // causing the second hold to drop the first hold's state.
+  //
+  // IMPORTANT: Do NOT unconditionally sync from `localHand` on every render.
+  // If a debounced hold save is pending, the ref holds the user's latest intent
+  // which hasn't been written to DB yet. A DB sync could overwrite `localHand`
+  // with stale held state, and then this line would clobber the ref, causing
+  // the pending save to write stale data back → unhold appears to not work.
   const localHandRef = useRef<HorsesHand | SCCHand>(localHand);
-  localHandRef.current = localHand;
-  
   // Debounced DB write for hold toggling.
   const holdSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Only sync ref from state when no hold save is pending
+  if (!holdSaveTimerRef.current) {
+    localHandRef.current = localHand;
+  }
   
   // Track when we last reset local state for a new turn (prevents stale state blocking sync)
   const lastResetTurnKeyRef = useRef<string | null>(null);
