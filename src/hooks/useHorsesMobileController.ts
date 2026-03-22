@@ -176,7 +176,10 @@ export function useHorsesMobileController({
   horsesState,
   gameType = 'horses',
   isPaused = false,
+  decisionTimerSeconds: configuredTimerSeconds,
 }: UseHorsesMobileControllerArgs) {
+  // Use configured timer or fallback to default
+  const HORSES_TURN_TIMER_SECONDS = configuredTimerSeconds ?? DEFAULT_HORSES_TURN_TIMER_SECONDS;
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
 
