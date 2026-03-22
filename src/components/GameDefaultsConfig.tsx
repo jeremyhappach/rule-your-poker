@@ -733,20 +733,39 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     return (
       <>
         <div className="flex items-center gap-2 text-sm font-medium">
-          <DollarSign className="h-4 w-4" />
-          Game Settings
+          <Timer className="h-4 w-4" />
+          Timing Settings
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="horses-ante">Ante Amount ($)</Label>
+          <Label htmlFor="horses-timer">Decision Timer (seconds)</Label>
           <Input
-            id="horses-ante"
+            id="horses-timer"
             type="text"
             inputMode="numeric"
-            value={horsesDefaults.ante_amount}
-            onChange={(e) => updateDefault('horses', 'ante_amount', e.target.value)}
+            value={horsesDefaults.decision_timer_seconds}
+            onChange={(e) => updateDefault('horses', 'decision_timer_seconds', e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">Amount each player antes</p>
+          <p className="text-xs text-muted-foreground">Time each player has per turn before auto-roll</p>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <DollarSign className="h-4 w-4" />
+            Game Settings
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="horses-ante">Ante Amount ($)</Label>
+            <Input
+              id="horses-ante"
+              type="text"
+              inputMode="numeric"
+              value={horsesDefaults.ante_amount}
+              onChange={(e) => updateDefault('horses', 'ante_amount', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Amount each player antes</p>
+          </div>
         </div>
       </>
     );
@@ -759,20 +778,39 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     return (
       <>
         <div className="flex items-center gap-2 text-sm font-medium">
-          <DollarSign className="h-4 w-4" />
-          Game Settings
+          <Timer className="h-4 w-4" />
+          Timing Settings
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="scc-ante">Ante Amount ($)</Label>
+          <Label htmlFor="scc-timer">Decision Timer (seconds)</Label>
           <Input
-            id="scc-ante"
+            id="scc-timer"
             type="text"
             inputMode="numeric"
-            value={sccDefaults.ante_amount}
-            onChange={(e) => updateDefault('ship-captain-crew', 'ante_amount', e.target.value)}
+            value={sccDefaults.decision_timer_seconds}
+            onChange={(e) => updateDefault('ship-captain-crew', 'decision_timer_seconds', e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">Amount each player antes</p>
+          <p className="text-xs text-muted-foreground">Time each player has per turn before auto-roll</p>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <DollarSign className="h-4 w-4" />
+            Game Settings
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="scc-ante">Ante Amount ($)</Label>
+            <Input
+              id="scc-ante"
+              type="text"
+              inputMode="numeric"
+              value={sccDefaults.ante_amount}
+              onChange={(e) => updateDefault('ship-captain-crew', 'ante_amount', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Amount each player antes</p>
+          </div>
         </div>
       </>
     );

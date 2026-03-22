@@ -7029,6 +7029,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onChatInputChange={setMobileChatInput}
                 dealerSetupMessage={undefined}
                 reAnteMessage={reAnteMessage}
+                onAutoFoldChange={handleAutoFoldChange}
               />
             );
           }
