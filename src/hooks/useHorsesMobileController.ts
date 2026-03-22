@@ -1118,7 +1118,31 @@ export function useHorsesMobileController({
     if (stuckAdvanceKeyRef.current === key) return;
     stuckAdvanceKeyRef.current = key;
 
+    const allPlayersComplete = turnOrder.length > 0 && turnOrder.every(
+      (playerId) => horsesState?.playerStates?.[playerId]?.isComplete,
+    );
+
     const t = window.setTimeout(() => {
+      if (allPlayersComplete) {
+        void (async () => {
+          const { data: roundRow } = await supabase
+            .from("rounds")
+            .select("horses_state")
+            .eq("id", currentRoundId)
+            .single();
+
+          const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
+          if (!latestState) return;
+
+          await updateHorsesState(currentRoundId, {
+            ...latestState,
+            currentTurnPlayerId: null,
+            gamePhase: "complete",
+          });
+        })();
+        return;
+      }
+
       void advanceToNextTurn(currentTurnPlayerId);
     }, HORSES_POST_TURN_PAUSE_MS);
 
@@ -1134,6 +1158,8 @@ export function useHorsesMobileController({
     currentUserId,
     candidateBotControllerUserId,
     advanceToNextTurn,
+    turnOrder,
+    horsesState?.playerStates,
   ]);
 
   // Timer countdown effect - calculate time remaining from deadline

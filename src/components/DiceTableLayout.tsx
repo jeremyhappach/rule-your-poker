@@ -262,6 +262,7 @@ export function DiceTableLayout({
     Map<number, { x: number; y: number; rotate: number }>
   >(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
 
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
@@ -315,6 +316,7 @@ export function DiceTableLayout({
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
+    lastScatterTransformByDieRef.current = new Map();
 
     // Seed roll-key refs to the CURRENT rollKey so we don't accidentally replay a fly-in
     // for an already-completed roll when cacheKey changes (e.g., post-turn hold UI).
@@ -494,6 +496,7 @@ export function DiceTableLayout({
       nextStable.set(dieIndex, stablePos);
     });
     stableScatterByDieRef.current = nextStable;
+    lastScatterTransformByDieRef.current = new Map(nextStable);
 
     // Trigger fly-in animation once per rollKey.
     // NOTE: animatingIndices can be identical between rolls (e.g., rolling all 5 dice twice),
@@ -1018,7 +1021,26 @@ export function DiceTableLayout({
     const pos = heldPositionByOriginalIndex.get(item.originalIndex);
     if (item.die.isHeld && pos) {
       lastHeldTransformByDieRef.current.set(item.originalIndex, pos);
-    } else if (!item.die.isHeld) {
+      lastScatterTransformByDieRef.current.delete(item.originalIndex);
+    } else {
+      const hasStableScatter =
+        stableScatterRollKeyRef.current === rollKey &&
+        stableScatterByDieRef.current.has(item.originalIndex);
+      const unheldDisplayIdx = layoutUnheldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+      const scatterPos = hasStableScatter
+        ? stableScatterByDieRef.current.get(item.originalIndex)
+        : unheldDisplayIdx >= 0
+          ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
+          : lastScatterTransformByDieRef.current.get(item.originalIndex);
+
+      if (scatterPos) {
+        lastScatterTransformByDieRef.current.set(item.originalIndex, scatterPos);
+        // Only clear held ownership once the die has a real scatter layout slot/cached transform.
+        lastHeldTransformByDieRef.current.delete(item.originalIndex);
+      }
+    }
+
+    if (!item.die.isHeld && !lastScatterTransformByDieRef.current.has(item.originalIndex)) {
       lastHeldTransformByDieRef.current.delete(item.originalIndex);
     }
   });
@@ -1059,6 +1081,7 @@ export function DiceTableLayout({
         const actuallyHeld = item.die.isHeld;
         const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
         const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
+        const cachedScatterPos = lastScatterTransformByDieRef.current.get(item.originalIndex);
         
         // If die is actually held but doesn't have a layout position yet (transition moment),
         // compute a position based on its index among all currently-held dice
@@ -1092,7 +1115,7 @@ export function DiceTableLayout({
           stablePos ??
           (unheldDisplayIdx >= 0
             ? getUnheldPosition(unheldDisplayIdx, layoutUnheldDice.length)
-            : getUnheldPosition(0, Math.max(1, layoutUnheldDice.length)));
+            : cachedScatterPos ?? getUnheldPosition(0, Math.max(1, layoutUnheldDice.length)));
 
         // Hide unheld dice when showUnheldDice is false (after 1s delay from held dice moving)
         const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
