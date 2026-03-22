@@ -5965,7 +5965,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!autoFold && currentRound?.id && game?.game_type && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
       const horsesState = currentRound?.horses_state as any;
       if (horsesState) {
-        const extendedDeadline = new Date(Date.now() + (game.ante_decision_timer_seconds || 30) * 1000).toISOString();
+        const extendedDeadline = new Date(Date.now() + (decisionTimerRef.current || 30) * 1000).toISOString();
         await supabase
           .from('rounds')
           .update({
