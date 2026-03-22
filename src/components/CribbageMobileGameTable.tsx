@@ -1219,8 +1219,10 @@ export const CribbageMobileGameTable = ({
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
-  // CRITICAL: When currentRoundId changes, immediately clear stale cribbage state
-  // and reset the sync framework baseline so new-hand snapshots are accepted.
+  // CRITICAL: When currentRoundId changes, reset the sync framework baseline
+  // so new-hand snapshots are accepted.
+  // NOTE: Do NOT null out cribbageState here — that causes a full table unmount (#4).
+  // Instead, keep the old state visible until the new hand's state arrives via realtime.
   const prevRoundIdRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
@@ -1229,8 +1231,8 @@ export const CribbageMobileGameTable = ({
     console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen
     syncHandle.reset(null);
-    setCribbageState(null);
-    cribbageStateRef.current = null;
+    // Keep cribbageState populated to avoid table unmount; it will be overwritten
+    // when the realtime subscription delivers the new hand's state.
     setIsTransitioning(true);
   }, [currentRoundId]);
 
