@@ -261,6 +261,7 @@ export function DiceTableLayout({
   const stableScatterByDieRef = useRef<
     Map<number, { x: number; y: number; rotate: number }>
   >(new Map());
+  const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
 
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
@@ -313,6 +314,7 @@ export function DiceTableLayout({
     })) as any;
     stableScatterRollKeyRef.current = undefined;
     stableScatterByDieRef.current = new Map();
+    lastHeldTransformByDieRef.current = new Map();
 
     // Seed roll-key refs to the CURRENT rollKey so we don't accidentally replay a fly-in
     // for an already-completed roll when cacheKey changes (e.g., post-turn hold UI).
@@ -1012,6 +1014,15 @@ export function DiceTableLayout({
     });
   }
 
+  orderedDice.forEach((item) => {
+    const pos = heldPositionByOriginalIndex.get(item.originalIndex);
+    if (item.die.isHeld && pos) {
+      lastHeldTransformByDieRef.current.set(item.originalIndex, pos);
+    } else if (!item.die.isHeld) {
+      lastHeldTransformByDieRef.current.delete(item.originalIndex);
+    }
+  });
+
   return (
     <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
       {/* Fly-in animation overlay for unheld dice */}
@@ -1047,10 +1058,11 @@ export function DiceTableLayout({
         // This prevents dice from jumping to scatter after animation completes when they were just held.
         const actuallyHeld = item.die.isHeld;
         const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+        const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
         
         // If die is actually held but doesn't have a layout position yet (transition moment),
         // compute a position based on its index among all currently-held dice
-        let heldPos = layoutHeldPos;
+        let heldPos = layoutHeldPos ?? (actuallyHeld ? cachedHeldPos : undefined);
         if (actuallyHeld && !heldPos) {
           // Find this die's index among all actually-held dice
           const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
