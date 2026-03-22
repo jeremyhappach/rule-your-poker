@@ -902,6 +902,15 @@ export const CribbageMobileGameTable = ({
       }
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
+
+      // Clear any stale dealer_selection_state from a previous game in this session
+      // to prevent old cards from flashing during draw-for-button.
+      if (isHost) {
+        await supabase
+          .from('games')
+          .update({ dealer_selection_state: null })
+          .eq('id', gameId);
+      }
       
       const { data: roundData, error } = await supabase
         .from('rounds')
