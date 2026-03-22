@@ -2304,6 +2304,7 @@ export const CribbageMobileGameTable = ({
               countingScoreOverrides={countingScoreOverrides ?? undefined}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
               thirtyOneDelayActive={thirtyOneDelayActive}
+              handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
             />
 
             {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
