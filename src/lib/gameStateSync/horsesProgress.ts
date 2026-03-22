@@ -37,7 +37,7 @@ export interface HorsesStateForProgress {
   gamePhase?: 'waiting' | 'playing' | 'complete' | null;
   currentTurnPlayerId?: string | null;
   turnOrder?: string[];
-  playerStates?: Record<string, { isComplete?: boolean; rollsRemaining?: number; rollKey?: number }>;
+  playerStates?: Record<string, { isComplete?: boolean; rollsRemaining?: number; rollKey?: number; holdSeq?: number }>;
 }
 
 const PHASE_ORD: Record<string, number> = {
