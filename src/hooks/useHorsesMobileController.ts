@@ -900,6 +900,35 @@ export function useHorsesMobileController({
     };
   }, []);
 
+  // BOUNDARY HYGIENE: Clear all presentation owners/caches on round change.
+  // This runs as an effect (not during render) because the refs are declared after the sync block.
+  const boundaryCleanupRoundRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentRoundId === boundaryCleanupRoundRef.current) return;
+    boundaryCleanupRoundRef.current = currentRoundId;
+    
+    // Clear observer/bot display, completed turn holds, felt caches, monotonic refs
+    lastObservedRollKeyRef.current = {};
+    lastObservedRollsRemainingRef.current = {};
+    maxSeenRollKeyRef.current = {};
+    maxHoldSeqPerRollKeyRef.current = {};
+    lastFeltDiceRef.current = null;
+    lastFeltDiceAtRef.current = 0;
+    lastCompletedTurnKeyRef.current = null;
+    announcedTurnsRef.current = new Set();
+    stuckAdvanceKeyRef.current = null;
+    noQualifyShownForRef.current = new Set();
+    midnightShownForRef.current = new Set();
+    
+    // Clear state-based display caches
+    setObserverDisplayState(null);
+    setBotDisplayState(null);
+    setCompletedTurnHold(null);
+    setBotTurnActiveId(null);
+    
+    console.log(`[HORSES_SYNC] Boundary cleanup: cleared all presentation caches for round ${currentRoundId}`);
+  }, [currentRoundId]);
+
   // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
   // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
   useEffect(() => {
