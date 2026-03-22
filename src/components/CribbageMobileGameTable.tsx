@@ -1792,6 +1792,9 @@ export const CribbageMobileGameTable = ({
     // the counting init effect can re-run and replay the scoring sequence.
     setCountingStateSnapshot(null);
     setCountingWinFrozen(false);
+    // Activate forward-only lifecycle latch so banner shows "Dealing Next Hand"
+    // instead of reverting to "Scoring hands..." during the transition gap.
+    setPostCountingTransitionActive(true);
     // Unfreeze sync framework presentation so new-hand state flows through
     syncHandle.unfreezePresentation();
     
