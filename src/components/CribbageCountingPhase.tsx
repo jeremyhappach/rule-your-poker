@@ -61,6 +61,7 @@ export const CribbageCountingPhase = ({
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('entering');
   const [exitingCards, setExitingCards] = useState<CribbageCard[]>([]);
   const [baselineInitialized, setBaselineInitialized] = useState(false);
+  const skipAheadAppliedRef = useRef(false);
   
   const completedRef = useRef(false);
   const enterToScoringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
