@@ -77,6 +77,15 @@ export interface CribbageState {
   /** ISO timestamp written once when counting phase begins — used as a shared sync anchor
    *  so reconnecting clients can skip ahead to the approximate counting position. */
   countingStartedAt?: string | null;
+  /** Stable hand identifier for the current counting session (e.g. "dealerGameId:handNumber").
+   *  Used to validate that reconnect progress matches the active hand. */
+  countingHandKey?: string | null;
+  /** Index into the deterministic counting-target list (0=pone, 1=dealer, 2=crib).
+   *  Persisted during counting so reconnecting clients know which hand is active. */
+  countingTargetIndex?: number | null;
+  /** Index of the current scoring combo within the active target (-1=pre-combo/entering).
+   *  Persisted during counting for reconnect beat-level resume. */
+  countingBeatIndex?: number | null;
   // Skunk tracking
   winnerPlayerId: string | null;
   loserScore: number | null; // For determining skunk/double-skunk

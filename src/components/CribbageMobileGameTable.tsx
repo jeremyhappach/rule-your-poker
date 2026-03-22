@@ -724,7 +724,19 @@ export const CribbageMobileGameTable = ({
     countingAnimationActiveRef.current = true;
     countingDelayFiredRef.current = countingStartKey;
     countingHandKeyRef.current = countingStartKey;
-    setCountingStateSnapshot(state);
+    // Write countingHandKey to state so reconnecting clients can validate
+    const stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
+    setCountingStateSnapshot(stateWithHandKey);
+    // Persist countingHandKey to DB (fire-and-forget)
+    if (currentRoundId) {
+      supabase
+        .from('rounds')
+        .update({ cribbage_state: JSON.parse(JSON.stringify({ ...state, countingHandKey: countingStartKey })) })
+        .eq('id', currentRoundId)
+        .then(({ error }) => {
+          if (error) console.warn('[CRIBBAGE] Failed to persist countingHandKey:', error.message);
+        });
+    }
     // Freeze sync framework presentation so authoritative updates don't clobber the counting UI
     syncHandle.freezePresentation();
 
@@ -1794,6 +1806,46 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
 
+  // ── Persist counting progress to DB (fire-and-forget) ────────────
+  // Called by CribbageCountingPhase whenever target/combo advances.
+  const handleCountingProgressUpdate = useCallback((targetIndex: number, beatIndex: number) => {
+    if (!currentRoundId) return;
+    const handKey = countingHandKeyRef.current;
+    
+    // Lightweight DB write — only update the counting progress fields
+    supabase
+      .from('rounds')
+      .select('cribbage_state')
+      .eq('id', currentRoundId)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data?.cribbage_state) return;
+        const state = data.cribbage_state as unknown as CribbageState;
+        // Only write if handKey matches (prevent cross-hand writes)
+        if (state.countingHandKey && state.countingHandKey !== handKey) return;
+        
+        const updated = {
+          ...state,
+          countingTargetIndex: targetIndex,
+          countingBeatIndex: beatIndex,
+        };
+        supabase
+          .from('rounds')
+          .update({ cribbage_state: JSON.parse(JSON.stringify(updated)) })
+          .eq('id', currentRoundId)
+          .then(({ error: writeErr }) => {
+            if (writeErr) console.warn('[CRIBBAGE] Failed to persist counting progress:', writeErr.message);
+          });
+      });
+    
+    logCribbageDebug(debugCtx, 'counting_progress_write', {
+      targetIndex,
+      beatIndex,
+      handKey,
+      roundId: currentRoundId,
+    });
+  }, [currentRoundId, debugCtx]);
+
   // Handle counting phase completion - start new hand
   // NOTE: Win sequences are now triggered reactively via score subscription,
   // so this callback is only called when counting completes WITHOUT a win.
@@ -2369,6 +2421,10 @@ export const CribbageMobileGameTable = ({
                 initialScores={countingBaselineScoresRef.current ?? undefined}
                 winFrozen={countingWinFrozen}
                 countingStartedAt={countingStateSnapshot.countingStartedAt}
+                persistedTargetIndex={countingStateSnapshot.countingTargetIndex}
+                persistedBeatIndex={countingStateSnapshot.countingBeatIndex}
+                persistedHandKey={countingStateSnapshot.countingHandKey}
+                onProgressUpdate={handleCountingProgressUpdate}
                 debugContext={debugCtx}
               />
             )}
