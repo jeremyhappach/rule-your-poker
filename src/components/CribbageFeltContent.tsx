@@ -142,7 +142,8 @@ export const CribbageFeltContent = ({
           {/* Cut Card with flip animation */}
           <CribbageCutCardReveal 
             card={cribbageState.cutCard} 
-            cardBackColors={cardBackColors} 
+            cardBackColors={cardBackColors}
+            handBoundaryKey={handBoundaryKey}
           />
         </div>
       )}
