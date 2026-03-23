@@ -995,8 +995,16 @@ export function DiceTableLayout({
   // 1. Stable hold order (dice don't reshuffle)
   // 2. Dynamic recentering (positions computed from current registry size)
   // 3. Preservation across re-rolls (held dice keep their order)
+  // CRITICAL: During fly-in animation, do NOT register dice that are currently animating.
+  // On roll 3, game logic marks ALL dice as isHeld, but the animating dice are still visually
+  // in scatter. Registering them would pollute the registry and cause the freeze to
+  // treat scatter dice as held-row dice (the "left-justify all 5" bug).
   if (rollKey !== undefined) {
     orderedDice.forEach((item) => {
+      // Skip dice that are currently flying in — they shouldn't enter the registry yet
+      if (isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex)) {
+        return;
+      }
       const hasEntry = stableHeldSlotByDieRef.current.has(item.originalIndex);
       if (item.die.isHeld) {
         // Die is held: register if new, clear any pending release
