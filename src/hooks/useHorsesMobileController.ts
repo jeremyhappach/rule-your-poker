@@ -1929,7 +1929,7 @@ export function useHorsesMobileController({
           toast.info(`${getPlayerUsername(currentPlayerData)} timed out - sitting out next hand`);
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 450));
+        await new Promise((resolve) => setTimeout(resolve, HORSES_POST_TURN_PAUSE_MS));
         if (cancelled) return;
 
         // Always attempt to advance - the RPC has an atomic guard that prevents duplicate advances
