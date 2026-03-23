@@ -1072,44 +1072,48 @@ export function DiceTableLayout({
     pendingReleaseCountRef.current = new Map();
   }
 
-  // --- AUTHORITATIVE HELD SLOT REGISTRY ---
-  // Registration pass: ADD newly-held dice, RELEASE dice that are consistently unheld.
-  // For observers: a die must be isHeld=false for 2 consecutive renders before its slot is released.
-  // This prevents transient single-frame isHeld=false (from stale DB snapshots) from causing hops,
-  // while allowing legitimate user unholds to propagate to observers.
-  const stableHeldSlotOrder = getHeldSlotOrder(orderedDice.length);
-  if (isObserver && rollKey !== undefined) {
+  // --- AUTHORITATIVE HELD ORDER REGISTRY ---
+  // Tracks the order in which dice were held (monotonic counter).
+  // Used for BOTH roller and observer to provide:
+  // 1. Stable hold order (dice don't reshuffle)
+  // 2. Dynamic recentering (positions computed from current registry size)
+  // 3. Preservation across re-rolls (held dice keep their order)
+  if (rollKey !== undefined) {
     orderedDice.forEach((item) => {
-      const hasSlot = stableHeldSlotByDieRef.current.has(item.originalIndex);
+      const hasEntry = stableHeldSlotByDieRef.current.has(item.originalIndex);
       if (item.die.isHeld) {
         // Die is held: register if new, clear any pending release
         pendingReleaseCountRef.current.delete(item.originalIndex);
-        if (!hasSlot) {
-          const usedSlots = new Set(stableHeldSlotByDieRef.current.values());
-          const nextSlot = stableHeldSlotOrder.find((slot) => !usedSlots.has(slot));
-          if (nextSlot !== undefined) {
-            stableHeldSlotByDieRef.current.set(item.originalIndex, nextSlot);
-          }
+        if (!hasEntry) {
+          stableHeldSlotByDieRef.current.set(item.originalIndex, holdOrderCounterRef.current++);
         }
-      } else if (hasSlot) {
-        // Die is NOT held but HAS a registered slot: release immediately.
-        // The upstream holdSeq progress vector now prevents stale oscillation,
-        // so deferred release is no longer needed and was causing brief
-        // slot-count mismatches (e.g. 4 slots shown when only 3 dice held).
+      } else if (hasEntry) {
+        // Die is NOT held but HAS a registered entry: release immediately.
         stableHeldSlotByDieRef.current.delete(item.originalIndex);
         pendingReleaseCountRef.current.delete(item.originalIndex);
       }
     });
   }
 
-  // Lookup helper: returns the stable held position for a die IF it has a registered slot.
-  // For observers: always returns position if slot exists (even if die.isHeld is transiently false).
-  // For roller: returns undefined (roller uses dynamic layout for immediate feedback).
+  // Lookup helper: returns the held position for a die based on its registry order.
+  // Positions are computed dynamically from the CURRENT registry size, so they
+  // automatically recenter when a die is unholded.
+  // For observers: always returns position if entry exists (prevents transient hop).
+  // For roller: also returns position for stable ordering + recentering.
   const getStableHeldPos = (originalIndex: number): { x: number; y: number } | undefined => {
-    if (!isObserver || rollKey === undefined) return undefined;
-    const existingSlot = stableHeldSlotByDieRef.current.get(originalIndex);
-    if (existingSlot === undefined) return undefined;
-    return stableHeldPositions[existingSlot];
+    if (rollKey === undefined) return undefined;
+    const holdOrder = stableHeldSlotByDieRef.current.get(originalIndex);
+    if (holdOrder === undefined) return undefined;
+
+    // Sort all registered dice by their hold order
+    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+    const registrySize = entries.length;
+    const positionIdx = entries.findIndex(([di]) => di === originalIndex);
+    if (positionIdx < 0) return undefined;
+
+    // Compute centered positions for the current number of held dice
+    const positions = getHeldPositions(registrySize, dieWidth, gap);
+    return positions[positionIdx];
   };
 
   // Cache management: update last-known transforms for smooth transitions
