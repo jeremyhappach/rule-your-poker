@@ -2759,8 +2759,9 @@ export function useHorsesMobileController({
         return prev;
       }
       
-      // Update the max seen for this rollKey
-      maxHoldSeqPerRollKeyRef.current[rollKeyStr] = nextHoldSeq;
+      // Update the max seen for this rollKey (still useful for the useMemo path)
+      const rollKeyStrForRef = `${currentTurnPlayerId}:${newRollKey}`;
+      maxHoldSeqPerRollKeyRef.current[rollKeyStrForRef] = nextHoldSeq;
 
       return {
         ...prev,
