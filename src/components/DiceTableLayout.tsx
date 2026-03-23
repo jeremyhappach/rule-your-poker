@@ -1020,7 +1020,7 @@ export function DiceTableLayout({
   }
   
   const heldPositions = getHeldPositions(layoutHeldDice.length, dieWidth, gap);
-  const stableHeldPositions = getHeldPositions(orderedDice.length, dieWidth, gap);
+  // (stableHeldPositions removed — positions now computed dynamically by getStableHeldPos)
 
   const scatterLayoutByOriginalIndex = new Map<number, { x: number; y: number; rotate: number }>();
   layoutUnheldDice.forEach((item, displayIdx) => {
