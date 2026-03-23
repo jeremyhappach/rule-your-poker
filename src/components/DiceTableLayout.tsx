@@ -268,6 +268,10 @@ export function DiceTableLayout({
   const holdOrderCounterRef = useRef(0);
   const pendingReleaseCountRef = useRef<Map<number, number>>(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  // Frozen presentation snapshot: captured at the moment all dice become held (lock-in / roll 3).
+  // Each die's position is frozen exactly where it was, preventing any post-lock movement.
+  const frozenPresentationRef = useRef<Map<number, string> | null>(null);
+  const frozenForRollKeyRef = useRef<string | number | undefined>(undefined);
   const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
   const renderDecisionByDieRef = useRef<
     Map<
@@ -336,6 +340,8 @@ export function DiceTableLayout({
     pendingReleaseCountRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
     lastScatterTransformByDieRef.current = new Map();
+    frozenPresentationRef.current = null;
+    frozenForRollKeyRef.current = undefined;
 
     // Seed roll-key refs to the CURRENT rollKey so we don't accidentally replay a fly-in
     // for an already-completed roll when cacheKey changes (e.g., post-turn hold UI).
@@ -469,6 +475,8 @@ export function DiceTableLayout({
     });
     stableHeldSlotByDieRef.current = preservedRegistry;
     pendingReleaseCountRef.current = new Map();
+    frozenPresentationRef.current = null;
+    frozenForRollKeyRef.current = undefined;
 
     // Reset completion transition when a new roll starts
     setIsInCompletionTransition(false);
@@ -757,23 +765,74 @@ export function DiceTableLayout({
   // Special case: all visible dice are held
   // This covers: turn completion (lock-in / roll 3), early lock-in (all held before committing),
   // and any other state where every die has isHeld=true.
-  // ALWAYS render all dice in a neat held row — no mask-based scatter split.
-  // The old mask-based split (heldMaskBeforeComplete) caused a bug where early lock-in
-  // would show all dice in scatter positions because the mask said "none held at roll start."
   const allHeld = orderedDice.length > 0 && orderedDice.every(d => d.die.isHeld);
 
-  // CRITICAL: Don't early-return if we're currently animating - let animation run first
+  // PRESENTATION FREEZE: When all dice become held, capture each die's current position
+  // and freeze it. No recentering, no regrouping, no post-lock movement.
   if (allHeld && !isAnimatingFlyIn) {
-    // Show all dice in a neat horizontal held row (consistent final state)
-    const actualDiceCount = orderedDice.length;
-    const heldPositions = getHeldPositions(actualDiceCount, dieWidth, gap);
-    const heldYOffset = -35;
+    // Capture frozen positions ONCE per rollKey lock
+    if (!frozenPresentationRef.current || frozenForRollKeyRef.current !== rollKey) {
+      const frozenMap = new Map<number, string>();
+      const heldYOffset = -35;
+      const unheldYOffset = 50;
+
+      orderedDice.forEach((item) => {
+        // Check where this die was BEFORE the all-held transition:
+        // 1. If it was in the held slot registry → use its held position
+        // 2. If it was in scatter → use its scatter position
+        // 3. Fallback to last known cached position
+        const registryOrder = stableHeldSlotByDieRef.current.get(item.originalIndex);
+        
+        if (registryOrder !== undefined) {
+          // Die was in held row — compute its position from registry order
+          const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+          const registrySize = entries.length;
+          const posIdx = entries.findIndex(([di]) => di === item.originalIndex);
+          if (posIdx >= 0) {
+            const positions = getHeldPositions(registrySize, dieWidth, gap);
+            const pos = positions[posIdx];
+            if (pos) {
+              frozenMap.set(item.originalIndex,
+                `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`);
+              return;
+            }
+          }
+        }
+
+        // Die was in scatter — use last known scatter position
+        const lastHeld = lastHeldTransformByDieRef.current.get(item.originalIndex);
+        const stableScatter = stableScatterRollKeyRef.current === rollKey
+          ? stableScatterByDieRef.current.get(item.originalIndex)
+          : undefined;
+        const lastScatter = lastScatterTransformByDieRef.current.get(item.originalIndex);
+        const scatterPos = stableScatter ?? lastScatter;
+
+        if (scatterPos) {
+          frozenMap.set(item.originalIndex,
+            `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`);
+        } else if (lastHeld) {
+          frozenMap.set(item.originalIndex,
+            `translate(calc(-50% + ${lastHeld.x}px), calc(-50% + ${lastHeld.y + heldYOffset}px))`);
+        } else {
+          // Ultimate fallback: compute held row position
+          const actualDiceCount = orderedDice.length;
+          const positions = getHeldPositions(actualDiceCount, dieWidth, gap);
+          const idx = orderedDice.findIndex(d => d.originalIndex === item.originalIndex);
+          const pos = positions[idx] || { x: 0, y: 0 };
+          frozenMap.set(item.originalIndex,
+            `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`);
+        }
+      });
+
+      frozenPresentationRef.current = frozenMap;
+      frozenForRollKeyRef.current = rollKey;
+    }
 
     return (
-      <div ref={containerRef} className="relative" style={{ width: '200px', height: '120px' }}>
-        {orderedDice.map((item, displayIdx) => {
-          const pos = heldPositions[displayIdx];
-          if (!pos) return null;
+      <div ref={containerRef} className="relative" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
+        {orderedDice.map((item) => {
+          const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
+          if (!frozenTransform) return null;
 
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
@@ -785,11 +844,11 @@ export function DiceTableLayout({
               data-die-value={item.die.value}
               data-die-held={true}
               data-die-held-layout={true}
-              className="absolute transition-transform duration-300 ease-out will-change-transform"
+              className="absolute will-change-transform"
               style={{
                 left: '50%',
                 top: '50%',
-                transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
+                transform: frozenTransform,
               }}
             >
               <HorsesDie
