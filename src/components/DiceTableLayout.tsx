@@ -990,10 +990,13 @@ export function DiceTableLayout({
   if (stableHeldRollKeyRef.current !== rollKey) {
     stableHeldRollKeyRef.current = rollKey;
     // Preserve registry for dice that remain held (same as fly-in path)
+    // CRITICAL: Use heldMaskBeforeComplete as authority on roll 3 (same as useLayoutEffect path).
+    // Without this, all 5 dice get registered on the first render frame → left-justify.
+    const heldMaskForPreserve = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
     const preservedRegistry = new Map<number, number>();
     stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
-      const d = dice[dieIdx];
-      if (d?.isHeld) {
+      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!dice[dieIdx]?.isHeld;
+      if (wasHeldBeforeRoll) {
         preservedRegistry.set(dieIdx, holdOrder);
       }
     });
