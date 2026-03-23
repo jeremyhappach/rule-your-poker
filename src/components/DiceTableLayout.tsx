@@ -475,6 +475,8 @@ export function DiceTableLayout({
     });
     stableHeldSlotByDieRef.current = preservedRegistry;
     pendingReleaseCountRef.current = new Map();
+    frozenPresentationRef.current = null;
+    frozenForRollKeyRef.current = undefined;
 
     // Reset completion transition when a new roll starts
     setIsInCompletionTransition(false);
