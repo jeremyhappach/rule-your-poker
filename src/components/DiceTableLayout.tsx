@@ -907,7 +907,10 @@ export function DiceTableLayout({
   // CRITICAL: During fly-in animation, use the held mask from BEFORE the roll to determine positions.
   // This prevents dice from jumping to held positions before the animation lands.
   // After animation completes, dice will transition to their correct (new) positions.
-  const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
+  // CRITICAL: Also use pre-roll layout on the FIRST render after rollKey changes (!rollKeyProcessed).
+  // The useLayoutEffect hasn't fired yet to start the fly-in, but game logic already marked all dice
+  // isHeld=true. Without this guard, layout briefly uses 5 held dice → left-justify flash for one frame.
+  const usePreRollLayout = (isAnimatingFlyIn || !rollKeyProcessed) && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
   // Keep unheld dice lower than the held row to avoid overlap
   const unheldYOffset = 50;
   
