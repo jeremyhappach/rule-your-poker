@@ -268,6 +268,10 @@ export function DiceTableLayout({
   const holdOrderCounterRef = useRef(0);
   const pendingReleaseCountRef = useRef<Map<number, number>>(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  // Frozen presentation snapshot: captured at the moment all dice become held (lock-in / roll 3).
+  // Each die's position is frozen exactly where it was, preventing any post-lock movement.
+  const frozenPresentationRef = useRef<Map<number, string> | null>(null);
+  const frozenForRollKeyRef = useRef<string | number | undefined>(undefined);
   const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
   const renderDecisionByDieRef = useRef<
     Map<
