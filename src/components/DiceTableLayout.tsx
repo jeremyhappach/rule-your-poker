@@ -466,10 +466,15 @@ export function DiceTableLayout({
     stableHeldRollKeyRef.current = rollKey;
     // Preserve registry entries for dice that remain held across re-rolls.
     // This maintains stable hold order so held dice don't reshuffle after re-roll.
+    // CRITICAL: Use heldMaskBeforeComplete as authority on roll 3.
+    // Game logic marks ALL dice isHeld=true when rollsRemaining=0, but only the
+    // pre-roll held dice should be preserved in the registry. Without this guard,
+    // the registry gets 5 entries on roll 3, causing held-row left-justify.
+    const heldMaskForPreserve = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
     const preservedRegistry = new Map<number, number>();
     stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
-      const d = dice[dieIdx];
-      if (d?.isHeld) {
+      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!dice[dieIdx]?.isHeld;
+      if (wasHeldBeforeRoll) {
         preservedRegistry.set(dieIdx, holdOrder);
       }
     });
