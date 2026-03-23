@@ -1379,13 +1379,4 @@ function getHeldPositions(count: number, dieWidth: number, gap: number): { x: nu
   }));
 }
 
-function getHeldSlotOrder(count: number): number[] {
-  if (count <= 0) return [];
-
-  const center = (count - 1) / 2;
-  return Array.from({ length: count }, (_, index) => index).sort((a, b) => {
-    const distanceDiff = Math.abs(a - center) - Math.abs(b - center);
-    if (distanceDiff !== 0) return distanceDiff;
-    return a - b;
-  });
-}
+// (getHeldSlotOrder removed — registry now uses hold-order counter, not slot indices)
