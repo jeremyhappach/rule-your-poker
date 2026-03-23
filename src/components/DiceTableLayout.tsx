@@ -1060,7 +1060,15 @@ export function DiceTableLayout({
 
   if (stableHeldRollKeyRef.current !== rollKey) {
     stableHeldRollKeyRef.current = rollKey;
-    stableHeldSlotByDieRef.current = new Map();
+    // Preserve registry for dice that remain held (same as fly-in path)
+    const preservedRegistry = new Map<number, number>();
+    stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
+      const d = dice[dieIdx];
+      if (d?.isHeld) {
+        preservedRegistry.set(dieIdx, holdOrder);
+      }
+    });
+    stableHeldSlotByDieRef.current = preservedRegistry;
     pendingReleaseCountRef.current = new Map();
   }
 
