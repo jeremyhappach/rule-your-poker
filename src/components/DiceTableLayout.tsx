@@ -907,7 +907,10 @@ export function DiceTableLayout({
   // CRITICAL: During fly-in animation, use the held mask from BEFORE the roll to determine positions.
   // This prevents dice from jumping to held positions before the animation lands.
   // After animation completes, dice will transition to their correct (new) positions.
-  const usePreRollLayout = isAnimatingFlyIn && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
+  // CRITICAL: Also use pre-roll layout on the FIRST render after rollKey changes (!rollKeyProcessed).
+  // The useLayoutEffect hasn't fired yet to start the fly-in, but game logic already marked all dice
+  // isHeld=true. Without this guard, layout briefly uses 5 held dice → left-justify flash for one frame.
+  const usePreRollLayout = (isAnimatingFlyIn || !rollKeyProcessed) && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
   // Keep unheld dice lower than the held row to avoid overlap
   const unheldYOffset = 50;
   
@@ -987,10 +990,13 @@ export function DiceTableLayout({
   if (stableHeldRollKeyRef.current !== rollKey) {
     stableHeldRollKeyRef.current = rollKey;
     // Preserve registry for dice that remain held (same as fly-in path)
+    // CRITICAL: Use heldMaskBeforeComplete as authority on roll 3 (same as useLayoutEffect path).
+    // Without this, all 5 dice get registered on the first render frame → left-justify.
+    const heldMaskForPreserve = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
     const preservedRegistry = new Map<number, number>();
     stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
-      const d = dice[dieIdx];
-      if (d?.isHeld) {
+      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!dice[dieIdx]?.isHeld;
+      if (wasHeldBeforeRoll) {
         preservedRegistry.set(dieIdx, holdOrder);
       }
     });
