@@ -1020,6 +1020,15 @@ export function DiceTableLayout({
       if (isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex)) {
         return;
       }
+      // CRITICAL: On the first render after rollKey changes (!rollKeyProcessed), the
+      // useLayoutEffect hasn't fired yet to start the fly-in. Game logic already marked
+      // all dice isHeld=true on roll 3, so without this guard ALL 5 dice get registered,
+      // causing getStableHeldPos to compute positions for 5 → left-justify for one frame.
+      // Use heldMaskBeforeComplete to determine which dice should actually be in the registry.
+      if (!rollKeyProcessed && Array.isArray(heldMaskBeforeComplete)) {
+        const wasHeldBefore = !!heldMaskBeforeComplete[item.originalIndex];
+        if (!wasHeldBefore) return; // Don't register dice that weren't held pre-roll
+      }
       const hasEntry = stableHeldSlotByDieRef.current.has(item.originalIndex);
       if (item.die.isHeld) {
         // Die is held: register if new, clear any pending release
