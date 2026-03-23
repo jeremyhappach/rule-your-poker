@@ -262,10 +262,10 @@ export function DiceTableLayout({
     Map<number, { x: number; y: number; rotate: number }>
   >(new Map());
   const stableHeldRollKeyRef = useRef<string | number | undefined>(undefined);
+  // Registry: Map<dieIndex, holdOrder> where holdOrder is a monotonically increasing counter.
+  // This preserves the order in which dice were held, enabling stable ordering + dynamic recentering.
   const stableHeldSlotByDieRef = useRef<Map<number, number>>(new Map());
-  // Track consecutive renders where a registered die has isHeld=false.
-  // After 2 consecutive false renders, release the slot (legitimate unhold).
-  // This prevents single-frame transient flips from causing hops while allowing real unholds.
+  const holdOrderCounterRef = useRef(0);
   const pendingReleaseCountRef = useRef<Map<number, number>>(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
