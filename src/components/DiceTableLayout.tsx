@@ -1074,15 +1074,12 @@ export function DiceTableLayout({
           }
         }
       } else if (hasSlot) {
-        // Die is NOT held but HAS a registered slot: increment pending release counter
-        const count = (pendingReleaseCountRef.current.get(item.originalIndex) ?? 0) + 1;
-        if (count >= 2) {
-          // Confirmed unhold: release the slot
-          stableHeldSlotByDieRef.current.delete(item.originalIndex);
-          pendingReleaseCountRef.current.delete(item.originalIndex);
-        } else {
-          pendingReleaseCountRef.current.set(item.originalIndex, count);
-        }
+        // Die is NOT held but HAS a registered slot: release immediately.
+        // The upstream holdSeq progress vector now prevents stale oscillation,
+        // so deferred release is no longer needed and was causing brief
+        // slot-count mismatches (e.g. 4 slots shown when only 3 dice held).
+        stableHeldSlotByDieRef.current.delete(item.originalIndex);
+        pendingReleaseCountRef.current.delete(item.originalIndex);
       }
     });
   }
