@@ -340,6 +340,8 @@ export function DiceTableLayout({
     pendingReleaseCountRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
     lastScatterTransformByDieRef.current = new Map();
+    frozenPresentationRef.current = null;
+    frozenForRollKeyRef.current = undefined;
 
     // Seed roll-key refs to the CURRENT rollKey so we don't accidentally replay a fly-in
     // for an already-completed roll when cacheKey changes (e.g., post-turn hold UI).
