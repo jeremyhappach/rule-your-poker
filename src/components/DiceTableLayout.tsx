@@ -769,7 +769,11 @@ export function DiceTableLayout({
 
   // PRESENTATION FREEZE: When all dice become held, capture each die's current position
   // and freeze it. No recentering, no regrouping, no post-lock movement.
-  if (allHeld && !isAnimatingFlyIn) {
+  // CRITICAL: Skip freeze on the FIRST render with a new rollKey. The useLayoutEffect hasn't
+  // fired yet to start the fly-in animation, so entering freeze here would flash a stale
+  // all-held layout for one frame before the fly-in takes over.
+  const rollKeyProcessed = rollKey === prevRollKeyRef.current;
+  if (allHeld && !isAnimatingFlyIn && rollKeyProcessed) {
     // Capture frozen positions ONCE per rollKey lock
     if (!frozenPresentationRef.current || frozenForRollKeyRef.current !== rollKey) {
       const frozenMap = new Map<number, string>();
