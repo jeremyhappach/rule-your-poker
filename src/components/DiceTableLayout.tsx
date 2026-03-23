@@ -776,31 +776,53 @@ export function DiceTableLayout({
       const heldYOffset = -35;
       const unheldYOffset = 50;
 
+      // CRITICAL: Use heldMaskBeforeComplete to determine which dice were in the held row
+      // vs scatter BEFORE all-held. This prevents roll-3 from moving scatter dice into held row.
+      // The registry can be polluted during fly-in animation (all dice get isHeld=true from game logic
+      // but some were animating in scatter), so heldMaskBeforeComplete is the authoritative source.
+      const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+
+      // Build held-row positions for ONLY the dice that were held before freeze
+      const preHeldIndices = orderedDice
+        .filter((item) => {
+          if (heldMask) return !!heldMask[item.originalIndex];
+          return stableHeldSlotByDieRef.current.has(item.originalIndex);
+        })
+        .map((item) => item.originalIndex);
+
+      // Sort pre-held dice by their registry hold order for stable positioning
+      const registryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+      const sortedPreHeld = preHeldIndices.sort((a, b) => {
+        const orderA = stableHeldSlotByDieRef.current.get(a) ?? Infinity;
+        const orderB = stableHeldSlotByDieRef.current.get(b) ?? Infinity;
+        return orderA - orderB;
+      });
+      const preHeldPositions = getHeldPositions(sortedPreHeld.length, dieWidth, gap);
+
       orderedDice.forEach((item) => {
-        // Check where this die was BEFORE the all-held transition:
-        // 1. If it was in the held slot registry → use its held position
-        // 2. If it was in scatter → use its scatter position
-        // 3. Fallback to last known cached position
-        const registryOrder = stableHeldSlotByDieRef.current.get(item.originalIndex);
-        
-        if (registryOrder !== undefined) {
-          // Die was in held row — compute its position from registry order
-          const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
-          const registrySize = entries.length;
-          const posIdx = entries.findIndex(([di]) => di === item.originalIndex);
-          if (posIdx >= 0) {
-            const positions = getHeldPositions(registrySize, dieWidth, gap);
-            const pos = positions[posIdx];
-            if (pos) {
-              frozenMap.set(item.originalIndex,
-                `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`);
-              return;
-            }
+        const wasHeldBefore = heldMask
+          ? !!heldMask[item.originalIndex]
+          : stableHeldSlotByDieRef.current.has(item.originalIndex);
+
+        if (wasHeldBefore) {
+          // Die was in held row — use its stable held-row position
+          const posIdx = sortedPreHeld.indexOf(item.originalIndex);
+          if (posIdx >= 0 && preHeldPositions[posIdx]) {
+            const pos = preHeldPositions[posIdx];
+            frozenMap.set(item.originalIndex,
+              `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`);
+            return;
+          }
+          // Fallback: use cached held position
+          const cachedHeld = lastHeldTransformByDieRef.current.get(item.originalIndex);
+          if (cachedHeld) {
+            frozenMap.set(item.originalIndex,
+              `translate(calc(-50% + ${cachedHeld.x}px), calc(-50% + ${cachedHeld.y + heldYOffset}px))`);
+            return;
           }
         }
 
-        // Die was in scatter — use last known scatter position
-        const lastHeld = lastHeldTransformByDieRef.current.get(item.originalIndex);
+        // Die was in scatter — freeze at its scatter position
         const stableScatter = stableScatterRollKeyRef.current === rollKey
           ? stableScatterByDieRef.current.get(item.originalIndex)
           : undefined;
@@ -810,11 +832,8 @@ export function DiceTableLayout({
         if (scatterPos) {
           frozenMap.set(item.originalIndex,
             `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`);
-        } else if (lastHeld) {
-          frozenMap.set(item.originalIndex,
-            `translate(calc(-50% + ${lastHeld.x}px), calc(-50% + ${lastHeld.y + heldYOffset}px))`);
         } else {
-          // Ultimate fallback: compute held row position
+          // Ultimate fallback: use held position (all dice in a row)
           const actualDiceCount = orderedDice.length;
           const positions = getHeldPositions(actualDiceCount, dieWidth, gap);
           const idx = orderedDice.findIndex(d => d.originalIndex === item.originalIndex);
@@ -837,13 +856,19 @@ export function DiceTableLayout({
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
 
+          // Determine if this die was in held row for styling purposes
+          const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+          const wasHeld = heldMask
+            ? !!heldMask[item.originalIndex]
+            : stableHeldSlotByDieRef.current.has(item.originalIndex);
+
           return (
             <div
               key={`die-${item.originalIndex}`}
               data-die-idx={item.originalIndex}
               data-die-value={item.die.value}
               data-die-held={true}
-              data-die-held-layout={true}
+              data-die-held-layout={wasHeld}
               className="absolute will-change-transform"
               style={{
                 left: '50%',
@@ -853,7 +878,7 @@ export function DiceTableLayout({
             >
               <HorsesDie
                 value={item.die.value}
-                isHeld={true}
+                isHeld={wasHeld}
                 isRolling={false}
                 canToggle={false}
                 onToggle={() => onToggleHold?.(item.originalIndex)}
