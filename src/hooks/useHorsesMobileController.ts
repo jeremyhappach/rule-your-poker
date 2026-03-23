@@ -2733,22 +2733,26 @@ export function useHorsesMobileController({
       // Unlike held count, a player can legitimately go from 3 held to 2 held.
       // EXCEPTION: On roll 3 (rollsRemaining === 0), players can't change holds anymore,
       // so we skip the holdSeq guard to allow the final dice values through for animation.
-      const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
       const nextHoldSeq = (state as any).holdSeq ?? 0;
-      const maxSeenHoldSeq = maxHoldSeqPerRollKeyRef.current[rollKeyStr] ?? 0;
       
       // Only apply holdSeq guard if the player can still hold/unhold (rollsRemaining > 0)
       const canStillHold = state.rollsRemaining > 0;
       
-      if (canStillHold && nextHoldSeq < maxSeenHoldSeq) {
-        // Stale update - has older sequence number. Reject it.
+      // FIX: Compare against prev.holdSeq (the last ACCEPTED state's holdSeq) instead of
+      // maxHoldSeqPerRollKeyRef, which can be updated by the rawFeltDice useMemo during render.
+      // This prevents a race where useMemo updates the shared ref first, then this effect
+      // incorrectly rejects a legitimate update because the ref already matches the incoming value.
+      const prevHoldSeq = (prev as any).holdSeq ?? 0;
+      
+      if (canStillHold && nextHoldSeq < prevHoldSeq) {
+        // Stale update - has older sequence number than what we last accepted. Reject it.
         console.log(
-          `[OBSERVER_ROLL] Rejecting same-rollKey update: holdSeq (${nextHoldSeq}) < maxSeenHoldSeq (${maxSeenHoldSeq})`,
+          `[OBSERVER_ROLL] Rejecting same-rollKey update: holdSeq (${nextHoldSeq}) < prevHoldSeq (${prevHoldSeq})`,
         );
         return prev;
       }
 
-      if (canStillHold && nextHoldSeq === maxSeenHoldSeq && nextHeldSig !== prevHeldSig) {
+      if (canStillHold && nextHoldSeq === prevHoldSeq && nextHeldSig !== prevHeldSig) {
         console.log(
           `[OBSERVER_ROLL] Rejecting same-rollKey equal-holdSeq held regression: holdSeq (${nextHoldSeq}) heldSig ${prevHeldSig} -> ${nextHeldSig}`,
         );
