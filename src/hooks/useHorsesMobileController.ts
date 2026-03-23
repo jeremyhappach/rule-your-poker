@@ -155,7 +155,7 @@ export interface UseHorsesMobileControllerArgs {
 // Active player roll mask: how long the "rolling" animation shows in the active window
 const HORSES_FIRST_ROLL_ANIMATION_MS = 1300;   // Roll 1: ~1.3s
 const HORSES_ROLL_AGAIN_ANIMATION_MS = 1800;   // Rolls 2/3: ~1.8s (was 2500 - too long)
-const HORSES_POST_TURN_PAUSE_MS = 400;         // Pause after lock-in before advancing (was 650)
+const HORSES_POST_TURN_PAUSE_MS = 3000;        // Pause after lock-in before advancing — must match completedTurnHold duration
 // Authoritative animation barrier: minimum time observers must have to see the fly-in.
 // The active roller cannot proceed until this time has elapsed from rollStartedAt.
 const ROLL_ANIMATION_BARRIER_MS = 1200;         // ~1.2s authoritative minimum
