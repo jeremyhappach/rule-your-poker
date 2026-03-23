@@ -458,7 +458,16 @@ export function DiceTableLayout({
     if (cacheKeyStr) lastSeenRollKeyByCacheKey.set(cacheKeyStr, rollKey);
 
     stableHeldRollKeyRef.current = rollKey;
-    stableHeldSlotByDieRef.current = new Map();
+    // Preserve registry entries for dice that remain held across re-rolls.
+    // This maintains stable hold order so held dice don't reshuffle after re-roll.
+    const preservedRegistry = new Map<number, number>();
+    stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
+      const d = dice[dieIdx];
+      if (d?.isHeld) {
+        preservedRegistry.set(dieIdx, holdOrder);
+      }
+    });
+    stableHeldSlotByDieRef.current = preservedRegistry;
     pendingReleaseCountRef.current = new Map();
 
     // Reset completion transition when a new roll starts
