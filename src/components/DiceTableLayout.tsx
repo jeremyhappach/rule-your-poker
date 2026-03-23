@@ -868,7 +868,6 @@ export function DiceTableLayout({
         })}
       </div>
     );
-    );
   }
   
   // CRITICAL: During fly-in animation, use the held mask from BEFORE the roll to determine positions.
