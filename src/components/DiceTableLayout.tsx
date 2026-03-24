@@ -1322,8 +1322,15 @@ export function DiceTableLayout({
         // Hide unheld dice when showUnheldDice is false (after 1s delay from held dice moving)
         const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
         
+        // CRITICAL FIX: On the first render after rollKey changes, the useLayoutEffect hasn't
+        // fired yet to start the fly-in and set showUnheldDice=false. Unheld dice would render
+        // at their NEW scatter positions for one frame before fly-in takes over, causing a visible
+        // snap/flash. Suppress them entirely — the fly-in overlay will render them momentarily.
+        const isPreFlyInFrame = !rollKeyProcessed && !isAnimatingFlyIn && !isHeldInLayout
+          && Array.isArray(heldMaskBeforeComplete) && !heldMaskBeforeComplete[item.originalIndex];
+        
         // Don't render unheld dice at all when they should be hidden
-        if (shouldHide) return null;
+        if (shouldHide || isPreFlyInFrame) return null;
 
         // CRITICAL: When all dice just became held (early lock-in), do NOT animate unheld→held transition.
         // Skip the transition by omitting transition classes for dice that just switched from unheld to held.
