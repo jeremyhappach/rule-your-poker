@@ -11,6 +11,7 @@
  */
 
 import { logDebugEvent, newTraceId } from './debugEventLogger';
+import { buildMetaPayload } from './buildMeta';
 import type { CribbageState } from './cribbageTypes';
 
 /** Standard Cribbage state summary payload for every event */
