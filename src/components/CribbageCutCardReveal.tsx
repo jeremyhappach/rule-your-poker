@@ -39,6 +39,27 @@ export const CribbageCutCardReveal = ({
     currentCardKeyRef.current = null;
   }
 
+  // Log mount/remount with hand boundary key
+  useEffect(() => {
+    logDebugEvent({
+      gameId: 'cut-card-reveal',
+      eventType: 'crib:cut_card_reveal:mounted',
+      payload: {
+        handBoundaryKey: handBoundaryKey ?? null,
+        hasCard: card !== null,
+        cardKey: card ? `${card.rank}${card.suit}` : null,
+        ...buildMetaPayload(),
+      },
+    });
+    return () => {
+      logDebugEvent({
+        gameId: 'cut-card-reveal',
+        eventType: 'crib:cut_card_reveal:unmounted',
+        payload: { handBoundaryKey: handBoundaryKey ?? null },
+      });
+    };
+  }, [handBoundaryKey]);
+
   useEffect(() => {
     // Generate stable key for current card
     const cardKey = card ? `${card.rank}-${card.suit}` : null;
