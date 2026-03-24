@@ -69,7 +69,7 @@ export function logCribbageDebug(
     clientRole: 'actor',
     eventType: `crib:${eventType}`,
     traceId,
-    payload: { handNumber: ctx.handNumber, ...payload },
+    payload: { handNumber: ctx.handNumber, ...buildMetaPayload(), ...payload },
   });
 }
 
