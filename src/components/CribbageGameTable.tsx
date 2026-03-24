@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
+import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { 
   initializeCribbageGame, 
   discardToCrib, 
@@ -187,16 +188,70 @@ export const CribbageGameTable = ({
     loadOrInitializeState();
   }, [roundId, players, anteAmount, dealerPosition]);
 
+  // ── Hand-transition instrumentation ──────────────────────────
+  // Build a debug context that tracks across transitions
+  const debugCtxRef = useRef<CribbageDebugContext>({ gameId, roundId, userId: currentUserId, handNumber });
+  debugCtxRef.current = { gameId, roundId, userId: currentUserId, handNumber };
+
   // CRITICAL: When roundId changes, immediately clear stale cribbage state.
   // This prevents old cards from being visible and interactive during hand transitions.
   const prevRoundIdRef = useRef<string>(roundId);
+  const prevHandNumberRef = useRef<number>(handNumber);
+  const prevCribbageStateNullRef = useRef<boolean>(true);
+
   useEffect(() => {
-    if (roundId === prevRoundIdRef.current) return;
+    if (roundId === prevRoundIdRef.current && handNumber === prevHandNumberRef.current) return;
+    const traceId = newTraceId();
+    logCribbageDebug(debugCtxRef.current, 'hand_transition:roundId_change', {
+      prevRoundId: prevRoundIdRef.current?.slice(0, 8),
+      newRoundId: roundId.slice(0, 8),
+      prevHandNumber: prevHandNumberRef.current,
+      newHandNumber: handNumber,
+      hadCribbageState: cribbageState !== null,
+      selectedCardsCount: selectedCards.length,
+    }, traceId);
     prevRoundIdRef.current = roundId;
+    prevHandNumberRef.current = handNumber;
     console.log('[CRIBBAGE] roundId changed, clearing stale state');
     setCribbageState(null);
+    setSelectedCards([]);
     setIsTransitioning(true);
-  }, [roundId]);
+    logCribbageDebug(debugCtxRef.current, 'hand_transition:state_cleared', {
+      syncResetInvoked: true,
+      selectedCardsReset: true,
+    }, traceId);
+  }, [roundId, handNumber]);
+
+  // Track cribbageState null/non-null transitions (snapshot hydration)
+  useEffect(() => {
+    const wasNull = prevCribbageStateNullRef.current;
+    const isNull = cribbageState === null;
+    prevCribbageStateNullRef.current = isNull;
+    if (wasNull === isNull) return;
+    if (!isNull) {
+      // Hydrated from null → non-null
+      logCribbageDebug(debugCtxRef.current, 'hand_transition:snapshot_hydrated', cribbageStateSummary(cribbageState, {
+        handKey: currentHandKey,
+      }));
+    } else {
+      // Went null (roundId change or unmount)
+      logCribbageDebug(debugCtxRef.current, 'hand_transition:state_nulled', {});
+    }
+  }, [cribbageState === null]);
+
+  // Table mount/unmount logging
+  useEffect(() => {
+    logCribbageDebug(debugCtxRef.current, 'hand_transition:table_mounted', cribbageStateSummary(cribbageState, {
+      roundId: roundId.slice(0, 8),
+      handNumber,
+    }));
+    return () => {
+      logCribbageDebug(debugCtxRef.current, 'hand_transition:table_unmounted', {
+        roundId: roundId.slice(0, 8),
+        handNumber,
+      });
+    };
+  }, []);
 
   // Realtime subscription with polling fallback
   useEffect(() => {
