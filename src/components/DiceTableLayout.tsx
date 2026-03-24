@@ -1301,8 +1301,10 @@ export function DiceTableLayout({
 
         // Observer: registry is authoritative (prevents transient hop to scatter)
         // Roller: actuallyHeld is authoritative (immediate toggle feedback)
+        // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
+        // the mask — never the registry. Stale registry entries cause transient held-row widening.
         const effectivelyHeld = isObserver
-          ? (usePreRollLayout ? (!!registryHeldPos || preRollHeld) : (!!registryHeldPos || actuallyHeld))
+          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : (!!registryHeldPos || actuallyHeld))
           : actuallyHeld;
 
         let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
