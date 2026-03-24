@@ -722,19 +722,6 @@ export function DiceTableLayout({
     setShowUnheldDice(true);
   }, []);
   
-  // If showing "You are rolling" message, render that instead of dice
-  if (showRollingMessage) {
-    return (
-      <div className="relative flex items-center justify-center" style={{ width: '200px', height: '120px' }}>
-        <div className="text-center">
-          <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-            You are rolling
-          </p>
-        </div>
-      </div>
-    );
-  }
-  
   // Get die dimensions based on size (reduced for less overlap)
   // TABLET: Larger container and adjusted positions with more spacing to prevent overlap
   const dieSizes = {
@@ -788,9 +775,9 @@ export function DiceTableLayout({
   
   // If no dice to show, return empty container
   // CRITICAL: This should rarely happen now due to lastValidDiceRef caching
-  if (orderedDice.length === 0) {
+  const hasNoOrderedDice = orderedDice.length === 0;
+  if (hasNoOrderedDice) {
     console.warn('[DiceTableLayout] Empty orderedDice - this may cause visual flicker');
-    return <div className="relative" style={{ width: '200px', height: '120px' }} />;
   }
   
   // Separate held and unheld dice
@@ -811,7 +798,8 @@ export function DiceTableLayout({
   // fired yet to start the fly-in animation, so entering freeze here would flash a stale
   // all-held layout for one frame before the fly-in takes over.
   const rollKeyProcessed = rollKey === prevRollKeyRef.current;
-  if (allHeld && !isAnimatingFlyIn && rollKeyProcessed) {
+  const shouldUseFreezePresentation = !hasNoOrderedDice && allHeld && !isAnimatingFlyIn && rollKeyProcessed;
+  if (shouldUseFreezePresentation) {
     // Capture frozen positions ONCE per rollKey lock
     if (!frozenPresentationRef.current || frozenForRollKeyRef.current !== rollKey) {
       const frozenMap = new Map<number, string>();
@@ -889,52 +877,6 @@ export function DiceTableLayout({
       frozenForRollKeyRef.current = rollKey;
     }
 
-    return (
-      <div ref={containerRef} className="relative" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
-        {orderedDice.map((item) => {
-          const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
-          if (!frozenTransform) return null;
-
-          const sccDie = item.die as SCCDieType;
-          const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
-
-          // Determine if this die was in held row for styling purposes
-          const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
-          const wasHeld = heldMask
-            ? !!heldMask[item.originalIndex]
-            : stableHeldSlotByDieRef.current.has(item.originalIndex);
-
-          return (
-            <div
-              key={`die-${item.originalIndex}`}
-              data-die-idx={item.originalIndex}
-              data-die-value={item.die.value}
-              data-die-held={true}
-              data-die-held-layout={wasHeld}
-              className="absolute will-change-transform"
-              style={{
-                left: '50%',
-                top: '50%',
-                transform: frozenTransform,
-              }}
-            >
-              <HorsesDie
-                value={item.die.value}
-                isHeld={wasHeld}
-                isRolling={false}
-                canToggle={false}
-                onToggle={() => onToggleHold?.(item.originalIndex)}
-                size={effectiveSize}
-                showWildHighlight={showWildHighlight && !isSCC}
-                isSCCDie={isSCCDie}
-                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
-                isCargoDie={isCargoDie(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
   }
   
   // CRITICAL: During fly-in animation, use the held mask from BEFORE the roll to determine positions.
@@ -1139,9 +1081,9 @@ export function DiceTableLayout({
         .filter((item) => !!heldMaskBeforeComplete[item.originalIndex])
         .map((item) => item.originalIndex)
     : [];
-  const mainBranch = orderedDice.length === 0
+  const mainBranch = hasNoOrderedDice
     ? "null/unmounted path"
-    : allHeld && !isAnimatingFlyIn && rollKeyProcessed
+    : shouldUseFreezePresentation
       ? "freeze path"
       : "held row path";
   const frameSnapshot = {
@@ -1235,6 +1177,70 @@ export function DiceTableLayout({
 
     frame3LoggedRollKeyRef.current = rollKey;
   }, [frameSnapshot, isAnimatingFlyIn, rollKeyProcessed, rollKey, cacheKey]);
+
+  if (showRollingMessage) {
+    return (
+      <div className="relative flex items-center justify-center" style={{ width: '200px', height: '120px' }}>
+        <div className="text-center">
+          <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+            You are rolling
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasNoOrderedDice) {
+    return <div className="relative" style={{ width: '200px', height: '120px' }} />;
+  }
+
+  if (shouldUseFreezePresentation) {
+    return (
+      <div ref={containerRef} className="relative" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
+        {orderedDice.map((item) => {
+          const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
+          if (!frozenTransform) return null;
+
+          const sccDie = item.die as SCCDieType;
+          const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
+
+          const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
+          const wasHeld = heldMask
+            ? !!heldMask[item.originalIndex]
+            : stableHeldSlotByDieRef.current.has(item.originalIndex);
+
+          return (
+            <div
+              key={`die-${item.originalIndex}`}
+              data-die-idx={item.originalIndex}
+              data-die-value={item.die.value}
+              data-die-held={true}
+              data-die-held-layout={wasHeld}
+              className="absolute will-change-transform"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: frozenTransform,
+              }}
+            >
+              <HorsesDie
+                value={item.die.value}
+                isHeld={wasHeld}
+                isRolling={false}
+                canToggle={false}
+                onToggle={() => onToggleHold?.(item.originalIndex)}
+                size={effectiveSize}
+                showWildHighlight={showWildHighlight && !isSCC}
+                isSCCDie={isSCCDie}
+                isUnusedDie={isDieUnused(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
+                isCargoDie={isCargoDie(item.die, isSCC, isQualified, true, orderedDice.map(d => d.die))}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
