@@ -32,7 +32,7 @@ import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
-import { DiceTraceHUD } from "./DiceTraceHUD";
+import { DiceTraceHUD, pushDiceTrace, isDiceTraceRecording } from "./DiceTraceHUD";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -538,6 +538,11 @@ export const MobileGameTable = ({
     turnPlayerId: string | null;
     node: any;
   } | null>(null);
+
+  // Parent-level felt block tracing: track previous branch to detect switches
+  const prevFeltBranchRef = useRef<string>("none");
+  const prevFeltRollKeyRef = useRef<string | number | undefined>(undefined);
+  const feltBranchCountRef = useRef(0);
 
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
@@ -4281,6 +4286,84 @@ export const MobileGameTable = ({
           // Don't show dice when game phase is complete or waiting
           // EXCEPTION: If we're in a completed turn hold period, show the dice
           const isInHoldPeriod = !!(horsesController.feltDice as any)?.isCompletedHold;
+
+          const diceArray = (horsesController.feltDice as any)?.dice as any[] | undefined;
+          const currentRollKey = (horsesController.feltDice as any)?.rollKey;
+          const feltPlayerId = (horsesController.feltDice as any)?.playerId;
+          const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
+          const hasRolled = diceArray?.some(d => d?.value > 0) ?? false;
+          const showResult = !horsesController.feltDice && !!horsesController.currentTurnPlayerId && !!horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId);
+          const showDice = !!horsesController.feltDice && !!diceArray?.length;
+
+          // --- PARENT-LEVEL BRANCH TRACING ---
+          // Determine which branch we're about to take
+          let feltBranch = "unknown";
+          let feltBranchDetail: Record<string, unknown> = {};
+          if ((horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') && !isInHoldPeriod) {
+            const cached = getCachedFeltNode();
+            feltBranch = cached ? "gamePhase:cached" : "gamePhase:placeholder";
+            feltBranchDetail = { gamePhase: horsesController.gamePhase, isInHoldPeriod, hasCached: !!cached };
+          } else if (horsesController.isMyTurn && !hasRolled) {
+            feltBranch = "myTurn:preRoll";
+            feltBranchDetail = { isMyTurn: true, hasRolled: false };
+          } else if (!horsesController.isMyTurn && !hasRolled && !showResult) {
+            const cached = getCachedFeltNode();
+            feltBranch = cached ? "observer:noRoll:cached" : "observer:noRoll:placeholder";
+            feltBranchDetail = { isMyTurn: false, hasRolled, showResult, hasCached: !!cached };
+          } else if (showResult) {
+            feltBranch = "result";
+            feltBranchDetail = { showResult: true, feltDice: !!horsesController.feltDice };
+          } else if (horsesController.isMyTurn) {
+            feltBranch = "myTurn:rolling";
+            feltBranchDetail = { isMyTurn: true, hasRolled: true };
+          } else {
+            feltBranch = "observer:diceLayout";
+            feltBranchDetail = {
+              showDice,
+              feltPlayerId,
+              currentTurnPlayerId: horsesController.currentTurnPlayerId,
+              diceTableKey: feltPlayerId ?? horsesController.currentTurnPlayerId ?? "no-turn",
+              rollsRemaining,
+              diceIsHeld: diceArray?.map(d => !!d?.isHeld),
+              heldMaskPresent: !!(horsesController.feltDice as any)?.heldMaskBeforeComplete,
+            };
+          }
+
+          // Log when branch changes OR rollKey changes
+          const prevBranch = prevFeltBranchRef.current;
+          const prevRollKey = prevFeltRollKeyRef.current;
+          const branchChanged = feltBranch !== prevBranch;
+          const rollKeyChanged = currentRollKey !== prevRollKey;
+          feltBranchCountRef.current++;
+
+          if ((branchChanged || rollKeyChanged) && isDiceTraceRecording()) {
+            pushDiceTrace("FeltBlock:branchDecision", {
+              rollKey: currentRollKey,
+              cacheKey: String(feltPlayerId ?? horsesController.currentTurnPlayerId ?? ""),
+              extra: {
+                feltBranch,
+                prevBranch,
+                branchChanged,
+                rollKeyChanged,
+                prevRollKey,
+                currentRollKey,
+                feltDicePresent: !!horsesController.feltDice,
+                feltPlayerId,
+                currentTurnPlayerId: horsesController.currentTurnPlayerId,
+                showDice,
+                showResult,
+                hasRolled,
+                isMyTurn: horsesController.isMyTurn,
+                gamePhase: horsesController.gamePhase,
+                isInHoldPeriod,
+                renderCount: feltBranchCountRef.current,
+                ...feltBranchDetail,
+              },
+            });
+          }
+          prevFeltBranchRef.current = feltBranch;
+          prevFeltRollKeyRef.current = currentRollKey;
+
           if ((horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') && !isInHoldPeriod) {
             console.log(`${logPrefix} STICKY: gamePhase=${horsesController.gamePhase}, isInHoldPeriod=${isInHoldPeriod}`);
 
@@ -4309,14 +4392,9 @@ export const MobileGameTable = ({
           const isCurrentTurnWinning = horsesController.currentTurnPlayerId 
             && horsesController.currentlyWinningPlayerIds.includes(horsesController.currentTurnPlayerId);
 
-          const diceArray = (horsesController.feltDice as any)?.dice as any[] | undefined;
           const fallbackDice = Array.from({ length: 5 }, () => ({ value: 0, isHeld: false }));
-
-          const showResult = !horsesController.feltDice && !!currentTurnResult;
-          const showDice = !!horsesController.feltDice && !!diceArray?.length;
           
           // Check if dice have been rolled (at least one die has a value > 0)
-          const hasRolled = diceArray?.some(d => d?.value > 0) ?? false;
           
           console.log(`${logPrefix} feltDice=${!!horsesController.feltDice}, diceArray=${diceArray?.map(d => d?.value)}, hasRolled=${hasRolled}, showResult=${showResult}, showDice=${showDice}, isMyTurn=${horsesController.isMyTurn}`);
           
@@ -4443,7 +4521,7 @@ export const MobileGameTable = ({
           if (!feltBlockMounted) {
             setTimeout(() => setFeltBlockMounted(true), 0);
           }
-          const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
+          // rollsRemaining already declared above for tracing
 
           return (
             <div
