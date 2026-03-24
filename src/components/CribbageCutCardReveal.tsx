@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { logDebugEvent } from '@/lib/debugEventLogger';
+import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface CribbageCutCardRevealProps {
   card: CribbageCard | null;
