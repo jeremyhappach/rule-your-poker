@@ -4521,7 +4521,7 @@ export const MobileGameTable = ({
           if (!feltBlockMounted) {
             setTimeout(() => setFeltBlockMounted(true), 0);
           }
-          const rollsRemainingForLayout = rollsRemaining;
+          // rollsRemaining already declared above for tracing
 
           return (
             <div
