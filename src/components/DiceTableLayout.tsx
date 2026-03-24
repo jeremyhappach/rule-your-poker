@@ -1053,8 +1053,10 @@ export function DiceTableLayout({
 
     // For observers: if die has a registered slot, treat as held for caching purposes
     const registryHeldPos = getStableHeldPos(item.originalIndex);
-    const effectivelyHeld = usePreRollLayout
-      ? (!!registryHeldPos || preRollHeld)
+    // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
+    // the mask. The registry can contain stale entries that would incorrectly widen the held row.
+    const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+      ? preRollHeld
       : (item.die.isHeld || !!registryHeldPos);
 
     if (effectivelyHeld) {
