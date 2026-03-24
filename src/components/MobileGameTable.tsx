@@ -4521,7 +4521,7 @@ export const MobileGameTable = ({
           if (!feltBlockMounted) {
             setTimeout(() => setFeltBlockMounted(true), 0);
           }
-          const rollsRemaining = (horsesController.feltDice as any)?.rollsRemaining as number | undefined;
+          const rollsRemainingForLayout = rollsRemaining;
 
           return (
             <div
