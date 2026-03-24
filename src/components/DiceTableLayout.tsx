@@ -965,6 +965,21 @@ export function DiceTableLayout({
     pendingReleaseCountRef.current = new Map();
   }
 
+  // CRITICAL FIX: When in pre-roll layout mode, purge any registry entries that don't
+  // match heldMaskBeforeComplete. The registry can contain stale entries from a previous
+  // roll (e.g., die was held then unheld, but the unhold didn't propagate to observer
+  // before rollKey changed). Without this purge, the stale entry widens the held row
+  // for one frame, causing the left-justify flash.
+  if (usePreRollLayout && Array.isArray(heldMaskBeforeComplete)) {
+    const purged: number[] = [];
+    stableHeldSlotByDieRef.current.forEach((_, dieIdx) => {
+      if (!heldMaskBeforeComplete[dieIdx]) {
+        purged.push(dieIdx);
+      }
+    });
+    purged.forEach(dieIdx => stableHeldSlotByDieRef.current.delete(dieIdx));
+  }
+
   // --- AUTHORITATIVE HELD ORDER REGISTRY ---
   // Tracks the order in which dice were held (monotonic counter).
   // Used for BOTH roller and observer to provide:
@@ -1038,8 +1053,10 @@ export function DiceTableLayout({
 
     // For observers: if die has a registered slot, treat as held for caching purposes
     const registryHeldPos = getStableHeldPos(item.originalIndex);
-    const effectivelyHeld = usePreRollLayout
-      ? (!!registryHeldPos || preRollHeld)
+    // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
+    // the mask. The registry can contain stale entries that would incorrectly widen the held row.
+    const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+      ? preRollHeld
       : (item.die.isHeld || !!registryHeldPos);
 
     if (effectivelyHeld) {
@@ -1284,8 +1301,10 @@ export function DiceTableLayout({
 
         // Observer: registry is authoritative (prevents transient hop to scatter)
         // Roller: actuallyHeld is authoritative (immediate toggle feedback)
+        // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
+        // the mask — never the registry. Stale registry entries cause transient held-row widening.
         const effectivelyHeld = isObserver
-          ? (usePreRollLayout ? (!!registryHeldPos || preRollHeld) : (!!registryHeldPos || actuallyHeld))
+          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : (!!registryHeldPos || actuallyHeld))
           : actuallyHeld;
 
         let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
