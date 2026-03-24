@@ -539,6 +539,11 @@ export const MobileGameTable = ({
     node: any;
   } | null>(null);
 
+  // Parent-level felt block tracing: track previous branch to detect switches
+  const prevFeltBranchRef = useRef<string>("none");
+  const prevFeltRollKeyRef = useRef<string | number | undefined>(undefined);
+  const feltBranchCountRef = useRef(0);
+
   // Buck's on you animation state
   const [showBucksOnYou, setShowBucksOnYou] = useState(false);
   const lastBuckPositionRef = useRef<number | null>(null);
