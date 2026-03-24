@@ -965,6 +965,21 @@ export function DiceTableLayout({
     pendingReleaseCountRef.current = new Map();
   }
 
+  // CRITICAL FIX: When in pre-roll layout mode, purge any registry entries that don't
+  // match heldMaskBeforeComplete. The registry can contain stale entries from a previous
+  // roll (e.g., die was held then unheld, but the unhold didn't propagate to observer
+  // before rollKey changed). Without this purge, the stale entry widens the held row
+  // for one frame, causing the left-justify flash.
+  if (usePreRollLayout && Array.isArray(heldMaskBeforeComplete)) {
+    const purged: number[] = [];
+    stableHeldSlotByDieRef.current.forEach((_, dieIdx) => {
+      if (!heldMaskBeforeComplete[dieIdx]) {
+        purged.push(dieIdx);
+      }
+    });
+    purged.forEach(dieIdx => stableHeldSlotByDieRef.current.delete(dieIdx));
+  }
+
   // --- AUTHORITATIVE HELD ORDER REGISTRY ---
   // Tracks the order in which dice were held (monotonic counter).
   // Used for BOTH roller and observer to provide:
