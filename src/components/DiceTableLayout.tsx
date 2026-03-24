@@ -15,6 +15,7 @@ import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorde
 // for the same rollKey after a remount (the exact bug you captured).
 const lastSeenRollKeyByCacheKey = new Map<string, string | number>();
 const lastFlyInRollKeyByCacheKey = new Map<string, string | number>();
+let diceTableLayoutInstanceCounter = 0;
 
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
@@ -252,6 +253,12 @@ export function DiceTableLayout({
   const [animatingDiceIndices, setAnimatingDiceIndices] = useState<number[]>([]);
   const prevRollKeyRef = useRef<string | number | undefined>(undefined);
   const lastFlyInRollKeyRef = useRef<string | number | undefined>(undefined);
+  const instanceIdRef = useRef(++diceTableLayoutInstanceCounter);
+  const lastStableFrameSnapshotRef = useRef<Record<string, unknown> | null>(null);
+  const prevRenderTraceRollKeyRef = useRef<string | number | undefined>(rollKey);
+  const activeTraceRollKeyRef = useRef<string | number | undefined>(undefined);
+  const frame2LoggedRollKeyRef = useRef<string | number | undefined>(undefined);
+  const frame3LoggedRollKeyRef = useRef<string | number | undefined>(undefined);
   const [flyInRunId, setFlyInRunId] = useState(0);
   const animationCompleteTimeoutRef = useRef<number | null>(null);
 
@@ -442,6 +449,32 @@ export function DiceTableLayout({
     },
     []
   );
+
+  useEffect(() => {
+    if (isDiceTraceRecording()) {
+      pushDiceTrace("DiceTableLayout:lifecycle", {
+        rollKey,
+        cacheKey: String(cacheKey ?? ""),
+        extra: {
+          instanceId: instanceIdRef.current,
+          mounted: true,
+        },
+      });
+    }
+
+    return () => {
+      if (isDiceTraceRecording()) {
+        pushDiceTrace("DiceTableLayout:lifecycle", {
+          rollKey,
+          cacheKey: String(cacheKey ?? ""),
+          extra: {
+            instanceId: instanceIdRef.current,
+            unmounted: true,
+          },
+        });
+      }
+    };
+  }, []);
 
   // Detect when a new roll starts (rollKey changes) and trigger fly-in animation
 
@@ -969,23 +1002,9 @@ export function DiceTableLayout({
     if (pos) heldPositionByOriginalIndex.set(item.originalIndex, pos);
   });
   
-  // Additionally, ensure dice that are actually held (by current isHeld state) also have positions
-  // This prevents held dice from reverting to scatter when heldMaskBeforeComplete differs from actual state
-  if (!usePreRollLayout) {
-    // Not in animation - already handled above
-  } else {
-    // During animation: also compute positions for dice that are ACTUALLY held now (not just pre-roll held)
-    // so they don't flash to scatter positions if they were held before the roll started
-    const actualHeldDice = orderedDice.filter((d) => d.die.isHeld);
-    const actualHeldPositions = getHeldPositions(actualHeldDice.length, dieWidth, gap);
-    actualHeldDice.forEach((item, displayIdx) => {
-      // Only add if not already in the map (pre-roll held dice take precedence for their positions)
-      if (!heldPositionByOriginalIndex.has(item.originalIndex)) {
-        const pos = actualHeldPositions[displayIdx];
-        if (pos) heldPositionByOriginalIndex.set(item.originalIndex, pos);
-      }
-    });
-  }
+  // IMPORTANT: In pre-roll layout we must stay fully mask/registry-authoritative.
+  // Backfilling held positions from actual current isHeld reintroduces a transient 5-die held row
+  // on roll 3 frame 1, because game logic already marked all dice held before the animation starts.
 
   if (stableHeldRollKeyRef.current !== rollKey) {
     stableHeldRollKeyRef.current = rollKey;
@@ -1073,10 +1092,13 @@ export function DiceTableLayout({
       stableScatterRollKeyRef.current === rollKey
         ? stableScatterByDieRef.current.get(item.originalIndex)
         : undefined;
+    const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
 
     // For observers: if die has a registered slot, treat as held for caching purposes
     const registryHeldPos = getStableHeldPos(item.originalIndex);
-    const effectivelyHeld = item.die.isHeld || !!registryHeldPos;
+    const effectivelyHeld = usePreRollLayout
+      ? (!!registryHeldPos || preRollHeld)
+      : (item.die.isHeld || !!registryHeldPos);
 
     if (effectivelyHeld) {
       const stableHeldPos = registryHeldPos;
@@ -1085,10 +1107,12 @@ export function DiceTableLayout({
         layoutHeldPos ??
         lastHeldTransformByDieRef.current.get(item.originalIndex) ??
         (() => {
-          const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
-          const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+          const heldSourceDice = usePreRollLayout
+            ? layoutHeldDice
+            : orderedDice.filter((d) => d.die.isHeld);
+          const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
           if (heldIdx < 0) return undefined;
-          return getHeldPositions(actuallyHeldDice.length, dieWidth, gap)[heldIdx];
+          return getHeldPositions(heldSourceDice.length, dieWidth, gap)[heldIdx];
         })();
 
       if (committedHeldPos) {
@@ -1108,6 +1132,109 @@ export function DiceTableLayout({
       lastHeldTransformByDieRef.current.delete(item.originalIndex);
     }
   });
+
+  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+  const preRollHeldIndices = Array.isArray(heldMaskBeforeComplete)
+    ? orderedDice
+        .filter((item) => !!heldMaskBeforeComplete[item.originalIndex])
+        .map((item) => item.originalIndex)
+    : [];
+  const mainBranch = orderedDice.length === 0
+    ? "null/unmounted path"
+    : allHeld && !isAnimatingFlyIn && rollKeyProcessed
+      ? "freeze path"
+      : "held row path";
+  const frameSnapshot = {
+    instanceId: instanceIdRef.current,
+    rollKey,
+    rollKeyProcessed,
+    cacheKey: String(cacheKey ?? ""),
+    isAnimatingFlyIn,
+    allHeld,
+    heldMaskPresent: Array.isArray(heldMaskBeforeComplete),
+    stableHeldSlotRegistrySize: stableHeldRegistryEntries.length,
+    stableHeldSlotRegistry: stableHeldRegistryEntries,
+    heldDiceCountUsedForLayout: layoutHeldDice.length,
+    heldPositionsLength: heldPositions.length,
+    heldPositionsX: heldPositions.map((pos) => pos.x),
+    layoutHeldIndices: layoutHeldDice.map((item) => item.originalIndex),
+    layoutUnheldIndices: layoutUnheldDice.map((item) => item.originalIndex),
+    preRollHeldIndices,
+    orderedDiceLength: orderedDice.length,
+    usePreRollLayout,
+    mainBranch,
+  };
+
+  if (isDiceTraceRecording()) {
+    const rollKeyChangedThisRender = rollKey !== prevRenderTraceRollKeyRef.current;
+
+    if (rollKeyChangedThisRender) {
+      if (lastStableFrameSnapshotRef.current) {
+        pushDiceTrace("DiceTableLayout:rollFrame", {
+          rollKey: prevRenderTraceRollKeyRef.current,
+          cacheKey: String(cacheKey ?? ""),
+          extra: {
+            frame: "frame0:last-stable-pre-roll",
+            ...lastStableFrameSnapshotRef.current,
+          },
+        });
+      }
+
+      pushDiceTrace("DiceTableLayout:rollFrame", {
+        rollKey,
+        cacheKey: String(cacheKey ?? ""),
+        extra: {
+          frame: "frame1:first-render-after-rollKey-change",
+          ...frameSnapshot,
+        },
+      });
+
+      activeTraceRollKeyRef.current = rollKey;
+      frame2LoggedRollKeyRef.current = undefined;
+      frame3LoggedRollKeyRef.current = undefined;
+    }
+
+    if (!isAnimatingFlyIn && !allHeld) {
+      lastStableFrameSnapshotRef.current = frameSnapshot;
+    }
+
+    prevRenderTraceRollKeyRef.current = rollKey;
+  }
+
+  useLayoutEffect(() => {
+    if (!isDiceTraceRecording()) return;
+    if (activeTraceRollKeyRef.current !== rollKey) return;
+    if (frame2LoggedRollKeyRef.current === rollKey) return;
+
+    pushDiceTrace("DiceTableLayout:rollFrame", {
+      rollKey,
+      cacheKey: String(cacheKey ?? ""),
+      extra: {
+        frame: "frame2:first-post-layout-effect-render",
+        ...frameSnapshot,
+      },
+    });
+
+    frame2LoggedRollKeyRef.current = rollKey;
+  }, [frameSnapshot, rollKey, cacheKey]);
+
+  useEffect(() => {
+    if (!isDiceTraceRecording()) return;
+    if (activeTraceRollKeyRef.current !== rollKey) return;
+    if (frame3LoggedRollKeyRef.current === rollKey) return;
+    if (!isAnimatingFlyIn && !rollKeyProcessed) return;
+
+    pushDiceTrace("DiceTableLayout:rollFrame", {
+      rollKey,
+      cacheKey: String(cacheKey ?? ""),
+      extra: {
+        frame: "frame3:first-stable-animation-render",
+        ...frameSnapshot,
+      },
+    });
+
+    frame3LoggedRollKeyRef.current = rollKey;
+  }, [frameSnapshot, isAnimatingFlyIn, rollKeyProcessed, rollKey, cacheKey]);
 
   return (
     <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
@@ -1143,6 +1270,7 @@ export function DiceTableLayout({
         // If a die has a registered slot, it renders in the held row regardless of transient isHeld flips.
         // For roller (non-observer): use actual die.isHeld for immediate feedback.
         const actuallyHeld = item.die.isHeld;
+        const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
         const registryHeldPos = getStableHeldPos(item.originalIndex);
         const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
         const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
@@ -1150,14 +1278,18 @@ export function DiceTableLayout({
 
         // Observer: registry is authoritative (prevents transient hop to scatter)
         // Roller: actuallyHeld is authoritative (immediate toggle feedback)
-        const effectivelyHeld = isObserver ? (!!registryHeldPos || actuallyHeld) : actuallyHeld;
+        const effectivelyHeld = isObserver
+          ? (usePreRollLayout ? (!!registryHeldPos || preRollHeld) : (!!registryHeldPos || actuallyHeld))
+          : actuallyHeld;
 
         let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
         if (effectivelyHeld && !heldPos) {
-          const actuallyHeldDice = orderedDice.filter((d) => d.die.isHeld);
-          const heldIdx = actuallyHeldDice.findIndex((d) => d.originalIndex === item.originalIndex);
+          const heldSourceDice = usePreRollLayout
+            ? layoutHeldDice
+            : orderedDice.filter((d) => d.die.isHeld);
+          const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
           if (heldIdx >= 0) {
-            const allHeldPositions = getHeldPositions(actuallyHeldDice.length, dieWidth, gap);
+            const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
             heldPos = allHeldPositions[heldIdx];
           }
         }
@@ -1237,6 +1369,9 @@ export function DiceTableLayout({
               layoutScatterPosPresent: !!layoutScatterPos,
               stablePosPresent: !!stablePos,
               cachedScatterPosPresent: !!cachedScatterPos,
+              preRollHeld,
+              usePreRollLayout,
+              stableHeldRegistrySize: stableHeldRegistryEntries.length,
               allHeld,
               transformOwner,
               transform,
