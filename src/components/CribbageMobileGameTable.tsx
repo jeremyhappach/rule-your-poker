@@ -1135,6 +1135,7 @@ export const CribbageMobileGameTable = ({
       .update({ dealer_selection_state: null })
       .eq('id', gameId);
 
+    syncHandle.receiveAuthoritativeUpdate(newState);
     setCribbageState(newState);
   }, [players, anteAmount, roundId, isHost, gameId]);
 
