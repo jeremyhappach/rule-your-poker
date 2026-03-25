@@ -2563,6 +2563,7 @@ export const CribbageMobileGameTable = ({
               );
             })}
           </div>
+          )}
         </div>
       </div>
 
