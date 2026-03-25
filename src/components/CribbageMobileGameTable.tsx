@@ -982,7 +982,9 @@ export const CribbageMobileGameTable = ({
         console.log('[CRIBBAGE] Using existing state from DB');
         hasInitializedRef.current = true;
         setInitialLoadComplete(true);
-        setCribbageState(roundData.cribbage_state as unknown as CribbageState);
+        const loadedState = roundData.cribbage_state as unknown as CribbageState;
+        syncHandle.receiveAuthoritativeUpdate(loadedState);
+        setCribbageState(loadedState);
         return;
       }
 
