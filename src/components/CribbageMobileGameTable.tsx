@@ -2474,12 +2474,8 @@ export const CribbageMobileGameTable = ({
             )}
           </div>
 
-          {/* Opponent overlay (not clipped by the circle) */}
-          {/* Position opponents based on count: 
-              - 2 player: 1 opponent at upper-left
-              - 3 player: 2 opponents at upper-left and upper-right
-              - 4 player: 3 opponents at upper-left, upper-right, lower-right
-          */}
+          {/* Opponent overlay — suppressed during hand transition to prevent stale card counts */}
+          {!handTransitionFrozen && (
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponents.map((opponent, index) => {
               const oppState = cribbageState.playerStates[opponent.id];
