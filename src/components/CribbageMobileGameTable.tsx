@@ -2470,11 +2470,10 @@ export const CribbageMobileGameTable = ({
             )}
           </div>
 
-          {/* Opponent overlay — suppressed during hand transition to prevent stale card counts */}
-          {!handTransitionFrozen && (
+          {/* Opponent overlay — reads from sync presentation state */}
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponents.map((opponent, index) => {
-              const oppState = cribbageState.playerStates[opponent.id];
+              const oppState = viewState.playerStates[opponent.id];
               const isDealerPlayer = isCribDealer(opponent.id);
               const totalOpponents = opponents.length;
               
