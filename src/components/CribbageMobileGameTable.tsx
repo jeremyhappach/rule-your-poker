@@ -254,6 +254,11 @@ export const CribbageMobileGameTable = ({
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  // STRUCTURAL FIX: Freeze felt content rendering during hand transitions.
+  // When roundId changes, cribbageState still holds OLD hand data to avoid React unmount.
+  // This flag prevents stale cards/cut-card/played-cards from rendering on the felt.
+  // It is cleared ONLY when the first new-hand snapshot is accepted.
+  const [handTransitionFrozen, setHandTransitionFrozen] = useState(false);
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
@@ -1276,16 +1281,25 @@ export const CribbageMobileGameTable = ({
   // NOTE: Do NOT null out cribbageState here — that causes a full table unmount (#4).
   // Instead, keep the old state visible until the new hand's state arrives via realtime.
   const prevRoundIdRef = useRef<string>(currentRoundId);
+  // Track the roundId that cribbageState belongs to, so we can detect stale-hand renders.
+  const cribbageStateRoundIdRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
     console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
+    logCribbageDebug(debugCtx, 'hand_transition:roundId_change', {
+      prevRoundId: oldId?.slice(0, 8),
+      newRoundId: currentRoundId.slice(0, 8),
+      hadCribbageState: cribbageState !== null,
+    });
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen
     syncHandle.reset(null);
-    // Keep cribbageState populated to avoid table unmount; it will be overwritten
-    // when the realtime subscription delivers the new hand's state.
+    // Mark that cribbageState is now stale (belongs to old roundId).
+    // Keep cribbageState populated to avoid React unmount, but the render will
+    // check handTransitionFrozen to suppress stale felt content.
     setIsTransitioning(true);
+    setHandTransitionFrozen(true);
   }, [currentRoundId]);
 
   // Realtime subscription with polling fallback
@@ -1425,6 +1439,16 @@ export const CribbageMobileGameTable = ({
     if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
       // New hand state has arrived - clear transitioning immediately
       setIsTransitioning(false);
+      // Also unfreeze the felt content — new-hand data is now in cribbageState
+      if (handTransitionFrozen) {
+        logCribbageDebug(debugCtx, 'hand_transition:freeze_lifted', {
+          newHandKey: currentHandKey.slice(0, 30),
+          roundId: currentRoundId.slice(0, 8),
+        });
+        setHandTransitionFrozen(false);
+        // Tag cribbageState as belonging to the new roundId
+        cribbageStateRoundIdRef.current = currentRoundId;
+      }
     }
     
     lastHandKeyRef.current = currentHandKey;
@@ -2370,39 +2394,50 @@ export const CribbageMobileGameTable = ({
             )}
 
             {/* Turn Spotlight - z-5 to stay behind pegboard and count */}
-            <CribbageTurnSpotlight
-              currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
-              currentPlayerId={currentPlayerId}
-              isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-              totalPlayers={players.length}
-              opponentIds={opponents.map(o => o.id)}
-            />
+            {!handTransitionFrozen && (
+              <CribbageTurnSpotlight
+                currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
+                currentPlayerId={currentPlayerId}
+                isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                totalPlayers={players.length}
+                opponentIds={opponents.map(o => o.id)}
+              />
+            )}
 
             {/* Game Title - Top center of felt */}
             <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
               <h2 className="text-sm font-bold text-white drop-shadow-lg">
                 ${anteAmount} CRIBBAGE
               </h2>
-              <p className="text-[9px] text-white/70">
-                {cribbageState.pointsToWin} to win
-                {cribbageState.skunkEnabled && ` • Skunk <${cribbageState.skunkThreshold} (2x)`}
-                {cribbageState.doubleSkunkEnabled && ` • Double <${cribbageState.doubleSkunkThreshold} (3x)`}
-              </p>
+              {!handTransitionFrozen && (
+                <p className="text-[9px] text-white/70">
+                  {cribbageState.pointsToWin} to win
+                  {cribbageState.skunkEnabled && ` • Skunk <${cribbageState.skunkThreshold} (2x)`}
+                  {cribbageState.doubleSkunkEnabled && ` • Double <${cribbageState.doubleSkunkThreshold} (3x)`}
+                </p>
+              )}
+              {handTransitionFrozen && (
+                <p className="text-[9px] text-white/70 animate-pulse">
+                  Dealing next hand…
+                </p>
+              )}
             </div>
 
-            {/* Standard Felt Content (hidden during counting) */}
-            <CribbageFeltContent
-              cribbageState={cribbageState}
-              players={players}
-              currentPlayerId={currentPlayerId}
-              sequenceStartIndex={sequenceStartIndex}
-              getPlayerUsername={getPlayerUsername}
-              cardBackColors={cardBackColors}
-              countingScoreOverrides={countingScoreOverrides ?? undefined}
-              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
-              thirtyOneDelayActive={thirtyOneDelayActive}
-              handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
-            />
+            {/* Standard Felt Content — SUPPRESSED during hand transition freeze to prevent stale cards */}
+            {!handTransitionFrozen && (
+              <CribbageFeltContent
+                cribbageState={cribbageState}
+                players={players}
+                currentPlayerId={currentPlayerId}
+                sequenceStartIndex={sequenceStartIndex}
+                getPlayerUsername={getPlayerUsername}
+                cardBackColors={cardBackColors}
+                countingScoreOverrides={countingScoreOverrides ?? undefined}
+                countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+                thirtyOneDelayActive={thirtyOneDelayActive}
+                handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
+              />
+            )}
 
             {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
             {/* Show counting when either: 
@@ -2439,12 +2474,8 @@ export const CribbageMobileGameTable = ({
             )}
           </div>
 
-          {/* Opponent overlay (not clipped by the circle) */}
-          {/* Position opponents based on count: 
-              - 2 player: 1 opponent at upper-left
-              - 3 player: 2 opponents at upper-left and upper-right
-              - 4 player: 3 opponents at upper-left, upper-right, lower-right
-          */}
+          {/* Opponent overlay — suppressed during hand transition to prevent stale card counts */}
+          {!handTransitionFrozen && (
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponents.map((opponent, index) => {
               const oppState = cribbageState.playerStates[opponent.id];
@@ -2532,6 +2563,7 @@ export const CribbageMobileGameTable = ({
               );
             })}
           </div>
+          )}
         </div>
       </div>
 
@@ -2541,6 +2573,15 @@ export const CribbageMobileGameTable = ({
           {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
           <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
+            // During hand transition freeze, show a simple "dealing" message instead of stale phase
+            if (handTransitionFrozen) {
+              return (
+                <div className="w-full bg-emerald-800/90 rounded-md px-3 py-1.5">
+                  <p className="text-white/90 font-medium text-[11px] text-center animate-pulse">Dealing next hand…</p>
+                </div>
+              );
+            }
+
             const isCountingAnimActive = !!countingStateSnapshot;
             const countingOutroActive = isCountingAnimActive && countingDelayActive;
             const effectivePhase = isCountingAnimActive
