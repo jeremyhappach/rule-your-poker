@@ -2563,25 +2563,15 @@ export const CribbageMobileGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-          {/* Dealer Announcements Area - FIXED HEIGHT to prevent layout shift */}
-          {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
+          {/* Dealer Announcements Area — reads from sync presentation state */}
           <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
-            // During hand transition freeze, show a simple "dealing" message instead of stale phase
-            if (handTransitionFrozen) {
-              return (
-                <div className="w-full bg-emerald-800/90 rounded-md px-3 py-1.5">
-                  <p className="text-white/90 font-medium text-[11px] text-center animate-pulse">Dealing next hand…</p>
-                </div>
-              );
-            }
-
             const isCountingAnimActive = !!countingStateSnapshot;
             const countingOutroActive = isCountingAnimActive && countingDelayActive;
             const effectivePhase = isCountingAnimActive
               ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
-              : cribbageState.phase;
-            const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
+              : viewState.phase;
+            const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
           
           // Hide banner during skunk overlay phase or complete phase
           if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
