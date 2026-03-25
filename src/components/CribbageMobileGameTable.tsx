@@ -1716,7 +1716,7 @@ export const CribbageMobileGameTable = ({
       // Verify it's still our turn with fresh state
       if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
         console.warn('[CRIBBAGE] Stale state detected - not our turn in fresh state');
-        // Update local state to match fresh state
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Wait for your turn');
         return;
@@ -1726,6 +1726,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState || cardIndex >= freshPlayerState.hand.length) {
         console.warn('[CRIBBAGE] Card index invalid in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Card no longer available');
         return;
