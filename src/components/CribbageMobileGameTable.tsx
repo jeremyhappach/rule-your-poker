@@ -1660,6 +1660,7 @@ export const CribbageMobileGameTable = ({
       // Verify we're still in discarding phase
       if (freshState.phase !== 'discarding') {
         console.warn('[CRIBBAGE] Stale state detected - no longer in discarding phase');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1668,6 +1669,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState || freshPlayerState.discardedToCrib.length > 0) {
         console.warn('[CRIBBAGE] Already discarded in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1675,6 +1677,7 @@ export const CribbageMobileGameTable = ({
       // Validate card indices against fresh hand
       if (cardIndices.some(i => i >= freshPlayerState.hand.length)) {
         console.warn('[CRIBBAGE] Card indices invalid in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Cards no longer available');
         return;
