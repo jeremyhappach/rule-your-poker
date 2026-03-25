@@ -1014,6 +1014,7 @@ export const CribbageMobileGameTable = ({
         .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       
+      syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
     };
 
