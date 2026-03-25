@@ -2330,7 +2330,8 @@ export const CribbageMobileGameTable = ({
   // Get opponents for display around the table
   const opponents = players.filter(p => p.user_id !== currentUserId);
   // Use cribbage_state.dealerPlayerId for crib dealer (rotates each hand), not games.dealer_position
-  const isCribDealer = (playerId: string) => cribbageState.dealerPlayerId === playerId;
+  // SINGLE SOURCE OF TRUTH: All render reads come from viewState (sync presentation state)
+  const isCribDealer = (playerId: string) => viewState.dealerPlayerId === playerId;
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Win Sequence Overlays - Portaled above everything */}
