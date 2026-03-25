@@ -254,6 +254,11 @@ export const CribbageMobileGameTable = ({
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  // STRUCTURAL FIX: Freeze felt content rendering during hand transitions.
+  // When roundId changes, cribbageState still holds OLD hand data to avoid React unmount.
+  // This flag prevents stale cards/cut-card/played-cards from rendering on the felt.
+  // It is cleared ONLY when the first new-hand snapshot is accepted.
+  const [handTransitionFrozen, setHandTransitionFrozen] = useState(false);
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
