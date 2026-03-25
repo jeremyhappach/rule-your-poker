@@ -1435,25 +1435,18 @@ export const CribbageMobileGameTable = ({
   // REMOVED: Initial load win trigger - all win sequences now go through counting animation.
   // If a game is rejoined in 'complete' state, the counting animation snapshot logic will handle it.
 
-  // Detect hand transitions to prevent stale card flash
-  // Clear transitioning flag when a valid new hand key arrives
+  // Detect hand transitions — clear transitioning flag when new hand state arrives
   useEffect(() => {
     if (!currentHandKey) return;
     
-    // If hand key changed, we're transitioning to a new hand
     if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
-      // New hand state has arrived - clear transitioning immediately
       setIsTransitioning(false);
-      // Also unfreeze the felt content — new-hand data is now in cribbageState
-      if (handTransitionFrozen) {
-        logCribbageDebug(debugCtx, 'hand_transition:freeze_lifted', {
-          newHandKey: currentHandKey.slice(0, 30),
-          roundId: currentRoundId.slice(0, 8),
-        });
-        setHandTransitionFrozen(false);
-        // Tag cribbageState as belonging to the new roundId
-        cribbageStateRoundIdRef.current = currentRoundId;
-      }
+      cribbageStateRoundIdRef.current = currentRoundId;
+      logCribbageDebug(debugCtx, 'hand_transition:new_hand_arrived', {
+        newHandKey: currentHandKey.slice(0, 30),
+        roundId: currentRoundId.slice(0, 8),
+        viewStateAvailable: viewState !== null,
+      });
     }
     
     lastHandKeyRef.current = currentHandKey;
