@@ -2394,39 +2394,50 @@ export const CribbageMobileGameTable = ({
             )}
 
             {/* Turn Spotlight - z-5 to stay behind pegboard and count */}
-            <CribbageTurnSpotlight
-              currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
-              currentPlayerId={currentPlayerId}
-              isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-              totalPlayers={players.length}
-              opponentIds={opponents.map(o => o.id)}
-            />
+            {!handTransitionFrozen && (
+              <CribbageTurnSpotlight
+                currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
+                currentPlayerId={currentPlayerId}
+                isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                totalPlayers={players.length}
+                opponentIds={opponents.map(o => o.id)}
+              />
+            )}
 
             {/* Game Title - Top center of felt */}
             <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
               <h2 className="text-sm font-bold text-white drop-shadow-lg">
                 ${anteAmount} CRIBBAGE
               </h2>
-              <p className="text-[9px] text-white/70">
-                {cribbageState.pointsToWin} to win
-                {cribbageState.skunkEnabled && ` • Skunk <${cribbageState.skunkThreshold} (2x)`}
-                {cribbageState.doubleSkunkEnabled && ` • Double <${cribbageState.doubleSkunkThreshold} (3x)`}
-              </p>
+              {!handTransitionFrozen && (
+                <p className="text-[9px] text-white/70">
+                  {cribbageState.pointsToWin} to win
+                  {cribbageState.skunkEnabled && ` • Skunk <${cribbageState.skunkThreshold} (2x)`}
+                  {cribbageState.doubleSkunkEnabled && ` • Double <${cribbageState.doubleSkunkThreshold} (3x)`}
+                </p>
+              )}
+              {handTransitionFrozen && (
+                <p className="text-[9px] text-white/70 animate-pulse">
+                  Dealing next hand…
+                </p>
+              )}
             </div>
 
-            {/* Standard Felt Content (hidden during counting) */}
-            <CribbageFeltContent
-              cribbageState={cribbageState}
-              players={players}
-              currentPlayerId={currentPlayerId}
-              sequenceStartIndex={sequenceStartIndex}
-              getPlayerUsername={getPlayerUsername}
-              cardBackColors={cardBackColors}
-              countingScoreOverrides={countingScoreOverrides ?? undefined}
-              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
-              thirtyOneDelayActive={thirtyOneDelayActive}
-              handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
-            />
+            {/* Standard Felt Content — SUPPRESSED during hand transition freeze to prevent stale cards */}
+            {!handTransitionFrozen && (
+              <CribbageFeltContent
+                cribbageState={cribbageState}
+                players={players}
+                currentPlayerId={currentPlayerId}
+                sequenceStartIndex={sequenceStartIndex}
+                getPlayerUsername={getPlayerUsername}
+                cardBackColors={cardBackColors}
+                countingScoreOverrides={countingScoreOverrides ?? undefined}
+                countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+                thirtyOneDelayActive={thirtyOneDelayActive}
+                handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
+              />
+            )}
 
             {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
             {/* Show counting when either: 
