@@ -1276,16 +1276,25 @@ export const CribbageMobileGameTable = ({
   // NOTE: Do NOT null out cribbageState here — that causes a full table unmount (#4).
   // Instead, keep the old state visible until the new hand's state arrives via realtime.
   const prevRoundIdRef = useRef<string>(currentRoundId);
+  // Track the roundId that cribbageState belongs to, so we can detect stale-hand renders.
+  const cribbageStateRoundIdRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
     console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
+    logCribbageDebug(debugCtx, 'hand_transition:roundId_change', {
+      prevRoundId: oldId?.slice(0, 8),
+      newRoundId: currentRoundId.slice(0, 8),
+      hadCribbageState: cribbageState !== null,
+    });
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen
     syncHandle.reset(null);
-    // Keep cribbageState populated to avoid table unmount; it will be overwritten
-    // when the realtime subscription delivers the new hand's state.
+    // Mark that cribbageState is now stale (belongs to old roundId).
+    // Keep cribbageState populated to avoid React unmount, but the render will
+    // check handTransitionFrozen to suppress stale felt content.
     setIsTransitioning(true);
+    setHandTransitionFrozen(true);
   }, [currentRoundId]);
 
   // Realtime subscription with polling fallback
