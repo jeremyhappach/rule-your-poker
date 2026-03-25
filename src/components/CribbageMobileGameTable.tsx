@@ -2573,6 +2573,15 @@ export const CribbageMobileGameTable = ({
           {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
           <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
+            // During hand transition freeze, show a simple "dealing" message instead of stale phase
+            if (handTransitionFrozen) {
+              return (
+                <div className="w-full bg-emerald-800/90 rounded-md px-3 py-1.5">
+                  <p className="text-white/90 font-medium text-[11px] text-center animate-pulse">Dealing next hand…</p>
+                </div>
+              );
+            }
+
             const isCountingAnimActive = !!countingStateSnapshot;
             const countingOutroActive = isCountingAnimActive && countingDelayActive;
             const effectivePhase = isCountingAnimActive
