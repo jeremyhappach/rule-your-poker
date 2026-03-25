@@ -1439,6 +1439,16 @@ export const CribbageMobileGameTable = ({
     if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
       // New hand state has arrived - clear transitioning immediately
       setIsTransitioning(false);
+      // Also unfreeze the felt content — new-hand data is now in cribbageState
+      if (handTransitionFrozen) {
+        logCribbageDebug(debugCtx, 'hand_transition:freeze_lifted', {
+          newHandKey: currentHandKey.slice(0, 30),
+          roundId: currentRoundId.slice(0, 8),
+        });
+        setHandTransitionFrozen(false);
+        // Tag cribbageState as belonging to the new roundId
+        cribbageStateRoundIdRef.current = currentRoundId;
+      }
     }
     
     lastHandKeyRef.current = currentHandKey;
