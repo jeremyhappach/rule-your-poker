@@ -1779,6 +1779,7 @@ export const CribbageMobileGameTable = ({
       // Verify it's still our turn with fresh state
       if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
         console.warn('[CRIBBAGE] Stale state detected for Go - not our turn in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1787,6 +1788,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState) {
         console.warn('[CRIBBAGE] Player state not found in fresh state for Go');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1794,6 +1796,7 @@ export const CribbageMobileGameTable = ({
       // If fresh state shows we CAN play, don't call Go - update local state instead
       if (hasPlayableCard(freshPlayerState.hand, freshState.pegging.currentCount)) {
         console.warn('[CRIBBAGE] Fresh state shows playable card - skipping Go');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
