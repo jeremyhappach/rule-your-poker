@@ -252,13 +252,13 @@ export const CribbageMobileGameTable = ({
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
+  // Render-specific hand key: derived from sync presentation state (what UI actually shows)
+  const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  // STRUCTURAL FIX: Freeze felt content rendering during hand transitions.
-  // When roundId changes, cribbageState still holds OLD hand data to avoid React unmount.
-  // This flag prevents stale cards/cut-card/played-cards from rendering on the felt.
-  // It is cleared ONLY when the first new-hand snapshot is accepted.
-  const [handTransitionFrozen, setHandTransitionFrozen] = useState(false);
+  // ARCHITECTURAL FIX: Render reads viewState (sync presentation state), not raw cribbageState.
+  // During hand transitions, syncHandle.reset(null) sets viewState to null,
+  // naturally preventing stale renders. No manual freeze gate needed.
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
@@ -982,7 +982,9 @@ export const CribbageMobileGameTable = ({
         console.log('[CRIBBAGE] Using existing state from DB');
         hasInitializedRef.current = true;
         setInitialLoadComplete(true);
-        setCribbageState(roundData.cribbage_state as unknown as CribbageState);
+        const loadedState = roundData.cribbage_state as unknown as CribbageState;
+        syncHandle.receiveAuthoritativeUpdate(loadedState);
+        setCribbageState(loadedState);
         return;
       }
 
@@ -1012,6 +1014,7 @@ export const CribbageMobileGameTable = ({
         .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
         .eq('id', roundId);
       
+      syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
     };
 
@@ -1132,6 +1135,7 @@ export const CribbageMobileGameTable = ({
       .update({ dealer_selection_state: null })
       .eq('id', gameId);
 
+    syncHandle.receiveAuthoritativeUpdate(newState);
     setCribbageState(newState);
   }, [players, anteAmount, roundId, isHost, gameId]);
 
@@ -1293,13 +1297,14 @@ export const CribbageMobileGameTable = ({
       newRoundId: currentRoundId.slice(0, 8),
       hadCribbageState: cribbageState !== null,
     });
-    // Reset sync framework — clears authoritative, optimistic, presentation, frozen
+    // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
+    // viewState (presentation) becomes null, which naturally prevents stale rendering.
     syncHandle.reset(null);
-    // Mark that cribbageState is now stale (belongs to old roundId).
-    // Keep cribbageState populated to avoid React unmount, but the render will
-    // check handTransitionFrozen to suppress stale felt content.
     setIsTransitioning(true);
-    setHandTransitionFrozen(true);
+    logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
+      newRoundId: currentRoundId.slice(0, 8),
+      viewStateNulled: true,
+    });
   }, [currentRoundId]);
 
   // Realtime subscription with polling fallback
@@ -1430,25 +1435,18 @@ export const CribbageMobileGameTable = ({
   // REMOVED: Initial load win trigger - all win sequences now go through counting animation.
   // If a game is rejoined in 'complete' state, the counting animation snapshot logic will handle it.
 
-  // Detect hand transitions to prevent stale card flash
-  // Clear transitioning flag when a valid new hand key arrives
+  // Detect hand transitions — clear transitioning flag when new hand state arrives
   useEffect(() => {
     if (!currentHandKey) return;
     
-    // If hand key changed, we're transitioning to a new hand
     if (lastHandKeyRef.current && lastHandKeyRef.current !== currentHandKey) {
-      // New hand state has arrived - clear transitioning immediately
       setIsTransitioning(false);
-      // Also unfreeze the felt content — new-hand data is now in cribbageState
-      if (handTransitionFrozen) {
-        logCribbageDebug(debugCtx, 'hand_transition:freeze_lifted', {
-          newHandKey: currentHandKey.slice(0, 30),
-          roundId: currentRoundId.slice(0, 8),
-        });
-        setHandTransitionFrozen(false);
-        // Tag cribbageState as belonging to the new roundId
-        cribbageStateRoundIdRef.current = currentRoundId;
-      }
+      cribbageStateRoundIdRef.current = currentRoundId;
+      logCribbageDebug(debugCtx, 'hand_transition:new_hand_arrived', {
+        newHandKey: currentHandKey.slice(0, 30),
+        roundId: currentRoundId.slice(0, 8),
+        viewStateAvailable: viewState !== null,
+      });
     }
     
     lastHandKeyRef.current = currentHandKey;
@@ -1662,6 +1660,7 @@ export const CribbageMobileGameTable = ({
       // Verify we're still in discarding phase
       if (freshState.phase !== 'discarding') {
         console.warn('[CRIBBAGE] Stale state detected - no longer in discarding phase');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1670,6 +1669,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState || freshPlayerState.discardedToCrib.length > 0) {
         console.warn('[CRIBBAGE] Already discarded in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1677,6 +1677,7 @@ export const CribbageMobileGameTable = ({
       // Validate card indices against fresh hand
       if (cardIndices.some(i => i >= freshPlayerState.hand.length)) {
         console.warn('[CRIBBAGE] Card indices invalid in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Cards no longer available');
         return;
@@ -1715,7 +1716,7 @@ export const CribbageMobileGameTable = ({
       // Verify it's still our turn with fresh state
       if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
         console.warn('[CRIBBAGE] Stale state detected - not our turn in fresh state');
-        // Update local state to match fresh state
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Wait for your turn');
         return;
@@ -1725,6 +1726,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState || cardIndex >= freshPlayerState.hand.length) {
         console.warn('[CRIBBAGE] Card index invalid in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         toast.error('Card no longer available');
         return;
@@ -1777,6 +1779,7 @@ export const CribbageMobileGameTable = ({
       // Verify it's still our turn with fresh state
       if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
         console.warn('[CRIBBAGE] Stale state detected for Go - not our turn in fresh state');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1785,6 +1788,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState) {
         console.warn('[CRIBBAGE] Player state not found in fresh state for Go');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1792,6 +1796,7 @@ export const CribbageMobileGameTable = ({
       // If fresh state shows we CAN play, don't call Go - update local state instead
       if (hasPlayableCard(freshPlayerState.hand, freshState.pegging.currentCount)) {
         console.warn('[CRIBBAGE] Fresh state shows playable card - skipping Go');
+        syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
@@ -1972,6 +1977,7 @@ export const CribbageMobileGameTable = ({
       
       // Update local state with the new cribbage state
       if (result.newState) {
+        syncHandle.receiveAuthoritativeUpdate(result.newState);
         setCribbageState(result.newState);
       }
     } catch (err) {
@@ -2239,7 +2245,7 @@ export const CribbageMobileGameTable = ({
 
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
-  if (!isDealerSelection && (!initialLoadComplete || !cribbageState || !currentPlayerId)) {
+  if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
     // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
     if (isTransitioning) {
       return <div className="h-full flex flex-col overflow-hidden bg-background" />;
@@ -2324,7 +2330,8 @@ export const CribbageMobileGameTable = ({
   // Get opponents for display around the table
   const opponents = players.filter(p => p.user_id !== currentUserId);
   // Use cribbage_state.dealerPlayerId for crib dealer (rotates each hand), not games.dealer_position
-  const isCribDealer = (playerId: string) => cribbageState.dealerPlayerId === playerId;
+  // SINGLE SOURCE OF TRUTH: All render reads come from viewState (sync presentation state)
+  const isCribDealer = (playerId: string) => viewState.dealerPlayerId === playerId;
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Win Sequence Overlays - Portaled above everything */}
@@ -2394,50 +2401,39 @@ export const CribbageMobileGameTable = ({
             )}
 
             {/* Turn Spotlight - z-5 to stay behind pegboard and count */}
-            {!handTransitionFrozen && (
-              <CribbageTurnSpotlight
-                currentTurnPlayerId={cribbageState.pegging.currentTurnPlayerId}
-                currentPlayerId={currentPlayerId}
-                isVisible={cribbageState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                totalPlayers={players.length}
-                opponentIds={opponents.map(o => o.id)}
-              />
-            )}
+            <CribbageTurnSpotlight
+              currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
+              currentPlayerId={currentPlayerId}
+              isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+              totalPlayers={players.length}
+              opponentIds={opponents.map(o => o.id)}
+            />
 
             {/* Game Title - Top center of felt */}
             <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
               <h2 className="text-sm font-bold text-white drop-shadow-lg">
                 ${anteAmount} CRIBBAGE
               </h2>
-              {!handTransitionFrozen && (
-                <p className="text-[9px] text-white/70">
-                  {cribbageState.pointsToWin} to win
-                  {cribbageState.skunkEnabled && ` • Skunk <${cribbageState.skunkThreshold} (2x)`}
-                  {cribbageState.doubleSkunkEnabled && ` • Double <${cribbageState.doubleSkunkThreshold} (3x)`}
-                </p>
-              )}
-              {handTransitionFrozen && (
-                <p className="text-[9px] text-white/70 animate-pulse">
-                  Dealing next hand…
-                </p>
-              )}
+              <p className="text-[9px] text-white/70">
+                {viewState.pointsToWin} to win
+                {viewState.skunkEnabled && ` • Skunk <${viewState.skunkThreshold} (2x)`}
+                {viewState.doubleSkunkEnabled && ` • Double <${viewState.doubleSkunkThreshold} (3x)`}
+              </p>
             </div>
 
-            {/* Standard Felt Content — SUPPRESSED during hand transition freeze to prevent stale cards */}
-            {!handTransitionFrozen && (
-              <CribbageFeltContent
-                cribbageState={cribbageState}
-                players={players}
-                currentPlayerId={currentPlayerId}
-                sequenceStartIndex={sequenceStartIndex}
-                getPlayerUsername={getPlayerUsername}
-                cardBackColors={cardBackColors}
-                countingScoreOverrides={countingScoreOverrides ?? undefined}
-                countingOutroActive={countingDelayActive && !!countingStateSnapshot}
-                thirtyOneDelayActive={thirtyOneDelayActive}
-                handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
-              />
-            )}
+            {/* Felt Content — reads from sync presentation state (single source of truth) */}
+            <CribbageFeltContent
+              cribbageState={viewState}
+              players={players}
+              currentPlayerId={currentPlayerId}
+              sequenceStartIndex={sequenceStartIndex}
+              getPlayerUsername={getPlayerUsername}
+              cardBackColors={cardBackColors}
+              countingScoreOverrides={countingScoreOverrides ?? undefined}
+              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+              thirtyOneDelayActive={thirtyOneDelayActive}
+              handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
+            />
 
             {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
             {/* Show counting when either: 
@@ -2474,11 +2470,10 @@ export const CribbageMobileGameTable = ({
             )}
           </div>
 
-          {/* Opponent overlay — suppressed during hand transition to prevent stale card counts */}
-          {!handTransitionFrozen && (
+          {/* Opponent overlay — reads from sync presentation state */}
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponents.map((opponent, index) => {
-              const oppState = cribbageState.playerStates[opponent.id];
+              const oppState = viewState.playerStates[opponent.id];
               const isDealerPlayer = isCribDealer(opponent.id);
               const totalOpponents = opponents.length;
               
@@ -2563,31 +2558,20 @@ export const CribbageMobileGameTable = ({
               );
             })}
           </div>
-          )}
         </div>
       </div>
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-          {/* Dealer Announcements Area - FIXED HEIGHT to prevent layout shift */}
-          {/* IMPORTANT: When counting animation is active (snapshot exists), use the snapshot phase, not the live state phase */}
+          {/* Dealer Announcements Area — reads from sync presentation state */}
           <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
-            // During hand transition freeze, show a simple "dealing" message instead of stale phase
-            if (handTransitionFrozen) {
-              return (
-                <div className="w-full bg-emerald-800/90 rounded-md px-3 py-1.5">
-                  <p className="text-white/90 font-medium text-[11px] text-center animate-pulse">Dealing next hand…</p>
-                </div>
-              );
-            }
-
             const isCountingAnimActive = !!countingStateSnapshot;
             const countingOutroActive = isCountingAnimActive && countingDelayActive;
             const effectivePhase = isCountingAnimActive
               ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
-              : cribbageState.phase;
-            const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : cribbageState.lastEvent;
+              : viewState.phase;
+            const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
           
           // Hide banner during skunk overlay phase or complete phase
           if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
@@ -2714,8 +2698,8 @@ export const CribbageMobileGameTable = ({
           {/* Hide cards tab while counting animation is active, transitioning, or when state is stale (old hand still rendering) */}
           {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (
             <CribbageMobileCardsTab
-              key={currentHandKey} // Force remount on hand change to prevent stale card flash
-              cribbageState={cribbageState}
+              key={renderHandKey} // Force remount on hand change — keyed from sync presentation state
+              cribbageState={viewState}
               currentPlayerId={currentPlayerId}
               playerCount={players.length}
               isProcessing={isProcessing}
