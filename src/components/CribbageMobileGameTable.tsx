@@ -1297,13 +1297,14 @@ export const CribbageMobileGameTable = ({
       newRoundId: currentRoundId.slice(0, 8),
       hadCribbageState: cribbageState !== null,
     });
-    // Reset sync framework — clears authoritative, optimistic, presentation, frozen
+    // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
+    // viewState (presentation) becomes null, which naturally prevents stale rendering.
     syncHandle.reset(null);
-    // Mark that cribbageState is now stale (belongs to old roundId).
-    // Keep cribbageState populated to avoid React unmount, but the render will
-    // check handTransitionFrozen to suppress stale felt content.
     setIsTransitioning(true);
-    setHandTransitionFrozen(true);
+    logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
+      newRoundId: currentRoundId.slice(0, 8),
+      viewStateNulled: true,
+    });
   }, [currentRoundId]);
 
   // Realtime subscription with polling fallback
