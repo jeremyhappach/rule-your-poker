@@ -1977,6 +1977,7 @@ export const CribbageMobileGameTable = ({
       
       // Update local state with the new cribbage state
       if (result.newState) {
+        syncHandle.receiveAuthoritativeUpdate(result.newState);
         setCribbageState(result.newState);
       }
     } catch (err) {
