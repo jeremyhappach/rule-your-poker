@@ -2245,7 +2245,7 @@ export const CribbageMobileGameTable = ({
 
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
-  if (!isDealerSelection && (!initialLoadComplete || !cribbageState || !currentPlayerId)) {
+  if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
     // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
     if (isTransitioning) {
       return <div className="h-full flex flex-col overflow-hidden bg-background" />;
