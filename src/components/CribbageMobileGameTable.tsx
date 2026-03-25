@@ -252,13 +252,13 @@ export const CribbageMobileGameTable = ({
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
+  // Render-specific hand key: derived from sync presentation state (what UI actually shows)
+  const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  // STRUCTURAL FIX: Freeze felt content rendering during hand transitions.
-  // When roundId changes, cribbageState still holds OLD hand data to avoid React unmount.
-  // This flag prevents stale cards/cut-card/played-cards from rendering on the felt.
-  // It is cleared ONLY when the first new-hand snapshot is accepted.
-  const [handTransitionFrozen, setHandTransitionFrozen] = useState(false);
+  // ARCHITECTURAL FIX: Render reads viewState (sync presentation state), not raw cribbageState.
+  // During hand transitions, syncHandle.reset(null) sets viewState to null,
+  // naturally preventing stale renders. No manual freeze gate needed.
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
