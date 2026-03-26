@@ -2473,6 +2473,12 @@ export const CribbageMobileGameTable = ({
         viewStateNull: renderViewNull,
         hasCurrentPlayerId: !!currentPlayerId,
         renderCount: renderCountRef.current,
+        // Bootstrap boundary detection
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        currentRoundId: currentRoundId?.slice(0, 8),
+        transitionFrozenRef: transitionFrozenRef.current,
+        hasCribbageState: cribbageState !== null,
+        cribbagePhase: cribbageState?.phase ?? null,
       },
     });
     // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
