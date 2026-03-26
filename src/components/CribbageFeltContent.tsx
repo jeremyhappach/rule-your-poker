@@ -130,6 +130,23 @@ export const CribbageFeltContent = ({
 
   // During counting, show pegboard and skunk indicator - cards handled by CribbageCountingPhase
   if (isCountingPhase) {
+    // Log score sources during counting for regression investigation
+    logDebugEvent({
+      gameId: 'pegboard-source',
+      eventType: 'crib:pegboard:counting_render',
+      payload: {
+        feltInstanceId: feltInstanceIdRef.current,
+        phase: cribbageState.phase,
+        phaseForLayout,
+        hasCountingOverrides: !!countingScoreOverrides,
+        overrideScores: countingScoreOverrides
+          ? Object.fromEntries(Object.entries(countingScoreOverrides).map(([id, s]) => [id.slice(0, 8), s]))
+          : null,
+        rawPegScores: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+        ),
+      },
+    });
     return (
       <>
         {/* Skunk indicator when active */}
