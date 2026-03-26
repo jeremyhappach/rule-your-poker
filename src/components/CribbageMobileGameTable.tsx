@@ -166,7 +166,7 @@ export const CribbageMobileGameTable = ({
   const prevRoundIdRef_lifecycle = useRef<string | null>(null);
   const prevHandKeyRef_lifecycle = useRef<string | null>(null);
 
-  // Mount / unmount logging
+  // Mount / unmount logging — includes session-level context
   useEffect(() => {
     logDebugEvent({
       gameId,
@@ -176,6 +176,10 @@ export const CribbageMobileGameTable = ({
         roundId,
         handNumber,
         gameId,
+        dealerGameId,
+        isDealerSelection,
+        hasViewState: false, // always false at mount
+        hasCribbageState: false,
         ...buildMetaPayload(),
       },
     });
@@ -187,6 +191,8 @@ export const CribbageMobileGameTable = ({
           instanceId: instanceIdRef.current,
           roundId,
           handNumber,
+          dealerGameId,
+          isDealerSelection,
           renderCount: renderCountRef.current,
         },
       });
