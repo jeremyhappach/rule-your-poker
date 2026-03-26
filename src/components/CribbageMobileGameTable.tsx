@@ -1424,14 +1424,29 @@ export const CribbageMobileGameTable = ({
         // Update the legacy cribbageState/ref for components that still read it directly
         setCribbageState(newCribbageState);
         
-        // If presentation was frozen during hand transition, unfreeze now.
-        // unfreezePresentation() commits the new authoritative state to presentation,
-        // producing a clean single-frame swap from old hand → new hand.
+        // If presentation was frozen during hand transition, unfreeze ONLY if this
+        // snapshot belongs to the NEW round we froze for — not a stale tail-end snapshot.
         const wasTransitionFrozen = transitionFrozenRef.current;
         if (wasTransitionFrozen) {
-          transitionFrozenRef.current = false;
-          syncHandle.unfreezePresentation();
-          setIsTransitioning(false);
+          const frozenForRound = transitionFrozenForRoundRef.current;
+          const snapshotMatchesNewRound = !frozenForRound || frozenForRound === currentRoundId;
+          if (snapshotMatchesNewRound) {
+            transitionFrozenRef.current = false;
+            transitionFrozenForRoundRef.current = null;
+            syncHandle.unfreezePresentation();
+            setIsTransitioning(false);
+            logCribbageDebug(debugCtx, 'hand_transition:unfrozen', {
+              frozenForRound: frozenForRound?.slice(0, 8),
+              currentRoundId: currentRoundId?.slice(0, 8),
+              snapshotPhase: newCribbageState.phase,
+            });
+          } else {
+            logCribbageDebug(debugCtx, 'hand_transition:unfreeze_skipped_wrong_round', {
+              frozenForRound: frozenForRound?.slice(0, 8),
+              currentRoundId: currentRoundId?.slice(0, 8),
+              snapshotPhase: newCribbageState.phase,
+            });
+          }
         }
         
         // ── Lifecycle: accepted snapshot ──
