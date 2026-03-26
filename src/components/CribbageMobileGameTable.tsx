@@ -298,9 +298,9 @@ export const CribbageMobileGameTable = ({
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  // ARCHITECTURAL FIX: Render reads viewState (sync presentation state), not raw cribbageState.
-  // During hand transitions, syncHandle.reset(null) sets viewState to null,
-  // naturally preventing stale renders. No manual freeze gate needed.
+  // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
+  // presentation state and only swap when the first new-hand snapshot arrives.
+  const transitionFrozenRef = useRef(false);
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
