@@ -44,6 +44,8 @@ import {
 import { useGameStateSync } from '@/lib/gameStateSync';
 import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
+import { logDebugEvent } from '@/lib/debugEventLogger';
+import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface Player {
   id: string;
