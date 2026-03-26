@@ -44,6 +44,8 @@ import { getBotAlias } from "@/lib/botAlias";
 import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
+import { logDebugEvent } from "@/lib/debugEventLogger";
+import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -5635,6 +5637,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     console.log('[CRIBBAGE] Dealer selection complete, winner position:', dealerPosition);
+    logDebugEvent({
+      gameId: gameId!,
+      eventType: 'crib:lifecycle:session_transition',
+      payload: {
+        transition: 'dealer_selection_complete',
+        dealerPosition,
+        prevStatus: game?.status,
+        dealerGameId: game?.current_game_uuid ?? null,
+        ...buildMetaPayload(),
+      },
+    });
 
     // Persist the first dealer choice and clear synced dealer selection UI.
     // NOTE: Do NOT set status to in_progress here; startCribbageRound will do that
@@ -6864,7 +6877,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         )}
 
         {/* CRIBBAGE DEALER SELECTION - High card animation to determine first dealer */}
-        {game.status === 'cribbage_dealer_selection' && game.game_type === 'cribbage' && (
+        {game.status === 'cribbage_dealer_selection' && game.game_type === 'cribbage' && (() => {
+          logDebugEvent({
+            gameId: gameId!,
+            eventType: 'crib:lifecycle:game_branch',
+            payload: {
+              branch: 'cribbage_dealer_selection',
+              gameStatus: game.status,
+              dealerGameId: game.current_game_uuid ?? null,
+              dealerPosition: game.dealer_position,
+              currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+              handNumber: currentRound?.hand_number ?? null,
+              ...buildMetaPayload(),
+            },
+          });
+          return (
           <>
             {/* High Card Dealer Selection Logic (headless - manages state only) */}
             <HighCardDealerSelection
@@ -6910,7 +6937,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isDealerSelection={true}
             />
           </>
-        )}
+          );
+        })()}
 
         {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
           const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
@@ -6921,6 +6949,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // CRIBBAGE during ante_decision - show cribbage table instead of 3-5-7
           if (isAnteDecision && game.game_type === 'cribbage') {
+            logDebugEvent({
+              gameId: gameId!,
+              eventType: 'crib:lifecycle:game_branch',
+              payload: {
+                branch: 'cribbage_ante_decision',
+                gameStatus: game.status,
+                dealerGameId: game.current_game_uuid ?? null,
+                dealerPosition: game.dealer_position,
+                currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+              },
+            });
             return (
               <CribbageMobileGameTable
                 gameId={gameId!}
@@ -7078,6 +7117,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // CRITICAL: onGameComplete must call handleGameOverComplete to transition to next game
           // CRIBBAGE GAME - Keep table mounted through win sequence (in_progress -> game_over)
           if ((isInProgress || isCribbageGameOver) && game.game_type === 'cribbage') {
+            logDebugEvent({
+              gameId: gameId!,
+              eventType: 'crib:lifecycle:game_branch',
+              payload: {
+                branch: isCribbageGameOver ? 'cribbage_game_over' : 'cribbage_in_progress',
+                gameStatus: game.status,
+                dealerGameId: currentRound?.dealer_game_id ?? null,
+                roundId: currentRound?.id?.slice(0, 8) ?? null,
+                handNumber: currentRound?.hand_number ?? null,
+                dealerPosition: game.dealer_position,
+              },
+            });
             return (
               <CribbageMobileGameTable
                 gameId={gameId!}
