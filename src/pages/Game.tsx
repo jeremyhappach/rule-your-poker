@@ -6926,7 +6926,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               isDealerSelection={true}
             />
           </>
-        )}
+          );
+        })()}
 
         {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
           const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
