@@ -7151,47 +7151,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // CRIBBAGE GAME - Use mobile-optimized table
-          // CRITICAL: onGameComplete must call handleGameOverComplete to transition to next game
-          // CRIBBAGE GAME - Keep table mounted through win sequence (in_progress -> game_over)
-          if ((isInProgress || isCribbageGameOver) && game.game_type === 'cribbage') {
-            logDebugEvent({
-              gameId: gameId!,
-              eventType: 'crib:lifecycle:game_branch',
-              payload: {
-                branch: isCribbageGameOver ? 'cribbage_game_over' : 'cribbage_in_progress',
-                gameStatus: game.status,
-                dealerGameId: currentRound?.dealer_game_id ?? null,
-                roundId: currentRound?.id?.slice(0, 8) ?? null,
-                handNumber: currentRound?.hand_number ?? null,
-                dealerPosition: game.dealer_position,
-              },
-            });
-            return (
-              <CribbageMobileGameTable
-                gameId={gameId!}
-                roundId={currentRound?.id || ''}
-                dealerGameId={currentRound?.dealer_game_id || null}
-                handNumber={currentRound?.hand_number ?? 1}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={isCribbageGameOver ? 0 : potForDisplay}
-                isHost={isCreator}
-                onGameComplete={handleGameOverComplete}
-                dealerChatMessages={cribbageDealerChatMessages}
-                onInjectDealerChatMessage={injectCribbageDealerChatMessage}
-                gameConfig={{
-                  pointsToWin: game.points_to_win || 121,
-                  skunkEnabled: game.skunk_enabled ?? true,
-                  skunkThreshold: game.skunk_threshold || 91,
-                  doubleSkunkEnabled: game.double_skunk_enabled ?? true,
-                  doubleSkunkThreshold: game.double_skunk_threshold || 61,
-                }}
-              />
-            );
-          }
 
           // TRIVIA GAME
           if (isInProgress && game.game_type === 'trivia') {

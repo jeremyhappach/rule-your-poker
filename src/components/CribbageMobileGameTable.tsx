@@ -1419,14 +1419,25 @@ export const CribbageMobileGameTable = ({
       if (result.accepted) {
         // Update the legacy cribbageState/ref for components that still read it directly
         setCribbageState(newCribbageState);
-        // ── Lifecycle: first accepted snapshot after transition ──
+        
+        // If presentation was frozen during hand transition, unfreeze now.
+        // unfreezePresentation() commits the new authoritative state to presentation,
+        // producing a clean single-frame swap from old hand → new hand.
+        const wasTransitionFrozen = transitionFrozenRef.current;
+        if (wasTransitionFrozen) {
+          transitionFrozenRef.current = false;
+          syncHandle.unfreezePresentation();
+          setIsTransitioning(false);
+        }
+        
+        // ── Lifecycle: accepted snapshot ──
         logDebugEvent({
           gameId,
           eventType: 'crib:lifecycle:snapshot_accepted',
           payload: {
             instanceId: instanceIdRef.current,
             source,
-            isTransitioning,
+            transitionUnfrozen: wasTransitionFrozen,
             phase: newCribbageState.phase,
             handNumber: currentHandNumber,
             roundId: currentRoundId?.slice(0, 8),
