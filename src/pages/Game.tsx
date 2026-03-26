@@ -5637,6 +5637,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     console.log('[CRIBBAGE] Dealer selection complete, winner position:', dealerPosition);
+    logDebugEvent({
+      gameId: gameId!,
+      eventType: 'crib:lifecycle:session_transition',
+      payload: {
+        transition: 'dealer_selection_complete',
+        dealerPosition,
+        prevStatus: game?.status,
+        dealerGameId: game?.current_game_uuid ?? null,
+        ...buildMetaPayload(),
+      },
+    });
 
     // Persist the first dealer choice and clear synced dealer selection UI.
     // NOTE: Do NOT set status to in_progress here; startCribbageRound will do that
