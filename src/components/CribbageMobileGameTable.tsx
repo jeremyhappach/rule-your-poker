@@ -1340,12 +1340,17 @@ export const CribbageMobileGameTable = ({
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
-    console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
+    
+    // Detect bootstrap boundary: roundId changing from '' (dealer selection) to a real value
+    const isBootstrapTransition = !oldId || oldId === '';
+    
+    console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId, isBootstrapTransition });
     logCribbageDebug(debugCtx, 'hand_transition:roundId_change', {
       prevRoundId: oldId?.slice(0, 8),
       newRoundId: currentRoundId.slice(0, 8),
       hadCribbageState: cribbageState !== null,
       hadCountingOverrides: countingScoreOverrides !== null,
+      isBootstrapTransition,
     });
     // ── Lifecycle: transition edge ──
     logDebugEvent({
@@ -1353,7 +1358,7 @@ export const CribbageMobileGameTable = ({
       eventType: 'crib:lifecycle:transition_edge',
       payload: {
         instanceId: instanceIdRef.current,
-        trigger: 'roundId_change',
+        trigger: isBootstrapTransition ? 'bootstrap_roundId_init' : 'roundId_change',
         prevRoundId: oldId?.slice(0, 8),
         newRoundId: currentRoundId.slice(0, 8),
         viewStateNull: viewState === null,
@@ -1361,6 +1366,7 @@ export const CribbageMobileGameTable = ({
         currentHandKey,
         renderHandKey,
         handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+        isDealerSelection,
         ...buildMetaPayload(),
       },
     });
@@ -1380,10 +1386,33 @@ export const CribbageMobileGameTable = ({
       transitionFrozenRef.current = true;
       transitionFrozenForRoundRef.current = currentRoundId;
     }
-    setIsTransitioning(true);
+    
+    // BOOTSTRAP FIX: During bootstrap transition (roundId '' → real), there is no
+    // savedPresentation to freeze. If we set isTransitioning=true here, the unfreeze
+    // path (which requires transitionFrozenRef.current=true) will never clear it,
+    // permanently blocking the cards tab. Skip the transition flag for bootstrap.
+    if (isBootstrapTransition) {
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:lifecycle:bootstrap_skip_transition',
+        payload: {
+          instanceId: instanceIdRef.current,
+          reason: 'no_saved_presentation_during_bootstrap',
+          savedPresentationNull: !savedPresentation,
+          transitionFrozenRef: transitionFrozenRef.current,
+        },
+      });
+      // Do NOT set isTransitioning — the loadOrInitializeState effect will
+      // populate viewState shortly, and cards tab should render normally.
+    } else {
+      setIsTransitioning(true);
+    }
+    
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
       frozenPresentation: !!savedPresentation,
+      isBootstrapTransition,
+      isTransitioningSet: !isBootstrapTransition,
       instanceId: instanceIdRef.current,
     });
   }, [currentRoundId]);
@@ -1449,7 +1478,11 @@ export const CribbageMobileGameTable = ({
           }
         }
         
-        // ── Lifecycle: accepted snapshot ──
+        // ── Lifecycle: accepted snapshot — bootstrap card hydration trace ──
+        const playerHandSizes: Record<string, number> = {};
+        for (const [pid, ps] of Object.entries(newCribbageState.playerStates)) {
+          playerHandSizes[pid.slice(0, 8)] = ps.hand?.length ?? 0;
+        }
         logDebugEvent({
           gameId,
           eventType: 'crib:lifecycle:snapshot_accepted',
@@ -1462,8 +1495,32 @@ export const CribbageMobileGameTable = ({
             roundId: currentRoundId?.slice(0, 8),
             renderHandKey,
             viewStateWasNull: viewState === null,
+            isTransitioning,
+            transitionFrozenRef: transitionFrozenRef.current,
+            isDealerSelection,
+            playerHandSizes,
+            dealerGameId: dealerGameId?.slice(0, 8) ?? null,
           },
         });
+        
+        // ── Bootstrap stale-state detection ──
+        // If dealerGameId exists and we just accepted a snapshot, but isTransitioning
+        // is still true without a matching freeze, that's the bootstrap bug.
+        if (dealerGameId && isTransitioning && !transitionFrozenRef.current) {
+          logDebugEvent({
+            gameId,
+            eventType: 'crib:lifecycle:BOOTSTRAP_STALE_DETECTED',
+            payload: {
+              instanceId: instanceIdRef.current,
+              reason: 'isTransitioning=true with no freeze to unfreeze',
+              dealerGameId: dealerGameId.slice(0, 8),
+              phase: newCribbageState.phase,
+              playerHandSizes,
+              isTransitioning: true,
+              transitionFrozenRef: false,
+            },
+          });
+        }
       }
       
       // Reset poll interval when realtime works
@@ -2403,18 +2460,25 @@ export const CribbageMobileGameTable = ({
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
   if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
-    // ── Lifecycle: early return branch ──
+    // ── Lifecycle: early return branch — bootstrap card hydration trace ──
+    const earlyReturnReason = isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId';
     logDebugEvent({
       gameId,
       eventType: 'crib:lifecycle:early_return',
       payload: {
         instanceId: instanceIdRef.current,
-        reason: isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId',
+        reason: earlyReturnReason,
         isTransitioning,
         initialLoadComplete,
         viewStateNull: renderViewNull,
         hasCurrentPlayerId: !!currentPlayerId,
         renderCount: renderCountRef.current,
+        // Bootstrap boundary detection
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        currentRoundId: currentRoundId?.slice(0, 8),
+        transitionFrozenRef: transitionFrozenRef.current,
+        hasCribbageState: cribbageState !== null,
+        cribbagePhase: cribbageState?.phase ?? null,
       },
     });
     // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
@@ -2867,6 +2931,28 @@ export const CribbageMobileGameTable = ({
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
           {/* Hide cards tab while counting animation is active, transitioning, or when state is stale (old hand still rendering) */}
+          {(() => {
+            const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
+            if (activeTab === 'cards' && currentPlayer && cardsTabBlocked) {
+              // Log WHY cards tab is being suppressed
+              logDebugEvent({
+                gameId,
+                eventType: 'crib:lifecycle:cards_tab_suppressed',
+                payload: {
+                  instanceId: instanceIdRef.current,
+                  isTransitioning,
+                  countingSnapshotActive: !!countingStateSnapshot,
+                  countingAnimationActive: countingAnimationActiveRef.current,
+                  viewStatePhase: viewState?.phase ?? null,
+                  viewStateHandSizes: viewState ? Object.fromEntries(
+                    Object.entries(viewState.playerStates).map(([pid, ps]) => [pid.slice(0, 8), ps.hand?.length ?? 0])
+                  ) : null,
+                  dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                },
+              });
+            }
+            return null;
+          })()}
           {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (
             <CribbageMobileCardsTab
               key={renderHandKey} // Force remount on hand change — keyed from sync presentation state
