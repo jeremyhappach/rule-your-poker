@@ -2460,13 +2460,14 @@ export const CribbageMobileGameTable = ({
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
   if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
-    // ── Lifecycle: early return branch ──
+    // ── Lifecycle: early return branch — bootstrap card hydration trace ──
+    const earlyReturnReason = isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId';
     logDebugEvent({
       gameId,
       eventType: 'crib:lifecycle:early_return',
       payload: {
         instanceId: instanceIdRef.current,
-        reason: isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId',
+        reason: earlyReturnReason,
         isTransitioning,
         initialLoadComplete,
         viewStateNull: renderViewNull,
