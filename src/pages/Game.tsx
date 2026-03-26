@@ -6909,6 +6909,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerPosition: game.dealer_position,
                 currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
                 handNumber: currentRound?.hand_number ?? null,
+                cribbageRoundIdProp: cribbageRoundId?.slice(0, 8) || '(empty)',
+                cribbageHandNumberProp: cribbageHandNumber,
+                cribbagePotProp: cribbagePot,
+                isDealerSelectionProp: isCribbageDealerSelection,
+                hasHighCardDealerSelectionSibling: isCribbageDealerSelection,
                 ...buildMetaPayload(),
               },
             });

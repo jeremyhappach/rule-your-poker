@@ -59,6 +59,14 @@ export const CribbageFeltContent = ({
         playedCards: cribbageState.pegging?.playedCards?.length ?? 0,
         countingOutroActive,
         thirtyOneDelayActive,
+        hasCountingOverrides: !!countingScoreOverrides,
+        // Bootstrap contamination detection
+        playerHandSizes: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.hand?.length ?? 0])
+        ),
+        pegScores: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+        ),
         ...buildMetaPayload(),
       },
     });
@@ -122,6 +130,23 @@ export const CribbageFeltContent = ({
 
   // During counting, show pegboard and skunk indicator - cards handled by CribbageCountingPhase
   if (isCountingPhase) {
+    // Log score sources during counting for regression investigation
+    logDebugEvent({
+      gameId: 'pegboard-source',
+      eventType: 'crib:pegboard:counting_render',
+      payload: {
+        feltInstanceId: feltInstanceIdRef.current,
+        phase: cribbageState.phase,
+        phaseForLayout,
+        hasCountingOverrides: !!countingScoreOverrides,
+        overrideScores: countingScoreOverrides
+          ? Object.fromEntries(Object.entries(countingScoreOverrides).map(([id, s]) => [id.slice(0, 8), s]))
+          : null,
+        rawPegScores: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+        ),
+      },
+    });
     return (
       <>
         {/* Skunk indicator when active */}
@@ -165,6 +190,26 @@ export const CribbageFeltContent = ({
 
       {/* Peg Board - Center area */}
       <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
+        {/* Log score sources for non-counting pegboard renders */}
+        {(() => {
+          logDebugEvent({
+            gameId: 'pegboard-source',
+            eventType: 'crib:pegboard:main_render',
+            payload: {
+              feltInstanceId: feltInstanceIdRef.current,
+              phase: cribbageState.phase,
+              phaseForLayout,
+              hasCountingOverrides: !!countingScoreOverrides,
+              overrideScores: countingScoreOverrides
+                ? Object.fromEntries(Object.entries(countingScoreOverrides).map(([id, s]) => [id.slice(0, 8), s]))
+                : null,
+              rawPegScores: Object.fromEntries(
+                Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+              ),
+            },
+          });
+          return null;
+        })()}
         <CribbagePegBoard 
           players={players}
           playerStates={cribbageState.playerStates}
