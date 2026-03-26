@@ -859,6 +859,9 @@ export const CribbageMobileGameTable = ({
   // Clear counting overrides when starting a fresh hand (discarding phase).
   // This prevents stale override values from affecting the pegboard in non-counting phases.
   // We intentionally do NOT clear during counting→complete because the peg needs to show final scores.
+  // BUG B FIX: Only clear overrides when authoritative pegScore has caught up to the override value.
+  // This prevents a one-render regression where the override is cleared but the DB still has the
+  // pre-counting pegScore, causing the pegboard to briefly show a lower value.
   useEffect(() => {
     if (!cribbageState) return;
     // Clear overrides when we're in discarding, cutting, OR pegging (new hand started or pegging began)
@@ -866,14 +869,35 @@ export const CribbageMobileGameTable = ({
     // the peg board shows stale old-hand scores instead of live pegging scores.
     if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting' || cribbageState.phase === 'pegging') {
       if (countingScoreOverrides && !countingStateSnapshot) {
-        logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
-          phase: cribbageState.phase,
-          overrideValues: countingScoreOverrides,
+        // Check if all authoritative pegScores have caught up to their override values.
+        // If not, keep the overrides latched to prevent a temporary regression.
+        const allCaughtUp = Object.entries(countingScoreOverrides).every(([playerId, overrideScore]) => {
+          const authPegScore = cribbageState.playerStates[playerId]?.pegScore ?? 0;
+          return authPegScore >= overrideScore;
         });
-        setCountingScoreOverrides(null);
+
+        if (allCaughtUp) {
+          logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
+            phase: cribbageState.phase,
+            overrideValues: countingScoreOverrides,
+            reason: 'pegScores_caught_up',
+          });
+          setCountingScoreOverrides(null);
+        } else {
+          logCribbageDebug(debugCtx, 'peg:latching_overrides_until_catchup', {
+            phase: cribbageState.phase,
+            overrideValues: countingScoreOverrides,
+            currentPegScores: Object.fromEntries(
+              Object.entries(countingScoreOverrides).map(([pid]) => [
+                pid.slice(0, 8),
+                cribbageState.playerStates[pid]?.pegScore ?? 0,
+              ])
+            ),
+          });
+        }
       }
     }
-  }, [cribbageState?.phase, countingScoreOverrides, countingStateSnapshot]);
+  }, [cribbageState?.phase, countingScoreOverrides, countingStateSnapshot, cribbageState?.playerStates]);
 
   useEffect(() => {
     const playerMessageCount = allMessages.length;
@@ -1370,12 +1394,10 @@ export const CribbageMobileGameTable = ({
         ...buildMetaPayload(),
       },
     });
-    if (countingScoreOverrides) {
-      logCribbageDebug(debugCtx, 'hand_transition:clearing_stale_overrides', {
-        overrideValues: countingScoreOverrides,
-      });
-      setCountingScoreOverrides(null);
-    }
+    // BUG B FIX: Do NOT clear countingScoreOverrides on roundId change.
+    // The phase-based clearing effect (with pegScore catch-up check) will handle
+    // clearing overrides safely once the authoritative state has caught up.
+    // Clearing here causes the pegboard to briefly show stale pre-counting scores.
     // Freeze current presentation instead of blanking the table.
     // The frozen last-good state stays visible until the first new-hand snapshot arrives.
     const savedPresentation = syncHandle.presentationState;
@@ -2281,149 +2303,17 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(safetyTimer);
   }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
 
-  // Show high card selection if needed (internal or external dealer selection mode)
-  if (effectiveShowHighCardSelection) {
-    // Group cards by position so tie-breaker rounds stack instead of replacing.
-    const cardsByPosition = new Map<number, DealerSelectionCard[]>();
-    for (const c of effectiveHighCardCards) {
-      const arr = cardsByPosition.get(c.position) ?? [];
-      arr.push(c);
-      cardsByPosition.set(c.position, arr);
-    }
+  // ── BUG A FIX: Compute opponents and helpers BEFORE any render branches ──
+  // This ensures all branches share the same opponent data and layout.
+  const opponents = players.filter(p => p.user_id !== currentUserId);
+  const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
-    const positions = Array.from(cardsByPosition.keys()).sort((a, b) => a - b);
-    positions.forEach((pos) => {
-      const arr = cardsByPosition.get(pos);
-      if (arr) arr.sort((a, b) => a.roundNumber - b.roundNumber);
-    });
-
-    return (
-      <div className="h-full flex flex-col overflow-hidden bg-background">
-        {/* Felt Area for high card selection */}
-        <div 
-          className="relative flex items-center justify-center"
-          style={{ 
-            height: '55vh',
-            minHeight: '300px'
-          }}
-        >
-          <div className="absolute inset-0 bg-slate-200 z-0" />
-          <div
-            className="relative z-10"
-            style={{
-              width: 'min(90vw, calc(55vh - 32px))',
-              height: 'min(90vw, calc(55vh - 32px))',
-            }}
-          >
-            <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-              {tableColors.showBridge ? (
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage: `url(${peoriaBridgeMobile})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    filter: 'brightness(0.5)',
-                  }}
-                />
-              ) : (
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                    filter: 'brightness(0.7)',
-                  }}
-                />
-              )}
-
-              {/* DB-synced high-card selection logic (renders nothing) - only run if NOT external mode */}
-              {!isDealerSelection && (
-                <HighCardDealerSelection
-                  gameId={gameId}
-                  players={players as any}
-                  onComplete={handleHighCardComplete}
-                  isHost={isHost}
-                  allowBotDealers={true}
-                  selectionVariant="cribbage"
-                  syncedState={highCardSyncedState}
-                  onCardsUpdate={setHighCardCards}
-                  onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
-                  onWinnerPositionUpdate={setHighCardWinnerPosition}
-                />
-              )}
-
-              {/* Centered render: stack cards per player for tie-break rounds */}
-              <div className="absolute inset-0 flex items-center justify-center z-40">
-                <div className="flex gap-4 items-start">
-                  {positions.map((position) => {
-                    const stack = cardsByPosition.get(position) ?? [];
-                    const last = stack[stack.length - 1];
-                    if (!last) return null;
-
-                    const isFinalWinner = effectiveHighCardWinnerPosition !== null && position === effectiveHighCardWinnerPosition;
-                    const dim = last.isDimmed;
-
-                    return (
-                      <div
-                        key={position}
-                        className={cn(
-                          'flex flex-col items-center transition-all duration-300',
-                          isFinalWinner ? 'transform -translate-y-2 scale-110' : '',
-                          dim ? 'opacity-50' : ''
-                        )}
-                      >
-                        {/* Stacked cards container */}
-                        <div className="relative">
-                          {stack.map((c, idx) => (
-                            <div
-                              key={`${c.playerId}-${c.roundNumber}`}
-                              className={cn(
-                                idx > 0 ? 'absolute' : '',
-                                isFinalWinner && idx === stack.length - 1
-                                  ? 'ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
-                                  : ''
-                              )}
-                              style={idx > 0 ? {
-                                top: `${idx * 50}%`,
-                                left: 0,
-                                zIndex: idx,
-                              } : undefined}
-                            >
-                              <CribbagePlayingCard card={toCribbageCard(c.card as any)} size="md" />
-                            </div>
-                          ))}
-                        </div>
-
-                        <span
-                          className={cn('text-xs mt-1', isFinalWinner ? 'text-poker-gold font-bold' : 'text-white/70')}
-                          style={{ marginTop: stack.length > 1 ? `${(stack.length - 1) * 50 + 4}%` : undefined }}
-                        >
-                          {getHighCardDisplayNameByPosition(position)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Announcement banner */}
-        {effectiveHighCardAnnouncement && (
-          <div className="bg-poker-gold/95 px-4 py-3 text-center">
-            <p className="text-sm font-bold text-slate-900">{effectiveHighCardAnnouncement}</p>
-          </div>
-        )}
-
-        {/* Tab section placeholder */}
-        <div className="flex-1 bg-background" />
-      </div>
-    );
-  }
+  // Determine current render mode for felt content (not layout — layout is always the same shell)
+  const isHighCardMode = effectiveShowHighCardSelection;
+  const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId);
+  const isGameplayMode = !isHighCardMode && !isBootstrapMode;
 
   // ── Lifecycle: render-branch instrumentation ──
-  // Log on every render where roundId or handKey changed, or where we hit an early return
   renderCountRef.current += 1;
   const renderRoundId = currentRoundId;
   const renderViewNull = viewState === null;
@@ -2451,16 +2341,15 @@ export const CribbageMobileGameTable = ({
         countingSnapshotActive: !!countingStateSnapshot,
         renderHandKey: renderHandKey.slice(0, 12),
         handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+        renderMode: isHighCardMode ? 'highCard' : isBootstrapMode ? 'bootstrap' : 'gameplay',
       },
     });
   }
   prevRoundIdRef_lifecycle.current = renderRoundId;
   prevHandKeyRef_lifecycle.current = currentHandKey;
 
-  // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
-  // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
-  if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
-    // ── Lifecycle: early return branch — bootstrap card hydration trace ──
+  // Log early-return equivalent for bootstrap mode
+  if (isBootstrapMode) {
     const earlyReturnReason = isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId';
     logDebugEvent({
       gameId,
@@ -2473,7 +2362,6 @@ export const CribbageMobileGameTable = ({
         viewStateNull: renderViewNull,
         hasCurrentPlayerId: !!currentPlayerId,
         renderCount: renderCountRef.current,
-        // Bootstrap boundary detection
         dealerGameId: dealerGameId?.slice(0, 8) ?? null,
         currentRoundId: currentRoundId?.slice(0, 8),
         transitionFrozenRef: transitionFrozenRef.current,
@@ -2481,106 +2369,40 @@ export const CribbageMobileGameTable = ({
         cribbagePhase: cribbageState?.phase ?? null,
       },
     });
-    // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
-    if (isTransitioning) {
-      return <div className="h-full flex flex-col overflow-hidden bg-background" />;
-    }
-    const opponents = players.filter(p => p.user_id !== currentUserId);
-    return (
-      <div className="h-full flex flex-col overflow-hidden bg-background">
-        {/* Felt Area - matching the real circular table layout */}
-        <div 
-          className="relative flex items-start justify-center pt-1"
-          style={{ 
-            height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
-            minHeight: '300px',
-          }}
-        >
-          <div className="absolute inset-0 bg-slate-200 z-0" />
-          <div
-            className="relative z-10"
-            style={{
-              width: 'min(90vw, calc(55vh - 32px))',
-              height: 'min(90vw, calc(55vh - 32px))',
-            }}
-          >
-            <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${peoriaBridgeMobile})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  filter: 'brightness(0.5)',
-                }}
-              />
-              {/* Game title */}
-              <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-                <h2 className="text-sm font-bold text-white drop-shadow-lg">Cribbage</h2>
-              </div>
-            </div>
-            {/* Opponent overlays */}
-            <div className="absolute inset-0 z-50 pointer-events-none">
-              {opponents.map((opp, index) => {
-                const totalOpponents = opponents.length;
-                let positionClasses: string;
-                let alignmentClasses: string;
-                if (totalOpponents === 1) {
-                  positionClasses = 'top-14 left-6';
-                  alignmentClasses = 'items-start';
-                } else if (totalOpponents === 2) {
-                  positionClasses = index === 0 ? 'top-14 left-6' : 'top-14 right-6';
-                  alignmentClasses = index === 0 ? 'items-start' : 'items-end';
-                } else {
-                  if (index === 0) { positionClasses = 'top-14 left-6'; alignmentClasses = 'items-start'; }
-                  else if (index === 1) { positionClasses = 'top-14 right-6'; alignmentClasses = 'items-end'; }
-                  else { positionClasses = 'bottom-44 right-6'; alignmentClasses = 'items-end'; }
-                }
-                return (
-                  <div key={opp.id} className={`absolute flex flex-col ${positionClasses} ${alignmentClasses}`}>
-                    <div className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-md border border-slate-200">
-                      <span className="text-slate-900 font-bold text-xs">{formatChipValue(opp.chips)}</span>
-                    </div>
-                    <span className="text-[10px] text-white font-medium drop-shadow-md mt-0.5 text-center">
-                      {opp.profiles?.username || 'Player'}{opp.is_bot ? ' (N)' : ''}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        {/* Dealer announcement banner */}
-        <div className="bg-poker-gold/95 px-4 py-3 text-center">
-          <p className="text-sm font-bold text-slate-900">
-            {initialLoadComplete ? 'Preparing next hand...' : 'Awaiting ante decisions...'}
-          </p>
-        </div>
-        {/* Tab section placeholder */}
-        <div className="flex-1 bg-background" />
-      </div>
-    );
   }
 
-  // Get opponents for display around the table
-  const opponents = players.filter(p => p.user_id !== currentUserId);
-  // Use cribbage_state.dealerPlayerId for crib dealer (rotates each hand), not games.dealer_position
-  // SINGLE SOURCE OF TRUTH: All render reads come from viewState (sync presentation state)
-  const isCribDealer = (playerId: string) => viewState.dealerPlayerId === playerId;
+  // High-card selection: pre-compute card groupings for the felt content
+  let highCardCardsByPosition: Map<number, DealerSelectionCard[]> | null = null;
+  let highCardPositions: number[] = [];
+  if (isHighCardMode) {
+    highCardCardsByPosition = new Map<number, DealerSelectionCard[]>();
+    for (const c of effectiveHighCardCards) {
+      const arr = highCardCardsByPosition.get(c.position) ?? [];
+      arr.push(c);
+      highCardCardsByPosition.set(c.position, arr);
+    }
+    highCardPositions = Array.from(highCardCardsByPosition.keys()).sort((a, b) => a - b);
+    highCardPositions.forEach((pos) => {
+      const arr = highCardCardsByPosition!.get(pos);
+      if (arr) arr.sort((a, b) => a.roundNumber - b.roundNumber);
+    });
+  }
+
+  // If transitioning between hands with no visual to show, render minimal blank shell
+  if (isBootstrapMode && isTransitioning) {
+    return <div className="h-full flex flex-col overflow-hidden bg-background" />;
+  }
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      {/* Win Sequence Overlays - Portaled above everything */}
-      {winSequencePhase === 'skunk' && winSequenceData && (
+      {/* Win Sequence Overlays - Portaled above everything (gameplay mode only) */}
+      {isGameplayMode && winSequencePhase === 'skunk' && winSequenceData && (
         <CribbageSkunkOverlay
           multiplier={winSequenceData.multiplier}
           onComplete={handleSkunkComplete}
         />
       )}
 
-      {/* Winner announcement is now in the dealer banner area - no overlay */}
-      {/* Auto-transition from announcement to chips phase after 2s */}
-
-      {winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
+      {isGameplayMode && winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
         <CribbageChipTransferAnimation
           triggerId={chipAnimationTriggerId}
           amount={winSequenceData.amountPerLoser}
@@ -2590,21 +2412,19 @@ export const CribbageMobileGameTable = ({
         />
       )}
 
-      {/* Felt Area - Upper Section with circular table */}
+      {/* ═══════ UNIFIED FELT AREA — same shell for ALL modes ═══════ */}
       <div 
         ref={tableContainerRef}
         className="relative flex items-start justify-center pt-1"
         style={{ 
-          // Hug the actual circle size so there is no dead space between felt and banner.
-          // Circle size is: min(90vw, (55vh - 32px)). Add a tiny buffer for borders/overlays.
           height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
           minHeight: '300px',
         }}
       >
-        {/* Light background behind the circle - lower z-index */}
+        {/* Light background behind the circle */}
         <div className="absolute inset-0 bg-slate-200 z-0" />
 
-        {/* Circular table - wrapped so overlays can extend past the clipped circle */}
+        {/* Circular table — identical structure across all modes */}
         <div
           className="relative z-10"
           style={{
@@ -2612,9 +2432,9 @@ export const CribbageMobileGameTable = ({
             height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
-          {/* Inner circle is clipped; outer wrapper is not */}
+          {/* Inner circle clipped; outer wrapper is not */}
           <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-            {/* Felt background inside circle */}
+            {/* Felt background inside circle — SAME for all modes */}
             {tableColors.showBridge ? (
               <div
                 className="absolute inset-0"
@@ -2635,96 +2455,168 @@ export const CribbageMobileGameTable = ({
               />
             )}
 
-            {/* Turn Spotlight - z-5 to stay behind pegboard and count */}
-            <CribbageTurnSpotlight
-              currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-              currentPlayerId={currentPlayerId}
-              isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-              totalPlayers={players.length}
-              opponentIds={opponents.map(o => o.id)}
-            />
+            {/* ── MODE-SPECIFIC FELT CONTENT ── */}
 
-            {/* Game Title - Top center of felt */}
-            <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-              <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                ${anteAmount} CRIBBAGE
-              </h2>
-              <p className="text-[9px] text-white/70">
-                {viewState.pointsToWin} to win
-                {viewState.skunkEnabled && ` • Skunk <${viewState.skunkThreshold} (2x)`}
-                {viewState.doubleSkunkEnabled && ` • Double <${viewState.doubleSkunkThreshold} (3x)`}
-              </p>
-            </div>
-
-            {/* Felt Content — reads from sync presentation state (single source of truth) */}
-            <CribbageFeltContent
-              cribbageState={viewState}
-              players={players}
-              currentPlayerId={currentPlayerId}
-              sequenceStartIndex={sequenceStartIndex}
-              getPlayerUsername={getPlayerUsername}
-              cardBackColors={cardBackColors}
-              countingScoreOverrides={countingScoreOverrides ?? undefined}
-              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
-              thirtyOneDelayActive={thirtyOneDelayActive}
-              handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
-            />
-
-            {/* Counting Phase Overlay - uses snapshot to persist through DB phase changes */}
-            {/* Show counting when either: 
-                1. DB phase is 'counting' and delay is over
-                2. We have a snapshot (animation in progress) even if DB phase changed to 'complete'
-            */}
-            {countingStateSnapshot && !countingDelayActive && (
-              <CribbageCountingPhase
-                cribbageState={countingStateSnapshot}
-                players={players}
-                onCountingComplete={handleCountingComplete}
-                cardBackColors={cardBackColors}
-                onAnnouncementChange={handleCountingAnnouncementChange}
-                onScoreUpdate={setCountingScoreOverrides}
-                // IMPORTANT: Always start from the pegging baseline, never from the animated overrides.
-                initialScores={countingBaselineScoresRef.current ?? undefined}
-                winFrozen={countingWinFrozen}
-                countingStartedAt={countingStateSnapshot.countingStartedAt}
-                persistedTargetIndex={countingStateSnapshot.countingTargetIndex}
-                persistedBeatIndex={countingStateSnapshot.countingBeatIndex}
-                persistedHandKey={countingStateSnapshot.countingHandKey}
-                onProgressUpdate={handleCountingProgressUpdate}
-                debugContext={debugCtx}
-              />
+            {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
+            {isHighCardMode && (
+              <>
+                {!isDealerSelection && (
+                  <HighCardDealerSelection
+                    gameId={gameId}
+                    players={players as any}
+                    onComplete={handleHighCardComplete}
+                    isHost={isHost}
+                    allowBotDealers={true}
+                    selectionVariant="cribbage"
+                    syncedState={highCardSyncedState}
+                    onCardsUpdate={setHighCardCards}
+                    onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
+                    onWinnerPositionUpdate={setHighCardWinnerPosition}
+                  />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center z-40">
+                  <div className="flex gap-4 items-start">
+                    {highCardPositions.map((position) => {
+                      const stack = highCardCardsByPosition?.get(position) ?? [];
+                      const last = stack[stack.length - 1];
+                      if (!last) return null;
+                      const isFinalWinner = effectiveHighCardWinnerPosition !== null && position === effectiveHighCardWinnerPosition;
+                      const dim = last.isDimmed;
+                      return (
+                        <div
+                          key={position}
+                          className={cn(
+                            'flex flex-col items-center transition-all duration-300',
+                            isFinalWinner ? 'transform -translate-y-2 scale-110' : '',
+                            dim ? 'opacity-50' : ''
+                          )}
+                        >
+                          <div className="relative">
+                            {stack.map((c, idx) => (
+                              <div
+                                key={`${c.playerId}-${c.roundNumber}`}
+                                className={cn(
+                                  idx > 0 ? 'absolute' : '',
+                                  isFinalWinner && idx === stack.length - 1
+                                    ? 'ring-2 ring-poker-gold rounded-md shadow-lg shadow-poker-gold/50'
+                                    : ''
+                                )}
+                                style={idx > 0 ? {
+                                  top: `${idx * 50}%`,
+                                  left: 0,
+                                  zIndex: idx,
+                                } : undefined}
+                              >
+                                <CribbagePlayingCard card={toCribbageCard(c.card as any)} size="md" />
+                              </div>
+                            ))}
+                          </div>
+                          <span
+                            className={cn('text-xs mt-1', isFinalWinner ? 'text-poker-gold font-bold' : 'text-white/70')}
+                            style={{ marginTop: stack.length > 1 ? `${(stack.length - 1) * 50 + 4}%` : undefined }}
+                          >
+                            {getHighCardDisplayNameByPosition(position)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Dealer button at bottom - only if current player is dealer */}
-            {currentPlayer && isCribDealer(currentPlayerId) && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-                <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-                  <span className="text-white font-bold text-[10px]">D</span>
-                </div>
+            {/* BOOTSTRAP MODE: just the game title */}
+            {isBootstrapMode && (
+              <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
+                <h2 className="text-sm font-bold text-white drop-shadow-lg">Cribbage</h2>
               </div>
+            )}
+
+            {/* GAMEPLAY MODE: full game content */}
+            {isGameplayMode && viewState && (
+              <>
+                {/* Turn Spotlight */}
+                <CribbageTurnSpotlight
+                  currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
+                  currentPlayerId={currentPlayerId}
+                  isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                  totalPlayers={players.length}
+                  opponentIds={opponents.map(o => o.id)}
+                />
+
+                {/* Game Title */}
+                <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
+                  <h2 className="text-sm font-bold text-white drop-shadow-lg">
+                    ${anteAmount} CRIBBAGE
+                  </h2>
+                  <p className="text-[9px] text-white/70">
+                    {viewState.pointsToWin} to win
+                    {viewState.skunkEnabled && ` • Skunk <${viewState.skunkThreshold} (2x)`}
+                    {viewState.doubleSkunkEnabled && ` • Double <${viewState.doubleSkunkThreshold} (3x)`}
+                  </p>
+                </div>
+
+                {/* Felt Content */}
+                <CribbageFeltContent
+                  cribbageState={viewState}
+                  players={players}
+                  currentPlayerId={currentPlayerId}
+                  sequenceStartIndex={sequenceStartIndex}
+                  getPlayerUsername={getPlayerUsername}
+                  cardBackColors={cardBackColors}
+                  countingScoreOverrides={countingScoreOverrides ?? undefined}
+                  countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+                  thirtyOneDelayActive={thirtyOneDelayActive}
+                  handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
+                />
+
+                {/* Counting Phase Overlay */}
+                {countingStateSnapshot && !countingDelayActive && (
+                  <CribbageCountingPhase
+                    cribbageState={countingStateSnapshot}
+                    players={players}
+                    onCountingComplete={handleCountingComplete}
+                    cardBackColors={cardBackColors}
+                    onAnnouncementChange={handleCountingAnnouncementChange}
+                    onScoreUpdate={setCountingScoreOverrides}
+                    initialScores={countingBaselineScoresRef.current ?? undefined}
+                    winFrozen={countingWinFrozen}
+                    countingStartedAt={countingStateSnapshot.countingStartedAt}
+                    persistedTargetIndex={countingStateSnapshot.countingTargetIndex}
+                    persistedBeatIndex={countingStateSnapshot.countingBeatIndex}
+                    persistedHandKey={countingStateSnapshot.countingHandKey}
+                    onProgressUpdate={handleCountingProgressUpdate}
+                    debugContext={debugCtx}
+                  />
+                )}
+
+                {/* Dealer button at bottom */}
+                {currentPlayer && isCribDealer(currentPlayerId) && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
+                    <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
+                      <span className="text-white font-bold text-[10px]">D</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Opponent overlay — reads from sync presentation state */}
+          {/* ═══════ UNIFIED OPPONENT OVERLAY — same layout for ALL modes ═══════ */}
           <div className="absolute inset-0 z-50 pointer-events-none">
             {opponents.map((opponent, index) => {
-              const oppState = viewState.playerStates[opponent.id];
-              const isDealerPlayer = isCribDealer(opponent.id);
+              // During gameplay, read card data from viewState; otherwise no cards shown
+              const oppState = isGameplayMode && viewState ? viewState.playerStates[opponent.id] : null;
+              const isDealerPlayer = isGameplayMode ? isCribDealer(opponent.id) : false;
               const totalOpponents = opponents.length;
               
-              // Calculate position based on number of opponents and index
-              // For 1 opponent (2p): upper-left
-              // For 2 opponents (3p): index 0 = upper-left, index 1 = upper-right
-              // For 3 opponents (4p): index 0 = upper-left, index 1 = upper-right, index 2 = lower-right
               let positionClasses: string;
               let alignmentClasses: string;
               
               if (totalOpponents === 1) {
-                // 2 player: single opponent upper-left
                 positionClasses = 'top-14 left-6';
                 alignmentClasses = 'items-start';
               } else if (totalOpponents === 2) {
-                // 3 player: upper-left and upper-right
                 if (index === 0) {
                   positionClasses = 'top-14 left-6';
                   alignmentClasses = 'items-start';
@@ -2733,7 +2625,6 @@ export const CribbageMobileGameTable = ({
                   alignmentClasses = 'items-end';
                 }
               } else {
-                // 4 player: upper-left, upper-right, lower-right
                 if (index === 0) {
                   positionClasses = 'top-14 left-6';
                   alignmentClasses = 'items-start';
@@ -2754,7 +2645,6 @@ export const CribbageMobileGameTable = ({
                   {/* Chip circle row */}
                   <div className={`flex items-center gap-1.5 ${index > 0 && totalOpponents >= 2 && index === totalOpponents - 1 ? 'flex-row-reverse' : ''}`}>
                     <div className="relative">
-                      {/* White chip during active play - gold (bg-poker-gold) indicates waiting status */}
                       <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
                         <span className="text-[10px] font-bold text-slate-900">
                           ${formatChipValue(opponent.chips)}
@@ -2767,7 +2657,7 @@ export const CribbageMobileGameTable = ({
                       {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
                     </span>
 
-                    {/* Dealer button inline */}
+                    {/* Dealer button inline — only during gameplay */}
                     {isDealerPlayer && (
                       <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
                         <span className="text-white font-bold text-[7px]">D</span>
@@ -2775,7 +2665,7 @@ export const CribbageMobileGameTable = ({
                     )}
                   </div>
 
-                  {/* Opponent's cards (face down) - shows actual card count */}
+                  {/* Opponent's cards (face down) — only during gameplay with card data */}
                   {oppState && oppState.hand.length > 0 && (
                     <div className={`flex -space-x-1.5 mt-1 ${alignmentClasses === 'items-end' ? 'justify-end mr-1' : alignmentClasses === 'items-center' ? 'justify-center' : 'ml-1'}`}>
                       {oppState.hand.map((_, i) => (
@@ -2796,11 +2686,35 @@ export const CribbageMobileGameTable = ({
         </div>
       </div>
 
-      {/* Bottom Section - Tabs and Content */}
+      {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-          {/* Dealer Announcements Area — reads from sync presentation state */}
-          <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
+        {/* Banner area — consistent height across all modes */}
+        <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
+            // HIGH-CARD & BOOTSTRAP banners
+            if (isHighCardMode) {
+              return effectiveHighCardAnnouncement ? (
+                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                    {effectiveHighCardAnnouncement}
+                  </p>
+                </div>
+              ) : null;
+            }
+
+            if (isBootstrapMode) {
+              return (
+                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                    {initialLoadComplete ? 'Preparing next hand...' : 'Awaiting ante decisions...'}
+                  </p>
+                </div>
+              );
+            }
+
+            // GAMEPLAY banners
+            if (!viewState) return null;
+
             const isCountingAnimActive = !!countingStateSnapshot;
             const countingOutroActive = isCountingAnimActive && countingDelayActive;
             const effectivePhase = isCountingAnimActive
@@ -2808,77 +2722,63 @@ export const CribbageMobileGameTable = ({
               : viewState.phase;
             const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
           
-          // Hide banner during skunk overlay phase or complete phase
-          if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
-          
-          // PRIORITY 1: During chips/announcement win phases, ALWAYS show winner message (never fall through)
-          if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
+            if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
+            
+            if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
+              return (
+                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                    {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
+                  </p>
+                </div>
+              );
+            }
+            
+            if (winSequencePhase === 'chips' || winSequencePhase === 'announcement') return null;
+            
+            const isPeggingEvent = effectiveLastEvent && (
+              effectiveLastEvent.type === 'pegging_points' || 
+              effectiveLastEvent.type === 'go_point' || 
+              effectiveLastEvent.type === 'his_heels'
+            );
+            const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
+            
+            const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
+            
+            const shouldShowBanner = (
+              (effectivePhase === 'counting' && !isCountingComplete) || 
+              (effectiveLastEvent && !hideEventAnnouncement) ||
+              effectivePhase === 'discarding' ||
+              effectivePhase === 'cutting' ||
+              isCountingComplete
+            );
+            
+            if (!shouldShowBanner) return null;
+            
             return (
               <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                 <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                  {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
+                  {isCountingComplete
+                    ? 'Dealing Next Hand...'
+                    : effectivePhase === 'counting'
+                      ? countingAnnouncement 
+                        ? `${countingTargetLabel}: ${countingAnnouncement}`
+                        : countingTargetLabel
+                          ? `Scoring ${countingTargetLabel}...`
+                          : 'Scoring hands...'
+                      : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
+                        ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                        : effectivePhase === 'discarding'
+                          ? 'Discard to Crib'
+                          : 'Cut Card'}
                 </p>
               </div>
             );
-          }
-          
-          // If we're in win sequence but data not ready yet, hide banner to prevent flicker
-          if (winSequencePhase === 'chips' || winSequencePhase === 'announcement') {
-            return null;
-          }
-          
-          // PRIORITY 2: Normal gameplay banners
-          
-          // Check if pegging announcement should be hidden (3-second timeout)
-          const isPeggingEvent = effectiveLastEvent && (
-            effectiveLastEvent.type === 'pegging_points' || 
-            effectiveLastEvent.type === 'go_point' || 
-            effectiveLastEvent.type === 'his_heels'
-          );
-          const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
-          
-          // Determine if counting is complete (snapshot exists but no more announcements)
-          // This happens when the counting animation finishes but we're waiting for next hand
-          // CRITICAL: Only show "Dealing Next Hand" if counting has actually started AND the delay has elapsed
-          // AND the counting animation has fully completed (snapshot cleared).
-          // Without the !countingStateSnapshot check, "Dealing Next Hand" flashes during the 2s pre-counting delay.
-          const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
-          
-          const shouldShowBanner = (
-            (effectivePhase === 'counting' && !isCountingComplete) || 
-            (effectiveLastEvent && !hideEventAnnouncement) ||
-            effectivePhase === 'discarding' ||
-            effectivePhase === 'cutting' ||
-            isCountingComplete
-          );
-          
-          if (!shouldShowBanner) return null;
-          
-          return (
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                {isCountingComplete
-                  ? 'Dealing Next Hand...'
-                  : effectivePhase === 'counting'
-                    ? countingAnnouncement 
-                      ? `${countingTargetLabel}: ${countingAnnouncement}`
-                      : countingTargetLabel
-                        ? `Scoring ${countingTargetLabel}...`
-                        : 'Scoring hands...'
-                    : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
-                      ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                      : effectivePhase === 'discarding'
-                        ? 'Discard to Crib'
-                        : 'Cut Card'}
-              </p>
-            </div>
-          );
-        })()}
-          </div>
+          })()}
+        </div>
 
-        {/* Tab navigation bar */}
+        {/* Tab navigation bar — always visible */}
         <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
-          {/* Cards tab */}
           <button 
             onClick={() => setActiveTab('cards')}
             style={{ flex: '0 0 35%' }}
@@ -2890,7 +2790,6 @@ export const CribbageMobileGameTable = ({
           >
             <SpadeIcon className="w-5 h-5" />
           </button>
-          {/* Chat tab */}
           <button 
             onClick={() => setActiveTab('chat')}
             style={{ flex: '0 0 35%' }}
@@ -2902,7 +2801,6 @@ export const CribbageMobileGameTable = ({
           >
             <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
           </button>
-          {/* Lobby tab */}
           <button 
             onClick={() => setActiveTab('lobby')}
             style={{ flex: '0 0 15%' }}
@@ -2914,7 +2812,6 @@ export const CribbageMobileGameTable = ({
           >
             <User className="w-5 h-5" />
           </button>
-          {/* History tab */}
           <button 
             onClick={() => setActiveTab('history')}
             style={{ flex: '0 0 15%' }}
@@ -2930,11 +2827,19 @@ export const CribbageMobileGameTable = ({
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
-          {/* Hide cards tab while counting animation is active, transitioning, or when state is stale (old hand still rendering) */}
+          {/* Cards tab: during high-card or bootstrap, show contextual placeholder */}
+          {activeTab === 'cards' && (isHighCardMode || isBootstrapMode) && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground text-sm">
+                {isHighCardMode ? 'Drawing for dealer...' : (initialLoadComplete ? 'Preparing next hand...' : 'Awaiting ante decisions...')}
+              </p>
+            </div>
+          )}
+
+          {/* Cards tab: gameplay mode with guards */}
           {(() => {
             const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
-            if (activeTab === 'cards' && currentPlayer && cardsTabBlocked) {
-              // Log WHY cards tab is being suppressed
+            if (activeTab === 'cards' && isGameplayMode && currentPlayer && cardsTabBlocked) {
               logDebugEvent({
                 gameId,
                 eventType: 'crib:lifecycle:cards_tab_suppressed',
@@ -2953,9 +2858,9 @@ export const CribbageMobileGameTable = ({
             }
             return null;
           })()}
-          {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (
+          {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (
             <CribbageMobileCardsTab
-              key={renderHandKey} // Force remount on hand change — keyed from sync presentation state
+              key={renderHandKey}
               cribbageState={viewState}
               currentPlayerId={currentPlayerId}
               playerCount={players.length}
@@ -2969,8 +2874,8 @@ export const CribbageMobileGameTable = ({
             />
           )}
           
-          {/* Show placeholder during counting animation - shows whose hand is being scored */}
-          {activeTab === 'cards' && countingStateSnapshot && (
+          {/* Counting animation placeholder */}
+          {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground text-sm">
                 {countingTargetLabel ? `Scoring ${countingTargetLabel}...` : 'Scoring hands...'}
@@ -3011,8 +2916,6 @@ export const CribbageMobileGameTable = ({
           )}
         </div>
       </div>
-
-      {/* Debug overlay removed - use url param ?debug=1 to enable if needed */}
     </div>
   );
 };
