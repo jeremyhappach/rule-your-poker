@@ -7106,6 +7106,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // CRITICAL: onGameComplete must call handleGameOverComplete to transition to next game
           // CRIBBAGE GAME - Keep table mounted through win sequence (in_progress -> game_over)
           if ((isInProgress || isCribbageGameOver) && game.game_type === 'cribbage') {
+            logDebugEvent({
+              gameId: gameId!,
+              eventType: 'crib:lifecycle:game_branch',
+              payload: {
+                branch: isCribbageGameOver ? 'cribbage_game_over' : 'cribbage_in_progress',
+                gameStatus: game.status,
+                dealerGameId: currentRound?.dealer_game_id ?? null,
+                roundId: currentRound?.id?.slice(0, 8) ?? null,
+                handNumber: currentRound?.hand_number ?? null,
+                dealerPosition: game.dealer_position,
+              },
+            });
             return (
               <CribbageMobileGameTable
                 gameId={gameId!}
