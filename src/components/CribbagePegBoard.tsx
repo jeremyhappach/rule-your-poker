@@ -1,5 +1,7 @@
+import { useRef } from 'react';
 import type { CribbagePlayerState } from '@/lib/cribbageTypes';
 import { getDisplayName } from '@/lib/botAlias';
+import { logDebugEvent } from '@/lib/debugEventLogger';
 
 interface Player {
   id: string;
