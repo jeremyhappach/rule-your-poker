@@ -43,6 +43,8 @@ export const CribbageFeltContent = ({
 }: CribbageFeltContentProps) => {
   // ── Lifecycle instrumentation ──
   const feltInstanceIdRef = useRef<string>(`felt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
+  const feltRenderCountRef = useRef(0);
+  feltRenderCountRef.current += 1;
 
   useEffect(() => {
     logDebugEvent({
@@ -55,6 +57,8 @@ export const CribbageFeltContent = ({
         hasCutCard: !!cribbageState.cutCard,
         cribSize: cribbageState.crib.length,
         playedCards: cribbageState.pegging?.playedCards?.length ?? 0,
+        countingOutroActive,
+        thirtyOneDelayActive,
         ...buildMetaPayload(),
       },
     });
@@ -65,10 +69,30 @@ export const CribbageFeltContent = ({
         payload: {
           instanceId: feltInstanceIdRef.current,
           handBoundaryKey: handBoundaryKey ?? null,
+          renderCount: feltRenderCountRef.current,
         },
       });
     };
   }, []); // true mount/unmount only
+
+  // Log identity/key changes across renders
+  const prevHandBoundaryKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevHandBoundaryKeyRef.current !== null && prevHandBoundaryKeyRef.current !== (handBoundaryKey ?? null)) {
+      logDebugEvent({
+        gameId: 'felt-lifecycle',
+        eventType: 'crib:lifecycle:felt_key_changed',
+        payload: {
+          instanceId: feltInstanceIdRef.current,
+          prevHandBoundaryKey: prevHandBoundaryKeyRef.current,
+          newHandBoundaryKey: handBoundaryKey ?? null,
+          phase: cribbageState.phase,
+          renderCount: feltRenderCountRef.current,
+        },
+      });
+    }
+    prevHandBoundaryKeyRef.current = handBoundaryKey ?? null;
+  }, [handBoundaryKey]);
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
 
   // During the 2s outro OR 31 delay, keep the pegging layout visible even though DB phase/count may be updated.
