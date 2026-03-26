@@ -816,11 +816,15 @@ export const CribbageMobileGameTable = ({
   // We intentionally do NOT clear during counting→complete because the peg needs to show final scores.
   useEffect(() => {
     if (!cribbageState) return;
-    // Clear overrides when we're in discarding or cutting (new hand started)
-    if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting') {
-      // Only clear if we actually have stale overrides AND the snapshot is cleared
-      // (meaning counting animation is truly complete)
+    // Clear overrides when we're in discarding, cutting, OR pegging (new hand started or pegging began)
+    // CRITICAL: Must clear during pegging too — if overrides persist from previous counting,
+    // the peg board shows stale old-hand scores instead of live pegging scores.
+    if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting' || cribbageState.phase === 'pegging') {
       if (countingScoreOverrides && !countingStateSnapshot) {
+        logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
+          phase: cribbageState.phase,
+          overrideValues: countingScoreOverrides,
+        });
         setCountingScoreOverrides(null);
       }
     }

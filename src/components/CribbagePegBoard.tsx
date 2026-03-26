@@ -38,7 +38,8 @@ export const CribbagePegBoard = ({
         // Use override score during counting phase, otherwise use actual pegScore
         const score = overrideScores?.[player.id] ?? state?.pegScore ?? 0;
         const percentage = Math.min(100, (score / winningScore) * 100);
-        
+        // Ensure peg is always visible even at 0 — minimum 2% width
+        const displayPercentage = score > 0 ? Math.max(2, percentage) : 0;
         // Use bot alias for display name
         const displayName = getDisplayName(players, player, player.profiles?.username || 'Player');
         
