@@ -298,9 +298,9 @@ export const CribbageMobileGameTable = ({
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  // ARCHITECTURAL FIX: Render reads viewState (sync presentation state), not raw cribbageState.
-  // During hand transitions, syncHandle.reset(null) sets viewState to null,
-  // naturally preventing stale renders. No manual freeze gate needed.
+  // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
+  // presentation state and only swap when the first new-hand snapshot arrives.
+  const transitionFrozenRef = useRef(false);
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
@@ -1367,12 +1367,19 @@ export const CribbageMobileGameTable = ({
       });
       setCountingScoreOverrides(null);
     }
-    // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
+    // Freeze current presentation instead of blanking the table.
+    // The frozen last-good state stays visible until the first new-hand snapshot arrives.
+    const savedPresentation = syncHandle.presentationState;
     syncHandle.reset(null);
+    if (savedPresentation) {
+      syncHandle.commitToPresentation(savedPresentation);
+      syncHandle.freezePresentation();
+      transitionFrozenRef.current = true;
+    }
     setIsTransitioning(true);
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
-      viewStateNulled: true,
+      frozenPresentation: !!savedPresentation,
       instanceId: instanceIdRef.current,
     });
   }, [currentRoundId]);
@@ -1412,14 +1419,25 @@ export const CribbageMobileGameTable = ({
       if (result.accepted) {
         // Update the legacy cribbageState/ref for components that still read it directly
         setCribbageState(newCribbageState);
-        // ── Lifecycle: first accepted snapshot after transition ──
+        
+        // If presentation was frozen during hand transition, unfreeze now.
+        // unfreezePresentation() commits the new authoritative state to presentation,
+        // producing a clean single-frame swap from old hand → new hand.
+        const wasTransitionFrozen = transitionFrozenRef.current;
+        if (wasTransitionFrozen) {
+          transitionFrozenRef.current = false;
+          syncHandle.unfreezePresentation();
+          setIsTransitioning(false);
+        }
+        
+        // ── Lifecycle: accepted snapshot ──
         logDebugEvent({
           gameId,
           eventType: 'crib:lifecycle:snapshot_accepted',
           payload: {
             instanceId: instanceIdRef.current,
             source,
-            isTransitioning,
+            transitionUnfrozen: wasTransitionFrozen,
             phase: newCribbageState.phase,
             handNumber: currentHandNumber,
             roundId: currentRoundId?.slice(0, 8),

@@ -6823,8 +6823,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
-        {/* NOTE: Cribbage win sequence must NOT remount on in_progress -> game_over.
-            We render the same CribbageMobileGameTable instance for both statuses below. */}
+
 
 
         {game.status === 'completed' && (
@@ -6876,113 +6875,90 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </Card>
         )}
 
-        {/* CRIBBAGE DEALER SELECTION - High card animation to determine first dealer */}
-        {game.status === 'cribbage_dealer_selection' && game.game_type === 'cribbage' && (() => {
-          logDebugEvent({
-            gameId: gameId!,
-            eventType: 'crib:lifecycle:game_branch',
-            payload: {
-              branch: 'cribbage_dealer_selection',
-              gameStatus: game.status,
-              dealerGameId: game.current_game_uuid ?? null,
-              dealerPosition: game.dealer_position,
-              currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
-              handNumber: currentRound?.hand_number ?? null,
-              ...buildMetaPayload(),
-            },
-          });
-          return (
-          <>
-            {/* High Card Dealer Selection Logic (headless - manages state only) */}
-            <HighCardDealerSelection
-              gameId={gameId!}
-              players={players}
-              onComplete={handleCribbageDealerSelectionComplete}
-              isHost={isCreator}
-              allowBotDealers={true}
-              selectionVariant="cribbage"
-              syncedState={(game as any).dealer_selection_state as any}
-              onCardsUpdate={setDealerSelectionCards}
-              onAnnouncementUpdate={(msg, complete) => {
-                setDealerSelectionAnnouncement(msg);
-                setDealerSelectionComplete(complete);
-              }}
-              onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
-            />
-            {/* Cribbage table with dealer selection overlay */}
-            <CribbageMobileGameTable
-              gameId={gameId!}
-              roundId=""
-              dealerGameId={game.current_game_uuid || null}
-              handNumber={1}
-              players={players}
-              currentUserId={user?.id || ''}
-              dealerPosition={game.dealer_position || 1}
-              anteAmount={game.ante_amount || 1}
-              pot={0}
-              isHost={isCreator}
-              onGameComplete={fetchGameData}
-              dealerChatMessages={cribbageDealerChatMessages}
-              onInjectDealerChatMessage={injectCribbageDealerChatMessage}
-              gameConfig={{
-                pointsToWin: game.points_to_win || 121,
-                skunkEnabled: game.skunk_enabled ?? true,
-                skunkThreshold: game.skunk_threshold || 91,
-                doubleSkunkEnabled: game.double_skunk_enabled ?? true,
-                doubleSkunkThreshold: game.double_skunk_threshold || 61,
-              }}
-              dealerSelectionCards={dealerSelectionCards}
-              dealerSelectionAnnouncement={dealerSelectionAnnouncement}
-              dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
-              isDealerSelection={true}
-            />
-          </>
-          );
-        })()}
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
+
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
           const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
           const isAnteDecision = game.status === 'ante_decision';
+          const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
 
-          // CRIBBAGE during ante_decision - show cribbage table instead of 3-5-7
-          if (isAnteDecision && game.game_type === 'cribbage') {
+          // CRIBBAGE — unified single instance across ALL session phases
+          // One persistent CribbageMobileGameTable prevents physical unmount/remount during
+          // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
+          if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
+            const cribbageRoundId = (isInProgress || isCribbageGameOver) ? (currentRound?.id || '') : '';
+            const cribbageDealerGameId = (isInProgress || isCribbageGameOver)
+              ? (currentRound?.dealer_game_id || null)
+              : (game.current_game_uuid || null);
+            const cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
+            const cribbagePot = isCribbageGameOver ? 0 : (isInProgress ? potForDisplay : 0);
+
             logDebugEvent({
               gameId: gameId!,
               eventType: 'crib:lifecycle:game_branch',
               payload: {
-                branch: 'cribbage_ante_decision',
+                branch: isCribbageDealerSelection ? 'cribbage_dealer_selection'
+                  : isAnteDecision ? 'cribbage_ante_decision'
+                  : isCribbageGameOver ? 'cribbage_game_over'
+                  : 'cribbage_in_progress',
                 gameStatus: game.status,
-                dealerGameId: game.current_game_uuid ?? null,
+                dealerGameId: cribbageDealerGameId,
                 dealerPosition: game.dealer_position,
                 currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+                handNumber: currentRound?.hand_number ?? null,
+                ...buildMetaPayload(),
               },
             });
+
             return (
-              <CribbageMobileGameTable
-                gameId={gameId!}
-                roundId=""
-                dealerGameId={null}
-                handNumber={0}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={0}
-                isHost={isCreator}
-                onGameComplete={() => {}}
-                dealerChatMessages={[]}
-                onInjectDealerChatMessage={() => {}}
-                gameConfig={{
-                  pointsToWin: game.points_to_win || 121,
-                  skunkEnabled: game.skunk_enabled ?? true,
-                  skunkThreshold: game.skunk_threshold || 91,
-                  doubleSkunkEnabled: game.double_skunk_enabled ?? true,
-                  doubleSkunkThreshold: game.double_skunk_threshold || 61,
-                }}
-              />
+              <>
+                {isCribbageDealerSelection && (
+                  <HighCardDealerSelection
+                    gameId={gameId!}
+                    players={players}
+                    onComplete={handleCribbageDealerSelectionComplete}
+                    isHost={isCreator}
+                    allowBotDealers={true}
+                    selectionVariant="cribbage"
+                    syncedState={(game as any).dealer_selection_state as any}
+                    onCardsUpdate={setDealerSelectionCards}
+                    onAnnouncementUpdate={(msg, complete) => {
+                      setDealerSelectionAnnouncement(msg);
+                      setDealerSelectionComplete(complete);
+                    }}
+                    onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  />
+                )}
+                <CribbageMobileGameTable
+                  gameId={gameId!}
+                  roundId={cribbageRoundId}
+                  dealerGameId={cribbageDealerGameId}
+                  handNumber={cribbageHandNumber}
+                  players={players}
+                  currentUserId={user?.id || ''}
+                  dealerPosition={game.dealer_position || 1}
+                  anteAmount={game.ante_amount || 1}
+                  pot={cribbagePot}
+                  isHost={isCreator}
+                  onGameComplete={handleGameOverComplete}
+                  dealerChatMessages={cribbageDealerChatMessages}
+                  onInjectDealerChatMessage={injectCribbageDealerChatMessage}
+                  gameConfig={{
+                    pointsToWin: game.points_to_win || 121,
+                    skunkEnabled: game.skunk_enabled ?? true,
+                    skunkThreshold: game.skunk_threshold || 91,
+                    doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+                    doubleSkunkThreshold: game.double_skunk_threshold || 61,
+                  }}
+                  isDealerSelection={isCribbageDealerSelection}
+                  dealerSelectionCards={isCribbageDealerSelection ? dealerSelectionCards : undefined}
+                  dealerSelectionAnnouncement={isCribbageDealerSelection ? dealerSelectionAnnouncement : undefined}
+                  dealerSelectionWinnerPosition={isCribbageDealerSelection ? dealerSelectionWinnerPosition : undefined}
+                />
+              </>
             );
           }
 
@@ -7113,47 +7089,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // CRIBBAGE GAME - Use mobile-optimized table
-          // CRITICAL: onGameComplete must call handleGameOverComplete to transition to next game
-          // CRIBBAGE GAME - Keep table mounted through win sequence (in_progress -> game_over)
-          if ((isInProgress || isCribbageGameOver) && game.game_type === 'cribbage') {
-            logDebugEvent({
-              gameId: gameId!,
-              eventType: 'crib:lifecycle:game_branch',
-              payload: {
-                branch: isCribbageGameOver ? 'cribbage_game_over' : 'cribbage_in_progress',
-                gameStatus: game.status,
-                dealerGameId: currentRound?.dealer_game_id ?? null,
-                roundId: currentRound?.id?.slice(0, 8) ?? null,
-                handNumber: currentRound?.hand_number ?? null,
-                dealerPosition: game.dealer_position,
-              },
-            });
-            return (
-              <CribbageMobileGameTable
-                gameId={gameId!}
-                roundId={currentRound?.id || ''}
-                dealerGameId={currentRound?.dealer_game_id || null}
-                handNumber={currentRound?.hand_number ?? 1}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={isCribbageGameOver ? 0 : potForDisplay}
-                isHost={isCreator}
-                onGameComplete={handleGameOverComplete}
-                dealerChatMessages={cribbageDealerChatMessages}
-                onInjectDealerChatMessage={injectCribbageDealerChatMessage}
-                gameConfig={{
-                  pointsToWin: game.points_to_win || 121,
-                  skunkEnabled: game.skunk_enabled ?? true,
-                  skunkThreshold: game.skunk_threshold || 91,
-                  doubleSkunkEnabled: game.double_skunk_enabled ?? true,
-                  doubleSkunkThreshold: game.double_skunk_threshold || 61,
-                }}
-              />
-            );
-          }
 
           // TRIVIA GAME
           if (isInProgress && game.game_type === 'trivia') {
