@@ -2931,6 +2931,28 @@ export const CribbageMobileGameTable = ({
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
           {/* Hide cards tab while counting animation is active, transitioning, or when state is stale (old hand still rendering) */}
+          {(() => {
+            const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
+            if (activeTab === 'cards' && currentPlayer && cardsTabBlocked) {
+              // Log WHY cards tab is being suppressed
+              logDebugEvent({
+                gameId,
+                eventType: 'crib:lifecycle:cards_tab_suppressed',
+                payload: {
+                  instanceId: instanceIdRef.current,
+                  isTransitioning,
+                  countingSnapshotActive: !!countingStateSnapshot,
+                  countingAnimationActive: countingAnimationActiveRef.current,
+                  viewStatePhase: viewState?.phase ?? null,
+                  viewStateHandSizes: viewState ? Object.fromEntries(
+                    Object.entries(viewState.playerStates).map(([pid, ps]) => [pid.slice(0, 8), ps.hand?.length ?? 0])
+                  ) : null,
+                  dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                },
+              });
+            }
+            return null;
+          })()}
           {activeTab === 'cards' && currentPlayer && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (
             <CribbageMobileCardsTab
               key={renderHandKey} // Force remount on hand change — keyed from sync presentation state
