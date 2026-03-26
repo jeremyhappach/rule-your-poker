@@ -6938,6 +6938,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // CRIBBAGE during ante_decision - show cribbage table instead of 3-5-7
           if (isAnteDecision && game.game_type === 'cribbage') {
+            logDebugEvent({
+              gameId: gameId!,
+              eventType: 'crib:lifecycle:game_branch',
+              payload: {
+                branch: 'cribbage_ante_decision',
+                gameStatus: game.status,
+                dealerGameId: game.current_game_uuid ?? null,
+                dealerPosition: game.dealer_position,
+                currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+              },
+            });
             return (
               <CribbageMobileGameTable
                 gameId={gameId!}
