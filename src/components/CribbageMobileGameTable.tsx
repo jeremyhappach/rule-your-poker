@@ -1406,6 +1406,21 @@ export const CribbageMobileGameTable = ({
       if (result.accepted) {
         // Update the legacy cribbageState/ref for components that still read it directly
         setCribbageState(newCribbageState);
+        // ── Lifecycle: first accepted snapshot after transition ──
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:lifecycle:snapshot_accepted',
+          payload: {
+            instanceId: instanceIdRef.current,
+            source,
+            isTransitioning,
+            phase: newCribbageState.phase,
+            handNumber: currentHandNumber,
+            roundId: currentRoundId?.slice(0, 8),
+            renderHandKey,
+            viewStateWasNull: viewState === null,
+          },
+        });
       }
       
       // Reset poll interval when realtime works
