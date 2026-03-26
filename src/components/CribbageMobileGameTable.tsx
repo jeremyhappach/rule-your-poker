@@ -44,6 +44,8 @@ import {
 import { useGameStateSync } from '@/lib/gameStateSync';
 import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
+import { logDebugEvent } from '@/lib/debugEventLogger';
+import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface Player {
   id: string;
@@ -156,6 +158,40 @@ export const CribbageMobileGameTable = ({
   onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
+
+  // ── Lifecycle instrumentation ─────────────────────────────────
+  // Stable instance ID survives re-renders; changes only on true unmount/remount.
+  const instanceIdRef = useRef<string>(`cmt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
+  const renderCountRef = useRef(0);
+  const prevRoundIdRef_lifecycle = useRef<string | null>(null);
+  const prevHandKeyRef_lifecycle = useRef<string | null>(null);
+
+  // Mount / unmount logging
+  useEffect(() => {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:table_mounted',
+      payload: {
+        instanceId: instanceIdRef.current,
+        roundId,
+        handNumber,
+        gameId,
+        ...buildMetaPayload(),
+      },
+    });
+    return () => {
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:lifecycle:table_unmounted',
+        payload: {
+          instanceId: instanceIdRef.current,
+          roundId,
+          handNumber,
+          renderCount: renderCountRef.current,
+        },
+      });
+    };
+  }, []); // empty deps = true mount/unmount only
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
   
@@ -1302,10 +1338,23 @@ export const CribbageMobileGameTable = ({
       hadCribbageState: cribbageState !== null,
       hadCountingOverrides: countingScoreOverrides !== null,
     });
-    // CRITICAL FIX: Clear counting score overrides on round change.
-    // Without this, stale overrides from the previous hand's counting phase persist
-    // into the new hand's pegging, causing the peg board to show old scores
-    // (because overrideScores takes priority over pegScore in CribbagePegBoard).
+    // ── Lifecycle: transition edge ──
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:transition_edge',
+      payload: {
+        instanceId: instanceIdRef.current,
+        trigger: 'roundId_change',
+        prevRoundId: oldId?.slice(0, 8),
+        newRoundId: currentRoundId.slice(0, 8),
+        viewStateNull: viewState === null,
+        cribbageStateNull: cribbageState === null,
+        currentHandKey,
+        renderHandKey,
+        handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+        ...buildMetaPayload(),
+      },
+    });
     if (countingScoreOverrides) {
       logCribbageDebug(debugCtx, 'hand_transition:clearing_stale_overrides', {
         overrideValues: countingScoreOverrides,
@@ -1313,12 +1362,12 @@ export const CribbageMobileGameTable = ({
       setCountingScoreOverrides(null);
     }
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
-    // viewState (presentation) becomes null, which naturally prevents stale rendering.
     syncHandle.reset(null);
     setIsTransitioning(true);
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
       viewStateNulled: true,
+      instanceId: instanceIdRef.current,
     });
   }, [currentRoundId]);
 
@@ -1357,6 +1406,21 @@ export const CribbageMobileGameTable = ({
       if (result.accepted) {
         // Update the legacy cribbageState/ref for components that still read it directly
         setCribbageState(newCribbageState);
+        // ── Lifecycle: first accepted snapshot after transition ──
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:lifecycle:snapshot_accepted',
+          payload: {
+            instanceId: instanceIdRef.current,
+            source,
+            isTransitioning,
+            phase: newCribbageState.phase,
+            handNumber: currentHandNumber,
+            roundId: currentRoundId?.slice(0, 8),
+            renderHandKey,
+            viewStateWasNull: viewState === null,
+          },
+        });
       }
       
       // Reset poll interval when realtime works
@@ -2258,9 +2322,58 @@ export const CribbageMobileGameTable = ({
     );
   }
 
+  // ── Lifecycle: render-branch instrumentation ──
+  // Log on every render where roundId or handKey changed, or where we hit an early return
+  renderCountRef.current += 1;
+  const renderRoundId = currentRoundId;
+  const renderViewNull = viewState === null;
+  const renderCribNull = cribbageState === null;
+  const roundIdChanged = prevRoundIdRef_lifecycle.current !== null && prevRoundIdRef_lifecycle.current !== renderRoundId;
+  const handKeyChanged = prevHandKeyRef_lifecycle.current !== null && prevHandKeyRef_lifecycle.current !== currentHandKey;
+  if (roundIdChanged || handKeyChanged) {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:render_branch',
+      payload: {
+        instanceId: instanceIdRef.current,
+        renderCount: renderCountRef.current,
+        roundIdChanged,
+        prevRoundId: prevRoundIdRef_lifecycle.current?.slice(0, 8),
+        currentRoundId: renderRoundId.slice(0, 8),
+        handKeyChanged,
+        prevHandKey: prevHandKeyRef_lifecycle.current?.slice(0, 12),
+        currentHandKey: currentHandKey.slice(0, 12),
+        viewStateNull: renderViewNull,
+        cribbageStateNull: renderCribNull,
+        isTransitioning,
+        initialLoadComplete,
+        isDealerSelection,
+        countingSnapshotActive: !!countingStateSnapshot,
+        renderHandKey: renderHandKey.slice(0, 12),
+        handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+      },
+    });
+  }
+  prevRoundIdRef_lifecycle.current = renderRoundId;
+  prevHandKeyRef_lifecycle.current = currentHandKey;
+
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
   if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
+    // ── Lifecycle: early return branch ──
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:early_return',
+      payload: {
+        instanceId: instanceIdRef.current,
+        reason: isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId',
+        isTransitioning,
+        initialLoadComplete,
+        viewStateNull: renderViewNull,
+        hasCurrentPlayerId: !!currentPlayerId,
+        renderCount: renderCountRef.current,
+      },
+    });
     // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
     if (isTransitioning) {
       return <div className="h-full flex flex-col overflow-hidden bg-background" />;
