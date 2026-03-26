@@ -1296,7 +1296,18 @@ export const CribbageMobileGameTable = ({
       prevRoundId: oldId?.slice(0, 8),
       newRoundId: currentRoundId.slice(0, 8),
       hadCribbageState: cribbageState !== null,
+      hadCountingOverrides: countingScoreOverrides !== null,
     });
+    // CRITICAL FIX: Clear counting score overrides on round change.
+    // Without this, stale overrides from the previous hand's counting phase persist
+    // into the new hand's pegging, causing the peg board to show old scores
+    // (because overrideScores takes priority over pegScore in CribbagePegBoard).
+    if (countingScoreOverrides) {
+      logCribbageDebug(debugCtx, 'hand_transition:clearing_stale_overrides', {
+        overrideValues: countingScoreOverrides,
+      });
+      setCountingScoreOverrides(null);
+    }
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
     // viewState (presentation) becomes null, which naturally prevents stale rendering.
     syncHandle.reset(null);
