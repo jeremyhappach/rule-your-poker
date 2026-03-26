@@ -1394,12 +1394,10 @@ export const CribbageMobileGameTable = ({
         ...buildMetaPayload(),
       },
     });
-    if (countingScoreOverrides) {
-      logCribbageDebug(debugCtx, 'hand_transition:clearing_stale_overrides', {
-        overrideValues: countingScoreOverrides,
-      });
-      setCountingScoreOverrides(null);
-    }
+    // BUG B FIX: Do NOT clear countingScoreOverrides on roundId change.
+    // The phase-based clearing effect (with pegScore catch-up check) will handle
+    // clearing overrides safely once the authoritative state has caught up.
+    // Clearing here causes the pegboard to briefly show stale pre-counting scores.
     // Freeze current presentation instead of blanking the table.
     // The frozen last-good state stays visible until the first new-hand snapshot arrives.
     const savedPresentation = syncHandle.presentationState;
