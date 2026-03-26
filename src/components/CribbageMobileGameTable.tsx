@@ -156,6 +156,40 @@ export const CribbageMobileGameTable = ({
   onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
+
+  // ── Lifecycle instrumentation ─────────────────────────────────
+  // Stable instance ID survives re-renders; changes only on true unmount/remount.
+  const instanceIdRef = useRef<string>(`cmt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
+  const renderCountRef = useRef(0);
+  const prevRoundIdRef = useRef<string | null>(null);
+  const prevHandKeyRef_lifecycle = useRef<string | null>(null);
+
+  // Mount / unmount logging
+  useEffect(() => {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:table_mounted',
+      payload: {
+        instanceId: instanceIdRef.current,
+        roundId,
+        handNumber,
+        gameId,
+        ...buildMetaPayload(),
+      },
+    });
+    return () => {
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:lifecycle:table_unmounted',
+        payload: {
+          instanceId: instanceIdRef.current,
+          roundId,
+          handNumber,
+          renderCount: renderCountRef.current,
+        },
+      });
+    };
+  }, []); // empty deps = true mount/unmount only
   const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
   

@@ -1,7 +1,10 @@
+import { useEffect, useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
+import { logDebugEvent } from '@/lib/debugEventLogger';
+import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface Player {
   id: string;
