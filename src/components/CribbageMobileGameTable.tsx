@@ -816,11 +816,15 @@ export const CribbageMobileGameTable = ({
   // We intentionally do NOT clear during counting→complete because the peg needs to show final scores.
   useEffect(() => {
     if (!cribbageState) return;
-    // Clear overrides when we're in discarding or cutting (new hand started)
-    if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting') {
-      // Only clear if we actually have stale overrides AND the snapshot is cleared
-      // (meaning counting animation is truly complete)
+    // Clear overrides when we're in discarding, cutting, OR pegging (new hand started or pegging began)
+    // CRITICAL: Must clear during pegging too — if overrides persist from previous counting,
+    // the peg board shows stale old-hand scores instead of live pegging scores.
+    if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting' || cribbageState.phase === 'pegging') {
       if (countingScoreOverrides && !countingStateSnapshot) {
+        logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
+          phase: cribbageState.phase,
+          overrideValues: countingScoreOverrides,
+        });
         setCountingScoreOverrides(null);
       }
     }
@@ -1296,7 +1300,18 @@ export const CribbageMobileGameTable = ({
       prevRoundId: oldId?.slice(0, 8),
       newRoundId: currentRoundId.slice(0, 8),
       hadCribbageState: cribbageState !== null,
+      hadCountingOverrides: countingScoreOverrides !== null,
     });
+    // CRITICAL FIX: Clear counting score overrides on round change.
+    // Without this, stale overrides from the previous hand's counting phase persist
+    // into the new hand's pegging, causing the peg board to show old scores
+    // (because overrideScores takes priority over pegScore in CribbagePegBoard).
+    if (countingScoreOverrides) {
+      logCribbageDebug(debugCtx, 'hand_transition:clearing_stale_overrides', {
+        overrideValues: countingScoreOverrides,
+      });
+      setCountingScoreOverrides(null);
+    }
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
     // viewState (presentation) becomes null, which naturally prevents stale rendering.
     syncHandle.reset(null);

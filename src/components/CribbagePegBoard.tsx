@@ -38,7 +38,8 @@ export const CribbagePegBoard = ({
         // Use override score during counting phase, otherwise use actual pegScore
         const score = overrideScores?.[player.id] ?? state?.pegScore ?? 0;
         const percentage = Math.min(100, (score / winningScore) * 100);
-        
+        // Ensure peg is always visible even at 0 — minimum 2% width
+        const displayPercentage = score > 0 ? Math.max(2, percentage) : 0;
         // Use bot alias for display name
         const displayName = getDisplayName(players, player, player.profiles?.username || 'Player');
         
@@ -53,13 +54,13 @@ export const CribbagePegBoard = ({
               {/* Progress */}
               <div 
                 className={`h-full ${getPlayerColor(index)} transition-all duration-500 rounded-full`}
-                style={{ width: `${percentage}%` }}
+                style={{ width: `${displayPercentage}%` }}
               />
               
               {/* Peg marker */}
               <div 
                 className={`absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ${getPlayerColor(index)} border border-white shadow transition-all duration-500`}
-                style={{ left: `calc(${percentage}% - 5px)` }}
+                style={{ left: `calc(${displayPercentage}% - 5px)` }}
               />
             </div>
             
