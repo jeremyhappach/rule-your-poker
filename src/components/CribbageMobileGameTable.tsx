@@ -2322,9 +2322,58 @@ export const CribbageMobileGameTable = ({
     );
   }
 
+  // ── Lifecycle: render-branch instrumentation ──
+  // Log on every render where roundId or handKey changed, or where we hit an early return
+  renderCountRef.current += 1;
+  const renderRoundId = currentRoundId;
+  const renderViewNull = viewState === null;
+  const renderCribNull = cribbageState === null;
+  const roundIdChanged = prevRoundIdRef_lifecycle.current !== null && prevRoundIdRef_lifecycle.current !== renderRoundId;
+  const handKeyChanged = prevHandKeyRef_lifecycle.current !== null && prevHandKeyRef_lifecycle.current !== currentHandKey;
+  if (roundIdChanged || handKeyChanged) {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:render_branch',
+      payload: {
+        instanceId: instanceIdRef.current,
+        renderCount: renderCountRef.current,
+        roundIdChanged,
+        prevRoundId: prevRoundIdRef_lifecycle.current?.slice(0, 8),
+        currentRoundId: renderRoundId.slice(0, 8),
+        handKeyChanged,
+        prevHandKey: prevHandKeyRef_lifecycle.current?.slice(0, 12),
+        currentHandKey: currentHandKey.slice(0, 12),
+        viewStateNull: renderViewNull,
+        cribbageStateNull: renderCribNull,
+        isTransitioning,
+        initialLoadComplete,
+        isDealerSelection,
+        countingSnapshotActive: !!countingStateSnapshot,
+        renderHandKey: renderHandKey.slice(0, 12),
+        handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+      },
+    });
+  }
+  prevRoundIdRef_lifecycle.current = renderRoundId;
+  prevHandKeyRef_lifecycle.current = currentHandKey;
+
   // During ante_decision phase (no round yet), show the circular cribbage table with "Awaiting ante decisions"
   // Skip the banner entirely when isTransitioning (between hands after counting) - no banner needed
   if (!isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId)) {
+    // ── Lifecycle: early return branch ──
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:early_return',
+      payload: {
+        instanceId: instanceIdRef.current,
+        reason: isTransitioning ? 'transitioning' : !initialLoadComplete ? 'not_loaded' : !viewState ? 'viewState_null' : 'no_currentPlayerId',
+        isTransitioning,
+        initialLoadComplete,
+        viewStateNull: renderViewNull,
+        hasCurrentPlayerId: !!currentPlayerId,
+        renderCount: renderCountRef.current,
+      },
+    });
     // If we're transitioning between hands (counting just completed), show a blank screen instead of the banner
     if (isTransitioning) {
       return <div className="h-full flex flex-col overflow-hidden bg-background" />;

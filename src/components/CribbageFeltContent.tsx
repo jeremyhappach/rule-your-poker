@@ -41,6 +41,34 @@ export const CribbageFeltContent = ({
   thirtyOneDelayActive = false,
   handBoundaryKey,
 }: CribbageFeltContentProps) => {
+  // ── Lifecycle instrumentation ──
+  const feltInstanceIdRef = useRef<string>(`felt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
+
+  useEffect(() => {
+    logDebugEvent({
+      gameId: 'felt-lifecycle',
+      eventType: 'crib:lifecycle:felt_mounted',
+      payload: {
+        instanceId: feltInstanceIdRef.current,
+        phase: cribbageState.phase,
+        handBoundaryKey: handBoundaryKey ?? null,
+        hasCutCard: !!cribbageState.cutCard,
+        cribSize: cribbageState.crib.length,
+        playedCards: cribbageState.pegging?.playedCards?.length ?? 0,
+        ...buildMetaPayload(),
+      },
+    });
+    return () => {
+      logDebugEvent({
+        gameId: 'felt-lifecycle',
+        eventType: 'crib:lifecycle:felt_unmounted',
+        payload: {
+          instanceId: feltInstanceIdRef.current,
+          handBoundaryKey: handBoundaryKey ?? null,
+        },
+      });
+    };
+  }, []); // true mount/unmount only
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
 
   // During the 2s outro OR 31 delay, keep the pegging layout visible even though DB phase/count may be updated.
