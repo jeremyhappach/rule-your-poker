@@ -1338,10 +1338,23 @@ export const CribbageMobileGameTable = ({
       hadCribbageState: cribbageState !== null,
       hadCountingOverrides: countingScoreOverrides !== null,
     });
-    // CRITICAL FIX: Clear counting score overrides on round change.
-    // Without this, stale overrides from the previous hand's counting phase persist
-    // into the new hand's pegging, causing the peg board to show old scores
-    // (because overrideScores takes priority over pegScore in CribbagePegBoard).
+    // ── Lifecycle: transition edge ──
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:lifecycle:transition_edge',
+      payload: {
+        instanceId: instanceIdRef.current,
+        trigger: 'roundId_change',
+        prevRoundId: oldId?.slice(0, 8),
+        newRoundId: currentRoundId.slice(0, 8),
+        viewStateNull: viewState === null,
+        cribbageStateNull: cribbageState === null,
+        currentHandKey,
+        renderHandKey,
+        handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+        ...buildMetaPayload(),
+      },
+    });
     if (countingScoreOverrides) {
       logCribbageDebug(debugCtx, 'hand_transition:clearing_stale_overrides', {
         overrideValues: countingScoreOverrides,
@@ -1349,12 +1362,12 @@ export const CribbageMobileGameTable = ({
       setCountingScoreOverrides(null);
     }
     // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
-    // viewState (presentation) becomes null, which naturally prevents stale rendering.
     syncHandle.reset(null);
     setIsTransitioning(true);
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
       viewStateNulled: true,
+      instanceId: instanceIdRef.current,
     });
   }, [currentRoundId]);
 
