@@ -1367,12 +1367,19 @@ export const CribbageMobileGameTable = ({
       });
       setCountingScoreOverrides(null);
     }
-    // Reset sync framework — clears authoritative, optimistic, presentation, frozen.
+    // Freeze current presentation instead of blanking the table.
+    // The frozen last-good state stays visible until the first new-hand snapshot arrives.
+    const savedPresentation = syncHandle.presentationState;
     syncHandle.reset(null);
+    if (savedPresentation) {
+      syncHandle.commitToPresentation(savedPresentation);
+      syncHandle.freezePresentation();
+      transitionFrozenRef.current = true;
+    }
     setIsTransitioning(true);
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
-      viewStateNulled: true,
+      frozenPresentation: !!savedPresentation,
       instanceId: instanceIdRef.current,
     });
   }, [currentRoundId]);
