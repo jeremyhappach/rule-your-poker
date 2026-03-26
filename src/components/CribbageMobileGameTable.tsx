@@ -1378,6 +1378,7 @@ export const CribbageMobileGameTable = ({
       syncHandle.commitToPresentation(savedPresentation);
       syncHandle.freezePresentation();
       transitionFrozenRef.current = true;
+      transitionFrozenForRoundRef.current = currentRoundId;
     }
     setIsTransitioning(true);
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
