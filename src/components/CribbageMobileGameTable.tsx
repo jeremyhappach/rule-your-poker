@@ -1340,12 +1340,17 @@ export const CribbageMobileGameTable = ({
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
-    console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId });
+    
+    // Detect bootstrap boundary: roundId changing from '' (dealer selection) to a real value
+    const isBootstrapTransition = !oldId || oldId === '';
+    
+    console.log('[CRIBBAGE] currentRoundId changed, resetting sync framework', { oldId, newId: currentRoundId, isBootstrapTransition });
     logCribbageDebug(debugCtx, 'hand_transition:roundId_change', {
       prevRoundId: oldId?.slice(0, 8),
       newRoundId: currentRoundId.slice(0, 8),
       hadCribbageState: cribbageState !== null,
       hadCountingOverrides: countingScoreOverrides !== null,
+      isBootstrapTransition,
     });
     // ── Lifecycle: transition edge ──
     logDebugEvent({
@@ -1353,7 +1358,7 @@ export const CribbageMobileGameTable = ({
       eventType: 'crib:lifecycle:transition_edge',
       payload: {
         instanceId: instanceIdRef.current,
-        trigger: 'roundId_change',
+        trigger: isBootstrapTransition ? 'bootstrap_roundId_init' : 'roundId_change',
         prevRoundId: oldId?.slice(0, 8),
         newRoundId: currentRoundId.slice(0, 8),
         viewStateNull: viewState === null,
@@ -1361,6 +1366,7 @@ export const CribbageMobileGameTable = ({
         currentHandKey,
         renderHandKey,
         handBoundaryKey: `${currentRoundId}-${currentHandNumber}`,
+        isDealerSelection,
         ...buildMetaPayload(),
       },
     });
@@ -1380,10 +1386,33 @@ export const CribbageMobileGameTable = ({
       transitionFrozenRef.current = true;
       transitionFrozenForRoundRef.current = currentRoundId;
     }
-    setIsTransitioning(true);
+    
+    // BOOTSTRAP FIX: During bootstrap transition (roundId '' → real), there is no
+    // savedPresentation to freeze. If we set isTransitioning=true here, the unfreeze
+    // path (which requires transitionFrozenRef.current=true) will never clear it,
+    // permanently blocking the cards tab. Skip the transition flag for bootstrap.
+    if (isBootstrapTransition) {
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:lifecycle:bootstrap_skip_transition',
+        payload: {
+          instanceId: instanceIdRef.current,
+          reason: 'no_saved_presentation_during_bootstrap',
+          savedPresentationNull: !savedPresentation,
+          transitionFrozenRef: transitionFrozenRef.current,
+        },
+      });
+      // Do NOT set isTransitioning — the loadOrInitializeState effect will
+      // populate viewState shortly, and cards tab should render normally.
+    } else {
+      setIsTransitioning(true);
+    }
+    
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
       frozenPresentation: !!savedPresentation,
+      isBootstrapTransition,
+      isTransitioningSet: !isBootstrapTransition,
       instanceId: instanceIdRef.current,
     });
   }, [currentRoundId]);
