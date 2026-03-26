@@ -163,7 +163,7 @@ export const CribbageMobileGameTable = ({
   // Stable instance ID survives re-renders; changes only on true unmount/remount.
   const instanceIdRef = useRef<string>(`cmt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
   const renderCountRef = useRef(0);
-  const prevRoundIdRef = useRef<string | null>(null);
+  const prevRoundIdRef_lifecycle = useRef<string | null>(null);
   const prevHandKeyRef_lifecycle = useRef<string | null>(null);
 
   // Mount / unmount logging
