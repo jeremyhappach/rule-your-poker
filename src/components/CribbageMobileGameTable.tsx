@@ -859,6 +859,9 @@ export const CribbageMobileGameTable = ({
   // Clear counting overrides when starting a fresh hand (discarding phase).
   // This prevents stale override values from affecting the pegboard in non-counting phases.
   // We intentionally do NOT clear during counting→complete because the peg needs to show final scores.
+  // BUG B FIX: Only clear overrides when authoritative pegScore has caught up to the override value.
+  // This prevents a one-render regression where the override is cleared but the DB still has the
+  // pre-counting pegScore, causing the pegboard to briefly show a lower value.
   useEffect(() => {
     if (!cribbageState) return;
     // Clear overrides when we're in discarding, cutting, OR pegging (new hand started or pegging began)
@@ -866,14 +869,35 @@ export const CribbageMobileGameTable = ({
     // the peg board shows stale old-hand scores instead of live pegging scores.
     if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting' || cribbageState.phase === 'pegging') {
       if (countingScoreOverrides && !countingStateSnapshot) {
-        logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
-          phase: cribbageState.phase,
-          overrideValues: countingScoreOverrides,
+        // Check if all authoritative pegScores have caught up to their override values.
+        // If not, keep the overrides latched to prevent a temporary regression.
+        const allCaughtUp = Object.entries(countingScoreOverrides).every(([playerId, overrideScore]) => {
+          const authPegScore = cribbageState.playerStates[playerId]?.pegScore ?? 0;
+          return authPegScore >= overrideScore;
         });
-        setCountingScoreOverrides(null);
+
+        if (allCaughtUp) {
+          logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
+            phase: cribbageState.phase,
+            overrideValues: countingScoreOverrides,
+            reason: 'pegScores_caught_up',
+          });
+          setCountingScoreOverrides(null);
+        } else {
+          logCribbageDebug(debugCtx, 'peg:latching_overrides_until_catchup', {
+            phase: cribbageState.phase,
+            overrideValues: countingScoreOverrides,
+            currentPegScores: Object.fromEntries(
+              Object.entries(countingScoreOverrides).map(([pid]) => [
+                pid.slice(0, 8),
+                cribbageState.playerStates[pid]?.pegScore ?? 0,
+              ])
+            ),
+          });
+        }
       }
     }
-  }, [cribbageState?.phase, countingScoreOverrides, countingStateSnapshot]);
+  }, [cribbageState?.phase, countingScoreOverrides, countingStateSnapshot, cribbageState?.playerStates]);
 
   useEffect(() => {
     const playerMessageCount = allMessages.length;
