@@ -6866,7 +6866,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         )}
 
         {/* CRIBBAGE DEALER SELECTION - High card animation to determine first dealer */}
-        {game.status === 'cribbage_dealer_selection' && game.game_type === 'cribbage' && (
+        {game.status === 'cribbage_dealer_selection' && game.game_type === 'cribbage' && (() => {
+          logDebugEvent({
+            gameId: gameId!,
+            eventType: 'crib:lifecycle:game_branch',
+            payload: {
+              branch: 'cribbage_dealer_selection',
+              gameStatus: game.status,
+              dealerGameId: game.current_game_uuid ?? null,
+              dealerPosition: game.dealer_position,
+              currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+              handNumber: currentRound?.hand_number ?? null,
+              ...buildMetaPayload(),
+            },
+          });
+          return (
           <>
             {/* High Card Dealer Selection Logic (headless - manages state only) */}
             <HighCardDealerSelection
