@@ -298,9 +298,12 @@ export const CribbageMobileGameTable = ({
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
-  // presentation state and only swap when the first new-hand snapshot arrives.
-  const transitionFrozenRef = useRef(false);
+   // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
+   // presentation state and only swap when the first new-hand snapshot arrives.
+   const transitionFrozenRef = useRef(false);
+   // Track which roundId the freeze was initiated FOR, so we only unfreeze
+   // when a snapshot matching the NEW round identity arrives — not a stale tail-end snapshot.
+   const transitionFrozenForRoundRef = useRef<string | null>(null);
 
   // Counting phase announcement state (propagated from CribbageCountingPhase)
   const [countingAnnouncement, setCountingAnnouncement] = useState<string | null>(null);
