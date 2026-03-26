@@ -59,6 +59,14 @@ export const CribbageFeltContent = ({
         playedCards: cribbageState.pegging?.playedCards?.length ?? 0,
         countingOutroActive,
         thirtyOneDelayActive,
+        hasCountingOverrides: !!countingScoreOverrides,
+        // Bootstrap contamination detection
+        playerHandSizes: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.hand?.length ?? 0])
+        ),
+        pegScores: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+        ),
         ...buildMetaPayload(),
       },
     });
