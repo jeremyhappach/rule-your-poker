@@ -1478,7 +1478,11 @@ export const CribbageMobileGameTable = ({
           }
         }
         
-        // ── Lifecycle: accepted snapshot ──
+        // ── Lifecycle: accepted snapshot — bootstrap card hydration trace ──
+        const playerHandSizes: Record<string, number> = {};
+        for (const [pid, ps] of Object.entries(newCribbageState.playerStates)) {
+          playerHandSizes[pid.slice(0, 8)] = ps.hand?.length ?? 0;
+        }
         logDebugEvent({
           gameId,
           eventType: 'crib:lifecycle:snapshot_accepted',
@@ -1491,8 +1495,32 @@ export const CribbageMobileGameTable = ({
             roundId: currentRoundId?.slice(0, 8),
             renderHandKey,
             viewStateWasNull: viewState === null,
+            isTransitioning,
+            transitionFrozenRef: transitionFrozenRef.current,
+            isDealerSelection,
+            playerHandSizes,
+            dealerGameId: dealerGameId?.slice(0, 8) ?? null,
           },
         });
+        
+        // ── Bootstrap stale-state detection ──
+        // If dealerGameId exists and we just accepted a snapshot, but isTransitioning
+        // is still true without a matching freeze, that's the bootstrap bug.
+        if (dealerGameId && isTransitioning && !transitionFrozenRef.current) {
+          logDebugEvent({
+            gameId,
+            eventType: 'crib:lifecycle:BOOTSTRAP_STALE_DETECTED',
+            payload: {
+              instanceId: instanceIdRef.current,
+              reason: 'isTransitioning=true with no freeze to unfreeze',
+              dealerGameId: dealerGameId.slice(0, 8),
+              phase: newCribbageState.phase,
+              playerHandSizes,
+              isTransitioning: true,
+              transitionFrozenRef: false,
+            },
+          });
+        }
       }
       
       // Reset poll interval when realtime works
