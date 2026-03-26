@@ -6823,8 +6823,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
-        {/* NOTE: Cribbage win sequence must NOT remount on in_progress -> game_over.
-            We render the same CribbageMobileGameTable instance for both statuses below. */}
+
 
 
         {game.status === 'completed' && (
