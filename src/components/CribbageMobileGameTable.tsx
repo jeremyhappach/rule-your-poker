@@ -282,9 +282,17 @@ export const CribbageMobileGameTable = ({
   const hasInitializedRef = useRef(false);
 
   // DB-synced high-card selection state (so all clients see the same deal)
-  const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
+  // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
+  const [highCardSyncedState, setHighCardSyncedState] = useState<{ scopeKey: string; data: DealerSelectionState } | null>(null);
   const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
+
+  // Scope key: session-level uses 'session', dealer-game-level uses the dealerGameId
+  const currentHighCardScopeKey = isDealerSelection ? 'session' : (dealerGameId ?? 'none');
+  // Pre-render guard: only pass synced state if scope matches
+  const guardedHighCardSyncedState = (highCardSyncedState?.scopeKey === currentHighCardScopeKey)
+    ? highCardSyncedState.data
+    : null;
 
   // When in external dealer selection mode (cribbage_dealer_selection status), use external props
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
