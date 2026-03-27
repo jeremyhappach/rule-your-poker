@@ -2563,7 +2563,7 @@ export const CribbageMobileGameTable = ({
             {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
             {isHighCardMode && (
               <>
-              {!isDealerSelection && (
+              {shouldRenderDealerGameHighCard && (
                   <HighCardDealerSelection
                     key={currentHighCardScopeKey}
                     gameId={gameId}
@@ -2572,7 +2572,7 @@ export const CribbageMobileGameTable = ({
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"
-                    syncedState={guardedHighCardSyncedState}
+                    syncedState={childHighCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
