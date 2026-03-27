@@ -857,47 +857,57 @@ export const CribbageMobileGameTable = ({
   }, [countingStartKey, calculateCountingBaselineScores]);
 
   // Clear counting overrides when starting a fresh hand (discarding phase).
-  // This prevents stale override values from affecting the pegboard in non-counting phases.
-  // We intentionally do NOT clear during counting→complete because the peg needs to show final scores.
-  // BUG B FIX: Only clear overrides when authoritative pegScore has caught up to the override value.
-  // This prevents a one-render regression where the override is cleared but the DB still has the
-  // pre-counting pegScore, causing the pegboard to briefly show a lower value.
+  // BUG B FIX: Use ONLY presentation state (viewState) — never cribbageState — for clearing logic.
+  // Two conditions must BOTH be true before overrides are cleared:
+  //   1. Presentation pegScores (viewState) >= override values (scores caught up)
+  //   2. renderHandKey === currentHandKey (UI has transitioned to the new hand identity)
+  // This prevents the one-render regression where authoritative state advances to new hand
+  // but the UI is still rendering the old hand's visual tail-end.
   useEffect(() => {
-    if (!cribbageState) return;
-    // Clear overrides when we're in discarding, cutting, OR pegging (new hand started or pegging began)
-    // CRITICAL: Must clear during pegging too — if overrides persist from previous counting,
-    // the peg board shows stale old-hand scores instead of live pegging scores.
-    if (cribbageState.phase === 'discarding' || cribbageState.phase === 'cutting' || cribbageState.phase === 'pegging') {
+    if (!viewState) return;
+    // Only consider clearing in non-counting phases of the presentation state
+    const viewPhase = viewState.phase;
+    if (viewPhase === 'discarding' || viewPhase === 'cutting' || viewPhase === 'pegging') {
       if (countingScoreOverrides && !countingStateSnapshot) {
-        // Check if all authoritative pegScores have caught up to their override values.
-        // If not, keep the overrides latched to prevent a temporary regression.
+        // Condition 2: UI identity must match authoritative identity
+        if (renderHandKey !== currentHandKey) {
+          logCribbageDebug(debugCtx, 'peg:latching_overrides_handkey_mismatch', {
+            viewPhase,
+            renderHandKey: renderHandKey.slice(0, 12),
+            currentHandKey: currentHandKey.slice(0, 12),
+            overrideValues: countingScoreOverrides,
+          });
+          return;
+        }
+
+        // Condition 1: All presentation pegScores must have caught up to override values
         const allCaughtUp = Object.entries(countingScoreOverrides).every(([playerId, overrideScore]) => {
-          const authPegScore = cribbageState.playerStates[playerId]?.pegScore ?? 0;
-          return authPegScore >= overrideScore;
+          const presentationPegScore = viewState.playerStates[playerId]?.pegScore ?? 0;
+          return presentationPegScore >= overrideScore;
         });
 
         if (allCaughtUp) {
           logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
-            phase: cribbageState.phase,
+            viewPhase,
             overrideValues: countingScoreOverrides,
-            reason: 'pegScores_caught_up',
+            reason: 'presentation_pegScores_caught_up_and_handkey_matched',
           });
           setCountingScoreOverrides(null);
         } else {
           logCribbageDebug(debugCtx, 'peg:latching_overrides_until_catchup', {
-            phase: cribbageState.phase,
+            viewPhase,
             overrideValues: countingScoreOverrides,
-            currentPegScores: Object.fromEntries(
+            presentationPegScores: Object.fromEntries(
               Object.entries(countingScoreOverrides).map(([pid]) => [
                 pid.slice(0, 8),
-                cribbageState.playerStates[pid]?.pegScore ?? 0,
+                viewState.playerStates[pid]?.pegScore ?? 0,
               ])
             ),
           });
         }
       }
     }
-  }, [cribbageState?.phase, countingScoreOverrides, countingStateSnapshot, cribbageState?.playerStates]);
+  }, [viewState?.phase, viewState?.playerStates, countingScoreOverrides, countingStateSnapshot, renderHandKey, currentHandKey]);
 
   useEffect(() => {
     const playerMessageCount = allMessages.length;
