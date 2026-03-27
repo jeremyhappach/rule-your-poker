@@ -294,11 +294,32 @@ export const CribbageMobileGameTable = ({
     ? highCardSyncedState.data
     : null;
 
-  // When in external dealer selection mode (cribbage_dealer_selection status), use external props
-  const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
-  const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
-  const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
-  const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
+  // Scope-aligned high-card rendering: once a dealer-game exists, never render session-level visuals.
+  const hasDealerGameScope = Boolean(dealerGameId);
+  const shouldRenderSessionHighCard = isDealerSelection && !hasDealerGameScope;
+  const shouldRenderDealerGameHighCard = !isDealerSelection && showHighCardSelection && hasDealerGameScope;
+  const effectiveShowHighCardSelection = shouldRenderSessionHighCard || shouldRenderDealerGameHighCard;
+  const effectiveHighCardCards = shouldRenderSessionHighCard
+    ? (externalDealerSelectionCards || [])
+    : shouldRenderDealerGameHighCard
+      ? highCardCards
+      : [];
+  const effectiveHighCardAnnouncement = shouldRenderSessionHighCard
+    ? externalDealerSelectionAnnouncement
+    : shouldRenderDealerGameHighCard
+      ? highCardAnnouncement
+      : null;
+  const effectiveHighCardWinnerPosition = shouldRenderSessionHighCard
+    ? externalDealerSelectionWinnerPosition
+    : shouldRenderDealerGameHighCard
+      ? highCardWinnerPosition
+      : null;
+  const childHighCardSyncedState = shouldRenderDealerGameHighCard ? guardedHighCardSyncedState : null;
+  const highCardRenderSource = shouldRenderSessionHighCard
+    ? 'session_external_props'
+    : shouldRenderDealerGameHighCard
+      ? 'dealer_game_local_state'
+      : 'none';
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
@@ -640,6 +661,52 @@ export const CribbageMobileGameTable = ({
     }
     prevIsDealerSelectionRef.current = isDealerSelection;
   }, [isDealerSelection]);
+
+  useEffect(() => {
+    if (!isDealerSelection && !showHighCardSelection && effectiveHighCardCards.length === 0) return;
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:high_card:parent_render_source',
+      payload: {
+        instanceId: instanceIdRef.current,
+        isDealerSelection,
+        showHighCardSelection,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        currentHighCardScopeKey,
+        hasDealerGameScope,
+        highCardRenderSource,
+        shouldRenderSessionHighCard,
+        shouldRenderDealerGameHighCard,
+        externalCardCount: externalDealerSelectionCards?.length ?? 0,
+        localCardCount: highCardCards.length,
+        effectiveCardCount: effectiveHighCardCards.length,
+        syncedScopeKey: highCardSyncedState?.scopeKey ?? null,
+        guardedSyncedCardCount: guardedHighCardSyncedState?.cards.length ?? 0,
+        childSyncedCardCount: childHighCardSyncedState?.cards.length ?? 0,
+        winnerPosition: effectiveHighCardWinnerPosition,
+        announcement: effectiveHighCardAnnouncement,
+        ...buildMetaPayload(),
+      },
+    });
+  }, [
+    childHighCardSyncedState,
+    currentHighCardScopeKey,
+    dealerGameId,
+    effectiveHighCardAnnouncement,
+    effectiveHighCardCards,
+    effectiveHighCardWinnerPosition,
+    externalDealerSelectionCards,
+    gameId,
+    guardedHighCardSyncedState,
+    hasDealerGameScope,
+    highCardCards.length,
+    highCardRenderSource,
+    highCardSyncedState,
+    isDealerSelection,
+    showHighCardSelection,
+    shouldRenderDealerGameHighCard,
+    shouldRenderSessionHighCard,
+  ]);
 
   useEffect(() => {
     if (!isDealerSelection) return;
@@ -2496,7 +2563,7 @@ export const CribbageMobileGameTable = ({
             {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
             {isHighCardMode && (
               <>
-              {!isDealerSelection && (
+              {shouldRenderDealerGameHighCard && (
                   <HighCardDealerSelection
                     key={currentHighCardScopeKey}
                     gameId={gameId}
@@ -2505,7 +2572,7 @@ export const CribbageMobileGameTable = ({
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"
-                    syncedState={guardedHighCardSyncedState}
+                    syncedState={childHighCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}

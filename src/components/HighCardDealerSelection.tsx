@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getBotAlias } from "@/lib/botAlias";
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { logDebugEvent } from '@/lib/debugEventLogger';
+import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface Player {
   id: string;
@@ -73,8 +75,32 @@ export const HighCardDealerSelection = ({
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
+  const instanceIdRef = useRef<string>(`hcds-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
 
   const isCribbageVariant = selectionVariant === 'cribbage';
+
+  useEffect(() => {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:high_card:child_input_source',
+      payload: {
+        instanceId: instanceIdRef.current,
+        isHost,
+        selectionVariant,
+        syncedCardCount: syncedState?.cards.length ?? 0,
+        syncedAnnouncement: syncedState?.announcement ?? null,
+        syncedWinnerPosition: syncedState?.winnerPosition ?? null,
+        syncedIsComplete: syncedState?.isComplete ?? false,
+        hasInitialized: hasInitializedRef.current,
+        hasCompleted: hasCompletedRef.current,
+        lastAnnouncement: lastAnnouncementRef.current,
+        inputSource: isHost
+          ? (syncedState?.isComplete ? 'host_recovery_synced_state' : 'host_fresh_sequence')
+          : (syncedState ? 'non_host_synced_state' : 'non_host_waiting'),
+        ...buildMetaPayload(),
+      },
+    });
+  }, [gameId, isHost, selectionVariant, syncedState]);
   
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
