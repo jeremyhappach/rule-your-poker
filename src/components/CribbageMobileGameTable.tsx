@@ -663,6 +663,52 @@ export const CribbageMobileGameTable = ({
   }, [isDealerSelection]);
 
   useEffect(() => {
+    if (!isDealerSelection && !showHighCardSelection && effectiveHighCardCards.length === 0) return;
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:high_card:parent_render_source',
+      payload: {
+        instanceId: instanceIdRef.current,
+        isDealerSelection,
+        showHighCardSelection,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        currentHighCardScopeKey,
+        hasDealerGameScope,
+        highCardRenderSource,
+        shouldRenderSessionHighCard,
+        shouldRenderDealerGameHighCard,
+        externalCardCount: externalDealerSelectionCards?.length ?? 0,
+        localCardCount: highCardCards.length,
+        effectiveCardCount: effectiveHighCardCards.length,
+        syncedScopeKey: highCardSyncedState?.scopeKey ?? null,
+        guardedSyncedCardCount: guardedHighCardSyncedState?.cards.length ?? 0,
+        childSyncedCardCount: childHighCardSyncedState?.cards.length ?? 0,
+        winnerPosition: effectiveHighCardWinnerPosition,
+        announcement: effectiveHighCardAnnouncement,
+        ...buildMetaPayload(),
+      },
+    });
+  }, [
+    childHighCardSyncedState,
+    currentHighCardScopeKey,
+    dealerGameId,
+    effectiveHighCardAnnouncement,
+    effectiveHighCardCards,
+    effectiveHighCardWinnerPosition,
+    externalDealerSelectionCards,
+    gameId,
+    guardedHighCardSyncedState,
+    hasDealerGameScope,
+    highCardCards.length,
+    highCardRenderSource,
+    highCardSyncedState,
+    isDealerSelection,
+    showHighCardSelection,
+    shouldRenderDealerGameHighCard,
+    shouldRenderSessionHighCard,
+  ]);
+
+  useEffect(() => {
     if (!isDealerSelection) return;
     announceNewGameStarting();
   }, [isDealerSelection, announceNewGameStarting]);
