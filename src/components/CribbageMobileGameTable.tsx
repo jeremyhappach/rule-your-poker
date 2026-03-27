@@ -2309,8 +2309,11 @@ export const CribbageMobileGameTable = ({
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
   // Determine current render mode for felt content (not layout — layout is always the same shell)
+  // BUG A FIX: Bootstrap depends on renderHandKey (presentation identity), NOT viewState existence.
+  // viewState can be non-null while renderHandKey is still empty during state-layer mismatch.
+  // renderHandKey is '' when viewState is null OR when viewState has no meaningful hand identity.
   const isHighCardMode = effectiveShowHighCardSelection;
-  const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !viewState || !currentPlayerId);
+  const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
   const isGameplayMode = !isHighCardMode && !isBootstrapMode;
 
   // ── Lifecycle: render-branch instrumentation ──
