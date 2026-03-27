@@ -633,9 +633,10 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
       logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
-        reason: 'isDealerSelection flipped false',
+        reason: 'isDealerSelection flipped false (hygiene clear)',
       });
       setHighCardSyncedState(null);
+      setHighCardCards([]);
     }
     prevIsDealerSelectionRef.current = isDealerSelection;
   }, [isDealerSelection]);
