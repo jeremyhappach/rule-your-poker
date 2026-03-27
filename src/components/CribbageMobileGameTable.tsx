@@ -1152,7 +1152,8 @@ export const CribbageMobileGameTable = ({
         return;
       }
 
-      setHighCardSyncedState((data?.dealer_selection_state as unknown as DealerSelectionState) ?? null);
+      const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
+      setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
     };
 
     load();
@@ -1169,7 +1170,7 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
-          setHighCardSyncedState(next as DealerSelectionState | null);
+          setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
         }
       )
       .subscribe();
