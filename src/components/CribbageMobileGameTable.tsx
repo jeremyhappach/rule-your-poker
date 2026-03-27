@@ -297,7 +297,9 @@ export const CribbageMobileGameTable = ({
   // Scope-aligned high-card rendering: once a dealer-game exists, never render session-level visuals.
   const hasDealerGameScope = Boolean(dealerGameId);
   const shouldRenderSessionHighCard = isDealerSelection && !hasDealerGameScope;
-  const shouldRenderDealerGameHighCard = !isDealerSelection && showHighCardSelection && hasDealerGameScope;
+  // Allow dealer-game high-card mount when dealerGameId exists AND showHighCardSelection is true,
+  // regardless of isDealerSelection (which is a session-level prop that may still be true).
+  const shouldRenderDealerGameHighCard = showHighCardSelection && hasDealerGameScope;
   const effectiveShowHighCardSelection = shouldRenderSessionHighCard || shouldRenderDealerGameHighCard;
   const effectiveHighCardCards = shouldRenderSessionHighCard
     ? (externalDealerSelectionCards || [])
