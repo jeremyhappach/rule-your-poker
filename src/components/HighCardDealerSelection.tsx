@@ -105,6 +105,48 @@ export const HighCardDealerSelection = ({
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
+
+  useEffect(() => {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:high_card:child_mount_status',
+      payload: {
+        instanceId: instanceIdRef.current,
+        isHost,
+        selectionVariant,
+        eligibleDealerCount: eligibleDealers.length,
+        syncedCardCount: syncedState?.cards.length ?? 0,
+        syncedIsComplete: syncedState?.isComplete ?? false,
+        hasInitialized: hasInitializedRef.current,
+        hasCompleted: hasCompletedRef.current,
+        childStatus: syncedState
+          ? (syncedState.cards.length > 0 ? 'mounted_with_synced_cards' : 'mounted_with_empty_synced_state')
+          : isHost
+            ? 'mounted_host_fresh_path'
+            : 'mounted_non_host_waiting',
+        ...buildMetaPayload(),
+      },
+    });
+
+    return () => {
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:high_card:child_mount_status',
+        payload: {
+          instanceId: instanceIdRef.current,
+          isHost,
+          selectionVariant,
+          eligibleDealerCount: eligibleDealers.length,
+          syncedCardCount: syncedState?.cards.length ?? 0,
+          syncedIsComplete: syncedState?.isComplete ?? false,
+          hasInitialized: hasInitializedRef.current,
+          hasCompleted: hasCompletedRef.current,
+          childStatus: 'unmounted',
+          ...buildMetaPayload(),
+        },
+      });
+    };
+  }, [gameId, isHost, selectionVariant, syncedState, eligibleDealers.length]);
   
   // Stable key for eligible dealers to avoid re-triggering effect on every render
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
