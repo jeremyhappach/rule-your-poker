@@ -82,6 +82,48 @@ export const HighCardDealerSelection = ({
   useEffect(() => {
     logDebugEvent({
       gameId,
+      eventType: 'crib:high_card:child_mount_status',
+      payload: {
+        instanceId: instanceIdRef.current,
+        isHost,
+        selectionVariant,
+        eligibleDealerCount: eligibleDealers.length,
+        syncedCardCount: syncedState?.cards.length ?? 0,
+        syncedIsComplete: syncedState?.isComplete ?? false,
+        hasInitialized: hasInitializedRef.current,
+        hasCompleted: hasCompletedRef.current,
+        childStatus: syncedState
+          ? (syncedState.cards.length > 0 ? 'mounted_with_synced_cards' : 'mounted_with_empty_synced_state')
+          : isHost
+            ? 'mounted_host_fresh_path'
+            : 'mounted_non_host_waiting',
+        ...buildMetaPayload(),
+      },
+    });
+
+    return () => {
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:high_card:child_mount_status',
+        payload: {
+          instanceId: instanceIdRef.current,
+          isHost,
+          selectionVariant,
+          eligibleDealerCount: eligibleDealers.length,
+          syncedCardCount: syncedState?.cards.length ?? 0,
+          syncedIsComplete: syncedState?.isComplete ?? false,
+          hasInitialized: hasInitializedRef.current,
+          hasCompleted: hasCompletedRef.current,
+          childStatus: 'unmounted',
+          ...buildMetaPayload(),
+        },
+      });
+    };
+  }, [gameId, isHost, selectionVariant, syncedState, eligibleDealers.length]);
+
+  useEffect(() => {
+    logDebugEvent({
+      gameId,
       eventType: 'crib:high_card:child_input_source',
       payload: {
         instanceId: instanceIdRef.current,
