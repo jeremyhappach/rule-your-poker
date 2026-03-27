@@ -2495,15 +2495,16 @@ export const CribbageMobileGameTable = ({
             {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
             {isHighCardMode && (
               <>
-                {!isDealerSelection && (
+              {!isDealerSelection && (
                   <HighCardDealerSelection
+                    key={currentHighCardScopeKey}
                     gameId={gameId}
                     players={players as any}
                     onComplete={handleHighCardComplete}
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"
-                    syncedState={highCardSyncedState}
+                    syncedState={guardedHighCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
