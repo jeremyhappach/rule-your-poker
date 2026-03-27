@@ -679,9 +679,6 @@ export const CribbageMobileGameTable = ({
         hasDealerGameScope,
         highCardRenderSource,
         childWillMount: isHighCardMode && shouldRenderDealerGameHighCard,
-        isHighCardMode,
-        isBootstrapMode,
-        isGameplayMode,
         shouldRenderSessionHighCard,
         shouldRenderDealerGameHighCard,
         externalCardCount: externalDealerSelectionCards?.length ?? 0,
@@ -713,9 +710,6 @@ export const CribbageMobileGameTable = ({
     showHighCardSelection,
     shouldRenderDealerGameHighCard,
     shouldRenderSessionHighCard,
-    isHighCardMode,
-    isBootstrapMode,
-    isGameplayMode,
   ]);
 
   useEffect(() => {
