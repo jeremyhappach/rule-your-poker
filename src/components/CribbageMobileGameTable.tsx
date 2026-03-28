@@ -1120,13 +1120,22 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      // Allow re-init when roundId changes (e.g. session-level → dealer-game transition)
-      if ((hasInitializedRef.current || initialLoadComplete) && initializedForRoundRef.current === roundId) return;
-      // Reset flags for the new round
-      if (initializedForRoundRef.current !== roundId) {
-        hasInitializedRef.current = false;
-        setInitialLoadComplete(false);
-        initializedForRoundRef.current = roundId;
+      // ── DIAGNOSTIC: log every invocation with full guard state ──
+      const guardBlocked = hasInitializedRef.current || initialLoadComplete;
+      console.log('[CRIBBAGE][INIT-DIAG] loadOrInitializeState called', {
+        roundId: roundId.slice(0, 8),
+        initializedForRound: initializedForRoundRef.current?.slice(0, 8) ?? null,
+        hasInitializedRef: hasInitializedRef.current,
+        initialLoadComplete,
+        guardWillBlock: guardBlocked,
+        showHighCardSelection,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        isDealerSelection,
+      });
+
+      if (hasInitializedRef.current || initialLoadComplete) {
+        console.log('[CRIBBAGE][INIT-DIAG] ❌ GUARD RETURNED EARLY — skipping init for roundId', roundId.slice(0, 8));
+        return;
       }
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
@@ -1173,7 +1182,10 @@ export const CribbageMobileGameTable = ({
       const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
       
       if (isFirstHand) {
-        console.log('[CRIBBAGE] First hand - starting high card selection');
+        console.log('[CRIBBAGE][INIT-DIAG] ✅ First hand — calling setShowHighCardSelection(true)', {
+          roundId: roundId.slice(0, 8),
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        });
         // Inject "new game starting" message into chat (idempotent per dealer_game_id)
         announceNewGameStarting();
         setShowHighCardSelection(true);
