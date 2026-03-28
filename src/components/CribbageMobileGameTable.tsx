@@ -280,6 +280,7 @@ export const CribbageMobileGameTable = ({
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
+  const initializedForRoundRef = useRef<string | null>(null);
 
   // DB-synced high-card selection state (so all clients see the same deal)
   // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
@@ -1119,7 +1120,14 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      if (hasInitializedRef.current || initialLoadComplete) return;
+      // Allow re-init when roundId changes (e.g. session-level → dealer-game transition)
+      if ((hasInitializedRef.current || initialLoadComplete) && initializedForRoundRef.current === roundId) return;
+      // Reset flags for the new round
+      if (initializedForRoundRef.current !== roundId) {
+        hasInitializedRef.current = false;
+        setInitialLoadComplete(false);
+        initializedForRoundRef.current = roundId;
+      }
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
 
