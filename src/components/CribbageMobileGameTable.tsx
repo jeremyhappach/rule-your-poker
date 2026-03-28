@@ -280,7 +280,6 @@ export const CribbageMobileGameTable = ({
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
-  const initializedLoadRoundRef = useRef<string | null>(null);
 
   // DB-synced high-card selection state (so all clients see the same deal)
   // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
@@ -1120,43 +1119,7 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      const alreadyLoadedThisRound = initializedLoadRoundRef.current === roundId;
-      if ((hasInitializedRef.current || initialLoadComplete) && alreadyLoadedThisRound) {
-        logDebugEvent({
-          gameId,
-          eventType: 'crib:high_card:init_gate',
-          payload: {
-            instanceId: instanceIdRef.current,
-            roundId: roundId?.slice(0, 8) ?? null,
-            dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-            hasInitialized: hasInitializedRef.current,
-            initialLoadComplete,
-            alreadyLoadedThisRound,
-            showHighCardSelection,
-            path: 'skip_same_round',
-            ...buildMetaPayload(),
-          },
-        });
-        return;
-      }
-
-      initializedLoadRoundRef.current = roundId;
-
-      logDebugEvent({
-        gameId,
-        eventType: 'crib:high_card:init_gate',
-        payload: {
-          instanceId: instanceIdRef.current,
-          roundId: roundId?.slice(0, 8) ?? null,
-          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-          hasInitialized: hasInitializedRef.current,
-          initialLoadComplete,
-          alreadyLoadedThisRound,
-          showHighCardSelection,
-          path: 'run_load',
-          ...buildMetaPayload(),
-        },
-      });
+      if (hasInitializedRef.current || initialLoadComplete) return;
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
 
@@ -1228,15 +1191,18 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId, dealerGameId, initialLoadComplete, injectDealerMessage, announceNewGameStarting, gameId, showHighCardSelection]); // Re-run if roundId/dealer-game scope changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId]);
 
   // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
   useEffect(() => {
     if (!showHighCardSelection) return;
+    if (!hasDealerGameScope) return;
+    if (highCardWinnerPosition === null) return;
     if (!cribbageState) return;
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
-  }, [showHighCardSelection, cribbageState]);
+  }, [showHighCardSelection, hasDealerGameScope, highCardWinnerPosition, cribbageState]);
 
   // Subscribe to DB-synced dealer selection state so everyone sees the same animation
   useEffect(() => {
