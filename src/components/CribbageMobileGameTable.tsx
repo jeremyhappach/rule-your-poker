@@ -1120,7 +1120,14 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      if (hasInitializedRef.current || initialLoadComplete) return;
+      // Allow re-init when roundId changes (e.g. session-level → dealer-game transition)
+      if ((hasInitializedRef.current || initialLoadComplete) && initializedForRoundRef.current === roundId) return;
+      // Reset flags for the new round
+      if (initializedForRoundRef.current !== roundId) {
+        hasInitializedRef.current = false;
+        setInitialLoadComplete(false);
+        initializedForRoundRef.current = roundId;
+      }
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
 
