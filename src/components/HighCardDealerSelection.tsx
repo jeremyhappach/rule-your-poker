@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getBotAlias } from "@/lib/botAlias";
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { logDebugEvent } from "@/lib/debugEventLogger";
 
 interface Player {
   id: string;
