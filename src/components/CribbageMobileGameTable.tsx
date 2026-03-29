@@ -1139,7 +1139,7 @@ export const CribbageMobileGameTable = ({
       }
 
       const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
-      setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
+      setHighCardSyncedState(raw);
     };
 
     load();
