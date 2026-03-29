@@ -1165,13 +1165,12 @@ export const CribbageMobileGameTable = ({
       }
 
       const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
-      // TRACE-2: log DB load with scope tagging
+      // TRACE-2: log DB load (observation only)
       logDebugEvent({
         gameId,
         eventType: 'crib:bugA:db_load_synced_state',
         payload: {
           txId: hcTransitionIdRef.current,
-          scopeKeyApplied: currentHighCardScopeKey,
           isDealerSelection,
           dealerGameId: dealerGameId?.slice(0, 8) ?? null,
           hasData: !!raw,
@@ -1179,7 +1178,7 @@ export const CribbageMobileGameTable = ({
           isComplete: raw?.isComplete ?? null,
         },
       });
-      setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
+      setHighCardSyncedState(raw);
     };
 
     load();
@@ -1196,13 +1195,12 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
-          // TRACE-2b: log realtime update with scope tagging
+          // TRACE-2b: log realtime update (observation only)
           logDebugEvent({
             gameId,
             eventType: 'crib:bugA:realtime_synced_state',
             payload: {
               txId: hcTransitionIdRef.current,
-              scopeKeyApplied: currentHighCardScopeKey,
               isDealerSelection,
               dealerGameId: dealerGameId?.slice(0, 8) ?? null,
               hasData: !!next,
@@ -1210,7 +1208,7 @@ export const CribbageMobileGameTable = ({
               isComplete: (next as any)?.isComplete ?? null,
             },
           });
-          setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
+          setHighCardSyncedState(next as DealerSelectionState | null);
         }
       )
       .subscribe();
@@ -1219,7 +1217,7 @@ export const CribbageMobileGameTable = ({
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [gameId, currentHighCardScopeKey]);
+  }, [gameId]);
 
   // Handle high card selection complete
   // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
