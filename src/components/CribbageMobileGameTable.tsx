@@ -1080,7 +1080,7 @@ export const CribbageMobileGameTable = ({
       const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
       
       if (isFirstHand) {
-        console.log('[TRACE][4] First hand — setShowHighCardSelection(true)', { roundId: roundId?.slice(0,8), dgId: dealerGameId?.slice(0,8) });
+        
         announceNewGameStarting();
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
