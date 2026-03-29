@@ -1119,23 +1119,7 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      // ── DIAGNOSTIC: log every invocation with full guard state ──
-      const guardBlocked = hasInitializedRef.current || initialLoadComplete;
-      console.log('[CRIBBAGE][INIT-DIAG] loadOrInitializeState called', {
-        roundId: roundId.slice(0, 8),
-        initializedForRound: initializedForRoundRef.current?.slice(0, 8) ?? null,
-        hasInitializedRef: hasInitializedRef.current,
-        initialLoadComplete,
-        guardWillBlock: guardBlocked,
-        showHighCardSelection,
-        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        isDealerSelection,
-      });
-
-      if (hasInitializedRef.current || initialLoadComplete) {
-        console.log('[CRIBBAGE][INIT-DIAG] ❌ GUARD RETURNED EARLY — skipping init for roundId', roundId.slice(0, 8));
-        return;
-      }
+      if (hasInitializedRef.current || initialLoadComplete) return;
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
 
