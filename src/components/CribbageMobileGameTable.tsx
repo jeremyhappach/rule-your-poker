@@ -282,17 +282,9 @@ export const CribbageMobileGameTable = ({
   const hasInitializedRef = useRef(false);
 
   // DB-synced high-card selection state (so all clients see the same deal)
-  // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
-  const [highCardSyncedState, setHighCardSyncedState] = useState<{ scopeKey: string; data: DealerSelectionState } | null>(null);
+  const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
   const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
-
-  // Scope key: session-level uses 'session', dealer-game-level uses the dealerGameId
-  const currentHighCardScopeKey = isDealerSelection ? 'session' : (dealerGameId ?? 'none');
-  // Pre-render guard: only pass synced state if scope matches
-  const guardedHighCardSyncedState = (highCardSyncedState?.scopeKey === currentHighCardScopeKey)
-    ? highCardSyncedState.data
-    : null;
 
   // When in external dealer selection mode (cribbage_dealer_selection status), use external props
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
@@ -302,7 +294,7 @@ export const CribbageMobileGameTable = ({
 
   // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
   const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
-  // Rotate correlation id when isDealerSelection flips
+  // Rotate correlation id when isDealerSelection flips (observation only)
   const prevIsDSForTraceRef = useRef(isDealerSelection);
   if (prevIsDSForTraceRef.current !== isDealerSelection) {
     hcTransitionIdRef.current = crypto.randomUUID().slice(0, 8);
@@ -636,8 +628,7 @@ export const CribbageMobileGameTable = ({
     injectDealerMessage('New game starting');
   }, [dealerGameId, injectDealerMessage]);
 
-  // Clear stale session-level high-card synced state when isDealerSelection flips false
-  // so dealer-game-level HighCardDealerSelection starts clean.
+  // Observe session→dealer-game transition (trace only, no state mutations)
   const prevIsDealerSelectionRef = useRef(isDealerSelection);
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
@@ -651,17 +642,12 @@ export const CribbageMobileGameTable = ({
           externalCardIds: (externalDealerSelectionCards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
           localHighCardCardCount: highCardCards.length,
           localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
-          syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
-          syncedStateCardCount: highCardSyncedState?.data?.cards?.length ?? 0,
+          syncedStateHasData: !!highCardSyncedState,
+          syncedStateCardCount: highCardSyncedState?.cards?.length ?? 0,
           dealerGameId: dealerGameId?.slice(0, 8) ?? null,
           showHighCardSelection,
         },
       });
-      logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
-        reason: 'isDealerSelection flipped false (hygiene clear)',
-      });
-      setHighCardSyncedState(null);
-      setHighCardCards([]);
     }
     prevIsDealerSelectionRef.current = isDealerSelection;
   }, [isDealerSelection]);
@@ -1179,13 +1165,12 @@ export const CribbageMobileGameTable = ({
       }
 
       const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
-      // TRACE-2: log DB load with scope tagging
+      // TRACE-2: log DB load (observation only)
       logDebugEvent({
         gameId,
         eventType: 'crib:bugA:db_load_synced_state',
         payload: {
           txId: hcTransitionIdRef.current,
-          scopeKeyApplied: currentHighCardScopeKey,
           isDealerSelection,
           dealerGameId: dealerGameId?.slice(0, 8) ?? null,
           hasData: !!raw,
@@ -1193,7 +1178,7 @@ export const CribbageMobileGameTable = ({
           isComplete: raw?.isComplete ?? null,
         },
       });
-      setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
+      setHighCardSyncedState(raw);
     };
 
     load();
@@ -1210,13 +1195,12 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
-          // TRACE-2b: log realtime update with scope tagging
+          // TRACE-2b: log realtime update (observation only)
           logDebugEvent({
             gameId,
             eventType: 'crib:bugA:realtime_synced_state',
             payload: {
               txId: hcTransitionIdRef.current,
-              scopeKeyApplied: currentHighCardScopeKey,
               isDealerSelection,
               dealerGameId: dealerGameId?.slice(0, 8) ?? null,
               hasData: !!next,
@@ -1224,7 +1208,7 @@ export const CribbageMobileGameTable = ({
               isComplete: (next as any)?.isComplete ?? null,
             },
           });
-          setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
+          setHighCardSyncedState(next as DealerSelectionState | null);
         }
       )
       .subscribe();
@@ -1233,7 +1217,7 @@ export const CribbageMobileGameTable = ({
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [gameId, currentHighCardScopeKey]);
+  }, [gameId]);
 
   // Handle high card selection complete
   // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
@@ -2412,7 +2396,6 @@ export const CribbageMobileGameTable = ({
         isDealerSelection,
         showHighCardSelection,
         dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        currentHighCardScopeKey,
         // Which source is driving visible cards?
         sourceLabel: isDealerSelection ? 'externalProps' : 'localHighCardCards',
         externalCardCount: externalDealerSelectionCards?.length ?? 0,
@@ -2423,9 +2406,8 @@ export const CribbageMobileGameTable = ({
         localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
         effectiveCardIds: effectiveHighCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
         // Synced state info
-        syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
-        guardedSyncedHasData: !!guardedHighCardSyncedState,
-        guardedSyncedCardCount: guardedHighCardSyncedState?.cards?.length ?? 0,
+        syncedStateHasData: !!highCardSyncedState,
+        syncedStateCardCount: highCardSyncedState?.cards?.length ?? 0,
       },
     });
   }
@@ -2579,14 +2561,13 @@ export const CribbageMobileGameTable = ({
               <>
               {!isDealerSelection && (
                   <HighCardDealerSelection
-                    key={currentHighCardScopeKey}
                     gameId={gameId}
                     players={players as any}
                     onComplete={handleHighCardComplete}
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"
-                    syncedState={guardedHighCardSyncedState}
+                    syncedState={highCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}

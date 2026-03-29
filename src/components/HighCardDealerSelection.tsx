@@ -74,11 +74,9 @@ export const HighCardDealerSelection = ({
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
-  const mountTraceRef = useRef(false);
 
-  // TRACE-4: log on mount/first-update with received syncedState
-  if (!mountTraceRef.current) {
-    mountTraceRef.current = true;
+  // TRACE-4: log on mount with received syncedState (observation only)
+  useEffect(() => {
     logDebugEvent({
       gameId,
       eventType: 'crib:bugA:child_mount',
@@ -92,7 +90,8 @@ export const HighCardDealerSelection = ({
         playerCount: players.length,
       },
     });
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Mount only
 
   const isCribbageVariant = selectionVariant === 'cribbage';
   
