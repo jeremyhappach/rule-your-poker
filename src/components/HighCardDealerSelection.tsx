@@ -203,11 +203,6 @@ export const HighCardDealerSelection = ({
     
     // NOW mark as initialized - only after we confirm we're the host with multiple dealers
     hasInitializedRef.current = true;
-    logChildTrace('high_card_host_sequence_start', 'host_fresh_sequence_started', {
-      eligibleDealerCount: eligibleDealers.length,
-      syncedCardCount: syncedState?.cards.length ?? 0,
-      selectionVariant,
-    });
     
     console.log('[HIGH CARD] Starting high card dealer selection with', eligibleDealers.length, 'eligible players');
     
@@ -219,7 +214,7 @@ export const HighCardDealerSelection = ({
     
     return () => clearTimeouts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eligibleDealerKey, eligibleDealers.length, isHost, logChildTrace, selectionVariant, syncedState]);
+  }, [eligibleDealerKey, eligibleDealers.length, isHost, selectionVariant, syncedState]);
   
   const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
