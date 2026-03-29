@@ -1034,7 +1034,6 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      console.log('[TRACE][3] loadOrInitializeState', { roundId: roundId?.slice(0,8), hasInit: hasInitializedRef.current, initialLoadComplete, showHC: showHighCardSelection, dgId: dealerGameId?.slice(0,8), isDealerSel: isDealerSelection });
       if (hasInitializedRef.current || initialLoadComplete) return;
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
