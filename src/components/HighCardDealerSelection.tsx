@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { getBotAlias } from "@/lib/botAlias";
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
 import { supabase } from "@/integrations/supabase/client";
+import { logDebugEvent } from "@/lib/debugEventLogger";
 
 interface Player {
   id: string;
@@ -73,6 +74,25 @@ export const HighCardDealerSelection = ({
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
+  const mountTraceRef = useRef(false);
+
+  // TRACE-4: log on mount/first-update with received syncedState
+  if (!mountTraceRef.current) {
+    mountTraceRef.current = true;
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:bugA:child_mount',
+      payload: {
+        isHost,
+        selectionVariant,
+        hasSyncedState: !!syncedState,
+        syncedCardCount: syncedState?.cards?.length ?? 0,
+        syncedIsComplete: syncedState?.isComplete ?? null,
+        syncedCardIds: (syncedState?.cards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        playerCount: players.length,
+      },
+    });
+  }
 
   const isCribbageVariant = selectionVariant === 'cribbage';
   

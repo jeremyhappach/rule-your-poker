@@ -300,6 +300,15 @@ export const CribbageMobileGameTable = ({
   const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
+  // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
+  const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
+  // Rotate correlation id when isDealerSelection flips
+  const prevIsDSForTraceRef = useRef(isDealerSelection);
+  if (prevIsDSForTraceRef.current !== isDealerSelection) {
+    hcTransitionIdRef.current = crypto.randomUUID().slice(0, 8);
+    prevIsDSForTraceRef.current = isDealerSelection;
+  }
+
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
@@ -632,6 +641,22 @@ export const CribbageMobileGameTable = ({
   const prevIsDealerSelectionRef = useRef(isDealerSelection);
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
+      // TRACE-1: session-level high-card just completed (isDealerSelection flipped false)
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:bugA:session_hc_completed',
+        payload: {
+          txId: hcTransitionIdRef.current,
+          externalCardCount: externalDealerSelectionCards?.length ?? 0,
+          externalCardIds: (externalDealerSelectionCards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+          localHighCardCardCount: highCardCards.length,
+          localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+          syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
+          syncedStateCardCount: highCardSyncedState?.data?.cards?.length ?? 0,
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+          showHighCardSelection,
+        },
+      });
       logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
         reason: 'isDealerSelection flipped false (hygiene clear)',
       });
@@ -1154,6 +1179,20 @@ export const CribbageMobileGameTable = ({
       }
 
       const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
+      // TRACE-2: log DB load with scope tagging
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:bugA:db_load_synced_state',
+        payload: {
+          txId: hcTransitionIdRef.current,
+          scopeKeyApplied: currentHighCardScopeKey,
+          isDealerSelection,
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+          hasData: !!raw,
+          cardCount: raw?.cards?.length ?? 0,
+          isComplete: raw?.isComplete ?? null,
+        },
+      });
       setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
     };
 
@@ -1171,6 +1210,20 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
+          // TRACE-2b: log realtime update with scope tagging
+          logDebugEvent({
+            gameId,
+            eventType: 'crib:bugA:realtime_synced_state',
+            payload: {
+              txId: hcTransitionIdRef.current,
+              scopeKeyApplied: currentHighCardScopeKey,
+              isDealerSelection,
+              dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+              hasData: !!next,
+              cardCount: (next as any)?.cards?.length ?? 0,
+              isComplete: (next as any)?.isComplete ?? null,
+            },
+          });
           setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
         }
       )
@@ -2348,6 +2401,34 @@ export const CribbageMobileGameTable = ({
   const isHighCardMode = effectiveShowHighCardSelection;
   const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
   const isGameplayMode = !isHighCardMode && !isBootstrapMode;
+
+  // ── TRACE-3: high-card render decision (every render where isHighCardMode=true) ──
+  if (isHighCardMode) {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:bugA:render_decision',
+      payload: {
+        txId: hcTransitionIdRef.current,
+        isDealerSelection,
+        showHighCardSelection,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        currentHighCardScopeKey,
+        // Which source is driving visible cards?
+        sourceLabel: isDealerSelection ? 'externalProps' : 'localHighCardCards',
+        externalCardCount: externalDealerSelectionCards?.length ?? 0,
+        localHighCardCardCount: highCardCards.length,
+        effectiveCardCount: effectiveHighCardCards.length,
+        // Card identities for each source (first 3)
+        externalCardIds: (externalDealerSelectionCards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        effectiveCardIds: effectiveHighCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        // Synced state info
+        syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
+        guardedSyncedHasData: !!guardedHighCardSyncedState,
+        guardedSyncedCardCount: guardedHighCardSyncedState?.cards?.length ?? 0,
+      },
+    });
+  }
 
   // ── Lifecycle: render-branch instrumentation ──
   renderCountRef.current += 1;
