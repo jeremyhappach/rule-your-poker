@@ -159,10 +159,6 @@ export const HighCardDealerSelection = ({
       syncedState.winnerPosition !== null &&
       !hasCompletedRef.current
     ) {
-      logChildTrace('high_card_child_complete', 'host_recovery_synced_complete_state', {
-        syncedCardCount: syncedState.cards.length,
-        syncedWinnerPosition: syncedState.winnerPosition,
-      });
       hasCompletedRef.current = true;
       lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
       onCardsUpdate(syncedState.cards || []);
