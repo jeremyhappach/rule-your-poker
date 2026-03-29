@@ -655,6 +655,7 @@ export const CribbageMobileGameTable = ({
   const prevIsDealerSelectionRef = useRef(isDealerSelection);
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
+      console.log('[TRACE][2] isDealerSelection flipped false → clearing session high-card state', { dealerGameId: dealerGameId?.slice(0,8), roundId: roundId?.slice(0,8) });
       logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
         reason: 'isDealerSelection flipped false (hygiene clear)',
       });

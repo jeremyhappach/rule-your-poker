@@ -79,6 +79,13 @@ export const HighCardDealerSelection = ({
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
   
+  useEffect(() => {
+    console.log('[TRACE][5] HighCardDealerSelection mounted', { isHost, eligibleDealers: eligibleDealers.length, syncedComplete: syncedState?.isComplete, variant: selectionVariant });
+    return () => {
+      console.log('[TRACE][5b] HighCardDealerSelection unmounted');
+    };
+  }, []);
+
   // Stable key for eligible dealers to avoid re-triggering effect on every render
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
   
