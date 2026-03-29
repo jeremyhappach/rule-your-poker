@@ -5636,7 +5636,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    console.log('[CRIBBAGE] Dealer selection complete, winner position:', dealerPosition);
+    console.log('[TRACE][1] session-level high-card complete', { dealerPosition, prevStatus: game?.status, dealerGameId: game?.current_game_uuid });
     logDebugEvent({
       gameId: gameId!,
       eventType: 'crib:lifecycle:session_transition',

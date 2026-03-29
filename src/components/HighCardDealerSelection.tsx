@@ -1,9 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { getBotAlias } from "@/lib/botAlias";
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
 import { supabase } from "@/integrations/supabase/client";
-import { logDebugEvent } from '@/lib/debugEventLogger';
-import { buildMetaPayload } from '@/lib/buildMeta';
 
 interface Player {
   id: string;
@@ -54,15 +52,7 @@ interface HighCardDealerSelectionProps {
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   // Callback for announcement messages
   onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
-  // Callback to report the winning position when determined (for spotlight effect)
   onWinnerPositionUpdate?: (position: number | null) => void;
-  debugCorrelation?: {
-    roundId: string | null;
-    dealerGameId: string | null;
-    handNumber: number | null;
-    parentInstanceId: string;
-    sourceScope: 'session' | 'dealer_game';
-  };
 }
 
 export const HighCardDealerSelection = ({ 
@@ -76,124 +66,26 @@ export const HighCardDealerSelection = ({
   onCardsUpdate,
   onAnnouncementUpdate,
   onWinnerPositionUpdate,
-  debugCorrelation
 }: HighCardDealerSelectionProps) => {
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
-  const instanceIdRef = useRef<string>(`hcds-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
-  const traceCounterRef = useRef(0);
-
-  const logChildTrace = useCallback((source: string, reason: string, extra: Record<string, unknown> = {}) => {
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:transition:trace',
-      payload: {
-        roundId: debugCorrelation?.roundId ?? null,
-        dealerGameId: debugCorrelation?.dealerGameId ?? null,
-        handNumber: debugCorrelation?.handNumber ?? null,
-        instanceId: instanceIdRef.current,
-        invocationCounter: ++traceCounterRef.current,
-        source,
-        reason,
-        parentInstanceId: debugCorrelation?.parentInstanceId ?? null,
-        sourceScope: debugCorrelation?.sourceScope ?? 'session',
-        ...extra,
-        ...buildMetaPayload(),
-      },
-    });
-  }, [debugCorrelation, gameId]);
 
   const isCribbageVariant = selectionVariant === 'cribbage';
 
-  useEffect(() => {
-    logChildTrace('high_card_child_input', 'child_input_source_snapshot', {
-      syncedCardCount: syncedState?.cards.length ?? 0,
-      syncedWinnerPosition: syncedState?.winnerPosition ?? null,
-      syncedIsComplete: syncedState?.isComplete ?? false,
-      isHost,
-      selectionVariant,
-    });
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:high_card:child_input_source',
-      payload: {
-        instanceId: instanceIdRef.current,
-        isHost,
-        selectionVariant,
-        syncedCardCount: syncedState?.cards.length ?? 0,
-        syncedAnnouncement: syncedState?.announcement ?? null,
-        syncedWinnerPosition: syncedState?.winnerPosition ?? null,
-        syncedIsComplete: syncedState?.isComplete ?? false,
-        hasInitialized: hasInitializedRef.current,
-        hasCompleted: hasCompletedRef.current,
-        lastAnnouncement: lastAnnouncementRef.current,
-        inputSource: isHost
-          ? (syncedState?.isComplete ? 'host_recovery_synced_state' : 'host_fresh_sequence')
-          : (syncedState ? 'non_host_synced_state' : 'non_host_waiting'),
-        ...buildMetaPayload(),
-      },
-    });
-  }, [gameId, isHost, logChildTrace, selectionVariant, syncedState]);
-  
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
-
-  useEffect(() => {
-    logChildTrace('HighCardDealerSelection_mount', 'mount_status', {
-      eligibleDealerCount: eligibleDealers.length,
-      syncedCardCount: syncedState?.cards.length ?? 0,
-      syncedIsComplete: syncedState?.isComplete ?? false,
-    });
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:high_card:child_mount_status',
-      payload: {
-        instanceId: instanceIdRef.current,
-        isHost,
-        selectionVariant,
-        eligibleDealerCount: eligibleDealers.length,
-        syncedCardCount: syncedState?.cards.length ?? 0,
-        syncedIsComplete: syncedState?.isComplete ?? false,
-        hasInitialized: hasInitializedRef.current,
-        hasCompleted: hasCompletedRef.current,
-        childStatus: syncedState
-          ? (syncedState.cards.length > 0 ? 'mounted_with_synced_cards' : 'mounted_with_empty_synced_state')
-          : isHost
-            ? 'mounted_host_fresh_path'
-            : 'mounted_non_host_waiting',
-        ...buildMetaPayload(),
-      },
-    });
-
-    return () => {
-      logChildTrace('HighCardDealerSelection_unmount', 'unmounted', {
-        eligibleDealerCount: eligibleDealers.length,
-        syncedCardCount: syncedState?.cards.length ?? 0,
-        syncedIsComplete: syncedState?.isComplete ?? false,
-      });
-      logDebugEvent({
-        gameId,
-        eventType: 'crib:high_card:child_mount_status',
-        payload: {
-          instanceId: instanceIdRef.current,
-          isHost,
-          selectionVariant,
-          eligibleDealerCount: eligibleDealers.length,
-          syncedCardCount: syncedState?.cards.length ?? 0,
-          syncedIsComplete: syncedState?.isComplete ?? false,
-          hasInitialized: hasInitializedRef.current,
-          hasCompleted: hasCompletedRef.current,
-          childStatus: 'unmounted',
-          ...buildMetaPayload(),
-        },
-      });
-    };
-  }, [eligibleDealers.length, gameId, isHost, logChildTrace, selectionVariant, syncedState]);
   
+  useEffect(() => {
+    console.log('[TRACE][5] HighCardDealerSelection mounted', { isHost, eligibleDealers: eligibleDealers.length, syncedComplete: syncedState?.isComplete, variant: selectionVariant });
+    return () => {
+      console.log('[TRACE][5b] HighCardDealerSelection unmounted');
+    };
+  }, []);
+
   // Stable key for eligible dealers to avoid re-triggering effect on every render
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
   
@@ -272,10 +164,6 @@ export const HighCardDealerSelection = ({
       syncedState.winnerPosition !== null &&
       !hasCompletedRef.current
     ) {
-      logChildTrace('high_card_child_complete', 'host_recovery_synced_complete_state', {
-        syncedCardCount: syncedState.cards.length,
-        syncedWinnerPosition: syncedState.winnerPosition,
-      });
       hasCompletedRef.current = true;
       lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
       onCardsUpdate(syncedState.cards || []);
@@ -320,11 +208,6 @@ export const HighCardDealerSelection = ({
     
     // NOW mark as initialized - only after we confirm we're the host with multiple dealers
     hasInitializedRef.current = true;
-    logChildTrace('high_card_host_sequence_start', 'host_fresh_sequence_started', {
-      eligibleDealerCount: eligibleDealers.length,
-      syncedCardCount: syncedState?.cards.length ?? 0,
-      selectionVariant,
-    });
     
     console.log('[HIGH CARD] Starting high card dealer selection with', eligibleDealers.length, 'eligible players');
     
@@ -336,7 +219,7 @@ export const HighCardDealerSelection = ({
     
     return () => clearTimeouts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eligibleDealerKey, eligibleDealers.length, isHost, logChildTrace, selectionVariant, syncedState]);
+  }, [eligibleDealerKey, eligibleDealers.length, isHost, selectionVariant, syncedState]);
   
   const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');

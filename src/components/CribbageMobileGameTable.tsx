@@ -280,7 +280,6 @@ export const CribbageMobileGameTable = ({
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
-  const initializedForRoundRef = useRef<string | null>(null);
 
   // DB-synced high-card selection state (so all clients see the same deal)
   // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
@@ -656,6 +655,7 @@ export const CribbageMobileGameTable = ({
   const prevIsDealerSelectionRef = useRef(isDealerSelection);
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
+      console.log('[TRACE][2] isDealerSelection flipped false → clearing session high-card state', { dealerGameId: dealerGameId?.slice(0,8), roundId: roundId?.slice(0,8) });
       logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
         reason: 'isDealerSelection flipped false (hygiene clear)',
       });
@@ -1120,23 +1120,8 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      // ── DIAGNOSTIC: log every invocation with full guard state ──
-      const guardBlocked = hasInitializedRef.current || initialLoadComplete;
-      console.log('[CRIBBAGE][INIT-DIAG] loadOrInitializeState called', {
-        roundId: roundId.slice(0, 8),
-        initializedForRound: initializedForRoundRef.current?.slice(0, 8) ?? null,
-        hasInitializedRef: hasInitializedRef.current,
-        initialLoadComplete,
-        guardWillBlock: guardBlocked,
-        showHighCardSelection,
-        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        isDealerSelection,
-      });
-
-      if (hasInitializedRef.current || initialLoadComplete) {
-        console.log('[CRIBBAGE][INIT-DIAG] ❌ GUARD RETURNED EARLY — skipping init for roundId', roundId.slice(0, 8));
-        return;
-      }
+      console.log('[TRACE][3] loadOrInitializeState', { roundId: roundId?.slice(0,8), hasInit: hasInitializedRef.current, initialLoadComplete, showHC: showHighCardSelection, dgId: dealerGameId?.slice(0,8), isDealerSel: isDealerSelection });
+      if (hasInitializedRef.current || initialLoadComplete) return;
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
 
@@ -1182,11 +1167,7 @@ export const CribbageMobileGameTable = ({
       const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
       
       if (isFirstHand) {
-        console.log('[CRIBBAGE][INIT-DIAG] ✅ First hand — calling setShowHighCardSelection(true)', {
-          roundId: roundId.slice(0, 8),
-          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        });
-        // Inject "new game starting" message into chat (idempotent per dealer_game_id)
+        console.log('[TRACE][4] First hand — setShowHighCardSelection(true)', { roundId: roundId?.slice(0,8), dgId: dealerGameId?.slice(0,8) });
         announceNewGameStarting();
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
@@ -1220,6 +1201,7 @@ export const CribbageMobileGameTable = ({
     if (!hasDealerGameScope) return;
     if (highCardWinnerPosition === null) return;
     if (!cribbageState) return;
+    console.log('[TRACE][7] Auto-clearing showHighCardSelection (state arrived)', { roundId: roundId?.slice(0,8) });
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
   }, [showHighCardSelection, hasDealerGameScope, highCardWinnerPosition, cribbageState]);
@@ -1281,11 +1263,12 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    console.log('[CRIBBAGE] High card winner:', { position: winnerPosition, playerId: winnerPlayer.id });
+    console.log('[TRACE][6] handleHighCardComplete (dealer-game)', { position: winnerPosition, playerId: winnerPlayer.id, roundId: roundId?.slice(0,8), isHost });
 
     // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
     if (!isHost) return;
 
+    console.log('[TRACE][6b] Host clearing showHighCardSelection, initializing game');
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
