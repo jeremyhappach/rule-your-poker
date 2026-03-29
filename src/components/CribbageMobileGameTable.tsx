@@ -282,46 +282,21 @@ export const CribbageMobileGameTable = ({
   const hasInitializedRef = useRef(false);
 
   // DB-synced high-card selection state (so all clients see the same deal)
-  // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
-  const [highCardSyncedState, setHighCardSyncedState] = useState<{ scopeKey: string; data: DealerSelectionState } | null>(null);
+  const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
   const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
 
-  // Scope key: session-level uses 'session', dealer-game-level uses the dealerGameId
-  const currentHighCardScopeKey = isDealerSelection ? 'session' : (dealerGameId ?? 'none');
-  // Pre-render guard: only pass synced state if scope matches
-  const guardedHighCardSyncedState = (highCardSyncedState?.scopeKey === currentHighCardScopeKey)
-    ? highCardSyncedState.data
-    : null;
-
-  // Scope-aligned high-card rendering: once a dealer-game exists, never render session-level visuals.
-  const hasDealerGameScope = Boolean(dealerGameId);
-  const shouldRenderSessionHighCard = isDealerSelection && !hasDealerGameScope;
-  // Allow dealer-game high-card mount when dealerGameId exists AND showHighCardSelection is true,
-  // regardless of isDealerSelection (which is a session-level prop that may still be true).
-  const shouldRenderDealerGameHighCard = showHighCardSelection && hasDealerGameScope;
-  const effectiveShowHighCardSelection = shouldRenderSessionHighCard || shouldRenderDealerGameHighCard;
-  const effectiveHighCardCards = shouldRenderSessionHighCard
+  // High-card rendering: session-level uses external props, dealer-game-level uses local state
+  const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
+  const effectiveHighCardCards = isDealerSelection
     ? (externalDealerSelectionCards || [])
-    : shouldRenderDealerGameHighCard
-      ? highCardCards
-      : [];
-  const effectiveHighCardAnnouncement = shouldRenderSessionHighCard
+    : highCardCards;
+  const effectiveHighCardAnnouncement = isDealerSelection
     ? externalDealerSelectionAnnouncement
-    : shouldRenderDealerGameHighCard
-      ? highCardAnnouncement
-      : null;
-  const effectiveHighCardWinnerPosition = shouldRenderSessionHighCard
+    : highCardAnnouncement;
+  const effectiveHighCardWinnerPosition = isDealerSelection
     ? externalDealerSelectionWinnerPosition
-    : shouldRenderDealerGameHighCard
-      ? highCardWinnerPosition
-      : null;
-  const childHighCardSyncedState = shouldRenderDealerGameHighCard ? guardedHighCardSyncedState : null;
-  const highCardRenderSource = shouldRenderSessionHighCard
-    ? 'session_external_props'
-    : shouldRenderDealerGameHighCard
-      ? 'dealer_game_local_state'
-      : 'none';
+    : highCardWinnerPosition;
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
