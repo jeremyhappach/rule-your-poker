@@ -1165,11 +1165,7 @@ export const CribbageMobileGameTable = ({
       const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
       
       if (isFirstHand) {
-        console.log('[CRIBBAGE][INIT-DIAG] ✅ First hand — calling setShowHighCardSelection(true)', {
-          roundId: roundId.slice(0, 8),
-          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        });
-        // Inject "new game starting" message into chat (idempotent per dealer_game_id)
+        console.log('[CRIBBAGE] First hand — showing high card selection');
         announceNewGameStarting();
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
