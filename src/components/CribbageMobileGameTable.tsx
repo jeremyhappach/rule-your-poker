@@ -641,6 +641,22 @@ export const CribbageMobileGameTable = ({
   const prevIsDealerSelectionRef = useRef(isDealerSelection);
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
+      // TRACE-1: session-level high-card just completed (isDealerSelection flipped false)
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:bugA:session_hc_completed',
+        payload: {
+          txId: hcTransitionIdRef.current,
+          externalCardCount: externalDealerSelectionCards?.length ?? 0,
+          externalCardIds: (externalDealerSelectionCards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+          localHighCardCardCount: highCardCards.length,
+          localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+          syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
+          syncedStateCardCount: highCardSyncedState?.data?.cards?.length ?? 0,
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+          showHighCardSelection,
+        },
+      });
       logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
         reason: 'isDealerSelection flipped false (hygiene clear)',
       });
