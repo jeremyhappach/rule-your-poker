@@ -54,15 +54,7 @@ interface HighCardDealerSelectionProps {
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   // Callback for announcement messages
   onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
-  // Callback to report the winning position when determined (for spotlight effect)
   onWinnerPositionUpdate?: (position: number | null) => void;
-  debugCorrelation?: {
-    roundId: string | null;
-    dealerGameId: string | null;
-    handNumber: number | null;
-    parentInstanceId: string;
-    sourceScope: 'session' | 'dealer_game';
-  };
 }
 
 export const HighCardDealerSelection = ({ 
