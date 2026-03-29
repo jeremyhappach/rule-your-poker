@@ -77,91 +77,9 @@ export const HighCardDealerSelection = ({
 
   const isCribbageVariant = selectionVariant === 'cribbage';
 
-  useEffect(() => {
-    logChildTrace('high_card_child_input', 'child_input_source_snapshot', {
-      syncedCardCount: syncedState?.cards.length ?? 0,
-      syncedWinnerPosition: syncedState?.winnerPosition ?? null,
-      syncedIsComplete: syncedState?.isComplete ?? false,
-      isHost,
-      selectionVariant,
-    });
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:high_card:child_input_source',
-      payload: {
-        instanceId: instanceIdRef.current,
-        isHost,
-        selectionVariant,
-        syncedCardCount: syncedState?.cards.length ?? 0,
-        syncedAnnouncement: syncedState?.announcement ?? null,
-        syncedWinnerPosition: syncedState?.winnerPosition ?? null,
-        syncedIsComplete: syncedState?.isComplete ?? false,
-        hasInitialized: hasInitializedRef.current,
-        hasCompleted: hasCompletedRef.current,
-        lastAnnouncement: lastAnnouncementRef.current,
-        inputSource: isHost
-          ? (syncedState?.isComplete ? 'host_recovery_synced_state' : 'host_fresh_sequence')
-          : (syncedState ? 'non_host_synced_state' : 'non_host_waiting'),
-        ...buildMetaPayload(),
-      },
-    });
-  }, [gameId, isHost, logChildTrace, selectionVariant, syncedState]);
-  
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
-
-  useEffect(() => {
-    logChildTrace('HighCardDealerSelection_mount', 'mount_status', {
-      eligibleDealerCount: eligibleDealers.length,
-      syncedCardCount: syncedState?.cards.length ?? 0,
-      syncedIsComplete: syncedState?.isComplete ?? false,
-    });
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:high_card:child_mount_status',
-      payload: {
-        instanceId: instanceIdRef.current,
-        isHost,
-        selectionVariant,
-        eligibleDealerCount: eligibleDealers.length,
-        syncedCardCount: syncedState?.cards.length ?? 0,
-        syncedIsComplete: syncedState?.isComplete ?? false,
-        hasInitialized: hasInitializedRef.current,
-        hasCompleted: hasCompletedRef.current,
-        childStatus: syncedState
-          ? (syncedState.cards.length > 0 ? 'mounted_with_synced_cards' : 'mounted_with_empty_synced_state')
-          : isHost
-            ? 'mounted_host_fresh_path'
-            : 'mounted_non_host_waiting',
-        ...buildMetaPayload(),
-      },
-    });
-
-    return () => {
-      logChildTrace('HighCardDealerSelection_unmount', 'unmounted', {
-        eligibleDealerCount: eligibleDealers.length,
-        syncedCardCount: syncedState?.cards.length ?? 0,
-        syncedIsComplete: syncedState?.isComplete ?? false,
-      });
-      logDebugEvent({
-        gameId,
-        eventType: 'crib:high_card:child_mount_status',
-        payload: {
-          instanceId: instanceIdRef.current,
-          isHost,
-          selectionVariant,
-          eligibleDealerCount: eligibleDealers.length,
-          syncedCardCount: syncedState?.cards.length ?? 0,
-          syncedIsComplete: syncedState?.isComplete ?? false,
-          hasInitialized: hasInitializedRef.current,
-          hasCompleted: hasCompletedRef.current,
-          childStatus: 'unmounted',
-          ...buildMetaPayload(),
-        },
-      });
-    };
-  }, [eligibleDealers.length, gameId, isHost, logChildTrace, selectionVariant, syncedState]);
   
   // Stable key for eligible dealers to avoid re-triggering effect on every render
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
