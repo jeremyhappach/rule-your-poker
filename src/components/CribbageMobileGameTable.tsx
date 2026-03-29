@@ -2396,7 +2396,6 @@ export const CribbageMobileGameTable = ({
         isDealerSelection,
         showHighCardSelection,
         dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        currentHighCardScopeKey,
         // Which source is driving visible cards?
         sourceLabel: isDealerSelection ? 'externalProps' : 'localHighCardCards',
         externalCardCount: externalDealerSelectionCards?.length ?? 0,
@@ -2407,9 +2406,8 @@ export const CribbageMobileGameTable = ({
         localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
         effectiveCardIds: effectiveHighCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
         // Synced state info
-        syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
-        guardedSyncedHasData: !!guardedHighCardSyncedState,
-        guardedSyncedCardCount: guardedHighCardSyncedState?.cards?.length ?? 0,
+        syncedStateHasData: !!highCardSyncedState,
+        syncedStateCardCount: highCardSyncedState?.cards?.length ?? 0,
       },
     });
   }
