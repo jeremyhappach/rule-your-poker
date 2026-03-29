@@ -1165,7 +1165,7 @@ export const CribbageMobileGameTable = ({
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [gameId, currentHighCardScopeKey]);
+  }, [gameId]);
 
   // Handle high card selection complete
   // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
