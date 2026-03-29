@@ -280,7 +280,6 @@ export const CribbageMobileGameTable = ({
   const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
-  const initializedForRoundRef = useRef<string | null>(null);
 
   // DB-synced high-card selection state (so all clients see the same deal)
   // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
