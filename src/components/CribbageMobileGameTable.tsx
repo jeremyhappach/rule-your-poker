@@ -1163,6 +1163,20 @@ export const CribbageMobileGameTable = ({
       }
 
       const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
+      // TRACE-2: log DB load with scope tagging
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:bugA:db_load_synced_state',
+        payload: {
+          txId: hcTransitionIdRef.current,
+          scopeKeyApplied: currentHighCardScopeKey,
+          isDealerSelection,
+          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+          hasData: !!raw,
+          cardCount: raw?.cards?.length ?? 0,
+          isComplete: raw?.isComplete ?? null,
+        },
+      });
       setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
     };
 
@@ -1180,6 +1194,20 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
+          // TRACE-2b: log realtime update with scope tagging
+          logDebugEvent({
+            gameId,
+            eventType: 'crib:bugA:realtime_synced_state',
+            payload: {
+              txId: hcTransitionIdRef.current,
+              scopeKeyApplied: currentHighCardScopeKey,
+              isDealerSelection,
+              dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+              hasData: !!next,
+              cardCount: (next as any)?.cards?.length ?? 0,
+              isComplete: (next as any)?.isComplete ?? null,
+            },
+          });
           setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
         }
       )
