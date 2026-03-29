@@ -1156,7 +1156,7 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
-          setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
+          setHighCardSyncedState((next as DealerSelectionState) ?? null);
         }
       )
       .subscribe();
