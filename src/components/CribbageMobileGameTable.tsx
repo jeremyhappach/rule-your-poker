@@ -1262,11 +1262,12 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    console.log('[CRIBBAGE] High card winner:', { position: winnerPosition, playerId: winnerPlayer.id });
+    console.log('[TRACE][6] handleHighCardComplete (dealer-game)', { position: winnerPosition, playerId: winnerPlayer.id, roundId: roundId?.slice(0,8), isHost });
 
     // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
     if (!isHost) return;
 
+    console.log('[TRACE][6b] Host clearing showHighCardSelection, initializing game');
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
