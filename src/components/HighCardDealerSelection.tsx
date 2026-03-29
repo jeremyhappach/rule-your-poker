@@ -74,28 +74,6 @@ export const HighCardDealerSelection = ({
   const deckRef = useRef<Card[]>([]);
   const hasCompletedRef = useRef(false);
   const lastAnnouncementRef = useRef<string | null>(null);
-  const instanceIdRef = useRef<string>(`hcds-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
-  const traceCounterRef = useRef(0);
-
-  const logChildTrace = useCallback((source: string, reason: string, extra: Record<string, unknown> = {}) => {
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:transition:trace',
-      payload: {
-        roundId: debugCorrelation?.roundId ?? null,
-        dealerGameId: debugCorrelation?.dealerGameId ?? null,
-        handNumber: debugCorrelation?.handNumber ?? null,
-        instanceId: instanceIdRef.current,
-        invocationCounter: ++traceCounterRef.current,
-        source,
-        reason,
-        parentInstanceId: debugCorrelation?.parentInstanceId ?? null,
-        sourceScope: debugCorrelation?.sourceScope ?? 'session',
-        ...extra,
-        ...buildMetaPayload(),
-      },
-    });
-  }, [debugCorrelation, gameId]);
 
   const isCribbageVariant = selectionVariant === 'cribbage';
 
