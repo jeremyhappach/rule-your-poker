@@ -68,7 +68,6 @@ export const HighCardDealerSelection = ({
   onCardsUpdate,
   onAnnouncementUpdate,
   onWinnerPositionUpdate,
-  debugCorrelation
 }: HighCardDealerSelectionProps) => {
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
