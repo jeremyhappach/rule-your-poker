@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { getBotAlias } from "@/lib/botAlias";
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +52,7 @@ interface HighCardDealerSelectionProps {
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
   // Callback for announcement messages
   onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
+  // Callback to report the winning position when determined (for spotlight effect)
   onWinnerPositionUpdate?: (position: number | null) => void;
 }
 
@@ -65,7 +66,7 @@ export const HighCardDealerSelection = ({
   syncedState,
   onCardsUpdate,
   onAnnouncementUpdate,
-  onWinnerPositionUpdate,
+  onWinnerPositionUpdate
 }: HighCardDealerSelectionProps) => {
   const hasInitializedRef = useRef(false);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -74,12 +75,11 @@ export const HighCardDealerSelection = ({
   const lastAnnouncementRef = useRef<string | null>(null);
 
   const isCribbageVariant = selectionVariant === 'cribbage';
-
+  
   // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
   const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
   const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
   
-
   // Stable key for eligible dealers to avoid re-triggering effect on every render
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
   
@@ -213,7 +213,7 @@ export const HighCardDealerSelection = ({
     
     return () => clearTimeouts();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eligibleDealerKey, eligibleDealers.length, isHost, selectionVariant, syncedState]);
+  }, [isHost, eligibleDealerKey]);
   
   const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
     console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');

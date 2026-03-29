@@ -282,21 +282,23 @@ export const CribbageMobileGameTable = ({
   const hasInitializedRef = useRef(false);
 
   // DB-synced high-card selection state (so all clients see the same deal)
-  const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
+  // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
+  const [highCardSyncedState, setHighCardSyncedState] = useState<{ scopeKey: string; data: DealerSelectionState } | null>(null);
   const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
 
-  // High-card rendering: session-level uses external props, dealer-game-level uses local state
+  // Scope key: session-level uses 'session', dealer-game-level uses the dealerGameId
+  const currentHighCardScopeKey = isDealerSelection ? 'session' : (dealerGameId ?? 'none');
+  // Pre-render guard: only pass synced state if scope matches
+  const guardedHighCardSyncedState = (highCardSyncedState?.scopeKey === currentHighCardScopeKey)
+    ? highCardSyncedState.data
+    : null;
+
+  // When in external dealer selection mode (cribbage_dealer_selection status), use external props
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
-  const effectiveHighCardCards = isDealerSelection
-    ? (externalDealerSelectionCards || [])
-    : highCardCards;
-  const effectiveHighCardAnnouncement = isDealerSelection
-    ? externalDealerSelectionAnnouncement
-    : highCardAnnouncement;
-  const effectiveHighCardWinnerPosition = isDealerSelection
-    ? externalDealerSelectionWinnerPosition
-    : highCardWinnerPosition;
+  const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
+  const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
+  const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
@@ -625,6 +627,19 @@ export const CribbageMobileGameTable = ({
     injectDealerMessage('New game starting');
   }, [dealerGameId, injectDealerMessage]);
 
+  // Clear stale session-level high-card synced state when isDealerSelection flips false
+  // so dealer-game-level HighCardDealerSelection starts clean.
+  const prevIsDealerSelectionRef = useRef(isDealerSelection);
+  useEffect(() => {
+    if (prevIsDealerSelectionRef.current && !isDealerSelection) {
+      logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
+        reason: 'isDealerSelection flipped false (hygiene clear)',
+      });
+      setHighCardSyncedState(null);
+      setHighCardCards([]);
+    }
+    prevIsDealerSelectionRef.current = isDealerSelection;
+  }, [isDealerSelection]);
 
   useEffect(() => {
     if (!isDealerSelection) return;
@@ -1034,7 +1049,10 @@ export const CribbageMobileGameTable = ({
     }
     
     const loadOrInitializeState = async () => {
-      if (hasInitializedRef.current || initialLoadComplete) return;
+      if (hasInitializedRef.current || initialLoadComplete) {
+        console.log('[CRIBBAGE] Already initialized, skipping');
+        return;
+      }
       
       console.log('[CRIBBAGE] Loading state for round:', roundId);
 
@@ -1080,7 +1098,8 @@ export const CribbageMobileGameTable = ({
       const isFirstHand = !roundData?.hand_number || roundData.hand_number <= 1;
       
       if (isFirstHand) {
-        
+        console.log('[CRIBBAGE] First hand - starting high card selection');
+        // Inject "new game starting" message into chat (idempotent per dealer_game_id)
         announceNewGameStarting();
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
@@ -1105,18 +1124,15 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roundId]);
+  }, [roundId, initialLoadComplete, injectDealerMessage, announceNewGameStarting]); // Re-run if roundId changes, include initialLoadComplete in deps
 
   // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
   useEffect(() => {
     if (!showHighCardSelection) return;
-    if (!dealerGameId) return;
-    if (highCardWinnerPosition === null) return;
     if (!cribbageState) return;
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
-  }, [showHighCardSelection, dealerGameId, highCardWinnerPosition, cribbageState]);
+  }, [showHighCardSelection, cribbageState]);
 
   // Subscribe to DB-synced dealer selection state so everyone sees the same animation
   useEffect(() => {
@@ -1138,7 +1154,7 @@ export const CribbageMobileGameTable = ({
       }
 
       const raw = (data?.dealer_selection_state as unknown as DealerSelectionState) ?? null;
-      setHighCardSyncedState(raw);
+      setHighCardSyncedState(raw ? { scopeKey: currentHighCardScopeKey, data: raw } : null);
     };
 
     load();
@@ -1155,7 +1171,7 @@ export const CribbageMobileGameTable = ({
         },
         (payload) => {
           const next = (payload.new as any)?.dealer_selection_state ?? null;
-          setHighCardSyncedState((next as DealerSelectionState) ?? null);
+          setHighCardSyncedState(next ? { scopeKey: currentHighCardScopeKey, data: next as DealerSelectionState } : null);
         }
       )
       .subscribe();
@@ -1164,7 +1180,7 @@ export const CribbageMobileGameTable = ({
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [gameId]);
+  }, [gameId, currentHighCardScopeKey]);
 
   // Handle high card selection complete
   // NOTE: HighCardDealerSelection returns a winning *position* (seat), not a player id.
@@ -1175,12 +1191,11 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    
+    console.log('[CRIBBAGE] High card winner:', { position: winnerPosition, playerId: winnerPlayer.id });
 
     // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
     if (!isHost) return;
 
-    
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
@@ -2481,15 +2496,16 @@ export const CribbageMobileGameTable = ({
             {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
             {isHighCardMode && (
               <>
-              {showHighCardSelection && !isDealerSelection && (
+              {!isDealerSelection && (
                   <HighCardDealerSelection
+                    key={currentHighCardScopeKey}
                     gameId={gameId}
                     players={players as any}
                     onComplete={handleHighCardComplete}
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"
-                    syncedState={highCardSyncedState}
+                    syncedState={guardedHighCardSyncedState}
                     onCardsUpdate={setHighCardCards}
                     onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
