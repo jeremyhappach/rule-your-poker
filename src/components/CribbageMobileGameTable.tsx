@@ -1200,6 +1200,7 @@ export const CribbageMobileGameTable = ({
     if (!hasDealerGameScope) return;
     if (highCardWinnerPosition === null) return;
     if (!cribbageState) return;
+    console.log('[TRACE][7] Auto-clearing showHighCardSelection (state arrived)', { roundId: roundId?.slice(0,8) });
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
   }, [showHighCardSelection, hasDealerGameScope, highCardWinnerPosition, cribbageState]);
