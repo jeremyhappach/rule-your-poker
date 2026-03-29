@@ -1111,13 +1111,12 @@ export const CribbageMobileGameTable = ({
   // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
   useEffect(() => {
     if (!showHighCardSelection) return;
-    if (!hasDealerGameScope) return;
+    if (!dealerGameId) return;
     if (highCardWinnerPosition === null) return;
     if (!cribbageState) return;
-    console.log('[TRACE][7] Auto-clearing showHighCardSelection (state arrived)', { roundId: roundId?.slice(0,8) });
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
-  }, [showHighCardSelection, hasDealerGameScope, highCardWinnerPosition, cribbageState]);
+  }, [showHighCardSelection, dealerGameId, highCardWinnerPosition, cribbageState]);
 
   // Subscribe to DB-synced dealer selection state so everyone sees the same animation
   useEffect(() => {
