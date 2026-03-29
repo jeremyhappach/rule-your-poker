@@ -287,10 +287,13 @@ export const CribbageMobileGameTable = ({
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
 
   // When in external dealer selection mode (cribbage_dealer_selection status), use external props
+  // Bug A fix: once dealerGameId exists, session-level external props are stale —
+  // only use externalProps when isDealerSelection is true AND no dealer-game scope has started yet
+  const useSessionExternalProps = isDealerSelection && !dealerGameId;
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
-  const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
-  const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
-  const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
+  const effectiveHighCardCards = useSessionExternalProps ? (externalDealerSelectionCards || []) : highCardCards;
+  const effectiveHighCardAnnouncement = useSessionExternalProps ? externalDealerSelectionAnnouncement : highCardAnnouncement;
+  const effectiveHighCardWinnerPosition = useSessionExternalProps ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
   // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
   const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
