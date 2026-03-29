@@ -2386,6 +2386,34 @@ export const CribbageMobileGameTable = ({
   const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
   const isGameplayMode = !isHighCardMode && !isBootstrapMode;
 
+  // ── TRACE-3: high-card render decision (every render where isHighCardMode=true) ──
+  if (isHighCardMode) {
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:bugA:render_decision',
+      payload: {
+        txId: hcTransitionIdRef.current,
+        isDealerSelection,
+        showHighCardSelection,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        currentHighCardScopeKey,
+        // Which source is driving visible cards?
+        sourceLabel: isDealerSelection ? 'externalProps' : 'localHighCardCards',
+        externalCardCount: externalDealerSelectionCards?.length ?? 0,
+        localHighCardCardCount: highCardCards.length,
+        effectiveCardCount: effectiveHighCardCards.length,
+        // Card identities for each source (first 3)
+        externalCardIds: (externalDealerSelectionCards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        effectiveCardIds: effectiveHighCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+        // Synced state info
+        syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
+        guardedSyncedHasData: !!guardedHighCardSyncedState,
+        guardedSyncedCardCount: guardedHighCardSyncedState?.cards?.length ?? 0,
+      },
+    });
+  }
+
   // ── Lifecycle: render-branch instrumentation ──
   renderCountRef.current += 1;
   const renderRoundId = currentRoundId;
