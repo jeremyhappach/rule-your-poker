@@ -628,8 +628,7 @@ export const CribbageMobileGameTable = ({
     injectDealerMessage('New game starting');
   }, [dealerGameId, injectDealerMessage]);
 
-  // Clear stale session-level high-card synced state when isDealerSelection flips false
-  // so dealer-game-level HighCardDealerSelection starts clean.
+  // Observe session→dealer-game transition (trace only, no state mutations)
   const prevIsDealerSelectionRef = useRef(isDealerSelection);
   useEffect(() => {
     if (prevIsDealerSelectionRef.current && !isDealerSelection) {
@@ -643,17 +642,12 @@ export const CribbageMobileGameTable = ({
           externalCardIds: (externalDealerSelectionCards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
           localHighCardCardCount: highCardCards.length,
           localCardIds: highCardCards.slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
-          syncedStateScopeKey: highCardSyncedState?.scopeKey ?? null,
-          syncedStateCardCount: highCardSyncedState?.data?.cards?.length ?? 0,
+          syncedStateHasData: !!highCardSyncedState,
+          syncedStateCardCount: highCardSyncedState?.cards?.length ?? 0,
           dealerGameId: dealerGameId?.slice(0, 8) ?? null,
           showHighCardSelection,
         },
       });
-      logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
-        reason: 'isDealerSelection flipped false (hygiene clear)',
-      });
-      setHighCardSyncedState(null);
-      setHighCardCards([]);
     }
     prevIsDealerSelectionRef.current = isDealerSelection;
   }, [isDealerSelection]);
