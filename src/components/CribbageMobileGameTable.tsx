@@ -625,67 +625,6 @@ export const CribbageMobileGameTable = ({
     injectDealerMessage('New game starting');
   }, [dealerGameId, injectDealerMessage]);
 
-  // Clear stale session-level high-card synced state when isDealerSelection flips false
-  // so dealer-game-level HighCardDealerSelection starts clean.
-  const prevIsDealerSelectionRef = useRef(isDealerSelection);
-  useEffect(() => {
-    if (prevIsDealerSelectionRef.current && !isDealerSelection) {
-      console.log('[TRACE][2] isDealerSelection flipped false → clearing session high-card state', { dealerGameId: dealerGameId?.slice(0,8), roundId: roundId?.slice(0,8) });
-      logCribbageDebug(debugCtx, 'highcard:clearing_session_synced_state', {
-        reason: 'isDealerSelection flipped false (hygiene clear)',
-      });
-      setHighCardSyncedState(null);
-      setHighCardCards([]);
-    }
-    prevIsDealerSelectionRef.current = isDealerSelection;
-  }, [isDealerSelection]);
-
-  useEffect(() => {
-    if (!isDealerSelection && !showHighCardSelection && effectiveHighCardCards.length === 0) return;
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:high_card:parent_render_source',
-      payload: {
-        instanceId: instanceIdRef.current,
-        isDealerSelection,
-        showHighCardSelection,
-        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-        currentHighCardScopeKey,
-        hasDealerGameScope,
-        highCardRenderSource,
-        childWillMount: isHighCardMode && shouldRenderDealerGameHighCard,
-        shouldRenderSessionHighCard,
-        shouldRenderDealerGameHighCard,
-        externalCardCount: externalDealerSelectionCards?.length ?? 0,
-        localCardCount: highCardCards.length,
-        effectiveCardCount: effectiveHighCardCards.length,
-        syncedScopeKey: highCardSyncedState?.scopeKey ?? null,
-        guardedSyncedCardCount: guardedHighCardSyncedState?.cards.length ?? 0,
-        childSyncedCardCount: childHighCardSyncedState?.cards.length ?? 0,
-        winnerPosition: effectiveHighCardWinnerPosition,
-        announcement: effectiveHighCardAnnouncement,
-        ...buildMetaPayload(),
-      },
-    });
-  }, [
-    childHighCardSyncedState,
-    currentHighCardScopeKey,
-    dealerGameId,
-    effectiveHighCardAnnouncement,
-    effectiveHighCardCards,
-    effectiveHighCardWinnerPosition,
-    externalDealerSelectionCards,
-    gameId,
-    guardedHighCardSyncedState,
-    hasDealerGameScope,
-    highCardCards.length,
-    highCardRenderSource,
-    highCardSyncedState,
-    isDealerSelection,
-    showHighCardSelection,
-    shouldRenderDealerGameHighCard,
-    shouldRenderSessionHighCard,
-  ]);
 
   useEffect(() => {
     if (!isDealerSelection) return;
