@@ -282,17 +282,9 @@ export const CribbageMobileGameTable = ({
   const hasInitializedRef = useRef(false);
 
   // DB-synced high-card selection state (so all clients see the same deal)
-  // Stored with a scopeKey so session-level and dealer-game-level states cannot cross-contaminate.
-  const [highCardSyncedState, setHighCardSyncedState] = useState<{ scopeKey: string; data: DealerSelectionState } | null>(null);
+  const [highCardSyncedState, setHighCardSyncedState] = useState<DealerSelectionState | null>(null);
   const [highCardCards, setHighCardCards] = useState<DealerSelectionCard[]>([]);
   const [highCardWinnerPosition, setHighCardWinnerPosition] = useState<number | null>(null);
-
-  // Scope key: session-level uses 'session', dealer-game-level uses the dealerGameId
-  const currentHighCardScopeKey = isDealerSelection ? 'session' : (dealerGameId ?? 'none');
-  // Pre-render guard: only pass synced state if scope matches
-  const guardedHighCardSyncedState = (highCardSyncedState?.scopeKey === currentHighCardScopeKey)
-    ? highCardSyncedState.data
-    : null;
 
   // When in external dealer selection mode (cribbage_dealer_selection status), use external props
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
@@ -302,7 +294,7 @@ export const CribbageMobileGameTable = ({
 
   // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
   const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
-  // Rotate correlation id when isDealerSelection flips
+  // Rotate correlation id when isDealerSelection flips (observation only)
   const prevIsDSForTraceRef = useRef(isDealerSelection);
   if (prevIsDSForTraceRef.current !== isDealerSelection) {
     hcTransitionIdRef.current = crypto.randomUUID().slice(0, 8);
