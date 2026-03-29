@@ -1180,7 +1180,7 @@ export const CribbageMobileGameTable = ({
     // Non-host clients should NOT write state; they will receive cribbage_state via realtime.
     if (!isHost) return;
 
-    console.log('[TRACE][6b] Host clearing showHighCardSelection, initializing game');
+    
     setShowHighCardSelection(false);
     setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
