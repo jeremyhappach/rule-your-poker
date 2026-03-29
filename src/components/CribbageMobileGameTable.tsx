@@ -300,6 +300,15 @@ export const CribbageMobileGameTable = ({
   const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
+  // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
+  const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
+  // Rotate correlation id when isDealerSelection flips
+  const prevIsDSForTraceRef = useRef(isDealerSelection);
+  if (prevIsDSForTraceRef.current !== isDealerSelection) {
+    hcTransitionIdRef.current = crypto.randomUUID().slice(0, 8);
+    prevIsDSForTraceRef.current = isDealerSelection;
+  }
+
   // Track hand key to detect hand transitions and prevent stale card flash
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
