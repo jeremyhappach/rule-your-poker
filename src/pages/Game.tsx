@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useGameStateSync, getHolmProgress } from "@/lib/gameStateSync";
+import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
