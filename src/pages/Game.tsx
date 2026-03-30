@@ -7493,6 +7493,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
               anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
               onDecisionMade={() => {
+                // ── Set latch BEFORE hiding so transient server regression cannot re-trigger ──
+                const currentPlayer = players.find(p => p.user_id === user.id);
+                const latchKey = `${gameId}|${game.current_game_uuid ?? ''}|${currentPlayer?.id ?? ''}`;
+                anteConfirmedLatchRef.current = latchKey;
+                console.log('[ANTE LATCH] Set:', latchKey);
+                
                 setShowAnteDialog(false);
                 // ── HANDOFF TRACE #5c: ante modal CONFIRMED (decision made) ──
                 emitCribbageHandoffTrace({
@@ -7503,6 +7509,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameStatus: game.status,
                     dealerGameId: game.current_game_uuid ?? null,
                     dealerSelectionCardsLen: dealerSelectionCards.length,
+                    latchKey,
                   },
                 });
               }}
