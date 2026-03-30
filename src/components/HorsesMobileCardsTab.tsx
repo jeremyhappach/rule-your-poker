@@ -39,6 +39,7 @@ export function HorsesMobileCardsTab({
   currentUserPlayer,
   horses,
   onAutoFoldChange,
+  pendingAutoRollOff = false,
   gameType,
   onEmoticonSelect,
   isEmoticonSending,
