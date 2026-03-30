@@ -1,0 +1,193 @@
+import { describe, it, expect } from 'vitest';
+import { getHolmProgress, type HolmAuthoritativeSnapshot, type HolmPlayerSnapshot } from './holmProgress';
+import { compareProgress } from './stateProgress';
+
+// ── Helpers ────────────────────────────────────────────────────
+
+function makePlayer(overrides: Partial<HolmPlayerSnapshot> = {}): HolmPlayerSnapshot {
+  return {
+    playerId: 'p1',
+    userId: 'u1',
+    position: 0,
+    decision: null,
+    decisionLocked: false,
+    autoFold: false,
+    sittingOut: false,
+    ...overrides,
+  };
+}
+
+function makeSnapshot(overrides: Partial<HolmAuthoritativeSnapshot> = {}): HolmAuthoritativeSnapshot {
+  return {
+    roundId: 'r1',
+    handNumber: 1,
+    dealerGameId: 'dg1',
+    roundStatus: 'betting',
+    players: [
+      makePlayer({ playerId: 'p1', position: 0 }),
+      makePlayer({ playerId: 'p2', position: 1 }),
+      makePlayer({ playerId: 'p3', position: 2 }),
+      makePlayer({ playerId: 'p4', position: 3 }),
+    ],
+    currentTurnPosition: 0,
+    decisionDeadline: null,
+    communityCards: [],
+    communityCardsRevealed: 0,
+    chuckyCards: [],
+    chuckyActive: false,
+    pot: 4,
+    lastRoundResult: null,
+    buckPosition: 0,
+    dealerPosition: 1,
+    ...overrides,
+  };
+}
+
+function expectForward(prev: HolmAuthoritativeSnapshot, next: HolmAuthoritativeSnapshot) {
+  const cmp = compareProgress(getHolmProgress(prev), getHolmProgress(next));
+  expect(cmp).toBe(1);
+}
+
+function expectEqual(prev: HolmAuthoritativeSnapshot, next: HolmAuthoritativeSnapshot) {
+  const cmp = compareProgress(getHolmProgress(prev), getHolmProgress(next));
+  expect(cmp).toBe(0);
+}
+
+// ── Tests ──────────────────────────────────────────────────────
+
+describe('getHolmProgress', () => {
+  it('returns correct vector for new hand start', () => {
+    const snap = makeSnapshot({ handNumber: 3 });
+    expect(getHolmProgress(snap)).toEqual([3, 0, 0, 0]);
+  });
+
+  it('player click not yet locked — vector unchanged', () => {
+    const before = makeSnapshot();
+    const after = makeSnapshot({
+      players: [
+        makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: false }),
+        makePlayer({ playerId: 'p2', position: 1 }),
+        makePlayer({ playerId: 'p3', position: 2 }),
+        makePlayer({ playerId: 'p4', position: 3 }),
+      ],
+    });
+    expectEqual(before, after);
+  });
+
+  it('locked decision increments decidedCount', () => {
+    const before = makeSnapshot();
+    const after = makeSnapshot({
+      players: [
+        makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+        makePlayer({ playerId: 'p2', position: 1 }),
+        makePlayer({ playerId: 'p3', position: 2 }),
+        makePlayer({ playerId: 'p4', position: 3 }),
+      ],
+      currentTurnPosition: 1,
+    });
+    expectForward(before, after);
+    expect(getHolmProgress(after)).toEqual([1, 0, 1, 0]);
+  });
+
+  it('timeout/auto-fold increments decidedCount', () => {
+    const before = makeSnapshot({
+      players: [
+        makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+        makePlayer({ playerId: 'p2', position: 1 }),
+        makePlayer({ playerId: 'p3', position: 2 }),
+        makePlayer({ playerId: 'p4', position: 3 }),
+      ],
+    });
+    const after = makeSnapshot({
+      players: [
+        makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+        makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true, autoFold: true }),
+        makePlayer({ playerId: 'p3', position: 2 }),
+        makePlayer({ playerId: 'p4', position: 3 }),
+      ],
+    });
+    expectForward(before, after);
+    expect(getHolmProgress(after)).toEqual([1, 0, 2, 0]);
+  });
+
+  it('betting → processing is forward', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const before = makeSnapshot({ roundStatus: 'betting', players: allLocked });
+    const after = makeSnapshot({ roundStatus: 'processing', players: allLocked });
+    expectForward(before, after);
+    expect(getHolmProgress(after)).toEqual([1, 1, 4, 0]);
+  });
+
+  it('processing → showdown is forward', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const before = makeSnapshot({ roundStatus: 'processing', players: allLocked });
+    const after = makeSnapshot({ roundStatus: 'showdown', players: allLocked });
+    expectForward(before, after);
+  });
+
+  it('showdown reveal increments communityCardsRevealed', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const before = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 1 });
+    const after = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 2 });
+    expectForward(before, after);
+    expect(getHolmProgress(after)).toEqual([1, 2, 4, 2]);
+  });
+
+  it('showdown → completed is forward', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const before = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 4 });
+    const after = makeSnapshot({ roundStatus: 'completed', players: allLocked, communityCardsRevealed: 4 });
+    expectForward(before, after);
+    expect(getHolmProgress(after)).toEqual([1, 3, 4, 4]);
+  });
+
+  it('new hand is forward even though decidedCount resets to 0', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const completed = makeSnapshot({
+      handNumber: 2,
+      roundStatus: 'completed',
+      players: allLocked,
+      communityCardsRevealed: 4,
+    });
+    const newHand = makeSnapshot({
+      roundId: 'r2',
+      handNumber: 3,
+      roundStatus: 'betting',
+      communityCardsRevealed: 0,
+    });
+    expectForward(completed, newHand);
+    expect(getHolmProgress(newHand)).toEqual([3, 0, 0, 0]);
+  });
+
+  it('stale snapshot from previous hand is rejected as regressive', () => {
+    const current = makeSnapshot({ handNumber: 3 });
+    const stale = makeSnapshot({ handNumber: 2, roundStatus: 'completed', communityCardsRevealed: 4 });
+    const cmp = compareProgress(getHolmProgress(current), getHolmProgress(stale));
+    expect(cmp).toBe(-1);
+  });
+});

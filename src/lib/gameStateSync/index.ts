@@ -11,6 +11,8 @@ export { getYahtzeeProgress } from './yahtzeeProgress';
 export { getGinRummyProgress } from './ginRummyProgress';
 export { getHorsesProgress } from './horsesProgress';
 export { getCribbageProgress } from './cribbageProgress';
+export { getHolmProgress } from './holmProgress';
+export type { HolmAuthoritativeSnapshot, HolmPlayerSnapshot } from './holmProgress';
 export type {
   ProgressVector,
   AuthoritativeUpdateResult,
