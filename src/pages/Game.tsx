@@ -7337,6 +7337,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerSetupMessage={undefined}
                 reAnteMessage={reAnteMessage}
                 onAutoFoldChange={handleAutoFoldChange}
+                pendingAutoRollOff={pendingAutoRollOff}
               />
             );
           }
