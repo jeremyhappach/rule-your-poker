@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { logDebugEvent } from "@/lib/debugEventLogger";
 
 interface AnteUpDialogProps {
   gameId: string;
@@ -67,6 +68,42 @@ export const AnteUpDialog = ({
   const [localAutoAnteRunback, setLocalAutoAnteRunback] = useState(autoAnteRunback);
   const [localAutoAnte, setLocalAutoAnte] = useState(autoAnte);
 
+  // ── Trace: instanceId to detect remounts ──
+  const instanceId = useRef(`ante_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
+  const mountSeqRef = useRef(0);
+
+  // ── Trace: mount / unmount ──
+  useEffect(() => {
+    mountSeqRef.current += 1;
+    const seq = mountSeqRef.current;
+    logDebugEvent({
+      gameId,
+      userId: playerId,
+      eventType: 'ante_modal_rendered',
+      payload: {
+        instanceId: instanceId.current,
+        seq,
+        hasDecided,
+        gameType,
+        anteAmount,
+        playerId,
+      },
+    });
+    return () => {
+      logDebugEvent({
+        gameId,
+        userId: playerId,
+        eventType: 'ante_modal_hidden',
+        payload: {
+          instanceId: instanceId.current,
+          seq,
+          hasDecided,
+          reason: 'unmount',
+        },
+      });
+    };
+  }, []); // empty deps = true mount/unmount
+
   useEffect(() => {
     if (timeLeft <= 0 && !hasDecided) {
       handleSitOut();
@@ -83,6 +120,16 @@ export const AnteUpDialog = ({
 
   const handleAnteUp = async () => {
     if (hasDecided) return;
+    logDebugEvent({
+      gameId,
+      userId: playerId,
+      eventType: 'ante_modal_confirm_click',
+      payload: {
+        instanceId: instanceId.current,
+        action: 'ante_up',
+        timeLeft,
+      },
+    });
     setHasDecided(true);
 
     const { error } = await supabase
@@ -141,6 +188,17 @@ export const AnteUpDialog = ({
 
   const handleSitOut = async () => {
     if (hasDecided) return;
+    logDebugEvent({
+      gameId,
+      userId: playerId,
+      eventType: 'ante_modal_confirm_click',
+      payload: {
+        instanceId: instanceId.current,
+        action: 'sit_out',
+        timeLeft,
+        wasAutoTimeout: timeLeft <= 0,
+      },
+    });
     setHasDecided(true);
 
     const { error } = await supabase

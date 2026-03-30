@@ -1646,6 +1646,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           // Immediate fetch when ante_decision changes (critical for ante dialog)
           if (payload.new && 'ante_decision' in payload.new) {
+            logDebugEvent({
+              gameId: gameId!,
+              userId: user?.id ?? null,
+              eventType: 'ante_realtime_update',
+              payload: {
+                changedPlayerId: (payload.new as any).id ?? null,
+                newAnteDecision: (payload.new as any).ante_decision ?? null,
+                oldAnteDecision: (payload.old as any)?.ante_decision ?? null,
+                showAnteDialog,
+                gameStatus: game?.status ?? null,
+              },
+            });
             console.log('[REALTIME] 🎲 ANTE DECISION CHANGED - IMMEDIATE FETCH!', payload.new.ante_decision);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -2511,6 +2523,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Don't show ante dialog for players who are sitting_out (they stay sitting out)
         // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
         if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out) {
+          logDebugEvent({
+            gameId: gameId!,
+            userId: user.id,
+            eventType: 'ante_modal_should_show',
+            payload: {
+              playerId: freshCurrentPlayer.id,
+              anteDecision: freshCurrentPlayer.ante_decision,
+              isDealer,
+              sittingOut: freshCurrentPlayer.sitting_out,
+              autoAnte: freshCurrentPlayer.auto_ante,
+              autoAnteRunback: freshCurrentPlayer.auto_ante_runback,
+              isRunBack,
+              showAnteDialogBefore: showAnteDialog,
+              dealerGameId: game?.current_game_uuid ?? null,
+              gameStatus: game?.status,
+            },
+          });
           console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
@@ -7424,7 +7453,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
         })()}
 
-        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => { 
+        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
+          logDebugEvent({
+            gameId: gameId!,
+            userId: user.id,
+            eventType: 'ante_modal_render_gate',
+            payload: {
+              showAnteDialog,
+              gameStatus: game.status,
+              dealerGameId: game.current_game_uuid ?? null,
+              isRunningItBack,
+              anteAmount: game.ante_amount,
+            },
+          });
           const currentPlayer = players.find(p => p.user_id === user.id);
           return (
             <AnteUpDialog
