@@ -1506,12 +1506,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setCommunityCacheEpoch((e) => e + 1);
                 // Clear dealer selection state when transitioning away from dealer_selection
                 // or when entering cribbage_dealer_selection (to prevent stale session-level cards)
-                if (newStatus !== 'dealer_selection') {
+                // Bug A fix: also clear on in_progress to ensure no stale session-level cards
+                // survive into dealer-game scope
+                if (newStatus !== 'dealer_selection' && newStatus !== 'cribbage_dealer_selection') {
                   setDealerSelectionCards([]);
                   setDealerSelectionAnnouncement(null);
                   setDealerSelectionComplete(false);
                   setDealerSelectionWinnerPosition(null);
                 }
+              }
+              
+              // Bug A fix: also clear dealer selection state when entering in_progress
+              // This is the handoff point where session-level dealer selection is done
+              // and the dealer-game scope begins — stale session cards must not survive
+              if (newStatus === 'in_progress') {
+                setDealerSelectionCards([]);
+                setDealerSelectionAnnouncement(null);
+                setDealerSelectionComplete(false);
+                setDealerSelectionWinnerPosition(null);
               }
               
               if (debounceTimer) clearTimeout(debounceTimer);
