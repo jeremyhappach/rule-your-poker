@@ -37,8 +37,7 @@ import {
   applyHoldDecision,
 } from "@/lib/horsesBotLogic";
 import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
-import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
-import { logDiceRolls, getRollNumber } from "@/lib/diceAudit";
+import { getRollNumber } from "@/lib/diceAudit";
 
 export interface HorsesPlayerForController {
   id: string;

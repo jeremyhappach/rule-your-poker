@@ -5,7 +5,7 @@ import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGame
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
-import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
+
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
 

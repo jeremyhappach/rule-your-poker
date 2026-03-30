@@ -32,7 +32,7 @@ import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
-import { DiceTraceHUD, pushDiceTrace, isDiceTraceRecording } from "./DiceTraceHUD";
+import { DiceTraceHUD } from "./DiceTraceHUD";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
