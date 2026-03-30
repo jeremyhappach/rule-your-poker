@@ -1516,15 +1516,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 }
               }
               
-              // Bug A fix: also clear dealer selection state when entering in_progress
-              // This is the handoff point where session-level dealer selection is done
-              // and the dealer-game scope begins — stale session cards must not survive
-              if (newStatus === 'in_progress') {
-                setDealerSelectionCards([]);
-                setDealerSelectionAnnouncement(null);
-                setDealerSelectionComplete(false);
-                setDealerSelectionWinnerPosition(null);
-              }
+               // (Bug A fix moved to handleCribbageDealerSelectionComplete callback)
               
               if (debounceTimer) clearTimeout(debounceTimer);
               fetchGameData();
@@ -5649,6 +5641,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     console.log('[CRIBBAGE] Dealer selection complete, winner position:', dealerPosition);
+    
+    // Bug A fix: clear stale session-level dealer-selection visuals at the exact
+    // handoff point where session-level high-card completes. This prevents the
+    // one-frame flash of stale session cards when the dealer-game scope begins.
+    setDealerSelectionCards([]);
+    setDealerSelectionAnnouncement(null);
+    setDealerSelectionWinnerPosition(null);
+    
     logDebugEvent({
       gameId: gameId!,
       eventType: 'crib:lifecycle:session_transition',
