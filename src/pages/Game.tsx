@@ -1516,6 +1516,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 }
               }
               
+              // Bug A fix: also clear dealer selection state when entering in_progress
+              // This is the handoff point where session-level dealer selection is done
+              // and the dealer-game scope begins — stale session cards must not survive
+              if (newStatus === 'in_progress') {
+                setDealerSelectionCards([]);
+                setDealerSelectionAnnouncement(null);
+                setDealerSelectionComplete(false);
+                setDealerSelectionWinnerPosition(null);
+              }
+              
               if (debounceTimer) clearTimeout(debounceTimer);
               fetchGameData();
               // NOTE: Removed redundant 300ms setTimeout refetch - it was causing excessive queries
