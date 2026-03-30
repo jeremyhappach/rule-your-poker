@@ -2525,7 +2525,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Don't show ante dialog for dealer (they auto ante up)
         // Don't show ante dialog for players who are sitting_out (they stay sitting out)
         // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out) {
+        // ── Ante latch check: skip if already confirmed for this dealerGame ──
+        const latchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
+        const isLatched = anteConfirmedLatchRef.current === latchKey;
+        
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && !isLatched) {
           logDebugEvent({
             gameId: gameId!,
             userId: user.id,
@@ -2541,6 +2545,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               showAnteDialogBefore: showAnteDialog,
               dealerGameId: game?.current_game_uuid ?? null,
               gameStatus: game?.status,
+              isLatched,
             },
           });
           console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', freshCurrentPlayer.id, {
