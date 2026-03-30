@@ -2592,8 +2592,21 @@ export const CribbageMobileGameTable = ({
                   <HighCardDealerSelection
                     gameId={gameId}
                     players={players as any}
-                    onComplete={handleHighCardComplete}
-                    // ── HANDOFF TRACE #10: dealer-game HighCardDealerSelection mount tracked via key ──
+                    onComplete={(pos) => {
+                      // ── HANDOFF TRACE #1 (child): dealer-game HighCardDealerSelection onComplete ──
+                      emitCribbageHandoffTrace({
+                        gameId,
+                        eventType: 'child_hc_onComplete',
+                        userId: currentUserId,
+                        roundId: currentRoundId || null,
+                        context: {
+                          winnerPosition: pos,
+                          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                          isHost,
+                        },
+                      });
+                      handleHighCardComplete(pos);
+                    }}
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"

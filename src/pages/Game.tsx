@@ -7087,6 +7087,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     selectionVariant="cribbage"
                     syncedState={(game as any).dealer_selection_state as any}
                     onCardsUpdate={setDealerSelectionCards}
+                    // Note: onCardsUpdate trace - session-level HighCardDealerSelection cards pushed to parent
                     onAnnouncementUpdate={(msg, complete) => {
                       setDealerSelectionAnnouncement(msg);
                       setDealerSelectionComplete(complete);
