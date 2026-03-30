@@ -604,7 +604,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const poll357IntervalRef = useRef<number | null>(null);
   const poll357StopTimerRef = useRef<number | null>(null);
 
-  
+  // ── Holm Shadow Sync (Phase 2 — read-only, no render changes) ──
+  const holmSyncLastRoundIdRef = useRef<string | null>(null);
+  const holmSync = useGameStateSync<HolmAuthoritativeSnapshot | null>(null, {
+    getProgress: (s) => s ? getHolmProgress(s) : [0, 0, 0, 0],
+    debugLabel: 'Holm',
+    describeState: (s) => s ? {
+      hand: s.handNumber,
+      phase: s.roundStatus,
+      decided: s.players.filter(p => p.decisionLocked).length,
+      revealed: s.communityCardsRevealed,
+    } : null,
+  });
+
+
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
   
