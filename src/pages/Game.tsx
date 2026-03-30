@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useGameStateSync, getHolmProgress } from "@/lib/gameStateSync";
+import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,8 +20,6 @@ import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
-
-
 
 
 import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighCardDealerSelection";
@@ -289,6 +289,43 @@ interface CardStateContext {
   roundId: string;
   roundNumber: number;
   cardsDealt: number; // Authoritative expected card count
+}
+
+// ── Holm Shadow Sync: snapshot builder (Phase 2 — read-only) ──
+function buildHolmSnapshot(
+  gameData: GameData,
+  playersData: Player[],
+  currentRound: Round | null
+): HolmAuthoritativeSnapshot | null {
+  if (!currentRound) return null;
+  if (gameData.game_type !== 'holm-game') return null;
+  if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
+
+  return {
+    roundId: currentRound.id,
+    handNumber: currentRound.hand_number ?? 1,
+    dealerGameId: gameData.current_game_uuid ?? '',
+    roundStatus: (currentRound.status as 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting',
+    players: playersData.map(p => ({
+      playerId: p.id,
+      userId: p.user_id,
+      position: p.position,
+      decision: p.current_decision,
+      decisionLocked: p.decision_locked ?? false,
+      autoFold: p.auto_fold,
+      sittingOut: p.sitting_out,
+    })),
+    currentTurnPosition: currentRound.current_turn_position ?? null,
+    decisionDeadline: currentRound.decision_deadline,
+    communityCards: (currentRound.community_cards ?? []) as unknown[],
+    communityCardsRevealed: currentRound.community_cards_revealed ?? 0,
+    chuckyCards: (currentRound.chucky_cards ?? []) as unknown[],
+    chuckyActive: currentRound.chucky_active ?? false,
+    pot: gameData.pot ?? 0,
+    lastRoundResult: gameData.last_round_result ?? null,
+    buckPosition: gameData.buck_position ?? 0,
+    dealerPosition: gameData.dealer_position ?? 0,
+  };
 }
 
 const Game = () => {
@@ -567,7 +604,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const poll357IntervalRef = useRef<number | null>(null);
   const poll357StopTimerRef = useRef<number | null>(null);
 
-  
+  // ── Holm Shadow Sync (Phase 2 — read-only, no render changes) ──
+  const holmSyncLastRoundIdRef = useRef<string | null>(null);
+  const holmSync = useGameStateSync<HolmAuthoritativeSnapshot | null>(null, {
+    getProgress: (s) => s ? getHolmProgress(s) : [0, 0, 0, 0],
+    debugLabel: 'Holm',
+    describeState: (s) => s ? {
+      hand: s.handNumber,
+      phase: s.roundStatus,
+      decided: s.players.filter(p => p.decisionLocked).length,
+      revealed: s.communityCardsRevealed,
+    } : null,
+  });
+
+
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
   
@@ -4268,6 +4318,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     setGame(gameData);
+
+    // ── Holm shadow sync feed (Phase 2: read-only) ──
+    if (gameData.game_type === 'holm-game') {
+      const holmRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
+        dealerGameId: gameData.current_game_uuid,
+        currentRoundNumber: gameData.current_round,
+        currentHandNumber: gameData.total_hands,
+      });
+      const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
+      if (snapshot) {
+        if (holmSyncLastRoundIdRef.current && holmSyncLastRoundIdRef.current !== snapshot.roundId) {
+          console.log('[GameStateSync:Holm] 🔄 Hard reset — roundId changed', {
+            prev: holmSyncLastRoundIdRef.current,
+            next: snapshot.roundId,
+          });
+          holmSync.reset(snapshot);
+        } else {
+          holmSync.receiveAuthoritativeUpdate(snapshot);
+        }
+        holmSyncLastRoundIdRef.current = snapshot.roundId;
+      }
+    }
 
     // CRITICAL: Update refs with current game state for realtime change detection
     lastKnownGameTypeRef.current = gameData.game_type;
