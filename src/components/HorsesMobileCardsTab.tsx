@@ -24,6 +24,7 @@ interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean; sitting_out?: boolean; waiting?: boolean };
   horses: ReturnType<typeof useHorsesMobileController>;
   onAutoFoldChange?: (autoFold: boolean) => void;
+  pendingAutoRollOff?: boolean;
   gameType?: string | null;
   // Emoticon props for consistency with card games
   onEmoticonSelect?: (emoticon: string) => void;
