@@ -47,6 +47,7 @@ import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { logDebugEvent } from "@/lib/debugEventLogger";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
+import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
@@ -157,6 +158,16 @@ interface Round {
   current_turn_position?: number | null;
   created_at?: string;
   horses_state?: any; // Horses dice game state
+}
+
+function toDealerSelectionCardIds(cards: DealerSelectionCard[] | null | undefined): string[] {
+  if (!cards || cards.length === 0) return [];
+  return cards.slice(0, 8).map((c) => {
+    const rank = (c as any)?.card?.rank ?? '?';
+    const suit = ((c as any)?.card?.suit ?? '?').toString().slice(0, 1);
+    const pos = (c as any)?.position ?? '?';
+    return `${rank}${suit}@${pos}`;
+  });
 }
 
 function pickActive357Round(
