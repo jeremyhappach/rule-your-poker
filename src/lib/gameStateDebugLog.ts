@@ -222,7 +222,7 @@ export function logAllDecisionsIn(
  */
 export function logDiceEvent(
   _gameId: string,
-  _eventType: GameStateEventType,
+  _eventType: string,
   _source: string,
   _details: Record<string, unknown>
 ): Promise<void> {
