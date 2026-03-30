@@ -2501,12 +2501,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // CRITICAL: We now check isRunBack (local variable) which is guaranteed to be resolved
         const shouldAutoAnte = freshCurrentPlayer?.auto_ante || (freshCurrentPlayer?.auto_ante_runback && isRunBack);
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
+        // ── Ante latch check for auto-ante path too ──
+        const autoLatchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
+        const isAutoLatched = anteConfirmedLatchRef.current === autoLatchKey;
+        
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
           console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
             isRunBack
           });
+          
+          // Set latch before DB write
+          anteConfirmedLatchRef.current = autoLatchKey;
           
           // Auto-accept the ante
           await supabase
