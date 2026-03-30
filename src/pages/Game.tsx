@@ -7453,7 +7453,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
         })()}
 
-        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => { 
+        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
+          logDebugEvent({
+            gameId: gameId!,
+            userId: user.id,
+            eventType: 'ante_modal_render_gate',
+            payload: {
+              showAnteDialog,
+              gameStatus: game.status,
+              dealerGameId: game.current_game_uuid ?? null,
+              isRunningItBack,
+              anteAmount: game.ante_amount,
+            },
+          });
           const currentPlayer = players.find(p => p.user_id === user.id);
           return (
             <AnteUpDialog
