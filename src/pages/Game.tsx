@@ -329,6 +329,9 @@ const Game = () => {
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   
+  // ── Ante latch: prevents modal re-show after confirm within same dealerGame ──
+  const anteConfirmedLatchRef = useRef<string | null>(null); // stores "gameId|dealerGameId|playerId"
+  
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
@@ -2498,12 +2501,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // CRITICAL: We now check isRunBack (local variable) which is guaranteed to be resolved
         const shouldAutoAnte = freshCurrentPlayer?.auto_ante || (freshCurrentPlayer?.auto_ante_runback && isRunBack);
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog) {
+        // ── Ante latch check for auto-ante path too ──
+        const autoLatchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
+        const isAutoLatched = anteConfirmedLatchRef.current === autoLatchKey;
+        
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
           console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
             isRunBack
           });
+          
+          // Set latch before DB write
+          anteConfirmedLatchRef.current = autoLatchKey;
           
           // Auto-accept the ante
           await supabase
@@ -2522,7 +2532,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Don't show ante dialog for dealer (they auto ante up)
         // Don't show ante dialog for players who are sitting_out (they stay sitting out)
         // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out) {
+        // ── Ante latch check: skip if already confirmed for this dealerGame ──
+        const latchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
+        const isLatched = anteConfirmedLatchRef.current === latchKey;
+        
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && !isLatched) {
           logDebugEvent({
             gameId: gameId!,
             userId: user.id,
@@ -2538,6 +2552,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               showAnteDialogBefore: showAnteDialog,
               dealerGameId: game?.current_game_uuid ?? null,
               gameStatus: game?.status,
+              isLatched,
             },
           });
           console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', freshCurrentPlayer.id, {
@@ -2597,6 +2612,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         actualStatus: game?.status
       });
       setShowAnteDialog(false);
+      
+      // ── Reset ante latch when status leaves ante_decision ──
+      if (game?.status !== 'ante_decision' && anteConfirmedLatchRef.current !== null) {
+        console.log('[ANTE LATCH] Reset (status left ante_decision):', anteConfirmedLatchRef.current);
+        anteConfirmedLatchRef.current = null;
+      }
+      
       // ── HANDOFF TRACE #5b: ante modal HIDDEN (status not ante_decision) ──
       emitCribbageHandoffTrace({
         gameId: gameId!,
@@ -7485,6 +7507,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
               anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
               onDecisionMade={() => {
+                // ── Set latch BEFORE hiding so transient server regression cannot re-trigger ──
+                const currentPlayer = players.find(p => p.user_id === user.id);
+                const latchKey = `${gameId}|${game.current_game_uuid ?? ''}|${currentPlayer?.id ?? ''}`;
+                anteConfirmedLatchRef.current = latchKey;
+                console.log('[ANTE LATCH] Set:', latchKey);
+                
                 setShowAnteDialog(false);
                 // ── HANDOFF TRACE #5c: ante modal CONFIRMED (decision made) ──
                 emitCribbageHandoffTrace({
@@ -7495,6 +7523,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     gameStatus: game.status,
                     dealerGameId: game.current_game_uuid ?? null,
                     dealerSelectionCardsLen: dealerSelectionCards.length,
+                    latchKey,
                   },
                 });
               }}
