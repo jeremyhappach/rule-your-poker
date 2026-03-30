@@ -290,7 +290,7 @@ export const CribbageMobileGameTable = ({
   // Bug A fix: once dealerGameId exists, session-level external props are stale —
   // only use externalProps when isDealerSelection is true AND no dealer-game scope has started yet
   const useSessionExternalProps = isDealerSelection && !dealerGameId;
-  const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
+  const effectiveShowHighCardSelection = useSessionExternalProps ? isDealerSelection : showHighCardSelection;
   const effectiveHighCardCards = useSessionExternalProps ? (externalDealerSelectionCards || []) : highCardCards;
   const effectiveHighCardAnnouncement = useSessionExternalProps ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = useSessionExternalProps ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
