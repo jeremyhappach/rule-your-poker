@@ -1919,14 +1919,26 @@ export function useHorsesMobileController({
         } as any);
 
         // If this was a human player with auto_fold (timed out), mark them to sit out next hand
+        // BUT only if sit_out_next_hand hasn't been explicitly cleared (e.g. by deferred auto-roll off)
         const currentPlayerData = players.find((p) => p.id === botId);
         if (currentPlayerData && !currentPlayerData.is_bot && currentPlayerData.auto_fold) {
-          console.log("[HORSES] Auto-roll complete for timed-out human, marking sit_out_next_hand:", botId);
-          await supabase
+          // Re-fetch current sit_out_next_hand to avoid overwriting a deliberate clear
+          const { data: freshPlayer } = await supabase
             .from("players")
-            .update({ sit_out_next_hand: true })
-            .eq("id", botId);
-          toast.info(`${getPlayerUsername(currentPlayerData)} timed out - sitting out next hand`);
+            .select("sit_out_next_hand")
+            .eq("id", botId)
+            .single();
+
+          if (freshPlayer && freshPlayer.sit_out_next_hand === false) {
+            console.log("[HORSES] Auto-roll complete but sit_out_next_hand already cleared (player opted back in) — skipping sit-out");
+          } else {
+            console.log("[HORSES] Auto-roll complete for timed-out human, marking sit_out_next_hand:", botId);
+            await supabase
+              .from("players")
+              .update({ sit_out_next_hand: true })
+              .eq("id", botId);
+            toast.info(`${getPlayerUsername(currentPlayerData)} timed out - sitting out next hand`);
+          }
         }
 
         await new Promise((resolve) => setTimeout(resolve, HORSES_POST_TURN_PAUSE_MS));
