@@ -24,6 +24,7 @@ interface HorsesMobileCardsTabProps {
   currentUserPlayer: HorsesPlayerForController & { auto_fold?: boolean; sitting_out?: boolean; waiting?: boolean };
   horses: ReturnType<typeof useHorsesMobileController>;
   onAutoFoldChange?: (autoFold: boolean) => void;
+  pendingAutoRollOff?: boolean;
   gameType?: string | null;
   // Emoticon props for consistency with card games
   onEmoticonSelect?: (emoticon: string) => void;
@@ -38,6 +39,7 @@ export function HorsesMobileCardsTab({
   currentUserPlayer,
   horses,
   onAutoFoldChange,
+  pendingAutoRollOff = false,
   gameType,
   onEmoticonSelect,
   isEmoticonSending,
@@ -427,18 +429,27 @@ export function HorsesMobileCardsTab({
 
       {/* Auto-fold checkbox for reconnection - always show when auto_fold is true */}
       {currentUserPlayer.auto_fold && (
-        <div className="flex items-center justify-center mt-2">
-          <label className="flex items-center gap-2 text-xs text-amber-500 cursor-pointer">
+        <div className="flex flex-col items-center justify-center mt-2 gap-1">
+          <label className={cn(
+            "flex items-center gap-2 text-xs text-amber-500",
+            pendingAutoRollOff ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+          )}>
             <Checkbox
               checked={true}
+              disabled={pendingAutoRollOff}
               onCheckedChange={(checked) => {
                 // Show this only when auto_fold is true; unchecking disables auto-fold.
-                if (checked === false) onAutoFoldChange?.(false);
+                if (checked === false && !pendingAutoRollOff) onAutoFoldChange?.(false);
               }}
               className="h-4 w-4"
             />
-            <span>Auto-roll enabled (uncheck to rejoin)</span>
+            <span>{pendingAutoRollOff ? 'Auto-roll enabled' : 'Auto-roll enabled (uncheck to rejoin)'}</span>
           </label>
+          {pendingAutoRollOff && (
+            <span className="text-[10px] text-muted-foreground italic">
+              Auto-roll will turn off after this turn.
+            </span>
+          )}
         </div>
       )}
 

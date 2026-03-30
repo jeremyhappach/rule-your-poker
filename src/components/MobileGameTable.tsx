@@ -304,6 +304,8 @@ interface MobileGameTableProps {
   reAnteMessage?: string | null;
   // Auto-fold callback for when player disables auto_fold
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
+  // When true, auto-roll disable is deferred until end of current turn
+  pendingAutoRollOff?: boolean;
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
@@ -423,6 +425,7 @@ export const MobileGameTable = ({
   dealerSetupMessage,
   reAnteMessage,
   onAutoFoldChange,
+  pendingAutoRollOff = false,
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
@@ -5506,6 +5509,7 @@ export const MobileGameTable = ({
               winnerLegsFlashTrigger={winnerLegsFlashTrigger}
               winnerPotFlashTrigger={winnerPotFlashTrigger}
               onAutoFoldChange={onAutoFoldChange ? (autoFold) => onAutoFoldChange(currentPlayer.id, autoFold) : undefined}
+              pendingAutoRollOff={pendingAutoRollOff}
             />
           ) : (
             <div className="px-2 flex flex-col flex-1">

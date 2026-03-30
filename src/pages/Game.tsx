@@ -6171,11 +6171,66 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
+  // ─── Deferred auto-roll-off latch ───────────────────────────────────
+  // When a player unchecks auto-roll during a bot-owned timed-out turn,
+  // we defer the auto_fold=false write until the turn advances.
+  // Key format: "roundId:playerId"
+  const deferredAutoRollOffRef = useRef<string | null>(null);
+  const [pendingAutoRollOff, setPendingAutoRollOff] = useState(false);
+
+  // Detect turn advance (currentTurnPlayerId changes) → apply deferred write
+  const prevTurnPlayerIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+    const curTurnId = horsesState?.currentTurnPlayerId ?? null;
+
+    if (prevTurnPlayerIdRef.current !== null && curTurnId !== prevTurnPlayerIdRef.current) {
+      // Turn advanced — apply deferred auto-roll-off if set
+      if (deferredAutoRollOffRef.current && currentPlayer) {
+        const [, deferredPlayerId] = deferredAutoRollOffRef.current.split(':');
+        if (deferredPlayerId === currentPlayer.id) {
+          console.log('[AUTO_FOLD] Turn advanced — applying deferred auto_fold=false for player:', deferredPlayerId);
+          supabase
+            .from('players')
+            .update({ auto_fold: false })
+            .eq('id', deferredPlayerId)
+            .then(({ error }) => {
+              if (error) console.error('[AUTO_FOLD] Deferred write failed:', error);
+            });
+        }
+        deferredAutoRollOffRef.current = null;
+        setPendingAutoRollOff(false);
+      }
+    }
+    prevTurnPlayerIdRef.current = curTurnId;
+  }, [(currentRound?.horses_state as HorsesStateFromDB | null)?.currentTurnPlayerId]);
+
   // Handle auto_fold toggle - player can disable their auto_fold status
   // When opting back in (auto_fold=false), also extend the turn deadline so the
   // enforce-deadlines edge function doesn't immediately re-set auto_fold=true.
   const handleAutoFoldChange = async (playerId: string, autoFold: boolean) => {
     console.log('[AUTO_FOLD] Changing auto_fold for player:', playerId, 'to:', autoFold);
+
+    // ─── Deferred-off guard for Horses/SCC ───────────────────────────
+    // If this player IS the current turn player in an active Horses/SCC turn,
+    // defer the write so the bot loop keeps ownership and completes the turn.
+    if (!autoFold && currentRound?.id && game?.game_type && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+      const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+      if (horsesState?.currentTurnPlayerId === playerId && horsesState?.gamePhase === 'playing') {
+        console.log('[AUTO_FOLD] Deferring auto_fold=false — bot owns current turn. Will apply after turn advances.');
+        deferredAutoRollOffRef.current = `${currentRound.id}:${playerId}`;
+        setPendingAutoRollOff(true);
+
+        // Clear sit_out_next_hand immediately so the player stays in next hand
+        await supabase
+          .from('players')
+          .update({ sit_out_next_hand: false })
+          .eq('id', playerId);
+
+        return; // Do NOT write auto_fold=false yet
+      }
+    }
+
     const { error } = await supabase
       .from('players')
       .update({ auto_fold: autoFold })
@@ -7282,6 +7337,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerSetupMessage={undefined}
                 reAnteMessage={reAnteMessage}
                 onAutoFoldChange={handleAutoFoldChange}
+                pendingAutoRollOff={pendingAutoRollOff}
               />
             );
           }
@@ -7470,6 +7526,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chatInputValue={mobileChatInput}
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
+              pendingAutoRollOff={pendingAutoRollOff}
               reAnteMessage={reAnteMessage}
             />
           );
