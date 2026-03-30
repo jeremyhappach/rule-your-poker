@@ -6053,6 +6053,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 dealerSelectionCardsLen: dealerSelectionCards.length,
               },
             });
+            // ── STALE-CARD FIX: clear session-level dealer-selection visuals ──
+            // Proven by handoff trace: these persist from the session high-card
+            // draw and leak into the dealer-game's HighCardDealerSelection as
+            // stale props if not cleared here.
+            setDealerSelectionCards([]);
+            setDealerSelectionAnnouncement('');
+            setDealerSelectionWinnerPosition(null);
             await supabase
               .from('games')
               .update({
