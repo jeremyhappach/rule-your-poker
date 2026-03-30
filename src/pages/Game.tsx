@@ -2605,6 +2605,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         actualStatus: game?.status
       });
       setShowAnteDialog(false);
+      
+      // ── Reset ante latch when status leaves ante_decision ──
+      if (game?.status !== 'ante_decision' && anteConfirmedLatchRef.current !== null) {
+        console.log('[ANTE LATCH] Reset (status left ante_decision):', anteConfirmedLatchRef.current);
+        anteConfirmedLatchRef.current = null;
+      }
+      
       // ── HANDOFF TRACE #5b: ante modal HIDDEN (status not ante_decision) ──
       emitCribbageHandoffTrace({
         gameId: gameId!,
