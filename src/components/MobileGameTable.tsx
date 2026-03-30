@@ -5509,6 +5509,7 @@ export const MobileGameTable = ({
               winnerLegsFlashTrigger={winnerLegsFlashTrigger}
               winnerPotFlashTrigger={winnerPotFlashTrigger}
               onAutoFoldChange={onAutoFoldChange ? (autoFold) => onAutoFoldChange(currentPlayer.id, autoFold) : undefined}
+              pendingAutoRollOff={pendingAutoRollOff}
             />
           ) : (
             <div className="px-2 flex flex-col flex-1">

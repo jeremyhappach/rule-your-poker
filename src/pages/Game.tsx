@@ -7526,6 +7526,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chatInputValue={mobileChatInput}
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
+              pendingAutoRollOff={pendingAutoRollOff}
               reAnteMessage={reAnteMessage}
             />
           );
