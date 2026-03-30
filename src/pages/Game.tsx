@@ -7088,7 +7088,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     syncedState={(game as any).dealer_selection_state as any}
                     onCardsUpdate={setDealerSelectionCards}
                     // Note: onCardsUpdate trace - session-level HighCardDealerSelection cards pushed to parent
-                    onAnnouncementUpdate={(msg, complete) => {
+                    onAnnouncementUpdate={(msg: string | null, complete: boolean) => {
                       setDealerSelectionAnnouncement(msg);
                       setDealerSelectionComplete(complete);
                       // ── HANDOFF TRACE #3: session-level ds announcement updated ──
