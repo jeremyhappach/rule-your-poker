@@ -46,6 +46,7 @@ import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
+import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
 
 interface Player {
   id: string;
@@ -289,6 +290,33 @@ export const CribbageMobileGameTable = ({
   // When in external dealer selection mode (cribbage_dealer_selection status), use external props
   // Parent (Game.tsx) clears these at the handoff point so no stale session-level cards leak
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
+
+  // ── HANDOFF TRACE #9: dealer-game showHighCardSelection changes ──
+  const prevShowHCRef = useRef(showHighCardSelection);
+  const prevIsDSRef = useRef(isDealerSelection);
+  if (prevShowHCRef.current !== showHighCardSelection || prevIsDSRef.current !== isDealerSelection) {
+    emitCribbageHandoffTrace({
+      gameId,
+      eventType: 'child_hc_visibility_change',
+      userId: currentUserId,
+      roundId: currentRoundId || null,
+      context: {
+        showHighCardSelection,
+        prevShowHighCardSelection: prevShowHCRef.current,
+        isDealerSelection,
+        prevIsDealerSelection: prevIsDSRef.current,
+        effectiveShowHighCardSelection,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        externalCardCount: externalDealerSelectionCards?.length ?? 0,
+        localCardCount: highCardCards.length,
+        initialLoadComplete,
+        renderHandKey: renderHandKey?.slice(0, 12) ?? '',
+      },
+    });
+    prevShowHCRef.current = showHighCardSelection;
+    prevIsDSRef.current = isDealerSelection;
+  }
+
   const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
   const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
@@ -2565,6 +2593,7 @@ export const CribbageMobileGameTable = ({
                     gameId={gameId}
                     players={players as any}
                     onComplete={handleHighCardComplete}
+                    // ── HANDOFF TRACE #10: dealer-game HighCardDealerSelection mount tracked via key ──
                     isHost={isHost}
                     allowBotDealers={true}
                     selectionVariant="cribbage"
