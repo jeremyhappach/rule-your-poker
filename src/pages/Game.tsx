@@ -22,44 +22,6 @@ import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 
 
-// ── Holm Shadow Sync: snapshot builder (Phase 2 — read-only) ──
-function buildHolmSnapshot(
-  gameData: GameData,
-  playersData: Player[],
-  currentRound: Round | null
-): HolmAuthoritativeSnapshot | null {
-  if (!currentRound) return null;
-  if (gameData.game_type !== 'holm-game') return null;
-  if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
-
-  return {
-    roundId: currentRound.id,
-    handNumber: currentRound.hand_number ?? 1,
-    dealerGameId: gameData.current_game_uuid ?? '',
-    roundStatus: (currentRound.status as 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting',
-    players: playersData.map(p => ({
-      playerId: p.id,
-      userId: p.user_id,
-      position: p.position,
-      decision: p.current_decision,
-      decisionLocked: p.decision_locked ?? false,
-      autoFold: p.auto_fold,
-      sittingOut: p.sitting_out,
-    })),
-    currentTurnPosition: currentRound.current_turn_position ?? null,
-    decisionDeadline: currentRound.decision_deadline,
-    communityCards: (currentRound.community_cards ?? []) as unknown[],
-    communityCardsRevealed: currentRound.community_cards_revealed ?? 0,
-    chuckyCards: (currentRound.chucky_cards ?? []) as unknown[],
-    chuckyActive: currentRound.chucky_active ?? false,
-    pot: gameData.pot ?? 0,
-    lastRoundResult: gameData.last_round_result ?? null,
-    buckPosition: gameData.buck_position ?? 0,
-    dealerPosition: gameData.dealer_position ?? 0,
-  };
-}
-
-
 import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighCardDealerSelection";
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
