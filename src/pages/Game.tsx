@@ -4319,6 +4319,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     setGame(gameData);
 
+    // ── Holm shadow sync feed (Phase 2: read-only) ──
+    if (gameData.game_type === 'holm-game') {
+      const holmRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
+        dealerGameId: gameData.current_game_uuid,
+        currentRoundNumber: gameData.current_round,
+        currentHandNumber: gameData.total_hands,
+      });
+      const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
+      if (snapshot) {
+        if (holmSyncLastRoundIdRef.current && holmSyncLastRoundIdRef.current !== snapshot.roundId) {
+          console.log('[GameStateSync:Holm] 🔄 Hard reset — roundId changed', {
+            prev: holmSyncLastRoundIdRef.current,
+            next: snapshot.roundId,
+          });
+          holmSync.reset(snapshot);
+        } else {
+          holmSync.receiveAuthoritativeUpdate(snapshot);
+        }
+        holmSyncLastRoundIdRef.current = snapshot.roundId;
+      }
+    }
+
     // CRITICAL: Update refs with current game state for realtime change detection
     lastKnownGameTypeRef.current = gameData.game_type;
     lastKnownRoundRef.current = gameData.current_round;
