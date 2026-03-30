@@ -329,6 +329,9 @@ const Game = () => {
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   
+  // ── Ante latch: prevents modal re-show after confirm within same dealerGame ──
+  const anteConfirmedLatchRef = useRef<string | null>(null); // stores "gameId|dealerGameId|playerId"
+  
   const [showEndSessionDialog, setShowEndSessionDialog] = useState(false);
   const [hasShownEndingToast, setHasShownEndingToast] = useState(false);
   const [lastTurnPosition, setLastTurnPosition] = useState<number | null>(null);
