@@ -197,15 +197,6 @@ export function useHorsesMobileController({
     acceptedStateRef.current = null;
     acceptedProgressRef.current = [0, 0, 0, 0, 0];
     
-    logDebugEvent({
-      gameId: gameId ?? '',
-      roundId: currentRoundId,
-      userId: currentUserId,
-      clientRole: 'observer',
-      eventType: 'horses:sync_reset',
-      payload: { reason: 'round_boundary', newRoundId: currentRoundId },
-    });
-    console.log(`[HORSES_SYNC] Round boundary reset: ${currentRoundId}`);
   }
 
   // Gate the incoming horsesState prop through progress comparison
@@ -218,38 +209,11 @@ export function useHorsesMobileController({
 
     if (cmp === -1) {
       // Regressive - reject
-      logDebugEvent({
-        gameId: gameId ?? '',
-        roundId: currentRoundId,
-        userId: currentUserId,
-        clientRole: 'observer',
-        eventType: 'horses:snapshot_rejected',
-        payload: horsesStateSummary(horsesState as any, {
-          prevVector: currentProgress,
-          incomingVector: incomingProgress,
-          comparison: cmp,
-          reason: 'regressive',
-        }),
-      });
-      console.log(`[HORSES_SYNC] ❌ Rejected regressive snapshot`, { currentProgress, incomingProgress });
       return acceptedStateRef.current;
     }
 
     // Accept: forward or equal
     if (cmp === 1) {
-      logDebugEvent({
-        gameId: gameId ?? '',
-        roundId: currentRoundId,
-        userId: currentUserId,
-        clientRole: 'observer',
-        eventType: 'horses:snapshot_accepted',
-        payload: horsesStateSummary(horsesState as any, {
-          prevVector: currentProgress,
-          incomingVector: incomingProgress,
-          comparison: cmp,
-          reason: 'forward',
-        }),
-      });
     }
 
     acceptedStateRef.current = horsesState;
@@ -489,8 +453,6 @@ export function useHorsesMobileController({
       lastLocalEditAtRef.current = 0; // Clear protection window for fresh turn
       heldMaskAtLastRollStartRef.current = null;
       timeoutProcessedRef.current = null; // Clear timeout lock for new turn
-      console.log(`[SYNC_DEBUG] New turn detected, clearing protection: ${myKey}`);
-      logDebug("new_turn", `Cleared protection for ${myKey}`);
       
       // Reset to fresh hand immediately - DB state will sync in below
       const freshHand = isSCC ? createInitialSCCHand() : createInitialHand();
@@ -499,8 +461,6 @@ export function useHorsesMobileController({
 
     // While rolling (and shortly after interactions), don't let DB snapshots overwrite the felt.
     if (isRolling) {
-      console.log(`[SYNC_DEBUG] Blocked sync: isRolling=true`);
-      logDebug("sync_blocked", "isRolling=true");
       return;
     }
 
@@ -510,11 +470,6 @@ export function useHorsesMobileController({
     if (timeSinceEdit < LOCAL_STATE_PROTECTION_MS && lastLocalEditAtRef.current > 0) {
       console.log(
         `[SYNC_DEBUG] Blocked sync: within protection window (${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms)`,
-      );
-      logDebug(
-        "sync_blocked",
-        `withinWindow ${timeSinceEdit}ms < ${LOCAL_STATE_PROTECTION_MS}ms`,
-        { timeSinceEdit, LOCAL_STATE_PROTECTION_MS },
       );
       return;
     }
@@ -535,16 +490,9 @@ export function useHorsesMobileController({
           console.log(
             `[SYNC_DEBUG] Blocked sync: dbRollsRemaining(${dbRollsRemaining}) > localRollsRemaining(${localRollsRemaining})`,
           );
-          logDebug(
-            "sync_blocked",
-            `dbBehind dbRollsRemaining=${dbRollsRemaining} > localRollsRemaining=${localRollsRemaining}`,
-            { dbRollsRemaining, localRollsRemaining },
-          );
           return;
         }
         if (dbDiceBlank && !localDiceBlank) {
-          console.log(`[SYNC_DEBUG] Blocked sync: dbDiceBlank but local has values`);
-          logDebug("sync_blocked", "dbDiceBlank but local has values");
           return;
         }
 
@@ -574,11 +522,6 @@ export function useHorsesMobileController({
           console.log(
             `[SYNC_DEBUG] Blocked sync: dbMismatch (same rollsRemaining=${dbRollsRemaining}) timeSinceEdit=${timeSinceEdit}ms`,
           );
-          logDebug(
-            "sync_blocked",
-            `dbMismatch sameRR=${dbRollsRemaining} timeSinceEdit=${timeSinceEdit}ms`,
-            { dbRollsRemaining, localRollsRemaining, timeSinceEdit },
-          );
           return;
         }
       }
@@ -588,13 +531,6 @@ export function useHorsesMobileController({
       console.log(
         `[SYNC_DEBUG] *** APPLYING DB STATE *** dbDice=[${dbVals}], dbRollsRemaining=${dbRollsRemaining}`,
       );
-      console.log(`[SYNC_DEBUG] Local was: dice=[${localVals}], rollsRemaining=${localRollsRemaining}`);
-      logDebug("sync_apply", `db=[${dbVals}] rr=${dbRollsRemaining} (local=[${localVals}] rr=${localRollsRemaining})`, {
-        dbVals,
-        localVals,
-        dbRollsRemaining,
-        localRollsRemaining,
-      });
 
       // For SCC, reconstruct the full hand with hasShip/hasCaptain/hasCrew flags
       if (isSCC) {
@@ -806,7 +742,6 @@ export function useHorsesMobileController({
       
       if (!nextPlayerId) {
         // Everyone is complete - set to complete phase
-        console.log("[HORSES] Recovery: all players complete, setting phase to complete");
         await updateHorsesState(currentRoundId, {
           ...baseState,
           currentTurnPlayerId: null,
@@ -814,7 +749,6 @@ export function useHorsesMobileController({
         });
       } else {
         // Set the next incomplete player as current
-        console.log("[HORSES] Recovery: setting currentTurnPlayerId to", nextPlayerId);
         await updateHorsesState(currentRoundId, {
           ...baseState,
           currentTurnPlayerId: nextPlayerId,
@@ -886,7 +820,6 @@ export function useHorsesMobileController({
       // NOTE: The horses_advance_turn RPC now atomically sets turnDeadline for the next player.
       // No need for follow-up update - the RPC handles it to prevent race conditions.
       if (newState?.currentTurnPlayerId && newState.gamePhase === "playing") {
-        console.log("[HORSES] Turn advanced to:", newState.currentTurnPlayerId, "deadline:", newState.turnDeadline);
       }
     },
     [enabled, currentRoundId, horsesState?.currentTurnPlayerId, players],
@@ -948,7 +881,6 @@ export function useHorsesMobileController({
     setCompletedTurnHold(null);
     setBotTurnActiveId(null);
     
-    console.log(`[HORSES_SYNC] Boundary cleanup: cleared all presentation caches for round ${currentRoundId}`);
   }, [currentRoundId]);
 
   // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
@@ -983,15 +915,6 @@ export function useHorsesMobileController({
       expiresAt,
     };
 
-    // TRACE: Setting completedTurnHold
-    if (isDiceTraceRecording()) {
-      pushDiceTrace("completedTurnHold:set", {
-        playerId: currentTurnPlayerId,
-        rollKey: holdPayload.rollKey,
-        heldCount: holdPayload.heldCountBeforeComplete,
-        extra: { holdDuration, expiresAt },
-      });
-    }
 
     setCompletedTurnHold(holdPayload);
 
@@ -1000,12 +923,6 @@ export function useHorsesMobileController({
       window.clearTimeout(completedTurnHoldTimerRef.current);
     }
     completedTurnHoldTimerRef.current = window.setTimeout(() => {
-      // TRACE: Clearing completedTurnHold
-      if (isDiceTraceRecording()) {
-        pushDiceTrace("completedTurnHold:clear", {
-          playerId: currentTurnPlayerId,
-        });
-      }
       setCompletedTurnHold(null);
       // FIX: Also clear observerDisplayState for this player to prevent rawFeltDice from
       // falling back to stale observer/DB state, which causes the result badge to flicker
@@ -1284,7 +1201,6 @@ export function useHorsesMobileController({
     const now = Date.now();
     const msSinceDeadline = now - deadlineTime;
     if (msSinceDeadline > 30000) {
-      console.log("[HORSES] Ignoring stale deadline (>30s old):", msSinceDeadline, "ms");
       return;
     }
 
@@ -1299,14 +1215,12 @@ export function useHorsesMobileController({
     timeoutProcessedRef.current = timeoutKey;
 
     const handleTimeout = async () => {
-      console.log("[HORSES] Turn timeout - setting auto_fold for animated bot takeover:", currentTurnPlayerId);
 
       // Get current player state
       const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
 
       // IMPORTANT: If player has already completed their turn, do NOT mark them as timed out!
       if (playerState?.isComplete) {
-        console.log("[HORSES] Player already completed turn, skipping timeout penalty:", currentTurnPlayerId);
         setTimeout(() => {
           advanceToNextTurn(currentTurnPlayerId);
         }, HORSES_POST_TURN_PAUSE_MS);
@@ -1332,10 +1246,6 @@ export function useHorsesMobileController({
         })
         .eq("id", currentRoundId);
 
-      console.log("[HORSES] Set auto_fold and extended deadline for bot takeover:", {
-        playerId: currentTurnPlayerId,
-        extendedDeadline,
-      });
 
       // Log this for debugging (before the bot loop kicks in)
       await logSitOutNextHandSet(
@@ -1385,25 +1295,12 @@ export function useHorsesMobileController({
       if (prevMinEnd) {
         const msRemaining = new Date(prevMinEnd).getTime() - Date.now();
         if (msRemaining > 0) {
-          console.log(`[ROLL_DEBUG] Blocked by animation barrier: ${msRemaining}ms remaining`);
           return;
         }
       }
     }
 
     const traceId = newTraceId();
-    logDebugEvent({
-      gameId: gameId ?? '',
-      roundId: currentRoundId,
-      userId: currentUserId,
-      clientRole: 'actor',
-      eventType: 'horses:input:roll',
-      traceId,
-      payload: horsesStateSummary(horsesState as any, {
-        rollsRemaining: localHand.rollsRemaining,
-        playerId: myPlayer?.id,
-      }),
-    });
 
     const rollStartTime = Date.now();
     const rollStartedAt = new Date(rollStartTime).toISOString();
@@ -1413,12 +1310,10 @@ export function useHorsesMobileController({
     // Reset hold sequence for new roll
     localHoldSeqRef.current = 0;
 
-    console.log(`[ROLL_DEBUG] ===== ROLL STARTED at ${rollStartedAt} (barrier until ${rollAnimationMinEndAt}) =====`);
 
     // Determine if this is the first roll (rollsRemaining === 3 means first roll)
     const isFirstRoll = localHand.rollsRemaining === 3;
     const animationDuration = isFirstRoll ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
-    console.log(`[ROLL_DEBUG] isFirstRoll=${isFirstRoll}, animationDuration=${animationDuration}ms`);
 
     // Freeze layout to what it was at the START of this roll
     const heldMaskBeforeRoll = localHand.dice.map((d: any) => !!d.isHeld);
@@ -1428,51 +1323,18 @@ export function useHorsesMobileController({
     const rollNumber = getRollNumber(localHand.rollsRemaining);
     const newHand = isSCC ? rollSCCDice(localHand as SCCHand) : rollDice(localHand as HorsesHand);
     const newVals = (newHand.dice as any[]).map((d: any) => d.value).join(",");
-    console.log(`[ROLL_DEBUG] newHand dice: [${newVals}], rollsRemaining=${newHand.rollsRemaining}`);
-    logDebug("roll_start", `isFirstRoll=${isFirstRoll} anim=${animationDuration}ms dice=[${newVals}] rr=${newHand.rollsRemaining}`);
 
-    // Audit log the dice rolls for randomness validation
-    logDiceRolls(
-      (newHand.dice as any[]).map((d: any) => d.value),
-      heldMaskBeforeRoll,
-      {
-        gameId,
-        roundId: currentRoundId ?? undefined,
-        playerId: myPlayer?.id,
-        rollNumber,
-      }
-    );
 
     // Mark interaction immediately so realtime/DB snapshots can't overwrite the felt during the roll animation.
     lastLocalEditAtRef.current = rollStartTime;
     setLocalHand(newHand);
     setIsRolling(true);
-    console.log(`[ROLL_DEBUG] setIsRolling(true) called, lastLocalEditAt set to ${rollStartTime}`);
-    logDebug("roll_state", "setIsRolling(true)", { rollStartTime });
 
-    logDebugEvent({
-      gameId: gameId ?? '',
-      roundId: currentRoundId,
-      userId: currentUserId,
-      clientRole: 'actor',
-      eventType: 'horses:db_write_start',
-      traceId,
-      payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining, rollKey: localRollKeyRef.current, rollStartedAt, rollAnimationMinEndAt },
-    });
 
     // CRITICAL: Save state IMMEDIATELY with animation metadata so observers get rollKey + rollStartedAt
     // right away and can start fly-in animation in sync.
     const rollAnimMeta = { rollStartedAt, rollAnimationMinEndAt };
     void saveMyState(newHand, false, undefined, heldMaskBeforeRoll, rollAnimMeta).then(() => {
-      logDebugEvent({
-        gameId: gameId ?? '',
-        roundId: currentRoundId,
-        userId: currentUserId,
-        clientRole: 'actor',
-        eventType: 'horses:db_write_success',
-        traceId,
-        payload: { action: 'roll', rollsRemaining: newHand.rollsRemaining },
-      });
     });
 
     setTimeout(async () => {
@@ -1480,8 +1342,6 @@ export function useHorsesMobileController({
       console.log(
         `[ROLL_DEBUG] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`,
       );
-      console.log(`[ROLL_DEBUG] setIsRolling(false) being called NOW`);
-      logDebug("roll_timeout", `after ${animationEndTime - rollStartTime}ms -> setIsRolling(false)`);
       setIsRolling(false);
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
@@ -1491,7 +1351,6 @@ export function useHorsesMobileController({
 
         // Midnight = qualified with cargo of 12 (best possible hand)
         if (result.isQualified && result.cargoSum === 12) {
-          console.log('[SCC] Midnight rolled! Auto-locking...');
           const lockedHand = lockInSCCHand(sccHand);
           setLocalHand(lockedHand);
           await saveMyState(lockedHand, true, result, heldMaskBeforeRoll);
@@ -1533,14 +1392,6 @@ export function useHorsesMobileController({
       const currentHand = localHandRef.current;
       if (!isMyTurn || currentHand.isComplete || currentHand.rollsRemaining === 3 || currentHand.rollsRemaining <= 0) return;
 
-      logDebugEvent({
-        gameId: gameId ?? '',
-        roundId: currentRoundId,
-        userId: currentUserId,
-        clientRole: 'actor',
-        eventType: 'horses:input:hold',
-        payload: { dieIndex: index, rollsRemaining: currentHand.rollsRemaining, holdSeq: localHoldSeqRef.current + 1 },
-      });
 
       // For SCC: Ship/Captain/Crew are auto-locked and cannot be toggled
       // Cargo dice (non-SCC) CAN be toggled - player can hold individual cargo dice
@@ -1601,18 +1452,6 @@ export function useHorsesMobileController({
     if (!isMyTurn || localHand.rollsRemaining === 3 || localHand.isComplete) return;
 
     const traceId = newTraceId();
-    logDebugEvent({
-      gameId: gameId ?? '',
-      roundId: currentRoundId,
-      userId: currentUserId,
-      clientRole: 'actor',
-      eventType: 'horses:input:lockin',
-      traceId,
-      payload: horsesStateSummary(horsesState as any, {
-        rollsRemaining: localHand.rollsRemaining,
-        playerId: myPlayer?.id,
-      }),
-    });
 
     // Freeze layout to what it was at the START of the most recent roll.
     const heldMaskBeforeComplete =
@@ -1784,16 +1623,6 @@ export function useHorsesMobileController({
           const rolledHand = isSCC ? rollSCCDice(botHand as SCCHand) : rollDice(botHand as HorsesHand);
 
           // Audit log the bot dice rolls for randomness validation
-          logDiceRolls(
-            (rolledHand.dice as any[]).map((d: any) => d.value),
-            heldMaskBeforeComplete ?? [],
-            {
-              gameId,
-              roundId: currentRoundId ?? undefined,
-              playerId: botId,
-              rollNumber: botRollNumber,
-            }
-          );
 
           setBotDisplayState({
             playerId: botId,
@@ -1930,9 +1759,7 @@ export function useHorsesMobileController({
             .single();
 
           if (freshPlayer && freshPlayer.sit_out_next_hand === false) {
-            console.log("[HORSES] Auto-roll complete but sit_out_next_hand already cleared (player opted back in) — skipping sit-out");
           } else {
-            console.log("[HORSES] Auto-roll complete for timed-out human, marking sit_out_next_hand:", botId);
             await supabase
               .from("players")
               .update({ sit_out_next_hand: true })
@@ -2000,7 +1827,6 @@ export function useHorsesMobileController({
     
     // CRITICAL: Block win processing when game is paused - prevents rollover triggering
     if (isPaused) {
-      console.log("[HORSES] Win processing blocked - game is paused");
       return;
     }
 
@@ -2028,7 +1854,6 @@ export function useHorsesMobileController({
           .select("id, total_hands, current_game_uuid");
 
         if (claimError || !claimed || claimed.length === 0) {
-          console.log("[HORSES] Tie already processed by another client");
           return;
         }
 
@@ -2059,7 +1884,6 @@ export function useHorsesMobileController({
           dealer_game_id: currentGameUuid,
         });
 
-        console.log("[HORSES] Recorded rollover tie event with empty chip changes");
         return;
       }
 
@@ -2082,7 +1906,6 @@ export function useHorsesMobileController({
         .select("id, pot, total_hands, current_game_uuid");
 
       if (claimError || !claimed || claimed.length === 0) {
-        console.log("[HORSES] Win already processed by another client");
         return;
       }
 
@@ -2130,7 +1953,6 @@ export function useHorsesMobileController({
         console.error("[HORSES] CRITICAL: Failed to record game result:", resultError);
         // Still continue - chips were already awarded, but log the error
       } else {
-        console.log("[HORSES] Successfully recorded game result for winner:", winnerName);
       }
 
       // Note: No toast here - dealer announcement already shows the win message
@@ -2288,17 +2110,9 @@ export function useHorsesMobileController({
       const preferKey = `${preferLocal}|${isRolling}|${withinProtectionWindow}|${dbBehind}|${dbClearlyStale}|${awaitingDbSync}|${localRollsRemaining}|${dbRollsRemaining}|${localVals}|${dbVals}`;
       if (preferKey !== lastPreferDebugKeyRef.current) {
         lastPreferDebugKeyRef.current = preferKey;
-        logDebug(
-          "prefer_local",
-          `preferLocal=${preferLocal} isRolling=${isRolling} withinWindow=${withinProtectionWindow} (${timeSinceEdit}ms) local=[${localVals}] rr=${localRollsRemaining} db=[${dbVals}] rr=${dbRollsRemaining}`,
-          { preferLocal, isRolling, withinProtectionWindow, timeSinceEdit, dbBehind, dbClearlyStale, awaitingDbSync, localVals, dbVals, localRollsRemaining, dbRollsRemaining },
-        );
       }
 
-      console.log(`[PREFER_LOCAL_DEBUG] preferLocal=${preferLocal} | isRolling=${isRolling} | withinWindow=${withinProtectionWindow} (${timeSinceEdit}ms ago) | dbBehind=${dbBehind} | dbStale=${dbClearlyStale} | awaitingSync=${awaitingDbSync}`);
-      console.log(`[PREFER_LOCAL_DEBUG] localDice=[${localVals}] rollsRem=${localRollsRemaining} | dbDice=[${dbVals}] rollsRem=${dbRollsRemaining}`);
       if (!preferLocal) {
-        console.log(`[PREFER_LOCAL_DEBUG] *** USING DB STATE *** (preferLocal=false)`);
       }
 
       const dice = preferLocal ? localDice : (dbDice ?? localDice);
@@ -2506,13 +2320,6 @@ export function useHorsesMobileController({
     // MONOTONICITY GUARD: If this rollKey is older than the max we've seen, it's stale data.
     // This happens when out-of-order realtime updates arrive. Ignore them completely.
     if (newRollKey < maxSeenRollKey) {
-      if (isDiceTraceRecording()) {
-        pushDiceTrace("observerRollDetect:staleRejected", {
-          playerId: currentTurnPlayerId,
-          rollKey: newRollKey,
-          extra: { maxSeenRollKey, reason: "rollKey < maxSeenRollKey" },
-        });
-      }
       console.log(
         `[OBSERVER_ROLL] REJECTED stale rollKey ${newRollKey} < maxSeen ${maxSeenRollKey} for ${currentTurnPlayerId}`,
       );
@@ -2535,15 +2342,6 @@ export function useHorsesMobileController({
       // Update rollKey BEFORE setting display state to prevent race
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
       
-      // TRACE: Observer turn complete
-      if (isDiceTraceRecording()) {
-        pushDiceTrace("observerRollDetect:complete", {
-          playerId: currentTurnPlayerId,
-          rollKey: newRollKey,
-          isComplete: true,
-          isRolling: false,
-        });
-      }
       
       // Use the final DB dice values (not masked) since the turn is done
       const finalDice = (state.dice as any[]) ?? [];
@@ -2579,16 +2377,6 @@ export function useHorsesMobileController({
       const isNowComplete = state.rollsRemaining === 0;
       
       if (wasAlreadyComplete && isNowComplete) {
-        // TRACE: Skip fly-in for post-completion bookkeeping
-        if (isDiceTraceRecording()) {
-          pushDiceTrace("observerRollDetect:skipCompletedRoll", {
-            playerId: currentTurnPlayerId,
-            rollKey: newRollKey,
-            rollsRemaining: 0,
-            isRolling: false,
-            extra: { prevRollKey, prevRollsRemaining, reason: "already complete, bookkeeping bump" },
-          });
-        }
         
         console.log(
           `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} SKIPPED (already complete, bookkeeping)`,
@@ -2626,7 +2414,6 @@ export function useHorsesMobileController({
           
           if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
             // Roll happened too long ago — snap to post-animation state, don't replay
-            console.log(`[OBSERVER_ROLL] Late observer: elapsed=${elapsed}ms > max, snapping to final state`);
             const finalDice = (state.dice as any[]) ?? [];
             const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
             lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
@@ -2651,16 +2438,6 @@ export function useHorsesMobileController({
           durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
         }
 
-        // TRACE: Observer new roll detected
-        if (isDiceTraceRecording()) {
-          pushDiceTrace("observerRollDetect:newRoll", {
-            playerId: currentTurnPlayerId,
-            rollKey: newRollKey,
-            rollsRemaining: state.rollsRemaining,
-            isRolling: true,
-            extra: { prevRollKey, durationMs },
-          });
-        }
 
         console.log(
           `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} (duration=${durationMs}ms)`,

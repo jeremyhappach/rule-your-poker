@@ -9,7 +9,6 @@ import { recordGameResult } from "./gameLogic";
 import { logDiceEvent, logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
-  console.log('[HORSES] 🎲 Starting round', { gameId, isFirstHand });
 
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
@@ -80,7 +79,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     // First hand of this dealer game = hand 1, round 1
     newRoundNumber = 1;
     newHandNumber = 1;
-    console.log('[HORSES] First hand of dealer game - starting at hand_number=1, round_number=1');
   } else {
     // Find max hand/round within THIS dealer game only (for rollovers)
     const { data: latestRound, error: latestRoundError } = await supabase
@@ -99,21 +97,9 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     // For Horses, hand_number = round_number (one hand per round)
     newHandNumber = (latestRound?.hand_number ?? 0) + 1;
     newRoundNumber = newHandNumber;
-    console.log('[HORSES] Rollover - next hand_number/round_number:', newHandNumber);
   }
   
-  // Fire-and-forget diagnostic logging
-  logDiceEvent(gameId, 'DICE_ROUND_START', 'horsesRoundLogic:startHorsesRound', {
-    dealerGameId,
-    handNumber: newHandNumber,
-    roundNumber: newRoundNumber,
-    gameType,
-    isFirstHand,
-    currentGameStatus: game.status,
-    pot: game.pot,
-  });
   
-  console.log('[HORSES] Hand/Round numbering:', { dealerGameId, newHandNumber, newRoundNumber, isFirstHand });
 
   // CRITICAL: Prevent multi-client race where multiple players start the first hand at the same time,
   // OR multiple clients try to start the next hand after a rollover.
@@ -141,7 +127,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     }
 
     if (!claim || claim.length === 0) {
-      console.log('[HORSES] Another client claimed first-hand start, skipping');
       return;
     }
   } else if (game.awaiting_next_round) {
@@ -172,7 +157,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     }
 
     if (!claim || claim.length === 0) {
-      console.log('[HORSES] Another client claimed rollover start (or no longer awaiting), skipping');
       return;
     }
   } else if (game.status === 'game_over') {
@@ -204,7 +188,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     }
 
     if (!claim || claim.length === 0) {
-      console.log('[HORSES] Another client claimed game_over next-hand start (or no longer game_over), skipping');
       return;
     }
   }
@@ -218,10 +201,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     .maybeSingle();
 
   if (existingRound) {
-    console.log('[HORSES] Round already exists, just updating game status', {
-      roundId: existingRound.id,
-      roundNumber: newRoundNumber,
-    });
 
     const existingHandNumber = (existingRound as any)?.hand_number as number | null; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -262,7 +241,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     const playersToReactivate = (players || []).filter((p) => p.sitting_out);
     if (playersToReactivate.length > 0) {
       const reactivateIds = playersToReactivate.map((p) => p.id);
-      console.log('[HORSES] Reactivating ALL sitting_out players for rollover:', reactivateIds);
       await supabase
         .from('players')
         .update({ sitting_out: false })
@@ -295,7 +273,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   // Check Make It Take It setting - if enabled, dealer goes first (offset 0), otherwise player after dealer (offset 1)
   const makeItTakeIt = await getMakeItTakeItSetting();
   const turnOffset = makeItTakeIt ? 0 : 1;
-  console.log('[HORSES] Make It Take It:', makeItTakeIt, 'Turn offset:', turnOffset);
   
   const turnOrder = dealerIdx >= 0
     ? Array.from({ length: sortedActive.length }, (_, i) => sortedActive[(dealerIdx + i + turnOffset) % sortedActive.length].id)
@@ -358,7 +335,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     throw new Error('Failed to create round');
   }
 
-  console.log('[HORSES] Round created:', roundData.id, 'pot:', potForRound);
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
   // CRITICAL: Clear config_deadline and ante_decision_deadline so the enforce-deadlines cron
@@ -386,7 +362,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     // Don't throw here - we already created the round, just log the error
   }
 
-  console.log('[HORSES] Game set to in_progress, pot:', potForRound);
 
   // STEP 3: Collect antes AFTER round is created and game pointers are set
   if (activePlayers.length > 0 && anteAmount > 0) {
@@ -400,7 +375,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       console.error('[HORSES] ERROR collecting antes:', anteError);
       // Don't throw - the game is already in_progress, we'll handle missing antes gracefully
     } else {
-      console.log('[HORSES] Antes collected from', playerIds.length, 'players, amount:', anteAmount);
       
       // CRITICAL: Record ante deductions in game_results to maintain zero-sum accounting
       // Each player's ante payment is tracked as a negative chip change
@@ -424,7 +398,6 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
         'horses', // game_type
         game.current_game_uuid || null // dealer_game_id
       );
-      console.log('[HORSES] Recorded ante chip changes in game_results:', anteChipChanges);
     }
   }
 }
@@ -438,7 +411,6 @@ export async function endHorsesRound(
   winnerDescription: string,
   isTie: boolean = false
 ): Promise<void> {
-  console.log('[HORSES] Ending round', { gameId, winnerId, winnerDescription, isTie });
 
   if (isTie) {
     // For ties, set awaiting_next_round which will trigger re-ante
