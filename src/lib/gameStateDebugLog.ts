@@ -19,18 +19,7 @@ export type GameStateEventType =
   | 'END_HOLM_ROUND_RESULT'
   | 'BOT_DECISION'
   | 'REJOIN_VISIBILITY_CHANGE'
-  // Dice game specific events
-  | 'DICE_ROUND_START'
-  | 'DICE_TURN_ADVANCE'
-  | 'DICE_ROLL'
-  | 'DICE_HOLD_CHANGE'
-  | 'DICE_TURN_COMPLETE'
-  | 'DICE_GAME_COMPLETE'
-  | 'DICE_WIN_PROCESSING'
-  | 'DICE_TIE_DETECTED'
-  | 'DICE_ROLLOVER_START'
-  | 'DICE_POT_AWARD'
-  | 'DICE_HAND_EVALUATION'
+  // Dice game event types removed (logging disabled)
   // 3-5-7 specific events
   | 'ROUND_START_BLOCKED'
   | 'LEG_AWARDED'
