@@ -184,7 +184,7 @@ export function lockInSCCHand(hand: SCCHand): SCCHand {
 export function evaluateSCCHand(hand: SCCHand): SCCHandResult {
   // Check if qualified (has 6-5-4)
   if (!hand.hasShip || !hand.hasCaptain || !hand.hasCrew) {
-    console.log('[SCC] Hand not qualified - missing Ship/Captain/Crew');
+    
     return {
       rank: 0,
       description: "NQ",
