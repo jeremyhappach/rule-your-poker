@@ -304,6 +304,8 @@ interface MobileGameTableProps {
   reAnteMessage?: string | null;
   // Auto-fold callback for when player disables auto_fold
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
+  // When true, auto-roll disable is deferred until end of current turn
+  pendingAutoRollOff?: boolean;
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
