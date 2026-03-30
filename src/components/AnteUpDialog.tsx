@@ -188,6 +188,17 @@ export const AnteUpDialog = ({
 
   const handleSitOut = async () => {
     if (hasDecided) return;
+    logDebugEvent({
+      gameId,
+      userId: playerId,
+      eventType: 'ante_modal_confirm_click',
+      payload: {
+        instanceId: instanceId.current,
+        action: 'sit_out',
+        timeLeft,
+        wasAutoTimeout: timeLeft <= 0,
+      },
+    });
     setHasDecided(true);
 
     const { error } = await supabase
