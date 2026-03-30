@@ -5223,6 +5223,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }, 15_000);
   }, [game?.status, game?.game_type, game?.game_over_at, game?.last_round_result, gameId, handleGameOverComplete]);
 
+    // ── Holm shadow sync feed (Phase 2: read-only) ──
+    if (gameData.game_type === 'holm-game') {
+      const holmRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
+        dealerGameId: gameData.current_game_uuid,
+        currentRoundNumber: gameData.current_round,
+        currentHandNumber: gameData.total_hands,
+      });
+      const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
+      if (snapshot) {
+        if (holmSyncLastRoundIdRef.current && holmSyncLastRoundIdRef.current !== snapshot.roundId) {
+          console.log('[GameStateSync:Holm] 🔄 Hard reset — roundId changed', {
+            prev: holmSyncLastRoundIdRef.current,
+            next: snapshot.roundId,
+          });
+          holmSync.reset(snapshot);
+        } else {
+          holmSync.receiveAuthoritativeUpdate(snapshot);
+        }
+        holmSyncLastRoundIdRef.current = snapshot.roundId;
+      }
+    }
+
 
   useEffect(() => {
     if (game?.status === 'game_over' && game?.game_type === 'holm-game' && game?.last_round_result) {
