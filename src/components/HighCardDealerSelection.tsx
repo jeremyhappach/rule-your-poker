@@ -254,13 +254,8 @@ export const HighCardDealerSelection = ({
 
     const announcementToSync = roundAnnouncement ?? lastAnnouncementRef.current ?? null;
 
-    // Sync announcement state to DB
-    syncToDatabase({
-      cards: existingCards,
-      announcement: announcementToSync,
-      isComplete: false,
-      winnerPosition: null
-    });
+    // NOTE: No intermediate sync here — announcement is local-only.
+    // Non-host will receive the full state atomically at winner/tiebreaker decision.
 
     const dealDelayMs =
       roundNum === 1
