@@ -218,40 +218,15 @@ export function logAllDecisionsIn(
 }
 
 /**
- * Helper to log dice game events with full context
+ * @deprecated Dice event logging disabled — no-op stub
  */
 export function logDiceEvent(
-  gameId: string,
-  eventType: GameStateEventType,
-  source: string,
-  details: {
-    dealerGameId?: string | null;
-    roundId?: string | null;
-    playerId?: string | null;
-    handNumber?: number;
-    roundNumber?: number;
-    gameType?: string;
-    turnOrder?: string[];
-    currentTurnPlayerId?: string | null;
-    pot?: number;
-    winnerIds?: string[];
-    tieDetected?: boolean;
-    diceValues?: number[];
-    handResult?: { rank: number; description: string };
-    [key: string]: unknown;
-  }
+  _gameId: string,
+  _eventType: GameStateEventType,
+  _source: string,
+  _details: Record<string, unknown>
 ): Promise<void> {
-  return logGameState({
-    gameId,
-    dealerGameId: details.dealerGameId,
-    roundId: details.roundId,
-    playerId: details.playerId,
-    eventType,
-    currentRound: details.roundNumber,
-    totalHands: details.handNumber,
-    sourceLocation: source,
-    details,
-  });
+  return Promise.resolve();
 }
 
 /**
