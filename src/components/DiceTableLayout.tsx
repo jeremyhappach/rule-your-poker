@@ -5,7 +5,7 @@ import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGame
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
-import { pushDiceTrace, isDiceTraceRecording } from "@/components/DiceTraceHUD";
+
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
 
@@ -451,28 +451,8 @@ export function DiceTableLayout({
   );
 
   useEffect(() => {
-    if (isDiceTraceRecording()) {
-      pushDiceTrace("DiceTableLayout:lifecycle", {
-        rollKey,
-        cacheKey: String(cacheKey ?? ""),
-        extra: {
-          instanceId: instanceIdRef.current,
-          mounted: true,
-        },
-      });
-    }
 
     return () => {
-      if (isDiceTraceRecording()) {
-        pushDiceTrace("DiceTableLayout:lifecycle", {
-          rollKey,
-          cacheKey: String(cacheKey ?? ""),
-          extra: {
-            instanceId: instanceIdRef.current,
-            unmounted: true,
-          },
-        });
-      }
     };
   }, []);
 
@@ -605,24 +585,6 @@ export function DiceTableLayout({
       unheldIndices.length > 0 &&
       effectiveLastFlyIn !== rollKey;
 
-    // TRACE: Fly-in decision point
-    if (isDiceTraceRecording()) {
-      pushDiceTrace("DiceTableLayout:flyIn", {
-        rollKey,
-        isRolling,
-        cacheKey: String(cacheKey ?? ""),
-        isAnimatingFlyIn,
-        showUnheldDice,
-        lastFlyInRollKey: effectiveLastFlyIn,
-        extra: {
-          flyInWindowActive,
-          shouldStartFlyIn,
-          unheldCount: unheldIndices.length,
-          hasAnimationOrigin: !!animationOrigin,
-          isObserver,
-        },
-      });
-    }
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;
@@ -1124,76 +1086,7 @@ export function DiceTableLayout({
     mainBranch,
   };
 
-  if (isDiceTraceRecording()) {
-    const rollKeyChangedThisRender = rollKey !== prevRenderTraceRollKeyRef.current;
 
-    if (rollKeyChangedThisRender) {
-      if (lastStableFrameSnapshotRef.current) {
-        pushDiceTrace("DiceTableLayout:rollFrame", {
-          rollKey: prevRenderTraceRollKeyRef.current,
-          cacheKey: String(cacheKey ?? ""),
-          extra: {
-            frame: "frame0:last-stable-pre-roll",
-            ...lastStableFrameSnapshotRef.current,
-          },
-        });
-      }
-
-      pushDiceTrace("DiceTableLayout:rollFrame", {
-        rollKey,
-        cacheKey: String(cacheKey ?? ""),
-        extra: {
-          frame: "frame1:first-render-after-rollKey-change",
-          ...frameSnapshot,
-        },
-      });
-
-      activeTraceRollKeyRef.current = rollKey;
-      frame2LoggedRollKeyRef.current = undefined;
-      frame3LoggedRollKeyRef.current = undefined;
-    }
-
-    if (!isAnimatingFlyIn && !allHeld) {
-      lastStableFrameSnapshotRef.current = frameSnapshot;
-    }
-
-    prevRenderTraceRollKeyRef.current = rollKey;
-  }
-
-  useLayoutEffect(() => {
-    if (!isDiceTraceRecording()) return;
-    if (activeTraceRollKeyRef.current !== rollKey) return;
-    if (frame2LoggedRollKeyRef.current === rollKey) return;
-
-    pushDiceTrace("DiceTableLayout:rollFrame", {
-      rollKey,
-      cacheKey: String(cacheKey ?? ""),
-      extra: {
-        frame: "frame2:first-post-layout-effect-render",
-        ...frameSnapshot,
-      },
-    });
-
-    frame2LoggedRollKeyRef.current = rollKey;
-  }, [frameSnapshot, rollKey, cacheKey]);
-
-  useEffect(() => {
-    if (!isDiceTraceRecording()) return;
-    if (activeTraceRollKeyRef.current !== rollKey) return;
-    if (frame3LoggedRollKeyRef.current === rollKey) return;
-    if (!isAnimatingFlyIn && !rollKeyProcessed) return;
-
-    pushDiceTrace("DiceTableLayout:rollFrame", {
-      rollKey,
-      cacheKey: String(cacheKey ?? ""),
-      extra: {
-        frame: "frame3:first-stable-animation-render",
-        ...frameSnapshot,
-      },
-    });
-
-    frame3LoggedRollKeyRef.current = rollKey;
-  }, [frameSnapshot, isAnimatingFlyIn, rollKeyProcessed, rollKey, cacheKey]);
 
   if (showRollingMessage) {
     return (
@@ -1383,56 +1276,6 @@ export function DiceTableLayout({
           ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
           : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
 
-        if (isDiceTraceRecording()) {
-          const traceData = {
-            rollKey,
-            isRolling,
-            isAnimatingFlyIn,
-            showUnheldDice,
-            cacheKey: String(cacheKey ?? ""),
-            extra: {
-              dieIdx: item.originalIndex,
-              dieValue: item.die.value,
-              dieIsHeld: item.die.isHeld,
-              isHeldInLayout,
-              actuallyHeld,
-              layoutHeldPosPresent: !!layoutHeldPos,
-              cachedHeldPosPresent: !!cachedHeldPos,
-              layoutScatterPosPresent: !!layoutScatterPos,
-              stablePosPresent: !!stablePos,
-              cachedScatterPosPresent: !!cachedScatterPos,
-              preRollHeld,
-              usePreRollLayout,
-              stableHeldRegistrySize: stableHeldRegistryEntries.length,
-              allHeld,
-              transformOwner,
-              transform,
-            },
-          };
-
-          const summary = [
-            item.die.isHeld ? "held" : "unheld",
-            isHeldInLayout ? "layout-held" : "layout-scatter",
-            transformOwner,
-            transform,
-            String(rollKey ?? ""),
-            String(cacheKey ?? ""),
-          ].join("|");
-
-          const previous = renderDecisionByDieRef.current.get(item.originalIndex);
-          if (previous?.summary !== summary) {
-            pushDiceTrace("DiceTableLayout:renderDecision", {
-              ...traceData,
-              extra: {
-                ...traceData.extra,
-                previousTransformOwner: previous?.data?.transformOwner,
-                previousTransform: previous?.data?.transform,
-                previousIsHeldInLayout: previous?.data?.isHeldInLayout,
-              },
-            });
-          }
-          renderDecisionByDieRef.current.set(item.originalIndex, { summary, data: traceData.extra });
-        }
 
         return (
           <div

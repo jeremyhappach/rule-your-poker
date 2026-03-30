@@ -19,18 +19,7 @@ export type GameStateEventType =
   | 'END_HOLM_ROUND_RESULT'
   | 'BOT_DECISION'
   | 'REJOIN_VISIBILITY_CHANGE'
-  // Dice game specific events
-  | 'DICE_ROUND_START'
-  | 'DICE_TURN_ADVANCE'
-  | 'DICE_ROLL'
-  | 'DICE_HOLD_CHANGE'
-  | 'DICE_TURN_COMPLETE'
-  | 'DICE_GAME_COMPLETE'
-  | 'DICE_WIN_PROCESSING'
-  | 'DICE_TIE_DETECTED'
-  | 'DICE_ROLLOVER_START'
-  | 'DICE_POT_AWARD'
-  | 'DICE_HAND_EVALUATION'
+  // Dice game event types removed (logging disabled)
   // 3-5-7 specific events
   | 'ROUND_START_BLOCKED'
   | 'LEG_AWARDED'
@@ -229,40 +218,15 @@ export function logAllDecisionsIn(
 }
 
 /**
- * Helper to log dice game events with full context
+ * @deprecated Dice event logging disabled — no-op stub
  */
 export function logDiceEvent(
-  gameId: string,
-  eventType: GameStateEventType,
-  source: string,
-  details: {
-    dealerGameId?: string | null;
-    roundId?: string | null;
-    playerId?: string | null;
-    handNumber?: number;
-    roundNumber?: number;
-    gameType?: string;
-    turnOrder?: string[];
-    currentTurnPlayerId?: string | null;
-    pot?: number;
-    winnerIds?: string[];
-    tieDetected?: boolean;
-    diceValues?: number[];
-    handResult?: { rank: number; description: string };
-    [key: string]: unknown;
-  }
+  _gameId: string,
+  _eventType: string,
+  _source: string,
+  _details: Record<string, unknown>
 ): Promise<void> {
-  return logGameState({
-    gameId,
-    dealerGameId: details.dealerGameId,
-    roundId: details.roundId,
-    playerId: details.playerId,
-    eventType,
-    currentRound: details.roundNumber,
-    totalHands: details.handNumber,
-    sourceLocation: source,
-    details,
-  });
+  return Promise.resolve();
 }
 
 /**

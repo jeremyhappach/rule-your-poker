@@ -32,7 +32,7 @@ import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
-import { DiceTraceHUD, pushDiceTrace, isDiceTraceRecording } from "./DiceTraceHUD";
+import { DiceTraceHUD } from "./DiceTraceHUD";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
 import { useHorsesMobileController, HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -699,10 +699,6 @@ export const MobileGameTable = ({
     // CRITICAL FIX: Also clear on horsesRoundId change (for dice games - Horses/SCC rollovers)
     // The horsesRoundId changes on each dice game rollover, which handContextId may not always track
     if (horsesRoundId && horsesRoundId !== prevHorsesRoundIdRef.current) {
-      console.log('[BEAT_BADGE] Dice game round changed, clearing Beat badge cache:', {
-        prevRound: prevHorsesRoundIdRef.current,
-        newRound: horsesRoundId,
-      });
       cachedWinningResultRef.current = null;
       turnSnapshotTakenRef.current = false; // Reset turn tracking on round change
       prevHorsesRoundIdRef.current = horsesRoundId;
@@ -3838,10 +3834,8 @@ export const MobileGameTable = ({
             onAnimationStart={() => {
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
-              console.log('[DICE WIN] POT-OUT animation started');
             }}
             onAnimationEnd={() => {
-              console.log('[DICE WIN] Animation complete');
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false);
               onHorsesWinPotAnimationComplete?.();
@@ -4339,36 +4333,10 @@ export const MobileGameTable = ({
           const rollKeyChanged = currentRollKey !== prevRollKey;
           feltBranchCountRef.current++;
 
-          if ((branchChanged || rollKeyChanged) && isDiceTraceRecording()) {
-            pushDiceTrace("FeltBlock:branchDecision", {
-              rollKey: currentRollKey,
-              cacheKey: String(feltPlayerId ?? horsesController.currentTurnPlayerId ?? ""),
-              extra: {
-                feltBranch,
-                prevBranch,
-                branchChanged,
-                rollKeyChanged,
-                prevRollKey,
-                currentRollKey,
-                feltDicePresent: !!horsesController.feltDice,
-                feltPlayerId,
-                currentTurnPlayerId: horsesController.currentTurnPlayerId,
-                showDice,
-                showResult,
-                hasRolled,
-                isMyTurn: horsesController.isMyTurn,
-                gamePhase: horsesController.gamePhase,
-                isInHoldPeriod,
-                renderCount: feltBranchCountRef.current,
-                ...feltBranchDetail,
-              },
-            });
-          }
           prevFeltBranchRef.current = feltBranch;
           prevFeltRollKeyRef.current = currentRollKey;
 
           if ((horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') && !isInHoldPeriod) {
-            console.log(`${logPrefix} STICKY: gamePhase=${horsesController.gamePhase}, isInHoldPeriod=${isInHoldPeriod}`);
 
             const cachedNode = getCachedFeltNode();
             if (cachedNode) {
@@ -4399,11 +4367,9 @@ export const MobileGameTable = ({
           
           // Check if dice have been rolled (at least one die has a value > 0)
           
-          console.log(`${logPrefix} feltDice=${!!horsesController.feltDice}, diceArray=${diceArray?.map(d => d?.value)}, hasRolled=${hasRolled}, showResult=${showResult}, showDice=${showDice}, isMyTurn=${horsesController.isMyTurn}`);
           
           // If it's my turn and I haven't rolled yet, show "You are rolling" message + Beat badge
           if (horsesController.isMyTurn && !hasRolled) {
-            console.log(`${logPrefix} RENDER: You are rolling message`);
             // Track mount for debug overlay
             if (!feltBlockMounted) {
               setTimeout(() => setFeltBlockMounted(true), 0);
@@ -4501,7 +4467,6 @@ export const MobileGameTable = ({
           // If observing someone else who hasn't rolled yet, keep a stable placeholder.
           // We also reuse a short-lived cached node to prevent flicker during turn/player transitions.
           if (!horsesController.isMyTurn && !hasRolled && !showResult) {
-            console.log(`${logPrefix} STICKY: observer, hasRolled=${hasRolled}, showResult=${showResult}`);
 
             const cachedNode = getCachedFeltNode();
             if (cachedNode) {
@@ -4519,7 +4484,6 @@ export const MobileGameTable = ({
             );
           }
 
-          console.log(`${logPrefix} RENDER: DiceTableLayout or result`);
           // Track mount for debug overlay
           if (!feltBlockMounted) {
             setTimeout(() => setFeltBlockMounted(true), 0);

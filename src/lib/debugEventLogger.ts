@@ -130,42 +130,9 @@ export function ginStateSummary(state: {
   };
 }
 
-// ── Horses / Dice helpers ─────────────────────────────────────
+// ── Horses / Dice helpers (disabled) ──────────────────────────
 
-/** Standard Horses state summary payload for every event */
-export function horsesStateSummary(state: {
-  gamePhase?: string;
-  currentTurnPlayerId?: string | null;
-  turnOrder?: string[];
-  playerStates?: Record<string, {
-    dice?: { value: number; isHeld?: boolean }[];
-    rollsRemaining?: number;
-    isComplete?: boolean;
-    result?: { description?: string; rank?: number };
-    rollKey?: number;
-    holdSeq?: number;
-  }>;
-} | null, extra?: Record<string, unknown>): Record<string, unknown> {
-  if (!state) return { state: null, ...extra };
-  const players: Record<string, unknown> = {};
-  if (state.playerStates) {
-    for (const [pid, ps] of Object.entries(state.playerStates)) {
-      players[pid.slice(0, 8)] = {
-        dice: ps.dice?.map(d => d.value).join(',') ?? '?',
-        rr: ps.rollsRemaining ?? '?',
-        done: ps.isComplete ?? false,
-        result: ps.result?.description ?? null,
-        rollKey: ps.rollKey,
-        holdSeq: ps.holdSeq,
-      };
-    }
-  }
-  return {
-    phase: state.gamePhase,
-    turn: state.currentTurnPlayerId?.slice(0, 8) ?? null,
-    turnIdx: state.turnOrder?.indexOf(state.currentTurnPlayerId ?? '') ?? -1,
-    playerCount: state.turnOrder?.length ?? 0,
-    players,
-    ...extra,
-  };
+/** @deprecated Horses debug logging removed — returns empty object */
+export function horsesStateSummary(_state: unknown, _extra?: Record<string, unknown>): Record<string, unknown> {
+  return {};
 }

@@ -184,7 +184,7 @@ export function lockInSCCHand(hand: SCCHand): SCCHand {
 export function evaluateSCCHand(hand: SCCHand): SCCHandResult {
   // Check if qualified (has 6-5-4)
   if (!hand.hasShip || !hand.hasCaptain || !hand.hasCrew) {
-    console.log('[SCC] Hand not qualified - missing Ship/Captain/Crew');
+    
     return {
       rank: 0,
       description: "NQ",
@@ -197,7 +197,7 @@ export function evaluateSCCHand(hand: SCCHand): SCCHandResult {
   const cargoDice = hand.dice.filter(d => !d.isSCC);
   const cargoSum = cargoDice.reduce((sum, d) => sum + d.value, 0);
 
-  console.log(`[SCC] Qualified with cargo sum: ${cargoSum}`);
+  
 
   return {
     rank: cargoSum, // 2-12, higher is better
