@@ -2511,6 +2511,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // Don't show ante dialog for players who are sitting_out (they stay sitting out)
         // Show dialog if player exists and hasn't made ante decision and isn't dealer and isn't sitting out
         if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out) {
+          logDebugEvent({
+            gameId: gameId!,
+            userId: user.id,
+            eventType: 'ante_modal_should_show',
+            payload: {
+              playerId: freshCurrentPlayer.id,
+              anteDecision: freshCurrentPlayer.ante_decision,
+              isDealer,
+              sittingOut: freshCurrentPlayer.sitting_out,
+              autoAnte: freshCurrentPlayer.auto_ante,
+              autoAnteRunback: freshCurrentPlayer.auto_ante_runback,
+              isRunBack,
+              showAnteDialogBefore: showAnteDialog,
+              dealerGameId: game?.current_game_uuid ?? null,
+              gameStatus: game?.status,
+            },
+          });
           console.log('[ANTE DIALOG] ✅ Showing ante dialog for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
