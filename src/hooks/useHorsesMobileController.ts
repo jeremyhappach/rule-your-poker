@@ -6,7 +6,7 @@ import { snapshotPlayerChips } from "@/lib/gameLogic";
 import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 import { getHorsesProgress } from "@/lib/gameStateSync/horsesProgress";
 import { compareProgress } from "@/lib/gameStateSync/stateProgress";
-import { logDebugEvent, newTraceId, horsesStateSummary } from "@/lib/debugEventLogger";
+import { newTraceId } from "@/lib/debugEventLogger";
 import type { ProgressVector } from "@/lib/gameStateSync/types";
 import {
   HorsesHand,
