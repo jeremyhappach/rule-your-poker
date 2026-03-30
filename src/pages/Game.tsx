@@ -1499,6 +1499,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
+
+              // ── HANDOFF TRACE #4: game status transition ──
+              emitCribbageHandoffTrace({
+                gameId: gameId!,
+                eventType: 'status_transition',
+                userId: user?.id ?? null,
+                context: {
+                  oldStatus: game?.status ?? null,
+                  newStatus,
+                  dealerGameId: game?.current_game_uuid ?? null,
+                  currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+                  dealerSelectionCardsLen: dealerSelectionCards.length,
+                  dealerSelectionCardIds: toDealerSelectionCardIds(dealerSelectionCards),
+                  isCribbageDealerSelection: game?.status === 'cribbage_dealer_selection',
+                  showAnteDialog,
+                },
+              });
               
               // CRITICAL FIX: Clear ALL card state when a new game is being set up
               // This ensures stale cards from previous game types are removed
@@ -1524,6 +1541,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   setDealerSelectionAnnouncement(null);
                   setDealerSelectionComplete(false);
                   setDealerSelectionWinnerPosition(null);
+                  // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
+                  emitCribbageHandoffTrace({
+                    gameId: gameId!,
+                    eventType: 'parent_ds_cleared',
+                    userId: user?.id ?? null,
+                    context: { trigger: 'realtime_status_change', newStatus },
+                  });
                 }
               }
               
@@ -2493,6 +2517,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isRunBack
           });
           setShowAnteDialog(true);
+          // ── HANDOFF TRACE #5a: ante modal SHOWN ──
+          emitCribbageHandoffTrace({
+            gameId: gameId!,
+            eventType: 'ante_modal_shown',
+            userId: user?.id ?? null,
+            context: {
+              gameStatus: game?.status,
+              dealerGameId: game?.current_game_uuid ?? null,
+              dealerSelectionCardsLen: dealerSelectionCards.length,
+            },
+          });
           
           // Calculate ante time left
           if (game.ante_decision_deadline) {
@@ -2511,6 +2546,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             sittingOut: freshCurrentPlayer?.sitting_out
           });
           setShowAnteDialog(false);
+          // ── HANDOFF TRACE #5b: ante modal HIDDEN (not eligible) ──
+          emitCribbageHandoffTrace({
+            gameId: gameId!,
+            eventType: 'ante_modal_hidden',
+            userId: user?.id ?? null,
+            context: {
+              reason: 'not_eligible',
+              gameStatus: game?.status,
+              dealerGameId: game?.current_game_uuid ?? null,
+            },
+          });
         }
       };
 
@@ -2522,6 +2568,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         actualStatus: game?.status
       });
       setShowAnteDialog(false);
+      // ── HANDOFF TRACE #5b: ante modal HIDDEN (status not ante_decision) ──
+      emitCribbageHandoffTrace({
+        gameId: gameId!,
+        eventType: 'ante_modal_hidden',
+        userId: user?.id ?? null,
+        context: {
+          reason: 'status_not_ante_decision',
+          gameStatus: game?.status,
+        },
+      });
       // Reset isRunningItBack so it re-computes on next ante_decision phase
       setIsRunningItBack(null);
     }
@@ -5636,6 +5692,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleCribbageDealerSelectionComplete = useCallback(async (dealerPosition: number) => {
     if (!gameId) return;
 
+    // ── HANDOFF TRACE #1 + #2: entry ──
+    beginCribbageHandoffTrace(gameId, 'handleCribbageDealerSelectionComplete_entry');
+    emitCribbageHandoffTrace({
+      gameId,
+      eventType: 'handler_entry',
+      userId: user?.id ?? null,
+      context: {
+        handler: 'handleCribbageDealerSelectionComplete',
+        dealerPosition,
+        gameStatus: game?.status,
+        dealerGameId: game?.current_game_uuid ?? null,
+        currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
+        dealerSelectionCardsLen: dealerSelectionCards.length,
+        dealerSelectionCardIds: toDealerSelectionCardIds(dealerSelectionCards),
+        isCribbageDealerSelection: game?.status === 'cribbage_dealer_selection',
+        showAnteDialog,
+      },
+    });
+
     // CRITICAL: Only the host should advance the game.
     // If a non-host flips status early, it can unmount the host's dealer-selection component
     // and cancel the host timeout that should start round 1.
@@ -5659,6 +5734,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setDealerSelectionCards([]);
     setDealerSelectionAnnouncement(null);
     setDealerSelectionWinnerPosition(null);
+
+    // ── HANDOFF TRACE #3: parent dealer-selection state cleared (handoff callback) ──
+    emitCribbageHandoffTrace({
+      gameId,
+      eventType: 'parent_ds_cleared',
+      userId: user?.id ?? null,
+      context: {
+        trigger: 'handleCribbageDealerSelectionComplete',
+        dealerPosition,
+        gameStatus: game?.status,
+      },
+    });
     
     logDebugEvent({
       gameId: gameId!,
@@ -5685,12 +5772,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // Create round 1 AFTER dealer selection, with cribbage_state initialized.
     // Passing isFirstHand=false avoids the deferred "client initializes" path.
+    // ── HANDOFF TRACE #6: startCribbageRound entry ──
+    emitCribbageHandoffTrace({
+      gameId,
+      eventType: 'startCribbageRound_entry',
+      userId: user?.id ?? null,
+      context: { isFirstHand: false, gameStatus: game?.status },
+    });
     const result = await startCribbageRound(gameId, false);
+    // ── HANDOFF TRACE #6: startCribbageRound exit ──
+    emitCribbageHandoffTrace({
+      gameId,
+      eventType: 'startCribbageRound_exit',
+      userId: user?.id ?? null,
+      roundId: result.roundId ?? null,
+      context: {
+        success: result.success,
+        roundId: result.roundId?.slice(0, 8) ?? null,
+        handNumber: result.handNumber ?? null,
+        error: result.error ?? null,
+      },
+    });
     if (!result.success) {
       console.error('[CRIBBAGE] Failed to start cribbage round after dealer selection:', result.error);
       return;
     }
     
+    // ── HANDOFF TRACE #2: handler exit ──
+    emitCribbageHandoffTrace({
+      gameId,
+      eventType: 'handler_exit',
+      userId: user?.id ?? null,
+      roundId: result.roundId ?? null,
+      context: {
+        handler: 'handleCribbageDealerSelectionComplete',
+        success: true,
+        roundId: result.roundId?.slice(0, 8) ?? null,
+        handNumber: result.handNumber ?? null,
+      },
+    });
+
     // Trigger refetch to update UI
     fetchGameData();
   }, [gameId, game, players, user?.id, fetchGameData]);
@@ -5921,6 +6042,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Cribbage: transition to dealer selection phase (high-card animation)
             // The round will be created after dealer selection completes
             console.log('[ANTE][CRIBBAGE] Transitioning to cribbage_dealer_selection');
+            // ── HANDOFF TRACE: ante → cribbage_dealer_selection transition ──
+            emitCribbageHandoffTrace({
+              gameId: gameId!,
+              eventType: 'ante_to_crib_dealer_selection',
+              userId: user?.id ?? null,
+              context: {
+                prevStatus: freshGame?.status,
+                dealerGameId: game?.current_game_uuid ?? null,
+                dealerSelectionCardsLen: dealerSelectionCards.length,
+              },
+            });
             await supabase
               .from('games')
               .update({
@@ -6919,25 +7051,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const cribbageHandNumber = isAnteDecision ? 0 : (currentRound?.hand_number ?? 1);
             const cribbagePot = isCribbageGameOver ? 0 : (isInProgress ? potForDisplay : 0);
 
-            logDebugEvent({
+            // ── HANDOFF TRACE #8: parent render branch with dealer-selection props ──
+            emitCribbageHandoffTrace({
               gameId: gameId!,
-              eventType: 'crib:lifecycle:game_branch',
-              payload: {
+              eventType: 'parent_render_branch',
+              userId: user?.id ?? null,
+              roundId: cribbageRoundId?.slice(0, 8) || null,
+              context: {
                 branch: isCribbageDealerSelection ? 'cribbage_dealer_selection'
                   : isAnteDecision ? 'cribbage_ante_decision'
                   : isCribbageGameOver ? 'cribbage_game_over'
                   : 'cribbage_in_progress',
                 gameStatus: game.status,
-                dealerGameId: cribbageDealerGameId,
+                dealerGameId: cribbageDealerGameId?.slice(0, 8) ?? null,
                 dealerPosition: game.dealer_position,
                 currentRoundId: currentRound?.id?.slice(0, 8) ?? null,
                 handNumber: currentRound?.hand_number ?? null,
-                cribbageRoundIdProp: cribbageRoundId?.slice(0, 8) || '(empty)',
-                cribbageHandNumberProp: cribbageHandNumber,
-                cribbagePotProp: cribbagePot,
                 isDealerSelectionProp: isCribbageDealerSelection,
                 hasHighCardDealerSelectionSibling: isCribbageDealerSelection,
-                ...buildMetaPayload(),
+                dealerSelectionCardsLen: dealerSelectionCards.length,
+                dealerSelectionCardIds: toDealerSelectionCardIds(dealerSelectionCards),
+                showAnteDialog,
               },
             });
 
@@ -6953,11 +7087,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     selectionVariant="cribbage"
                     syncedState={(game as any).dealer_selection_state as any}
                     onCardsUpdate={setDealerSelectionCards}
+                    // Note: onCardsUpdate trace - session-level HighCardDealerSelection cards pushed to parent
                     onAnnouncementUpdate={(msg, complete) => {
                       setDealerSelectionAnnouncement(msg);
                       setDealerSelectionComplete(complete);
+                      // ── HANDOFF TRACE #3: session-level ds announcement updated ──
+                      emitCribbageHandoffTrace({
+                        gameId: gameId!,
+                        eventType: 'parent_ds_announcement_update',
+                        userId: user?.id ?? null,
+                        context: { msg: msg?.slice(0, 60), complete },
+                      });
                     }}
-                    onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                    onWinnerPositionUpdate={(pos) => {
+                      setDealerSelectionWinnerPosition(pos);
+                      // ── HANDOFF TRACE #3: session-level ds winner position updated ──
+                      emitCribbageHandoffTrace({
+                        gameId: gameId!,
+                        eventType: 'parent_ds_winner_position_update',
+                        userId: user?.id ?? null,
+                        context: { winnerPosition: pos },
+                      });
+                    }}
                   />
                 )}
                 <CribbageMobileGameTable
@@ -7266,7 +7417,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
         })()}
 
-        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
+        {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => { 
           const currentPlayer = players.find(p => p.user_id === user.id);
           return (
             <AnteUpDialog
@@ -7285,7 +7436,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               autoAnte={currentPlayer?.auto_ante ?? false}
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
               anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
-              onDecisionMade={() => setShowAnteDialog(false)}
+              onDecisionMade={() => {
+                setShowAnteDialog(false);
+                // ── HANDOFF TRACE #5c: ante modal CONFIRMED (decision made) ──
+                emitCribbageHandoffTrace({
+                  gameId: gameId!,
+                  eventType: 'ante_modal_confirmed',
+                  userId: user?.id ?? null,
+                  context: {
+                    gameStatus: game.status,
+                    dealerGameId: game.current_game_uuid ?? null,
+                    dealerSelectionCardsLen: dealerSelectionCards.length,
+                  },
+                });
+              }}
             />
           );
         })()}
