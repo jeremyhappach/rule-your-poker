@@ -1087,38 +1087,6 @@ export function DiceTableLayout({
   };
 
 
-  useLayoutEffect(() => {
-    if (activeTraceRollKeyRef.current !== rollKey) return;
-    if (frame2LoggedRollKeyRef.current === rollKey) return;
-
-    pushDiceTrace("DiceTableLayout:rollFrame", {
-      rollKey,
-      cacheKey: String(cacheKey ?? ""),
-      extra: {
-        frame: "frame2:first-post-layout-effect-render",
-        ...frameSnapshot,
-      },
-    });
-
-    frame2LoggedRollKeyRef.current = rollKey;
-  }, [frameSnapshot, rollKey, cacheKey]);
-
-  useEffect(() => {
-    if (activeTraceRollKeyRef.current !== rollKey) return;
-    if (frame3LoggedRollKeyRef.current === rollKey) return;
-    if (!isAnimatingFlyIn && !rollKeyProcessed) return;
-
-    pushDiceTrace("DiceTableLayout:rollFrame", {
-      rollKey,
-      cacheKey: String(cacheKey ?? ""),
-      extra: {
-        frame: "frame3:first-stable-animation-render",
-        ...frameSnapshot,
-      },
-    });
-
-    frame3LoggedRollKeyRef.current = rollKey;
-  }, [frameSnapshot, isAnimatingFlyIn, rollKeyProcessed, rollKey, cacheKey]);
 
   if (showRollingMessage) {
     return (
