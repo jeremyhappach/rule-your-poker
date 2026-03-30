@@ -103,9 +103,9 @@ export const HighCardDealerSelection = ({
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
   
   // Timing constants
-  const ANNOUNCE_DURATION = 1500; // Show announcement before first deal
-  const ROUND_PAUSE = 1500; // Pause after dealing before checking winner/tiebreaker
-  const WINNER_ANNOUNCE_DELAY = 2000; // Show winner for 2s before completing
+  const ANNOUNCE_DURATION = 900; // Show announcement before first deal
+  const ROUND_PAUSE = 700; // Pause after dealing before checking winner/tiebreaker
+  const WINNER_ANNOUNCE_DELAY = 2200; // Show winner before completing
   const CRIBBAGE_TIE_REDEAL_DELAY = 500; // Fast redraw cadence for cribbage ties
   
   const clearTimeouts = useCallback(() => {
