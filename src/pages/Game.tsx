@@ -22,7 +22,6 @@ import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 
 
-
 // ── Holm Shadow Sync: snapshot builder (Phase 2 — read-only) ──
 function buildHolmSnapshot(
   gameData: GameData,
