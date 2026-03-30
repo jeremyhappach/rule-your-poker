@@ -286,13 +286,8 @@ export const HighCardDealerSelection = ({
       // Update local UI
       onCardsUpdate(allCards);
       
-      // Sync to DB for other players
-      syncToDatabase({
-        cards: allCards,
-        announcement: announcementToSync,
-        isComplete: false,
-        winnerPosition: null
-      });
+      // NOTE: No intermediate sync here — cards are local-only until winner/tiebreaker decision.
+      // Non-host receives the full round result atomically via the final sync.
 
       const pauseAfterDealMs =
         roundNum === 1
