@@ -310,7 +310,7 @@ export const CribbageMobileGameTable = ({
         externalCardCount: externalDealerSelectionCards?.length ?? 0,
         localCardCount: highCardCards.length,
         initialLoadComplete,
-        renderHandKey: renderHandKey?.slice(0, 12) ?? '',
+        renderHandKey: '(deferred)',
       },
     });
     prevShowHCRef.current = showHighCardSelection;
