@@ -425,6 +425,7 @@ export const MobileGameTable = ({
   dealerSetupMessage,
   reAnteMessage,
   onAutoFoldChange,
+  pendingAutoRollOff = false,
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
