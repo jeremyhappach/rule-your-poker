@@ -103,9 +103,9 @@ export const HighCardDealerSelection = ({
   const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
   
   // Timing constants
-  const ANNOUNCE_DURATION = 1500; // Show announcement before first deal
-  const ROUND_PAUSE = 1500; // Pause after dealing before checking winner/tiebreaker
-  const WINNER_ANNOUNCE_DELAY = 2000; // Show winner for 2s before completing
+  const ANNOUNCE_DURATION = 900; // Show announcement before first deal
+  const ROUND_PAUSE = 700; // Pause after dealing before checking winner/tiebreaker
+  const WINNER_ANNOUNCE_DELAY = 2200; // Show winner before completing
   const CRIBBAGE_TIE_REDEAL_DELAY = 500; // Fast redraw cadence for cribbage ties
   
   const clearTimeouts = useCallback(() => {
@@ -254,13 +254,8 @@ export const HighCardDealerSelection = ({
 
     const announcementToSync = roundAnnouncement ?? lastAnnouncementRef.current ?? null;
 
-    // Sync announcement state to DB
-    syncToDatabase({
-      cards: existingCards,
-      announcement: announcementToSync,
-      isComplete: false,
-      winnerPosition: null
-    });
+    // NOTE: No intermediate sync here — announcement is local-only.
+    // Non-host will receive the full state atomically at winner/tiebreaker decision.
 
     const dealDelayMs =
       roundNum === 1
@@ -291,13 +286,8 @@ export const HighCardDealerSelection = ({
       // Update local UI
       onCardsUpdate(allCards);
       
-      // Sync to DB for other players
-      syncToDatabase({
-        cards: allCards,
-        announcement: announcementToSync,
-        isComplete: false,
-        winnerPosition: null
-      });
+      // NOTE: No intermediate sync here — cards are local-only until winner/tiebreaker decision.
+      // Non-host receives the full round result atomically via the final sync.
 
       const pauseAfterDealMs =
         roundNum === 1
