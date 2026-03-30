@@ -1646,6 +1646,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           // Immediate fetch when ante_decision changes (critical for ante dialog)
           if (payload.new && 'ante_decision' in payload.new) {
+            logDebugEvent({
+              gameId: gameId!,
+              userId: user?.id ?? null,
+              eventType: 'ante_realtime_update',
+              payload: {
+                changedPlayerId: (payload.new as any).id ?? null,
+                newAnteDecision: (payload.new as any).ante_decision ?? null,
+                oldAnteDecision: (payload.old as any)?.ante_decision ?? null,
+                showAnteDialog,
+                gameStatus: game?.status ?? null,
+              },
+            });
             console.log('[REALTIME] 🎲 ANTE DECISION CHANGED - IMMEDIATE FETCH!', payload.new.ante_decision);
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
