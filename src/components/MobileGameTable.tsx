@@ -1940,6 +1940,13 @@ export const MobileGameTable = ({
       return [];
     }
     
+    // HOLM COMPLETED GUARD: Hide active player cards once round is completed
+    // to prevent a brief flash of the old hand before the next round arrives.
+    // Showdown card display uses a separate cache (showdownCardsCache), not this path.
+    if (gameType === 'holm-game' && roundStatus === 'completed') {
+      return [];
+    }
+    
     const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
     const cachedCards = currentPlayerCardsRef.current.cards;
     
@@ -1969,7 +1976,7 @@ export const MobileGameTable = ({
     
     // No new cards but we have cached - keep cached (prevents flicker during brief DB gaps)
     return cachedCards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
