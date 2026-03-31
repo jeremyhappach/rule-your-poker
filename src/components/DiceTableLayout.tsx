@@ -976,12 +976,28 @@ export function DiceTableLayout({
         // Die is held: register if new, clear any pending release
         pendingReleaseCountRef.current.delete(item.originalIndex);
         if (!hasEntry) {
+          // OBSERVER STABILIZATION: Require 3 consecutive held renders before registering.
+          // This absorbs rapid hold→unhold toggles (the roller taps hold then immediately unholds)
+          // that cause dice to teleport scatter→held→scatter on the observer.
+          // Roller gets instant feedback (isObserver=false bypasses this).
+          if (isObserver) {
+            const frames = (pendingHoldFramesRef.current.get(item.originalIndex) ?? 0) + 1;
+            pendingHoldFramesRef.current.set(item.originalIndex, frames);
+            if (frames < 3) {
+              return; // Don't register yet — wait for stabilization
+            }
+          }
+          pendingHoldFramesRef.current.delete(item.originalIndex);
           stableHeldSlotByDieRef.current.set(item.originalIndex, holdOrderCounterRef.current++);
         }
       } else if (hasEntry) {
         // Die is NOT held but HAS a registered entry: release immediately.
         stableHeldSlotByDieRef.current.delete(item.originalIndex);
         pendingReleaseCountRef.current.delete(item.originalIndex);
+        pendingHoldFramesRef.current.delete(item.originalIndex);
+      } else {
+        // Die is not held and has no entry: clear any pending hold
+        pendingHoldFramesRef.current.delete(item.originalIndex);
       }
     });
   }
