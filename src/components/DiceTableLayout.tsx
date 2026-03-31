@@ -308,9 +308,58 @@ export function DiceTableLayout({
   const prevAllHeldRef = useRef(false);
   const completionTransitionTimeoutRef = useRef<number | null>(null);
   
-  // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
-  // This prevents the empty container from rendering during state transitions
-  const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(dice);
+   // ── Observer hold-state presentation debounce ───────────────────────
+   // When isObserver, rapid hold/unhold toggles from the roller arrive as separate
+   // realtime snapshots ~50-100ms apart. Rendering each intermediate state causes dice
+   // to teleport scatter→held→scatter. Instead, debounce: store the latest incoming
+   // dice and apply after 100ms of quiet, so only the final hold state renders.
+   const [debouncedDice, setDebouncedDice] = useState(dice);
+   const observerDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+   useEffect(() => {
+     if (!isObserver) {
+       // Roller: no debounce, immediate
+       setDebouncedDice(dice);
+       return;
+     }
+
+     // Check if only hold states changed (values same) — if values changed it's a
+     // new roll and should apply immediately.
+     const onlyHoldChanged = dice.length === debouncedDice.length &&
+       dice.every((d, i) => d.value === debouncedDice[i]?.value);
+
+     if (!onlyHoldChanged) {
+       // Values changed (new roll) — apply immediately
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
+       setDebouncedDice(dice);
+       return;
+     }
+
+     // Only hold states changed — debounce
+     if (observerDebounceTimerRef.current) {
+       clearTimeout(observerDebounceTimerRef.current);
+     }
+     observerDebounceTimerRef.current = setTimeout(() => {
+       setDebouncedDice(dice);
+       observerDebounceTimerRef.current = null;
+     }, 100);
+
+     return () => {
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
+     };
+   }, [dice, isObserver]);
+   // Alias for downstream: observer uses debounced, roller uses raw
+   const presentationDice = isObserver ? debouncedDice : dice;
+
+   // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
+   // This prevents the empty container from rendering during state transitions
+   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(presentationDice);
 
   // CRITICAL: When the dice "owner" changes (turn changes), clear internal caches immediately.
   // Without this, observer dice can momentarily reuse the previous player's dice as a fallback
@@ -704,7 +753,7 @@ export function DiceTableLayout({
   
   // Determine which dice source to use - prefer current if valid, fallback to cached
   // During stabilization period, ALWAYS use cached dice to prevent flicker
-  const hasValidCurrentDice = dice.length > 0 && dice.some((d) => d.value > 0);
+  const hasValidCurrentDice = presentationDice.length > 0 && presentationDice.some((d) => d.value > 0);
 
   // IMPORTANT: Only fall back to cached dice if we're in the middle of a roll/animation.
   // If rollKey is undefined (no roll has started for the current player yet), showing cached dice
@@ -715,14 +764,14 @@ export function DiceTableLayout({
   const effectiveDice = isStabilizing
     ? lastValidDiceRef.current
     : hasValidCurrentDice
-      ? dice
+      ? presentationDice
       : shouldFallbackToCache
         ? lastValidDiceRef.current
-        : dice;
+        : presentationDice;
 
   // Update cache when we have valid dice (but not during stabilization)
   if (hasValidCurrentDice && !isStabilizing) {
-    lastValidDiceRef.current = dice;
+    lastValidDiceRef.current = presentationDice;
   }
   
   if (useSCCDisplayOrder && sccHand) {
@@ -976,18 +1025,8 @@ export function DiceTableLayout({
         // Die is held: register if new, clear any pending release
         pendingReleaseCountRef.current.delete(item.originalIndex);
         if (!hasEntry) {
-          // OBSERVER STABILIZATION: Require 3 consecutive held renders before registering.
-          // This absorbs rapid hold→unhold toggles (the roller taps hold then immediately unholds)
-          // that cause dice to teleport scatter→held→scatter on the observer.
-          // Roller gets instant feedback (isObserver=false bypasses this).
-          if (isObserver) {
-            const frames = (pendingHoldFramesRef.current.get(item.originalIndex) ?? 0) + 1;
-            pendingHoldFramesRef.current.set(item.originalIndex, frames);
-            if (frames < 3) {
-              return; // Don't register yet — wait for stabilization
-            }
-          }
-          pendingHoldFramesRef.current.delete(item.originalIndex);
+          // Observer hold-state stabilization is handled upstream via the presentation
+          // debounce (debouncedDice), so no per-frame gating is needed here.
           stableHeldSlotByDieRef.current.set(item.originalIndex, holdOrderCounterRef.current++);
         }
       } else if (hasEntry) {
@@ -1216,11 +1255,10 @@ export function DiceTableLayout({
         // Roller: actuallyHeld is authoritative (immediate toggle feedback)
         // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
         // the mask — never the registry. Stale registry entries cause transient held-row widening.
-        // CRITICAL: On observer, do NOT use actuallyHeld as fallback — it bypasses the
-        // stabilization delay and causes rapid-toggle dice to teleport to held row.
-        // Only the registry (which requires 3 stable frames) should control observer held state.
-        const effectivelyHeld = isObserver
-          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : !!registryHeldPos)
+        // Observer hold-state transients are absorbed by the upstream presentation debounce
+        // (debouncedDice), so actuallyHeld is safe for both roller and observer here.
+        const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+          ? preRollHeld
           : actuallyHeld;
 
         let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
