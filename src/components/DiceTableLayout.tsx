@@ -308,9 +308,59 @@ export function DiceTableLayout({
   const prevAllHeldRef = useRef(false);
   const completionTransitionTimeoutRef = useRef<number | null>(null);
   
-  // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
-  // This prevents the empty container from rendering during state transitions
-  const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(dice);
+   // ── Observer hold-state presentation debounce ───────────────────────
+   // When isObserver, rapid hold/unhold toggles from the roller arrive as separate
+   // realtime snapshots ~50-100ms apart. Rendering each intermediate state causes dice
+   // to teleport scatter→held→scatter. Instead, debounce: store the latest incoming
+   // dice and apply after 100ms of quiet, so only the final hold state renders.
+   const [debouncedDice, setDebouncedDice] = useState(dice);
+   const observerDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+   useEffect(() => {
+     if (!isObserver) {
+       // Roller: no debounce, immediate
+       setDebouncedDice(dice);
+       return;
+     }
+
+     // Check if only hold states changed (values same) — if values changed it's a
+     // new roll and should apply immediately.
+     const onlyHoldChanged = dice.length === debouncedDice.length &&
+       dice.every((d, i) => d.value === debouncedDice[i]?.value);
+
+     if (!onlyHoldChanged) {
+       // Values changed (new roll) — apply immediately
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
+       setDebouncedDice(dice);
+       return;
+     }
+
+     // Only hold states changed — debounce
+     if (observerDebounceTimerRef.current) {
+       clearTimeout(observerDebounceTimerRef.current);
+     }
+     observerDebounceTimerRef.current = setTimeout(() => {
+       setDebouncedDice(dice);
+       observerDebounceTimerRef.current = null;
+     }, 100);
+
+     return () => {
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
+     };
+   }, [dice, isObserver]);
+
+   // Use debounced dice for all downstream logic
+   const effectiveDice = isObserver ? debouncedDice : dice;
+
+   // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
+   // This prevents the empty container from rendering during state transitions
+   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(effectiveDice);
 
   // CRITICAL: When the dice "owner" changes (turn changes), clear internal caches immediately.
   // Without this, observer dice can momentarily reuse the previous player's dice as a fallback
