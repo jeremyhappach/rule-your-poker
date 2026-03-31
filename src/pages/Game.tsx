@@ -4439,10 +4439,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         all_decisions_in: gameData.all_decisions_in
       });
       
-      // For Holm, prefer holmView.decisionDeadline (presentation-layer) over raw round deadline
-      const effectiveDeadline = gameData.game_type === 'holm-game' && snapshot?.decisionDeadline
-        ? snapshot.decisionDeadline
-        : currentRound?.decision_deadline ?? null;
+      // For Holm, prefer presentation-layer deadline (monotonic-gated) over raw round deadline
+      const holmPresentationDeadline = gameData.game_type === 'holm-game' ? holmSync.presentationState?.decisionDeadline : null;
+      const effectiveDeadline = holmPresentationDeadline
+        ?? currentRound?.decision_deadline ?? null;
       
       if (effectiveDeadline) {
         // Store the deadline for server-driven timer
