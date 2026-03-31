@@ -1312,8 +1312,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // If dealer game ID changed and we had a previous one, clear all caches
-    if (prevDealerGameId !== null && currentDealerGameId !== null && prevDealerGameId !== currentDealerGameId) {
+    // If dealer game ID changed (including null→non-null first-dealer-game start), clear all caches
+    if (currentDealerGameId !== null && prevDealerGameId !== currentDealerGameId) {
       console.log('[CACHE_GUARD] 🔄 dealer_game_id changed - CLEARING ALL CACHES to prevent cross-game contamination', {
         prevDealerGameId,
         currentDealerGameId,
