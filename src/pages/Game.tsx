@@ -7531,7 +7531,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameType={game.game_type}
               communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? game.buck_position : undefined}
+              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : game.buck_position) : undefined}
               currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
