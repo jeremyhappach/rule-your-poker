@@ -274,6 +274,9 @@ export function DiceTableLayout({
   const stableHeldSlotByDieRef = useRef<Map<number, number>>(new Map());
   const holdOrderCounterRef = useRef(0);
   const pendingReleaseCountRef = useRef<Map<number, number>>(new Map());
+  // Observer stabilization: tracks how many consecutive renders a die has been isHeld=true
+  // before committing it to the held row. Prevents rapid toggle flicker (scatter→held→scatter).
+  const pendingHoldFramesRef = useRef<Map<number, number>>(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   // Frozen presentation snapshot: captured at the moment all dice become held (lock-in / roll 3).
   // Each die's position is frozen exactly where it was, preventing any post-lock movement.
@@ -345,6 +348,7 @@ export function DiceTableLayout({
     stableHeldSlotByDieRef.current = new Map();
     holdOrderCounterRef.current = 0;
     pendingReleaseCountRef.current = new Map();
+    pendingHoldFramesRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
     lastScatterTransformByDieRef.current = new Map();
     frozenPresentationRef.current = null;
@@ -972,12 +976,28 @@ export function DiceTableLayout({
         // Die is held: register if new, clear any pending release
         pendingReleaseCountRef.current.delete(item.originalIndex);
         if (!hasEntry) {
+          // OBSERVER STABILIZATION: Require 3 consecutive held renders before registering.
+          // This absorbs rapid hold→unhold toggles (the roller taps hold then immediately unholds)
+          // that cause dice to teleport scatter→held→scatter on the observer.
+          // Roller gets instant feedback (isObserver=false bypasses this).
+          if (isObserver) {
+            const frames = (pendingHoldFramesRef.current.get(item.originalIndex) ?? 0) + 1;
+            pendingHoldFramesRef.current.set(item.originalIndex, frames);
+            if (frames < 3) {
+              return; // Don't register yet — wait for stabilization
+            }
+          }
+          pendingHoldFramesRef.current.delete(item.originalIndex);
           stableHeldSlotByDieRef.current.set(item.originalIndex, holdOrderCounterRef.current++);
         }
       } else if (hasEntry) {
         // Die is NOT held but HAS a registered entry: release immediately.
         stableHeldSlotByDieRef.current.delete(item.originalIndex);
         pendingReleaseCountRef.current.delete(item.originalIndex);
+        pendingHoldFramesRef.current.delete(item.originalIndex);
+      } else {
+        // Die is not held and has no entry: clear any pending hold
+        pendingHoldFramesRef.current.delete(item.originalIndex);
       }
     });
   }
@@ -1196,8 +1216,11 @@ export function DiceTableLayout({
         // Roller: actuallyHeld is authoritative (immediate toggle feedback)
         // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
         // the mask — never the registry. Stale registry entries cause transient held-row widening.
+        // CRITICAL: On observer, do NOT use actuallyHeld as fallback — it bypasses the
+        // stabilization delay and causes rapid-toggle dice to teleport to held row.
+        // Only the registry (which requires 3 stable frames) should control observer held state.
         const effectivelyHeld = isObserver
-          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : (!!registryHeldPos || actuallyHeld))
+          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : !!registryHeldPos)
           : actuallyHeld;
 
         let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
