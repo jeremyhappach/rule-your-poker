@@ -2025,26 +2025,58 @@ export const MobileGameTable = ({
   }, [currentPlayerCards.length, activeTab]);
   
   // Detect when new chat messages arrive and trigger flash (only when not on chat tab)
+  // Uses a persistent watermark (lastSeenChatMessageId) that survives remounts.
+  // Skips the first hydration so historical messages from DB don't trigger indicators.
   useEffect(() => {
-    const currentMessageCount = allMessages.length;
-    
-    if (currentMessageCount > prevMessageCountRef.current && activeTab !== 'chat') {
+    if (allMessages.length === 0) return;
+
+    // Get the latest non-optimistic message (real messages have UUID ids, optimistic start with "optimistic-")
+    const realMessages = allMessages.filter(m => !m.id.startsWith('optimistic-'));
+    if (realMessages.length === 0) return;
+
+    const latestMessage = realMessages[realMessages.length - 1];
+
+    // First hydration: seed the watermark without triggering indicators
+    if (!chatHydratedRef.current) {
+      chatHydratedRef.current = true;
+      // Only seed if no watermark exists yet (first mount of the session)
+      if (!lastSeenChatMessageId) {
+        setLastSeenChatMessageId(latestMessage.id);
+      } else {
+        // Watermark exists from a previous mount - check if there are genuinely
+        // unread messages (e.g. messages arrived while component was unmounted)
+        const watermarkIdx = realMessages.findIndex(m => m.id === lastSeenChatMessageId);
+        const hasNewMessages = watermarkIdx === -1
+          ? false  // watermark message not in current list = stale session, don't flag
+          : watermarkIdx < realMessages.length - 1;
+        if (hasNewMessages && activeTab !== 'chat') {
+          setHasUnreadMessages(true);
+          // Don't flash green for messages that arrived while unmounted - only RED
+        }
+      }
+      return;
+    }
+
+    // Post-hydration: check if latest message is newer than watermark
+    if (latestMessage.id !== lastSeenChatMessageId && activeTab !== 'chat') {
       setChatTabFlashing(true);
       setHasUnreadMessages(true);
       const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
-      prevMessageCountRef.current = currentMessageCount;
       return () => clearTimeout(timeout);
     }
-    
-    prevMessageCountRef.current = currentMessageCount;
   }, [allMessages.length, activeTab]);
   
-  // Clear unread messages indicator when user switches to chat tab
+  // Clear unread messages indicator and update watermark when user switches to chat tab
   useEffect(() => {
     if (activeTab === 'chat') {
       setHasUnreadMessages(false);
+      // Update watermark to latest real message
+      const realMessages = allMessages.filter(m => !m.id.startsWith('optimistic-'));
+      if (realMessages.length > 0) {
+        setLastSeenChatMessageId(realMessages[realMessages.length - 1].id);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, allMessages.length]);
 
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
