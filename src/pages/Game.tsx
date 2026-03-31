@@ -647,6 +647,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   // LIFTED unread chat messages state - persists across MobileGameTable remounts
   const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
+  // LIFTED chat watermark - last seen non-dealer message ID, survives MobileGameTable remounts
+  const [lastSeenChatMessageId, setLastSeenChatMessageId] = useState<string | null>(null);
   // LIFTED chat input state - persists across MobileGameTable remounts
   const [mobileChatInput, setMobileChatInput] = useState('');
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
@@ -6945,6 +6947,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onActiveTabChange={setMobileActiveTab}
                     hasUnreadMessages={mobileHasUnreadMessages}
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                    lastSeenChatMessageId={lastSeenChatMessageId}
+                    onLastSeenChatMessageIdChange={setLastSeenChatMessageId}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                     isWaitingPhase={true}
@@ -7007,6 +7011,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onActiveTabChange={setMobileActiveTab}
                     hasUnreadMessages={mobileHasUnreadMessages}
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                    lastSeenChatMessageId={lastSeenChatMessageId}
+                    onLastSeenChatMessageIdChange={setLastSeenChatMessageId}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                     dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
@@ -7187,6 +7193,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onActiveTabChange={setMobileActiveTab}
                     hasUnreadMessages={mobileHasUnreadMessages}
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                    lastSeenChatMessageId={lastSeenChatMessageId}
+                    onLastSeenChatMessageIdChange={setLastSeenChatMessageId}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                   />
@@ -7436,6 +7444,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onActiveTabChange={setMobileActiveTab}
                 hasUnreadMessages={mobileHasUnreadMessages}
                 onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                lastSeenChatMessageId={lastSeenChatMessageId}
+                onLastSeenChatMessageIdChange={setLastSeenChatMessageId}
                 chatInputValue={mobileChatInput}
                 onChatInputChange={setMobileChatInput}
                 dealerSetupMessage={undefined}
@@ -7627,6 +7637,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onActiveTabChange={setMobileActiveTab}
               hasUnreadMessages={mobileHasUnreadMessages}
               onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+              lastSeenChatMessageId={lastSeenChatMessageId}
+              onLastSeenChatMessageIdChange={setLastSeenChatMessageId}
               chatInputValue={mobileChatInput}
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
