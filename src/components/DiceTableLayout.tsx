@@ -274,6 +274,9 @@ export function DiceTableLayout({
   const stableHeldSlotByDieRef = useRef<Map<number, number>>(new Map());
   const holdOrderCounterRef = useRef(0);
   const pendingReleaseCountRef = useRef<Map<number, number>>(new Map());
+  // Observer stabilization: tracks how many consecutive renders a die has been isHeld=true
+  // before committing it to the held row. Prevents rapid toggle flicker (scatter→held→scatter).
+  const pendingHoldFramesRef = useRef<Map<number, number>>(new Map());
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   // Frozen presentation snapshot: captured at the moment all dice become held (lock-in / roll 3).
   // Each die's position is frozen exactly where it was, preventing any post-lock movement.
