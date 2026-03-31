@@ -295,6 +295,9 @@ interface MobileGameTableProps {
   // Unread messages state (lifted to parent to persist across remounts)
   hasUnreadMessages?: boolean;
   onHasUnreadMessagesChange?: (hasUnread: boolean) => void;
+  // Chat watermark (lifted to parent to persist across remounts)
+  lastSeenChatMessageId?: string | null;
+  onLastSeenChatMessageIdChange?: (id: string | null) => void;
   // Chat input state (lifted to parent to persist across remounts)
   chatInputValue?: string;
   onChatInputChange?: (value: string) => void;

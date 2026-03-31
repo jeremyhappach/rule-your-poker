@@ -647,6 +647,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [mobileActiveTab, setMobileActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   // LIFTED unread chat messages state - persists across MobileGameTable remounts
   const [mobileHasUnreadMessages, setMobileHasUnreadMessages] = useState(false);
+  // LIFTED chat watermark - last seen non-dealer message ID, survives MobileGameTable remounts
+  const [lastSeenChatMessageId, setLastSeenChatMessageId] = useState<string | null>(null);
   // LIFTED chat input state - persists across MobileGameTable remounts
   const [mobileChatInput, setMobileChatInput] = useState('');
   // LIFTED showdown card cache - persists across MobileGameTable remounts (in_progress -> game_over transition)
