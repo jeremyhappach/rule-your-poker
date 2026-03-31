@@ -7521,7 +7521,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
               lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
-              dealerPosition={game.dealer_position}
+              dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : game.dealer_position}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
