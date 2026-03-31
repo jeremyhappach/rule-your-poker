@@ -1216,8 +1216,11 @@ export function DiceTableLayout({
         // Roller: actuallyHeld is authoritative (immediate toggle feedback)
         // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
         // the mask — never the registry. Stale registry entries cause transient held-row widening.
+        // CRITICAL: On observer, do NOT use actuallyHeld as fallback — it bypasses the
+        // stabilization delay and causes rapid-toggle dice to teleport to held row.
+        // Only the registry (which requires 3 stable frames) should control observer held state.
         const effectivelyHeld = isObserver
-          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : (!!registryHeldPos || actuallyHeld))
+          ? (usePreRollLayout && Array.isArray(heldMaskBeforeComplete) ? preRollHeld : !!registryHeldPos)
           : actuallyHeld;
 
         let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
