@@ -7514,7 +7514,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId={gameId}
               players={holmPlayers}
               currentUserId={user?.id}
-              pot={potForDisplay}
+              pot={game.game_type === 'holm-game' && holmView ? holmView.pot : potForDisplay}
               currentRound={isInProgress ? (game.current_round ?? 0) : 0}
               allDecisionsIn={isInProgress ? (game.all_decisions_in || false) : false}
               playerCards={isInProgress ? playerCards : []}
