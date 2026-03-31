@@ -348,6 +348,7 @@ export function DiceTableLayout({
     stableHeldSlotByDieRef.current = new Map();
     holdOrderCounterRef.current = 0;
     pendingReleaseCountRef.current = new Map();
+    pendingHoldFramesRef.current = new Map();
     lastHeldTransformByDieRef.current = new Map();
     lastScatterTransformByDieRef.current = new Map();
     frozenPresentationRef.current = null;
