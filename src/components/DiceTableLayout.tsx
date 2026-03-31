@@ -753,7 +753,7 @@ export function DiceTableLayout({
   
   // Determine which dice source to use - prefer current if valid, fallback to cached
   // During stabilization period, ALWAYS use cached dice to prevent flicker
-  const hasValidCurrentDice = dice.length > 0 && dice.some((d) => d.value > 0);
+  const hasValidCurrentDice = presentationDice.length > 0 && presentationDice.some((d) => d.value > 0);
 
   // IMPORTANT: Only fall back to cached dice if we're in the middle of a roll/animation.
   // If rollKey is undefined (no roll has started for the current player yet), showing cached dice
@@ -764,14 +764,14 @@ export function DiceTableLayout({
   const effectiveDice = isStabilizing
     ? lastValidDiceRef.current
     : hasValidCurrentDice
-      ? dice
+      ? presentationDice
       : shouldFallbackToCache
         ? lastValidDiceRef.current
-        : dice;
+        : presentationDice;
 
   // Update cache when we have valid dice (but not during stabilization)
   if (hasValidCurrentDice && !isStabilizing) {
-    lastValidDiceRef.current = dice;
+    lastValidDiceRef.current = presentationDice;
   }
   
   if (useSCCDisplayOrder && sccHand) {
