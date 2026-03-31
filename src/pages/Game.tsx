@@ -604,7 +604,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const poll357IntervalRef = useRef<number | null>(null);
   const poll357StopTimerRef = useRef<number | null>(null);
 
-  // ── Holm Shadow Sync (Phase 2 — read-only, no render changes) ──
+  // ── Holm Sync (Phase 3 Step 1 — turn spotlight + round status from presentationState) ──
   const holmSyncLastRoundIdRef = useRef<string | null>(null);
   const holmSync = useGameStateSync<HolmAuthoritativeSnapshot | null>(null, {
     getProgress: (s) => s ? getHolmProgress(s) : [0, 0, 0, 0],
@@ -616,6 +616,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       revealed: s.communityCardsRevealed,
     } : null,
   });
+  // Convenience alias: null when not a Holm game or no round active yet
+  const holmView = holmSync.presentationState;
 
 
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
