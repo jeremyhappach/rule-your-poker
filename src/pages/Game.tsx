@@ -7506,7 +7506,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
               chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
-              roundStatus={isInProgress ? currentRound?.status : undefined}
+              roundStatus={isInProgress ? (holmView?.roundStatus ?? currentRound?.status) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
