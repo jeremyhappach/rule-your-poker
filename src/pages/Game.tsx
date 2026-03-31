@@ -3101,7 +3101,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     maxRevealedRef.current = currentRound?.community_cards_revealed ?? 0;
   } else if (currentRound?.community_cards_revealed !== undefined) {
     // Same hand, only increase max (never decrease)
-    maxRevealedRef.current = Math.max(maxRevealedRef.current, currentRound.community_cards_revealed);
+    // For Holm: use presentation state as input (already monotonic via sync framework)
+    const revealedInput = (game?.game_type === 'holm-game' && holmView)
+      ? holmView.communityCardsRevealed
+      : currentRound.community_cards_revealed;
+    maxRevealedRef.current = Math.max(maxRevealedRef.current, revealedInput);
   }
   
   // Effective revealed count - use max during showdowns/game_over/completed rounds/awaiting next to prevent re-hiding
@@ -3113,9 +3117,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.awaiting_next_round
   );
   
+  // For Holm: base revealed count comes from presentation state when available
+  const baseRevealedCount = (game?.game_type === 'holm-game' && holmView)
+    ? holmView.communityCardsRevealed
+    : (currentRound?.community_cards_revealed ?? 0);
+  
   const effectiveCommunityCardsRevealed = shouldUseMax
     ? maxRevealedRef.current
-    : (currentRound?.community_cards_revealed ?? 0);
+    : baseRevealedCount;
     
   // Only log when community cards might have an issue (no cards during in_progress)
   if (game?.game_type === 'holm-game' && game?.status === 'in_progress' && (!communityCards || communityCards.length === 0)) {
@@ -7123,7 +7132,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
-                    communityCards={currentRound?.community_cards as CardType[] | undefined}
+                    communityCards={game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)}
                     communityCardsRevealed={effectiveCommunityCardsRevealed}
                     chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
                     chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
@@ -7515,7 +7524,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pendingSessionEnd={game.pending_session_end || false}
               awaitingNextRound={isInProgress ? (game.awaiting_next_round || false) : false}
               gameType={game.game_type}
-              communityCards={isInProgress ? (currentRound?.community_cards as CardType[] | undefined) : undefined}
+              communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
               buckPosition={isInProgress ? game.buck_position : undefined}
               currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
