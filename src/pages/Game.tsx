@@ -7498,7 +7498,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               gameId={gameId}
-              players={players}
+              players={holmPlayers}
               currentUserId={user?.id}
               pot={potForDisplay}
               currentRound={isInProgress ? (game.current_round ?? 0) : 0}
