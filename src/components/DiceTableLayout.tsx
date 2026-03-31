@@ -357,6 +357,12 @@ export function DiceTableLayout({
    // Alias for downstream: observer uses debounced, roller uses raw
    const presentationDice = isObserver ? debouncedDice : dice;
 
+   // CRITICAL: For observers, ALL visual/layout/count/registry derivations must flow from
+   // presentationDice (the debounced source). Using raw `dice` anywhere in observer render
+   // paths causes mixed-source frames where counts disagree with layout positions.
+   // For the roller, visualDice === dice (no debounce).
+   const visualDice = presentationDice;
+
    // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
    // This prevents the empty container from rendering during state transitions
    const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(presentationDice);
@@ -387,7 +393,7 @@ export function DiceTableLayout({
     // IMPORTANT: On owner change, props can still briefly contain the *previous* player's dice.
     // If we seed lastValidDiceRef with that, the next roll may "land" using stale dice and then snap.
     // Instead, reset to a blank baseline; we'll repopulate once we see real (value>0) dice.
-    lastValidDiceRef.current = Array.from({ length: dice.length || 5 }, () => ({
+    lastValidDiceRef.current = Array.from({ length: visualDice.length || 5 }, () => ({
       value: 0,
       isHeld: false,
     })) as any;
@@ -422,7 +428,7 @@ export function DiceTableLayout({
     setIsStabilizing(false);
     prevAllHeldRef.current = false;
     prevIsCompleteRef.current = false;
-  }, [cacheKey, dice]);
+  }, [cacheKey, visualDice]);
 
   // Stabilization period after roll 3 completes - hold the current visual state
   // to prevent flickering during the isComplete transition
@@ -481,8 +487,8 @@ export function DiceTableLayout({
           container_h: containerRect.height,
           extra: {
             showUnheldDice,
-            allHeldNow: dice.every(d => d.isHeld),
-            heldCount: dice.filter(d => d.isHeld).length,
+            allHeldNow: visualDice.every(d => d.isHeld),
+            heldCount: visualDice.filter(d => d.isHeld).length,
           },
         });
       });
@@ -493,7 +499,7 @@ export function DiceTableLayout({
     }, 50);
     
     return () => window.clearInterval(intervalId);
-  }, [cacheKey, rollKey, isObserver, isRolling, isAnimatingFlyIn, showUnheldDice, dice]);
+  }, [cacheKey, rollKey, isObserver, isRolling, isAnimatingFlyIn, showUnheldDice, visualDice]);
   
   // Schedules a timeout
   const scheduleTimeout = useCallback(
@@ -539,7 +545,7 @@ export function DiceTableLayout({
     const heldMaskForPreserve = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
     const preservedRegistry = new Map<number, number>();
     stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
-      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!dice[dieIdx]?.isHeld;
+      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!visualDice[dieIdx]?.isHeld;
       if (wasHeldBeforeRoll) {
         preservedRegistry.set(dieIdx, holdOrder);
       }
@@ -563,13 +569,13 @@ export function DiceTableLayout({
     const orderedIndices =
       useSCCDisplayOrder && sccHand
         ? getSCCDisplayOrder(sccHand).map(({ originalIndex }) => originalIndex)
-        : dice.map((_, i) => i);
+        : visualDice.map((_, i) => i);
 
     // Find which dice were unheld at the START of the roll.
     // IMPORTANT: do NOT require die.value !== 0 here.
     // Observers can receive rollKey before values propagate; we still want to start fly-in on time.
     const unheldIndices = orderedIndices.filter((i) => {
-      const d = dice[i];
+      const d = visualDice[i];
       if (!d) return false;
 
       // CRITICAL FIX for Roll 3 animation:
@@ -587,10 +593,10 @@ export function DiceTableLayout({
     // Track how many were held at the START of this roll (for Y offset calculation)
     const heldAtRollStart = heldMask
       ? orderedIndices.filter((i) => {
-          const d = dice[i];
+          const d = visualDice[i];
           return !!(heldMask[i] || d?.isHeld);
         }).length
-      : dice.filter((d) => d.isHeld).length;
+      : visualDice.filter((d) => d.isHeld).length;
     setAnimationHeldCount(heldAtRollStart);
 
     // Freeze scatter positions for this rollKey (prevents reposition when holds change)
@@ -670,7 +676,7 @@ export function DiceTableLayout({
   }, [
     rollKey,
     animationOrigin,
-    dice,
+    visualDice,
     heldMaskBeforeComplete,
     useSCCDisplayOrder,
     sccHand,
@@ -681,7 +687,7 @@ export function DiceTableLayout({
   ]);
 
   // Handle "all held" transition: when turn completes, hide formerly-unheld dice quickly
-  const allHeldNow = dice.length > 0 && dice.every(d => d.isHeld);
+  const allHeldNow = visualDice.length > 0 && visualDice.every(d => d.isHeld);
   useLayoutEffect(() => {
     if (allHeldNow && !prevAllHeldRef.current && !isAnimatingFlyIn) {
       setIsInCompletionTransition(true);
@@ -900,7 +906,7 @@ export function DiceTableLayout({
   // CRITICAL: Also use pre-roll layout on the FIRST render after rollKey changes (!rollKeyProcessed).
   // The useLayoutEffect hasn't fired yet to start the fly-in, but game logic already marked all dice
   // isHeld=true. Without this guard, layout briefly uses 5 held dice → left-justify flash for one frame.
-  const usePreRollLayout = (isAnimatingFlyIn || !rollKeyProcessed) && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= dice.length;
+  const usePreRollLayout = (isAnimatingFlyIn || !rollKeyProcessed) && Array.isArray(heldMaskBeforeComplete) && heldMaskBeforeComplete.length >= visualDice.length;
   // Keep unheld dice lower than the held row to avoid overlap
   const unheldYOffset = 50;
   
@@ -971,7 +977,7 @@ export function DiceTableLayout({
     const heldMaskForPreserve = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
     const preservedRegistry = new Map<number, number>();
     stableHeldSlotByDieRef.current.forEach((holdOrder, dieIdx) => {
-      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!dice[dieIdx]?.isHeld;
+      const wasHeldBeforeRoll = heldMaskForPreserve ? !!heldMaskForPreserve[dieIdx] : !!visualDice[dieIdx]?.isHeld;
       if (wasHeldBeforeRoll) {
         preservedRegistry.set(dieIdx, holdOrder);
       }
@@ -1217,7 +1223,7 @@ export function DiceTableLayout({
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
           runKey={flyInRunId}
-          dice={dice}
+          dice={visualDice}
           animatingIndices={animatingDiceIndices}
           targetPositions={animatingDiceIndices.map((_, displayIdx) =>
             getUnheldPosition(displayIdx, animatingDiceIndices.length),
