@@ -1940,6 +1940,13 @@ export const MobileGameTable = ({
       return [];
     }
     
+    // HOLM COMPLETED GUARD: Hide active player cards once round is completed
+    // to prevent a brief flash of the old hand before the next round arrives.
+    // Showdown card display uses a separate cache (showdownCardsCache), not this path.
+    if (gameType === 'holm-game' && roundStatus === 'completed') {
+      return [];
+    }
+    
     const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
     const cachedCards = currentPlayerCardsRef.current.cards;
     
