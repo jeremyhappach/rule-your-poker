@@ -7524,7 +7524,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pendingSessionEnd={game.pending_session_end || false}
               awaitingNextRound={isInProgress ? (game.awaiting_next_round || false) : false}
               gameType={game.game_type}
-              communityCards={isInProgress ? (currentRound?.community_cards as CardType[] | undefined) : undefined}
+              communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
               buckPosition={isInProgress ? game.buck_position : undefined}
               currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
