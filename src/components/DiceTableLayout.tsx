@@ -359,7 +359,7 @@ export function DiceTableLayout({
 
    // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
    // This prevents the empty container from rendering during state transitions
-   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(effectiveDice);
+   const lastValidDiceRef = useRef<(HorsesDieType | SCCDieType)[]>(presentationDice);
 
   // CRITICAL: When the dice "owner" changes (turn changes), clear internal caches immediately.
   // Without this, observer dice can momentarily reuse the previous player's dice as a fallback
