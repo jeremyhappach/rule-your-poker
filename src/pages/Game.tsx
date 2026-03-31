@@ -7193,6 +7193,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onActiveTabChange={setMobileActiveTab}
                     hasUnreadMessages={mobileHasUnreadMessages}
                     onHasUnreadMessagesChange={setMobileHasUnreadMessages}
+                    lastSeenChatMessageId={lastSeenChatMessageId}
+                    onLastSeenChatMessageIdChange={setLastSeenChatMessageId}
                     chatInputValue={mobileChatInput}
                     onChatInputChange={setMobileChatInput}
                   />
