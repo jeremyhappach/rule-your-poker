@@ -423,6 +423,8 @@ export const MobileGameTable = ({
   onActiveTabChange,
   hasUnreadMessages: externalHasUnreadMessages,
   onHasUnreadMessagesChange,
+  lastSeenChatMessageId: externalLastSeenChatMessageId,
+  onLastSeenChatMessageIdChange,
   chatInputValue: externalChatInputValue,
   onChatInputChange: externalOnChatInputChange,
   dealerSetupMessage,
