@@ -4439,9 +4439,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         all_decisions_in: gameData.all_decisions_in
       });
       
-      if (currentRound?.decision_deadline) {
+      // For Holm, prefer presentation-layer deadline (monotonic-gated) over raw round deadline
+      const holmPresentationDeadline = gameData.game_type === 'holm-game' ? holmSync.presentationState?.decisionDeadline : null;
+      const effectiveDeadline = holmPresentationDeadline
+        ?? currentRound?.decision_deadline ?? null;
+      
+      if (effectiveDeadline) {
         // Store the deadline for server-driven timer
-        setDecisionDeadline(currentRound.decision_deadline);
+        setDecisionDeadline(effectiveDeadline);
         
         // Holm game: turn-based, needs current_turn_position
         if (gameData.game_type === 'holm-game' && currentRound.current_turn_position) {
@@ -7509,14 +7514,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId={gameId}
               players={holmPlayers}
               currentUserId={user?.id}
-              pot={potForDisplay}
+              pot={game.game_type === 'holm-game' && holmView ? holmView.pot : potForDisplay}
               currentRound={isInProgress ? (game.current_round ?? 0) : 0}
               allDecisionsIn={isInProgress ? (game.all_decisions_in || false) : false}
               playerCards={isInProgress ? playerCards : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
               lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
-              dealerPosition={game.dealer_position}
+              dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : game.dealer_position}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
@@ -7526,7 +7531,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameType={game.game_type}
               communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? game.buck_position : undefined}
+              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : game.buck_position) : undefined}
               currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
