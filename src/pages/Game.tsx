@@ -620,6 +620,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const holmView = holmSync.presentationState;
 
 
+  // Step 2: Overlay presentation-state decisions onto players array for Holm render paths.
+  // This ensures decision badges (stay/fold, locked) read from presentationState exclusively.
+  // Action handlers continue to use raw `players` for mutation correctness.
+  const holmPlayers = useMemo(() => {
+    if (!holmView || game?.game_type !== 'holm-game') return players;
+    return players.map(p => {
+      const snap = holmView.players.find(sp => sp.position === p.position);
+      if (!snap) return p;
+      return {
+        ...p,
+        current_decision: snap.decision,
+        decision_locked: snap.decisionLocked,
+      };
+    });
+  }, [players, holmView, game?.game_type]);
+
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
   const [winner357ShowCards, setWinner357ShowCards] = useState(false);
   
