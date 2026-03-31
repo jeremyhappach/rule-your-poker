@@ -1724,6 +1724,21 @@ serve(async (req) => {
             
             // ============= HORSES DICE GAME ROUND TRANSITION =============
             else if (game.game_type === 'horses') {
+              // ATOMIC CLAIM: Prevent double-ante from client + cron race
+              const { data: claimResult } = await supabase
+                .from('games')
+                .update({ awaiting_next_round: false })
+                .eq('id', game.id)
+                .eq('awaiting_next_round', true)
+                .select('id');
+              
+              if (!claimResult || claimResult.length === 0) {
+                console.log('[CRON-ENFORCE] Horses rollover already claimed by client, skipping:', game.id);
+                actionsTaken.push('Horses rollover: already claimed, skipped');
+                results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'no_action' });
+                continue;
+              }
+              
               const { data: players } = await supabase
                 .from('players')
                 .select('*')
@@ -1845,6 +1860,21 @@ serve(async (req) => {
             
             // ============= SHIP-CAPTAIN-CREW DICE GAME ROUND TRANSITION =============
             else if (game.game_type === 'ship-captain-crew') {
+              // ATOMIC CLAIM: Prevent double-ante from client + cron race
+              const { data: claimResult } = await supabase
+                .from('games')
+                .update({ awaiting_next_round: false })
+                .eq('id', game.id)
+                .eq('awaiting_next_round', true)
+                .select('id');
+              
+              if (!claimResult || claimResult.length === 0) {
+                console.log('[CRON-ENFORCE] SCC rollover already claimed by client, skipping:', game.id);
+                actionsTaken.push('SCC rollover: already claimed, skipped');
+                results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') || 'no_action' });
+                continue;
+              }
+              
               const { data: players } = await supabase
                 .from('players')
                 .select('*')
