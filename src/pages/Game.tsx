@@ -604,7 +604,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const poll357IntervalRef = useRef<number | null>(null);
   const poll357StopTimerRef = useRef<number | null>(null);
 
-  // ── Holm Shadow Sync (Phase 2 — read-only, no render changes) ──
+  // ── Holm Sync (Phase 3 Step 1 — turn spotlight + round status from presentationState) ──
   const holmSyncLastRoundIdRef = useRef<string | null>(null);
   const holmSync = useGameStateSync<HolmAuthoritativeSnapshot | null>(null, {
     getProgress: (s) => s ? getHolmProgress(s) : [0, 0, 0, 0],
@@ -616,6 +616,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       revealed: s.communityCardsRevealed,
     } : null,
   });
+  // Convenience alias: null when not a Holm game or no round active yet
+  const holmView = holmSync.presentationState;
 
 
   // 3-5-7 winner "Show Cards" state - broadcast via realtime to all players
@@ -7112,7 +7114,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chuckyActive={currentRound?.chucky_active}
                     gameType={game.game_type}
                     gameStatus={(is357WinAnimationActive && game.game_type !== 'holm-game') ? 'game_over' : game.status}
-                    roundStatus={currentRound?.status}
+                    roundStatus={holmView?.roundStatus ?? currentRound?.status}
                     isGameOver={game.status === 'game_over' || game.status === 'session_ended' || !!game.game_over_at}
                     isDealer={isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false}
                     onNextGame={handleDealerConfirmGameOver}
@@ -7372,7 +7374,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pendingSessionEnd={game.pending_session_end || false}
                 awaitingNextRound={game.awaiting_next_round || false}
                 gameType={game.game_type}
-                roundStatus={currentRound?.status}
+                roundStatus={holmView?.roundStatus ?? currentRound?.status}
                 isPaused={game.is_paused || false}
                 anteAmount={game.ante_amount || 1}
                 pussyTaxValue={game.pussy_tax_value || 1}
@@ -7500,11 +7502,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               communityCards={isInProgress ? (currentRound?.community_cards as CardType[] | undefined) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
               buckPosition={isInProgress ? game.buck_position : undefined}
-              currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? currentRound?.current_turn_position : null}
+              currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
               chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
-              roundStatus={isInProgress ? currentRound?.status : undefined}
+              roundStatus={isInProgress ? (holmView?.roundStatus ?? currentRound?.status) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
