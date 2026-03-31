@@ -1553,6 +1553,17 @@ export const MobileGameTable = ({
     }
   }, [isSoloVsChuckyRaw, holmWinPotTriggerId]);
 
+  // Correction effect: if the latch fired due to a transient stayedPlayersCount===1
+  // but the count later proves it's a multi-player showdown, unlock so cards stay in
+  // the active player box instead of the top tabled area.
+  useEffect(() => {
+    if (stayedPlayersCount > 1 && soloVsChuckyTableLocked && !holmWinPotTriggerId) {
+      setSoloVsChuckyTableLocked(false);
+      setSoloVsChuckyPlayerIdLocked(null);
+      soloVsChuckyAnimatedRef.current = false;
+    }
+  }, [stayedPlayersCount, soloVsChuckyTableLocked, holmWinPotTriggerId]);
+
   // Reset ALL solo-vs-Chucky locks on hand transition to prevent stale cross-hand tabling.
   // CRITICAL: soloVsChuckyTableLocked MUST be reset here too — if only the player ID is cleared
   // but the table lock persists, the capture effect (below) will fire with stale lastRoundResult
