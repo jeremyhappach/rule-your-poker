@@ -489,7 +489,12 @@ export const MobileGameTable = ({
   const [internalHasUnreadMessages, setInternalHasUnreadMessages] = useState(false);
   const hasUnreadMessages = externalHasUnreadMessages ?? internalHasUnreadMessages;
   const setHasUnreadMessages = onHasUnreadMessagesChange ?? setInternalHasUnreadMessages;
-  const prevMessageCountRef = useRef<number>(allMessages.length);
+  // Chat watermark - use external (lifted) if provided, otherwise internal
+  const [internalLastSeenId, setInternalLastSeenId] = useState<string | null>(null);
+  const lastSeenChatMessageId = externalLastSeenChatMessageId ?? internalLastSeenId;
+  const setLastSeenChatMessageId = onLastSeenChatMessageIdChange ?? setInternalLastSeenId;
+  // Hydration guard: skip indicator logic until initial message load is complete
+  const chatHydratedRef = useRef(false);
   
   // Swipe gesture handlers for tab switching
   const swipeHandlers = useSwipeGesture(
