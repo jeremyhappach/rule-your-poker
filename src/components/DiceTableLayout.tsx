@@ -354,9 +354,8 @@ export function DiceTableLayout({
        }
      };
    }, [dice, isObserver]);
-
-   // Use debounced dice for all downstream logic
-   const effectiveDice = isObserver ? debouncedDice : dice;
+   // Alias for downstream: observer uses debounced, roller uses raw
+   const presentationDice = isObserver ? debouncedDice : dice;
 
    // CRITICAL: Cache the last valid dice state to prevent flicker when dice briefly become invalid
    // This prevents the empty container from rendering during state transitions
