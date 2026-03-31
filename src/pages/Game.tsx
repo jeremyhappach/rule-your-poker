@@ -7132,7 +7132,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
-                    communityCards={currentRound?.community_cards as CardType[] | undefined}
+                    communityCards={game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)}
                     communityCardsRevealed={effectiveCommunityCardsRevealed}
                     chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
                     chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
