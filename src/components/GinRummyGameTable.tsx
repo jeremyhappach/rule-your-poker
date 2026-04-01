@@ -1324,6 +1324,11 @@ export const GinRummyGameTable = ({
             onClick={() => {
               setActiveTab('chat');
               setHasUnreadMessages(false);
+              const eligible = allMessages.filter(m => getChatIndicatorEligibility(m).eligible);
+              if (eligible.length > 0) {
+                lastReadChatMessageIdRef.current = eligible[eligible.length - 1].id;
+              }
+              console.log('[gin-chat-indicator] chat opened, unread cleared');
             }}
             style={{ flex: '0 0 35%' }}
             className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
