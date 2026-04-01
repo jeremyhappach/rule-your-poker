@@ -213,9 +213,13 @@ export const CribbageMobileGameTable = ({
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
   // Chat indicator: hydration guard + replay guard
   const chatHydratedRef = useRef(false);
+  const hasObservedInitialChatSnapshotRef = useRef(false);
   const lastProcessedRealtimeMessageIdRef = useRef<string | null>(null);
   const lastSeenChatMessageIdRef = useRef<string | null>(null);
   const lastReadChatMessageIdRef = useRef<string | null>(null);
+  const greenClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showGreenChatIndicator = chatTabFlashing;
+  const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
 
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
@@ -236,6 +240,108 @@ export const CribbageMobileGameTable = ({
 
     return { eligible: reason === 'eligible-other-human', reason };
   }, [currentUserId, players]);
+
+  const eligibleIndicatorMessages = useMemo(
+    () => allMessages.filter((message) => getChatIndicatorEligibility(message).eligible),
+    [allMessages, getChatIndicatorEligibility]
+  );
+
+  const getMessagesAfterWatermark = useCallback(
+    (
+      messages: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }[],
+      watermarkId: string | null,
+      includeWatermark = false
+    ) => {
+      if (!watermarkId) return [];
+
+      const watermarkIdx = messages.findIndex((message) => message.id === watermarkId);
+      if (watermarkIdx === -1) return [];
+
+      return messages.slice(includeWatermark ? watermarkIdx : watermarkIdx + 1);
+    },
+    []
+  );
+
+  const logChatIndicator = useCallback(
+    (
+      event: string,
+      message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string } | null,
+      overrides: Record<string, unknown> = {}
+    ) => {
+      console.log(`[chat-indicator] ${event}`, {
+        surface: 'cribbage',
+        messageId: message?.id ?? null,
+        currentUserId,
+        'message.user_id': message?.user_id ?? null,
+        activeTab,
+        hydrated: chatHydratedRef.current,
+        flashing: chatTabFlashing,
+        unread: hasUnreadMessages,
+        lastSeen: lastSeenChatMessageIdRef.current,
+        lastRead: lastReadChatMessageIdRef.current,
+        ...overrides,
+      });
+    },
+    [activeTab, chatTabFlashing, currentUserId, hasUnreadMessages]
+  );
+
+  const handleOpenChatTab = useCallback(() => {
+    const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
+    const wasFlashing = chatTabFlashing;
+    const wasUnread = hasUnreadMessages;
+
+    if (greenClearTimeoutRef.current) {
+      clearTimeout(greenClearTimeoutRef.current);
+      greenClearTimeoutRef.current = null;
+    }
+
+    setChatTabFlashing(false);
+    setHasUnreadMessages(false);
+    setActiveTab('chat');
+
+    if (latestEligibleMessage && lastReadChatMessageIdRef.current !== latestEligibleMessage.id) {
+      lastReadChatMessageIdRef.current = latestEligibleMessage.id;
+      logChatIndicator('watermark updated', latestEligibleMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        lastRead: latestEligibleMessage.id,
+        reason: 'chat-open',
+      });
+    }
+
+    logChatIndicator('chat opened', latestEligibleMessage, {
+      activeTab: 'chat',
+      flashing: false,
+      unread: false,
+    });
+
+    if (wasFlashing) {
+      logChatIndicator('green cleared', latestEligibleMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        reason: 'chat-open',
+      });
+    }
+
+    if (wasUnread) {
+      logChatIndicator('red cleared', latestEligibleMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        reason: 'chat-open',
+      });
+    }
+  }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
+
+  useEffect(() => {
+    return () => {
+      if (greenClearTimeoutRef.current) {
+        clearTimeout(greenClearTimeoutRef.current);
+      }
+    };
+  }, []);
   
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
@@ -996,23 +1102,120 @@ export const CribbageMobileGameTable = ({
   // Mark hydration complete once allMessages are loaded
   useEffect(() => {
     if (!allMessages || allMessages.length === 0) return;
+    const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
+
     if (!chatHydratedRef.current) {
+      if (!hasObservedInitialChatSnapshotRef.current) {
+        hasObservedInitialChatSnapshotRef.current = true;
+        if (allMessages.length === 0) {
+          return;
+        }
+      }
+
       chatHydratedRef.current = true;
-      console.log('[cribbage-chat-indicator] hydration complete, messages:', allMessages.length);
+
+      if (!lastSeenChatMessageIdRef.current && !lastReadChatMessageIdRef.current && latestEligibleMessage && !lastProcessedRealtimeMessageIdRef.current) {
+        lastSeenChatMessageIdRef.current = latestEligibleMessage.id;
+        lastReadChatMessageIdRef.current = latestEligibleMessage.id;
+        setHasUnreadMessages(false);
+        logChatIndicator('watermark updated', latestEligibleMessage, {
+          flashing: false,
+          unread: false,
+          lastSeen: latestEligibleMessage.id,
+          lastRead: latestEligibleMessage.id,
+          reason: 'hydration-seed',
+        });
+        return;
+      }
     }
-  }, [allMessages]);
+
+    if (!chatHydratedRef.current) {
+      return;
+    }
+
+    if (activeTab === 'chat') {
+      if (greenClearTimeoutRef.current) {
+        clearTimeout(greenClearTimeoutRef.current);
+        greenClearTimeoutRef.current = null;
+      }
+
+      if (chatTabFlashing) {
+        logChatIndicator('green cleared', latestEligibleMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-open-sync',
+        });
+      }
+
+      setChatTabFlashing(false);
+
+      if (latestEligibleMessage && lastReadChatMessageIdRef.current !== latestEligibleMessage.id) {
+        lastReadChatMessageIdRef.current = latestEligibleMessage.id;
+        logChatIndicator('watermark updated', latestEligibleMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          lastSeen: latestEligibleMessage.id,
+          lastRead: latestEligibleMessage.id,
+          reason: 'chat-open-sync',
+        });
+      }
+
+      if (hasUnreadMessages) {
+        logChatIndicator('red cleared', latestEligibleMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-open-sync',
+        });
+      }
+
+      setHasUnreadMessages(false);
+      return;
+    }
+
+    let unreadEligibleMessages: typeof eligibleIndicatorMessages = [];
+
+    if (lastReadChatMessageIdRef.current) {
+      unreadEligibleMessages = getMessagesAfterWatermark(eligibleIndicatorMessages, lastReadChatMessageIdRef.current);
+    } else if (lastSeenChatMessageIdRef.current) {
+      unreadEligibleMessages = getMessagesAfterWatermark(eligibleIndicatorMessages, lastSeenChatMessageIdRef.current, true);
+    }
+
+    const shouldHaveUnreadMessages = unreadEligibleMessages.length > 0;
+
+    if (hasUnreadMessages !== shouldHaveUnreadMessages) {
+      logChatIndicator(shouldHaveUnreadMessages ? 'red set' : 'red cleared', latestEligibleMessage, {
+        unread: shouldHaveUnreadMessages,
+        unreadCount: unreadEligibleMessages.length,
+        reason: shouldHaveUnreadMessages
+          ? 'eligible-messages-newer-than-read-watermark'
+          : 'no-unread-eligible-messages',
+      });
+    }
+
+    setHasUnreadMessages(shouldHaveUnreadMessages);
+  }, [
+    activeTab,
+    allMessages,
+    chatTabFlashing,
+    eligibleIndicatorMessages,
+    getMessagesAfterWatermark,
+    hasUnreadMessages,
+    logChatIndicator,
+  ]);
 
   // Realtime-only GREEN pulse + RED unread: only eligible other-human messages trigger indicators
   useEffect(() => {
     if (!latestRealtimeMessage) return;
 
+    logChatIndicator('realtime received', latestRealtimeMessage);
+
     const eligibility = getChatIndicatorEligibility(latestRealtimeMessage);
-    console.log('[cribbage-chat-indicator] eligibility', {
-      messageId: latestRealtimeMessage.id,
-      userId: latestRealtimeMessage.user_id,
+    logChatIndicator('eligibility', latestRealtimeMessage, {
       eligible: eligibility.eligible,
       reason: eligibility.reason,
-      hydrated: chatHydratedRef.current,
     });
 
     if (!eligibility.eligible) return;
@@ -1022,47 +1225,99 @@ export const CribbageMobileGameTable = ({
       lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id ||
       lastSeenChatMessageIdRef.current === latestRealtimeMessage.id
     ) {
-      console.log('[cribbage-chat-indicator] skipped stale/replayed', { messageId: latestRealtimeMessage.id });
       return;
     }
 
-    // Always update watermarks so the message is never lost
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
     lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+    logChatIndicator('watermark updated', latestRealtimeMessage, {
+      lastSeen: latestRealtimeMessage.id,
+      lastRead: lastReadChatMessageIdRef.current,
+      reason: 'eligible-realtime-seen',
+    });
 
-    // Pre-hydration: absorb watermark but suppress visual indicators
     if (!chatHydratedRef.current) {
-      lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
-      console.log('[cribbage-chat-indicator] pre-hydration message absorbed', { messageId: latestRealtimeMessage.id });
+      logChatIndicator('pre-hydration deferred', latestRealtimeMessage, {
+        lastSeen: latestRealtimeMessage.id,
+        lastRead: lastReadChatMessageIdRef.current,
+      });
       return;
     }
 
     if (activeTab === 'chat') {
-      lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
+      if (greenClearTimeoutRef.current) {
+        clearTimeout(greenClearTimeoutRef.current);
+        greenClearTimeoutRef.current = null;
+      }
+
+      if (chatTabFlashing) {
+        logChatIndicator('green cleared', latestRealtimeMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-already-open',
+        });
+      }
+
+      setChatTabFlashing(false);
+
+      if (lastReadChatMessageIdRef.current !== latestRealtimeMessage.id) {
+        lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
+        logChatIndicator('watermark updated', latestRealtimeMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          lastSeen: latestRealtimeMessage.id,
+          lastRead: latestRealtimeMessage.id,
+          reason: 'realtime-while-chat-open',
+        });
+      }
+
+      if (hasUnreadMessages) {
+        logChatIndicator('red cleared', latestRealtimeMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-already-open',
+        });
+      }
+
       setHasUnreadMessages(false);
-      console.log('[cribbage-chat-indicator] chat-open, watermark updated', { messageId: latestRealtimeMessage.id });
       return;
+    }
+
+    if (greenClearTimeoutRef.current) {
+      clearTimeout(greenClearTimeoutRef.current);
     }
 
     setChatTabFlashing(true);
     setHasUnreadMessages(true);
-    console.log('[cribbage-chat-indicator] GREEN pulse + RED unread set', { messageId: latestRealtimeMessage.id });
+    logChatIndicator('green set', latestRealtimeMessage, {
+      flashing: true,
+      unread: true,
+      lastSeen: latestRealtimeMessage.id,
+    });
 
-    const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
-    return () => clearTimeout(timeout);
-  }, [latestRealtimeMessage, activeTab, getChatIndicatorEligibility]);
-
-  // Clear unread messages when switching to chat tab
-  useEffect(() => {
-    if (activeTab === 'chat') {
-      setHasUnreadMessages(false);
-      const eligible = allMessages.filter(m => getChatIndicatorEligibility(m).eligible);
-      if (eligible.length > 0) {
-        lastReadChatMessageIdRef.current = eligible[eligible.length - 1].id;
-      }
-      console.log('[cribbage-chat-indicator] chat opened, unread cleared');
+    if (!hasUnreadMessages) {
+      logChatIndicator('red set', latestRealtimeMessage, {
+        flashing: true,
+        unread: true,
+        lastSeen: latestRealtimeMessage.id,
+        reason: 'eligible-realtime-while-chat-closed',
+      });
     }
-  }, [activeTab, allMessages, getChatIndicatorEligibility]);
+
+    greenClearTimeoutRef.current = setTimeout(() => {
+      greenClearTimeoutRef.current = null;
+      setChatTabFlashing(false);
+      logChatIndicator('green cleared', latestRealtimeMessage, {
+        flashing: false,
+        unread: true,
+        lastSeen: latestRealtimeMessage.id,
+        reason: 'pulse-timeout',
+      });
+    }, 1500);
+  }, [activeTab, chatTabFlashing, getChatIndicatorEligibility, hasUnreadMessages, latestRealtimeMessage, logChatIndicator]);
 
   // Inject pegging events (lastEvent) into chat as dealer messages
   const lastEventKeyRef = useRef<string | null>(null);
@@ -3003,15 +3258,15 @@ export const CribbageMobileGameTable = ({
             <SpadeIcon className="w-5 h-5" />
           </button>
           <button 
-            onClick={() => setActiveTab('chat')}
+            onClick={handleOpenChatTab}
             style={{ flex: '0 0 35%' }}
             className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
               activeTab === 'chat' 
                 ? 'bg-primary/20 text-foreground' 
                 : 'text-muted-foreground/50 hover:text-muted-foreground'
-            } ${chatTabFlashing ? 'animate-pulse' : ''}`}
+            } ${showGreenChatIndicator ? 'animate-pulse' : ''}`}
           >
-            <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
+            <MessageSquare className={`w-5 h-5 ${showGreenChatIndicator ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${showRedChatIndicator ? 'text-red-500 fill-red-500' : ''}`} />
           </button>
           <button 
             onClick={() => setActiveTab('lobby')}

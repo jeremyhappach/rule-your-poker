@@ -506,8 +506,12 @@ export const MobileGameTable = ({
   const setLastReadChatMessageId = onLastReadChatMessageIdChange ?? setInternalLastReadId;
   // Hydration guard: skip indicator logic until initial message load is complete
   const chatHydratedRef = useRef(false);
+  const hasObservedInitialChatSnapshotRef = useRef(false);
   const processedEligibleRealtimeRef = useRef(false);
   const lastProcessedRealtimeMessageIdRef = useRef<string | null>(null);
+  const greenClearTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showGreenChatIndicator = chatTabFlashing;
+  const showRedChatIndicator = hasUnreadMessages && !chatTabFlashing;
 
   const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
     const isOptimistic = message.id.startsWith('optimistic-');
@@ -552,6 +556,96 @@ export const MobileGameTable = ({
     },
     []
   );
+
+  const logChatIndicator = useCallback(
+    (
+      event: string,
+      message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string } | null,
+      overrides: Record<string, unknown> = {}
+    ) => {
+      console.log(`[chat-indicator] ${event}`, {
+        surface: 'holm',
+        messageId: message?.id ?? null,
+        currentUserId: currentUserId ?? null,
+        'message.user_id': message?.user_id ?? null,
+        activeTab,
+        hydrated: chatHydratedRef.current,
+        flashing: chatTabFlashing,
+        unread: hasUnreadMessages,
+        lastSeen: lastSeenChatMessageId,
+        lastRead: lastReadChatMessageId,
+        ...overrides,
+      });
+    },
+    [activeTab, chatTabFlashing, currentUserId, hasUnreadMessages, lastReadChatMessageId, lastSeenChatMessageId]
+  );
+
+  const handleOpenChatTab = useCallback(() => {
+    const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
+    const wasFlashing = chatTabFlashing;
+    const wasUnread = hasUnreadMessages;
+
+    if (greenClearTimeoutRef.current) {
+      clearTimeout(greenClearTimeoutRef.current);
+      greenClearTimeoutRef.current = null;
+    }
+
+    setChatTabFlashing(false);
+    setHasUnreadMessages(false);
+    setActiveTab('chat');
+
+    if (latestEligibleMessage && lastReadChatMessageId !== latestEligibleMessage.id) {
+      setLastReadChatMessageId(latestEligibleMessage.id);
+      logChatIndicator('watermark updated', latestEligibleMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        lastRead: latestEligibleMessage.id,
+        reason: 'chat-open',
+      });
+    }
+
+    logChatIndicator('chat opened', latestEligibleMessage, {
+      activeTab: 'chat',
+      flashing: false,
+      unread: false,
+    });
+
+    if (wasFlashing) {
+      logChatIndicator('green cleared', latestEligibleMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        reason: 'chat-open',
+      });
+    }
+
+    if (wasUnread) {
+      logChatIndicator('red cleared', latestEligibleMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        reason: 'chat-open',
+      });
+    }
+  }, [
+    chatTabFlashing,
+    eligibleIndicatorMessages,
+    hasUnreadMessages,
+    lastReadChatMessageId,
+    logChatIndicator,
+    setActiveTab,
+    setHasUnreadMessages,
+    setLastReadChatMessageId,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      if (greenClearTimeoutRef.current) {
+        clearTimeout(greenClearTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // Swipe gesture handlers for tab switching
   const swipeHandlers = useSwipeGesture(
@@ -2085,15 +2179,13 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (!latestRealtimeChatMessage) return;
 
+    logChatIndicator('realtime received', latestRealtimeChatMessage);
+
     const eligibility = getChatIndicatorEligibility(latestRealtimeChatMessage);
 
-    console.log('[holm-chat-indicator] message eligibility result', {
-      gameId,
-      messageId: latestRealtimeChatMessage.id,
-      userId: latestRealtimeChatMessage.user_id,
+    logChatIndicator('eligibility', latestRealtimeChatMessage, {
       eligible: eligibility.eligible,
       reason: eligibility.reason,
-      hydrated: chatHydratedRef.current,
     });
 
     if (!eligibility.eligible) {
@@ -2114,40 +2206,96 @@ export const MobileGameTable = ({
     processedEligibleRealtimeRef.current = true;
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeChatMessage.id;
     setLastSeenChatMessageId(latestRealtimeChatMessage.id);
+    logChatIndicator('watermark updated', latestRealtimeChatMessage, {
+      lastSeen: latestRealtimeChatMessage.id,
+      lastRead: lastReadChatMessageId,
+      reason: 'eligible-realtime-seen',
+    });
 
-    // Pre-hydration: absorb watermark but suppress visual indicators
+    // Pre-hydration: preserve the message as unseen, but never pulse/mark-read.
     if (!chatHydratedRef.current) {
-      setLastReadChatMessageId(latestRealtimeChatMessage.id);
-      console.log('[holm-chat-indicator] pre-hydration message absorbed', {
-        messageId: latestRealtimeChatMessage.id,
+      logChatIndicator('pre-hydration deferred', latestRealtimeChatMessage, {
+        lastSeen: latestRealtimeChatMessage.id,
+        lastRead: lastReadChatMessageId,
       });
       return;
     }
 
     if (activeTab === 'chat') {
-      setLastReadChatMessageId(latestRealtimeChatMessage.id);
+      if (greenClearTimeoutRef.current) {
+        clearTimeout(greenClearTimeoutRef.current);
+        greenClearTimeoutRef.current = null;
+      }
+
+      if (chatTabFlashing) {
+        logChatIndicator('green cleared', latestRealtimeChatMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-already-open',
+        });
+      }
+
+      setChatTabFlashing(false);
       setHasUnreadMessages(false);
-      console.log('[holm-chat-indicator] chat-open, watermark updated', {
-        messageId: latestRealtimeChatMessage.id,
+
+      if (lastReadChatMessageId !== latestRealtimeChatMessage.id) {
+        setLastReadChatMessageId(latestRealtimeChatMessage.id);
+        logChatIndicator('watermark updated', latestRealtimeChatMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          lastSeen: latestRealtimeChatMessage.id,
+          lastRead: latestRealtimeChatMessage.id,
+          reason: 'realtime-while-chat-open',
+        });
+      }
+
+      logChatIndicator('red cleared', latestRealtimeChatMessage, {
+        activeTab: 'chat',
+        flashing: false,
+        unread: false,
+        reason: 'chat-already-open',
       });
       return;
     }
 
+    if (greenClearTimeoutRef.current) {
+      clearTimeout(greenClearTimeoutRef.current);
+    }
+
     setChatTabFlashing(true);
     setHasUnreadMessages(true);
-    console.log('[holm-chat-indicator] GREEN pulse + RED unread set', {
-      messageId: latestRealtimeChatMessage.id,
+    logChatIndicator('green set', latestRealtimeChatMessage, {
+      flashing: true,
+      unread: true,
+      lastSeen: latestRealtimeChatMessage.id,
+    });
+    logChatIndicator('red set', latestRealtimeChatMessage, {
+      flashing: true,
+      unread: true,
+      lastSeen: latestRealtimeChatMessage.id,
+      reason: 'eligible-realtime-while-chat-closed',
     });
 
-    const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
-    return () => clearTimeout(timeout);
+    greenClearTimeoutRef.current = setTimeout(() => {
+      greenClearTimeoutRef.current = null;
+      setChatTabFlashing(false);
+      logChatIndicator('green cleared', latestRealtimeChatMessage, {
+        flashing: false,
+        unread: true,
+        lastSeen: latestRealtimeChatMessage.id,
+        reason: 'pulse-timeout',
+      });
+    }, 1500);
   }, [
     activeTab,
-    gameId,
+    chatTabFlashing,
     getChatIndicatorEligibility,
     lastReadChatMessageId,
     lastSeenChatMessageId,
     latestRealtimeChatMessage,
+    logChatIndicator,
     setHasUnreadMessages,
     setLastReadChatMessageId,
     setLastSeenChatMessageId,
@@ -2157,46 +2305,74 @@ export const MobileGameTable = ({
   useEffect(() => {
     const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
 
-    if (!chatHydratedRef.current && allMessages.length > 0) {
+    if (!chatHydratedRef.current) {
+      if (!hasObservedInitialChatSnapshotRef.current) {
+        hasObservedInitialChatSnapshotRef.current = true;
+        if (allMessages.length === 0) {
+          return;
+        }
+      }
+
       chatHydratedRef.current = true;
 
       if (!lastSeenChatMessageId && !lastReadChatMessageId && latestEligibleMessage && !processedEligibleRealtimeRef.current) {
         setLastSeenChatMessageId(latestEligibleMessage.id);
         setLastReadChatMessageId(latestEligibleMessage.id);
         setHasUnreadMessages(false);
-        console.log('[holm-chat-indicator] hydration complete', {
-          gameId,
-          eligibleCount: eligibleIndicatorMessages.length,
-          baselineId: latestEligibleMessage.id,
-          action: 'seed-seen-read',
+        logChatIndicator('watermark updated', latestEligibleMessage, {
+          flashing: false,
+          unread: false,
+          lastSeen: latestEligibleMessage.id,
+          lastRead: latestEligibleMessage.id,
+          reason: 'hydration-seed',
         });
         return;
       }
+    }
 
-      console.log('[holm-chat-indicator] hydration complete', {
-        gameId,
-        eligibleCount: eligibleIndicatorMessages.length,
-        baselineId: latestEligibleMessage?.id ?? null,
-        action: processedEligibleRealtimeRef.current ? 'preserve-realtime-watermark' : 'preserve-existing-watermarks',
-        lastSeenChatMessageId,
-        lastReadChatMessageId,
-      });
+    if (!chatHydratedRef.current) {
+      return;
     }
 
     if (activeTab === 'chat') {
+      if (greenClearTimeoutRef.current) {
+        clearTimeout(greenClearTimeoutRef.current);
+        greenClearTimeoutRef.current = null;
+      }
+
+      if (chatTabFlashing) {
+        logChatIndicator('green cleared', latestEligibleMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-open-sync',
+        });
+      }
+
+      setChatTabFlashing(false);
+
       if (latestEligibleMessage && lastReadChatMessageId !== latestEligibleMessage.id) {
         setLastReadChatMessageId(latestEligibleMessage.id);
-        console.log('[holm-chat-indicator] watermark after update', {
-          lastSeenChatMessageId,
-          lastReadChatMessageId: latestEligibleMessage.id,
+        logChatIndicator('watermark updated', latestEligibleMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          lastSeen: latestEligibleMessage.id,
+          lastRead: latestEligibleMessage.id,
+          reason: 'chat-open-sync',
+        });
+      }
+
+      if (hasUnreadMessages) {
+        logChatIndicator('red cleared', latestEligibleMessage, {
+          activeTab: 'chat',
+          flashing: false,
+          unread: false,
+          reason: 'chat-open-sync',
         });
       }
 
       setHasUnreadMessages(false);
-      console.log('[holm-chat-indicator] red unread cleared', {
-        reason: 'chat-open',
-        lastReadChatMessageId: latestEligibleMessage?.id ?? lastReadChatMessageId,
-      });
       return;
     }
 
@@ -2223,22 +2399,28 @@ export const MobileGameTable = ({
     }
 
     const shouldHaveUnreadMessages = unreadEligibleMessages.length > 0;
+
+    if (hasUnreadMessages !== shouldHaveUnreadMessages) {
+      logChatIndicator(shouldHaveUnreadMessages ? 'red set' : 'red cleared', latestEligibleMessage, {
+        unread: shouldHaveUnreadMessages,
+        unreadCount: unreadEligibleMessages.length,
+        reason: shouldHaveUnreadMessages
+          ? 'eligible-messages-newer-than-read-watermark'
+          : 'no-unread-eligible-messages',
+      });
+    }
+
     setHasUnreadMessages(shouldHaveUnreadMessages);
-    console.log(`[holm-chat-indicator] red unread ${shouldHaveUnreadMessages ? 'set' : 'skipped'}`, {
-      reason: shouldHaveUnreadMessages ? 'eligible-messages-newer-than-read-watermark' : 'no-unread-eligible-messages',
-      unreadCount: unreadEligibleMessages.length,
-      lastSeenChatMessageId,
-      lastReadChatMessageId,
-      latestEligibleMessageId: latestEligibleMessage?.id ?? null,
-    });
   }, [
     activeTab,
-    allMessages.length,
+    allMessages,
+    chatTabFlashing,
     eligibleIndicatorMessages,
-    gameId,
     getMessagesAfterWatermark,
+    hasUnreadMessages,
     lastReadChatMessageId,
     lastSeenChatMessageId,
+    logChatIndicator,
     setHasUnreadMessages,
     setLastReadChatMessageId,
     setLastSeenChatMessageId,
@@ -5648,15 +5830,15 @@ export const MobileGameTable = ({
               </button>
               {/* Chat tab - 35% width */}
               <button 
-                onClick={() => setActiveTab('chat')}
+                onClick={handleOpenChatTab}
                 style={{ flex: '0 0 35%' }}
                 className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
                   activeTab === 'chat' 
                     ? 'bg-primary/20 text-foreground' 
                     : 'text-muted-foreground/50 hover:text-muted-foreground'
-                } ${chatTabFlashing ? 'animate-pulse' : ''}`}
+                } ${showGreenChatIndicator ? 'animate-pulse' : ''}`}
               >
-                <MessageSquare className={`w-5 h-5 ${chatTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${hasUnreadMessages && !chatTabFlashing ? 'text-red-500 fill-red-500' : ''}`} />
+                <MessageSquare className={`w-5 h-5 ${showGreenChatIndicator ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${showRedChatIndicator ? 'text-red-500 fill-red-500' : ''}`} />
               </button>
               {/* Lobby tab - 15% width */}
               <button 
