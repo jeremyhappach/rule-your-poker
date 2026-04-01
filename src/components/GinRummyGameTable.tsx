@@ -384,17 +384,59 @@ export const GinRummyGameTable = ({
     };
   }, [roundId]); // ← onGameComplete intentionally excluded; using ref instead
 
-  // Chat unread tracking
+  // Mark hydration complete once allMessages are loaded (skip indicator during initial load)
   useEffect(() => {
-    if (!allMessages) return;
-    const userMessages = allMessages.filter(m => m.user_id !== currentUserId);
-    if (userMessages.length > prevMessageCountRef.current && activeTab !== 'chat') {
-      setHasUnreadMessages(true);
-      setChatTabFlashing(true);
-      setTimeout(() => setChatTabFlashing(false), 3000);
+    if (!allMessages || allMessages.length === 0) return;
+    if (!chatHydratedRef.current) {
+      chatHydratedRef.current = true;
+      console.log('[gin-chat-indicator] hydration complete, messages:', allMessages.length);
     }
-    prevMessageCountRef.current = userMessages.length;
-  }, [allMessages, activeTab, currentUserId]);
+  }, [allMessages]);
+
+  // Realtime-only GREEN pulse + RED unread: only eligible other-human messages trigger indicators
+  useEffect(() => {
+    if (!latestRealtimeMessage) return;
+    if (!chatHydratedRef.current) {
+      console.log('[gin-chat-indicator] skipped pre-hydration message', { messageId: latestRealtimeMessage.id });
+      return;
+    }
+
+    const eligibility = getChatIndicatorEligibility(latestRealtimeMessage);
+    console.log('[gin-chat-indicator] eligibility', {
+      messageId: latestRealtimeMessage.id,
+      userId: latestRealtimeMessage.user_id,
+      eligible: eligibility.eligible,
+      reason: eligibility.reason,
+    });
+
+    if (!eligibility.eligible) return;
+
+    // Replay / duplicate guard
+    if (
+      lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id ||
+      lastSeenChatMessageIdRef.current === latestRealtimeMessage.id
+    ) {
+      console.log('[gin-chat-indicator] skipped stale/replayed', { messageId: latestRealtimeMessage.id });
+      return;
+    }
+
+    lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
+    lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+
+    if (activeTab === 'chat') {
+      lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
+      setHasUnreadMessages(false);
+      console.log('[gin-chat-indicator] chat-open, watermark updated', { messageId: latestRealtimeMessage.id });
+      return;
+    }
+
+    setChatTabFlashing(true);
+    setHasUnreadMessages(true);
+    console.log('[gin-chat-indicator] GREEN pulse + RED unread set', { messageId: latestRealtimeMessage.id });
+
+    const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
+    return () => clearTimeout(timeout);
+  }, [latestRealtimeMessage, activeTab, getChatIndicatorEligibility]);
 
   // ─── Bot Action Loop ────────────────────────────────────────────
   const botActionInProgress = useRef(false);
