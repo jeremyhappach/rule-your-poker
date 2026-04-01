@@ -1005,10 +1005,6 @@ export const CribbageMobileGameTable = ({
   // Realtime-only GREEN pulse + RED unread: only eligible other-human messages trigger indicators
   useEffect(() => {
     if (!latestRealtimeMessage) return;
-    if (!chatHydratedRef.current) {
-      console.log('[cribbage-chat-indicator] skipped pre-hydration message', { messageId: latestRealtimeMessage.id });
-      return;
-    }
 
     const eligibility = getChatIndicatorEligibility(latestRealtimeMessage);
     console.log('[cribbage-chat-indicator] eligibility', {
@@ -1016,6 +1012,7 @@ export const CribbageMobileGameTable = ({
       userId: latestRealtimeMessage.user_id,
       eligible: eligibility.eligible,
       reason: eligibility.reason,
+      hydrated: chatHydratedRef.current,
     });
 
     if (!eligibility.eligible) return;
@@ -1029,8 +1026,16 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
+    // Always update watermarks so the message is never lost
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
     lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+
+    // Pre-hydration: absorb watermark but suppress visual indicators
+    if (!chatHydratedRef.current) {
+      lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
+      console.log('[cribbage-chat-indicator] pre-hydration message absorbed', { messageId: latestRealtimeMessage.id });
+      return;
+    }
 
     if (activeTab === 'chat') {
       lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
