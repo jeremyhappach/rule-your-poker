@@ -133,6 +133,32 @@ export const GinRummyGameTable = ({
   const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
+  // Chat indicator: hydration guard + replay guard
+  const chatHydratedRef = useRef(false);
+  const lastProcessedRealtimeMessageIdRef = useRef<string | null>(null);
+  const lastSeenChatMessageIdRef = useRef<string | null>(null);
+  const lastReadChatMessageIdRef = useRef<string | null>(null);
+
+  const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
+    const isOptimistic = message.id.startsWith('optimistic-');
+    const isDealerOrSystem = message.id.startsWith('dealer-') || !message.user_id;
+    const isSelfAuthored = !!currentUserId && message.user_id === currentUserId;
+    const authorPlayer = players.find((p) => p.user_id === message.user_id);
+    const isBotAuthored = authorPlayer?.is_bot === true;
+
+    const reason = isOptimistic
+      ? 'optimistic'
+      : isDealerOrSystem
+        ? 'dealer-or-system'
+        : isSelfAuthored
+          ? 'self'
+          : isBotAuthored
+            ? 'bot'
+            : 'eligible-other-human';
+
+    return { eligible: reason === 'eligible-other-human', reason };
+  }, [currentUserId, players]);
+
   // Chip transfer animation at match end (player-to-player like cribbage)
   const [chipAnimTriggerId, setChipAnimTriggerId] = useState<string | null>(null);
   const [storedChipPositions, setStoredChipPositions] = useState<{
