@@ -2093,76 +2093,50 @@ export const MobileGameTable = ({
       userId: latestRealtimeChatMessage.user_id,
       eligible: eligibility.eligible,
       reason: eligibility.reason,
+      hydrated: chatHydratedRef.current,
     });
 
     if (!eligibility.eligible) {
-      console.log('[holm-chat-indicator] green pulse skipped', {
-        messageId: latestRealtimeChatMessage.id,
-        reason: eligibility.reason,
-      });
-      console.log('[holm-chat-indicator] red unread skipped', {
-        messageId: latestRealtimeChatMessage.id,
-        reason: eligibility.reason,
-      });
       return;
     }
-
-    console.log('[holm-chat-indicator] current watermark before compare', {
-      messageId: latestRealtimeChatMessage.id,
-      lastSeenChatMessageId,
-      lastReadChatMessageId,
-      activeTab,
-    });
 
     if (
       lastProcessedRealtimeMessageIdRef.current === latestRealtimeChatMessage.id ||
       lastSeenChatMessageId === latestRealtimeChatMessage.id
     ) {
-      console.log('[holm-chat-indicator] green pulse skipped', {
+      console.log('[holm-chat-indicator] skipped stale/replayed', {
         messageId: latestRealtimeChatMessage.id,
-        reason: 'stale-or-replayed',
-      });
-      console.log('[holm-chat-indicator] red unread skipped', {
-        messageId: latestRealtimeChatMessage.id,
-        reason: 'stale-or-replayed',
       });
       return;
     }
 
+    // Always update watermarks so the message is never lost
     processedEligibleRealtimeRef.current = true;
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeChatMessage.id;
     setLastSeenChatMessageId(latestRealtimeChatMessage.id);
 
+    // Pre-hydration: absorb watermark but suppress visual indicators
+    if (!chatHydratedRef.current) {
+      setLastReadChatMessageId(latestRealtimeChatMessage.id);
+      console.log('[holm-chat-indicator] pre-hydration message absorbed', {
+        messageId: latestRealtimeChatMessage.id,
+      });
+      return;
+    }
+
     if (activeTab === 'chat') {
       setLastReadChatMessageId(latestRealtimeChatMessage.id);
       setHasUnreadMessages(false);
-      console.log('[holm-chat-indicator] watermark after update', {
-        lastSeenChatMessageId: latestRealtimeChatMessage.id,
-        lastReadChatMessageId: latestRealtimeChatMessage.id,
-      });
-      console.log('[holm-chat-indicator] green pulse skipped', {
+      console.log('[holm-chat-indicator] chat-open, watermark updated', {
         messageId: latestRealtimeChatMessage.id,
-        reason: 'chat-open',
-      });
-      console.log('[holm-chat-indicator] red unread skipped', {
-        messageId: latestRealtimeChatMessage.id,
-        reason: 'chat-open',
       });
       return;
     }
 
     setChatTabFlashing(true);
     setHasUnreadMessages(true);
-    console.log('[holm-chat-indicator] watermark after update', {
-      lastSeenChatMessageId: latestRealtimeChatMessage.id,
-      lastReadChatMessageId,
-    });
-    console.log('[holm-chat-indicator] green pulse fired', {
+    console.log('[holm-chat-indicator] GREEN pulse + RED unread set', {
       messageId: latestRealtimeChatMessage.id,
-    });
-    console.log('[holm-chat-indicator] red unread set', {
-      messageId: latestRealtimeChatMessage.id,
-      reason: 'eligible-other-human-realtime',
     });
 
     const timeout = setTimeout(() => setChatTabFlashing(false), 1500);

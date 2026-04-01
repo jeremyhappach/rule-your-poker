@@ -396,10 +396,6 @@ export const GinRummyGameTable = ({
   // Realtime-only GREEN pulse + RED unread: only eligible other-human messages trigger indicators
   useEffect(() => {
     if (!latestRealtimeMessage) return;
-    if (!chatHydratedRef.current) {
-      console.log('[gin-chat-indicator] skipped pre-hydration message', { messageId: latestRealtimeMessage.id });
-      return;
-    }
 
     const eligibility = getChatIndicatorEligibility(latestRealtimeMessage);
     console.log('[gin-chat-indicator] eligibility', {
@@ -407,6 +403,7 @@ export const GinRummyGameTable = ({
       userId: latestRealtimeMessage.user_id,
       eligible: eligibility.eligible,
       reason: eligibility.reason,
+      hydrated: chatHydratedRef.current,
     });
 
     if (!eligibility.eligible) return;
@@ -420,8 +417,16 @@ export const GinRummyGameTable = ({
       return;
     }
 
+    // Always update watermarks so the message is never lost
     lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
     lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+
+    // Pre-hydration: absorb watermark but suppress visual indicators
+    if (!chatHydratedRef.current) {
+      lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
+      console.log('[gin-chat-indicator] pre-hydration message absorbed', { messageId: latestRealtimeMessage.id });
+      return;
+    }
 
     if (activeTab === 'chat') {
       lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
