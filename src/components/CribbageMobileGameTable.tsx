@@ -667,7 +667,7 @@ export const CribbageMobileGameTable = ({
       isDealer: true as const,
     };
     setInternalDealerMessages((prev) => [...prev, newMsg]);
-    dealerMessageCountRef.current += 1;
+    // dealerMessageCountRef removed — eligibility filter handles dealer exclusion
   }, [onInjectDealerChatMessage]);
 
   // Inject "New game starting" exactly once per dealer_game_id, even during dealer selection
