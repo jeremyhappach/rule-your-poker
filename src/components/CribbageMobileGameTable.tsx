@@ -206,14 +206,36 @@ export const CribbageMobileGameTable = ({
   useWakeLock(true);
   
   // Chat hook - integrated like other mobile game tables
-  const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   
   // Unread messages tracking for chat tab indicator
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
-  const prevMessageCountRef = useRef(0);
-  // Track dealer messages to exclude them from unread count
-  const dealerMessageCountRef = useRef(0);
+  // Chat indicator: hydration guard + replay guard
+  const chatHydratedRef = useRef(false);
+  const lastProcessedRealtimeMessageIdRef = useRef<string | null>(null);
+  const lastSeenChatMessageIdRef = useRef<string | null>(null);
+  const lastReadChatMessageIdRef = useRef<string | null>(null);
+
+  const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
+    const isOptimistic = message.id.startsWith('optimistic-');
+    const isDealerOrSystem = message.id.startsWith('dealer-') || !message.user_id;
+    const isSelfAuthored = !!currentUserId && message.user_id === currentUserId;
+    const authorPlayer = players.find((p) => p.user_id === message.user_id);
+    const isBotAuthored = authorPlayer?.is_bot === true;
+
+    const reason = isOptimistic
+      ? 'optimistic'
+      : isDealerOrSystem
+        ? 'dealer-or-system'
+        : isSelfAuthored
+          ? 'self'
+          : isBotAuthored
+            ? 'bot'
+            : 'eligible-other-human';
+
+    return { eligible: reason === 'eligible-other-human', reason };
+  }, [currentUserId, players]);
   
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
