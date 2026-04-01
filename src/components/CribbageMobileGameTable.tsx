@@ -655,7 +655,7 @@ export const CribbageMobileGameTable = ({
     // If the parent provided a session-persistent injector, use that.
     if (onInjectDealerChatMessage) {
       onInjectDealerChatMessage(message);
-      dealerMessageCountRef.current += 1;
+      // dealerMessageCountRef removed — eligibility filter handles dealer exclusion
       return;
     }
 
