@@ -993,28 +993,71 @@ export const CribbageMobileGameTable = ({
     }
   }, [viewState?.phase, viewState?.playerStates, countingScoreOverrides, countingStateSnapshot, renderHandKey, currentHandKey]);
 
+  // Mark hydration complete once allMessages are loaded
   useEffect(() => {
-    const playerMessageCount = allMessages.length;
-    
-    // Only flash for player messages, not dealer messages
-    if (playerMessageCount > prevMessageCountRef.current && activeTab !== 'chat') {
-      setChatTabFlashing(true);
-      setHasUnreadMessages(true);
-      const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
-      prevMessageCountRef.current = playerMessageCount;
-      return () => clearTimeout(timeout);
+    if (!allMessages || allMessages.length === 0) return;
+    if (!chatHydratedRef.current) {
+      chatHydratedRef.current = true;
+      console.log('[cribbage-chat-indicator] hydration complete, messages:', allMessages.length);
     }
-    
-    // Always sync the ref to current player count (but don't count dealer msgs)
-    prevMessageCountRef.current = playerMessageCount;
-  }, [allMessages.length, activeTab]);
+  }, [allMessages]);
+
+  // Realtime-only GREEN pulse + RED unread: only eligible other-human messages trigger indicators
+  useEffect(() => {
+    if (!latestRealtimeMessage) return;
+    if (!chatHydratedRef.current) {
+      console.log('[cribbage-chat-indicator] skipped pre-hydration message', { messageId: latestRealtimeMessage.id });
+      return;
+    }
+
+    const eligibility = getChatIndicatorEligibility(latestRealtimeMessage);
+    console.log('[cribbage-chat-indicator] eligibility', {
+      messageId: latestRealtimeMessage.id,
+      userId: latestRealtimeMessage.user_id,
+      eligible: eligibility.eligible,
+      reason: eligibility.reason,
+    });
+
+    if (!eligibility.eligible) return;
+
+    // Replay / duplicate guard
+    if (
+      lastProcessedRealtimeMessageIdRef.current === latestRealtimeMessage.id ||
+      lastSeenChatMessageIdRef.current === latestRealtimeMessage.id
+    ) {
+      console.log('[cribbage-chat-indicator] skipped stale/replayed', { messageId: latestRealtimeMessage.id });
+      return;
+    }
+
+    lastProcessedRealtimeMessageIdRef.current = latestRealtimeMessage.id;
+    lastSeenChatMessageIdRef.current = latestRealtimeMessage.id;
+
+    if (activeTab === 'chat') {
+      lastReadChatMessageIdRef.current = latestRealtimeMessage.id;
+      setHasUnreadMessages(false);
+      console.log('[cribbage-chat-indicator] chat-open, watermark updated', { messageId: latestRealtimeMessage.id });
+      return;
+    }
+
+    setChatTabFlashing(true);
+    setHasUnreadMessages(true);
+    console.log('[cribbage-chat-indicator] GREEN pulse + RED unread set', { messageId: latestRealtimeMessage.id });
+
+    const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
+    return () => clearTimeout(timeout);
+  }, [latestRealtimeMessage, activeTab, getChatIndicatorEligibility]);
 
   // Clear unread messages when switching to chat tab
   useEffect(() => {
     if (activeTab === 'chat') {
       setHasUnreadMessages(false);
+      const eligible = allMessages.filter(m => getChatIndicatorEligibility(m).eligible);
+      if (eligible.length > 0) {
+        lastReadChatMessageIdRef.current = eligible[eligible.length - 1].id;
+      }
+      console.log('[cribbage-chat-indicator] chat opened, unread cleared');
     }
-  }, [activeTab]);
+  }, [activeTab, allMessages, getChatIndicatorEligibility]);
 
   // Inject pegging events (lastEvent) into chat as dealer messages
   const lastEventKeyRef = useRef<string | null>(null);
