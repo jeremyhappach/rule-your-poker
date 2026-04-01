@@ -20,6 +20,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
   const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ username: string } | null>(null);
+  const [latestRealtimeMessage, setLatestRealtimeMessage] = useState<ChatMessage | null>(null);
 
   // Keep latest players/profile in refs so we don't refetch chat history every time players updates.
   const playersRef = useRef<any[]>(players);
@@ -282,6 +283,11 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
       });
 
       setAllMessages(messagesWithUsernames);
+      console.log('[holm-chat-indicator] hydration complete', {
+        gameId,
+        count: messagesWithUsernames.length,
+        latestId: messagesWithUsernames[messagesWithUsernames.length - 1]?.id ?? null,
+      });
     };
 
     fetchMessages();
@@ -315,6 +321,12 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
         },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
+          console.log('[holm-chat-indicator] realtime message received', {
+            gameId,
+            messageId: newMessage.id,
+            userId: newMessage.user_id,
+          });
+          setLatestRealtimeMessage(newMessage);
           addBubble(newMessage);
         }
       )
@@ -336,6 +348,7 @@ export const useGameChat = (gameId: string | undefined, players: any[], currentU
     allMessages,
     sendMessage,
     isSending,
-    getPositionForUserId
+    getPositionForUserId,
+    latestRealtimeMessage,
   };
 };

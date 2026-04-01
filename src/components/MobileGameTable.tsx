@@ -261,6 +261,7 @@ interface MobileGameTableProps {
   // Chat props
   chatBubbles?: ChatBubbleData[];
   allMessages?: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }[];
+  latestRealtimeChatMessage?: { id: string; user_id: string; message: string; image_url?: string | null; username?: string } | null;
   onSendChat?: (message: string, imageFile?: File) => void;
   isChatSending?: boolean;
   getPositionForUserId?: (userId: string) => number | undefined;
@@ -295,9 +296,12 @@ interface MobileGameTableProps {
   // Unread messages state (lifted to parent to persist across remounts)
   hasUnreadMessages?: boolean;
   onHasUnreadMessagesChange?: (hasUnread: boolean) => void;
-  // Chat watermark (lifted to parent to persist across remounts)
+  // Chat seen watermark (lifted to parent to persist across remounts)
   lastSeenChatMessageId?: string | null;
   onLastSeenChatMessageIdChange?: (id: string | null) => void;
+  // Chat read watermark (lifted to parent to persist across remounts)
+  lastReadChatMessageId?: string | null;
+  onLastReadChatMessageIdChange?: (id: string | null) => void;
   // Chat input state (lifted to parent to persist across remounts)
   chatInputValue?: string;
   onChatInputChange?: (value: string) => void;
@@ -401,6 +405,7 @@ export const MobileGameTable = ({
   onPlayerClick,
   chatBubbles = [],
   allMessages = [],
+  latestRealtimeChatMessage = null,
   onSendChat,
   isChatSending = false,
   getPositionForUserId,
@@ -425,6 +430,8 @@ export const MobileGameTable = ({
   onHasUnreadMessagesChange,
   lastSeenChatMessageId: externalLastSeenChatMessageId,
   onLastSeenChatMessageIdChange,
+  lastReadChatMessageId: externalLastReadChatMessageId,
+  onLastReadChatMessageIdChange,
   chatInputValue: externalChatInputValue,
   onChatInputChange: externalOnChatInputChange,
   dealerSetupMessage,
@@ -489,12 +496,62 @@ export const MobileGameTable = ({
   const [internalHasUnreadMessages, setInternalHasUnreadMessages] = useState(false);
   const hasUnreadMessages = externalHasUnreadMessages ?? internalHasUnreadMessages;
   const setHasUnreadMessages = onHasUnreadMessagesChange ?? setInternalHasUnreadMessages;
-  // Chat watermark - use external (lifted) if provided, otherwise internal
+  // Chat seen watermark - use external (lifted) if provided, otherwise internal
   const [internalLastSeenId, setInternalLastSeenId] = useState<string | null>(null);
   const lastSeenChatMessageId = externalLastSeenChatMessageId ?? internalLastSeenId;
   const setLastSeenChatMessageId = onLastSeenChatMessageIdChange ?? setInternalLastSeenId;
+  // Chat read watermark - use external (lifted) if provided, otherwise internal
+  const [internalLastReadId, setInternalLastReadId] = useState<string | null>(null);
+  const lastReadChatMessageId = externalLastReadChatMessageId ?? internalLastReadId;
+  const setLastReadChatMessageId = onLastReadChatMessageIdChange ?? setInternalLastReadId;
   // Hydration guard: skip indicator logic until initial message load is complete
   const chatHydratedRef = useRef(false);
+  const processedEligibleRealtimeRef = useRef(false);
+  const lastProcessedRealtimeMessageIdRef = useRef<string | null>(null);
+
+  const getChatIndicatorEligibility = useCallback((message: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }) => {
+    const isOptimistic = message.id.startsWith('optimistic-');
+    const isDealerOrSystem = message.id.startsWith('dealer-') || !message.user_id;
+    const isSelfAuthored = !!currentUserId && message.user_id === currentUserId;
+    const authorPlayer = players.find((player) => player.user_id === message.user_id);
+    const isBotAuthored = authorPlayer?.is_bot === true;
+
+    const reason = isOptimistic
+      ? 'optimistic'
+      : isDealerOrSystem
+        ? 'dealer-or-system'
+        : isSelfAuthored
+          ? 'self'
+          : isBotAuthored
+            ? 'bot'
+            : 'eligible-other-human';
+
+    return {
+      eligible: reason === 'eligible-other-human',
+      reason,
+    };
+  }, [currentUserId, players]);
+
+  const eligibleIndicatorMessages = useMemo(
+    () => allMessages.filter((message) => getChatIndicatorEligibility(message).eligible),
+    [allMessages, getChatIndicatorEligibility]
+  );
+
+  const getMessagesAfterWatermark = useCallback(
+    (
+      messages: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }[],
+      watermarkId: string | null | undefined,
+      includeWatermark = false
+    ) => {
+      if (!watermarkId) return [];
+
+      const watermarkIdx = messages.findIndex((message) => message.id === watermarkId);
+      if (watermarkIdx === -1) return [];
+
+      return messages.slice(includeWatermark ? watermarkIdx : watermarkIdx + 1);
+    },
+    []
+  );
   
   // Swipe gesture handlers for tab switching
   const swipeHandlers = useSwipeGesture(
@@ -2024,59 +2081,194 @@ export const MobileGameTable = ({
     prevCardCountRef.current = currentCardCount;
   }, [currentPlayerCards.length, activeTab]);
   
-  // Detect when new chat messages arrive and trigger flash (only when not on chat tab)
-  // Uses a persistent watermark (lastSeenChatMessageId) that survives remounts.
-  // Skips the first hydration so historical messages from DB don't trigger indicators.
+  // Realtime-only GREEN pulse path: only eligible other-human messages can pulse or set unread.
   useEffect(() => {
-    if (allMessages.length === 0) return;
+    if (!latestRealtimeChatMessage) return;
 
-    // Get the latest non-optimistic message (real messages have UUID ids, optimistic start with "optimistic-")
-    const realMessages = allMessages.filter(m => !m.id.startsWith('optimistic-'));
-    if (realMessages.length === 0) return;
+    const eligibility = getChatIndicatorEligibility(latestRealtimeChatMessage);
 
-    const latestMessage = realMessages[realMessages.length - 1];
+    console.log('[holm-chat-indicator] message eligibility result', {
+      gameId,
+      messageId: latestRealtimeChatMessage.id,
+      userId: latestRealtimeChatMessage.user_id,
+      eligible: eligibility.eligible,
+      reason: eligibility.reason,
+    });
 
-    // First hydration: seed the watermark without triggering indicators
-    if (!chatHydratedRef.current) {
-      chatHydratedRef.current = true;
-      // Only seed if no watermark exists yet (first mount of the session)
-      if (!lastSeenChatMessageId) {
-        setLastSeenChatMessageId(latestMessage.id);
-      } else {
-        // Watermark exists from a previous mount - check if there are genuinely
-        // unread messages (e.g. messages arrived while component was unmounted)
-        const watermarkIdx = realMessages.findIndex(m => m.id === lastSeenChatMessageId);
-        const hasNewMessages = watermarkIdx === -1
-          ? false  // watermark message not in current list = stale session, don't flag
-          : watermarkIdx < realMessages.length - 1;
-        if (hasNewMessages && activeTab !== 'chat') {
-          setHasUnreadMessages(true);
-          // Don't flash green for messages that arrived while unmounted - only RED
-        }
-      }
+    if (!eligibility.eligible) {
+      console.log('[holm-chat-indicator] green pulse skipped', {
+        messageId: latestRealtimeChatMessage.id,
+        reason: eligibility.reason,
+      });
+      console.log('[holm-chat-indicator] red unread skipped', {
+        messageId: latestRealtimeChatMessage.id,
+        reason: eligibility.reason,
+      });
       return;
     }
 
-    // Post-hydration: check if latest message is newer than watermark
-    if (latestMessage.id !== lastSeenChatMessageId && activeTab !== 'chat') {
-      setChatTabFlashing(true);
-      setHasUnreadMessages(true);
-      const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
-      return () => clearTimeout(timeout);
+    console.log('[holm-chat-indicator] current watermark before compare', {
+      messageId: latestRealtimeChatMessage.id,
+      lastSeenChatMessageId,
+      lastReadChatMessageId,
+      activeTab,
+    });
+
+    if (
+      lastProcessedRealtimeMessageIdRef.current === latestRealtimeChatMessage.id ||
+      lastSeenChatMessageId === latestRealtimeChatMessage.id
+    ) {
+      console.log('[holm-chat-indicator] green pulse skipped', {
+        messageId: latestRealtimeChatMessage.id,
+        reason: 'stale-or-replayed',
+      });
+      console.log('[holm-chat-indicator] red unread skipped', {
+        messageId: latestRealtimeChatMessage.id,
+        reason: 'stale-or-replayed',
+      });
+      return;
     }
-  }, [allMessages.length, activeTab]);
-  
-  // Clear unread messages indicator and update watermark when user switches to chat tab
-  useEffect(() => {
+
+    processedEligibleRealtimeRef.current = true;
+    lastProcessedRealtimeMessageIdRef.current = latestRealtimeChatMessage.id;
+    setLastSeenChatMessageId(latestRealtimeChatMessage.id);
+
     if (activeTab === 'chat') {
+      setLastReadChatMessageId(latestRealtimeChatMessage.id);
       setHasUnreadMessages(false);
-      // Update watermark to latest real message
-      const realMessages = allMessages.filter(m => !m.id.startsWith('optimistic-'));
-      if (realMessages.length > 0) {
-        setLastSeenChatMessageId(realMessages[realMessages.length - 1].id);
+      console.log('[holm-chat-indicator] watermark after update', {
+        lastSeenChatMessageId: latestRealtimeChatMessage.id,
+        lastReadChatMessageId: latestRealtimeChatMessage.id,
+      });
+      console.log('[holm-chat-indicator] green pulse skipped', {
+        messageId: latestRealtimeChatMessage.id,
+        reason: 'chat-open',
+      });
+      console.log('[holm-chat-indicator] red unread skipped', {
+        messageId: latestRealtimeChatMessage.id,
+        reason: 'chat-open',
+      });
+      return;
+    }
+
+    setChatTabFlashing(true);
+    setHasUnreadMessages(true);
+    console.log('[holm-chat-indicator] watermark after update', {
+      lastSeenChatMessageId: latestRealtimeChatMessage.id,
+      lastReadChatMessageId,
+    });
+    console.log('[holm-chat-indicator] green pulse fired', {
+      messageId: latestRealtimeChatMessage.id,
+    });
+    console.log('[holm-chat-indicator] red unread set', {
+      messageId: latestRealtimeChatMessage.id,
+      reason: 'eligible-other-human-realtime',
+    });
+
+    const timeout = setTimeout(() => setChatTabFlashing(false), 1500);
+    return () => clearTimeout(timeout);
+  }, [
+    activeTab,
+    gameId,
+    getChatIndicatorEligibility,
+    lastReadChatMessageId,
+    lastSeenChatMessageId,
+    latestRealtimeChatMessage,
+    setHasUnreadMessages,
+    setLastReadChatMessageId,
+    setLastSeenChatMessageId,
+  ]);
+
+  // Hydration + RED unread reconciliation path.
+  useEffect(() => {
+    const latestEligibleMessage = eligibleIndicatorMessages[eligibleIndicatorMessages.length - 1] ?? null;
+
+    if (!chatHydratedRef.current && allMessages.length > 0) {
+      chatHydratedRef.current = true;
+
+      if (!lastSeenChatMessageId && !lastReadChatMessageId && latestEligibleMessage && !processedEligibleRealtimeRef.current) {
+        setLastSeenChatMessageId(latestEligibleMessage.id);
+        setLastReadChatMessageId(latestEligibleMessage.id);
+        setHasUnreadMessages(false);
+        console.log('[holm-chat-indicator] hydration complete', {
+          gameId,
+          eligibleCount: eligibleIndicatorMessages.length,
+          baselineId: latestEligibleMessage.id,
+          action: 'seed-seen-read',
+        });
+        return;
+      }
+
+      console.log('[holm-chat-indicator] hydration complete', {
+        gameId,
+        eligibleCount: eligibleIndicatorMessages.length,
+        baselineId: latestEligibleMessage?.id ?? null,
+        action: processedEligibleRealtimeRef.current ? 'preserve-realtime-watermark' : 'preserve-existing-watermarks',
+        lastSeenChatMessageId,
+        lastReadChatMessageId,
+      });
+    }
+
+    if (activeTab === 'chat') {
+      if (latestEligibleMessage && lastReadChatMessageId !== latestEligibleMessage.id) {
+        setLastReadChatMessageId(latestEligibleMessage.id);
+        console.log('[holm-chat-indicator] watermark after update', {
+          lastSeenChatMessageId,
+          lastReadChatMessageId: latestEligibleMessage.id,
+        });
+      }
+
+      setHasUnreadMessages(false);
+      console.log('[holm-chat-indicator] red unread cleared', {
+        reason: 'chat-open',
+        lastReadChatMessageId: latestEligibleMessage?.id ?? lastReadChatMessageId,
+      });
+      return;
+    }
+
+    let unreadEligibleMessages: typeof eligibleIndicatorMessages = [];
+
+    if (lastReadChatMessageId) {
+      unreadEligibleMessages = getMessagesAfterWatermark(eligibleIndicatorMessages, lastReadChatMessageId);
+
+      if (eligibleIndicatorMessages.length > 0 && unreadEligibleMessages.length === 0 && !eligibleIndicatorMessages.some((message) => message.id === lastReadChatMessageId)) {
+        console.log('[holm-chat-indicator] red unread skipped', {
+          reason: 'stale-read-watermark',
+          lastReadChatMessageId,
+        });
+      }
+    } else if (lastSeenChatMessageId) {
+      unreadEligibleMessages = getMessagesAfterWatermark(eligibleIndicatorMessages, lastSeenChatMessageId, true);
+
+      if (eligibleIndicatorMessages.length > 0 && unreadEligibleMessages.length === 0 && !eligibleIndicatorMessages.some((message) => message.id === lastSeenChatMessageId)) {
+        console.log('[holm-chat-indicator] red unread skipped', {
+          reason: 'stale-seen-watermark',
+          lastSeenChatMessageId,
+        });
       }
     }
-  }, [activeTab, allMessages.length]);
+
+    const shouldHaveUnreadMessages = unreadEligibleMessages.length > 0;
+    setHasUnreadMessages(shouldHaveUnreadMessages);
+    console.log(`[holm-chat-indicator] red unread ${shouldHaveUnreadMessages ? 'set' : 'skipped'}`, {
+      reason: shouldHaveUnreadMessages ? 'eligible-messages-newer-than-read-watermark' : 'no-unread-eligible-messages',
+      unreadCount: unreadEligibleMessages.length,
+      lastSeenChatMessageId,
+      lastReadChatMessageId,
+      latestEligibleMessageId: latestEligibleMessage?.id ?? null,
+    });
+  }, [
+    activeTab,
+    allMessages.length,
+    eligibleIndicatorMessages,
+    gameId,
+    getMessagesAfterWatermark,
+    lastReadChatMessageId,
+    lastSeenChatMessageId,
+    setHasUnreadMessages,
+    setLastReadChatMessageId,
+    setLastSeenChatMessageId,
+  ]);
 
   // Calculate lose amount
   const loseAmount = potMaxEnabled ? Math.min(pot, potMaxValue) : pot;
