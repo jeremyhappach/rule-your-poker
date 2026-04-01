@@ -110,7 +110,7 @@ export const GinRummyGameTable = ({
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
 
-  const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
+  const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
