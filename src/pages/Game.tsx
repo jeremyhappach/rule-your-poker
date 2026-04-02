@@ -3125,8 +3125,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     cardIdentityRef.current = '';
   } else if (currentCardIdentity && currentCardIdentity !== cardIdentityRef.current) {
     // Cards changed - this is a new hand, reset the max
+    // CRITICAL: For Holm, use sync framework's revealed count to avoid raw DB racing ahead
     cardIdentityRef.current = currentCardIdentity;
-    maxRevealedRef.current = currentRound?.community_cards_revealed ?? 0;
+    const resetRevealed = (game?.game_type === 'holm-game' && holmView)
+      ? holmView.communityCardsRevealed
+      : (currentRound?.community_cards_revealed ?? 0);
+    maxRevealedRef.current = resetRevealed;
+    console.log('[holm-sync] maxRevealed reset on new cards', { resetRevealed, cardIdentity: currentCardIdentity.substring(0, 20) });
   } else if (currentRound?.community_cards_revealed !== undefined) {
     // Same hand, only increase max (never decrease)
     // For Holm: use presentation state as input (already monotonic via sync framework)
