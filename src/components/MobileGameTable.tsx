@@ -794,6 +794,12 @@ export const MobileGameTable = ({
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
   
+  // HOLM: Gate announcement display until community card 4 flip animation completes.
+  // CommunityCards.tsx uses a 1500ms delay for the last card in a batch flip (card 4).
+  // This prevents the hand result banner from appearing before card 4 is visually revealed.
+  const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
+  const holmRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
    // The spotlight should only move forward to the next player, never jump back to a previous position.
    // We track the last confirmed turn position, the handContextId it belongs to, and visited positions.
