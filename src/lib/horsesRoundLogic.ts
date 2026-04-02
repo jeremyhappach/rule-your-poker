@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
+import { persistTransition } from "./persistSyncDebugEvent";
 
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
 
