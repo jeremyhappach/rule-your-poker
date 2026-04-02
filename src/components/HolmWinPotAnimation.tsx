@@ -161,65 +161,73 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
     lastTriggerIdRef.current = triggerId;
     lockedAmountRef.current = amount;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const potCoords = getPotCenter(rect);
-    
-    // Use winnerPositions if provided, otherwise fall back to single winnerPosition
-    const positions = winnerPositions.length > 0 ? winnerPositions : [winnerPosition];
-    const isMultiWin = positions.length > 1;
-    const splitAmount = isMultiWin ? Math.floor(amount / positions.length) : amount;
-    
-    // Create animations for each winner
-    const newAnimations = positions.map((pos) => {
-      const winnerCoords = getPositionCoords(pos, rect);
-      return {
-        position: pos,
-        fromX: potCoords.x,
-        fromY: potCoords.y,
-        toX: winnerCoords.x,
-        toY: winnerCoords.y,
-        amount: splitAmount,
-      };
-    });
+    // Defer measurement by one frame so the showdown layout reflow has committed.
+    // Without this, coordinates are captured from the pre-showdown geometry (pot/players
+    // in their old positions) causing animations to target stale locations.
+    requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    // Call onAnimationStart when POT-OUT animation begins
-    onAnimationStart?.();
-
-    setAnimations(newAnimations);
-
-    // Fire confetti only for the winner's client
-    if (isCurrentPlayerWinner) {
-      const duration = 4000;
-      const end = Date.now() + duration;
+      const rect = container.getBoundingClientRect();
+      const potCoords = getPotCenter(rect);
       
-      const frame = () => {
-        confetti({
-          particleCount: 2,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0, y: 0.7 },
-          colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
-        });
-        confetti({
-          particleCount: 2,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1, y: 0.7 },
-          colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
-        });
-        
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      };
-      frame();
-    }
+      // Use winnerPositions if provided, otherwise fall back to single winnerPosition
+      const positions = winnerPositions.length > 0 ? winnerPositions : [winnerPosition];
+      const isMultiWin = positions.length > 1;
+      const splitAmount = isMultiWin ? Math.floor(amount / positions.length) : amount;
+      
+      // Create animations for each winner
+      const newAnimations = positions.map((pos) => {
+        const winnerCoords = getPositionCoords(pos, rect);
+        return {
+          position: pos,
+          fromX: potCoords.x,
+          fromY: potCoords.y,
+          toX: winnerCoords.x,
+          toY: winnerCoords.y,
+          amount: splitAmount,
+        };
+      });
 
-    // Animation complete after 5.5 seconds
-    setTimeout(() => {
-      setAnimations([]);
-      onAnimationComplete?.();
-    }, 5500);
+      // Call onAnimationStart when POT-OUT animation begins
+      onAnimationStart?.();
+
+      setAnimations(newAnimations);
+
+      // Fire confetti only for the winner's client
+      if (isCurrentPlayerWinner) {
+        const duration = 4000;
+        const end = Date.now() + duration;
+        
+        const frame = () => {
+          confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.7 },
+            colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
+          });
+          confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.7 },
+            colors: ['#FFD700', '#FFA500', '#FFEC8B', '#DAA520']
+          });
+          
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        };
+        frame();
+      }
+
+      // Animation complete after 5.5 seconds
+      setTimeout(() => {
+        setAnimations([]);
+        onAnimationComplete?.();
+      }, 5500);
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerId]);
 

@@ -183,7 +183,6 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     amountRef.current = amount;
   });
 
-  // Main animation effect - ONLY depends on triggerId to prevent timer cancellation
   useEffect(() => {
     if (!triggerId || triggerId === lastTriggerIdRef.current) {
       return;
@@ -207,78 +206,90 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
     lastTriggerIdRef.current = triggerId;
     lockedAmountRef.current = amountRef.current;
 
-    // Compute positions using refs (won't cause re-runs)
-    const rect = container.getBoundingClientRect();
-    const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
-    const potCoords = { x: rect.width * 0.5, y: rect.height * yPercent };
+    // Defer measurement by one frame so the showdown layout reflow has committed.
+    // Without this, coordinates are captured from the pre-showdown geometry (pot/players
+    // in their old positions) causing animations to target stale locations.
+    const capturedTriggerId = triggerId;
+    requestAnimationFrame(() => {
+      // Guard: don't proceed if a newer trigger arrived while we waited
+      if (lastTriggerIdRef.current !== capturedTriggerId) return;
 
-    // Winner target
-    let winnerCoords: { x: number; y: number };
+      const freshContainer = containerRefRef.current?.current;
+      if (!freshContainer) return;
 
-    // Try live DOM first (best), then cached DOM %, then finally the % slot mapping fallback.
-    const domWinner = getChipCenterFromDom(winnerPositionRef.current);
-    if (domWinner) {
-      winnerCoords = domWinner;
-    } else {
-      const cachedWinner = getCachedChipCenter(winnerPositionRef.current, rect);
-      if (cachedWinner) {
-        winnerCoords = cachedWinner;
+      // Compute positions using refs (won't cause re-runs)
+      const rect = freshContainer.getBoundingClientRect();
+      const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
+      const potCoords = { x: rect.width * 0.5, y: rect.height * yPercent };
+
+      // Winner target
+      let winnerCoords: { x: number; y: number };
+
+      // Try live DOM first (best), then cached DOM %, then finally the % slot mapping fallback.
+      const domWinner = getChipCenterFromDom(winnerPositionRef.current);
+      if (domWinner) {
+        winnerCoords = domWinner;
       } else {
-        const isObserver = currentPlayerPositionRef.current === null;
-        let slot: { top: number; left: number };
-        if (isObserver) {
-          const positions: Record<number, { top: number; left: number }> = {
-            1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
-            4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
-          };
-          slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+        const cachedWinner = getCachedChipCenter(winnerPositionRef.current, rect);
+        if (cachedWinner) {
+          winnerCoords = cachedWinner;
         } else {
-          const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
-          const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
-          if (slotIndex === -1) {
-            slot = { top: 92, left: 50 };
-          } else {
-            const slots: Record<number, { top: number; left: number }> = {
-              0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
-              3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+          const isObserver = currentPlayerPositionRef.current === null;
+          let slot: { top: number; left: number };
+          if (isObserver) {
+            const positions: Record<number, { top: number; left: number }> = {
+              1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
+              4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
             };
-            slot = slots[slotIndex] || { top: 50, left: 50 };
+            slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+          } else {
+            const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
+            const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
+            if (slotIndex === -1) {
+              slot = { top: 92, left: 50 };
+            } else {
+              const slots: Record<number, { top: number; left: number }> = {
+                0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
+                3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+              };
+              slot = slots[slotIndex] || { top: 50, left: 50 };
+            }
           }
+          winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
         }
-        winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
       }
-    }
 
-    // Notify start - pot should show 0 now
-    onStartRef.current?.();
+      // Notify start - pot should show 0 now
+      onStartRef.current?.();
 
-    setAnimation({
-      // Convert container-relative coords → viewport coords so we can render with position:fixed
-      fromX: rect.left + potCoords.x,
-      fromY: rect.top + potCoords.y,
-      toX: rect.left + winnerCoords.x,
-      toY: rect.top + winnerCoords.y,
+      setAnimation({
+        // Convert container-relative coords → viewport coords so we can render with position:fixed
+        fromX: rect.left + potCoords.x,
+        fromY: rect.top + potCoords.y,
+        toX: rect.left + winnerCoords.x,
+        toY: rect.top + winnerCoords.y,
+      });
+
+      // Dice games should feel like 3-5-7 pacing: no bounce/linger, but not "blink fast".
+      const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
+      const animDuration = isDiceGame ? 1600 : 3300;
+      const clearDelay = isDiceGame ? 1800 : 3700;
+
+      // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
+      endTimeoutRef.current = window.setTimeout(() => {
+        // Guard: only end the animation we started for this trigger.
+        if (lastTriggerIdRef.current === capturedTriggerId) {
+          onEndRef.current?.();
+        }
+      }, animDuration);
+
+      // Clear animation after it completes
+      clearTimeoutRef.current = window.setTimeout(() => {
+        if (lastTriggerIdRef.current === capturedTriggerId) {
+          setAnimation(null);
+        }
+      }, clearDelay);
     });
-
-    // Dice games should feel like 3-5-7 pacing: no bounce/linger, but not "blink fast".
-    const isDiceGame = gameTypeRef.current === 'horses' || gameTypeRef.current === 'ship-captain-crew';
-    const animDuration = isDiceGame ? 1600 : 3300;
-    const clearDelay = isDiceGame ? 1800 : 3700;
-
-    // Notify parent AFTER the visual animation fully finishes so the component isn't unmounted mid-flight.
-    endTimeoutRef.current = window.setTimeout(() => {
-      // Guard: only end the animation we started for this trigger.
-      if (lastTriggerIdRef.current === triggerId) {
-        onEndRef.current?.();
-      }
-    }, animDuration);
-
-    // Clear animation after it completes
-    clearTimeoutRef.current = window.setTimeout(() => {
-      if (lastTriggerIdRef.current === triggerId) {
-        setAnimation(null);
-      }
-    }, clearDelay);
 
     // NO cleanup that clears timers - we don't want deps changes to cancel timers
     // Timers are only cleared when a NEW triggerId arrives (handled above)
