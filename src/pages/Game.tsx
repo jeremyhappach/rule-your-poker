@@ -3125,8 +3125,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     cardIdentityRef.current = '';
   } else if (currentCardIdentity && currentCardIdentity !== cardIdentityRef.current) {
     // Cards changed - this is a new hand, reset the max
+    // CRITICAL: For Holm, use sync framework's revealed count to avoid raw DB racing ahead
     cardIdentityRef.current = currentCardIdentity;
-    maxRevealedRef.current = currentRound?.community_cards_revealed ?? 0;
+    const resetRevealed = (game?.game_type === 'holm-game' && holmView)
+      ? holmView.communityCardsRevealed
+      : (currentRound?.community_cards_revealed ?? 0);
+    maxRevealedRef.current = resetRevealed;
+    console.log('[holm-sync] maxRevealed reset on new cards', { resetRevealed, cardIdentity: currentCardIdentity.substring(0, 20) });
   } else if (currentRound?.community_cards_revealed !== undefined) {
     // Same hand, only increase max (never decrease)
     // For Holm: use presentation state as input (already monotonic via sync framework)
@@ -3137,22 +3142,47 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }
   
   // Effective revealed count - use max during showdowns/game_over/completed rounds/awaiting next to prevent re-hiding
-  const shouldUseMax = (
-    game?.status === 'game_over' ||
-    game?.status === 'session_ended' ||
-    game?.all_decisions_in ||
-    currentRound?.status === 'completed' ||
-    game?.awaiting_next_round
-  );
+  // CRITICAL: For Holm, use sync-framework phase (holmView) instead of raw DB scalars
+  // that arrive on a separate realtime channel and can race ahead of the round state.
+  const isHolmWithSync = game?.game_type === 'holm-game' && !!holmView;
+  const shouldUseMax = isHolmWithSync
+    ? (
+        game?.status === 'game_over' ||
+        game?.status === 'session_ended' ||
+        holmView!.roundStatus === 'showdown' ||
+        holmView!.roundStatus === 'completed' ||
+        game?.awaiting_next_round
+      )
+    : (
+        game?.status === 'game_over' ||
+        game?.status === 'session_ended' ||
+        game?.all_decisions_in ||
+        currentRound?.status === 'completed' ||
+        game?.awaiting_next_round
+      );
   
   // For Holm: base revealed count comes from presentation state when available
-  const baseRevealedCount = (game?.game_type === 'holm-game' && holmView)
-    ? holmView.communityCardsRevealed
+  const baseRevealedCount = isHolmWithSync
+    ? holmView!.communityCardsRevealed
     : (currentRound?.community_cards_revealed ?? 0);
   
   const effectiveCommunityCardsRevealed = shouldUseMax
     ? maxRevealedRef.current
     : baseRevealedCount;
+  
+  // [holm-sync] Diagnostic: log reveal state every render when Holm in_progress
+  if (isHolmWithSync && game?.status === 'in_progress') {
+    console.log('[holm-sync] reveal state', {
+      phase: holmView!.roundStatus,
+      syncRevealed: holmView!.communityCardsRevealed,
+      rawRevealed: currentRound?.community_cards_revealed,
+      maxRevealed: maxRevealedRef.current,
+      shouldUseMax,
+      effective: shouldUseMax ? maxRevealedRef.current : baseRevealedCount,
+      rawAllDecisionsIn: game?.all_decisions_in,
+      cardIdentity: currentCardIdentity.substring(0, 20),
+    });
+  }
     
   // Only log when community cards might have an issue (no cards during in_progress)
   if (game?.game_type === 'holm-game' && game?.status === 'in_progress' && (!communityCards || communityCards.length === 0)) {
