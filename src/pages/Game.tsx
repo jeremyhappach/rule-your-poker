@@ -1501,9 +1501,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        (rawPayload) => {
-          applyWithDebugTiming('games', () => {
-          const payload = rawPayload;
+        (payload) => {
+          const newData = payload.new as any;
+          const oldData = payload.old as any;
           const newData = payload.new as any;
           const oldData = payload.old as any;
           
