@@ -196,6 +196,7 @@ export function resetRegressiveRevealTracking(handKey: string): void {
  * Returns true if all pass.
  */
 export function runHolmInvariants(params: {
+  gameId?: string;
   roundStatus: string;
   effectiveRevealed: number;
   handNumber: number;
@@ -205,6 +206,7 @@ export function runHolmInvariants(params: {
   evaluationResult?: string | null;
 }): boolean {
   const {
+    gameId,
     roundStatus,
     effectiveRevealed,
     handNumber,
@@ -215,8 +217,8 @@ export function runHolmInvariants(params: {
   } = params;
 
   let allPass = true;
-  allPass = checkPrematureReveal(roundStatus, effectiveRevealed, handNumber) && allPass;
-  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber) && allPass;
+  allPass = checkPrematureReveal(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
+  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
   allPass = checkRegressiveReveal(handKey, effectiveRevealed) && allPass;
 
   if (renderedCommunityCards && presentationCommunityCards) {
@@ -225,6 +227,7 @@ export function runHolmInvariants(params: {
       presentationCommunityCards,
       evaluationResult ?? null,
       handNumber,
+      gameId,
     ) && allPass;
   }
 
