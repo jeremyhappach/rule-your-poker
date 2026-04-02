@@ -3197,6 +3197,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       effectiveRevealed: effectiveCommunityCardsRevealed,
       handNumber: holmView!.handNumber,
       handKey,
+      allDecisionsIn: game?.all_decisions_in ?? false,
+      chuckyActive: holmView!.chuckyActive ?? false,
     });
 
     console.log('[holm-sync] reveal state', {
