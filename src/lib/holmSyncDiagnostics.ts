@@ -120,8 +120,9 @@ export function checkEvalRenderCoherence(
   presentationCommunityCards: string[],
   evaluationResult: string | null,
   handNumber: number,
+  gameId?: string,
 ): boolean {
-  if (!evaluationResult) return true; // No evaluation shown, skip
+  if (!evaluationResult) return true;
 
   const renderedStr = renderedCommunityCards.join(',');
   const presentationStr = presentationCommunityCards.join(',');
@@ -131,7 +132,7 @@ export function checkEvalRenderCoherence(
     'eval-render-coherence',
     renderedStr === presentationStr,
     `Rendered board (${renderedStr}) differs from presentation board (${presentationStr}) while evaluation "${evaluationResult}" is displayed`,
-    { renderedCommunityCards, presentationCommunityCards, evaluationResult, handNumber },
+    { renderedCommunityCards, presentationCommunityCards, evaluationResult, handNumber, gameId: gameId ?? '' },
   );
 }
 
