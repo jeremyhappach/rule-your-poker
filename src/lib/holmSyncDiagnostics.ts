@@ -12,7 +12,7 @@ import type { HolmAuthoritativeSnapshot } from '@/lib/gameStateSync/holmProgress
 
 const PHASE_MAX_REVEALED: Record<string, number> = {
   betting: 2,
-  processing: 2,
+  processing: 4, // processing + all_decisions_in can legitimately have 4
   showdown: 4,
   completed: 4,
 };
