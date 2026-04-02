@@ -3173,15 +3173,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? maxRevealedRef.current
     : baseRevealedCount;
   
-  // [holm-sync] Diagnostic: log reveal state every render when Holm in_progress
+  // [holm-sync] Invariant checks + diagnostic log at render boundary
   if (isHolmWithSync && game?.status === 'in_progress') {
+    const handKey = `${currentRound?.id}:${holmView!.handNumber}`;
+    runHolmInvariants({
+      roundStatus: holmView!.roundStatus,
+      effectiveRevealed: effectiveCommunityCardsRevealed,
+      handNumber: holmView!.handNumber,
+      handKey,
+    });
+
     console.log('[holm-sync] reveal state', {
       phase: holmView!.roundStatus,
       syncRevealed: holmView!.communityCardsRevealed,
       rawRevealed: currentRound?.community_cards_revealed,
       maxRevealed: maxRevealedRef.current,
       shouldUseMax,
-      effective: shouldUseMax ? maxRevealedRef.current : baseRevealedCount,
+      effective: effectiveCommunityCardsRevealed,
       rawAllDecisionsIn: game?.all_decisions_in,
       cardIdentity: currentCardIdentity.substring(0, 20),
     });
