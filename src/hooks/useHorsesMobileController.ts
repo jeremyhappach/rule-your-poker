@@ -713,6 +713,25 @@ export function useHorsesMobileController({
     stuckRecoveryKeyRef.current = key;
     
     console.warn("[HORSES] Detected stuck game - attempting recovery", { currentRoundId, turnOrder });
+
+    // ALWAYS persist this invariant — stuck state is a real bug signal
+    import("@/lib/persistSyncDebugEvent").then(({ persistInvariantViolation }) => {
+      persistInvariantViolation(
+        gameId,
+        isSCC ? "ship-captain-crew" : "horses",
+        horsesState?.turnOrder?.length ?? 0,
+        "stuck-null-turn",
+        {
+          currentRoundId,
+          turnOrderLength: turnOrder.length,
+          gamePhase,
+          playerStatesKeys: Object.keys(horsesState?.playerStates ?? {}),
+          completedPlayers: Object.entries(horsesState?.playerStates ?? {})
+            .filter(([, s]: [string, any]) => s?.isComplete)
+            .map(([id]) => id.slice(0, 8)),
+        },
+      );
+    }).catch(() => {});
     
     const recover = async () => {
       // CRITICAL: Use the latest persisted horses_state as the base for recovery.
@@ -973,7 +992,45 @@ export function useHorsesMobileController({
     getPlayerUsername,
   ]);
 
-  // Detect when the CURRENT USER's SCC hand is complete and they didn't qualify
+  // INVARIANT: Detect when ALL players are isComplete but gamePhase is still 'playing'.
+  // This always persists (no debug flag) because it's a real stuck-state signal.
+  const stuckAllCompleteKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!enabled || !currentRoundId || !gameId) return;
+    if (gamePhase !== "playing") return;
+    const states = horsesState?.playerStates;
+    const order = horsesState?.turnOrder;
+    if (!states || !order || order.length === 0) return;
+
+    const allComplete = order.every((pid) => states[pid]?.isComplete);
+    if (!allComplete) return;
+
+    const key = `allComplete:${currentRoundId}`;
+    if (stuckAllCompleteKeyRef.current === key) return;
+    stuckAllCompleteKeyRef.current = key;
+
+    console.error("[sync-invariant] ❌ horses::stuck-all-complete — gamePhase is 'playing' but every player isComplete", {
+      currentRoundId,
+      currentTurnPlayerId,
+      turnOrder: order.map(id => id.slice(0, 8)),
+    });
+
+    import("@/lib/persistSyncDebugEvent").then(({ persistInvariantViolation }) => {
+      persistInvariantViolation(
+        gameId,
+        isSCC ? "ship-captain-crew" : "horses",
+        order.length,
+        "stuck-all-complete",
+        {
+          currentRoundId,
+          currentTurnPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+          turnOrderLength: order.length,
+          gamePhase,
+        },
+      );
+    }).catch(() => {});
+  }, [enabled, currentRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
+
   // Only show the overlay to the player who rolled no qualify, not to spectators
   useEffect(() => {
     if (!enabled || !isSCC) return;

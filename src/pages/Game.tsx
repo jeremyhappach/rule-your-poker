@@ -305,11 +305,21 @@ function buildHolmSnapshot(
   if (gameData.game_type !== 'holm-game') return null;
   if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
 
+  const roundStatus = (currentRound.status as 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting';
+  const rawRevealed = currentRound.community_cards_revealed ?? 0;
+
+  // CLAMP FIX: The DB round row may carry community_cards_revealed=4 from the previous
+  // completed hand (the row is reused or fetched stale during hand transitions).
+  // During betting/processing phases, max 2 cards should ever be visible.
+  const clampedRevealed = (roundStatus === 'betting' || roundStatus === 'processing')
+    ? Math.min(rawRevealed, 2)
+    : rawRevealed;
+
   return {
     roundId: currentRound.id,
     handNumber: currentRound.hand_number ?? 1,
     dealerGameId: gameData.current_game_uuid ?? '',
-    roundStatus: (currentRound.status as 'betting' | 'processing' | 'showdown' | 'completed') ?? 'betting',
+    roundStatus,
     players: playersData.map(p => ({
       playerId: p.id,
       userId: p.user_id,
@@ -322,7 +332,7 @@ function buildHolmSnapshot(
     currentTurnPosition: currentRound.current_turn_position ?? null,
     decisionDeadline: currentRound.decision_deadline,
     communityCards: (currentRound.community_cards ?? []) as unknown[],
-    communityCardsRevealed: currentRound.community_cards_revealed ?? 0,
+    communityCardsRevealed: clampedRevealed,
     chuckyCards: (currentRound.chucky_cards ?? []) as unknown[],
     chuckyActive: currentRound.chucky_active ?? false,
     pot: gameData.pot ?? 0,
