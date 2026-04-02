@@ -1177,7 +1177,7 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    let unreadEligibleMessages: typeof eligibleIndicatorMessages = [];
+    let unreadEligibleMessages: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }[] = [];
 
     if (lastReadChatMessageIdRef.current) {
       unreadEligibleMessages = getMessagesAfterWatermark(eligibleIndicatorMessages, lastReadChatMessageIdRef.current);
