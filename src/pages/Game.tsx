@@ -47,6 +47,9 @@ import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { logDebugEvent } from "@/lib/debugEventLogger";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
+import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
+import { logSyncGateResult } from "@/lib/debugSyncInvariants";
+import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -3170,15 +3173,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? maxRevealedRef.current
     : baseRevealedCount;
   
-  // [holm-sync] Diagnostic: log reveal state every render when Holm in_progress
+  // [holm-sync] Invariant checks + diagnostic log at render boundary
   if (isHolmWithSync && game?.status === 'in_progress') {
+    const handKey = `${currentRound?.id}:${holmView!.handNumber}`;
+    runHolmInvariants({
+      roundStatus: holmView!.roundStatus,
+      effectiveRevealed: effectiveCommunityCardsRevealed,
+      handNumber: holmView!.handNumber,
+      handKey,
+    });
+
     console.log('[holm-sync] reveal state', {
       phase: holmView!.roundStatus,
       syncRevealed: holmView!.communityCardsRevealed,
       rawRevealed: currentRound?.community_cards_revealed,
       maxRevealed: maxRevealedRef.current,
       shouldUseMax,
-      effective: shouldUseMax ? maxRevealedRef.current : baseRevealedCount,
+      effective: effectiveCommunityCardsRevealed,
       rawAllDecisionsIn: game?.all_decisions_in,
       cardIdentity: currentCardIdentity.substring(0, 20),
     });
@@ -4418,9 +4429,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             prev: holmSyncLastRoundIdRef.current,
             next: snapshot.roundId,
           });
+          resetRegressiveRevealTracking(`${snapshot.roundId}:${snapshot.handNumber}`);
           holmSync.reset(snapshot);
         } else {
-          holmSync.receiveAuthoritativeUpdate(snapshot);
+          const result = holmSync.receiveAuthoritativeUpdate(snapshot);
+          logSyncGateResult('holm-sync', result.accepted, result.reason,
+            { current: result.previousProgress, incoming: result.incomingProgress },
+            { hand: snapshot.handNumber, phase: snapshot.roundStatus, revealed: snapshot.communityCardsRevealed },
+          );
+          const summary = buildHolmSyncSummary(gameId!, snapshot, snapshot.communityCardsRevealed);
+          logHolmSummary(result.accepted ? 'accepted' : 'rejected', summary);
         }
         holmSyncLastRoundIdRef.current = snapshot.roundId;
       }
