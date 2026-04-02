@@ -4421,9 +4421,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             prev: holmSyncLastRoundIdRef.current,
             next: snapshot.roundId,
           });
+          resetRegressiveRevealTracking(`${snapshot.roundId}:${snapshot.handNumber}`);
           holmSync.reset(snapshot);
         } else {
-          holmSync.receiveAuthoritativeUpdate(snapshot);
+          const result = holmSync.receiveAuthoritativeUpdate(snapshot);
+          logSyncGateResult('holm-sync', result.accepted, result.reason,
+            { current: result.previousProgress, incoming: result.incomingProgress },
+            { hand: snapshot.handNumber, phase: snapshot.roundStatus, revealed: snapshot.communityCardsRevealed },
+          );
+          const summary = buildHolmSyncSummary(gameId!, snapshot, snapshot.communityCardsRevealed);
+          logHolmSummary(result.accepted ? 'accepted' : 'rejected', summary);
         }
         holmSyncLastRoundIdRef.current = snapshot.roundId;
       }
