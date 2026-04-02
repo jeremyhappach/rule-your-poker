@@ -794,6 +794,12 @@ export const MobileGameTable = ({
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
   
+  // HOLM: Gate announcement display until community card 4 flip animation completes.
+  // CommunityCards.tsx uses a 1500ms delay for the last card in a batch flip (card 4).
+  // This prevents the hand result banner from appearing before card 4 is visually revealed.
+  const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
+  const holmRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
    // The spotlight should only move forward to the next player, never jump back to a previous position.
    // We track the last confirmed turn position, the handContextId it belongs to, and visited positions.
@@ -1627,6 +1633,10 @@ export const MobileGameTable = ({
     
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
+    
+    // Community reveal gate (prevents announcement before card 4 flip animation)
+    setHolmCommunityFullyRevealed(false);
+    if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
     
     // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
     stickyTurnPositionRef.current = { position: null, handContextId: to, visited: new Set() };
@@ -2823,6 +2833,34 @@ export const MobileGameTable = ({
     
     return () => clearTimeout(recoveryTimeout);
   }, [gameType, currentRound, communityCards, showCommunityCards, isDelayingCommunityCards, isDealerConfigPhase, awaitingNextRound, handContextId, communityCardsRevealed, approvedRoundForDisplay]);
+
+  // HOLM: Track when community card 4 flip animation has completed.
+  // CommunityCards.tsx applies a 1500ms delay to the last card in a batch flip.
+  // Gate the result announcement on this to prevent it appearing before card 4 is visible.
+  useEffect(() => {
+    if (gameType !== 'holm-game') {
+      setHolmCommunityFullyRevealed(true); // Non-Holm: no gate
+      return;
+    }
+    
+    const revealed = communityCardsRevealed ?? 0;
+    if (revealed >= 4) {
+      // Card 4 flip animation takes 1500ms in CommunityCards.tsx; add 200ms buffer
+      if (holmRevealTimerRef.current) clearTimeout(holmRevealTimerRef.current);
+      holmRevealTimerRef.current = setTimeout(() => {
+        setHolmCommunityFullyRevealed(true);
+        holmRevealTimerRef.current = null;
+      }, 1700);
+    } else {
+      // Not yet at 4 cards - reset gate
+      setHolmCommunityFullyRevealed(false);
+      if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
+    }
+    
+    return () => {
+      if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
+    };
+  }, [gameType, communityCardsRevealed]);
 
   // Cache Chucky cards when available, clear only when buck passes or new game starts
   useEffect(() => {
@@ -5762,6 +5800,9 @@ export const MobileGameTable = ({
              // CRITICAL FIX: Never show prior round result during configuring or ante_decision phases
              // These are setup phases for a NEW hand - we should show dealer/ante messages instead
              gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
+             // HOLM: Gate announcement until community card 4 flip animation has completed
+             // Prevents result banner from appearing before card 4 is visually revealed
+             (gameType !== 'holm-game' || holmCommunityFullyRevealed) &&
              (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) ? (
             /* Result message - in bottom section */
             /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
