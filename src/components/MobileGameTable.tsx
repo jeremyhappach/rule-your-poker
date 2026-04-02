@@ -2834,6 +2834,34 @@ export const MobileGameTable = ({
     return () => clearTimeout(recoveryTimeout);
   }, [gameType, currentRound, communityCards, showCommunityCards, isDelayingCommunityCards, isDealerConfigPhase, awaitingNextRound, handContextId, communityCardsRevealed, approvedRoundForDisplay]);
 
+  // HOLM: Track when community card 4 flip animation has completed.
+  // CommunityCards.tsx applies a 1500ms delay to the last card in a batch flip.
+  // Gate the result announcement on this to prevent it appearing before card 4 is visible.
+  useEffect(() => {
+    if (gameType !== 'holm-game') {
+      setHolmCommunityFullyRevealed(true); // Non-Holm: no gate
+      return;
+    }
+    
+    const revealed = communityCardsRevealed ?? 0;
+    if (revealed >= 4) {
+      // Card 4 flip animation takes 1500ms in CommunityCards.tsx; add 200ms buffer
+      if (holmRevealTimerRef.current) clearTimeout(holmRevealTimerRef.current);
+      holmRevealTimerRef.current = setTimeout(() => {
+        setHolmCommunityFullyRevealed(true);
+        holmRevealTimerRef.current = null;
+      }, 1700);
+    } else {
+      // Not yet at 4 cards - reset gate
+      setHolmCommunityFullyRevealed(false);
+      if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
+    }
+    
+    return () => {
+      if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
+    };
+  }, [gameType, communityCardsRevealed]);
+
   // Cache Chucky cards when available, clear only when buck passes or new game starts
   useEffect(() => {
     if (gameType !== 'holm-game') return;
