@@ -986,7 +986,14 @@ export async function endHolmRound(gameId: string) {
   const stayedPlayers = players.filter(p => p.current_decision === 'stay');
   const activePlayers = players.filter(p => p.status === 'active' && !p.sitting_out);
 
-  // CRITICAL DEBUG: Log exact player IDs to verify correct game context
+  persistTransition(gameId, 'holm', round.hand_number ?? 0, 'showdown-start', {
+    roundId: round.id,
+    stayedCount: stayedPlayers.length,
+    activeCount: activePlayers.length,
+    pot: round.pot || game.pot || 0,
+    communityRevealed: round.community_cards_revealed ?? 0,
+  });
+
   console.log('[HOLM END] ⚠️ PLAYER ID DEBUG ⚠️');
   console.log('[HOLM END] Game ID:', gameId);
   console.log('[HOLM END] Round ID:', round.id);
