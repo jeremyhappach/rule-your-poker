@@ -5800,6 +5800,9 @@ export const MobileGameTable = ({
              // CRITICAL FIX: Never show prior round result during configuring or ante_decision phases
              // These are setup phases for a NEW hand - we should show dealer/ante messages instead
              gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
+             // HOLM: Gate announcement until community card 4 flip animation has completed
+             // Prevents result banner from appearing before card 4 is visually revealed
+             (gameType !== 'holm-game' || holmCommunityFullyRevealed) &&
              (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) ? (
             /* Result message - in bottom section */
             /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
