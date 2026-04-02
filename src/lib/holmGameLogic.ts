@@ -957,6 +957,13 @@ export async function endHolmRound(gameId: string) {
   console.log('[HOLM END] Cached player cards count (with join):', allPlayerCardsData?.length || 0);
   console.log('[HOLM DIAG] MISMATCH?', (rawCardCount?.length ?? 0) !== (allPlayerCardsData?.length ?? 0) ? '⚠️ YES - join is filtering!' : 'No');
   
+  persistTransition(gameId, 'holm', round.hand_number ?? 0, 'showdown-start', {
+    roundId: round.id,
+    stayedPlayerCount: stayedPlayers.length,
+    pot: round.pot || game.pot || 0,
+    communityRevealed: round.community_cards_revealed ?? 0,
+  });
+
   // Write diagnostic to DB for post-mortem analysis
   logGameState({
     gameId,
