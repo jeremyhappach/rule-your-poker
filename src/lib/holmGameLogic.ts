@@ -656,6 +656,14 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   }
 
   console.log('[HOLM] Hand started. Buck:', buckPosition, 'Pot:', potForRound, 'FirstHand:', effectiveIsFirstHand);
+
+  persistTransition(gameId, 'holm', handNumber, 'hand-start', {
+    buckPosition,
+    pot: potForRound,
+    firstHand: effectiveIsFirstHand,
+    dealerPosition: gameConfig.dealer_position,
+    playerCount: activePlayers?.length ?? 0,
+  });
 }
 
 /**
