@@ -1,0 +1,187 @@
+/**
+ * Persistent sync debug event writer.
+ *
+ * Writes structured events to `debug_sync_events` table.
+ * - Invariant violations ALWAYS persist (no flag needed).
+ * - All other events gated by localStorage: ptp_debug_sync_events = "1"
+ *
+ * All writes are fire-and-forget — never blocks UI.
+ */
+
+import { supabase } from '@/integrations/supabase/client';
+
+// ── Toggle ────────────────────────────────────────────────────
+
+let _enabled: boolean | null = null;
+
+function checkEnabled(): boolean {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('debug_sync_events');
+    if (v === '' || v === '1' || v?.toLowerCase() === 'true') return true;
+  } catch { /* */ }
+  try {
+    if (window.localStorage.getItem('ptp_debug_sync_events') === '1') return true;
+  } catch { /* */ }
+  return false;
+}
+
+export function isSyncDebugEnabled(): boolean {
+  if (_enabled === null) _enabled = checkEnabled();
+  return _enabled;
+}
+
+export function refreshSyncDebugFlag(): void {
+  _enabled = checkEnabled();
+}
+
+// ── Dedup ─────────────────────────────────────────────────────
+
+const recentKeys = new Set<string>();
+const DEDUP_MS = 1000;
+
+function isDuplicate(key: string): boolean {
+  if (recentKeys.has(key)) return true;
+  recentKeys.add(key);
+  setTimeout(() => recentKeys.delete(key), DEDUP_MS);
+  return false;
+}
+
+// ── Types ─────────────────────────────────────────────────────
+
+export interface SyncDebugEvent {
+  gameId: string;
+  gameType: string;
+  handNumber: number;
+  roundId?: string | null;
+  eventType: 'invariant' | 'sync-gate' | 'transition' | 'correction';
+  severity: 'info' | 'warn' | 'error';
+  eventName: string;
+  payload?: Record<string, unknown>;
+}
+
+// ── Writer ────────────────────────────────────────────────────
+
+/**
+ * Persist a sync debug event. Fire-and-forget.
+ *
+ * - eventType 'invariant' always persists regardless of debug flag.
+ * - All others only persist when debug flag is on.
+ */
+export function persistSyncDebugEvent(event: SyncDebugEvent): void {
+  const isInvariant = event.eventType === 'invariant';
+
+  // Gate: invariants always persist; others only when enabled
+  if (!isInvariant && !isSyncDebugEnabled()) return;
+
+  // Lightweight dedup
+  const dedupKey = `${event.gameId}:${event.eventType}:${event.eventName}:${event.handNumber}`;
+  if (isDuplicate(dedupKey)) return;
+
+  supabase
+    .from('debug_sync_events' as any)
+    .insert({
+      game_id: event.gameId,
+      game_type: event.gameType,
+      hand_number: event.handNumber,
+      round_id: event.roundId ?? null,
+      event_type: event.eventType,
+      severity: event.severity,
+      event_name: event.eventName,
+      payload: event.payload ?? {},
+    } as any)
+    .then(({ error }) => {
+      if (error) console.warn('[sync-debug] write failed:', error.message);
+    });
+}
+
+// ── Convenience helpers ───────────────────────────────────────
+
+/** Persist an invariant violation (always, no flag needed) */
+export function persistInvariantViolation(
+  gameId: string,
+  gameType: string,
+  handNumber: number,
+  invariantName: string,
+  context: Record<string, unknown>,
+  roundId?: string | null,
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber,
+    roundId,
+    eventType: 'invariant',
+    severity: 'error',
+    eventName: invariantName,
+    payload: context,
+  });
+}
+
+/** Persist a sync-gate decision (debug-gated) */
+export function persistSyncGate(
+  gameId: string,
+  gameType: string,
+  handNumber: number,
+  accepted: boolean,
+  reason: string,
+  vectors: { current: unknown; incoming: unknown },
+  phase?: string,
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber,
+    eventType: 'sync-gate',
+    severity: accepted ? 'info' : 'warn',
+    eventName: accepted ? 'accepted' : 'rejected',
+    payload: {
+      accepted,
+      reason,
+      phase: phase ?? null,
+      currentVector: vectors.current,
+      incomingVector: vectors.incoming,
+    },
+  });
+}
+
+/** Persist a key transition boundary (debug-gated) */
+export function persistTransition(
+  gameId: string,
+  gameType: string,
+  handNumber: number,
+  transitionName: string,
+  payload: Record<string, unknown>,
+  roundId?: string | null,
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber,
+    roundId,
+    eventType: 'transition',
+    severity: 'info',
+    eventName: transitionName,
+    payload,
+  });
+}
+
+/** Persist a correction event (debug-gated) */
+export function persistCorrection(
+  gameId: string,
+  gameType: string,
+  handNumber: number,
+  field: string,
+  incorrectValue: unknown,
+  correctedValue: unknown,
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber,
+    eventType: 'correction',
+    severity: 'warn',
+    eventName: `correction:${field}`,
+    payload: { field, incorrectValue, correctedValue },
+  });
+}
