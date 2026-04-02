@@ -310,8 +310,12 @@ function buildHolmSnapshot(
 
   // CLAMP FIX: The DB round row may carry community_cards_revealed=4 from the previous
   // completed hand (the row is reused or fetched stale during hand transitions).
-  // During betting/processing phases, max 2 cards should ever be visible.
-  const clampedRevealed = (roundStatus === 'betting' || roundStatus === 'processing')
+  // During betting phase, max 2 cards should ever be visible.
+  // During processing phase, the game logic explicitly writes community_cards_revealed=4
+  // AFTER all decisions are in (all_decisions_in=true), so we must allow that through.
+  // Clamping processing unconditionally blocks cards 3-4 from appearing before Chucky.
+  const allDecisionsIn = gameData.all_decisions_in ?? false;
+  const clampedRevealed = (roundStatus === 'betting' || (roundStatus === 'processing' && !allDecisionsIn))
     ? Math.min(rawRevealed, 2)
     : rawRevealed;
 
@@ -3193,6 +3197,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       effectiveRevealed: effectiveCommunityCardsRevealed,
       handNumber: holmView!.handNumber,
       handKey,
+      allDecisionsIn: game?.all_decisions_in ?? false,
+      chuckyActive: holmView!.chuckyActive ?? false,
     });
 
     console.log('[holm-sync] reveal state', {

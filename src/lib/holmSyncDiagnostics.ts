@@ -12,7 +12,7 @@ import type { HolmAuthoritativeSnapshot } from '@/lib/gameStateSync/holmProgress
 
 const PHASE_MAX_REVEALED: Record<string, number> = {
   betting: 2,
-  processing: 2,
+  processing: 4, // processing + all_decisions_in can legitimately have 4
   showdown: 4,
   completed: 4,
 };
@@ -138,22 +138,54 @@ export function checkEvalRenderCoherence(
 
 /**
  * INV-3: Phase/render mismatch.
- * Betting/decision phase must not render showdown-level card exposure (>2).
+ * Betting phase must not render showdown-level card exposure (>2).
+ * Processing phase with all_decisions_in=true is allowed to show 4 (reveal sequence in progress).
  */
 export function checkPhaseRenderMismatch(
   roundStatus: string,
   effectiveRevealed: number,
   handNumber: number,
   gameId?: string,
+  allDecisionsIn?: boolean,
 ): boolean {
-  if (roundStatus !== 'betting' && roundStatus !== 'processing') return true;
+  if (roundStatus === 'betting') {
+    return checkInvariant(
+      'holm',
+      'phase-render-mismatch',
+      effectiveRevealed <= 2,
+      `Betting phase rendering ${effectiveRevealed} cards (max 2 allowed)`,
+      { roundStatus, effectiveRevealed, handNumber, gameId: gameId ?? '' },
+    );
+  }
+  if (roundStatus === 'processing' && !allDecisionsIn) {
+    return checkInvariant(
+      'holm',
+      'phase-render-mismatch',
+      effectiveRevealed <= 2,
+      `Processing phase (pre-decision) rendering ${effectiveRevealed} cards (max 2 allowed)`,
+      { roundStatus, effectiveRevealed, allDecisionsIn, handNumber, gameId: gameId ?? '' },
+    );
+  }
+  return true;
+}
 
+/**
+ * INV-5: Chucky dealt before community reveal.
+ * If chucky is active, the effective visible community count must be 4.
+ */
+export function checkChuckyBeforeReveal(
+  chuckyActive: boolean,
+  effectiveRevealed: number,
+  handNumber: number,
+  gameId?: string,
+): boolean {
+  if (!chuckyActive) return true;
   return checkInvariant(
     'holm',
-    'phase-render-mismatch',
-    effectiveRevealed <= 2,
-    `Betting/processing phase rendering ${effectiveRevealed} cards (max 2 allowed)`,
-    { roundStatus, effectiveRevealed, handNumber, gameId: gameId ?? '' },
+    'chucky-before-community-reveal',
+    effectiveRevealed >= 4,
+    `Chucky is active but only ${effectiveRevealed} community cards visible (expected 4)`,
+    { chuckyActive, effectiveRevealed, handNumber, gameId: gameId ?? '' },
   );
 }
 
@@ -201,6 +233,8 @@ export function runHolmInvariants(params: {
   effectiveRevealed: number;
   handNumber: number;
   handKey: string;
+  allDecisionsIn?: boolean;
+  chuckyActive?: boolean;
   renderedCommunityCards?: string[];
   presentationCommunityCards?: string[];
   evaluationResult?: string | null;
@@ -211,6 +245,8 @@ export function runHolmInvariants(params: {
     effectiveRevealed,
     handNumber,
     handKey,
+    allDecisionsIn,
+    chuckyActive,
     renderedCommunityCards,
     presentationCommunityCards,
     evaluationResult,
@@ -218,8 +254,9 @@ export function runHolmInvariants(params: {
 
   let allPass = true;
   allPass = checkPrematureReveal(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
-  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
+  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber, gameId, allDecisionsIn) && allPass;
   allPass = checkRegressiveReveal(handKey, effectiveRevealed) && allPass;
+  allPass = checkChuckyBeforeReveal(chuckyActive ?? false, effectiveRevealed, handNumber, gameId) && allPass;
 
   if (renderedCommunityCards && presentationCommunityCards) {
     allPass = checkEvalRenderCoherence(
