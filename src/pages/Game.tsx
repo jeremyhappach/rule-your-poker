@@ -1727,8 +1727,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
-          }
-        }, { source: 'games' });
         }
       )
       .on(
