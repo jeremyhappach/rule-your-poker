@@ -3178,6 +3178,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   if (isHolmWithSync && game?.status === 'in_progress') {
     const handKey = `${currentRound?.id}:${holmView!.handNumber}`;
     runHolmInvariants({
+      gameId: game?.id,
       roundStatus: holmView!.roundStatus,
       effectiveRevealed: effectiveCommunityCardsRevealed,
       handNumber: holmView!.handNumber,
