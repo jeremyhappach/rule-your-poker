@@ -1634,6 +1634,10 @@ export const MobileGameTable = ({
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
     
+    // Community reveal gate (prevents announcement before card 4 flip animation)
+    setHolmCommunityFullyRevealed(false);
+    if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
+    
     // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
     stickyTurnPositionRef.current = { position: null, handContextId: to, visited: new Set() };
     
