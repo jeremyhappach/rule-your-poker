@@ -350,7 +350,6 @@ export const CribbageMobileGameTable = ({
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
   const cribbageStateRef = useRef<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   
   // Local tracking of current round for proper hand transitions
   // These start from props but can be updated when starting a new hand
