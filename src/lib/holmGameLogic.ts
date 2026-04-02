@@ -662,7 +662,7 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
     pot: potForRound,
     firstHand: effectiveIsFirstHand,
     dealerPosition: gameConfig.dealer_position,
-    playerCount: activePlayers?.length ?? 0,
+    playerCount: gameConfig.dealer_position ?? 0,
   });
 }
 
