@@ -138,22 +138,54 @@ export function checkEvalRenderCoherence(
 
 /**
  * INV-3: Phase/render mismatch.
- * Betting/decision phase must not render showdown-level card exposure (>2).
+ * Betting phase must not render showdown-level card exposure (>2).
+ * Processing phase with all_decisions_in=true is allowed to show 4 (reveal sequence in progress).
  */
 export function checkPhaseRenderMismatch(
   roundStatus: string,
   effectiveRevealed: number,
   handNumber: number,
   gameId?: string,
+  allDecisionsIn?: boolean,
 ): boolean {
-  if (roundStatus !== 'betting' && roundStatus !== 'processing') return true;
+  if (roundStatus === 'betting') {
+    return checkInvariant(
+      'holm',
+      'phase-render-mismatch',
+      effectiveRevealed <= 2,
+      `Betting phase rendering ${effectiveRevealed} cards (max 2 allowed)`,
+      { roundStatus, effectiveRevealed, handNumber, gameId: gameId ?? '' },
+    );
+  }
+  if (roundStatus === 'processing' && !allDecisionsIn) {
+    return checkInvariant(
+      'holm',
+      'phase-render-mismatch',
+      effectiveRevealed <= 2,
+      `Processing phase (pre-decision) rendering ${effectiveRevealed} cards (max 2 allowed)`,
+      { roundStatus, effectiveRevealed, allDecisionsIn, handNumber, gameId: gameId ?? '' },
+    );
+  }
+  return true;
+}
 
+/**
+ * INV-5: Chucky dealt before community reveal.
+ * If chucky is active, the effective visible community count must be 4.
+ */
+export function checkChuckyBeforeReveal(
+  chuckyActive: boolean,
+  effectiveRevealed: number,
+  handNumber: number,
+  gameId?: string,
+): boolean {
+  if (!chuckyActive) return true;
   return checkInvariant(
     'holm',
-    'phase-render-mismatch',
-    effectiveRevealed <= 2,
-    `Betting/processing phase rendering ${effectiveRevealed} cards (max 2 allowed)`,
-    { roundStatus, effectiveRevealed, handNumber, gameId: gameId ?? '' },
+    'chucky-before-community-reveal',
+    effectiveRevealed >= 4,
+    `Chucky is active but only ${effectiveRevealed} community cards visible (expected 4)`,
+    { chuckyActive, effectiveRevealed, handNumber, gameId: gameId ?? '' },
   );
 }
 
