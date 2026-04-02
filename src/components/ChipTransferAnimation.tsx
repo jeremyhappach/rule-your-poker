@@ -187,39 +187,47 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
     lastTriggerIdRef.current = triggerId;
     lockedAmountRef.current = amount;
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const winnerCoords = getPositionCoords(winnerPosition, rect);
+    // Defer measurement by one frame so the showdown layout reflow has committed.
+    // Without this, coordinates are captured from the pre-showdown geometry (pot/players
+    // in their old positions) causing animations to target stale locations.
+    requestAnimationFrame(() => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    // Notify start - losers' chips should decrement now
-    if (onAnimationStart) {
-      onAnimationStart(loserPlayerIds);
-    }
+      const rect = container.getBoundingClientRect();
+      const winnerCoords = getPositionCoords(winnerPosition, rect);
 
-    const newAnims: ChipAnimation[] = loserPositions.map((loserPos, index) => {
-      const loserCoords = getPositionCoords(loserPos, rect);
-      return {
-        id: `transfer-${animIdRef.current++}`,
-        fromX: loserCoords.x,
-        fromY: loserCoords.y,
-        toX: winnerCoords.x,
-        toY: winnerCoords.y,
-        loserId: loserPlayerIds[index],
-      };
-    });
-
-    setAnimations(newAnims);
-
-    // Animation ends at 2s, notify parent so winner's chips increment
-    setTimeout(() => {
-      if (onAnimationEnd) {
-        onAnimationEnd();
+      // Notify start - losers' chips should decrement now
+      if (onAnimationStart) {
+        onAnimationStart(loserPlayerIds);
       }
-    }, 1800);
 
-    // Clear animations after they complete
-    setTimeout(() => {
-      setAnimations([]);
-    }, 2200);
+      const newAnims: ChipAnimation[] = loserPositions.map((loserPos, index) => {
+        const loserCoords = getPositionCoords(loserPos, rect);
+        return {
+          id: `transfer-${animIdRef.current++}`,
+          fromX: loserCoords.x,
+          fromY: loserCoords.y,
+          toX: winnerCoords.x,
+          toY: winnerCoords.y,
+          loserId: loserPlayerIds[index],
+        };
+      });
+
+      setAnimations(newAnims);
+
+      // Animation ends at 2s, notify parent so winner's chips increment
+      setTimeout(() => {
+        if (onAnimationEnd) {
+          onAnimationEnd();
+        }
+      }, 1800);
+
+      // Clear animations after they complete
+      setTimeout(() => {
+        setAnimations([]);
+      }, 2200);
+    });
   }, [triggerId, amount, winnerPosition, loserPositions, loserPlayerIds, currentPlayerPosition, getClockwiseDistance, containerRef, onAnimationStart, onAnimationEnd]);
 
   if (animations.length === 0) return null;
