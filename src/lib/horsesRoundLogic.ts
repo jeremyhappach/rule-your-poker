@@ -385,7 +385,14 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       }
       
       const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
-      
+
+      persistTransition(gameId, 'horses', newHandNumber, 'ante-applied', {
+        playerCount: activePlayers.length,
+        anteAmount,
+        pot: potForRound,
+        isFirstHand,
+      });
+
       // Fire-and-forget: Record antes (audit trail only)
       recordGameResult(
         gameId,
