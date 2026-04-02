@@ -208,6 +208,9 @@ export const CribbageMobileGameTable = ({
   // Chat hook - integrated like other mobile game tables
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   
+  // Tab state - must be declared before chat indicator hooks that reference it
+  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+
   // Unread messages tracking for chat tab indicator
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
