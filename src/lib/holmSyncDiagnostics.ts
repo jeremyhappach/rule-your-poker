@@ -99,6 +99,7 @@ export function checkPrematureReveal(
   roundStatus: string,
   effectiveRevealed: number,
   handNumber: number,
+  gameId?: string,
 ): boolean {
   const maxAllowed = PHASE_MAX_REVEALED[roundStatus] ?? 2;
   return checkInvariant(
@@ -106,7 +107,7 @@ export function checkPrematureReveal(
     'premature-reveal',
     effectiveRevealed <= maxAllowed,
     `Effective revealed (${effectiveRevealed}) exceeds phase limit (${maxAllowed}) for phase "${roundStatus}"`,
-    { roundStatus, effectiveRevealed, maxAllowed, handNumber },
+    { roundStatus, effectiveRevealed, maxAllowed, handNumber, gameId: gameId ?? '' },
   );
 }
 
@@ -119,8 +120,9 @@ export function checkEvalRenderCoherence(
   presentationCommunityCards: string[],
   evaluationResult: string | null,
   handNumber: number,
+  gameId?: string,
 ): boolean {
-  if (!evaluationResult) return true; // No evaluation shown, skip
+  if (!evaluationResult) return true;
 
   const renderedStr = renderedCommunityCards.join(',');
   const presentationStr = presentationCommunityCards.join(',');
@@ -130,7 +132,7 @@ export function checkEvalRenderCoherence(
     'eval-render-coherence',
     renderedStr === presentationStr,
     `Rendered board (${renderedStr}) differs from presentation board (${presentationStr}) while evaluation "${evaluationResult}" is displayed`,
-    { renderedCommunityCards, presentationCommunityCards, evaluationResult, handNumber },
+    { renderedCommunityCards, presentationCommunityCards, evaluationResult, handNumber, gameId: gameId ?? '' },
   );
 }
 
@@ -142,6 +144,7 @@ export function checkPhaseRenderMismatch(
   roundStatus: string,
   effectiveRevealed: number,
   handNumber: number,
+  gameId?: string,
 ): boolean {
   if (roundStatus !== 'betting' && roundStatus !== 'processing') return true;
 
@@ -150,7 +153,7 @@ export function checkPhaseRenderMismatch(
     'phase-render-mismatch',
     effectiveRevealed <= 2,
     `Betting/processing phase rendering ${effectiveRevealed} cards (max 2 allowed)`,
-    { roundStatus, effectiveRevealed, handNumber },
+    { roundStatus, effectiveRevealed, handNumber, gameId: gameId ?? '' },
   );
 }
 
@@ -193,6 +196,7 @@ export function resetRegressiveRevealTracking(handKey: string): void {
  * Returns true if all pass.
  */
 export function runHolmInvariants(params: {
+  gameId?: string;
   roundStatus: string;
   effectiveRevealed: number;
   handNumber: number;
@@ -202,6 +206,7 @@ export function runHolmInvariants(params: {
   evaluationResult?: string | null;
 }): boolean {
   const {
+    gameId,
     roundStatus,
     effectiveRevealed,
     handNumber,
@@ -212,8 +217,8 @@ export function runHolmInvariants(params: {
   } = params;
 
   let allPass = true;
-  allPass = checkPrematureReveal(roundStatus, effectiveRevealed, handNumber) && allPass;
-  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber) && allPass;
+  allPass = checkPrematureReveal(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
+  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
   allPass = checkRegressiveReveal(handKey, effectiveRevealed) && allPass;
 
   if (renderedCommunityCards && presentationCommunityCards) {
@@ -222,6 +227,7 @@ export function runHolmInvariants(params: {
       presentationCommunityCards,
       evaluationResult ?? null,
       handNumber,
+      gameId,
     ) && allPass;
   }
 

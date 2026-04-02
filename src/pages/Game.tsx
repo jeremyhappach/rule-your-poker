@@ -50,6 +50,7 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { logSyncGateResult } from "@/lib/debugSyncInvariants";
 import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
+import { persistTransition } from "@/lib/persistSyncDebugEvent";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -3177,6 +3178,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   if (isHolmWithSync && game?.status === 'in_progress') {
     const handKey = `${currentRound?.id}:${holmView!.handNumber}`;
     runHolmInvariants({
+      gameId: game?.id,
       roundStatus: holmView!.roundStatus,
       effectiveRevealed: effectiveCommunityCardsRevealed,
       handNumber: holmView!.handNumber,
