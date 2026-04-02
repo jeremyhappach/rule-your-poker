@@ -233,6 +233,8 @@ export function runHolmInvariants(params: {
   effectiveRevealed: number;
   handNumber: number;
   handKey: string;
+  allDecisionsIn?: boolean;
+  chuckyActive?: boolean;
   renderedCommunityCards?: string[];
   presentationCommunityCards?: string[];
   evaluationResult?: string | null;
@@ -243,6 +245,8 @@ export function runHolmInvariants(params: {
     effectiveRevealed,
     handNumber,
     handKey,
+    allDecisionsIn,
+    chuckyActive,
     renderedCommunityCards,
     presentationCommunityCards,
     evaluationResult,
@@ -250,8 +254,9 @@ export function runHolmInvariants(params: {
 
   let allPass = true;
   allPass = checkPrematureReveal(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
-  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber, gameId) && allPass;
+  allPass = checkPhaseRenderMismatch(roundStatus, effectiveRevealed, handNumber, gameId, allDecisionsIn) && allPass;
   allPass = checkRegressiveReveal(handKey, effectiveRevealed) && allPass;
+  allPass = checkChuckyBeforeReveal(chuckyActive ?? false, effectiveRevealed, handNumber, gameId) && allPass;
 
   if (renderedCommunityCards && presentationCommunityCards) {
     allPass = checkEvalRenderCoherence(
