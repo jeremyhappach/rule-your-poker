@@ -1504,8 +1504,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
-          const newData = payload.new as any;
-          const oldData = payload.old as any;
           
           console.log('[REALTIME] 🔔 Games table UPDATE:', {
             eventType: payload.eventType,
