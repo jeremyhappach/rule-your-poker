@@ -99,6 +99,7 @@ export function checkPrematureReveal(
   roundStatus: string,
   effectiveRevealed: number,
   handNumber: number,
+  gameId?: string,
 ): boolean {
   const maxAllowed = PHASE_MAX_REVEALED[roundStatus] ?? 2;
   return checkInvariant(
@@ -106,7 +107,7 @@ export function checkPrematureReveal(
     'premature-reveal',
     effectiveRevealed <= maxAllowed,
     `Effective revealed (${effectiveRevealed}) exceeds phase limit (${maxAllowed}) for phase "${roundStatus}"`,
-    { roundStatus, effectiveRevealed, maxAllowed, handNumber },
+    { roundStatus, effectiveRevealed, maxAllowed, handNumber, gameId: gameId ?? '' },
   );
 }
 
