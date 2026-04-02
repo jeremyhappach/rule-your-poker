@@ -74,6 +74,16 @@ export function checkInvariant(
   recentViolations.push(violation);
   if (recentViolations.length > MAX_RECENT) recentViolations.shift();
 
+  // Persist to DB (fire-and-forget, always — invariants bypass debug flag)
+  try {
+    const { persistInvariantViolation } = require('./persistSyncDebugEvent');
+    const gameId = (context.gameId as string) ?? '';
+    const handNumber = (context.handNumber as number) ?? 0;
+    if (gameId) {
+      persistInvariantViolation(gameId, game, handNumber, invariant, context);
+    }
+  } catch { /* safe if module not available */ }
+
   return false;
 }
 
