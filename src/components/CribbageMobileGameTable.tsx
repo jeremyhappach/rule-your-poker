@@ -208,6 +208,9 @@ export const CribbageMobileGameTable = ({
   // Chat hook - integrated like other mobile game tables
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   
+  // Tab state - must be declared before chat indicator hooks that reference it
+  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
+
   // Unread messages tracking for chat tab indicator
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
   const [chatTabFlashing, setChatTabFlashing] = useState(false);
@@ -347,7 +350,6 @@ export const CribbageMobileGameTable = ({
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
   const cribbageStateRef = useRef<CribbageState | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'cards' | 'chat' | 'lobby' | 'history'>('cards');
   
   // Local tracking of current round for proper hand transitions
   // These start from props but can be updated when starting a new hand
@@ -1175,7 +1177,7 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    let unreadEligibleMessages: typeof eligibleIndicatorMessages = [];
+    let unreadEligibleMessages: { id: string; user_id: string; message: string; image_url?: string | null; username?: string }[] = [];
 
     if (lastReadChatMessageIdRef.current) {
       unreadEligibleMessages = getMessagesAfterWatermark(eligibleIndicatorMessages, lastReadChatMessageIdRef.current);
