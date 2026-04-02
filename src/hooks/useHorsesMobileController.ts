@@ -713,6 +713,25 @@ export function useHorsesMobileController({
     stuckRecoveryKeyRef.current = key;
     
     console.warn("[HORSES] Detected stuck game - attempting recovery", { currentRoundId, turnOrder });
+
+    // ALWAYS persist this invariant — stuck state is a real bug signal
+    import("@/lib/persistSyncDebugEvent").then(({ persistInvariantViolation }) => {
+      persistInvariantViolation(
+        gameId,
+        isSCC ? "ship-captain-crew" : "horses",
+        horsesState?.turnOrder?.length ?? 0,
+        "stuck-null-turn",
+        {
+          currentRoundId,
+          turnOrderLength: turnOrder.length,
+          gamePhase,
+          playerStatesKeys: Object.keys(horsesState?.playerStates ?? {}),
+          completedPlayers: Object.entries(horsesState?.playerStates ?? {})
+            .filter(([, s]: [string, any]) => s?.isComplete)
+            .map(([id]) => id.slice(0, 8)),
+        },
+      );
+    }).catch(() => {});
     
     const recover = async () => {
       // CRITICAL: Use the latest persisted horses_state as the base for recovery.
