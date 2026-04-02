@@ -273,6 +273,45 @@ export type Database = {
         }
         Relationships: []
       }
+      debug_sync_events: {
+        Row: {
+          created_at: string
+          event_name: string
+          event_type: string
+          game_id: string
+          game_type: string
+          hand_number: number
+          id: string
+          payload: Json
+          round_id: string | null
+          severity: string
+        }
+        Insert: {
+          created_at?: string
+          event_name: string
+          event_type: string
+          game_id: string
+          game_type: string
+          hand_number?: number
+          id?: string
+          payload?: Json
+          round_id?: string | null
+          severity?: string
+        }
+        Update: {
+          created_at?: string
+          event_name?: string
+          event_type?: string
+          game_id?: string
+          game_type?: string
+          hand_number?: number
+          id?: string
+          payload?: Json
+          round_id?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       dice_roll_audit: {
         Row: {
           created_at: string
