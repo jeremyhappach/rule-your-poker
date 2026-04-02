@@ -421,6 +421,10 @@ export async function endHorsesRound(
 ): Promise<void> {
 
   if (isTie) {
+    persistTransition(gameId, 'horses', 0, 'tie-rollover', {
+      description: winnerDescription,
+    });
+
     // For ties, set awaiting_next_round which will trigger re-ante
     const { error } = await supabase
       .from('games')
