@@ -144,6 +144,7 @@ export function checkPhaseRenderMismatch(
   roundStatus: string,
   effectiveRevealed: number,
   handNumber: number,
+  gameId?: string,
 ): boolean {
   if (roundStatus !== 'betting' && roundStatus !== 'processing') return true;
 
@@ -152,7 +153,7 @@ export function checkPhaseRenderMismatch(
     'phase-render-mismatch',
     effectiveRevealed <= 2,
     `Betting/processing phase rendering ${effectiveRevealed} cards (max 2 allowed)`,
-    { roundStatus, effectiveRevealed, handNumber },
+    { roundStatus, effectiveRevealed, handNumber, gameId: gameId ?? '' },
   );
 }
 
