@@ -121,7 +121,7 @@ async function horsesSetPlayerState(
   return (data as any) as HorsesStateFromDB;
 }
 
-async function horsesAdvanceTurn(roundId: string, expectedCurrentPlayerId: string): Promise<HorsesStateFromDB | null> {
+async function horsesAdvanceTurn(roundId: string, expectedCurrentPlayerId: string, meta?: { gameId?: string; handNumber?: number; isSCC?: boolean }): Promise<HorsesStateFromDB | null> {
   const { data, error } = await supabase.rpc("horses_advance_turn" as any, {
     _round_id: roundId,
     _expected_current_player_id: expectedCurrentPlayerId,
@@ -132,7 +132,22 @@ async function horsesAdvanceTurn(roundId: string, expectedCurrentPlayerId: strin
     return null;
   }
 
-  return (data as any) as HorsesStateFromDB;
+  const result = (data as any) as HorsesStateFromDB;
+
+  // Log turn advance for SCC diagnostics
+  if (meta?.gameId && meta.isSCC && result) {
+    import("@/lib/sccSyncDiagnostics").then(({ logSCCTurnAdvance }) => {
+      logSCCTurnAdvance(
+        meta.gameId!,
+        meta.handNumber ?? 0,
+        expectedCurrentPlayerId,
+        result.currentTurnPlayerId ?? null,
+        roundId,
+      );
+    }).catch(() => {});
+  }
+
+  return result;
 }
 
 export interface UseHorsesMobileControllerArgs {
