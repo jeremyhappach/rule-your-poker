@@ -337,6 +337,7 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     throw new Error('Failed to create round');
   }
 
+  logHorsesHandStart(gameId, newHandNumber, activePlayers.length, gameType, roundData.id);
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
   // CRITICAL: Clear config_deadline and ante_decision_deadline so the enforce-deadlines cron
