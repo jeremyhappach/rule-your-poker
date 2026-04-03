@@ -307,7 +307,7 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     throw new Error('Failed to create round');
   }
 
-  
+  logSCCAnteApplied(gameId, newHandNumber, potForRound, activePlayers.length, anteAmount, roundData.id);
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
   // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game

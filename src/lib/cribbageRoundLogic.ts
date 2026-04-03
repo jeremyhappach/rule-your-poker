@@ -138,6 +138,11 @@ export async function startCribbageRound(
       })
       .eq('id', gameId);
 
+    if (handNumber === 1) {
+      logCribbageDealerGameStart(gameId, handNumber, dealerGameId, round.id);
+    }
+    logCribbageHandStart(gameId, handNumber, dealerPlayer.id, round.id);
+
     // Store player cards in player_cards table for each player (only after we actually deal)
     if (cribbageState) {
       for (const playerId of playerIds) {
