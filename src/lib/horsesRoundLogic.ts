@@ -8,6 +8,7 @@ import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
+import { logHorsesHandStart } from "./horsesSyncDiagnostics";
 
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
 
