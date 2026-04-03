@@ -5,6 +5,7 @@ import { initializeCribbageGame, startNewHand } from './cribbageGameLogic';
 import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
+import { logCribbageHandStart, logCribbageDealerGameStart } from './cribbageSyncDiagnostics';
 
 /**
  * Start a new Cribbage round/hand.
@@ -136,6 +137,11 @@ export async function startCribbageRound(
         is_first_hand: isFirstHand,
       })
       .eq('id', gameId);
+
+    if (handNumber === 1) {
+      logCribbageDealerGameStart(gameId, handNumber, dealerGameId, round.id);
+    }
+    logCribbageHandStart(gameId, handNumber, dealerPlayer.id, round.id);
 
     // Store player cards in player_cards table for each player (only after we actually deal)
     if (cribbageState) {

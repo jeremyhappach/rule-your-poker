@@ -15,6 +15,7 @@ import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
+import { logGinHandStart } from './ginRummySyncDiagnostics';
 
 /**
  * Start the first Gin Rummy round/hand.
@@ -127,6 +128,8 @@ export async function startGinRummyRound(
         is_first_hand: handNumber === 1,
       })
       .eq('id', gameId);
+
+    logGinHandStart(gameId, insertedHandNumber, dealerPlayer.id, round.id);
 
     // Store player cards for hand history
     for (const playerId of [dealerPlayer.id, nonDealerPlayer.id]) {
