@@ -1831,6 +1831,51 @@ export const MobileGameTable = ({
     }).catch(() => { /* safe */ });
   }, [soloVsChuckyPlayerIdLocked, handContextId, gameType, currentUserId, gameId]);
 
+  // ── Horses/SCC sync diagnostics: invariant checks ──────────────
+  useEffect(() => {
+    if (!isDiceGame || !gameId || !horsesController) return;
+    const hs = horsesController;
+    const handNum = currentRound ?? 0;
+
+    import('@/lib/horsesSyncDiagnostics').then(({
+      checkHorsesStuckNullTurn,
+      checkHorsesStuckAllComplete,
+      checkHorsesPhaseRenderMismatch,
+      checkHorsesRegressiveHand,
+    }) => {
+      // INV-1: stuck-null-turn
+      checkHorsesStuckNullTurn(gameId, handNum, hs.gamePhase, hs.currentTurnPlayerId);
+
+      // INV-2: stuck-all-complete
+      if (horsesState?.playerStates && horsesState?.turnOrder) {
+        checkHorsesStuckAllComplete(
+          gameId, handNum, hs.gamePhase,
+          horsesState.playerStates as Record<string, { isComplete?: boolean }>,
+          horsesState.turnOrder as string[],
+        );
+      }
+
+      // INV-3: phase-render-mismatch
+      if (hs.gamePhase === 'playing') {
+        checkHorsesPhaseRenderMismatch(gameId, handNum, hs.gamePhase, 'input');
+      } else if (hs.gamePhase === 'complete') {
+        checkHorsesPhaseRenderMismatch(gameId, handNum, hs.gamePhase, 'result');
+      }
+
+      // INV-4: regressive-hand-identity
+      checkHorsesRegressiveHand(gameId, handNum);
+    }).catch(() => { /* safe */ });
+  }, [isDiceGame, gameId, horsesController?.gamePhase, horsesController?.currentTurnPlayerId, currentRound, horsesState]);
+
+  useEffect(() => {
+    if (!isDiceGame || !gameId) return;
+    return () => {
+      import('@/lib/horsesSyncDiagnostics').then(({ resetHorsesTracking }) => {
+        resetHorsesTracking(gameId);
+      }).catch(() => {});
+    };
+  }, [isDiceGame, gameId]);
+
   const isSoloVsChucky = isSoloVsChuckyRaw || soloVsChuckyTableLocked;
 
   // HOLM: Detect multi-player showdown (2+ players stayed) - needs tighter card overlap
