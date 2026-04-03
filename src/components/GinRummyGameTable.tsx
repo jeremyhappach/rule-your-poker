@@ -3,6 +3,14 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
+import {
+  checkStaleHandRender,
+  checkPhaseRenderMismatch,
+  checkResultRenderMismatch,
+  checkRegressiveHandIdentity,
+  resetGinRummyTracking,
+  logGinResultDisplay,
+} from '@/lib/ginRummySyncDiagnostics';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
@@ -316,6 +324,52 @@ export const GinRummyGameTable = ({
     setOpponentDrawTriggerId(null);
     prevLastActionRef.current = null;
   }, [roundId]);
+
+  // ── Sync invariant checks (fire on every viewState change) ─────
+  const ginInvariantHandRef = useRef<number>(0);
+  useEffect(() => {
+    if (!viewState) return;
+    const vsHand = viewState.handNumber ?? 0;
+
+    // INV-4: regressive-hand-identity
+    checkRegressiveHandIdentity(gameId, vsHand);
+
+    // INV-1: stale-hand-render (compare presentation hand to prop handNumber)
+    checkStaleHandRender(gameId, vsHand, handNumber);
+
+    // INV-2: phase-render-mismatch
+    const phase = viewState.phase;
+    if (phase === 'scoring' || phase === 'complete') {
+      checkPhaseRenderMismatch(gameId, vsHand, phase, 'result');
+    } else if (phase === 'first_draw' || phase === 'playing' || phase === 'knocking' || phase === 'laying_off') {
+      checkPhaseRenderMismatch(gameId, vsHand, phase, 'input');
+    }
+
+    // INV-3: result-render-mismatch (result display hand vs presentation hand)
+    if (viewState.knockResult && ginInvariantHandRef.current > 0) {
+      checkResultRenderMismatch(gameId, ginInvariantHandRef.current, vsHand);
+    }
+    if (viewState.knockResult) {
+      ginInvariantHandRef.current = vsHand;
+    }
+
+    // Log result-display transition when entering scoring/complete with a knockResult
+    if (viewState.knockResult && (phase === 'scoring' || phase === 'complete')) {
+      logGinResultDisplay(
+        gameId,
+        vsHand,
+        viewState.winnerPlayerId,
+        viewState.knockResult.isGin,
+        viewState.knockResult.isUndercut,
+      );
+    }
+  }, [viewState, gameId, handNumber]);
+
+  // Reset tracking when game changes
+  useEffect(() => {
+    resetGinRummyTracking(gameId);
+    return () => resetGinRummyTracking(gameId);
+  }, [gameId]);
 
   // Guards: only allow one overlay per round (prevents re-fire from polls/re-renders)
   const ginOverlayFiredRef = useRef(false);

@@ -6,6 +6,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
+import {
+  checkStaleDealerGameRender,
+  checkCribbagePhaseRenderMismatch,
+  checkCribbageResultRenderMismatch,
+  checkRegressiveIdentity,
+  resetCribbageTracking,
+  logCribbageScoringStart,
+  logCribbageResultDisplay,
+} from '@/lib/cribbageSyncDiagnostics';
 import { 
   initializeCribbageGame, 
   discardToCrib, 
@@ -187,6 +196,58 @@ export const CribbageGameTable = ({
 
     loadOrInitializeState();
   }, [roundId, players, anteAmount, dealerPosition]);
+
+  // ── Sync invariant checks (fire on every cribbageState change) ─
+  const cribInvariantScoringFiredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cribbageState) return;
+    const phase = cribbageState.phase;
+
+    // INV-4: regressive-identity
+    checkRegressiveIdentity(gameId, dealerGameId, handNumber);
+
+    // INV-1: stale-dealer-game-render (compare prop dealerGameId to what state expects)
+    // We use dealerGameId prop as both render and authoritative since CribbageGameTable
+    // receives it from the parent Game page which derives it from the round row.
+    checkStaleDealerGameRender(gameId, dealerGameId, dealerGameId, handNumber);
+
+    // INV-2: phase-render-mismatch
+    if (phase === 'discarding' || phase === 'cutting' || phase === 'pegging') {
+      checkCribbagePhaseRenderMismatch(gameId, handNumber, phase, 'input');
+    } else if (phase === 'counting') {
+      checkCribbagePhaseRenderMismatch(gameId, handNumber, phase, 'scoring');
+    } else if (phase === 'complete') {
+      checkCribbagePhaseRenderMismatch(gameId, handNumber, phase, 'result');
+    }
+
+    // INV-3: result-render-mismatch — only fires if winner shown for wrong hand
+    if (cribbageState.winnerPlayerId && phase === 'complete') {
+      checkCribbageResultRenderMismatch(gameId, handNumber, handNumber);
+    }
+
+    // Debug-gated transition: scoring-start
+    if (phase === 'counting') {
+      const scoringKey = `${roundId}:${handNumber}:counting`;
+      if (cribInvariantScoringFiredRef.current !== scoringKey) {
+        cribInvariantScoringFiredRef.current = scoringKey;
+        logCribbageScoringStart(gameId, handNumber, roundId);
+      }
+    }
+
+    // Debug-gated transition: result-display
+    if (phase === 'complete' && cribbageState.winnerPlayerId) {
+      const maxScore = Math.max(
+        ...Object.values(cribbageState.playerStates).map(ps => ps.pegScore ?? 0)
+      );
+      logCribbageResultDisplay(gameId, handNumber, cribbageState.winnerPlayerId, maxScore);
+    }
+  }, [cribbageState, gameId, dealerGameId, handNumber, roundId]);
+
+  // Reset tracking when game changes
+  useEffect(() => {
+    resetCribbageTracking(gameId);
+    return () => resetCribbageTracking(gameId);
+  }, [gameId]);
 
   // ── Hand-transition instrumentation ──────────────────────────
   // Build a debug context that tracks across transitions
