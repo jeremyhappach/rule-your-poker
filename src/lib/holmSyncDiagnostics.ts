@@ -270,3 +270,58 @@ export function runHolmInvariants(params: {
 
   return allPass;
 }
+
+// ── INV-6: Solo player presentation mismatch ─────────────────
+
+/**
+ * Track the previous hand's solo player to detect stale re-locking.
+ */
+const lastSoloCapture = { handContextId: '', playerId: '' };
+
+/**
+ * INV-6: Featured solo player mismatch.
+ * When the presentation layer selects a solo/featured player for tabling,
+ * verify it hasn't re-locked the previous hand's solo player due to stale
+ * current_decision. Fires when the same player is locked in consecutive
+ * hands with different handContextIds.
+ */
+export function checkSoloPlayerMismatch(
+  lockedPlayerId: string | null,
+  currentUserId: string | undefined,
+  handContextId: string,
+  gameId?: string,
+): boolean {
+  if (!lockedPlayerId || !handContextId) return true;
+
+  // Detect: same player locked as solo in two consecutive DIFFERENT hands
+  const isStaleRelock =
+    lastSoloCapture.playerId === lockedPlayerId &&
+    lastSoloCapture.handContextId !== '' &&
+    lastSoloCapture.handContextId !== handContextId;
+
+  // Update tracking
+  lastSoloCapture.handContextId = handContextId;
+  lastSoloCapture.playerId = lockedPlayerId;
+
+  if (!isStaleRelock) return true;
+
+  return checkInvariant(
+    'holm',
+    'solo-player-stale-relock',
+    false,
+    `Solo player ${lockedPlayerId.slice(0, 8)} re-locked across hand boundary (prev hand: ${lastSoloCapture.handContextId.slice(0, 8)}, current: ${handContextId.slice(0, 8)})`,
+    {
+      lockedPlayerId,
+      currentUserId: currentUserId ?? '',
+      handContextId,
+      previousHandContextId: lastSoloCapture.handContextId,
+      gameId: gameId ?? '',
+    },
+  );
+}
+
+/** Reset solo player tracking on unmount / game change */
+export function resetSoloPlayerTracking(): void {
+  lastSoloCapture.handContextId = '';
+  lastSoloCapture.playerId = '';
+}
