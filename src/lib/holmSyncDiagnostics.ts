@@ -293,13 +293,19 @@ export function checkSoloPlayerMismatch(
 ): boolean {
   if (!lockedPlayerId || !handContextId) return true;
 
+  const prevContext = lastSoloCapture.handContextId;
+  const prevPlayer = lastSoloCapture.playerId;
+
+  // Same context + same player = benign re-trigger, skip entirely
+  if (prevContext === handContextId && prevPlayer === lockedPlayerId) return true;
+
   // Detect: same player locked as solo in two consecutive DIFFERENT hands
   const isStaleRelock =
-    lastSoloCapture.playerId === lockedPlayerId &&
-    lastSoloCapture.handContextId !== '' &&
-    lastSoloCapture.handContextId !== handContextId;
+    prevPlayer === lockedPlayerId &&
+    prevContext !== '' &&
+    prevContext !== handContextId;
 
-  // Update tracking
+  // Update tracking BEFORE building payload so it's clean for next call
   lastSoloCapture.handContextId = handContextId;
   lastSoloCapture.playerId = lockedPlayerId;
 
@@ -309,12 +315,12 @@ export function checkSoloPlayerMismatch(
     'holm',
     'solo-player-stale-relock',
     false,
-    `Solo player ${lockedPlayerId.slice(0, 8)} re-locked across hand boundary (prev hand: ${lastSoloCapture.handContextId.slice(0, 8)}, current: ${handContextId.slice(0, 8)})`,
+    `Solo player ${lockedPlayerId.slice(0, 8)} re-locked across hand boundary (prev: ${prevContext.slice(0, 16)}, current: ${handContextId.slice(0, 16)})`,
     {
       lockedPlayerId,
       currentUserId: currentUserId ?? '',
       handContextId,
-      previousHandContextId: lastSoloCapture.handContextId,
+      previousHandContextId: prevContext,
       gameId: gameId ?? '',
     },
   );
