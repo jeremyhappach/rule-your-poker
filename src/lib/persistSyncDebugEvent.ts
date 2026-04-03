@@ -11,19 +11,30 @@
 import { supabase } from '@/integrations/supabase/client';
 
 // ── Toggle ────────────────────────────────────────────────────
+//
+// TEMPORARY INVESTIGATION MODE: Default ON for all clients.
+// To disable, set localStorage ptp_debug_sync_events = "0" or URL ?debug_sync_events=0
+// When investigation is complete, flip GLOBAL_DEBUG_DEFAULT back to false.
+//
+
+const GLOBAL_DEBUG_DEFAULT = true;
 
 let _enabled: boolean | null = null;
 
 function checkEnabled(): boolean {
+  // Explicit opt-out overrides
   try {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('debug_sync_events');
+    if (v === '0' || v?.toLowerCase() === 'false') return false;
     if (v === '' || v === '1' || v?.toLowerCase() === 'true') return true;
   } catch { /* */ }
   try {
-    if (window.localStorage.getItem('ptp_debug_sync_events') === '1') return true;
+    const stored = window.localStorage.getItem('ptp_debug_sync_events');
+    if (stored === '0') return false;
+    if (stored === '1') return true;
   } catch { /* */ }
-  return false;
+  return GLOBAL_DEBUG_DEFAULT;
 }
 
 export function isSyncDebugEnabled(): boolean {

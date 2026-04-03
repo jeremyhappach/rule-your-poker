@@ -9,6 +9,7 @@ import { recordGameResult } from "./gameLogic";
 import { createInitialYahtzeeDice } from "./yahtzeeGameLogic";
 import { createEmptyScorecard } from "./yahtzeeScoring";
 import { YahtzeeState } from "./yahtzeeTypes";
+import { logYahtzeeHandStart } from "./yahtzeeSyncDiagnostics";
 
 export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[YAHTZEE] 🎲 Starting round', { gameId, isFirstHand });
@@ -213,6 +214,8 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     .eq('id', gameId);
 
   // No ante collection in Yahtzee — chips transfer at end based on score
+
+  logYahtzeeHandStart(gameId, newHandNumber, turnOrder.length);
 
   console.log('[YAHTZEE] ✅ Round started, pot:', potForRound);
 }
