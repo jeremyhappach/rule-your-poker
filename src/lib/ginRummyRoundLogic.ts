@@ -129,6 +129,8 @@ export async function startGinRummyRound(
       })
       .eq('id', gameId);
 
+    logGinHandStart(gameId, insertedHandNumber, dealerPlayer.id, round.id);
+
     // Store player cards for hand history
     for (const playerId of [dealerPlayer.id, nonDealerPlayer.id]) {
       const playerState = ginState.playerStates[playerId];
