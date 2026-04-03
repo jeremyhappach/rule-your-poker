@@ -1775,10 +1775,37 @@ export const MobileGameTable = ({
       return;
     }
 
+    // CRITICAL FIX: Prevent stale re-capture during hand transitions.
+    // When handContextId changes, the reset effect (above) clears soloVsChuckyPlayerIdLocked to null,
+    // but stale current_decision='stay' from the PREVIOUS hand makes isSoloVsChuckyRaw momentarily true.
+    // The capture effect re-fires because soloVsChuckyPlayerIdLocked changed to null, then locks the
+    // WRONG player (from the previous hand's lingering decisions).
+    //
+    // Guard: If roundStatus is still 'completed' or 'showdown' from the previous hand AND chucky is
+    // not active for this hand AND there's no active pot animation, this is stale data — skip.
+    // During a REAL solo-vs-Chucky, chuckyActive will be true before/during capture, or
+    // allDecisionsIn will drive the capture before roundStatus reaches these terminal phases.
+    if (!chuckyActive && !holmWinPotTriggerId && (roundStatus === 'completed' || roundStatus === 'showdown') && !allDecisionsIn) {
+      return;
+    }
+
     // Prefer the actual stayed player while decisions are still present; fall back to parsing the winner from lastRoundResult.
     const stayed = players.find(p => p.current_decision === 'stay');
     if (stayed) {
       setSoloVsChuckyPlayerIdLocked(stayed.id);
+
+      // INVARIANT: Verify the captured solo player matches expectations
+      // If we're capturing and the current user previously went solo, flag if we're re-locking them
+      // when they shouldn't be the solo player this hand.
+      import('@/lib/holmSyncDiagnostics').then(({ checkSoloPlayerCaptureMismatch }) => {
+        checkSoloPlayerCaptureMismatch(
+          stayed.id,
+          handContextId ?? '',
+          handNumber,
+          gameId,
+        );
+      }).catch(() => { /* safe */ });
+
       return;
     }
 
@@ -1804,7 +1831,7 @@ export const MobileGameTable = ({
         }
       }
     }
-  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive, allDecisionsIn]);
+  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive, allDecisionsIn, handContextId, handNumber, gameId]);
 
   // Reset of solo-vs-Chucky locks is also handled inside resetHandUiCaches (and is deferred during animations)
   // so tabled cards can't snap back mid pot-to-player animation.
