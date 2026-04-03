@@ -6,6 +6,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
+import {
+  checkStaleDealerGameRender,
+  checkCribbagePhaseRenderMismatch,
+  checkCribbageResultRenderMismatch,
+  checkRegressiveIdentity,
+  resetCribbageTracking,
+  logCribbageScoringStart,
+  logCribbageResultDisplay,
+} from '@/lib/cribbageSyncDiagnostics';
 import { 
   initializeCribbageGame, 
   discardToCrib, 
