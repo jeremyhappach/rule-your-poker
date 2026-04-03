@@ -225,6 +225,55 @@ export function YahtzeeGameTable({
   // Reset guard when a new round starts
   useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [currentRoundId]);
 
+  // ── Sync diagnostics: invariant checks ────────────────────────
+  useEffect(() => {
+    if (!viewState || !gameId) return;
+    import('@/lib/yahtzeeSyncDiagnostics').then(({
+      checkYahtzeeStaleTurn,
+      checkYahtzeePhaseRenderMismatch,
+      checkYahtzeeStuckNullTurn,
+      checkYahtzeeRegressiveCategories,
+      logYahtzeeResultDisplay,
+    }) => {
+      const handNum = viewState.currentRound ?? 0;
+
+      // INV-3: stuck-null-turn
+      checkYahtzeeStuckNullTurn(gameId, handNum, viewState.gamePhase, viewState.currentTurnPlayerId);
+
+      // INV-2: phase-render-mismatch
+      if (viewState.gamePhase === 'playing') {
+        checkYahtzeePhaseRenderMismatch(gameId, handNum, viewState.gamePhase, 'input');
+      } else if (viewState.gamePhase === 'complete') {
+        checkYahtzeePhaseRenderMismatch(gameId, handNum, viewState.gamePhase, 'result');
+      }
+
+      // INV-1: stale-turn-render
+      if (yahtzeeState) {
+        checkYahtzeeStaleTurn(gameId, viewState.currentTurnPlayerId, yahtzeeState.currentTurnPlayerId, handNum);
+      }
+
+      // INV-4: regressive-categories
+      let totalFilled = 0;
+      for (const ps of Object.values(viewState.playerStates || {})) {
+        totalFilled += Object.keys(ps.scorecard?.scores || {}).length;
+      }
+      checkYahtzeeRegressiveCategories(gameId, handNum, totalFilled);
+
+      // Transition: result-display (fire once when complete)
+      if (viewState.gamePhase === 'complete' && winnerOverlay) {
+        logYahtzeeResultDisplay(gameId, handNum, null, null);
+      }
+    }).catch(() => { /* safe */ });
+  }, [viewState, gameId, yahtzeeState, winnerOverlay]);
+
+  useEffect(() => {
+    return () => {
+      import('@/lib/yahtzeeSyncDiagnostics').then(({ resetYahtzeeTracking }) => {
+        resetYahtzeeTracking(gameId);
+      }).catch(() => {});
+    };
+  }, [gameId]);
+
   /* ---- Fallback polling for opponent dice (guards against missed realtime events) ---- */
   const pollActiveRef = useRef(false);
   useEffect(() => {
