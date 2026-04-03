@@ -1823,6 +1823,13 @@ export const MobileGameTable = ({
   // Reset of solo-vs-Chucky locks is also handled inside resetHandUiCaches (and is deferred during animations)
   // so tabled cards can't snap back mid pot-to-player animation.
 
+  // INVARIANT: Detect stale solo-player re-lock across hand boundaries
+  useEffect(() => {
+    if (gameType !== 'holm-game' || !soloVsChuckyPlayerIdLocked || !handContextId) return;
+    import('@/lib/holmSyncDiagnostics').then(({ checkSoloPlayerMismatch }) => {
+      checkSoloPlayerMismatch(soloVsChuckyPlayerIdLocked, currentUserId, handContextId, gameId);
+    }).catch(() => { /* safe */ });
+  }, [soloVsChuckyPlayerIdLocked, handContextId, gameType, currentUserId, gameId]);
 
   const isSoloVsChucky = isSoloVsChuckyRaw || soloVsChuckyTableLocked;
 
