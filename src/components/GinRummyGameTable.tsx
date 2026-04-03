@@ -3,6 +3,14 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
+import {
+  checkStaleHandRender,
+  checkPhaseRenderMismatch,
+  checkResultRenderMismatch,
+  checkRegressiveHandIdentity,
+  resetGinRummyTracking,
+  logGinResultDisplay,
+} from '@/lib/ginRummySyncDiagnostics';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
