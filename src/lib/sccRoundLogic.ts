@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard } from "./gameStateDebugLog";
+import { logSCCAnteApplied } from "./sccSyncDiagnostics";
 
 /**
  * Start a new Ship Captain Crew round

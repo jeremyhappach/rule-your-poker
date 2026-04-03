@@ -5,6 +5,7 @@ import { initializeCribbageGame, startNewHand } from './cribbageGameLogic';
 import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import type { CribbageState } from './cribbageTypes';
+import { logCribbageHandStart, logCribbageDealerGameStart } from './cribbageSyncDiagnostics';
 
 /**
  * Start a new Cribbage round/hand.
