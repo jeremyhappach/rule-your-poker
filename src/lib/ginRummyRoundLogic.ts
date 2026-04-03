@@ -15,6 +15,7 @@ import { snapshotPlayerChips } from './gameLogic';
 import { getBotAlias } from './botAlias';
 import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
+import { logGinHandStart } from './ginRummySyncDiagnostics';
 
 /**
  * Start the first Gin Rummy round/hand.
