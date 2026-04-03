@@ -215,6 +215,8 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
 
   // No ante collection in Yahtzee — chips transfer at end based on score
 
+  logYahtzeeHandStart(gameId, newHandNumber, turnOrder.length);
+
   console.log('[YAHTZEE] ✅ Round started, pot:', potForRound);
 }
 
