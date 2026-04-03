@@ -1714,9 +1714,13 @@ export const MobileGameTable = ({
   // Keep tabled cards visible through win animation + until next hand to avoid flicker.
   // IMPORTANT: Holm showdown should table player cards BEFORE flipping the final 2 community cards,
   // so we allow this state to become true as soon as all_decisions_in is set.
+  // CRITICAL: For 'completed' and 'showdown' phases, require chuckyActive or holmWinPotTriggerId
+  // to confirm this is the CURRENT hand's state, not stale roundStatus from the previous hand.
+  // Without this, lingering current_decision='stay' + stale roundStatus='completed' causes
+  // isSoloVsChuckyRaw to be true during hand transitions, locking the wrong player.
   const isSoloVsChuckyRaw = gameType === 'holm-game' && 
     stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || roundStatus === 'completed' || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+    (chuckyActive || roundStatus === 'showdown' || (roundStatus === 'completed' && (chuckyActive || !!holmWinPotTriggerId || isGameOver)) || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
 
   useEffect(() => {
     if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
