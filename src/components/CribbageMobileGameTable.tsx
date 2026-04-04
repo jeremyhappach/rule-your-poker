@@ -612,7 +612,8 @@ export const CribbageMobileGameTable = ({
 
     // Debug-gated transition: result-display (fire once when complete with winner)
     if (phase === 'complete' && state.winnerPlayerId) {
-      const winnerScore = state.pegScores?.[state.winnerPlayerId] ?? 0;
+      const winnerPs = state.playerStates?.[state.winnerPlayerId];
+      const winnerScore = winnerPs?.pegScore ?? 0;
       logCribbageResultDisplay(gameId, currentHandNumber, state.winnerPlayerId, winnerScore);
     }
   }, [viewState, cribbageState, gameId, dealerGameId, currentHandNumber, currentRoundId]);
