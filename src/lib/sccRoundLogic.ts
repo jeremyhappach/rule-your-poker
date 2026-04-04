@@ -353,6 +353,13 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       }
       
       const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
+
+      persistTransition(gameId, 'ship-captain-crew', newHandNumber, 'ante-applied', {
+        playerCount: activePlayers.length,
+        anteAmount,
+        pot: potForRound,
+        isFirstHand,
+      });
       
       // Fire-and-forget: Record antes (audit trail only)
       recordGameResult(
