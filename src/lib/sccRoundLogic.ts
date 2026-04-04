@@ -9,6 +9,7 @@ import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard } from "./gameStateDebugLog";
 import { logSCCAnteApplied } from "./sccSyncDiagnostics";
+import { persistTransition } from "./persistSyncDebugEvent";
 
 /**
  * Start a new Ship Captain Crew round
@@ -353,6 +354,13 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
       }
       
       const eventType = isFirstHand ? 'Ante' : 'Re-Ante (Rollover)';
+
+      persistTransition(gameId, 'ship-captain-crew', newHandNumber, 'ante-applied', {
+        playerCount: activePlayers.length,
+        anteAmount,
+        pot: potForRound,
+        isFirstHand,
+      });
       
       // Fire-and-forget: Record antes (audit trail only)
       recordGameResult(
