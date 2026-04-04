@@ -47,6 +47,17 @@ import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugC
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
+import {
+  checkStaleDealerGameRender,
+  checkCribbagePhaseRenderMismatch,
+  checkCribbageResultRenderMismatch,
+  checkRegressiveIdentity,
+  resetCribbageTracking,
+  logCribbageScoringStart,
+  logCribbageResultDisplay,
+  logCribbageDealerGameStart,
+  logCribbageHandStart,
+} from '@/lib/cribbageSyncDiagnostics';
 
 interface Player {
   id: string;
