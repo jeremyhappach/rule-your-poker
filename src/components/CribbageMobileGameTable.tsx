@@ -570,7 +570,81 @@ export const CribbageMobileGameTable = ({
     setPostCountingTransitionActive(false);
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
-  // Win sequence state
+  // ── Sync invariant checks (fire on every viewState / cribbageState change) ─
+  const cribMobileInvariantScoringFiredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!viewState && !cribbageState) return;
+    const state = viewState ?? cribbageState;
+    if (!state) return;
+    const phase = state.phase;
+
+    // INV-4: regressive-identity
+    checkRegressiveIdentity(gameId, dealerGameId, currentHandNumber);
+
+    // INV-1: stale-dealer-game-render
+    // Compare the dealerGameId prop (from parent/round) vs the state's dealerGameId if available
+    if (dealerGameId && (state as any).dealerGameId) {
+      checkStaleDealerGameRender(gameId, dealerGameId, (state as any).dealerGameId, currentHandNumber);
+    }
+
+    // INV-2: phase-render-mismatch
+    if (phase === 'discarding' || phase === 'cutting' || phase === 'pegging') {
+      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, phase, 'input');
+    } else if (phase === 'counting') {
+      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, phase, 'scoring');
+    } else if (phase === 'complete') {
+      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, phase, 'result');
+    }
+
+    // INV-3: result-render-mismatch
+    if (state.winnerPlayerId && phase === 'complete') {
+      checkCribbageResultRenderMismatch(gameId, currentHandNumber, currentHandNumber);
+    }
+
+    // Debug-gated transition: scoring-start (fire once per counting entry)
+    if (phase === 'counting') {
+      const scoringKey = `${currentRoundId}:${currentHandNumber}:counting`;
+      if (cribMobileInvariantScoringFiredRef.current !== scoringKey) {
+        cribMobileInvariantScoringFiredRef.current = scoringKey;
+        logCribbageScoringStart(gameId, currentHandNumber, currentRoundId || undefined);
+      }
+    }
+
+    // Debug-gated transition: result-display (fire once when complete with winner)
+    if (phase === 'complete' && state.winnerPlayerId) {
+      const winnerScore = state.pegScores?.[state.winnerPlayerId] ?? 0;
+      logCribbageResultDisplay(gameId, currentHandNumber, state.winnerPlayerId, winnerScore);
+    }
+  }, [viewState, cribbageState, gameId, dealerGameId, currentHandNumber, currentRoundId]);
+
+  // Reset cribbage tracking when game changes
+  useEffect(() => {
+    return () => {
+      resetCribbageTracking(gameId);
+    };
+  }, [gameId]);
+
+  // Debug-gated transitions: dealer-game-start and hand-start
+  const cribMobileDealerGameStartFiredRef = useRef<string | null>(null);
+  const cribMobileHandStartFiredRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!dealerGameId) return;
+    if (cribMobileDealerGameStartFiredRef.current !== dealerGameId) {
+      cribMobileDealerGameStartFiredRef.current = dealerGameId;
+      logCribbageDealerGameStart(gameId, currentHandNumber, dealerGameId, currentRoundId || undefined);
+    }
+  }, [dealerGameId, gameId, currentHandNumber, currentRoundId]);
+
+  useEffect(() => {
+    if (!cribbageState?.dealerPlayerId) return;
+    const handKey = `${currentRoundId}:${currentHandNumber}`;
+    if (cribMobileHandStartFiredRef.current !== handKey) {
+      cribMobileHandStartFiredRef.current = handKey;
+      logCribbageHandStart(gameId, currentHandNumber, cribbageState.dealerPlayerId, currentRoundId || undefined);
+    }
+  }, [cribbageState?.dealerPlayerId, currentRoundId, currentHandNumber, gameId]);
+
+
   type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
   const [winSequencePhase, setWinSequencePhase] = useState<WinSequencePhase>('idle');
   const [winSequenceData, setWinSequenceData] = useState<{
