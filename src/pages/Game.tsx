@@ -7106,9 +7106,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
           <>
-            {game.status === 'dealer_selection' && (
+            {game.status === 'dealer_selection' && game.game_type !== 'gin-rummy' && (
               <>
-                {/* Show game table as background during dealer selection */}
+                {/* Show game table as background during dealer selection (non-gin-rummy) */}
                 <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
                     gameId={gameId}
                     players={players}
@@ -7460,10 +7460,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
           const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
+          const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
