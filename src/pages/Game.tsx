@@ -5924,7 +5924,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .eq('id', gameId)
       .single();
 
-const Game = () => {
+
     // Only skip if we are POSITIVE another client already transitioned.
     // If the fetch fails (auth/network/RLS), proceed best-effort so we don't get stuck.
     if (!fetchError && freshGame?.status && freshGame.status !== 'game_over') {
