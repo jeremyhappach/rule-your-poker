@@ -19,21 +19,29 @@ import type { CribbagePhase } from './cribbageTypes';
 
 /**
  * INV-1: stale-dealer-game-render
- * Fires if rendered dealer-game ID doesn't match the current one.
+ * Fires if the rendered Cribbage identity doesn't match the authoritative one.
+ *
+ * NOTE: On the active mobile path this compares round/hand render identity, not
+ * only dealer-game IDs, because stale visuals happen within a dealer game too.
  */
 export function checkStaleDealerGameRender(
   gameId: string,
-  renderDealerGameId: string | null,
-  authoritativeDealerGameId: string | null,
+  renderedIdentity: string | null,
+  authoritativeIdentity: string | null,
   handNumber: number,
 ): boolean {
-  if (!renderDealerGameId || !authoritativeDealerGameId) return true; // bootstrap
+  if (!renderedIdentity || !authoritativeIdentity) return true; // bootstrap
   return checkInvariant(
     'cribbage',
     'stale-dealer-game-render',
-    renderDealerGameId === authoritativeDealerGameId,
-    `Render dealerGame ${renderDealerGameId.slice(0, 8)} != auth ${authoritativeDealerGameId.slice(0, 8)}`,
-    { gameId, renderDealerGameId: renderDealerGameId.slice(0, 8), authoritativeDealerGameId: authoritativeDealerGameId.slice(0, 8), handNumber },
+    renderedIdentity === authoritativeIdentity,
+    `Rendered identity ${renderedIdentity.slice(0, 8)} != auth ${authoritativeIdentity.slice(0, 8)}`,
+    {
+      gameId,
+      renderedIdentity: renderedIdentity.slice(0, 16),
+      authoritativeIdentity: authoritativeIdentity.slice(0, 16),
+      handNumber,
+    },
   );
 }
 
@@ -163,9 +171,10 @@ export function logCribbageResultDisplay(
   handNumber: number,
   winnerId: string | null,
   winnerScore: number,
+  roundId?: string,
 ): void {
   persistTransition(gameId, 'cribbage', handNumber, 'result-display', {
     winnerId: winnerId?.slice(0, 8) ?? null,
     winnerScore,
-  });
+  }, roundId);
 }

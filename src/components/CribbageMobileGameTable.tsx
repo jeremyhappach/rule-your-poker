@@ -570,39 +570,49 @@ export const CribbageMobileGameTable = ({
     setPostCountingTransitionActive(false);
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
-  // ── Sync invariant checks (fire on every viewState / cribbageState change) ─
+  // ── Sync invariant checks (wired to the ACTUAL rendered mobile state) ─
   const cribMobileInvariantScoringFiredRef = useRef<string | null>(null);
+  const cribMobileResultDisplayFiredRef = useRef<string | null>(null);
+  const activeInstrumentationState = useMemo(() => {
+    // Counting UI is rendered from the latched snapshot, not from the frozen presentation state.
+    if (countingStateSnapshot && !countingDelayActive) return countingStateSnapshot;
+    // End-of-game result UI is driven by the win sequence, which is triggered from authoritative state.
+    if (winSequencePhase !== 'idle' && cribbageState) return cribbageState;
+    // Default gameplay path renders from the sync framework presentation state.
+    return viewState ?? cribbageState;
+  }, [countingStateSnapshot, countingDelayActive, winSequencePhase, viewState, cribbageState]);
+
   useEffect(() => {
-    if (!viewState && !cribbageState) return;
-    const state = viewState ?? cribbageState;
+    const state = activeInstrumentationState;
     if (!state) return;
-    const phase = state.phase;
+
+    const showingCountingOverlay = Boolean(countingStateSnapshot && !countingDelayActive);
+    const showingResultUi = Boolean(
+      winSequenceData ||
+      winSequencePhase !== 'idle' ||
+      (state.phase === 'complete' && state.winnerPlayerId)
+    );
 
     // INV-4: regressive-identity
     checkRegressiveIdentity(gameId, dealerGameId, currentHandNumber);
 
     // INV-1: stale-dealer-game-render
-    // Compare the dealerGameId prop (from parent/round) vs the state's dealerGameId if available
-    if (dealerGameId && (state as any).dealerGameId) {
-      checkStaleDealerGameRender(gameId, dealerGameId, (state as any).dealerGameId, currentHandNumber);
+    // Active mobile Cribbage does not render from state.dealerGameId; it renders from hand identity.
+    if (renderHandKey && currentHandKey) {
+      checkStaleDealerGameRender(gameId, renderHandKey, currentHandKey, currentHandNumber);
     }
 
     // INV-2: phase-render-mismatch
-    if (phase === 'discarding' || phase === 'cutting' || phase === 'pegging') {
-      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, phase, 'input');
-    } else if (phase === 'counting') {
-      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, phase, 'scoring');
-    } else if (phase === 'complete') {
-      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, phase, 'result');
+    if (showingResultUi) {
+      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, 'complete', 'result');
+    } else if (showingCountingOverlay || state.phase === 'counting') {
+      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, 'counting', 'scoring');
+    } else if (state.phase === 'discarding' || state.phase === 'cutting' || state.phase === 'pegging') {
+      checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, state.phase, 'input');
     }
 
-    // INV-3: result-render-mismatch
-    if (state.winnerPlayerId && phase === 'complete') {
-      checkCribbageResultRenderMismatch(gameId, currentHandNumber, currentHandNumber);
-    }
-
-    // Debug-gated transition: scoring-start (fire once per counting entry)
-    if (phase === 'counting') {
+    // Debug-gated transition: scoring-start (fire once when counting overlay is actually shown)
+    if (showingCountingOverlay || state.phase === 'counting') {
       const scoringKey = `${currentRoundId}:${currentHandNumber}:counting`;
       if (cribMobileInvariantScoringFiredRef.current !== scoringKey) {
         cribMobileInvariantScoringFiredRef.current = scoringKey;
@@ -610,13 +620,43 @@ export const CribbageMobileGameTable = ({
       }
     }
 
-    // Debug-gated transition: result-display (fire once when complete with winner)
-    if (phase === 'complete' && state.winnerPlayerId) {
-      const winnerPs = state.playerStates?.[state.winnerPlayerId];
-      const winnerScore = winnerPs?.pegScore ?? 0;
-      logCribbageResultDisplay(gameId, currentHandNumber, state.winnerPlayerId, winnerScore);
+    const visibleWinnerId = winSequenceData?.winnerId ?? state.winnerPlayerId;
+    const visibleWinnerScore = visibleWinnerId
+      ? (state.playerStates?.[visibleWinnerId]?.pegScore ?? 0)
+      : 0;
+
+    // Debug-gated transition: result-display (fire once when the actual result UI is live)
+    if (showingResultUi && visibleWinnerId) {
+      const resultKey = `${dealerGameId ?? 'no-dealer'}:${currentHandNumber}:${visibleWinnerId}`;
+      if (cribMobileResultDisplayFiredRef.current !== resultKey) {
+        cribMobileResultDisplayFiredRef.current = resultKey;
+        logCribbageResultDisplay(
+          gameId,
+          currentHandNumber,
+          visibleWinnerId,
+          visibleWinnerScore,
+          currentRoundId || undefined,
+        );
+      }
+
+      // INV-3: result-render-mismatch
+      if (winSequenceData?.handNumber) {
+        checkCribbageResultRenderMismatch(gameId, winSequenceData.handNumber, currentHandNumber);
+      }
     }
-  }, [viewState, cribbageState, gameId, dealerGameId, currentHandNumber, currentRoundId]);
+  }, [
+    activeInstrumentationState,
+    countingDelayActive,
+    countingStateSnapshot,
+    currentHandKey,
+    currentHandNumber,
+    currentRoundId,
+    dealerGameId,
+    gameId,
+    renderHandKey,
+    winSequenceData,
+    winSequencePhase,
+  ]);
 
   // Reset cribbage tracking when game changes
   useEffect(() => {
@@ -651,6 +691,7 @@ export const CribbageMobileGameTable = ({
   const [winSequenceData, setWinSequenceData] = useState<{
     winnerId: string;
     winnerName: string;
+    handNumber: number;
     multiplier: number;
     amountPerLoser: number;
     totalWinnings: number;
@@ -1796,6 +1837,7 @@ export const CribbageMobileGameTable = ({
     setWinSequenceData({
       winnerId,
       winnerName,
+      handNumber: currentHandNumber,
       multiplier,
       amountPerLoser,
       totalWinnings,
@@ -1850,7 +1892,7 @@ export const CribbageMobileGameTable = ({
     } else {
       setWinSequencePhase('announcement');
     }
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, injectDealerMessage]);
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, injectDealerMessage, currentHandNumber]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
