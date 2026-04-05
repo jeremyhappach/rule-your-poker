@@ -7461,7 +7461,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
         {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
-          const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
+          const isInProgress = game.status === 'in_progress';
+          const isYahtzeeGameOver = game.status === 'game_over' && game.game_type === 'yahtzee';
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
           const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
@@ -7683,19 +7684,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // YAHTZEE GAME
-          if (isInProgress && game.game_type === 'yahtzee') {
-            const yahtzeeState = (currentRound as any)?.yahtzee_state as import('@/lib/yahtzeeTypes').YahtzeeState | null;
+          // YAHTZEE — unified single instance across ante_decision, in_progress, game_over
+          // One persistent YahtzeeGameTable prevents blank "Loading Yahtzee" screen during phase transitions
+          if (game.game_type === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
+            const yahtzeeState = (isInProgress || isYahtzeeGameOver) ? ((currentRound as any)?.yahtzee_state as import('@/lib/yahtzeeTypes').YahtzeeState | null) : null;
             return (
               <YahtzeeGameTable
                 gameId={gameId!}
                 players={players}
                 currentUserId={user?.id}
-                pot={potForDisplay}
+                pot={(isInProgress || isYahtzeeGameOver) ? potForDisplay : 0}
                 anteAmount={game.ante_amount || 1}
                 dealerPosition={game.dealer_position || 1}
-                currentRoundId={currentRound?.id || null}
-                dealerGameId={currentRound?.dealer_game_id || null}
+                currentRoundId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.id || null) : null}
+                dealerGameId={(isInProgress || isYahtzeeGameOver) ? (currentRound?.dealer_game_id || null) : null}
                 yahtzeeState={yahtzeeState}
                 onRefetch={fetchGameData}
                 isHost={isCreator}

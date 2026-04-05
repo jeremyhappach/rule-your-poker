@@ -1119,11 +1119,38 @@ export function YahtzeeGameTable({
     );
   };
 
-  /* ---- Loading ---- */
-  if (!viewState || !currentRoundId) {
+  /* ---- Pre-round: show stable table shell with subtle overlay ---- */
+  const isPreRound = !viewState || !currentRoundId;
+  if (isPreRound) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <p className="text-poker-gold animate-pulse text-lg font-bold">Loading Yahtzee...</p>
+      <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+        {/* Stable table felt — same geometry as gameplay */}
+        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+          <div
+            className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
+            style={{
+              backgroundImage: `url(${peoriaBridgeMobile})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="absolute inset-0 bg-green-900/70" />
+          </div>
+          {/* Player chip stacks around the felt */}
+          <DiceTableLayout
+            players={players}
+            currentUserId={currentUserId}
+            currentTurnPlayerId={null}
+            isRolling={false}
+            dealerPosition={dealerPosition}
+            gameId={gameId}
+            onPlayerClick={onPlayerClick}
+          />
+        </div>
+        {/* Bottom area placeholder */}
+        <div className="flex-none flex items-center justify-center py-8">
+          <p className="text-amber-200/60 animate-pulse text-sm font-medium">Starting game…</p>
+        </div>
       </div>
     );
   }
