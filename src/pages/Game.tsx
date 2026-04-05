@@ -7106,9 +7106,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
           <>
-            {game.status === 'dealer_selection' && (
+            {game.status === 'dealer_selection' && game.game_type !== 'gin-rummy' && (
               <>
-                {/* Show game table as background during dealer selection */}
+                {/* Show game table as background during dealer selection (non-gin-rummy) */}
                 <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
                     gameId={gameId}
                     players={players}
@@ -7460,10 +7460,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
           const isInProgress = game.status === 'in_progress' || (game.status === 'game_over' && game.game_type === 'yahtzee');
           const isAnteDecision = game.status === 'ante_decision';
           const isCribbageDealerSelection = game.status === 'cribbage_dealer_selection';
+          const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
@@ -7569,22 +7570,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // GIN RUMMY during ante_decision - show gin rummy table instead of 3-5-7
-          if (isAnteDecision && game.game_type === 'gin-rummy') {
+          // GIN RUMMY — unified single instance across dealer_selection, ante_decision, in_progress, game_over
+          // One persistent GinRummyGameTable prevents table surface changes across phases
+          if (game.game_type === 'gin-rummy' && (isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
             return (
-              <GinRummyGameTable
-                gameId={gameId!}
-                roundId=""
-                dealerGameId={null}
-                handNumber={0}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={0}
-                isHost={isCreator}
-                onGameComplete={() => {}}
-              />
+              <>
+                <GinRummyGameTable
+                  gameId={gameId!}
+                  roundId={(isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : ''}
+                  dealerGameId={(isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null}
+                  handNumber={(isInProgress || isGinRummyGameOver) ? (currentRound?.hand_number ?? 1) : 0}
+                  players={players}
+                  currentUserId={user?.id || ''}
+                  dealerPosition={game.dealer_position || 1}
+                  anteAmount={game.ante_amount || 1}
+                  pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
+                  isHost={isCreator}
+                  onGameComplete={isGinRummyGameOver ? handleGameOverComplete : () => {}}
+                />
+                {/* Dealer selection overlay on the gin table */}
+                {isGinRummyDealerSelection && (
+                  <HighCardDealerSelection
+                    gameId={gameId!}
+                    players={players}
+                    onComplete={selectDealer}
+                    isHost={isCreator}
+                    allowBotDealers={allowBotDealers}
+                    syncedState={(game as any).dealer_selection_state ?? null}
+                    onCardsUpdate={setDealerSelectionCards}
+                    onAnnouncementUpdate={(msg, complete) => {
+                      setDealerSelectionAnnouncement(msg);
+                      setDealerSelectionComplete(complete);
+                    }}
+                    onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  />
+                )}
+              </>
             );
           }
 
@@ -7683,24 +7704,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // GIN RUMMY GAME
-          if ((isInProgress || isGinRummyGameOver) && game.game_type === 'gin-rummy') {
-            return (
-              <GinRummyGameTable
-                gameId={gameId!}
-                roundId={currentRound?.id || ''}
-                dealerGameId={currentRound?.dealer_game_id || null}
-                handNumber={currentRound?.hand_number ?? 1}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={potForDisplay}
-                isHost={isCreator}
-                onGameComplete={handleGameOverComplete}
-              />
-            );
-          }
+          // GIN RUMMY is handled above in the unified block
 
 
           // TRIVIA GAME
