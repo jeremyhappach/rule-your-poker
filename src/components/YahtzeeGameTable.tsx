@@ -831,12 +831,17 @@ export function YahtzeeGameTable({
     const controllerUserId = authoritativeYahtzeeState.botControllerUserId;
     if (controllerUserId && controllerUserId !== currentUserId) return;
 
+    // Snapshot the authoritative state at effect-fire time so the bot runs
+    // to completion without being cancelled by its own DB writes updating
+    // authoritativeYahtzeeState (which would trigger effect cleanup → deadlock).
+    const snapshotState = authoritativeYahtzeeState;
+
     botProcessingRef.current = true;
     let cancelled = false;
 
     const runBot = async () => {
       try {
-        let state = { ...authoritativeYahtzeeState };
+        let state = { ...snapshotState };
         let ps = { ...state.playerStates[currentTurnPlayerId] };
         const botPlayer = players.find(p => p.id === currentTurnPlayerId);
         const botName = botPlayer ? getPlayerUsername(botPlayer) : 'Bot';
@@ -896,6 +901,7 @@ export function YahtzeeGameTable({
         if (state.gamePhase === 'complete') await handleGameComplete(state);
       } catch (e) {
         console.error('[YAHTZEE] Bot error:', e);
+      } finally {
         botProcessingRef.current = false;
       }
     };
@@ -905,7 +911,11 @@ export function YahtzeeGameTable({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase, authoritativeYahtzeeState, currentUserId]);
+    // IMPORTANT: authoritativeYahtzeeState is intentionally excluded from deps.
+    // The bot snapshots state at fire-time and runs to completion. Including it
+    // would cause the effect to re-fire on every DB write, cancelling the bot mid-turn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase, currentUserId]);
 
   /* ---- Felt dice for observer view — reads from viewState (presentation layer) ---- */
   const getCurrentTurnDice = useCallback(() => {
