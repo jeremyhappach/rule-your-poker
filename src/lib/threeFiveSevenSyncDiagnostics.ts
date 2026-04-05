@@ -7,7 +7,7 @@
 
 import { checkInvariant, logSyncSummary, logSyncGateResult } from './debugSyncInvariants';
 import type { ThreeFiveSevenAuthoritativeSnapshot } from '@/lib/gameStateSync/threeFiveSevenProgress';
-import { persistInvariantViolation } from './persistSyncDebugEvent';
+import { persistInvariantViolation, persistSyncGate } from './persistSyncDebugEvent';
 import { buildMetaPayload } from './buildMeta';
 
 // ── INV-1: Stale round render ─────────────────────────────────
@@ -84,8 +84,10 @@ export function checkThreeFiveSevenDecisionAfterCompleted(
   );
 }
 
-// ── Sync gate logger ──────────────────────────────────────────
+// ── Sync gate logger (with DB persistence) ────────────────────
 export function logThreeFiveSevenSyncGate(
+  gameId: string,
+  handNumber: number,
   accepted: boolean,
   reason: string,
   current: unknown,
@@ -93,6 +95,9 @@ export function logThreeFiveSevenSyncGate(
   extra?: Record<string, unknown>,
 ): void {
   logSyncGateResult('357-sync', accepted, reason, { current, incoming }, extra);
+  persistSyncGate(gameId, '3-5-7', handNumber, accepted, reason, { current, incoming },
+    extra?.phase as string | undefined,
+  );
 }
 
 // ── State summary ─────────────────────────────────────────────
