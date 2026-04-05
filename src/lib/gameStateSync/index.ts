@@ -13,6 +13,8 @@ export { getHorsesProgress } from './horsesProgress';
 export { getCribbageProgress } from './cribbageProgress';
 export { getHolmProgress } from './holmProgress';
 export type { HolmAuthoritativeSnapshot, HolmPlayerSnapshot } from './holmProgress';
+export { getThreeFiveSevenProgress } from './threeFiveSevenProgress';
+export type { ThreeFiveSevenAuthoritativeSnapshot, ThreeFiveSevenPlayerSnapshot } from './threeFiveSevenProgress';
 export type {
   ProgressVector,
   AuthoritativeUpdateResult,
