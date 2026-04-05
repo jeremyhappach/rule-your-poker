@@ -858,6 +858,7 @@ export function YahtzeeGameTable({
           const t = Date.now();
           ps = rollYahtzeeDice(ps);
           state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: { ...ps, rollKey: t } } };
+          yahtzeeSync.applyOptimistic(state);
           await updateYahtzeeState(currentRoundId, state);
 
           await new Promise(r => setTimeout(r, 1800));
@@ -885,6 +886,7 @@ export function YahtzeeGameTable({
         ps = scoreYahtzeeCategory(ps, category);
         // Write scored state (but don't advance turn yet) so scorecard updates visually
         state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
+        yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
 
         await new Promise(r => setTimeout(r, 2000));
@@ -897,6 +899,7 @@ export function YahtzeeGameTable({
 
         // Combine advance turn into a single DB write to prevent intermediate flicker
         state = advanceYahtzeeTurn(state);
+        yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
         if (state.gamePhase === 'complete') await handleGameComplete(state);
       } catch (e) {
