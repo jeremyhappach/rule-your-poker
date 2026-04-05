@@ -70,5 +70,13 @@ export const getYahtzeeProgress: GetProgressFn<YahtzeeState> = (state) => {
   // Rolls used: 0 = hasn't rolled, 3 = all rolls used
   const rollsUsed = currentTurnPlayerState ? (3 - currentTurnPlayerState.rollsRemaining) : 0;
 
-  return [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed];
+  // Turn-owner discriminator: index in turnOrder, or -1 if no current turn.
+  // This ensures snapshots with different turn owners are NEVER treated as
+  // equal-progress, preventing the sync gate from accepting a stale-owner
+  // snapshot that would cause the UI to briefly show the wrong player's turn.
+  const turnOwnerIndex = state.currentTurnPlayerId
+    ? state.turnOrder.indexOf(state.currentTurnPlayerId)
+    : -1;
+
+  return [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed, turnOwnerIndex];
 };
