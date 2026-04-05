@@ -835,21 +835,58 @@ export function YahtzeeGameTable({
   }, [authTurnPlayerId]);
 
   useEffect(() => {
-    if (!currentRoundId || !authoritativeYahtzeeState || authGamePhase !== 'playing') return;
-    if (!authTurnPlayerId || !authTurnPlayer?.is_bot) return;
-    if (botProcessingRef.current) return;
+    console.log('[BOT TURN ENTRY CHECK]', {
+      roundId: currentRoundId,
+      authTurnPlayerId,
+      isBotTurn: authTurnPlayer?.is_bot,
+      authGamePhase,
+      botProcessingRef: botProcessingRef.current,
+      hasAuthState: !!authoritativeYahtzeeState,
+      controllerUserId: authoritativeYahtzeeState?.botControllerUserId,
+      currentUserId,
+    });
+
+    if (!currentRoundId || !authoritativeYahtzeeState || authGamePhase !== 'playing') {
+      console.log('[BOT TURN EXIT]', { reason: 'precondition-fail', roundId: currentRoundId, authGamePhase, hasAuthState: !!authoritativeYahtzeeState });
+      return;
+    }
+    if (!authTurnPlayerId || !authTurnPlayer?.is_bot) {
+      console.log('[BOT TURN EXIT]', { reason: 'not-bot-turn', authTurnPlayerId, isBot: authTurnPlayer?.is_bot });
+      return;
+    }
+    if (botProcessingRef.current) {
+      console.log('[BOT TURN EXIT]', { reason: 'botProcessingRef-stuck', authTurnPlayerId });
+      return;
+    }
     const controllerUserId = authoritativeYahtzeeState.botControllerUserId;
-    if (controllerUserId && controllerUserId !== currentUserId) return;
+    if (controllerUserId && controllerUserId !== currentUserId) {
+      console.log('[BOT TURN EXIT]', { reason: 'not-controller', controllerUserId, currentUserId });
+      return;
+    }
 
     // Snapshot the authoritative state at effect-fire time so the bot runs
     // to completion without being cancelled by its own DB writes updating
     // authoritativeYahtzeeState (which would trigger effect cleanup → deadlock).
     const snapshotState = authoritativeYahtzeeState;
 
-    botProcessingRef.current = true;
+    // IMPORTANT: Do NOT set botProcessingRef here. It must be set inside runBot
+    // so that if the timer is cleared by cleanup before runBot fires, the guard
+    // doesn't get stuck at true (since finally{} would never run).
     let cancelled = false;
 
     const runBot = async () => {
+      // Double-check guard in case of race between timer fire and cleanup
+      if (cancelled) {
+        console.log('[BOT TURN EXIT]', { reason: 'cancelled-at-timer-fire', authTurnPlayerId });
+        return;
+      }
+      if (botProcessingRef.current) {
+        console.log('[BOT TURN EXIT]', { reason: 'guard-at-timer-fire', authTurnPlayerId });
+        return;
+      }
+      botProcessingRef.current = true;
+      console.log('[BOT GUARD SET]', { guard: 'botProcessingRef', value: true, roundId: currentRoundId, authTurnPlayerId });
+
       try {
         const botPlayerId = snapshotState.currentTurnPlayerId!;
         let state = { ...snapshotState };
@@ -857,30 +894,42 @@ export function YahtzeeGameTable({
         const botPlayer = players.find(p => p.id === botPlayerId);
         const botName = botPlayer ? getPlayerUsername(botPlayer) : 'Bot';
 
+        console.log('[BOT TURN START]', {
+          roundId: currentRoundId,
+          botPlayerId,
+          rollsRemaining: ps.rollsRemaining,
+          categoriesFilled: Object.keys(ps.scorecard.scores).length,
+        });
+
         for (let roll = 0; roll < 3; roll++) {
-          if (cancelled || ps.rollsRemaining <= 0) break;
+          if (cancelled || ps.rollsRemaining <= 0) {
+            console.log('[BOT LOOP BREAK]', { reason: cancelled ? 'cancelled' : 'no-rolls', roll, rollsRemaining: ps.rollsRemaining });
+            break;
+          }
 
           // Decide holds BEFORE rolling (except first roll)
           if (roll > 0) {
             const holds = getBotHoldDecision(ps);
-            // Preserve rollKey from previous roll so DiceTableLayout doesn't see undefined
+            console.log('[BOT HOLD DECISION]', { roundId: currentRoundId, botPlayerId, roll, holds });
             const prevRollKey = state.playerStates[botPlayerId]?.rollKey;
             ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
-            // Promote hold state to presentation so holds are visually rendered.
-            // IMPORTANT: Do NOT write to DB here. Writing holds as a separate DB step
-            // causes the DB echo of the previous roll to clear this optimistic state
-            // (same progress vector), creating a visual flicker that looks like a
-            // duplicate roll to the observer. Holds are bundled into the next roll write.
             state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: prevRollKey } } };
             yahtzeeSync.applyOptimistic(state);
-            // Wait for hold visualization before rolling
             await new Promise(r => setTimeout(r, 900));
-            if (cancelled) break;
+            if (cancelled) { console.log('[BOT LOOP BREAK]', { reason: 'cancelled-after-hold-wait', roll }); break; }
           }
+
+          console.log('[BOT BEFORE ROLL]', {
+            roundId: currentRoundId,
+            botPlayerId,
+            roll,
+            dice: ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld })),
+          });
 
           rollSerialRef.current += 1;
           const botRollKey = `yahtzee:${currentRoundId}:${botPlayerId}:${rollSerialRef.current}`;
           ps = rollYahtzeeDice(ps);
+          console.log('[BOT AFTER ROLL]', { rollKey: botRollKey, roll, rollsRemaining: ps.rollsRemaining, dice: ps.dice.map(d => d.value) });
           console.log('[ROLL GENERATED]', { rollKey: botRollKey, playerId: botPlayerId, rollSerial: rollSerialRef.current, roll, roundId: currentRoundId });
           state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: botRollKey } } };
           yahtzeeSync.applyOptimistic(state);
@@ -888,42 +937,52 @@ export function YahtzeeGameTable({
 
           await new Promise(r => setTimeout(r, 1800));
 
-          // Check for Yahtzee after dice animation has landed
           const diceValues = ps.dice.map(d => d.value);
           if (isYahtzee(diceValues) && diceValues[0] !== 0) {
             setShowYahtzeeOverlay(botName);
           }
 
-          if (cancelled || ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) break;
+          if (cancelled) { console.log('[BOT LOOP BREAK]', { reason: 'cancelled-after-roll-wait', roll }); break; }
+          if (ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) {
+            console.log('[BOT LOOP BREAK]', { reason: ps.rollsRemaining <= 0 ? 'all-rolls-used' : 'stop-early', roll });
+            break;
+          }
         }
 
-        if (cancelled) return;
+        if (cancelled) {
+          console.log('[BOT TURN EXIT]', { reason: 'cancelled-after-loop' });
+          return;
+        }
         const category = getBotCategoryChoice(ps);
+        console.log('[BOT BEFORE CATEGORY COMMIT]', { roundId: currentRoundId, botPlayerId, chosenCategory: category, score: calculateCategoryScore(category, ps.dice.map(d => d.value)) });
 
-        // Cache bot's dice so they stay visible on felt during scoring highlight
         const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
         setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: botPlayerId });
 
-        // Highlight the bot's chosen category for 2 seconds (same UX as human)
         setLastScoredCategory(category);
         setScoringInProgress(true);
 
         ps = scoreYahtzeeCategory(ps, category);
-        // Write scored state (but don't advance turn yet) so scorecard updates visually
         state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
         yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
 
         await new Promise(r => setTimeout(r, 2000));
-        if (cancelled) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); setCachedOpponentDice(null); return; }
+        if (cancelled) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); setCachedOpponentDice(null); console.log('[BOT TURN EXIT]', { reason: 'cancelled-after-score-wait' }); return; }
 
         setLastScoredCategory(null);
         setLastScoredValue(null);
         setScoringInProgress(false);
         setCachedOpponentDice(null);
 
-        // Combine advance turn into a single DB write to prevent intermediate flicker
+        const prevTurnOwner = state.currentTurnPlayerId;
         state = advanceYahtzeeTurn(state);
+        console.log('[TURN TRANSITION]', {
+          roundId: currentRoundId,
+          fromPlayerId: prevTurnOwner,
+          toPlayerId: state.currentTurnPlayerId,
+          gamePhase: state.gamePhase,
+        });
         yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
         if (state.gamePhase === 'complete') await handleGameComplete(state);
@@ -931,6 +990,7 @@ export function YahtzeeGameTable({
         console.error('[YAHTZEE] Bot error:', e);
       } finally {
         botProcessingRef.current = false;
+        console.log('[BOT GUARD CLEAR]', { guard: 'botProcessingRef', value: false, roundId: currentRoundId });
       }
     };
 
@@ -938,11 +998,11 @@ export function YahtzeeGameTable({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      console.log('[BOT EFFECT CLEANUP]', { roundId: currentRoundId, authTurnPlayerId, botProcessingRef: botProcessingRef.current });
     };
     // IMPORTANT: authoritativeYahtzeeState is intentionally excluded from deps.
     // The bot snapshots state at fire-time and runs to completion. Including it
     // would cause the effect to re-fire on every DB write, cancelling the bot mid-turn.
-    // All deps below are from AUTHORITATIVE state, not presentation/viewState.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRoundId, authTurnPlayerId, authTurnPlayer?.is_bot, authGamePhase, currentUserId]);
 
