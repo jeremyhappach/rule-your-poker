@@ -4535,9 +4535,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
           logThreeFiveSevenSummary(result.accepted ? 'accepted' : 'rejected', snapshot);
 
-          // Shadow invariant checks
-          checkThreeFiveSevenStaleRound(gameData.id, gameData.current_round ?? 0, snapshot.roundNumber, snapshot.handNumber);
-          checkThreeFiveSevenStaleHand(gameData.id, gameData.total_hands ?? 0, snapshot.handNumber);
+          // Shadow invariant checks — compare last-accepted snapshot vs current
+          // (In shadow mode we don't have a separate "rendered" ref, so we use the
+          //  previous authoritative state from the sync hook as proxy.)
+          if (result.accepted) {
+            const prev = result.previousProgress as number[] | null;
+            const prevRound = prev ? prev[1] ?? 0 : 0;
+            const prevHand = prev ? prev[0] ?? 0 : 0;
+            checkThreeFiveSevenStaleRound(gameData.id, prevRound, snapshot.roundNumber, snapshot.handNumber);
+            checkThreeFiveSevenStaleHand(gameData.id, prevHand, snapshot.handNumber);
+          }
         }
         threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
       }
