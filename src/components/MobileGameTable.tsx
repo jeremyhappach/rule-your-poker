@@ -1824,12 +1824,15 @@ export const MobileGameTable = ({
   // so tabled cards can't snap back mid pot-to-player animation.
 
   // INVARIANT: Detect stale solo-player re-lock across hand boundaries
+  // Skip for true solo-vs-chucky (only 1 human) — same player re-locking is expected.
+  const humanPlayerCount = players.filter(p => !p.is_bot && !p.sitting_out).length;
   useEffect(() => {
     if (gameType !== 'holm-game' || !soloVsChuckyPlayerIdLocked || !handContextId) return;
+    if (humanPlayerCount <= 1) return; // Solo game: same player always locks, not a bug
     import('@/lib/holmSyncDiagnostics').then(({ checkSoloPlayerMismatch }) => {
       checkSoloPlayerMismatch(soloVsChuckyPlayerIdLocked, currentUserId, handContextId, gameId);
     }).catch(() => { /* safe */ });
-  }, [soloVsChuckyPlayerIdLocked, handContextId, gameType, currentUserId, gameId]);
+  }, [soloVsChuckyPlayerIdLocked, handContextId, gameType, currentUserId, gameId, humanPlayerCount]);
 
   // ── Horses/SCC sync diagnostics: invariant checks ──────────────
   useEffect(() => {
@@ -1847,11 +1850,13 @@ export const MobileGameTable = ({
       checkHorsesStuckNullTurn(gameId, handNum, hs.gamePhase, hs.currentTurnPlayerId);
 
       // INV-2: stuck-all-complete
-      if (horsesState?.playerStates && horsesState?.turnOrder) {
+      // Guard: skip when state is not yet hydrated (null phase / empty turnOrder)
+      const hsTurnOrder = horsesState?.turnOrder as string[] | undefined;
+      if (horsesState?.playerStates && hsTurnOrder && hsTurnOrder.length > 0 && hs.gamePhase) {
         checkHorsesStuckAllComplete(
           gameId, handNum, hs.gamePhase,
           horsesState.playerStates as Record<string, { isComplete?: boolean }>,
-          horsesState.turnOrder as string[],
+          hsTurnOrder,
         );
       }
 

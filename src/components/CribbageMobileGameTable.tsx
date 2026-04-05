@@ -611,7 +611,10 @@ export const CribbageMobileGameTable = ({
 
     // INV-1: stale-dealer-game-render
     // Active mobile Cribbage does not render from state.dealerGameId; it renders from hand identity.
-    if (renderHandKey && currentHandKey) {
+    // Skip during counting/win phases: the UI intentionally renders from latched snapshots,
+    // so renderHandKey (from viewState) may transiently differ from currentHandKey (from cribbageState).
+    const isSnapshotPhase = Boolean(countingStateSnapshot && !countingDelayActive) || winSequencePhase !== 'idle';
+    if (renderHandKey && currentHandKey && !isSnapshotPhase) {
       checkStaleDealerGameRender(gameId, renderHandKey, currentHandKey, currentHandNumber);
     }
 
