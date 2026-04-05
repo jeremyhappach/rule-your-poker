@@ -1,136 +1,121 @@
 
+# 3-5-7 Read-Only Shadow Sync — Implementation Plan
 
-# Phase 2: Holm Read-Only Shadow Sync — Implementation Plan
+## Context
+
+3-5-7 is a **multi-round** card game: each hand has 3 rounds (Round 1 = 3 cards, Round 2 = 5 cards, Round 3 = 7 cards). Antes are charged only on Round 1. The `(dealer_game_id, hand_number, round_number)` triple-key uniquely identifies each round.
+
+This is more complex than Holm (single round per hand) because the progress vector must be monotonic across **round boundaries within a hand** and across **hand boundaries**.
 
 ## Activation Gate
 
-**`in_progress` and `game_over` are sufficient.** During `waiting`, `dealer_selection`, `game_selection`, `configuring`, and `ante_decision`, there is no round to track. The sync framework only needs to observe once a `currentRound` exists with meaningful state. Returning `null` from the snapshot builder when `currentRound` is null naturally gates this.
+Active during `in_progress` and `game_over`. Returns `null` when no active round exists or game type isn't 3-5-7.
 
 ## Changes
 
-### 1. Game.tsx — Imports (~line 1-50)
+### 1. New file: `src/lib/gameStateSync/threeFiveSevenProgress.ts`
 
-Add imports for `useGameStateSync`, `getHolmProgress`, and `HolmAuthoritativeSnapshot`.
+**Snapshot shape** (`ThreeFiveSevenAuthoritativeSnapshot`):
+- `roundId`, `handNumber`, `roundNumber`, `dealerGameId`
+- `roundStatus` ('betting' | 'completed')
+- `players[]` — `{ playerId, userId, position, decision, decisionLocked, autoFold, sittingOut }`
+- `currentTurnPosition`, `decisionDeadline`
+- `pot`, `lastRoundResult`
+- `buckPosition`, `dealerPosition`
+- `cardsDealt` (3, 5, or 7)
 
-### 2. Game.tsx — Snapshot Builder (new pure function, ~line 280)
+**Progress vector**: `[handNumber, roundNumber, phaseOrdinal, decidedCount]`
+
+- `handNumber` — increments each new Round 1 (highest priority, ensures hand resets are forward)
+- `roundNumber` — 1, 2, or 3 within a hand
+- `phaseOrdinal` — betting=0, completed=1
+- `decidedCount` — players with `decisionLocked === true`
+
+This is monotonic across the full match lifecycle: hand transitions always advance dimension 0, round transitions advance dimension 1, and phase/decision progress advances dimensions 2-3.
+
+### 2. New file: `src/lib/threeFiveSevenSyncDiagnostics.ts`
+
+Invariant checks (mirroring Holm pattern):
+- **INV-1: stale-round-render** — rendered roundNumber lags authoritative roundNumber
+- **INV-2: stale-hand-render** — rendered handNumber lags authoritative handNumber  
+- **INV-3: result-render-mismatch** — result overlay shows previous hand's winner while authoritative is on new hand
+- **INV-4: decision-after-completed** — player decision locked while round is already completed
+
+### 3. `src/lib/gameStateSync/index.ts` — Add exports
+
+Export `getThreeFiveSevenProgress` and `ThreeFiveSevenAuthoritativeSnapshot`.
+
+### 4. `Game.tsx` — Snapshot builder (pure function)
 
 ```typescript
-function buildHolmSnapshot(
+function buildThreeFiveSevenSnapshot(
   gameData: GameData,
   playersData: Player[],
   currentRound: Round | null
-): HolmAuthoritativeSnapshot | null {
+): ThreeFiveSevenAuthoritativeSnapshot | null {
   if (!currentRound) return null;
-  if (gameData.game_type !== 'holm-game') return null;
+  if (gameData.game_type !== '3-5-7' && gameData.game_type !== '357' && gameData.game_type !== '3-5-7-game') return null;
   if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
-
-  return {
-    roundId: currentRound.id,
-    handNumber: currentRound.hand_number ?? 1,
-    dealerGameId: gameData.current_game_uuid ?? '',
-    roundStatus: (currentRound.status as any) ?? 'betting',
-    players: playersData.map(p => ({
-      playerId: p.id,
-      userId: p.user_id,
-      position: p.position,
-      decision: p.current_decision,
-      decisionLocked: p.decision_locked ?? false,
-      autoFold: p.auto_fold,
-      sittingOut: p.sitting_out,
-    })),
-    currentTurnPosition: currentRound.current_turn_position ?? null,
-    decisionDeadline: currentRound.decision_deadline,
-    communityCards: currentRound.community_cards ?? [],
-    communityCardsRevealed: currentRound.community_cards_revealed ?? 0,
-    chuckyCards: currentRound.chucky_cards ?? [],
-    chuckyActive: currentRound.chucky_active ?? false,
-    pot: gameData.pot ?? 0,
-    lastRoundResult: gameData.last_round_result ?? null,
-    buckPosition: gameData.buck_position ?? 0,
-    dealerPosition: gameData.dealer_position ?? 0,
-  };
+  // ... build snapshot from fresh fetch payloads
 }
 ```
 
-Key point: built from **fresh fetch payloads** (`gameData`, `playersData`), not from React state. The `currentRound` is derived from `gameData.rounds` using `pickActiveSingleRoundGameRound` inside `fetchGameData`, the same way the existing timer logic does.
-
-### 3. Game.tsx — Hook Instantiation (~line 350, near other state declarations)
+### 5. `Game.tsx` — Hook instantiation
 
 ```typescript
-const holmSyncLastRoundIdRef = useRef<string | null>(null);
-const holmSync = useGameStateSync<HolmAuthoritativeSnapshot | null>(null, {
-  getProgress: (s) => s ? getHolmProgress(s) : [0, 0, 0, 0],
-  debugLabel: 'Holm',
+const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
+const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
+  getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
+  debugLabel: '357',
   describeState: (s) => s ? {
     hand: s.handNumber,
+    round: s.roundNumber,
     phase: s.roundStatus,
     decided: s.players.filter(p => p.decisionLocked).length,
-    revealed: s.communityCardsRevealed,
   } : null,
 });
 ```
 
-The hook is always called (React rules), but returns null progress when state is null, making it inert for non-Holm games.
+### 6. `Game.tsx` — Feed point (end of `fetchGameData`)
 
-### 4. Game.tsx — Feed Point (end of `fetchGameData`, ~line 4392, after `setGame(gameData)`)
+After `setGame(gameData)`, feed the snapshot. Hard reset on `roundId` change (which happens both on new rounds within a hand and new hands).
 
-After `setGame(gameData)` and before the final `setLoading(false)`:
+### 7. `MobileGameTable.tsx` — Wire invariant checks
 
-```typescript
-// ── Holm shadow sync (Phase 2: read-only) ──
-if (gameData.game_type === 'holm-game') {
-  const holmRound = pickActiveSingleRoundGameRound(gameData.rounds as Round[], {
-    dealerGameId: gameData.current_game_uuid,
-    currentRoundNumber: gameData.current_round,
-    currentHandNumber: gameData.total_hands,
-  });
-  const snapshot = buildHolmSnapshot(gameData, (playersData || []), holmRound);
-  if (snapshot) {
-    // Hard reset on roundId change
-    if (holmSyncLastRoundIdRef.current && holmSyncLastRoundIdRef.current !== snapshot.roundId) {
-      console.log('[GameStateSync:Holm] 🔄 Hard reset — roundId changed', {
-        prev: holmSyncLastRoundIdRef.current,
-        next: snapshot.roundId,
-      });
-      holmSync.reset(snapshot);
-    } else {
-      holmSync.receiveAuthoritativeUpdate(snapshot);
-    }
-    holmSyncLastRoundIdRef.current = snapshot.roundId;
-  }
-}
-```
+Add the same diagnostic pattern used for Holm/Horses — check rendered vs authoritative at render boundaries.
 
-### 5. What Does NOT Change
+### 8. What Does NOT Change
 
-- No render paths read from `holmSync.presentationState`
+- No render paths read from `threeFiveSevenSync.presentationState` (Phase 2 = read-only shadow)
 - No action handlers modified
 - No optimistic updates
 - No freeze/unfreeze calls
-- No showdown/animation timing changes
-- No 3-5-7, cribbage, gin, horses, or yahtzee code touched
+- No other game types touched
 
-### Example Log Output
+## Round Lookup
 
-**Accepted forward** (player locks decision):
-```
-[GameStateSync:Holm] ✅ Accepted update
-  current: [3, 0, 1, 0]  incoming: [3, 0, 2, 0]  relation: forward
-  currentState: {hand:3, phase:'betting', decided:1, revealed:0}
-  incomingState: {hand:3, phase:'betting', decided:2, revealed:0}
-```
+3-5-7 uses `game.current_round` to identify the active round (unlike Holm which uses `pickActiveSingleRoundGameRound`). The active round is found by matching `(dealer_game_id, hand_number, round_number)` from the rounds array.
 
-**Rejected regressive** (stale poll arrives after newer realtime):
+## Expected Log Output
+
+**Accepted forward** (player locks decision in Round 2):
 ```
-[GameStateSync:Holm] ❌ Rejected regressive update
-  current: [3, 1, 3, 0]  incoming: [3, 0, 2, 0]
-  currentState: {hand:3, phase:'processing', decided:3, revealed:0}
-  incomingState: {hand:3, phase:'betting', decided:2, revealed:0}
+[GameStateSync:357] ✅ Accepted update
+  current: [3, 2, 0, 1]  incoming: [3, 2, 0, 2]  relation: forward
 ```
 
-**Hard reset** (new hand):
+**Hard reset** (new round within hand):
 ```
-[GameStateSync:Holm] 🔄 Hard reset — roundId changed
+[GameStateSync:357] 🔄 Hard reset — roundId changed
   prev: abc-123  next: def-456
 ```
 
+**Hard reset** (new hand / Round 1):
+```
+[GameStateSync:357] 🔄 Hard reset — roundId changed
+  prev: def-456  next: ghi-789
+```
+
+## Follow-up Items (NOT in this pass)
+
+- Horses rapid tap/untap dice trace issue (minor render polish, logged)
