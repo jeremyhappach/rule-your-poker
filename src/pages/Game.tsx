@@ -676,8 +676,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Convenience alias: null when not a Holm game or no round active yet
   const holmView = holmSync.presentationState;
 
+  // ── 3-5-7 Sync (Phase 2 — read-only shadow) ──
+  const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
+  const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
+    getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
+    debugLabel: '357',
+    describeState: (s) => s ? {
+      hand: s.handNumber,
+      round: s.roundNumber,
+      phase: s.roundStatus,
+      decided: s.players.filter(p => p.decisionLocked).length,
+    } : null,
+  });
 
-  // Step 2: Overlay presentation-state decisions onto players array for Holm render paths.
+
   // This ensures decision badges (stay/fold, locked) read from presentationState exclusively.
   // Action handlers continue to use raw `players` for mutation correctness.
   const holmPlayers = useMemo(() => {
