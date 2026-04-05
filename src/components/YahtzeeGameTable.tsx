@@ -817,16 +817,22 @@ export function YahtzeeGameTable({
   };
 
   /* ---- Bot logic ---- */
-  // Safety: reset botProcessingRef when turn changes away from a bot
+  // Drive bot control ENTIRELY from authoritative state — never presentation/viewState.
+  // Using viewState caused transient wrong-owner flickers to cancel/restart bot sequences.
+  const authTurnPlayerId = authoritativeYahtzeeState?.currentTurnPlayerId;
+  const authGamePhase = authoritativeYahtzeeState?.gamePhase;
+  const authTurnPlayer = players.find(p => p.id === authTurnPlayerId);
+
+  // Safety: reset botProcessingRef when authoritative turn changes away from a bot
   useEffect(() => {
-    if (!currentPlayer?.is_bot) {
+    if (!authTurnPlayer?.is_bot) {
       botProcessingRef.current = false;
     }
-  }, [currentTurnPlayerId]);
+  }, [authTurnPlayerId]);
 
   useEffect(() => {
-    if (!currentRoundId || !authoritativeYahtzeeState || gamePhase !== 'playing') return;
-    if (!currentTurnPlayerId || !currentPlayer?.is_bot) return;
+    if (!currentRoundId || !authoritativeYahtzeeState || authGamePhase !== 'playing') return;
+    if (!authTurnPlayerId || !authTurnPlayer?.is_bot) return;
     if (botProcessingRef.current) return;
     const controllerUserId = authoritativeYahtzeeState.botControllerUserId;
     if (controllerUserId && controllerUserId !== currentUserId) return;
@@ -917,8 +923,9 @@ export function YahtzeeGameTable({
     // IMPORTANT: authoritativeYahtzeeState is intentionally excluded from deps.
     // The bot snapshots state at fire-time and runs to completion. Including it
     // would cause the effect to re-fire on every DB write, cancelling the bot mid-turn.
+    // All deps below are from AUTHORITATIVE state, not presentation/viewState.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentRoundId, currentTurnPlayerId, currentPlayer?.is_bot, gamePhase, currentUserId]);
+  }, [currentRoundId, authTurnPlayerId, authTurnPlayer?.is_bot, authGamePhase, currentUserId]);
 
   /* ---- Felt dice for observer view — reads from viewState (presentation layer) ---- */
   const getCurrentTurnDice = useCallback(() => {
