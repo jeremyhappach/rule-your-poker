@@ -644,6 +644,21 @@ export function DiceTableLayout({
       unheldIndices.length > 0 &&
       effectiveLastFlyIn !== rollKey;
 
+    // Debug: trace fly-in decision for every new rollKey
+    if (rollKey !== undefined) {
+      console.log('[ROLL CONSUME CHECK]', {
+        rollKey,
+        lastConsumed: effectiveLastFlyIn,
+        lastFlyInGlobal,
+        lastFlyInRef: lastFlyInRollKeyRef.current,
+        cacheKey: flyInCacheKeyStr,
+        shouldStartFlyIn,
+        flyInWindowActive,
+        unheldCount: unheldIndices.length,
+        hasAnimOrigin: !!animationOrigin,
+        isAnimatingFlyIn,
+      });
+    }
 
     if (shouldStartFlyIn) {
       lastFlyInRollKeyRef.current = rollKey;

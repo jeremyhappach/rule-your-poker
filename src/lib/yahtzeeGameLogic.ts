@@ -37,11 +37,11 @@ export function rollYahtzeeDice(state: YahtzeePlayerState): YahtzeePlayerState {
     isHeld: die.isHeld,
   }));
 
+  // rollKey is managed by the caller (YahtzeeGameTable) — do NOT generate here
   return {
     ...state,
     dice: newDice,
     rollsRemaining: state.rollsRemaining - 1,
-    rollKey: (state.rollKey ?? 0) + 1,
   };
 }
 

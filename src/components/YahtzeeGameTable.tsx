@@ -193,13 +193,15 @@ export function YahtzeeGameTable({
   const uiRollingTimerRef = useRef<number | null>(null);
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
-  const localRollKeyRef = useRef<number | undefined>(undefined);
+  const localRollKeyRef = useRef<string | undefined>(undefined);
+  /** Monotonic counter for generating unique rollKeys across all rolls in this session */
+  const rollSerialRef = useRef(0);
   // Track opponent scorecard to detect when a new category is scored remotely
   const prevOpponentScorecardRef = useRef<Record<string, Record<string, number | undefined>>>({});
   // Cache last opponent's dice so they stay visible on felt during scoring highlight transition
-  const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
+  const [cachedOpponentDice, setCachedOpponentDice] = useState<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
   // Always track last non-zero dice for current turn player (used to cache for scoring transition)
-  const lastNonZeroDiceRef = useRef<{ dice: HorsesDieType[]; rollKey?: number; playerId: string } | null>(null);
+  const lastNonZeroDiceRef = useRef<{ dice: HorsesDieType[]; rollKey?: string | number; playerId: string } | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Overlay states
@@ -570,8 +572,10 @@ export function YahtzeeGameTable({
     const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
 
     heldSnapshotRef.current = localDice.map(d => d.isHeld);
-    const t = Date.now();
+    rollSerialRef.current += 1;
+    const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
     localRollKeyRef.current = t;
+    console.log('[ROLL GENERATED]', { rollKey: t, playerId: myPlayer.id, rollSerial: rollSerialRef.current, roundId: currentRoundId });
 
     // CRITICAL: Apply local hold state to the player state before rolling.
     // The DB state may be stale if the user toggled holds that haven't synced yet.
@@ -874,9 +878,11 @@ export function YahtzeeGameTable({
             if (cancelled) break;
           }
 
-          const t = Date.now();
+          rollSerialRef.current += 1;
+          const botRollKey = `yahtzee:${currentRoundId}:${botPlayerId}:${rollSerialRef.current}`;
           ps = rollYahtzeeDice(ps);
-          state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: t } } };
+          console.log('[ROLL GENERATED]', { rollKey: botRollKey, playerId: botPlayerId, rollSerial: rollSerialRef.current, roll, roundId: currentRoundId });
+          state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: botRollKey } } };
           yahtzeeSync.applyOptimistic(state);
           await updateYahtzeeState(currentRoundId, state);
 
