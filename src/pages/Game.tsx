@@ -676,7 +676,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Convenience alias: null when not a Holm game or no round active yet
   const holmView = holmSync.presentationState;
 
-  // ── 3-5-7 Sync (Phase 2 — read-only shadow) ──
+  // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
   const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
     getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
@@ -688,6 +688,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       decided: s.players.filter(p => p.decisionLocked).length,
     } : null,
   });
+  // Convenience alias: null when not a 3-5-7 game or no round active yet
+  const threeFiveSevenView = threeFiveSevenSync.presentationState;
+
+  // 3-5-7 presentation players — overlay decisions from presentation state
+  // Action handlers continue to use raw `players` for mutation correctness.
+  const is357GameType = game?.game_type === '3-5-7' || game?.game_type === '357' || game?.game_type === '3-5-7-game';
+  const threeFiveSevenPlayers = useMemo(() => {
+    if (!threeFiveSevenView || !is357GameType) return players;
+    return players.map(p => {
+      const snap = threeFiveSevenView.players.find(sp => sp.position === p.position);
+      if (!snap) return p;
+      return {
+        ...p,
+        current_decision: snap.decision,
+        decision_locked: snap.decisionLocked,
+      };
+    });
+  }, [players, threeFiveSevenView, is357GameType]);
 
 
   // This ensures decision badges (stay/fold, locked) read from presentationState exclusively.
@@ -4535,15 +4553,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
           logThreeFiveSevenSummary(result.accepted ? 'accepted' : 'rejected', snapshot);
 
-          // Shadow invariant checks — compare last-accepted snapshot vs current
-          // (In shadow mode we don't have a separate "rendered" ref, so we use the
-          //  previous authoritative state from the sync hook as proxy.)
+          // Presentation cutover invariant checks — compare rendered (presentation) vs authoritative
           if (result.accepted) {
-            const prev = result.previousProgress as number[] | null;
-            const prevRound = prev ? prev[1] ?? 0 : 0;
-            const prevHand = prev ? prev[0] ?? 0 : 0;
-            checkThreeFiveSevenStaleRound(gameData.id, prevRound, snapshot.roundNumber, snapshot.handNumber);
-            checkThreeFiveSevenStaleHand(gameData.id, prevHand, snapshot.handNumber);
+            const presentedState = threeFiveSevenSync.presentationState;
+            const renderedRound = presentedState?.roundNumber ?? 0;
+            const renderedHand = presentedState?.handNumber ?? 0;
+            checkThreeFiveSevenStaleRound(gameData.id, renderedRound, snapshot.roundNumber, snapshot.handNumber);
+            checkThreeFiveSevenStaleHand(gameData.id, renderedHand, snapshot.handNumber);
           }
         }
         threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
@@ -7309,7 +7325,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     gameId={gameId}
-                    players={holmPlayers}
+                    players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
                     currentUserId={user?.id}
                     pot={potForDisplay}
                     currentRound={game.current_round || 0}
@@ -7712,16 +7728,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               gameId={gameId}
-              players={holmPlayers}
+              players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
-              pot={game.game_type === 'holm-game' && holmView ? holmView.pot : potForDisplay}
-              currentRound={isInProgress ? (game.current_round ?? 0) : 0}
-              allDecisionsIn={isInProgress ? (game.all_decisions_in || false) : false}
+              pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
+              currentRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
+              allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : (game.all_decisions_in || false)) : false}
               playerCards={isInProgress ? playerCards : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
               lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
-              dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : game.dealer_position}
+              dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
@@ -7731,12 +7747,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameType={game.game_type}
               communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : game.buck_position) : undefined}
-              currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
+              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
               chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
-              roundStatus={isInProgress ? (holmView?.roundStatus ?? currentRound?.status) : undefined}
+              roundStatus={isInProgress ? (holmView?.roundStatus ?? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
