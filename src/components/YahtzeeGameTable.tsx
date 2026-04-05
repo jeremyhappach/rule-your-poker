@@ -847,9 +847,10 @@ export function YahtzeeGameTable({
 
     const runBot = async () => {
       try {
+        const botPlayerId = snapshotState.currentTurnPlayerId!;
         let state = { ...snapshotState };
-        let ps = { ...state.playerStates[currentTurnPlayerId] };
-        const botPlayer = players.find(p => p.id === currentTurnPlayerId);
+        let ps = { ...state.playerStates[botPlayerId] };
+        const botPlayer = players.find(p => p.id === botPlayerId);
         const botName = botPlayer ? getPlayerUsername(botPlayer) : 'Bot';
 
         for (let roll = 0; roll < 3; roll++) {
@@ -863,7 +864,7 @@ export function YahtzeeGameTable({
 
           const t = Date.now();
           ps = rollYahtzeeDice(ps);
-          state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: { ...ps, rollKey: t } } };
+          state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: t } } };
           yahtzeeSync.applyOptimistic(state);
           await updateYahtzeeState(currentRoundId, state);
 
@@ -883,7 +884,7 @@ export function YahtzeeGameTable({
 
         // Cache bot's dice so they stay visible on felt during scoring highlight
         const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
-        setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: currentTurnPlayerId });
+        setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: botPlayerId });
 
         // Highlight the bot's chosen category for 2 seconds (same UX as human)
         setLastScoredCategory(category);
@@ -891,7 +892,7 @@ export function YahtzeeGameTable({
 
         ps = scoreYahtzeeCategory(ps, category);
         // Write scored state (but don't advance turn yet) so scorecard updates visually
-        state = { ...state, playerStates: { ...state.playerStates, [currentTurnPlayerId]: ps } };
+        state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
         yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
 
