@@ -1129,23 +1129,49 @@ export function YahtzeeGameTable({
           <div
             className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
             style={{
-              backgroundImage: `url(${peoriaBridgeMobile})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
+              boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
             }}
           >
-            <div className="absolute inset-0 bg-green-900/70" />
+            <img
+              src={peoriaBridgeMobile}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 pointer-events-none w-full h-full object-cover"
+              style={{ objectPosition: 'center 38%', opacity: 0.28 }}
+            />
           </div>
           {/* Player chip stacks around the felt */}
-          <DiceTableLayout
-            players={players}
-            currentUserId={currentUserId}
-            currentTurnPlayerId={null}
-            isRolling={false}
-            dealerPosition={dealerPosition}
-            gameId={gameId}
-            onPlayerClick={onPlayerClick}
-          />
+          {(() => {
+            const sorted = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
+            const meIndex = sorted.findIndex(p => p.user_id === currentUserId);
+            const others = meIndex >= 0
+              ? [...sorted.slice(meIndex + 1), ...sorted.slice(0, meIndex)]
+              : sorted.slice(1);
+            const positions = [
+              'top-4 left-4',
+              'top-4 right-4',
+              'top-1/3 left-2',
+              'top-1/3 right-2',
+              'bottom-4 left-4',
+              'bottom-4 right-4',
+            ];
+            return others.map((player, idx) => (
+              <div key={player.id} className={`absolute z-[105] ${positions[idx % positions.length]}`}>
+                {renderPlayerChip(player)}
+              </div>
+            ));
+          })()}
+          {/* My chip at bottom center */}
+          {(() => {
+            const me = players.find(p => p.user_id === currentUserId && !p.sitting_out);
+            if (!me) return null;
+            return (
+              <div className="absolute z-[105] bottom-2 left-1/2 -translate-x-1/2">
+                {renderPlayerChip(me)}
+              </div>
+            );
+          })()}
         </div>
         {/* Bottom area placeholder */}
         <div className="flex-none flex items-center justify-center py-8">
