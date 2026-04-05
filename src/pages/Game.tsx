@@ -7730,16 +7730,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               gameId={gameId}
-              players={holmPlayers}
+              players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
-              pot={game.game_type === 'holm-game' && holmView ? holmView.pot : potForDisplay}
-              currentRound={isInProgress ? (game.current_round ?? 0) : 0}
-              allDecisionsIn={isInProgress ? (game.all_decisions_in || false) : false}
+              pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
+              currentRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
+              allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : (game.all_decisions_in || false)) : false}
               playerCards={isInProgress ? playerCards : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
               lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
-              dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : game.dealer_position}
+              dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
@@ -7749,12 +7749,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameType={game.game_type}
               communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : game.buck_position) : undefined}
-              currentTurnPosition={isInProgress && game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : null}
+              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
               chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
-              roundStatus={isInProgress ? (holmView?.roundStatus ?? currentRound?.status) : undefined}
+              roundStatus={isInProgress ? (holmView?.roundStatus ?? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
