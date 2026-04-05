@@ -676,7 +676,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Convenience alias: null when not a Holm game or no round active yet
   const holmView = holmSync.presentationState;
 
-  // ── 3-5-7 Sync (Phase 2 — read-only shadow) ──
+  // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
   const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
     getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
@@ -688,6 +688,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       decided: s.players.filter(p => p.decisionLocked).length,
     } : null,
   });
+  // Convenience alias: null when not a 3-5-7 game or no round active yet
+  const threeFiveSevenView = threeFiveSevenSync.presentationState;
+
+  // 3-5-7 presentation players — overlay decisions from presentation state
+  // Action handlers continue to use raw `players` for mutation correctness.
+  const is357GameType = game?.game_type === '3-5-7' || game?.game_type === '357' || game?.game_type === '3-5-7-game';
+  const threeFiveSevenPlayers = useMemo(() => {
+    if (!threeFiveSevenView || !is357GameType) return players;
+    return players.map(p => {
+      const snap = threeFiveSevenView.players.find(sp => sp.position === p.position);
+      if (!snap) return p;
+      return {
+        ...p,
+        current_decision: snap.decision,
+        decision_locked: snap.decisionLocked,
+      };
+    });
+  }, [players, threeFiveSevenView, is357GameType]);
 
 
   // This ensures decision badges (stay/fold, locked) read from presentationState exclusively.
