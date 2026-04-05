@@ -878,9 +878,11 @@ export function YahtzeeGameTable({
             if (cancelled) break;
           }
 
-          const t = Date.now();
+          rollSerialRef.current += 1;
+          const botRollKey = `yahtzee:${currentRoundId}:${botPlayerId}:${rollSerialRef.current}`;
           ps = rollYahtzeeDice(ps);
-          state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: t } } };
+          console.log('[ROLL GENERATED]', { rollKey: botRollKey, playerId: botPlayerId, rollSerial: rollSerialRef.current, roll, roundId: currentRoundId });
+          state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: botRollKey } } };
           yahtzeeSync.applyOptimistic(state);
           await updateYahtzeeState(currentRoundId, state);
 
