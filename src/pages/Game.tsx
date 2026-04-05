@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useGameStateSync, getHolmProgress } from "@/lib/gameStateSync";
+import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
+import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { logSyncGateResult } from "@/lib/debugSyncInvariants";
 import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
+import { logThreeFiveSevenSyncGate, logThreeFiveSevenSummary } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { persistTransition } from "@/lib/persistSyncDebugEvent";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
@@ -346,6 +348,43 @@ function buildHolmSnapshot(
   };
 }
 
+// ── 3-5-7 Shadow Sync: snapshot builder (Phase 2 — read-only) ──
+function buildThreeFiveSevenSnapshot(
+  gameData: GameData,
+  playersData: Player[],
+  currentRound: Round | null
+): ThreeFiveSevenAuthoritativeSnapshot | null {
+  if (!currentRound) return null;
+  if (gameData.game_type !== '3-5-7' && gameData.game_type !== '357' && gameData.game_type !== '3-5-7-game') return null;
+  if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
+
+  const roundStatus = (currentRound.status === 'completed' ? 'completed' : 'betting') as 'betting' | 'completed';
+
+  return {
+    roundId: currentRound.id,
+    handNumber: currentRound.hand_number ?? 1,
+    roundNumber: currentRound.round_number,
+    dealerGameId: gameData.current_game_uuid ?? '',
+    roundStatus,
+    players: playersData.map(p => ({
+      playerId: p.id,
+      userId: p.user_id,
+      position: p.position,
+      decision: p.current_decision,
+      decisionLocked: p.decision_locked ?? false,
+      autoFold: p.auto_fold,
+      sittingOut: p.sitting_out,
+    })),
+    currentTurnPosition: currentRound.current_turn_position ?? null,
+    decisionDeadline: currentRound.decision_deadline,
+    pot: gameData.pot ?? 0,
+    lastRoundResult: gameData.last_round_result ?? null,
+    buckPosition: gameData.buck_position ?? 0,
+    dealerPosition: gameData.dealer_position ?? 0,
+    cardsDealt: currentRound.cards_dealt,
+  };
+}
+
 const Game = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
@@ -637,8 +676,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Convenience alias: null when not a Holm game or no round active yet
   const holmView = holmSync.presentationState;
 
+  // ── 3-5-7 Sync (Phase 2 — read-only shadow) ──
+  const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
+  const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
+    getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
+    debugLabel: '357',
+    describeState: (s) => s ? {
+      hand: s.handNumber,
+      round: s.roundNumber,
+      phase: s.roundStatus,
+      decided: s.players.filter(p => p.decisionLocked).length,
+    } : null,
+  });
 
-  // Step 2: Overlay presentation-state decisions onto players array for Holm render paths.
+
   // This ensures decision badges (stay/fold, locked) read from presentationState exclusively.
   // Action handlers continue to use raw `players` for mutation correctness.
   const holmPlayers = useMemo(() => {
@@ -4462,6 +4513,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
+    // ── 3-5-7 shadow sync feed (Phase 2: read-only) ──
+    if (gameData.game_type === '3-5-7' || gameData.game_type === '357' || gameData.game_type === '3-5-7-game') {
+      const threeFiveSevenRound = pickActive357Round(gameData.rounds as Round[], {
+        currentRoundNumber: gameData.current_round,
+        currentHandNumber: gameData.total_hands,
+        dealerGameId: gameData.current_game_uuid,
+      });
+      const snapshot = buildThreeFiveSevenSnapshot(gameData, (playersData || []) as Player[], threeFiveSevenRound);
+      if (snapshot) {
+        if (threeFiveSevenSyncLastRoundIdRef.current && threeFiveSevenSyncLastRoundIdRef.current !== snapshot.roundId) {
+          console.log('[GameStateSync:357] 🔄 Hard reset — roundId changed', {
+            prev: threeFiveSevenSyncLastRoundIdRef.current,
+            next: snapshot.roundId,
+          });
+          threeFiveSevenSync.reset(snapshot);
+        } else {
+          const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
+          logThreeFiveSevenSyncGate(result.accepted, result.reason, result.previousProgress, result.incomingProgress,
+            { hand: snapshot.handNumber, round: snapshot.roundNumber, phase: snapshot.roundStatus },
+          );
+          logThreeFiveSevenSummary(result.accepted ? 'accepted' : 'rejected', snapshot);
+        }
+        threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
+      }
+    }
+
     // CRITICAL: Update refs with current game state for realtime change detection
     lastKnownGameTypeRef.current = gameData.game_type;
     lastKnownRoundRef.current = gameData.current_round;
@@ -5885,7 +5962,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       .eq('id', gameId)
       .single();
 
-    
 
     // Only skip if we are POSITIVE another client already transitioned.
     // If the fetch fails (auth/network/RLS), proceed best-effort so we don't get stuck.
@@ -6591,7 +6667,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.error('Error ending session:', error);
     }
   };
-
 
 
   const handleAddBot = async () => {
