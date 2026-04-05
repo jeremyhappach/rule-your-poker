@@ -7,7 +7,7 @@
 
 import { checkInvariant, logSyncSummary, logSyncGateResult } from './debugSyncInvariants';
 import type { ThreeFiveSevenAuthoritativeSnapshot } from '@/lib/gameStateSync/threeFiveSevenProgress';
-import { persistSyncEvent } from './persistSyncDebugEvent';
+import { persistSyncDebugEvent } from './persistSyncDebugEvent';
 import { buildMetaPayload } from './buildMeta';
 
 // ── INV-1: Stale round render ─────────────────────────────────
