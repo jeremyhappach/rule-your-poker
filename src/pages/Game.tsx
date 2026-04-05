@@ -383,10 +383,8 @@ function buildThreeFiveSevenSnapshot(
     dealerPosition: gameData.dealer_position ?? 0,
     cardsDealt: currentRound.cards_dealt,
   };
-}
 
-
-  const { gameId } = useParams();
+const Game = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
