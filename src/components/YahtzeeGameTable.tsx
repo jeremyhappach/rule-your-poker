@@ -859,11 +859,16 @@ export function YahtzeeGameTable({
           // Decide holds BEFORE rolling (except first roll)
           if (roll > 0) {
             const holds = getBotHoldDecision(ps);
+            // Preserve rollKey from previous roll so DiceTableLayout doesn't see undefined
+            const prevRollKey = state.playerStates[botPlayerId]?.rollKey;
             ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
-            // Promote hold state to presentation so holds are visually rendered
-            state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
+            // Promote hold state to presentation so holds are visually rendered.
+            // IMPORTANT: Do NOT write to DB here. Writing holds as a separate DB step
+            // causes the DB echo of the previous roll to clear this optimistic state
+            // (same progress vector), creating a visual flicker that looks like a
+            // duplicate roll to the observer. Holds are bundled into the next roll write.
+            state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: prevRollKey } } };
             yahtzeeSync.applyOptimistic(state);
-            await updateYahtzeeState(currentRoundId, state);
             // Wait for hold visualization before rolling
             await new Promise(r => setTimeout(r, 900));
             if (cancelled) break;
