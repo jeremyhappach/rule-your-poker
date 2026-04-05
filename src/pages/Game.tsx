@@ -4513,6 +4513,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
+    // ── 3-5-7 shadow sync feed (Phase 2: read-only) ──
+    if (gameData.game_type === '3-5-7' || gameData.game_type === '357' || gameData.game_type === '3-5-7-game') {
+      const threeFiveSevenRound = pickActive357Round(gameData.rounds as Round[], {
+        currentRoundNumber: gameData.current_round,
+        currentHandNumber: gameData.total_hands,
+        dealerGameId: gameData.current_game_uuid,
+      });
+      const snapshot = buildThreeFiveSevenSnapshot(gameData, (playersData || []) as Player[], threeFiveSevenRound);
+      if (snapshot) {
+        if (threeFiveSevenSyncLastRoundIdRef.current && threeFiveSevenSyncLastRoundIdRef.current !== snapshot.roundId) {
+          console.log('[GameStateSync:357] 🔄 Hard reset — roundId changed', {
+            prev: threeFiveSevenSyncLastRoundIdRef.current,
+            next: snapshot.roundId,
+          });
+          threeFiveSevenSync.reset(snapshot);
+        } else {
+          const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
+          logThreeFiveSevenSyncGate(result.accepted, result.reason, result.previousProgress, result.incomingProgress,
+            { hand: snapshot.handNumber, round: snapshot.roundNumber, phase: snapshot.roundStatus },
+          );
+          logThreeFiveSevenSummary(result.accepted ? 'accepted' : 'rejected', snapshot);
+        }
+        threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
+      }
+    }
+
     // CRITICAL: Update refs with current game state for realtime change detection
     lastKnownGameTypeRef.current = gameData.game_type;
     lastKnownRoundRef.current = gameData.current_round;
