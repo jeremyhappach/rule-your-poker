@@ -6630,7 +6630,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   };
 
-const Game = () => {
 
   const handleAddBot = async () => {
     if (!gameId) return;
