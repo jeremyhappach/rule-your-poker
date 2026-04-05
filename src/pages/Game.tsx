@@ -7570,22 +7570,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // GIN RUMMY during ante_decision - show gin rummy table instead of 3-5-7
-          if (isAnteDecision && game.game_type === 'gin-rummy') {
+          // GIN RUMMY — unified single instance across dealer_selection, ante_decision, in_progress, game_over
+          // One persistent GinRummyGameTable prevents table surface changes across phases
+          if (game.game_type === 'gin-rummy' && (isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
             return (
-              <GinRummyGameTable
-                gameId={gameId!}
-                roundId=""
-                dealerGameId={null}
-                handNumber={0}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={0}
-                isHost={isCreator}
-                onGameComplete={() => {}}
-              />
+              <>
+                <GinRummyGameTable
+                  gameId={gameId!}
+                  roundId={(isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : ''}
+                  dealerGameId={(isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null}
+                  handNumber={(isInProgress || isGinRummyGameOver) ? (currentRound?.hand_number ?? 1) : 0}
+                  players={players}
+                  currentUserId={user?.id || ''}
+                  dealerPosition={game.dealer_position || 1}
+                  anteAmount={game.ante_amount || 1}
+                  pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
+                  isHost={isCreator}
+                  onGameComplete={isGinRummyGameOver ? handleGameOverComplete : () => {}}
+                />
+                {/* Dealer selection overlay on the gin table */}
+                {isGinRummyDealerSelection && (
+                  <HighCardDealerSelection
+                    gameId={gameId!}
+                    players={players}
+                    onComplete={selectDealer}
+                    isHost={isCreator}
+                    allowBotDealers={allowBotDealers}
+                    syncedState={(game as any).dealer_selection_state ?? null}
+                    onCardsUpdate={setDealerSelectionCards}
+                    onAnnouncementUpdate={(msg, complete) => {
+                      setDealerSelectionAnnouncement(msg);
+                      setDealerSelectionComplete(complete);
+                    }}
+                    onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  />
+                )}
+              </>
             );
           }
 
