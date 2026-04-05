@@ -248,8 +248,10 @@ export function YahtzeeGameTable({
       }
 
       // INV-1: stale-turn-render
-      if (yahtzeeState) {
-        checkYahtzeeStaleTurn(gameId, viewState.currentTurnPlayerId, yahtzeeState.currentTurnPlayerId, handNum);
+      // Compare viewState to authoritativeState (not the prop, which may be a render ahead
+      // while presentation is intentionally frozen for animation stability)
+      if (authoritativeYahtzeeState && !yahtzeeSync.isFrozen) {
+        checkYahtzeeStaleTurn(gameId, viewState.currentTurnPlayerId, authoritativeYahtzeeState.currentTurnPlayerId, handNum);
       }
 
       // INV-4: regressive-categories

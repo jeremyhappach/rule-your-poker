@@ -1847,11 +1847,13 @@ export const MobileGameTable = ({
       checkHorsesStuckNullTurn(gameId, handNum, hs.gamePhase, hs.currentTurnPlayerId);
 
       // INV-2: stuck-all-complete
-      if (horsesState?.playerStates && horsesState?.turnOrder) {
+      // Guard: skip when state is not yet hydrated (null phase / empty turnOrder)
+      const hsTurnOrder = horsesState?.turnOrder as string[] | undefined;
+      if (horsesState?.playerStates && hsTurnOrder && hsTurnOrder.length > 0 && hs.gamePhase) {
         checkHorsesStuckAllComplete(
           gameId, handNum, hs.gamePhase,
           horsesState.playerStates as Record<string, { isComplete?: boolean }>,
-          horsesState.turnOrder as string[],
+          hsTurnOrder,
         );
       }
 

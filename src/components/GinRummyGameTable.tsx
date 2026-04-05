@@ -323,6 +323,9 @@ export const GinRummyGameTable = ({
     // Reset opponent draw animation
     setOpponentDrawTriggerId(null);
     prevLastActionRef.current = null;
+    // Reset invariant tracking so stale-hand-render / result-render-mismatch
+    // don't compare previous hand's values against the new hand
+    ginInvariantHandRef.current = 0;
   }, [roundId]);
 
   // ── Sync invariant checks (fire on every viewState change) ─────
@@ -330,12 +333,17 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     if (!viewState) return;
     const vsHand = viewState.handNumber ?? 0;
+    // Skip invariant checks when viewState just got reset (hand 0 = bootstrap)
+    if (vsHand === 0) return;
 
     // INV-4: regressive-hand-identity
     checkRegressiveHandIdentity(gameId, vsHand);
 
     // INV-1: stale-hand-render (compare presentation hand to prop handNumber)
-    checkStaleHandRender(gameId, vsHand, handNumber);
+    // Only fire when presentation has a real hand identity AND the prop has advanced
+    if (vsHand > 0 && handNumber > 0) {
+      checkStaleHandRender(gameId, vsHand, handNumber);
+    }
 
     // INV-2: phase-render-mismatch
     const phase = viewState.phase;
@@ -346,7 +354,8 @@ export const GinRummyGameTable = ({
     }
 
     // INV-3: result-render-mismatch (result display hand vs presentation hand)
-    if (viewState.knockResult && ginInvariantHandRef.current > 0) {
+    // Only compare when we have a previous result hand from the SAME round
+    if (viewState.knockResult && ginInvariantHandRef.current > 0 && ginInvariantHandRef.current !== vsHand) {
       checkResultRenderMismatch(gameId, ginInvariantHandRef.current, vsHand);
     }
     if (viewState.knockResult) {
