@@ -89,8 +89,8 @@ export interface YahtzeePlayerState {
   rollsRemaining: number; // 3 = hasn't rolled, 0 = must score
   isComplete: boolean; // All 13 categories filled
   scorecard: YahtzeeScorecard;
-  /** Stable per-roll key for fly-in animation (like horses) */
-  rollKey?: number;
+  /** Stable per-roll key for fly-in animation — string format: yahtzee:{roundId}:{playerId}:{serial} */
+  rollKey?: string | number;
 }
 
 /** The full Yahtzee state stored in rounds.yahtzee_state JSONB */
