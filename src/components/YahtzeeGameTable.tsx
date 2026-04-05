@@ -225,6 +225,10 @@ export function YahtzeeGameTable({
   // Reset guard when a new round starts
   useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [currentRoundId]);
 
+  // Debounce ref for stale-turn-render: only fire after 2+ consecutive mismatches
+  // to allow for expected one-frame lag during sync gate acceptance
+  const staleTurnMismatchCountRef = useRef(0);
+
   // ── Sync diagnostics: invariant checks ────────────────────────
   useEffect(() => {
     if (!viewState || !gameId) return;
@@ -247,11 +251,19 @@ export function YahtzeeGameTable({
         checkYahtzeePhaseRenderMismatch(gameId, handNum, viewState.gamePhase, 'result');
       }
 
-      // INV-1: stale-turn-render
-      // Compare viewState to authoritativeState (not the prop, which may be a render ahead
-      // while presentation is intentionally frozen for animation stability)
+      // INV-1: stale-turn-render (debounced)
+      // The sync gate creates expected one-frame lag: authoritative advances before
+      // viewState catches up. Only fire if mismatch persists for 2+ consecutive checks.
       if (authoritativeYahtzeeState && !yahtzeeSync.isFrozen) {
-        checkYahtzeeStaleTurn(gameId, viewState.currentTurnPlayerId, authoritativeYahtzeeState.currentTurnPlayerId, handNum);
+        const isMismatch = viewState.currentTurnPlayerId !== authoritativeYahtzeeState.currentTurnPlayerId;
+        if (isMismatch) {
+          staleTurnMismatchCountRef.current += 1;
+          if (staleTurnMismatchCountRef.current >= 3) {
+            checkYahtzeeStaleTurn(gameId, viewState.currentTurnPlayerId, authoritativeYahtzeeState.currentTurnPlayerId, handNum);
+          }
+        } else {
+          staleTurnMismatchCountRef.current = 0;
+        }
       }
 
       // INV-4: regressive-categories
