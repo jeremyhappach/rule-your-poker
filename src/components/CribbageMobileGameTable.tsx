@@ -699,17 +699,7 @@ export const CribbageMobileGameTable = ({
   }, [cribbageState?.dealerPlayerId, currentRoundId, currentHandNumber, gameId]);
 
 
-  type WinSequencePhase = 'idle' | 'skunk' | 'announcement' | 'chips' | 'complete';
-  const [winSequencePhase, setWinSequencePhase] = useState<WinSequencePhase>('idle');
-  const [winSequenceData, setWinSequenceData] = useState<{
-    winnerId: string;
-    winnerName: string;
-    handNumber: number;
-    multiplier: number;
-    amountPerLoser: number;
-    totalWinnings: number;
-    loserIds: string[];
-  } | null>(null);
+
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
   // Stored positions for chip animation - computed when transitioning to 'chips' phase
   const [storedChipPositions, setStoredChipPositions] = useState<{
