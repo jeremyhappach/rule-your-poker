@@ -7704,24 +7704,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             );
           }
 
-          // GIN RUMMY GAME
-          if ((isInProgress || isGinRummyGameOver) && game.game_type === 'gin-rummy') {
-            return (
-              <GinRummyGameTable
-                gameId={gameId!}
-                roundId={currentRound?.id || ''}
-                dealerGameId={currentRound?.dealer_game_id || null}
-                handNumber={currentRound?.hand_number ?? 1}
-                players={players}
-                currentUserId={user?.id || ''}
-                dealerPosition={game.dealer_position || 1}
-                anteAmount={game.ante_amount || 1}
-                pot={potForDisplay}
-                isHost={isCreator}
-                onGameComplete={handleGameOverComplete}
-              />
-            );
-          }
+          // GIN RUMMY is handled above in the unified block
 
 
           // TRIVIA GAME
