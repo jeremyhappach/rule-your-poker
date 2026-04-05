@@ -4530,10 +4530,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           threeFiveSevenSync.reset(snapshot);
         } else {
           const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
-          logThreeFiveSevenSyncGate(result.accepted, result.reason, result.previousProgress, result.incomingProgress,
+          logThreeFiveSevenSyncGate(gameData.id, snapshot.handNumber, result.accepted, result.reason, result.previousProgress, result.incomingProgress,
             { hand: snapshot.handNumber, round: snapshot.roundNumber, phase: snapshot.roundStatus },
           );
           logThreeFiveSevenSummary(result.accepted ? 'accepted' : 'rejected', snapshot);
+
+          // Shadow invariant checks
+          checkThreeFiveSevenStaleRound(gameData.id, gameData.current_round ?? 0, snapshot.roundNumber, snapshot.handNumber);
+          checkThreeFiveSevenStaleHand(gameData.id, gameData.total_hands ?? 0, snapshot.handNumber);
         }
         threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
       }
