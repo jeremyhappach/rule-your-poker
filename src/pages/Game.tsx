@@ -348,7 +348,44 @@ function buildHolmSnapshot(
   };
 }
 
-const Game = () => {
+// ── 3-5-7 Shadow Sync: snapshot builder (Phase 2 — read-only) ──
+function buildThreeFiveSevenSnapshot(
+  gameData: GameData,
+  playersData: Player[],
+  currentRound: Round | null
+): ThreeFiveSevenAuthoritativeSnapshot | null {
+  if (!currentRound) return null;
+  if (gameData.game_type !== '3-5-7' && gameData.game_type !== '357' && gameData.game_type !== '3-5-7-game') return null;
+  if (gameData.status !== 'in_progress' && gameData.status !== 'game_over') return null;
+
+  const roundStatus = (currentRound.status === 'completed' ? 'completed' : 'betting') as 'betting' | 'completed';
+
+  return {
+    roundId: currentRound.id,
+    handNumber: currentRound.hand_number ?? 1,
+    roundNumber: currentRound.round_number,
+    dealerGameId: gameData.current_game_uuid ?? '',
+    roundStatus,
+    players: playersData.map(p => ({
+      playerId: p.id,
+      userId: p.user_id,
+      position: p.position,
+      decision: p.current_decision,
+      decisionLocked: p.decision_locked ?? false,
+      autoFold: p.auto_fold,
+      sittingOut: p.sitting_out,
+    })),
+    currentTurnPosition: currentRound.current_turn_position ?? null,
+    decisionDeadline: currentRound.decision_deadline,
+    pot: gameData.pot ?? 0,
+    lastRoundResult: gameData.last_round_result ?? null,
+    buckPosition: gameData.buck_position ?? 0,
+    dealerPosition: gameData.dealer_position ?? 0,
+    cardsDealt: currentRound.cards_dealt,
+  };
+}
+
+
   const { gameId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
