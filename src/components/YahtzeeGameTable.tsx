@@ -847,9 +847,10 @@ export function YahtzeeGameTable({
 
     const runBot = async () => {
       try {
+        const botPlayerId = snapshotState.currentTurnPlayerId!;
         let state = { ...snapshotState };
-        let ps = { ...state.playerStates[currentTurnPlayerId] };
-        const botPlayer = players.find(p => p.id === currentTurnPlayerId);
+        let ps = { ...state.playerStates[botPlayerId] };
+        const botPlayer = players.find(p => p.id === botPlayerId);
         const botName = botPlayer ? getPlayerUsername(botPlayer) : 'Bot';
 
         for (let roll = 0; roll < 3; roll++) {
