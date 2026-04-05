@@ -860,6 +860,13 @@ export function YahtzeeGameTable({
           if (roll > 0) {
             const holds = getBotHoldDecision(ps);
             ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
+            // Promote hold state to presentation so holds are visually rendered
+            state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: ps } };
+            yahtzeeSync.applyOptimistic(state);
+            await updateYahtzeeState(currentRoundId, state);
+            // Wait for hold visualization before rolling
+            await new Promise(r => setTimeout(r, 900));
+            if (cancelled) break;
           }
 
           const t = Date.now();
