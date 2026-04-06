@@ -746,15 +746,20 @@ export function YahtzeeGameTable({
     // Keep optimistic score visible until DB subscription catches up
     setOptimisticScore({ playerId: myPlayer.id, category, value: pendingScore });
 
+    // SECOND WRITE: advance turn (opponent sees turn change after highlight)
+    const advancedState = advanceYahtzeeTurn(scoredState);
+    console.log('[YAHTZEE_SYNC] Writing turn-advance snapshot', describeYahtzeeSnapshot(advancedState));
+    // CRITICAL: Apply turn-advance optimistic BEFORE clearing scoring flags.
+    // Otherwise there's a 1-2 frame gap where scoringInProgress=false but
+    // currentTurnPlayerId still points to the scorer, causing a brief "my roll" flash.
+    yahtzeeSync.applyOptimistic(advancedState);
+
+    // Now safe to clear scoring flags — turn owner has already advanced
     setLastScoredCategory(null);
     setLastScoredValue(null);
     setScoringInProgress(false);
     setCachedOpponentDice(null);
 
-    // SECOND WRITE: advance turn (opponent sees turn change after highlight)
-    const advancedState = advanceYahtzeeTurn(scoredState);
-    console.log('[YAHTZEE_SYNC] Writing turn-advance snapshot', describeYahtzeeSnapshot(advancedState));
-    yahtzeeSync.applyOptimistic(advancedState);
     await updateYahtzeeState(currentRoundId, advancedState);
 
     if (advancedState.gamePhase === 'complete') handleGameComplete(advancedState);

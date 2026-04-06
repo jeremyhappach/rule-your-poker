@@ -858,12 +858,9 @@ export function DiceTableLayout({
 
       // Sort pre-held dice by their registry hold order for stable positioning
       // Tiebreak by originalIndex to prevent swaps when holdOrders are equal or ambiguous
-      const registryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-      const sortedPreHeld = preHeldIndices.sort((a, b) => {
-        const orderA = stableHeldSlotByDieRef.current.get(a) ?? Infinity;
-        const orderB = stableHeldSlotByDieRef.current.get(b) ?? Infinity;
-        return orderA - orderB || a - b;
-      });
+      // CRITICAL: Sort by originalIndex ONLY for deterministic freeze positioning.
+      // holdOrder is unreliable for observers, causing held dice to swap positions.
+      const sortedPreHeld = preHeldIndices.sort((a, b) => a - b);
       const preHeldPositions = getHeldPositions(sortedPreHeld.length, dieWidth, gap);
 
       orderedDice.forEach((item) => {
@@ -1074,7 +1071,10 @@ export function DiceTableLayout({
     if (holdOrder === undefined) return undefined;
 
     // Sort all registered dice by their hold order
-    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    // CRITICAL: Sort by originalIndex ONLY for deterministic positioning.
+    // holdOrder is unreliable for observers (depends on realtime arrival order),
+    // causing held dice to swap positions between rolls.
+    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[0] - b[0]);
     const registrySize = entries.length;
     const positionIdx = entries.findIndex(([di]) => di === originalIndex);
     if (positionIdx < 0) return undefined;
@@ -1135,7 +1135,7 @@ export function DiceTableLayout({
     }
   });
 
-  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[0] - b[0]);
   const preRollHeldIndices = Array.isArray(heldMaskBeforeComplete)
     ? orderedDice
         .filter((item) => !!heldMaskBeforeComplete[item.originalIndex])
