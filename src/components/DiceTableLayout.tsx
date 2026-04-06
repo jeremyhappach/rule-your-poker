@@ -13,6 +13,7 @@ import {
   recordDicePresentationTrace,
   type DicePresentationTraceEntry,
   type TraceInput,
+  type DieRenderDecision,
 } from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
@@ -1173,8 +1174,134 @@ export function DiceTableLayout({
     mainBranch,
   };
 
-  // ── DICE PRESENTATION TRACE ──
-  if (isDicePresentationTraceEnabled() && !hasNoOrderedDice && !showRollingMessage) {
+  // ── PRE-COMPUTE RENDER DECISIONS (shared by trace + JSX) ──
+  // This ensures the trace captures the EXACT same transforms applied in the render.
+  const precomputedRenderDecisions = useMemo(() => {
+    if (hasNoOrderedDice || showRollingMessage) return [];
+
+    return orderedDice.map((item) => {
+      const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
+      const actuallyHeld = item.die.isHeld;
+      const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
+      const registryHeldPos = getStableHeldPos(item.originalIndex);
+      const layoutHeldPos2 = heldPositionByOriginalIndex.get(item.originalIndex);
+      const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
+      const cachedScatterPos = lastScatterTransformByDieRef.current.get(item.originalIndex);
+
+      const effectivelyHeld2 = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+        ? preRollHeld
+        : actuallyHeld;
+
+      let heldPos2 = registryHeldPos ?? layoutHeldPos2 ?? (effectivelyHeld2 ? cachedHeldPos : undefined);
+      if (effectivelyHeld2 && !heldPos2) {
+        const heldSourceDice = usePreRollLayout
+          ? layoutHeldDice
+          : orderedDice.filter((d) => d.die.isHeld);
+        const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
+        if (heldIdx >= 0) {
+          const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
+          heldPos2 = allHeldPositions[heldIdx];
+        }
+      }
+
+      const isHeldInLayout2 = effectivelyHeld2 && !!heldPos2;
+
+      // Scatter position resolution (mirrors render)
+      const hasValidStablePos2 =
+        !isHeldInLayout2 &&
+        stableScatterRollKeyRef.current === rollKey &&
+        stableScatterByDieRef.current.has(item.originalIndex);
+      const stablePos2 = hasValidStablePos2
+        ? stableScatterByDieRef.current.get(item.originalIndex)
+        : undefined;
+      const layoutScatterPos2 = scatterLayoutByOriginalIndex.get(item.originalIndex);
+      const scatterPos2 =
+        stablePos2 ??
+        layoutScatterPos2 ??
+        cachedScatterPos ??
+        getUnheldPosition(0, Math.max(1, layoutUnheldDice.length));
+
+      // Compute the ACTUAL transform string (same as render)
+      let actualTransform: string;
+      let actualPos: { x: number; y: number } | null = null;
+      let intendedPos: { x: number; y: number } | null = null;
+
+      if (shouldUseFreezePresentation) {
+        const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
+        actualTransform = frozenTransform ?? 'none';
+        // Parse frozen transform for position tracking
+        const match = actualTransform.match(/calc\(-50% \+ ([-\d.]+)px\).*calc\(-50% \+ ([-\d.]+)px\)/);
+        if (match) actualPos = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+        // Intended = registry position
+        if (registryHeldPos) intendedPos = { x: registryHeldPos.x, y: registryHeldPos.y + heldYOffset };
+      } else if (isHeldInLayout2 && heldPos2) {
+        actualPos = { x: heldPos2.x, y: heldPos2.y + heldYOffset };
+        actualTransform = `translate(calc(-50% + ${heldPos2.x}px), calc(-50% + ${heldPos2.y + heldYOffset}px))`;
+        intendedPos = registryHeldPos ? { x: registryHeldPos.x, y: registryHeldPos.y + heldYOffset } : actualPos;
+      } else {
+        actualPos = { x: scatterPos2.x, y: scatterPos2.y + unheldYOffset };
+        actualTransform = `translate(calc(-50% + ${scatterPos2.x}px), calc(-50% + ${scatterPos2.y + unheldYOffset}px)) rotate(${scatterPos2.rotate}deg)`;
+      }
+
+      // Transform owner (same logic as render)
+      const transformOwner2 = shouldUseFreezePresentation
+        ? 'freeze'
+        : isHeldInLayout2
+          ? registryHeldPos
+            ? 'held:stable-slot'
+            : layoutHeldPos2
+            ? 'held:layout'
+            : cachedHeldPos
+              ? 'held:cache'
+              : 'held:derived'
+          : stablePos2
+            ? 'scatter:stable'
+            : layoutScatterPos2
+              ? 'scatter:layout'
+              : cachedScatterPos
+                ? 'scatter:cache'
+                : 'scatter:default';
+
+      // Display row
+      let displayedRow2: 'held' | 'scatter' | 'animating' | 'hidden' | 'frozen';
+      if (isThisDieAnimating) displayedRow2 = 'animating';
+      else if (shouldUseFreezePresentation) displayedRow2 = frozenPresentationRef.current?.has(item.originalIndex) ? 'frozen' : 'hidden';
+      else if (isHeldInLayout2) displayedRow2 = 'held';
+      else displayedRow2 = 'scatter';
+
+      // Slot index
+      const registrySorted = stableHeldRegistryEntries.map(([di]) => di);
+      let slotIndex: number | null = null;
+      if (displayedRow2 === 'held' || displayedRow2 === 'frozen') {
+        slotIndex = registrySorted.indexOf(item.originalIndex);
+        if (slotIndex < 0) slotIndex = null;
+      }
+
+      return {
+        originalIndex: item.originalIndex,
+        value: item.die.value,
+        isHeld: actuallyHeld,
+        isHeldInLayout: isHeldInLayout2,
+        displayedRow: displayedRow2,
+        slotIndexInHeldRow: slotIndex,
+        transformOwner: transformOwner2,
+        intendedPos,
+        actualPos,
+        actualTransform,
+        reactKey: `die-${item.originalIndex}`,
+        hadRegistryPos: !!registryHeldPos,
+        hadLayoutPos: !!layoutHeldPos2,
+        hadCachedHeldPos: !!cachedHeldPos,
+        hadCachedScatterPos: !!cachedScatterPos,
+        hadStableScatterPos: !!stablePos2,
+        hadFrozenTransform: !!frozenPresentationRef.current?.get(item.originalIndex),
+      };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderedDice, shouldUseFreezePresentation, isAnimatingFlyIn, animatingDiceIndices, usePreRollLayout, rollKey, heldYOffset, unheldYOffset]);
+
+  // ── DICE PRESENTATION TRACE (uses precomputed render decisions) ──
+  if (isDicePresentationTraceEnabled() && precomputedRenderDecisions.length > 0) {
     const renderPath: DicePresentationTraceEntry['renderPath'] =
       shouldUseFreezePresentation ? 'freeze'
       : usePreRollLayout ? 'pre-roll-layout'
@@ -1182,72 +1309,17 @@ export function DiceTableLayout({
       : 'normal';
 
     const registryEntries = stableHeldRegistryEntries.map(([dieIndex, holdOrder]) => ({ dieIndex, holdOrder }));
-    const registrySorted = stableHeldRegistryEntries.map(([di]) => di);
-
-    const diceSource: TraceInput['diceSource'] =
-      shouldUseFreezePresentation ? 'freeze-snapshot'
-      : usePreRollLayout ? 'pre-roll-mask'
-      : 'live';
-
-    const diceDetails = orderedDice.map((item) => {
-      const regPos = getStableHeldPos(item.originalIndex);
-      const isThisAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
-      const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
-        ? !!heldMaskBeforeComplete[item.originalIndex]
-        : item.die.isHeld;
-      const isHeldInLayout = effectivelyHeld && !!regPos;
-
-      let displayedRow: 'held' | 'scatter' | 'animating' | 'hidden';
-      if (isThisAnimating) displayedRow = 'animating';
-      else if (shouldUseFreezePresentation) displayedRow = frozenPresentationRef.current?.has(item.originalIndex) ? 'held' : 'hidden';
-      else if (isHeldInLayout) displayedRow = 'held';
-      else displayedRow = 'scatter';
-
-      let slotIndex: number | null = null;
-      if (displayedRow === 'held') {
-        slotIndex = registrySorted.indexOf(item.originalIndex);
-        if (slotIndex < 0) slotIndex = null;
-      }
-
-      const transformSource = regPos ? 'held:stable-slot'
-        : heldPositionByOriginalIndex.has(item.originalIndex) ? 'held:layout'
-        : lastHeldTransformByDieRef.current.has(item.originalIndex) ? 'held:cache'
-        : 'scatter';
-
-      // Compute actual position used
-      let posX = 0, posY = 0;
-      if (isHeldInLayout && regPos) {
-        posX = regPos.x;
-        posY = regPos.y + heldYOffset;
-      } else {
-        const sp = stableScatterByDieRef.current.get(item.originalIndex);
-        if (sp) { posX = sp.x; posY = sp.y + unheldYOffset; }
-      }
-
-      return {
-        originalIndex: item.originalIndex,
-        value: item.die.value,
-        isHeld: item.die.isHeld,
-        isHeldInLayout,
-        displayedRow,
-        slotIndexInHeldRow: slotIndex,
-        transformSource,
-        posX,
-        posY,
-      };
-    });
 
     recordDicePresentationTrace({
       renderPath,
       rollKey,
       cacheKey,
       isObserver,
-      diceSource,
       registryEntries,
       heldPositionsComputed: heldPositions,
       layoutHeldCount: layoutHeldDice.length,
       layoutUnheldCount: layoutUnheldDice.length,
-      diceDetails,
+      dieRenderDecisions: precomputedRenderDecisions,
     });
   }
 

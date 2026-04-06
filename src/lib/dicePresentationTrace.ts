@@ -1,33 +1,46 @@
 /**
- * Dice Presentation Trace Utility v2
+ * Dice Presentation Trace Utility v3
  * 
- * Captures ONLY held-row state and transitions to diagnose held-dice swap bugs.
- * Filters out scatter-only / fly-in frames with zero held dice.
+ * Captures ACTUAL TRANSFORM application per die to diagnose visual swap bugs.
+ * The slot/registry layer is proven stable — this traces the render/transform layer.
  * 
  * Activated via DiceTraceControl UI (REC/STOP buttons).
  */
 
-export interface HeldDieMapping {
+export interface DieRenderDecision {
   originalIndex: number;
   value: number;
-  slotIndexInHeldRow: number;
-  transformSource: string;
-  posX: number;
-  posY: number;
+  isHeld: boolean;
+  isHeldInLayout: boolean;
+  displayedRow: 'held' | 'scatter' | 'animating' | 'hidden' | 'frozen';
+  slotIndexInHeldRow: number | null;
+
+  // Transform resolution chain
+  transformOwner: string; // e.g. "held:stable-slot", "held:layout", "held:cache", "scatter:stable", "freeze"
+  intendedPos: { x: number; y: number } | null; // from slot assignment
+  actualPos: { x: number; y: number } | null; // final transform applied
+  actualTransform: string; // full CSS transform string
+  reactKey: string;
+
+  // Resolution chain visibility
+  hadRegistryPos: boolean;
+  hadLayoutPos: boolean;
+  hadCachedHeldPos: boolean;
+  hadCachedScatterPos: boolean;
+  hadStableScatterPos: boolean;
+  hadFrozenTransform: boolean;
 }
 
 export interface DicePresentationTraceEntry {
   timestamp: number;
   frameNumber: number;
-  renderPath: 'normal' | 'freeze' | 'cached-opponent' | 'fly-in' | 'pre-roll-layout';
+  renderPath: 'normal' | 'freeze' | 'fly-in' | 'pre-roll-layout';
   rollKey: string | number | undefined;
   cacheKey: string | number | undefined;
   isObserver: boolean;
 
-  // Core held-row data
-  heldDiceMappings: HeldDieMapping[];
-  /** originalIndex order in held row (left to right) */
-  heldSlotOrder: number[];
+  // Per-die render decisions (the actual transforms applied)
+  dieRenderDecisions: DieRenderDecision[];
 
   // Registry state
   registryEntries: Array<{ dieIndex: number; holdOrder: number }>;
@@ -37,41 +50,28 @@ export interface DicePresentationTraceEntry {
   layoutHeldCount: number;
   layoutUnheldCount: number;
 
-  // All dice summary (compact)
-  allDiceSummary: Array<{
-    idx: number;
-    val: number;
-    held: boolean;
-    heldInLayout: boolean;
-    row: 'held' | 'scatter' | 'animating' | 'hidden';
-    slot: number | null;
-    src: string;
-  }>;
-
-  // Held positions computed
+  // Held positions computed for this registry size
   heldPositionsComputed: Array<{ x: number; y: number }>;
 
-  // Source label for multi-source tracking
-  diceSource: 'live' | 'cached-opponent' | 'freeze-snapshot' | 'pre-roll-mask';
-
-  // Swap detection result for this frame
-  swapDetected: string | null;
+  // Mismatch detection
+  transformMismatch: string | null;
+  // Position swap detection (two held dice exchanged X positions)
+  positionSwapDetected: string | null;
 }
 
 const MAX_ENTRIES = 500;
 let traceBuffer: DicePresentationTraceEntry[] = [];
 let runtimeEnabled = false;
 let frameCounter = 0;
-let lastHeldSlotOrder: number[] = [];
-let lastHeldSlotMap: Map<number, number> = new Map(); // originalIndex -> slotIndex
+// Track previous frame's held dice actual positions for swap detection
+let lastHeldPositions: Map<number, { x: number; y: number }> = new Map();
 
 /** Start recording at runtime */
 export function startDicePresentationTrace(): void {
   runtimeEnabled = true;
   traceBuffer = [];
   frameCounter = 0;
-  lastHeldSlotOrder = [];
-  lastHeldSlotMap = new Map();
+  lastHeldPositions = new Map();
 }
 
 /** Stop recording at runtime */
@@ -93,11 +93,11 @@ export function getDicePresentationTraceJSON(): string {
   return JSON.stringify(traceBuffer, null, 2);
 }
 
-/** Get all swap events from the buffer */
+/** Get all mismatch/swap events from the buffer */
 export function getSwapEvents(): string[] {
   return traceBuffer
-    .filter(e => e.swapDetected !== null)
-    .map(e => e.swapDetected!);
+    .filter(e => e.transformMismatch !== null || e.positionSwapDetected !== null)
+    .map(e => e.transformMismatch ?? e.positionSwapDetected!);
 }
 
 export function getDicePresentationTraceBuffer(): DicePresentationTraceEntry[] {
@@ -107,52 +107,77 @@ export function getDicePresentationTraceBuffer(): DicePresentationTraceEntry[] {
 export function clearDicePresentationTrace(): void {
   traceBuffer = [];
   frameCounter = 0;
-  lastHeldSlotOrder = [];
-  lastHeldSlotMap = new Map();
+  lastHeldPositions = new Map();
 }
 
 /**
- * Detect if any held die changed slot assignment without being unheld/reheld.
- * Returns description of swap or null if stable.
+ * Detect transform mismatches: if a die is held in layout, its actual position
+ * should match the intended held-slot position. If not, something is overriding.
  */
-function detectSwap(currentMappings: HeldDieMapping[]): string | null {
-  if (currentMappings.length === 0) return null;
-  if (lastHeldSlotMap.size === 0) {
-    // First frame with held dice — seed and return
-    currentMappings.forEach(m => lastHeldSlotMap.set(m.originalIndex, m.slotIndexInHeldRow));
-    lastHeldSlotOrder = currentMappings.map(m => m.originalIndex);
+function detectTransformMismatch(decisions: DieRenderDecision[]): string | null {
+  const mismatches: string[] = [];
+  for (const d of decisions) {
+    if (d.isHeldInLayout && d.intendedPos && d.actualPos) {
+      const dx = Math.abs(d.intendedPos.x - d.actualPos.x);
+      const dy = Math.abs(d.intendedPos.y - d.actualPos.y);
+      if (dx > 1 || dy > 1) {
+        mismatches.push(
+          `die${d.originalIndex}(v=${d.value}): intended(${d.intendedPos.x.toFixed(1)},${d.intendedPos.y.toFixed(1)}) actual(${d.actualPos.x.toFixed(1)},${d.actualPos.y.toFixed(1)}) owner=${d.transformOwner}`
+        );
+      }
+    }
+  }
+  return mismatches.length > 0
+    ? `TRANSFORM_MISMATCH: ${mismatches.join(' | ')}`
+    : null;
+}
+
+/**
+ * Detect position swap: two held dice exchanged X positions between frames.
+ */
+function detectPositionSwap(decisions: DieRenderDecision[]): string | null {
+  const currentHeld = decisions.filter(d => d.isHeldInLayout && d.actualPos);
+  if (currentHeld.length < 2 || lastHeldPositions.size < 2) {
+    // Update tracking
+    lastHeldPositions = new Map();
+    currentHeld.forEach(d => {
+      if (d.actualPos) lastHeldPositions.set(d.originalIndex, d.actualPos);
+    });
     return null;
   }
 
-  // Find dice that were held in both previous and current frames
-  const commonDice = currentMappings.filter(m => lastHeldSlotMap.has(m.originalIndex));
-  if (commonDice.length < 2) {
-    // Can't swap with <2 common dice — just update
-    lastHeldSlotMap.clear();
-    currentMappings.forEach(m => lastHeldSlotMap.set(m.originalIndex, m.slotIndexInHeldRow));
-    lastHeldSlotOrder = currentMappings.map(m => m.originalIndex);
-    return null;
-  }
-
-  // Check if any common die changed slot
+  // Check if any two dice swapped X positions
   const swaps: string[] = [];
-  for (const m of commonDice) {
-    const prevSlot = lastHeldSlotMap.get(m.originalIndex)!;
-    if (prevSlot !== m.slotIndexInHeldRow) {
-      swaps.push(`die${m.originalIndex}(v=${m.value}): slot ${prevSlot}→${m.slotIndexInHeldRow}`);
+  for (const d of currentHeld) {
+    const prevPos = lastHeldPositions.get(d.originalIndex);
+    if (!prevPos || !d.actualPos) continue;
+    const dx = Math.abs(d.actualPos.x - prevPos.x);
+    if (dx > 5) {
+      // This die moved significantly — check if another die took its old position
+      for (const other of currentHeld) {
+        if (other.originalIndex === d.originalIndex) continue;
+        if (!other.actualPos) continue;
+        const otherPrevPos = lastHeldPositions.get(other.originalIndex);
+        if (!otherPrevPos) continue;
+        // Did 'other' move to where 'd' was, and 'd' moved to where 'other' was?
+        const otherTookMySpot = Math.abs(other.actualPos.x - prevPos.x) < 3;
+        const iTookOtherSpot = Math.abs(d.actualPos.x - otherPrevPos.x) < 3;
+        if (otherTookMySpot && iTookOtherSpot) {
+          const key = [d.originalIndex, other.originalIndex].sort().join('-');
+          const msg = `POSITION_SWAP: die${d.originalIndex}↔die${other.originalIndex} x(${prevPos.x.toFixed(0)}↔${otherPrevPos.x.toFixed(0)}) owner=${d.transformOwner}/${other.transformOwner}`;
+          if (!swaps.some(s => s.includes(key))) swaps.push(msg);
+        }
+      }
     }
   }
 
-  // Update state
-  lastHeldSlotMap.clear();
-  currentMappings.forEach(m => lastHeldSlotMap.set(m.originalIndex, m.slotIndexInHeldRow));
-  const prevOrder = [...lastHeldSlotOrder];
-  lastHeldSlotOrder = currentMappings.map(m => m.originalIndex);
+  // Update tracking
+  lastHeldPositions = new Map();
+  currentHeld.forEach(d => {
+    if (d.actualPos) lastHeldPositions.set(d.originalIndex, d.actualPos);
+  });
 
-  if (swaps.length > 0) {
-    return `HELD_SLOT_SWAP_DETECTED: ${swaps.join(', ')} | prevOrder=[${prevOrder}] currOrder=[${lastHeldSlotOrder}]`;
-  }
-  return null;
+  return swaps.length > 0 ? swaps.join(' | ') : null;
 }
 
 export interface TraceInput {
@@ -160,49 +185,25 @@ export interface TraceInput {
   rollKey: string | number | undefined;
   cacheKey: string | number | undefined;
   isObserver: boolean;
-  diceSource: DicePresentationTraceEntry['diceSource'];
   registryEntries: Array<{ dieIndex: number; holdOrder: number }>;
   heldPositionsComputed: Array<{ x: number; y: number }>;
   layoutHeldCount: number;
   layoutUnheldCount: number;
-  diceDetails: Array<{
-    originalIndex: number;
-    value: number;
-    isHeld: boolean;
-    isHeldInLayout: boolean;
-    displayedRow: 'held' | 'scatter' | 'animating' | 'hidden';
-    slotIndexInHeldRow: number | null;
-    transformSource: string;
-    posX: number;
-    posY: number;
-  }>;
+  dieRenderDecisions: DieRenderDecision[];
 }
 
 export function recordDicePresentationTrace(input: TraceInput): void {
   if (!runtimeEnabled) return;
 
-  // FILTER: Only record when at least one die is in held row
-  const heldDice = input.diceDetails.filter(d => d.displayedRow === 'held' && d.slotIndexInHeldRow !== null);
-  const hasHeldDice = heldDice.length > 0;
+  // FILTER: Only record when at least one die is held or in held layout
+  const hasHeld = input.dieRenderDecisions.some(d => d.isHeldInLayout || d.displayedRow === 'held' || d.displayedRow === 'frozen');
   const hasRegistry = input.registryEntries.length > 0;
-
-  if (!hasHeldDice && !hasRegistry) return; // Skip scatter-only frames
+  if (!hasHeld && !hasRegistry) return;
 
   frameCounter++;
 
-  // Build held mappings
-  const heldMappings: HeldDieMapping[] = heldDice
-    .sort((a, b) => (a.slotIndexInHeldRow ?? 0) - (b.slotIndexInHeldRow ?? 0))
-    .map(d => ({
-      originalIndex: d.originalIndex,
-      value: d.value,
-      slotIndexInHeldRow: d.slotIndexInHeldRow!,
-      transformSource: d.transformSource,
-      posX: d.posX,
-      posY: d.posY,
-    }));
-
-  const swapResult = detectSwap(heldMappings);
+  const mismatch = detectTransformMismatch(input.dieRenderDecisions);
+  const swap = detectPositionSwap(input.dieRenderDecisions);
 
   const entry: DicePresentationTraceEntry = {
     timestamp: Date.now(),
@@ -211,24 +212,14 @@ export function recordDicePresentationTrace(input: TraceInput): void {
     rollKey: input.rollKey,
     cacheKey: input.cacheKey,
     isObserver: input.isObserver,
-    heldDiceMappings: heldMappings,
-    heldSlotOrder: heldMappings.map(m => m.originalIndex),
+    dieRenderDecisions: input.dieRenderDecisions,
     registryEntries: input.registryEntries,
     registrySize: input.registryEntries.length,
     layoutHeldCount: input.layoutHeldCount,
     layoutUnheldCount: input.layoutUnheldCount,
-    allDiceSummary: input.diceDetails.map(d => ({
-      idx: d.originalIndex,
-      val: d.value,
-      held: d.isHeld,
-      heldInLayout: d.isHeldInLayout,
-      row: d.displayedRow,
-      slot: d.slotIndexInHeldRow,
-      src: d.transformSource,
-    })),
     heldPositionsComputed: input.heldPositionsComputed,
-    diceSource: input.diceSource,
-    swapDetected: swapResult,
+    transformMismatch: mismatch,
+    positionSwapDetected: swap,
   };
 
   traceBuffer.push(entry);
@@ -236,16 +227,21 @@ export function recordDicePresentationTrace(input: TraceInput): void {
     traceBuffer = traceBuffer.slice(-MAX_ENTRIES);
   }
 
-  // Console output for held frames only
-  const heldSummary = heldMappings
-    .map(m => `die${m.originalIndex}(v=${m.value})@slot${m.slotIndexInHeldRow}[${m.transformSource}]`)
-    .join(', ');
+  // Console output
+  if (mismatch) {
+    console.warn(`[DICE TRACE] ⚠️ ${mismatch}`);
+  }
+  if (swap) {
+    console.warn(`[DICE TRACE] 🔄 ${swap}`);
+  }
 
-  if (swapResult) {
-    console.warn(`[DICE TRACE] ⚠️ ${swapResult}`);
-  } else {
+  if (!mismatch && !swap) {
+    const heldSummary = input.dieRenderDecisions
+      .filter(d => d.isHeldInLayout)
+      .map(d => `die${d.originalIndex}(v=${d.value})@x=${d.actualPos?.x.toFixed(0)}[${d.transformOwner}]`)
+      .join(', ');
     console.log(
-      `[DICE TRACE] f${frameCounter} path=${input.renderPath} src=${input.diceSource} rollKey=${input.rollKey} held=[${heldSummary}] registry=[${input.registryEntries.map(e => e.dieIndex).join(',')}]`
+      `[DICE TRACE] f${frameCounter} path=${input.renderPath} rollKey=${input.rollKey} held=[${heldSummary}]`
     );
   }
 }
@@ -255,5 +251,5 @@ export function detectOrderingSwap(
   _prev: DicePresentationTraceEntry,
   _curr: DicePresentationTraceEntry
 ): string | null {
-  return _curr.swapDetected ?? null;
+  return _curr.positionSwapDetected ?? _curr.transformMismatch ?? null;
 }
