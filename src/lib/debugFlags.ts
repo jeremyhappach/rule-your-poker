@@ -66,3 +66,12 @@ export function isGinRiggedDealEnabled(): boolean {
   // To re-enable for testing: set localStorage ptp_debug_gin_rigged = "1" or use ?debug_gin_rigged=1
   return hasQueryFlag('debug_gin_rigged') || hasLocalFlag('ptp_debug_gin_rigged');
 }
+
+/**
+ * Forces Yahtzee bot to always pursue a large straight (1-2-3-4-5 or 2-3-4-5-6).
+ * This creates deterministic selective hold patterns for debugging held-dice ordering.
+ * Enable via ?debug_yahtzee_straight=1 or localStorage ptp_debug_yahtzee_straight = "1"
+ */
+export function isYahtzeeStraightDebugEnabled(): boolean {
+  return hasQueryFlag('debug_yahtzee_straight') || hasLocalFlag('ptp_debug_yahtzee_straight');
+}
