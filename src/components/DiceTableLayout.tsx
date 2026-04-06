@@ -1073,7 +1073,7 @@ export function DiceTableLayout({
     if (holdOrder === undefined) return undefined;
 
     // Sort all registered dice by their hold order
-    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
     const registrySize = entries.length;
     const positionIdx = entries.findIndex(([di]) => di === originalIndex);
     if (positionIdx < 0) return undefined;
