@@ -35,6 +35,10 @@ import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUppe
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
+import {
+  getDebugStraightHoldDecision, getDebugStraightCategoryChoice, shouldDebugStraightStopRolling,
+} from "@/lib/yahtzeeBotDebugStraight";
+import { isYahtzeeStraightDebugEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
