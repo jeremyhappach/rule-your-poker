@@ -1511,6 +1511,52 @@ export function DiceTableLayout({
     recordDicePresentationTrace(traceBaseInput);
   }
 
+  // ── INVARIANT CHECKS: Held Slot Violation + Held Layer Escape ──
+  {
+    invariantFrameCounterRef.current++;
+    const frameNum = invariantFrameCounterRef.current;
+    const currentHeldSlots = new Map<number, { slot: number; row: string; transformOwner: string }>();
+
+    if (layoutHeldDice.length > 0) {
+      for (const decision of precomputedRenderDecisions) {
+        if (!decision.isHeld) continue;
+
+        // 1. HELD SLOT VIOLATION: slot changed while die stayed held
+        const prev = prevFrameHeldSlotsRef.current.get(decision.originalIndex);
+        if (prev && decision.slotIndexInHeldRow !== null && prev.slot !== decision.slotIndexInHeldRow) {
+          console.error(
+            `[HELD_SLOT_VIOLATION] die=${decision.originalIndex} prevSlot=${prev.slot} currSlot=${decision.slotIndexInHeldRow} rollKey=${rollKey} frame=${frameNum} renderPath=${activeRenderPath} transformOwner=${decision.transformOwner}`
+          );
+        }
+
+        // 2. HELD LAYER ESCAPE: held die not in held row / not stable-slot transform
+        if (decision.displayedRow !== 'held' && decision.displayedRow !== 'frozen') {
+          console.error(
+            `[HELD_ESCAPED_LAYER] die=${decision.originalIndex} displayedRow=${decision.displayedRow} transformOwner=${decision.transformOwner} rollKey=${rollKey} frame=${frameNum} renderPath=${activeRenderPath}`
+          );
+        } else if (
+          decision.transformOwner !== 'held:stable-slot' &&
+          decision.transformOwner !== 'freeze'
+        ) {
+          console.error(
+            `[HELD_ESCAPED_LAYER] die=${decision.originalIndex} displayedRow=${decision.displayedRow} transformOwner=${decision.transformOwner} rollKey=${rollKey} frame=${frameNum} renderPath=${activeRenderPath}`
+          );
+        }
+
+        if (decision.slotIndexInHeldRow !== null) {
+          currentHeldSlots.set(decision.originalIndex, {
+            slot: decision.slotIndexInHeldRow,
+            row: decision.displayedRow,
+            transformOwner: decision.transformOwner,
+          });
+        }
+      }
+    }
+
+    prevFrameHeldSlotsRef.current = currentHeldSlots;
+  }
+  // ── END INVARIANT CHECKS ──
+
   const renderedDice = orderedDice.map((entry) => entry.die);
   const heldSlotIndexByDie = new Map<number, number>(
     stableHeldRegistryEntries.map(([dieIndex], slotIndex) => [dieIndex, slotIndex]),
