@@ -1632,7 +1632,7 @@ export function YahtzeeGameTable({
   /* ================================================================ */
   /*  RENDER – mirrors MobileGameTable layout exactly                  */
   /* ================================================================ */
-  const DEBUG_BUILD_STAMP = '2026-04-06T18:05Z';
+  // Build stamp moved to DiceTraceControl component
 
   return (
     <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
