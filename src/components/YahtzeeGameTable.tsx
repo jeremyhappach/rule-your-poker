@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
+import { DiceTraceControl } from "./DiceTraceControl";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
