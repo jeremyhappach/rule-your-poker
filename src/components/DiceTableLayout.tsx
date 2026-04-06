@@ -8,6 +8,13 @@ import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
+import {
+  isDicePresentationTraceEnabled,
+  recordDicePresentationTrace,
+  detectOrderingSwap,
+  getDicePresentationTraceBuffer,
+  type DicePresentationTraceEntry,
+} from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
 // MobileGameTable intentionally remounts DiceTableLayout when the dice "owner" changes,
