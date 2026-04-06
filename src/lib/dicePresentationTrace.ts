@@ -1,11 +1,20 @@
 /**
- * Dice Presentation Trace Utility v3
+ * Dice Presentation Trace Utility v4
  * 
- * Captures ACTUAL TRANSFORM application per die to diagnose visual swap bugs.
- * The slot/registry layer is proven stable — this traces the render/transform layer.
+ * Captures ACTUAL TRANSFORM application plus composition/overlap state per die.
+ * The slot/registry layer is proven stable — this traces render, paint, and overlap.
  * 
  * Activated via DiceTraceControl UI (REC/STOP buttons).
  */
+
+export interface DiceBoundingBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
 
 export interface DieRenderDecision {
   originalIndex: number;
@@ -29,11 +38,49 @@ export interface DieRenderDecision {
   hadCachedScatterPos: boolean;
   hadStableScatterPos: boolean;
   hadFrozenTransform: boolean;
+
+  // Composition / paint diagnostics
+  compositionLayer?: string | null;
+  layerZIndex?: number | null;
+  elementZIndex?: number | null;
+  domOrder?: number | null;
+  siblingOrder?: number | null;
+  boundingBox?: DiceBoundingBox | null;
+  overlapsWith?: number[];
+}
+
+export interface DiceOverlapEvent {
+  type: 'DICE_OVERLAP_EVENT';
+  dieAIndex: number;
+  dieBIndex: number;
+  dieARow: DieRenderDecision['displayedRow'];
+  dieBRow: DieRenderDecision['displayedRow'];
+  dieAReactKey: string;
+  dieBReactKey: string;
+  dieALayer: string | null;
+  dieBLayer: string | null;
+  dieALayerZIndex: number | null;
+  dieBLayerZIndex: number | null;
+  dieAElementZIndex: number | null;
+  dieBElementZIndex: number | null;
+  dieADomOrder: number | null;
+  dieBDomOrder: number | null;
+  dieABoundingBox: DiceBoundingBox;
+  dieBBoundingBox: DiceBoundingBox;
+}
+
+export interface DiceCompositionLayerSnapshot {
+  layer: string;
+  zIndex: number | null;
+  domOrder: number;
+  containsHeld: boolean;
+  containsAnimating: boolean;
 }
 
 export interface DicePresentationTraceEntry {
   timestamp: number;
   frameNumber: number;
+  traceKind: 'render' | 'composition';
   renderPath: 'normal' | 'freeze' | 'fly-in' | 'pre-roll-layout';
   rollKey: string | number | undefined;
   cacheKey: string | number | undefined;
@@ -52,6 +99,13 @@ export interface DicePresentationTraceEntry {
 
   // Held positions computed for this registry size
   heldPositionsComputed: Array<{ x: number; y: number }>;
+
+  // Composition state
+  overlapEvents: DiceOverlapEvent[];
+  layerSnapshots: DiceCompositionLayerSnapshot[];
+  multipleRenderSources: boolean;
+  heldSharesAnimatedLayer: boolean | null;
+  heldAboveAnimating: boolean | null;
 
   // Mismatch detection
   transformMismatch: string | null;
@@ -93,11 +147,26 @@ export function getDicePresentationTraceJSON(): string {
   return JSON.stringify(traceBuffer, null, 2);
 }
 
+function formatOverlapEvent(event: DiceOverlapEvent): string {
+  return [
+    'DICE_OVERLAP_EVENT:',
+    `die${event.dieAIndex}[row=${event.dieARow},layer=${event.dieALayer ?? 'unknown'},z=${event.dieALayerZIndex ?? 'auto'}:${event.dieAElementZIndex ?? 'auto'},dom=${event.dieADomOrder ?? 'n/a'}]`,
+    '↔',
+    `die${event.dieBIndex}[row=${event.dieBRow},layer=${event.dieBLayer ?? 'unknown'},z=${event.dieBLayerZIndex ?? 'auto'}:${event.dieBElementZIndex ?? 'auto'},dom=${event.dieBDomOrder ?? 'n/a'}]`,
+    `boxA=(${event.dieABoundingBox.left.toFixed(1)},${event.dieABoundingBox.top.toFixed(1)},${event.dieABoundingBox.width.toFixed(1)}×${event.dieABoundingBox.height.toFixed(1)})`,
+    `boxB=(${event.dieBBoundingBox.left.toFixed(1)},${event.dieBBoundingBox.top.toFixed(1)},${event.dieBBoundingBox.width.toFixed(1)}×${event.dieBBoundingBox.height.toFixed(1)})`,
+  ].join(' ');
+}
+
 /** Get all mismatch/swap events from the buffer */
 export function getSwapEvents(): string[] {
-  return traceBuffer
-    .filter(e => e.transformMismatch !== null || e.positionSwapDetected !== null)
-    .map(e => e.transformMismatch ?? e.positionSwapDetected!);
+  return traceBuffer.flatMap((entry) => {
+    const events: string[] = [];
+    if (entry.transformMismatch) events.push(entry.transformMismatch);
+    if (entry.positionSwapDetected) events.push(entry.positionSwapDetected);
+    entry.overlapEvents.forEach((event) => events.push(formatOverlapEvent(event)));
+    return events;
+  });
 }
 
 export function getDicePresentationTraceBuffer(): DicePresentationTraceEntry[] {
@@ -181,6 +250,7 @@ function detectPositionSwap(decisions: DieRenderDecision[]): string | null {
 }
 
 export interface TraceInput {
+  traceKind?: DicePresentationTraceEntry['traceKind'];
   renderPath: DicePresentationTraceEntry['renderPath'];
   rollKey: string | number | undefined;
   cacheKey: string | number | undefined;
@@ -190,6 +260,11 @@ export interface TraceInput {
   layoutHeldCount: number;
   layoutUnheldCount: number;
   dieRenderDecisions: DieRenderDecision[];
+  overlapEvents?: DiceOverlapEvent[];
+  layerSnapshots?: DiceCompositionLayerSnapshot[];
+  multipleRenderSources?: boolean;
+  heldSharesAnimatedLayer?: boolean | null;
+  heldAboveAnimating?: boolean | null;
 }
 
 export function recordDicePresentationTrace(input: TraceInput): void {
@@ -198,7 +273,8 @@ export function recordDicePresentationTrace(input: TraceInput): void {
   // FILTER: Only record when at least one die is held or in held layout
   const hasHeld = input.dieRenderDecisions.some(d => d.isHeldInLayout || d.displayedRow === 'held' || d.displayedRow === 'frozen');
   const hasRegistry = input.registryEntries.length > 0;
-  if (!hasHeld && !hasRegistry) return;
+  const overlapEvents = input.overlapEvents ?? [];
+  if (!hasHeld && !hasRegistry && overlapEvents.length === 0) return;
 
   frameCounter++;
 
@@ -208,6 +284,7 @@ export function recordDicePresentationTrace(input: TraceInput): void {
   const entry: DicePresentationTraceEntry = {
     timestamp: Date.now(),
     frameNumber: frameCounter,
+    traceKind: input.traceKind ?? 'render',
     renderPath: input.renderPath,
     rollKey: input.rollKey,
     cacheKey: input.cacheKey,
@@ -218,6 +295,11 @@ export function recordDicePresentationTrace(input: TraceInput): void {
     layoutHeldCount: input.layoutHeldCount,
     layoutUnheldCount: input.layoutUnheldCount,
     heldPositionsComputed: input.heldPositionsComputed,
+    overlapEvents,
+    layerSnapshots: input.layerSnapshots ?? [],
+    multipleRenderSources: input.multipleRenderSources ?? false,
+    heldSharesAnimatedLayer: input.heldSharesAnimatedLayer ?? null,
+    heldAboveAnimating: input.heldAboveAnimating ?? null,
     transformMismatch: mismatch,
     positionSwapDetected: swap,
   };
@@ -234,8 +316,13 @@ export function recordDicePresentationTrace(input: TraceInput): void {
   if (swap) {
     console.warn(`[DICE TRACE] 🔄 ${swap}`);
   }
+  if (overlapEvents.length > 0) {
+    overlapEvents.forEach((event) => {
+      console.warn(`[DICE TRACE] 🎯 ${formatOverlapEvent(event)}`);
+    });
+  }
 
-  if (!mismatch && !swap) {
+  if (!mismatch && !swap && overlapEvents.length === 0 && entry.traceKind !== 'composition') {
     const heldSummary = input.dieRenderDecisions
       .filter(d => d.isHeldInLayout)
       .map(d => `die${d.originalIndex}(v=${d.value})@x=${d.actualPos?.x.toFixed(0)}[${d.transformOwner}]`)

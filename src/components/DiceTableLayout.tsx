@@ -14,6 +14,7 @@ import {
   type DicePresentationTraceEntry,
   type TraceInput,
   type DieRenderDecision,
+  type DiceOverlapEvent,
 } from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
@@ -446,6 +447,7 @@ export function DiceTableLayout({
   // Ref to access the container DOM for position sampling
   const containerRef = useRef<HTMLDivElement>(null);
   const snapFrameSeq = useRef(0);
+  const traceBaseInputRef = useRef<TraceInput | null>(null);
   
   // 50ms interval recording of die positions when ?diceSnap=1 is active
   useEffect(() => {
@@ -507,6 +509,185 @@ export function DiceTableLayout({
     
     return () => window.clearInterval(intervalId);
   }, [cacheKey, rollKey, isObserver, isRolling, isAnimatingFlyIn, showUnheldDice, visualDice]);
+
+  useEffect(() => {
+    const toNumber = (value: string | null | undefined): number | null => {
+      if (!value || value === "auto") return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const toDisplayedRow = (value: string | null): DieRenderDecision["displayedRow"] => {
+      switch (value) {
+        case "held":
+        case "scatter":
+        case "animating":
+        case "hidden":
+        case "frozen":
+          return value;
+        default:
+          return "scatter";
+      }
+    };
+
+    const toBoundingBox = (rect: DOMRect) => ({
+      left: Number(rect.left.toFixed(2)),
+      top: Number(rect.top.toFixed(2)),
+      right: Number(rect.right.toFixed(2)),
+      bottom: Number(rect.bottom.toFixed(2)),
+      width: Number(rect.width.toFixed(2)),
+      height: Number(rect.height.toFixed(2)),
+    });
+
+    const overlaps = (
+      a: { left: number; right: number; top: number; bottom: number },
+      b: { left: number; right: number; top: number; bottom: number },
+    ) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 1;
+
+    let rafId = 0;
+
+    const sampleCompositionFrame = () => {
+      rafId = window.requestAnimationFrame(sampleCompositionFrame);
+
+      if (!isDicePresentationTraceEnabled()) return;
+
+      const baseTrace = traceBaseInputRef.current;
+      const container = containerRef.current;
+      if (!baseTrace || !container || baseTrace.renderPath !== "fly-in") return;
+
+      const dieElements = Array.from(container.querySelectorAll<HTMLElement>("[data-die-idx]"));
+      if (dieElements.length === 0) return;
+
+      const baseDecisionByIndex = new Map(baseTrace.dieRenderDecisions.map((decision) => [decision.originalIndex, decision]));
+
+      const compositionDecisions = dieElements.map((element, domOrder) => {
+        const dieIndex = Number(element.getAttribute("data-die-idx") ?? "-1");
+        const baseDecision = baseDecisionByIndex.get(dieIndex);
+        const computedStyle = window.getComputedStyle(element);
+        const parent = element.parentElement as HTMLElement | null;
+        const siblingOrder = parent
+          ? Array.from(parent.querySelectorAll<HTMLElement>("[data-die-idx]")).indexOf(element)
+          : -1;
+        const displayedRow = toDisplayedRow(element.getAttribute("data-die-row"));
+        const value = Number(element.getAttribute("data-die-value") ?? baseDecision?.value ?? 0);
+        const isHeld = element.getAttribute("data-die-held") === "true";
+        const isHeldInLayout = element.getAttribute("data-die-held-layout") === "true";
+        const slotIndexAttr = element.getAttribute("data-die-slot-index");
+        const slotIndexInHeldRow = slotIndexAttr ? Number(slotIndexAttr) : baseDecision?.slotIndexInHeldRow ?? null;
+        const boundingBox = toBoundingBox(element.getBoundingClientRect());
+        const fallbackDecision: DieRenderDecision = {
+          originalIndex: dieIndex,
+          value,
+          isHeld,
+          isHeldInLayout,
+          displayedRow,
+          slotIndexInHeldRow,
+          transformOwner: element.getAttribute("data-die-transform-owner") ?? "dom",
+          intendedPos: null,
+          actualPos: null,
+          actualTransform: element.style.transform || computedStyle.transform || "none",
+          reactKey: element.getAttribute("data-die-react-key") ?? `die-${dieIndex}`,
+          hadRegistryPos: false,
+          hadLayoutPos: false,
+          hadCachedHeldPos: false,
+          hadCachedScatterPos: false,
+          hadStableScatterPos: false,
+          hadFrozenTransform: false,
+        };
+
+        return {
+          ...(baseDecision ?? fallbackDecision),
+          value,
+          isHeld,
+          isHeldInLayout,
+          displayedRow,
+          slotIndexInHeldRow,
+          transformOwner: element.getAttribute("data-die-transform-owner") ?? baseDecision?.transformOwner ?? "dom",
+          actualTransform: element.style.transform || computedStyle.transform || baseDecision?.actualTransform || "none",
+          reactKey: element.getAttribute("data-die-react-key") ?? baseDecision?.reactKey ?? `die-${dieIndex}`,
+          compositionLayer: element.getAttribute("data-die-layer") ?? parent?.getAttribute("data-dice-layer") ?? null,
+          layerZIndex: toNumber(element.getAttribute("data-die-layer-z") ?? parent?.getAttribute("data-layer-z") ?? (parent ? window.getComputedStyle(parent).zIndex : null)),
+          elementZIndex: toNumber(computedStyle.zIndex),
+          domOrder,
+          siblingOrder: siblingOrder >= 0 ? siblingOrder : null,
+          boundingBox,
+          overlapsWith: [],
+        } satisfies DieRenderDecision;
+      });
+
+      const overlapEvents: DiceOverlapEvent[] = [];
+      for (let i = 0; i < compositionDecisions.length; i++) {
+        for (let j = i + 1; j < compositionDecisions.length; j++) {
+          const dieA = compositionDecisions[i];
+          const dieB = compositionDecisions[j];
+          if (!dieA.boundingBox || !dieB.boundingBox) continue;
+          if (dieA.displayedRow !== "animating" && dieB.displayedRow !== "animating") continue;
+          if (!overlaps(dieA.boundingBox, dieB.boundingBox)) continue;
+
+          dieA.overlapsWith = [...(dieA.overlapsWith ?? []), dieB.originalIndex];
+          dieB.overlapsWith = [...(dieB.overlapsWith ?? []), dieA.originalIndex];
+
+          overlapEvents.push({
+            type: "DICE_OVERLAP_EVENT",
+            dieAIndex: dieA.originalIndex,
+            dieBIndex: dieB.originalIndex,
+            dieARow: dieA.displayedRow,
+            dieBRow: dieB.displayedRow,
+            dieAReactKey: dieA.reactKey,
+            dieBReactKey: dieB.reactKey,
+            dieALayer: dieA.compositionLayer ?? null,
+            dieBLayer: dieB.compositionLayer ?? null,
+            dieALayerZIndex: dieA.layerZIndex ?? null,
+            dieBLayerZIndex: dieB.layerZIndex ?? null,
+            dieAElementZIndex: dieA.elementZIndex ?? null,
+            dieBElementZIndex: dieB.elementZIndex ?? null,
+            dieADomOrder: dieA.domOrder ?? null,
+            dieBDomOrder: dieB.domOrder ?? null,
+            dieABoundingBox: dieA.boundingBox,
+            dieBBoundingBox: dieB.boundingBox,
+          });
+        }
+      }
+
+      const layerSnapshots = Array.from(container.children)
+        .filter((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute("data-dice-layer"))
+        .map((child, domOrder) => ({
+          layer: child.getAttribute("data-dice-layer") ?? "unknown",
+          zIndex: toNumber(child.getAttribute("data-layer-z") ?? window.getComputedStyle(child).zIndex),
+          domOrder,
+          containsHeld: child.querySelector('[data-die-row="held"]') !== null,
+          containsAnimating: child.querySelector('[data-die-row="animating"]') !== null,
+        }));
+
+      const heldLayers = layerSnapshots.filter((layer) => layer.containsHeld);
+      const animatingLayers = layerSnapshots.filter((layer) => layer.containsAnimating);
+      const renderedLayerCount = layerSnapshots.filter((layer) => {
+        const layerEl = container.children[layer.domOrder] as HTMLElement | undefined;
+        return layerEl?.querySelector("[data-die-idx]") != null;
+      }).length;
+
+      recordDicePresentationTrace({
+        ...baseTrace,
+        traceKind: "composition",
+        dieRenderDecisions: compositionDecisions,
+        overlapEvents,
+        layerSnapshots,
+        multipleRenderSources:
+          renderedLayerCount > 1 || new Set(compositionDecisions.map((decision) => decision.originalIndex)).size < compositionDecisions.length,
+        heldSharesAnimatedLayer:
+          heldLayers.length > 0 && animatingLayers.length > 0
+            ? heldLayers.some((heldLayer) => animatingLayers.some((animatingLayer) => animatingLayer.layer === heldLayer.layer))
+            : null,
+        heldAboveAnimating:
+          heldLayers.length > 0 && animatingLayers.length > 0
+            ? Math.max(...heldLayers.map((layer) => layer.zIndex ?? 0)) > Math.max(...animatingLayers.map((layer) => layer.zIndex ?? 0))
+            : null,
+      });
+    };
+
+    rafId = window.requestAnimationFrame(sampleCompositionFrame);
+    return () => window.cancelAnimationFrame(rafId);
+  }, []);
   
   // Schedules a timeout
   const scheduleTimeout = useCallback(
@@ -1300,28 +1481,167 @@ export function DiceTableLayout({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderedDice, shouldUseFreezePresentation, isAnimatingFlyIn, animatingDiceIndices, usePreRollLayout, rollKey, heldYOffset, unheldYOffset]);
 
-  // ── DICE PRESENTATION TRACE (uses precomputed render decisions) ──
+  const activeRenderPath: DicePresentationTraceEntry['renderPath'] =
+    shouldUseFreezePresentation ? 'freeze'
+    : usePreRollLayout ? 'pre-roll-layout'
+    : isAnimatingFlyIn ? 'fly-in'
+    : 'normal';
+
+  const registryEntries = stableHeldRegistryEntries.map(([dieIndex, holdOrder]) => ({ dieIndex, holdOrder }));
+  const traceBaseInput: TraceInput = {
+    traceKind: 'render',
+    renderPath: activeRenderPath,
+    rollKey,
+    cacheKey,
+    isObserver,
+    registryEntries,
+    heldPositionsComputed: heldPositions,
+    layoutHeldCount: layoutHeldDice.length,
+    layoutUnheldCount: layoutUnheldDice.length,
+    dieRenderDecisions: precomputedRenderDecisions,
+  };
+
+  traceBaseInputRef.current = traceBaseInput;
+
   if (isDicePresentationTraceEnabled() && precomputedRenderDecisions.length > 0) {
-    const renderPath: DicePresentationTraceEntry['renderPath'] =
-      shouldUseFreezePresentation ? 'freeze'
-      : usePreRollLayout ? 'pre-roll-layout'
-      : isAnimatingFlyIn ? 'fly-in'
-      : 'normal';
-
-    const registryEntries = stableHeldRegistryEntries.map(([dieIndex, holdOrder]) => ({ dieIndex, holdOrder }));
-
-    recordDicePresentationTrace({
-      renderPath,
-      rollKey,
-      cacheKey,
-      isObserver,
-      registryEntries,
-      heldPositionsComputed: heldPositions,
-      layoutHeldCount: layoutHeldDice.length,
-      layoutUnheldCount: layoutUnheldDice.length,
-      dieRenderDecisions: precomputedRenderDecisions,
-    });
+    recordDicePresentationTrace(traceBaseInput);
   }
+
+  const renderedDice = orderedDice.map((entry) => entry.die);
+  const heldSlotIndexByDie = new Map<number, number>(
+    stableHeldRegistryEntries.map(([dieIndex], slotIndex) => [dieIndex, slotIndex]),
+  );
+
+  const renderDieForLayer = (item: (typeof orderedDice)[number], targetLayer: "held" | "scatter") => {
+    const sccDie = item.die as SCCDieType;
+    const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
+
+    const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
+    if (isThisDieAnimating) return null;
+
+    const actuallyHeld = item.die.isHeld;
+    const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
+    const registryHeldPos = getStableHeldPos(item.originalIndex);
+    const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
+    const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
+    const cachedScatterPos = lastScatterTransformByDieRef.current.get(item.originalIndex);
+
+    const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+      ? preRollHeld
+      : actuallyHeld;
+
+    let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
+    if (effectivelyHeld && !heldPos) {
+      const heldSourceDice = usePreRollLayout
+        ? layoutHeldDice
+        : orderedDice.filter((dieItem) => dieItem.die.isHeld);
+      const heldIdx = heldSourceDice.findIndex((dieItem) => dieItem.originalIndex === item.originalIndex);
+      if (heldIdx >= 0) {
+        const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
+        heldPos = allHeldPositions[heldIdx];
+      }
+    }
+
+    const isHeldInLayout = effectivelyHeld && !!heldPos;
+    if (targetLayer === "held" ? !isHeldInLayout : isHeldInLayout) return null;
+
+    const hasValidStablePos =
+      !isHeldInLayout &&
+      stableScatterRollKeyRef.current === rollKey &&
+      stableScatterByDieRef.current.has(item.originalIndex);
+    const stablePos = hasValidStablePos
+      ? stableScatterByDieRef.current.get(item.originalIndex)
+      : undefined;
+
+    const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
+    const scatterPos =
+      stablePos ??
+      layoutScatterPos ??
+      cachedScatterPos ??
+      getUnheldPosition(0, Math.max(1, layoutUnheldDice.length));
+
+    const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
+    const isPreFlyInFrame = !rollKeyProcessed && !isAnimatingFlyIn && !isHeldInLayout
+      && Array.isArray(heldMaskBeforeComplete) && !heldMaskBeforeComplete[item.originalIndex];
+
+    if (shouldHide || isPreFlyInFrame) return null;
+
+    const justBecameHeld = allHeld && !isAnimatingFlyIn && !isHeldInLayout;
+    const shouldSkipTransition = justBecameHeld;
+    const useInstantTransform = (isObserver && !isAnimatingFlyIn) || (targetLayer === "held" && isAnimatingFlyIn);
+
+    const transformOwner = isHeldInLayout
+      ? registryHeldPos
+        ? "held:stable-slot"
+        : layoutHeldPos
+        ? "held:layout"
+        : cachedHeldPos
+          ? "held:cache"
+          : "held:derived"
+      : stablePos
+        ? "scatter:stable"
+        : layoutScatterPos
+          ? "scatter:layout"
+          : cachedScatterPos
+            ? "scatter:cache"
+            : "scatter:default";
+
+    const transform = isHeldInLayout
+      ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
+      : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
+
+    const reactKey = `die-${item.originalIndex}`;
+    const displayedRow = isHeldInLayout ? "held" : "scatter";
+    const layerZIndex = targetLayer === "held" ? 30 : 10;
+    const slotIndexInHeldRow = isHeldInLayout ? heldSlotIndexByDie.get(item.originalIndex) ?? null : null;
+
+    return (
+      <div
+        key={reactKey}
+        data-die-idx={item.originalIndex}
+        data-die-value={item.die.value}
+        data-die-held={item.die.isHeld}
+        data-die-held-layout={isHeldInLayout}
+        data-die-row={displayedRow}
+        data-die-render-path={activeRenderPath}
+        data-die-layer={targetLayer}
+        data-die-layer-z={layerZIndex}
+        data-die-react-key={reactKey}
+        data-die-transform-owner={transformOwner}
+        data-die-slot-index={slotIndexInHeldRow ?? ""}
+        className={cn(
+          "absolute will-change-transform",
+          !shouldSkipTransition && !useInstantTransform && "transition-transform duration-300 ease-out",
+        )}
+        style={{
+          left: "50%",
+          top: "50%",
+          transform,
+          pointerEvents: "auto",
+          zIndex: isHeldInLayout ? 2 : 1,
+        }}
+      >
+        <HorsesDie
+          value={item.die.value}
+          isHeld={isHeldInLayout}
+          isRolling={isRolling && !isHeldInLayout}
+          canToggle={
+            canToggle &&
+            !isObserver &&
+            !isAnimatingFlyIn &&
+            !isRolling &&
+            (!isSCC || !isSCCDie)
+          }
+          onToggle={() => onToggleHold?.(item.originalIndex)}
+          size={effectiveSize}
+          showWildHighlight={showWildHighlight && !isSCC}
+          isSCCDie={isSCCDie}
+          isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld, renderedDice)}
+          isCargoDie={isCargoDie(item.die, isSCC, isQualified, allHeld, renderedDice)}
+        />
+      </div>
+    );
+  };
 
 
   if (showRollingMessage) {
@@ -1342,7 +1662,7 @@ export function DiceTableLayout({
 
   if (shouldUseFreezePresentation) {
     return (
-      <div ref={containerRef} className="relative" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
+      <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
         {orderedDice.map((item) => {
           const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
           if (!frozenTransform) return null;
@@ -1362,6 +1682,12 @@ export function DiceTableLayout({
               data-die-value={item.die.value}
               data-die-held={true}
               data-die-held-layout={wasHeld}
+              data-die-row="frozen"
+              data-die-render-path="freeze"
+              data-die-layer="freeze"
+              data-die-layer-z={30}
+              data-die-react-key={`die-${item.originalIndex}`}
+              data-die-transform-owner="freeze"
               className="absolute will-change-transform"
               style={{
                 left: '50%',
@@ -1389,7 +1715,11 @@ export function DiceTableLayout({
   }
 
   return (
-    <div ref={containerRef} className="relative" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
+    <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? "360px" : "200px", height: isTablet ? "220px" : "120px" }}>
+      <div className="absolute inset-0 z-10 pointer-events-none" data-dice-layer="scatter" data-layer-z={10}>
+        {orderedDice.map((item) => renderDieForLayer(item, "scatter"))}
+      </div>
+
       {/* Fly-in animation overlay for unheld dice */}
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
@@ -1408,155 +1738,9 @@ export function DiceTableLayout({
         />
       )}
 
-      {/* Render each die once (stable key) so it can transition between scatter ↔ held row */}
-      {orderedDice.map((item) => {
-        const sccDie = item.die as SCCDieType;
-        const isSCCDie = isSCC && "isSCC" in sccDie && sccDie.isSCC;
-
-        // Don't render this die at all if it's currently animating in (prevents double render)
-        const isThisDieAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
-        if (isThisDieAnimating) return null;
-
-        // --- AUTHORITATIVE LAYOUT DECISION ---
-        // For observers: the held slot registry is the sole authority.
-        // If a die has a registered slot, it renders in the held row regardless of transient isHeld flips.
-        // For roller (non-observer): use actual die.isHeld for immediate feedback.
-        const actuallyHeld = item.die.isHeld;
-        const preRollHeld = !!heldMaskBeforeComplete?.[item.originalIndex];
-        const registryHeldPos = getStableHeldPos(item.originalIndex);
-        const layoutHeldPos = heldPositionByOriginalIndex.get(item.originalIndex);
-        const cachedHeldPos = lastHeldTransformByDieRef.current.get(item.originalIndex);
-        const cachedScatterPos = lastScatterTransformByDieRef.current.get(item.originalIndex);
-
-        // Observer: registry is authoritative (prevents transient hop to scatter)
-        // Roller: actuallyHeld is authoritative (immediate toggle feedback)
-        // CRITICAL: When usePreRollLayout is active with an authoritative mask, use ONLY
-        // the mask — never the registry. Stale registry entries cause transient held-row widening.
-        // Observer hold-state transients are absorbed by the upstream presentation debounce
-        // (debouncedDice), so actuallyHeld is safe for both roller and observer here.
-        const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
-          ? preRollHeld
-          : actuallyHeld;
-
-        let heldPos = registryHeldPos ?? layoutHeldPos ?? (effectivelyHeld ? cachedHeldPos : undefined);
-        if (effectivelyHeld && !heldPos) {
-          const heldSourceDice = usePreRollLayout
-            ? layoutHeldDice
-            : orderedDice.filter((d) => d.die.isHeld);
-          const heldIdx = heldSourceDice.findIndex((d) => d.originalIndex === item.originalIndex);
-          if (heldIdx >= 0) {
-            const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
-            heldPos = allHeldPositions[heldIdx];
-          }
-        }
-        
-        // Die is in held layout if effectively held AND we have a position
-        const isHeldInLayout = effectivelyHeld && !!heldPos;
-
-        // Scatter positions: only for dice NOT in held layout
-        const hasValidStablePos =
-          !isHeldInLayout &&
-          stableScatterRollKeyRef.current === rollKey &&
-          stableScatterByDieRef.current.has(item.originalIndex);
-        const stablePos = hasValidStablePos
-          ? stableScatterByDieRef.current.get(item.originalIndex)
-          : undefined;
-
-        const layoutScatterPos = scatterLayoutByOriginalIndex.get(item.originalIndex);
-        const scatterPos =
-          stablePos ??
-          layoutScatterPos ??
-          cachedScatterPos ??
-          getUnheldPosition(0, Math.max(1, layoutUnheldDice.length));
-
-        // Hide unheld dice when showUnheldDice is false (after 1s delay from held dice moving)
-        const shouldHide = !isHeldInLayout && !showUnheldDice && !isAnimatingFlyIn;
-        
-        // CRITICAL FIX: On the first render after rollKey changes, the useLayoutEffect hasn't
-        // fired yet to start the fly-in and set showUnheldDice=false. Unheld dice would render
-        // at their NEW scatter positions for one frame before fly-in takes over, causing a visible
-        // snap/flash. Suppress them entirely — the fly-in overlay will render them momentarily.
-        const isPreFlyInFrame = !rollKeyProcessed && !isAnimatingFlyIn && !isHeldInLayout
-          && Array.isArray(heldMaskBeforeComplete) && !heldMaskBeforeComplete[item.originalIndex];
-        
-        // Don't render unheld dice at all when they should be hidden
-        if (shouldHide || isPreFlyInFrame) return null;
-
-        // CRITICAL: When all dice just became held (early lock-in), do NOT animate unheld→held transition.
-        // Skip the transition by omitting transition classes for dice that just switched from unheld to held.
-        const justBecameHeld = allHeld && !isAnimatingFlyIn && !isHeldInLayout;
-        const shouldSkipTransition = justBecameHeld;
-
-        // CRITICAL FIX: Observers should NOT use CSS transitions for held↔scatter changes.
-        // The roller's rapid hold toggles arrive as separate realtime updates ~150ms apart.
-        // With a 300ms CSS transition, each update interrupts the in-progress animation,
-        // causing dice to visibly "hop" (start moving to scatter, then reverse back to held).
-        // Fly-in animation uses the DiceRollAnimation overlay, not CSS transitions, so it's unaffected.
-        const useInstantTransform = isObserver && !isAnimatingFlyIn;
-
-        const transformOwner = isHeldInLayout
-          ? registryHeldPos
-            ? "held:stable-slot"
-            : layoutHeldPos
-            ? "held:layout"
-            : cachedHeldPos
-              ? "held:cache"
-              : "held:derived"
-          : stablePos
-            ? "scatter:stable"
-            : layoutScatterPos
-              ? "scatter:layout"
-              : cachedScatterPos
-                ? "scatter:cache"
-                : "scatter:default";
-
-        const transform = isHeldInLayout
-          ? `translate(calc(-50% + ${heldPos!.x}px), calc(-50% + ${heldPos!.y + heldYOffset}px))`
-          : `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`;
-
-
-        return (
-          <div
-            key={`die-${item.originalIndex}`}
-            data-die-idx={item.originalIndex}
-            data-die-value={item.die.value}
-            data-die-held={item.die.isHeld}
-            data-die-held-layout={isHeldInLayout}
-            className={cn(
-              "absolute will-change-transform",
-              !shouldSkipTransition && !useInstantTransform && "transition-transform duration-300 ease-out",
-            )}
-            style={{
-              left: "50%",
-              top: "50%",
-              transform,
-              pointerEvents: "auto",
-              zIndex: isHeldInLayout ? 2 : 1,
-            }}
-          >
-            <HorsesDie
-              value={item.die.value}
-              isHeld={isHeldInLayout}
-              isRolling={isRolling && !isHeldInLayout}
-                // SCC: allow toggling ONLY for non-locked dice (cargo / non-SCC dice).
-                // Locked Ship/Captain/Crew dice (isSCCDie) can never be unheld.
-                canToggle={
-                  canToggle &&
-                  !isObserver &&
-                  !isAnimatingFlyIn &&
-                  !isRolling &&
-                  (!isSCC || !isSCCDie)
-                }
-              onToggle={() => onToggleHold?.(item.originalIndex)}
-              size={effectiveSize}
-              showWildHighlight={showWildHighlight && !isSCC}
-              isSCCDie={isSCCDie}
-              isUnusedDie={isDieUnused(item.die, isSCC, isQualified, allHeld, orderedDice.map(d => d.die))}
-              isCargoDie={isCargoDie(item.die, isSCC, isQualified, allHeld, orderedDice.map(d => d.die))}
-            />
-          </div>
-        );
-      })}
+      <div className="absolute inset-0 z-30 pointer-events-none" data-dice-layer="held" data-layer-z={30}>
+        {orderedDice.map((item) => renderDieForLayer(item, "held"))}
+      </div>
     </div>
   );
 }
