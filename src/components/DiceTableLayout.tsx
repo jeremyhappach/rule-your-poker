@@ -8,6 +8,13 @@ import { useDeviceSize } from "@/hooks/useDeviceSize";
 
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
+import {
+  isDicePresentationTraceEnabled,
+  recordDicePresentationTrace,
+  detectOrderingSwap,
+  getDicePresentationTraceBuffer,
+  type DicePresentationTraceEntry,
+} from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
 // MobileGameTable intentionally remounts DiceTableLayout when the dice "owner" changes,
@@ -1167,6 +1174,80 @@ export function DiceTableLayout({
     mainBranch,
   };
 
+  // ── DICE PRESENTATION TRACE ──
+  if (isDicePresentationTraceEnabled() && !hasNoOrderedDice && !showRollingMessage) {
+    const renderPath: DicePresentationTraceEntry['renderPath'] =
+      shouldUseFreezePresentation ? 'freeze'
+      : usePreRollLayout ? 'pre-roll-layout'
+      : isAnimatingFlyIn ? 'fly-in'
+      : 'normal';
+
+    const registryEntries = stableHeldRegistryEntries.map(([dieIndex, holdOrder]) => ({ dieIndex, holdOrder }));
+    const registrySorted = stableHeldRegistryEntries.map(([di]) => di);
+
+    const diceSnapshot = orderedDice.map((item) => {
+      const regPos = getStableHeldPos(item.originalIndex);
+      const isThisAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
+      const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
+        ? !!heldMaskBeforeComplete[item.originalIndex]
+        : item.die.isHeld;
+      const isHeldInLayout = effectivelyHeld && !!regPos;
+
+      let displayedRow: 'held' | 'scatter' | 'animating' | 'hidden';
+      if (isThisAnimating) displayedRow = 'animating';
+      else if (shouldUseFreezePresentation) displayedRow = frozenPresentationRef.current?.has(item.originalIndex) ? 'held' : 'hidden';
+      else if (isHeldInLayout) displayedRow = 'held';
+      else displayedRow = 'scatter';
+
+      // Compute slot index within held row
+      let slotIndex: number | null = null;
+      if (displayedRow === 'held') {
+        slotIndex = registrySorted.indexOf(item.originalIndex);
+        if (slotIndex < 0) slotIndex = null;
+      }
+
+      const transformSource = regPos ? 'held:stable-slot'
+        : heldPositionByOriginalIndex.has(item.originalIndex) ? 'held:layout'
+        : lastHeldTransformByDieRef.current.has(item.originalIndex) ? 'held:cache'
+        : 'scatter';
+
+      return {
+        originalIndex: item.originalIndex,
+        value: item.die.value,
+        isHeld: item.die.isHeld,
+        isHeldInLayout,
+        displayedRow,
+        slotIndexInHeldRow: slotIndex,
+        transformSource,
+        reactKey: `die-${item.originalIndex}`,
+      };
+    });
+
+    const entry: DicePresentationTraceEntry = {
+      timestamp: Date.now(),
+      renderPath,
+      rollKey,
+      cacheKey,
+      isObserver,
+      registrySnapshot: registryEntries,
+      registrySortedByOriginalIndex: registrySorted,
+      diceSnapshot,
+      heldPositionsComputed: heldPositions,
+      layoutHeldCount: layoutHeldDice.length,
+      layoutUnheldCount: layoutUnheldDice.length,
+    };
+
+    recordDicePresentationTrace(entry);
+
+    // Auto-detect swaps
+    const buf = getDicePresentationTraceBuffer();
+    if (buf.length >= 2) {
+      const swap = detectOrderingSwap(buf[buf.length - 2], buf[buf.length - 1]);
+      if (swap) {
+        console.warn(`[DICE TRACE] ⚠️ ${swap}`);
+      }
+    }
+  }
 
 
   if (showRollingMessage) {

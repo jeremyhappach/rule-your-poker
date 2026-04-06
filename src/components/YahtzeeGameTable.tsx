@@ -35,6 +35,10 @@ import { getPotentialScores, getTotalScore, isYahtzee, getUpperSubtotal, hasUppe
 import {
   getBotHoldDecision, getBotCategoryChoice, shouldBotStopRolling,
 } from "@/lib/yahtzeeBotLogic";
+import {
+  getDebugStraightHoldDecision, getDebugStraightCategoryChoice, shouldDebugStraightStopRolling,
+} from "@/lib/yahtzeeBotDebugStraight";
+import { isYahtzeeStraightDebugEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
@@ -1022,7 +1026,7 @@ export function YahtzeeGameTable({
               dice: describeBotDiceState(ps.dice),
               turnIdentity,
             });
-            const holds = getBotHoldDecision(ps);
+            const holds = isYahtzeeStraightDebugEnabled() ? getDebugStraightHoldDecision(ps) : getBotHoldDecision(ps);
             lastHolds = holds;
             console.log('[BOT AFTER HOLD DECISION]', {
               roundId: currentRoundId,
@@ -1090,7 +1094,7 @@ export function YahtzeeGameTable({
             && ps.dice.every((die) => typeof die?.value === 'number' && typeof die?.isHeld === 'boolean');
           const holdsShapeValid = roll === 0 ? true : isValidBotHoldArray(lastHolds);
           const allDiceHeld = diceShapeValid && ps.dice.every((die) => die.isHeld);
-          const illegalAllHeldLock = roll > 0 && allDiceHeld && ps.rollsRemaining > 0 && !shouldBotStopRolling(ps);
+          const illegalAllHeldLock = roll > 0 && allDiceHeld && ps.rollsRemaining > 0 && !(isYahtzeeStraightDebugEnabled() ? shouldDebugStraightStopRolling(ps) : shouldBotStopRolling(ps));
 
           console.log('[BOT PRE-ROLL INVARIANT]', {
             roundId: currentRoundId,
@@ -1240,13 +1244,13 @@ export function YahtzeeGameTable({
             });
             break;
           }
-          if (ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) {
+          if (ps.rollsRemaining <= 0 || (isYahtzeeStraightDebugEnabled() ? shouldDebugStraightStopRolling(ps) : shouldBotStopRolling(ps))) {
             console.log('[BOT LOOP BREAK]', {
               reason: ps.rollsRemaining <= 0 ? 'all-rolls-used' : 'stop-early',
               location: 'post-roll-evaluation',
               roll,
               rollsRemaining: ps.rollsRemaining,
-              shouldStop: shouldBotStopRolling(ps),
+              shouldStop: isYahtzeeStraightDebugEnabled() ? shouldDebugStraightStopRolling(ps) : shouldBotStopRolling(ps),
               turnIdentity,
             });
             break;
@@ -1261,7 +1265,7 @@ export function YahtzeeGameTable({
           });
           return;
         }
-        const category = getBotCategoryChoice(ps);
+        const category = isYahtzeeStraightDebugEnabled() ? getDebugStraightCategoryChoice(ps) : getBotCategoryChoice(ps);
         console.log('[BOT BEFORE CATEGORY COMMIT]', { roundId: currentRoundId, botPlayerId, chosenCategory: category, score: calculateCategoryScore(category, ps.dice.map(d => d.value)), turnIdentity });
 
         const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
