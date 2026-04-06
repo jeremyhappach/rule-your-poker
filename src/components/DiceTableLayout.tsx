@@ -13,6 +13,7 @@ import {
   recordDicePresentationTrace,
   type DicePresentationTraceEntry,
   type TraceInput,
+  type DieRenderDecision,
 } from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
