@@ -1,0 +1,104 @@
+import React, { useState, useCallback } from "react";
+import { Circle, Square, ClipboardCopy, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
+import {
+  startDicePresentationTrace,
+  stopDicePresentationTrace,
+  isDicePresentationTraceRecording,
+  getDicePresentationTraceJSON,
+  getDicePresentationTraceBuffer,
+  getSwapEvents,
+} from "@/lib/dicePresentationTrace";
+
+const DEBUG_BUILD_STAMP = "2026-04-06T-trace-ui";
+
+export function DiceTraceControl() {
+  const [recording, setRecording] = useState(isDicePresentationTraceRecording());
+  const [swapCount, setSwapCount] = useState(0);
+  const [frameCount, setFrameCount] = useState(0);
+
+  const handleToggle = useCallback(() => {
+    if (recording) {
+      stopDicePresentationTrace();
+      setRecording(false);
+      const buf = getDicePresentationTraceBuffer();
+      const swaps = getSwapEvents();
+      setFrameCount(buf.length);
+      setSwapCount(swaps.length);
+      if (swaps.length > 0) {
+        toast.error(`${swaps.length} swap(s) detected in ${buf.length} frames`);
+      } else {
+        toast.success(`Clean: ${buf.length} frames, 0 swaps`);
+      }
+    } else {
+      startDicePresentationTrace();
+      setRecording(true);
+      setSwapCount(0);
+      setFrameCount(0);
+    }
+  }, [recording]);
+
+  const handleCopy = useCallback(async () => {
+    const json = getDicePresentationTraceJSON();
+    try {
+      await navigator.clipboard.writeText(json);
+      toast.success("Trace JSON copied to clipboard");
+    } catch {
+      // Fallback: create downloadable blob
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dice-trace.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Trace downloaded as dice-trace.json");
+    }
+  }, []);
+
+  return (
+    <div className="absolute top-1 left-1 z-[9999] flex items-center gap-1">
+      {/* Build badge */}
+      <span className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg opacity-90">
+        BUILD: {DEBUG_BUILD_STAMP}
+      </span>
+
+      {/* Record / Stop */}
+      <button
+        onClick={handleToggle}
+        className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold shadow-lg ${
+          recording
+            ? "bg-red-500 text-white animate-pulse"
+            : "bg-gray-800 text-gray-200 hover:bg-gray-700"
+        }`}
+      >
+        {recording ? (
+          <>
+            <Square className="h-3 w-3 fill-current" /> STOP
+          </>
+        ) : (
+          <>
+            <Circle className="h-3 w-3 fill-current" /> REC
+          </>
+        )}
+      </button>
+
+      {/* Copy trace (only after stop) */}
+      {!recording && frameCount > 0 && (
+        <>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-700 text-white shadow-lg hover:bg-blue-600"
+          >
+            <ClipboardCopy className="h-3 w-3" /> {frameCount}f
+          </button>
+          {swapCount > 0 && (
+            <span className="flex items-center gap-0.5 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
+              <AlertTriangle className="h-3 w-3" /> {swapCount} SWAP{swapCount > 1 ? 'S' : ''}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
