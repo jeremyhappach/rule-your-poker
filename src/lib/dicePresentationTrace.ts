@@ -1,5 +1,5 @@
 /**
- * Dice Presentation Trace Utility v5
+ * Dice Presentation Trace Utility v6
  *
  * Captures final transform usage plus full-scene composition data across held,
  * scatter, animation, and frozen dice layers.
@@ -128,7 +128,9 @@ export interface DiceCompositionFrameSummary {
   heldLayerDiceCount: number;
   animationLayerDiceCount: number;
   duplicateOriginalIndices: number[];
+  heldAnimationDuplicateOriginalIndices: number[];
   hasDuplicateOriginalIndexAcrossLayers: boolean;
+  hasHeldAnimationDuplicateOriginalIndex: boolean;
 }
 
 export interface DicePresentationTraceEntry {
@@ -176,16 +178,31 @@ const MAX_ENTRIES = 500;
 let traceBuffer: DicePresentationTraceEntry[] = [];
 let runtimeEnabled = false;
 let frameCounter = 0;
+let traceRuntimeIssues: string[] = [];
+let traceRuntimeIssueKeys = new Set<string>();
 // Track previous frame's held dice actual positions for swap detection
 let lastHeldPositions: Map<number, { x: number; y: number }> = new Map();
 // Track previous frame's originalIndex -> held-slot mapping for remap detection
 let lastHeldSlotMapping: Map<number, number> = new Map();
+
+function pushTraceRuntimeIssue(issue: string): boolean {
+  if (traceRuntimeIssueKeys.has(issue)) return false;
+  traceRuntimeIssueKeys.add(issue);
+  traceRuntimeIssues.push(issue);
+  if (traceRuntimeIssues.length > MAX_ENTRIES) {
+    traceRuntimeIssues = traceRuntimeIssues.slice(-MAX_ENTRIES);
+    traceRuntimeIssueKeys = new Set(traceRuntimeIssues);
+  }
+  return true;
+}
 
 /** Start recording at runtime */
 export function startDicePresentationTrace(): void {
   runtimeEnabled = true;
   traceBuffer = [];
   frameCounter = 0;
+  traceRuntimeIssues = [];
+  traceRuntimeIssueKeys = new Set();
   lastHeldPositions = new Map();
   lastHeldSlotMapping = new Map();
 }
@@ -250,7 +267,9 @@ function formatHeldRowRemapEvent(event: DiceHeldRowRemapEvent): string {
 
 /** Get all mismatch/swap events from the buffer */
 export function getSwapEvents(): string[] {
-  return traceBuffer.flatMap((entry) => {
+  return [
+    ...traceRuntimeIssues,
+    ...traceBuffer.flatMap((entry) => {
     const events: string[] = [];
     if (entry.transformMismatch) events.push(entry.transformMismatch);
     if (entry.positionSwapDetected) events.push(entry.positionSwapDetected);
@@ -258,7 +277,8 @@ export function getSwapEvents(): string[] {
     entry.duplicateRenderEvents.forEach((event) => events.push(formatDuplicateRenderEvent(event)));
     entry.overlapEvents.forEach((event) => events.push(formatOverlapEvent(event)));
     return events;
-  });
+    }),
+  ];
 }
 
 export function getDicePresentationTraceBuffer(): DicePresentationTraceEntry[] {
@@ -268,6 +288,8 @@ export function getDicePresentationTraceBuffer(): DicePresentationTraceEntry[] {
 export function clearDicePresentationTrace(): void {
   traceBuffer = [];
   frameCounter = 0;
+  traceRuntimeIssues = [];
+  traceRuntimeIssueKeys = new Set();
   lastHeldPositions = new Map();
   lastHeldSlotMapping = new Map();
 }
@@ -344,6 +366,29 @@ function detectPositionSwap(decisions: DieRenderDecision[]): string | null {
 
 function getLayerKey(decision: DieRenderDecision): string {
   return decision.compositionLayer ?? 'unknown';
+}
+
+function isHeldRelatedDecision(decision: DieRenderDecision): boolean {
+  const layer = getLayerKey(decision);
+  return (
+    decision.isHeldInLayout ||
+    decision.displayedRow === 'held' ||
+    decision.displayedRow === 'frozen' ||
+    decision.slotIndexInHeldRow !== null ||
+    layer === 'held' ||
+    layer === 'freeze' ||
+    decision.transformOwner.startsWith('held:') ||
+    decision.transformOwner === 'freeze'
+  );
+}
+
+function isAnimationRelatedDecision(decision: DieRenderDecision): boolean {
+  const layer = getLayerKey(decision);
+  return (
+    decision.displayedRow === 'animating' ||
+    layer === 'animation' ||
+    decision.transformOwner.startsWith('animation:')
+  );
 }
 
 function getHeldDecisionPriority(decision: DieRenderDecision): number {
@@ -540,13 +585,38 @@ function buildFrameSummary(
     new Set(duplicateRenderEvents.map((event) => event.originalIndex))
   ).sort((a, b) => a - b);
 
+  const byOriginalIndex = new Map<number, DieRenderDecision[]>();
+  decisions.forEach((decision) => {
+    const existing = byOriginalIndex.get(decision.originalIndex) ?? [];
+    existing.push(decision);
+    byOriginalIndex.set(decision.originalIndex, existing);
+  });
+
+  const heldAnimationDuplicateOriginalIndices = Array.from(byOriginalIndex.entries())
+    .filter(([, matches]) => matches.some(isHeldRelatedDecision) && matches.some(isAnimationRelatedDecision))
+    .map(([originalIndex]) => originalIndex)
+    .sort((a, b) => a - b);
+
   return {
     totalDiceRendered: decisions.length,
     heldLayerDiceCount: decisions.filter((decision) => getLayerKey(decision) === 'held').length,
     animationLayerDiceCount: decisions.filter((decision) => getLayerKey(decision) === 'animation').length,
     duplicateOriginalIndices,
+    heldAnimationDuplicateOriginalIndices,
     hasDuplicateOriginalIndexAcrossLayers: duplicateOriginalIndices.length > 0,
+    hasHeldAnimationDuplicateOriginalIndex: heldAnimationDuplicateOriginalIndices.length > 0,
   };
+}
+
+function formatLayerGroupsSummary(layerGroups: DiceCompositionLayerGroup[]): string {
+  return layerGroups
+    .map(
+      (group) =>
+        `${group.layer}[${group.dice
+          .map((die) => `die${die.originalIndex}${die.slotIndexInHeldRow != null ? `:slot${die.slotIndexInHeldRow}` : ''}`)
+          .join(',')}]`
+    )
+    .join(' ');
 }
 
 export interface TraceInput {
@@ -570,25 +640,46 @@ export interface TraceInput {
 export function recordDicePresentationTrace(input: TraceInput): void {
   if (!runtimeEnabled) return;
 
+  if ((input.traceKind ?? 'render') !== 'composition') {
+    return;
+  }
+
   const overlapEvents = input.overlapEvents ?? [];
   const duplicateRenderEvents = detectDuplicateDieRender(input.dieRenderDecisions);
   const { finalHeldSlotMapping, heldRowRemapEvents } = detectHeldRowRemap(input.dieRenderDecisions);
   const layerGroups = buildLayerGroups(input.dieRenderDecisions);
   const frameSummary = buildFrameSummary(input.dieRenderDecisions, duplicateRenderEvents);
-  const hasHeldEvidence =
+  const hasExplicitHeldSignal =
+    frameSummary.heldLayerDiceCount > 0 ||
     input.layoutHeldCount > 0 ||
-    input.heldPositionsComputed.length > 0 ||
-    input.registryEntries.length > 0 ||
-    input.dieRenderDecisions.some(
-      (decision) =>
-        decision.isHeldInLayout ||
-        decision.displayedRow === 'held' ||
-        decision.displayedRow === 'frozen' ||
-        decision.slotIndexInHeldRow !== null
-    ) ||
-    frameSummary.heldLayerDiceCount > 0;
+    finalHeldSlotMapping.length > 0;
+  const shouldKeepFrame =
+    frameSummary.heldLayerDiceCount > 0 ||
+    input.layoutHeldCount > 0 ||
+    finalHeldSlotMapping.length > 0 ||
+    frameSummary.duplicateOriginalIndices.length > 0 ||
+    frameSummary.heldAnimationDuplicateOriginalIndices.length > 0;
 
-  if (!hasHeldEvidence && overlapEvents.length === 0 && duplicateRenderEvents.length === 0 && heldRowRemapEvents.length === 0) {
+  if (frameSummary.animationLayerDiceCount > 0 && !hasExplicitHeldSignal) {
+    const issue = [
+      'TRACE_MISALIGNED_WITH_OBSERVED_EVENT:',
+      `path=${input.renderPath}`,
+      `rollKey=${String(input.rollKey ?? 'none')}`,
+      `total=${frameSummary.totalDiceRendered}`,
+      `heldLayer=${frameSummary.heldLayerDiceCount}`,
+      `layoutHeld=${input.layoutHeldCount}`,
+      `heldMap=${finalHeldSlotMapping.length}`,
+      `dup=[${frameSummary.duplicateOriginalIndices.join(',')}]`,
+      `heldAnimDup=[${frameSummary.heldAnimationDuplicateOriginalIndices.join(',')}]`,
+      `layers=${formatLayerGroupsSummary(layerGroups)}`,
+    ].join(' ');
+
+    if (pushTraceRuntimeIssue(issue)) {
+      console.error(`[DICE TRACE] ❌ ${issue}`);
+    }
+  }
+
+  if (!shouldKeepFrame) {
     return;
   }
 
@@ -661,11 +752,9 @@ export function recordDicePresentationTrace(input: TraceInput): void {
       const heldMapSummary = entry.finalHeldSlotMapping
         .map((mapping) => `die${mapping.originalIndex}->slot${mapping.slotIndexInHeldRow}`)
         .join(', ');
-      const layerSummary = entry.layerGroups
-        .map((group) => `${group.layer}[${group.dice.map((die) => `die${die.originalIndex}${die.slotIndexInHeldRow != null ? `:slot${die.slotIndexInHeldRow}` : ''}`).join(',')}]`)
-        .join(' ');
+      const layerSummary = formatLayerGroupsSummary(entry.layerGroups);
       console.log(
-        `[DICE TRACE] f${frameCounter} composition path=${input.renderPath} total=${entry.frameSummary.totalDiceRendered} heldLayer=${entry.frameSummary.heldLayerDiceCount} animLayer=${entry.frameSummary.animationLayerDiceCount} dup=[${entry.frameSummary.duplicateOriginalIndices.join(',')}] heldMap=[${heldMapSummary}] layers=${layerSummary}`
+        `[DICE TRACE] f${frameCounter} composition path=${input.renderPath} total=${entry.frameSummary.totalDiceRendered} heldLayer=${entry.frameSummary.heldLayerDiceCount} animLayer=${entry.frameSummary.animationLayerDiceCount} dup=[${entry.frameSummary.duplicateOriginalIndices.join(',')}] heldAnimDup=[${entry.frameSummary.heldAnimationDuplicateOriginalIndices.join(',')}] heldMap=[${heldMapSummary}] layers=${layerSummary}`
       );
       return;
     }
