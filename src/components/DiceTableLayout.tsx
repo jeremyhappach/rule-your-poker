@@ -11,9 +11,8 @@ import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorde
 import {
   isDicePresentationTraceEnabled,
   recordDicePresentationTrace,
-  detectOrderingSwap,
-  getDicePresentationTraceBuffer,
   type DicePresentationTraceEntry,
+  type TraceInput,
 } from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
@@ -1185,7 +1184,12 @@ export function DiceTableLayout({
     const registryEntries = stableHeldRegistryEntries.map(([dieIndex, holdOrder]) => ({ dieIndex, holdOrder }));
     const registrySorted = stableHeldRegistryEntries.map(([di]) => di);
 
-    const diceSnapshot = orderedDice.map((item) => {
+    const diceSource: TraceInput['diceSource'] =
+      shouldUseFreezePresentation ? 'freeze-snapshot'
+      : usePreRollLayout ? 'pre-roll-mask'
+      : 'live';
+
+    const diceDetails = orderedDice.map((item) => {
       const regPos = getStableHeldPos(item.originalIndex);
       const isThisAnimating = isAnimatingFlyIn && animatingDiceIndices.includes(item.originalIndex);
       const effectivelyHeld = usePreRollLayout && Array.isArray(heldMaskBeforeComplete)
@@ -1199,7 +1203,6 @@ export function DiceTableLayout({
       else if (isHeldInLayout) displayedRow = 'held';
       else displayedRow = 'scatter';
 
-      // Compute slot index within held row
       let slotIndex: number | null = null;
       if (displayedRow === 'held') {
         slotIndex = registrySorted.indexOf(item.originalIndex);
@@ -1211,6 +1214,16 @@ export function DiceTableLayout({
         : lastHeldTransformByDieRef.current.has(item.originalIndex) ? 'held:cache'
         : 'scatter';
 
+      // Compute actual position used
+      let posX = 0, posY = 0;
+      if (isHeldInLayout && regPos) {
+        posX = regPos.x;
+        posY = regPos.y + heldYOffset;
+      } else {
+        const sp = stableScatterByDieRef.current.get(item.originalIndex);
+        if (sp) { posX = sp.x; posY = sp.y + unheldYOffset; }
+      }
+
       return {
         originalIndex: item.originalIndex,
         value: item.die.value,
@@ -1219,34 +1232,23 @@ export function DiceTableLayout({
         displayedRow,
         slotIndexInHeldRow: slotIndex,
         transformSource,
-        reactKey: `die-${item.originalIndex}`,
+        posX,
+        posY,
       };
     });
 
-    const entry: DicePresentationTraceEntry = {
-      timestamp: Date.now(),
+    recordDicePresentationTrace({
       renderPath,
       rollKey,
       cacheKey,
       isObserver,
-      registrySnapshot: registryEntries,
-      registrySortedByOriginalIndex: registrySorted,
-      diceSnapshot,
+      diceSource,
+      registryEntries,
       heldPositionsComputed: heldPositions,
       layoutHeldCount: layoutHeldDice.length,
       layoutUnheldCount: layoutUnheldDice.length,
-    };
-
-    recordDicePresentationTrace(entry);
-
-    // Auto-detect swaps
-    const buf = getDicePresentationTraceBuffer();
-    if (buf.length >= 2) {
-      const swap = detectOrderingSwap(buf[buf.length - 2], buf[buf.length - 1]);
-      if (swap) {
-        console.warn(`[DICE TRACE] ⚠️ ${swap}`);
-      }
-    }
+      diceDetails,
+    });
   }
 
 
