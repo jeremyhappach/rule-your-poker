@@ -13,6 +13,16 @@
  * `turnIdx` alone is NOT safe here because it wraps (e.g. player 2 → player 1),
  * which caused valid turn-advance snapshots to look regressive on observers.
  *
+ * NOTE: turnOwnerIndex was previously included as a 5th dimension to prevent
+ * stale-owner snapshots from being treated as equal-progress. However, the sync
+ * gate accepts equal-progress snapshots (`isProgressForwardOrEqual`), so the
+ * discriminator is unnecessary. Worse, it caused legitimate turn handoffs where
+ * the turnOrder index wraps from a higher index back to 0 (e.g. human at
+ * index 1 → bot at index 0) to be falsely rejected as regressive when all
+ * other dimensions were tied (equal-parity category counts). The handoffPhase
+ * dimension already correctly distinguishes scored-before-handoff (0) from
+ * live-turn-after-handoff (1), making turnOwnerIndex redundant.
+ *
  * - phaseOrd:            waiting=0, playing=1, complete=2
  * - totalCategoriesFilled: total categories scored across ALL players (strictly monotonic)
  * - handoffPhase:        0 = scored snapshot before turn handoff, 1 = live turn snapshot
@@ -70,13 +80,5 @@ export const getYahtzeeProgress: GetProgressFn<YahtzeeState> = (state) => {
   // Rolls used: 0 = hasn't rolled, 3 = all rolls used
   const rollsUsed = currentTurnPlayerState ? (3 - currentTurnPlayerState.rollsRemaining) : 0;
 
-  // Turn-owner discriminator: index in turnOrder, or -1 if no current turn.
-  // This ensures snapshots with different turn owners are NEVER treated as
-  // equal-progress, preventing the sync gate from accepting a stale-owner
-  // snapshot that would cause the UI to briefly show the wrong player's turn.
-  const turnOwnerIndex = state.currentTurnPlayerId
-    ? state.turnOrder.indexOf(state.currentTurnPlayerId)
-    : -1;
-
-  return [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed, turnOwnerIndex];
+  return [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed];
 };
