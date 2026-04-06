@@ -301,6 +301,10 @@ export function DiceTableLayout({
     >
   >(new Map());
 
+  // Invariant check refs: previous frame held-slot state
+  const prevFrameHeldSlotsRef = useRef<Map<number, { slot: number; row: string; transformOwner: string }>>(new Map());
+  const invariantFrameCounterRef = useRef(0);
+
   // Track held count at the START of animation (so animation lands at correct Y offset)
   const [animationHeldCount, setAnimationHeldCount] = useState(0);
 
