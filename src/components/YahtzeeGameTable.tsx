@@ -193,6 +193,9 @@ export function YahtzeeGameTable({
   const uiRollingTimerRef = useRef<number | null>(null);
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
+  /** Ref-based identity for the currently running bot turn. Used instead of closure-based
+   *  `cancelled` so that transient dep flickers don't abort a legitimately running bot. */
+  const activeBotTurnIdentityRef = useRef<string | null>(null);
   const localRollKeyRef = useRef<string | undefined>(undefined);
   /** Monotonic counter for generating unique rollKeys across all rolls in this session */
   const rollSerialRef = useRef(0);
