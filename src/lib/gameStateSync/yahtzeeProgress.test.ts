@@ -69,4 +69,50 @@ describe('getYahtzeeProgress', () => {
 
     expect(compareProgress(getYahtzeeProgress(scoredBeforeHandoff), getYahtzeeProgress(advancedToRemainingPlayer))).toBe(1);
   });
+
+  it('treats equal-parity turn handoff from higher index to lower index as forward (not regressive)', () => {
+    // This is the exact bug scenario: human (index 1) scores, both players
+    // now have equal filled counts, turn advances to bot (index 0).
+    // Previously the turnOwnerIndex dimension (1→0) caused false regression.
+
+    // Human just scored their 1st category, bot has 1 category too.
+    // Scored snapshot before handoff: human is current, has 2 filled, bot has 1.
+    const scoredBeforeHandoff: YahtzeeState = {
+      gamePhase: 'playing',
+      currentTurnPlayerId: 'human',  // index 1
+      turnOrder: ['bot', 'human'],
+      currentRound: 2,
+      playerStates: {
+        bot: buildPlayerState(1, 3, false),
+        human: buildPlayerState(2, 3, false),
+      },
+    };
+
+    // Turn advances to bot: bot has 1 filled, human has 2.
+    const advancedToBot: YahtzeeState = {
+      ...scoredBeforeHandoff,
+      currentTurnPlayerId: 'bot',  // index 0 — wraps DOWN
+    };
+
+    const before = getYahtzeeProgress(scoredBeforeHandoff);
+    const after = getYahtzeeProgress(advancedToBot);
+
+    // handoffPhase should handle this: scored snapshot has handoffPhase=0,
+    // advanced snapshot has handoffPhase=1, so it's forward.
+    expect(compareProgress(before, after)).toBe(1);
+  });
+
+  it('vector has exactly 4 dimensions (no turnOwnerIndex)', () => {
+    const state: YahtzeeState = {
+      gamePhase: 'playing',
+      currentTurnPlayerId: 'p1',
+      turnOrder: ['p1', 'p2'],
+      currentRound: 1,
+      playerStates: {
+        p1: buildPlayerState(0, 3, false),
+        p2: buildPlayerState(0, 3, false),
+      },
+    };
+    expect(getYahtzeeProgress(state)).toHaveLength(4);
+  });
 });
