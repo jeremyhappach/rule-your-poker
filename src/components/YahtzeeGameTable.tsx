@@ -947,7 +947,7 @@ export function YahtzeeGameTable({
       let ps: YahtzeePlayerState | null = null;
       let activeRoll = -1;
       let lastHolds: boolean[] | null = null;
-      let lastPrevRollKey: string | undefined;
+      let lastPrevRollKey: string | number | undefined;
 
       // Double-check guard in case of race between timer fire and identity change
       if (isCancelled('runBot:start')) {
