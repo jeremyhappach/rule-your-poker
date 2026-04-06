@@ -1048,11 +1048,13 @@ export function DiceTableLayout({
         })
         .map((item) => item.originalIndex);
 
-      // Sort pre-held dice by their registry hold order for stable positioning
-      // Tiebreak by originalIndex to prevent swaps when holdOrders are equal or ambiguous
-      // CRITICAL: Sort by originalIndex ONLY for deterministic freeze positioning.
-      // holdOrder is unreliable for observers, causing held dice to swap positions.
-      const sortedPreHeld = preHeldIndices.sort((a, b) => a - b);
+      // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
+      // This ensures held dice always display in ascending value order.
+      const sortedPreHeld = preHeldIndices.sort((a, b) => {
+        const valA = effectiveDice[a]?.value ?? 0;
+        const valB = effectiveDice[b]?.value ?? 0;
+        return valA !== valB ? valA - valB : a - b;
+      });
       const preHeldPositions = getHeldPositions(sortedPreHeld.length, dieWidth, gap);
 
       orderedDice.forEach((item) => {
@@ -1262,11 +1264,13 @@ export function DiceTableLayout({
     const holdOrder = stableHeldSlotByDieRef.current.get(originalIndex);
     if (holdOrder === undefined) return undefined;
 
-    // Sort all registered dice by their hold order
-    // CRITICAL: Sort by originalIndex ONLY for deterministic positioning.
-    // holdOrder is unreliable for observers (depends on realtime arrival order),
-    // causing held dice to swap positions between rolls.
-    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[0] - b[0]);
+    // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
+    // This ensures held dice always display in ascending value order.
+    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => {
+      const valA = visualDice[a[0]]?.value ?? 0;
+      const valB = visualDice[b[0]]?.value ?? 0;
+      return valA !== valB ? valA - valB : a[0] - b[0];
+    });
     const registrySize = entries.length;
     const positionIdx = entries.findIndex(([di]) => di === originalIndex);
     if (positionIdx < 0) return undefined;
@@ -1327,7 +1331,12 @@ export function DiceTableLayout({
     }
   });
 
-  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[0] - b[0]);
+  // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
+  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => {
+    const valA = visualDice[a[0]]?.value ?? 0;
+    const valB = visualDice[b[0]]?.value ?? 0;
+    return valA !== valB ? valA - valB : a[0] - b[0];
+  });
   const preRollHeldIndices = Array.isArray(heldMaskBeforeComplete)
     ? orderedDice
         .filter((item) => !!heldMaskBeforeComplete[item.originalIndex])
