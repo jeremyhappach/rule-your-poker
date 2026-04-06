@@ -859,7 +859,7 @@ export function YahtzeeGameTable({
   }, [authTurnPlayerId]);
 
   useEffect(() => {
-    console.log('[BOT EFFECT MOUNT]', {
+    console.warn('[BOT EFFECT MOUNT] BUILD=2026-04-06T17:40Z INSTRUMENTED', {
       roundId: currentRoundId,
       authTurnPlayerId,
       isBotTurn: authTurnPlayer?.is_bot,
