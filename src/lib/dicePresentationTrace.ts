@@ -31,8 +31,10 @@ export interface DicePresentationTraceEntry {
 const MAX_ENTRIES = 200;
 let traceBuffer: DicePresentationTraceEntry[] = [];
 let enabled: boolean | null = null;
+let runtimeEnabled = false;
 
 function checkEnabled(): boolean {
+  if (runtimeEnabled) return true;
   if (enabled !== null) return enabled;
   try {
     const params = new URLSearchParams(window.location.search);
@@ -47,6 +49,37 @@ function checkEnabled(): boolean {
     enabled = false;
     return false;
   }
+}
+
+/** Start recording at runtime (no query param needed) */
+export function startDicePresentationTrace(): void {
+  runtimeEnabled = true;
+  traceBuffer = [];
+}
+
+/** Stop recording at runtime */
+export function stopDicePresentationTrace(): void {
+  runtimeEnabled = false;
+}
+
+/** Check if runtime recording is active */
+export function isDicePresentationTraceRecording(): boolean {
+  return runtimeEnabled;
+}
+
+/** Get trace as JSON string for copy/export */
+export function getDicePresentationTraceJSON(): string {
+  return JSON.stringify(traceBuffer, null, 2);
+}
+
+/** Get swap events only */
+export function getSwapEvents(): string[] {
+  const swaps: string[] = [];
+  for (let i = 1; i < traceBuffer.length; i++) {
+    const swap = detectOrderingSwap(traceBuffer[i - 1], traceBuffer[i]);
+    if (swap) swaps.push(swap);
+  }
+  return swaps;
 }
 
 export function isDicePresentationTraceEnabled(): boolean {

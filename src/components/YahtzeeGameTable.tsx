@@ -1636,10 +1636,8 @@ export function YahtzeeGameTable({
   return (
     <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
 
-      {/* DEBUG: visible build verification badge */}
-      <div className="absolute top-1 left-1 z-[9999] bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-lg pointer-events-none opacity-90">
-        YAHTZEE BOT DEBUG ACTIVE — BUILD: {DEBUG_BUILD_STAMP}
-      </div>
+      {/* DEBUG: visible build verification badge + dice trace controls */}
+      <DiceTraceControl />
 
       {/* Overlays */}
       <YahtzeeRollOverlay
