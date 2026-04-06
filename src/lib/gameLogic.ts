@@ -699,7 +699,7 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
   // CRITICAL GUARD: Dice games (horses, ship-captain-crew) do NOT use makeDecision.
   // They have their own turn-based dice rolling logic. If makeDecision is called for a dice game,
   // it's a bug that will corrupt game state. Bail out immediately.
-  const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew';
+  const isDiceGame = game.game_type === 'horses' || game.game_type === 'ship-captain-crew' || game.game_type === 'yahtzee';
   if (isDiceGame) {
     console.error('[MAKE DECISION] BLOCKED: makeDecision called for dice game - this is a bug!', {
       gameId,
