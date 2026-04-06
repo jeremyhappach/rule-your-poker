@@ -165,7 +165,7 @@ export function DiceRollAnimation({
   // Y offset is now passed in as a prop to match DiceTableLayout's unheldYOffset
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-20">
+    <div className="absolute inset-0 pointer-events-none z-20" data-dice-layer="animation" data-layer-z={20}>
       {animatingIndices.map((dieIndex, animIdx) => {
         const die = dice[dieIndex];
         const target = targetPositions[animIdx];
@@ -198,6 +198,17 @@ export function DiceRollAnimation({
         return (
           <div
             key={`flying-${dieIndex}`}
+            data-die-idx={dieIndex}
+            data-die-value={displayValue}
+            data-die-held={false}
+            data-die-held-layout={false}
+            data-die-row="animating"
+            data-die-render-path="fly-in"
+            data-die-layer="animation"
+            data-die-layer-z={20}
+            data-die-react-key={`flying-${dieIndex}`}
+            data-die-transform-owner="animation:fly-in"
+            data-die-slot-index=""
             className="absolute transition-none"
             style={{
               left: '50%',
