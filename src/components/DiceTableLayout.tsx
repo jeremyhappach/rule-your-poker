@@ -553,7 +553,7 @@ export function DiceTableLayout({
 
       const baseTrace = traceBaseInputRef.current;
       const container = containerRef.current;
-      if (!baseTrace || !container || baseTrace.renderPath !== "fly-in") return;
+      if (!baseTrace || !container) return;
 
       const dieElements = Array.from(container.querySelectorAll<HTMLElement>("[data-die-idx]"));
       if (dieElements.length === 0) return;

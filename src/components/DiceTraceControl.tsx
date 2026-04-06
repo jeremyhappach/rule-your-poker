@@ -118,7 +118,7 @@ export function DiceTraceControl() {
           </button>
           {swapCount > 0 && (
             <span className="flex items-center gap-0.5 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">
-              <AlertTriangle className="h-3 w-3" /> {swapCount} SWAP{swapCount > 1 ? "S" : ""}
+              <AlertTriangle className="h-3 w-3" /> {swapCount} ISSUE{swapCount > 1 ? "S" : ""}
             </span>
           )}
         </>
