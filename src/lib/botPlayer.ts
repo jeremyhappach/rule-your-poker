@@ -330,7 +330,7 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   
   // CRITICAL: Skip for dice games - they have their own bot logic in horsesBotLogic.ts and sccBotLogic.ts
   // This function is ONLY for poker-style games (Holm, 3-5-7) that use current_decision/decision_locked
-  const isDiceGame = gameData?.game_type === 'horses' || gameData?.game_type === 'ship-captain-crew';
+  const isDiceGame = gameData?.game_type === 'horses' || gameData?.game_type === 'ship-captain-crew' || gameData?.game_type === 'yahtzee';
   if (isDiceGame) {
     console.log('[BOT DECISIONS] Skipping - dice games have their own bot logic');
     return false;
