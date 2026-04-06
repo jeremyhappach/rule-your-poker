@@ -193,6 +193,9 @@ export function YahtzeeGameTable({
   const uiRollingTimerRef = useRef<number | null>(null);
   const heldSnapshotRef = useRef<boolean[] | null>(null);
   const botProcessingRef = useRef(false);
+  /** Ref-based identity for the currently running bot turn. Used instead of closure-based
+   *  `cancelled` so that transient dep flickers don't abort a legitimately running bot. */
+  const activeBotTurnIdentityRef = useRef<string | null>(null);
   const localRollKeyRef = useRef<string | undefined>(undefined);
   /** Monotonic counter for generating unique rollKeys across all rolls in this session */
   const rollSerialRef = useRef(0);
@@ -864,20 +867,36 @@ export function YahtzeeGameTable({
       return;
     }
 
+    // Stable identity for this bot turn — used to detect genuine cancellation vs transient dep churn.
+    const turnIdentity = `${currentRoundId}:${authTurnPlayerId}`;
+
+    // If the same bot turn is already running (effect re-fired with same identity due to
+    // transient dep churn), don't start another one.
+    if (activeBotTurnIdentityRef.current === turnIdentity && botProcessingRef.current) {
+      console.log('[BOT TURN EXIT]', { reason: 'same-turn-already-running', turnIdentity });
+      return;
+    }
+
     // Snapshot the authoritative state at effect-fire time so the bot runs
     // to completion without being cancelled by its own DB writes updating
     // authoritativeYahtzeeState (which would trigger effect cleanup → deadlock).
     const snapshotState = authoritativeYahtzeeState;
 
-    // IMPORTANT: Do NOT set botProcessingRef here. It must be set inside runBot
-    // so that if the timer is cleared by cleanup before runBot fires, the guard
-    // doesn't get stuck at true (since finally{} would never run).
-    let cancelled = false;
+    // Set the identity ref BEFORE the timer — this is what the running bot checks.
+    activeBotTurnIdentityRef.current = turnIdentity;
+
+    const isCancelled = () => {
+      const still = activeBotTurnIdentityRef.current === turnIdentity;
+      if (!still) {
+        console.log('[BOT CANCELLED]', { reason: 'identity-changed', expected: turnIdentity, current: activeBotTurnIdentityRef.current });
+      }
+      return !still;
+    };
 
     const runBot = async () => {
-      // Double-check guard in case of race between timer fire and cleanup
-      if (cancelled) {
-        console.log('[BOT TURN EXIT]', { reason: 'cancelled-at-timer-fire', authTurnPlayerId });
+      // Double-check guard in case of race between timer fire and identity change
+      if (isCancelled()) {
+        console.log('[BOT TURN EXIT]', { reason: 'cancelled-at-timer-fire', authTurnPlayerId, turnIdentity });
         return;
       }
       if (botProcessingRef.current) {
@@ -885,7 +904,7 @@ export function YahtzeeGameTable({
         return;
       }
       botProcessingRef.current = true;
-      console.log('[BOT GUARD SET]', { guard: 'botProcessingRef', value: true, roundId: currentRoundId, authTurnPlayerId });
+      console.log('[BOT GUARD SET]', { guard: 'botProcessingRef', value: true, roundId: currentRoundId, authTurnPlayerId, turnIdentity });
 
       try {
         const botPlayerId = snapshotState.currentTurnPlayerId!;
@@ -899,24 +918,27 @@ export function YahtzeeGameTable({
           botPlayerId,
           rollsRemaining: ps.rollsRemaining,
           categoriesFilled: Object.keys(ps.scorecard.scores).length,
+          turnIdentity,
         });
 
         for (let roll = 0; roll < 3; roll++) {
-          if (cancelled || ps.rollsRemaining <= 0) {
-            console.log('[BOT LOOP BREAK]', { reason: cancelled ? 'cancelled' : 'no-rolls', roll, rollsRemaining: ps.rollsRemaining });
+          if (isCancelled() || ps.rollsRemaining <= 0) {
+            console.log('[BOT LOOP BREAK]', { reason: isCancelled() ? 'cancelled' : 'no-rolls', roll, rollsRemaining: ps.rollsRemaining, turnIdentity });
             break;
           }
 
           // Decide holds BEFORE rolling (except first roll)
           if (roll > 0) {
             const holds = getBotHoldDecision(ps);
-            console.log('[BOT HOLD DECISION]', { roundId: currentRoundId, botPlayerId, roll, holds });
+            console.log('[BOT HOLD DECISION]', { roundId: currentRoundId, botPlayerId, roll, holds, turnIdentity });
             const prevRollKey = state.playerStates[botPlayerId]?.rollKey;
             ps = { ...ps, dice: ps.dice.map((d, i) => ({ ...d, isHeld: holds[i] })) };
             state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: prevRollKey } } };
             yahtzeeSync.applyOptimistic(state);
+            console.log('[BOT PRE-ROLL WAIT START]', { roll, turnIdentity });
             await new Promise(r => setTimeout(r, 900));
-            if (cancelled) { console.log('[BOT LOOP BREAK]', { reason: 'cancelled-after-hold-wait', roll }); break; }
+            console.log('[BOT PRE-ROLL WAIT END]', { roll, turnIdentity, cancelled: isCancelled() });
+            if (isCancelled()) { console.log('[BOT LOOP BREAK]', { reason: 'cancelled-after-hold-wait', roll, turnIdentity }); break; }
           }
 
           console.log('[BOT BEFORE ROLL]', {
@@ -924,37 +946,40 @@ export function YahtzeeGameTable({
             botPlayerId,
             roll,
             dice: ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld })),
+            turnIdentity,
           });
 
           rollSerialRef.current += 1;
           const botRollKey = `yahtzee:${currentRoundId}:${botPlayerId}:${rollSerialRef.current}`;
           ps = rollYahtzeeDice(ps);
-          console.log('[BOT AFTER ROLL]', { rollKey: botRollKey, roll, rollsRemaining: ps.rollsRemaining, dice: ps.dice.map(d => d.value) });
+          console.log('[BOT AFTER ROLL]', { rollKey: botRollKey, roll, rollsRemaining: ps.rollsRemaining, dice: ps.dice.map(d => d.value), turnIdentity });
           console.log('[ROLL GENERATED]', { rollKey: botRollKey, playerId: botPlayerId, rollSerial: rollSerialRef.current, roll, roundId: currentRoundId });
           state = { ...state, playerStates: { ...state.playerStates, [botPlayerId]: { ...ps, rollKey: botRollKey } } };
           yahtzeeSync.applyOptimistic(state);
           await updateYahtzeeState(currentRoundId, state);
 
+          console.log('[BOT POST-ROLL WAIT START]', { roll, turnIdentity });
           await new Promise(r => setTimeout(r, 1800));
+          console.log('[BOT POST-ROLL WAIT END]', { roll, turnIdentity, cancelled: isCancelled() });
 
           const diceValues = ps.dice.map(d => d.value);
           if (isYahtzee(diceValues) && diceValues[0] !== 0) {
             setShowYahtzeeOverlay(botName);
           }
 
-          if (cancelled) { console.log('[BOT LOOP BREAK]', { reason: 'cancelled-after-roll-wait', roll }); break; }
+          if (isCancelled()) { console.log('[BOT LOOP BREAK]', { reason: 'cancelled-after-roll-wait', roll, turnIdentity }); break; }
           if (ps.rollsRemaining <= 0 || shouldBotStopRolling(ps)) {
-            console.log('[BOT LOOP BREAK]', { reason: ps.rollsRemaining <= 0 ? 'all-rolls-used' : 'stop-early', roll });
+            console.log('[BOT LOOP BREAK]', { reason: ps.rollsRemaining <= 0 ? 'all-rolls-used' : 'stop-early', roll, turnIdentity });
             break;
           }
         }
 
-        if (cancelled) {
-          console.log('[BOT TURN EXIT]', { reason: 'cancelled-after-loop' });
+        if (isCancelled()) {
+          console.log('[BOT TURN EXIT]', { reason: 'cancelled-after-loop', turnIdentity });
           return;
         }
         const category = getBotCategoryChoice(ps);
-        console.log('[BOT BEFORE CATEGORY COMMIT]', { roundId: currentRoundId, botPlayerId, chosenCategory: category, score: calculateCategoryScore(category, ps.dice.map(d => d.value)) });
+        console.log('[BOT BEFORE CATEGORY COMMIT]', { roundId: currentRoundId, botPlayerId, chosenCategory: category, score: calculateCategoryScore(category, ps.dice.map(d => d.value)), turnIdentity });
 
         const botDiceForCache: HorsesDieType[] = ps.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
         setCachedOpponentDice({ dice: botDiceForCache, rollKey: ps.rollKey, playerId: botPlayerId });
@@ -968,7 +993,7 @@ export function YahtzeeGameTable({
         await updateYahtzeeState(currentRoundId, state);
 
         await new Promise(r => setTimeout(r, 2000));
-        if (cancelled) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); setCachedOpponentDice(null); console.log('[BOT TURN EXIT]', { reason: 'cancelled-after-score-wait' }); return; }
+        if (isCancelled()) { setLastScoredCategory(null); setLastScoredValue(null); setScoringInProgress(false); setCachedOpponentDice(null); console.log('[BOT TURN EXIT]', { reason: 'cancelled-after-score-wait', turnIdentity }); return; }
 
         setLastScoredCategory(null);
         setLastScoredValue(null);
@@ -982,6 +1007,7 @@ export function YahtzeeGameTable({
           fromPlayerId: prevTurnOwner,
           toPlayerId: state.currentTurnPlayerId,
           gamePhase: state.gamePhase,
+          turnIdentity,
         });
         yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
@@ -990,15 +1016,29 @@ export function YahtzeeGameTable({
         console.error('[YAHTZEE] Bot error:', e);
       } finally {
         botProcessingRef.current = false;
-        console.log('[BOT GUARD CLEAR]', { guard: 'botProcessingRef', value: false, roundId: currentRoundId });
+        // Only clear identity if it still matches (prevents clearing a newer turn's identity)
+        if (activeBotTurnIdentityRef.current === turnIdentity) {
+          activeBotTurnIdentityRef.current = null;
+        }
+        console.log('[BOT GUARD CLEAR]', { guard: 'botProcessingRef', value: false, roundId: currentRoundId, turnIdentity });
       }
     };
 
     const timer = setTimeout(runBot, 1500);
     return () => {
-      cancelled = true;
       clearTimeout(timer);
-      console.log('[BOT EFFECT CLEANUP]', { roundId: currentRoundId, authTurnPlayerId, botProcessingRef: botProcessingRef.current });
+      // NOTE: We do NOT clear activeBotTurnIdentityRef here.
+      // If the bot is already running (timer fired), clearing the identity would cancel it.
+      // Instead, the NEXT effect invocation sets the identity to the new turn,
+      // and the running bot detects the change via isCancelled().
+      // If the timer hasn't fired yet, clearTimeout above prevents it from starting.
+      console.log('[BOT EFFECT CLEANUP]', {
+        roundId: currentRoundId,
+        authTurnPlayerId,
+        botProcessingRef: botProcessingRef.current,
+        turnIdentity,
+        activeIdentity: activeBotTurnIdentityRef.current,
+      });
     };
     // IMPORTANT: authoritativeYahtzeeState is intentionally excluded from deps.
     // The bot snapshots state at fire-time and runs to completion. Including it

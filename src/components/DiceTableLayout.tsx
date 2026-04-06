@@ -857,11 +857,12 @@ export function DiceTableLayout({
         .map((item) => item.originalIndex);
 
       // Sort pre-held dice by their registry hold order for stable positioning
-      const registryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+      // Tiebreak by originalIndex to prevent swaps when holdOrders are equal or ambiguous
+      const registryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
       const sortedPreHeld = preHeldIndices.sort((a, b) => {
         const orderA = stableHeldSlotByDieRef.current.get(a) ?? Infinity;
         const orderB = stableHeldSlotByDieRef.current.get(b) ?? Infinity;
-        return orderA - orderB;
+        return orderA - orderB || a - b;
       });
       const preHeldPositions = getHeldPositions(sortedPreHeld.length, dieWidth, gap);
 
@@ -1073,7 +1074,7 @@ export function DiceTableLayout({
     if (holdOrder === undefined) return undefined;
 
     // Sort all registered dice by their hold order
-    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+    const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
     const registrySize = entries.length;
     const positionIdx = entries.findIndex(([di]) => di === originalIndex);
     if (positionIdx < 0) return undefined;
@@ -1134,7 +1135,7 @@ export function DiceTableLayout({
     }
   });
 
-  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1]);
+  const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
   const preRollHeldIndices = Array.isArray(heldMaskBeforeComplete)
     ? orderedDice
         .filter((item) => !!heldMaskBeforeComplete[item.originalIndex])
