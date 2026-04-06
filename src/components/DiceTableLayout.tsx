@@ -11,9 +11,8 @@ import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorde
 import {
   isDicePresentationTraceEnabled,
   recordDicePresentationTrace,
-  detectOrderingSwap,
-  getDicePresentationTraceBuffer,
   type DicePresentationTraceEntry,
+  type TraceInput,
 } from "@/lib/dicePresentationTrace";
 
 // Persist rollKey / fly-in consumption across DiceTableLayout remounts.
