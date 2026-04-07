@@ -693,6 +693,43 @@ export const CribbageMobileGameTable = ({
       checkCribbagePhaseRenderMismatch(gameId, currentHandNumber, state.phase, 'input');
     }
 
+    // INV-7: tap-failure — detect when cards should be tappable but interaction is blocked
+    if (!isSnapshotPhase && instrPlayer && currentPlayerId) {
+      const myState = state.playerStates?.[instrPlayer.id];
+      const isMyPeggingTurn = state.pegging?.currentTurnPlayerId === instrPlayer.id;
+      const hasPlayable = myState?.hand ? myState.hand.some(
+        (c: CribbageCard) => {
+          const val = c.rank === 'A' ? 1 : ['J','Q','K'].includes(c.rank) ? 10 : parseInt(c.rank);
+          return val + (state.pegging?.currentCount ?? 0) <= 31;
+        }
+      ) : false;
+      const cardsTabMounted = activeTab === 'cards' && isGameplayMode && !isTransitioning
+        && !countingStateSnapshot && !countingAnimationActiveRef.current
+        && renderHandKey === currentHandKey && !!viewState;
+
+      checkCribbageTapFailure({
+        gameId,
+        handNumber: currentHandNumber,
+        roundId: currentRoundId || undefined,
+        dealerGameId: dealerGameId || undefined,
+        phase: state.phase,
+        isMyTurn: isMyPeggingTurn,
+        isProcessing,
+        canPlayAnyCard: hasPlayable,
+        haveDiscarded: (myState?.discardedToCrib?.length ?? 0) > 0,
+        cardCount: myState?.hand?.length ?? 0,
+        cardsTabMounted,
+        extra: {
+          renderHandKey: renderHandKey?.slice(0, 30),
+          currentHandKey: currentHandKey?.slice(0, 30),
+          isTransitioning,
+          isFrozen: syncHandle.isFrozen,
+          activeTab,
+          isGameplayMode,
+        },
+      });
+    }
+
     // Debug-gated transition: scoring-start (fire once when counting overlay is actually shown)
     if (showingCountingOverlay || state.phase === 'counting') {
       const scoringKey = `${currentRoundId}:${currentHandNumber}:counting`;
