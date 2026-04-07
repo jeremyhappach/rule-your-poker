@@ -3553,9 +3553,8 @@ export const CribbageMobileGameTable = ({
                 authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
                 renderSource: 'sync-presentation',
               }}
-            />
-            />
           )}
+
           
           {/* Counting animation placeholder */}
           {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (
