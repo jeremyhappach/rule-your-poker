@@ -2076,12 +2076,15 @@ export const CribbageMobileGameTable = ({
     // The phase-based clearing effect (with pegScore catch-up check) will handle
     // clearing overrides safely once the authoritative state has caught up.
     // Clearing here causes the pegboard to briefly show stale pre-counting scores.
-    // Freeze current presentation instead of blanking the table.
-    // The frozen last-good state stays visible until the first new-hand snapshot arrives.
-    const savedPresentation = syncHandle.presentationState;
+    // Reset sync framework to null — do NOT re-commit stale presentation.
+    // Re-committing the old hand's state after reset causes a stale identity bounce
+    // (OLD → null → OLD → NEW) that triggers cut-card re-animation and can flash
+    // stale cards if the new authoritative snapshot is delayed.
+    // The isTransitioning flag + cards-tab guard (renderHandKey === currentHandKey)
+    // already suppress rendering when presentation is null, so no visual gap occurs.
+    const hadPresentation = syncHandle.presentationState !== null;
     syncHandle.reset(null);
-    if (savedPresentation) {
-      syncHandle.commitToPresentation(savedPresentation);
+    if (hadPresentation) {
       syncHandle.freezePresentation();
       transitionFrozenRef.current = true;
       transitionFrozenForRoundRef.current = currentRoundId;
