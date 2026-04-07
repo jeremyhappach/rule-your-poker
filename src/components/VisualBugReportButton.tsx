@@ -169,7 +169,16 @@ export const VisualBugReportButton = ({
           },
         });
 
-      toast({ title: "Bug reported", description: "Thank you — report submitted." });
+      // Send dealer-style chat message announcing the bug report
+      const displayName = reporterUsername || 'A player';
+      await supabase
+        .from('chat_messages')
+        .insert({
+          game_id: gameId,
+          user_id: user.id,
+          message: `🐛 ${displayName} submitted a bug report: ${entry.label}`,
+        });
+
       setOpen(false);
 
       // Resume if we paused
