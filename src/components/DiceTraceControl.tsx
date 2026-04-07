@@ -70,6 +70,9 @@ export function DiceTraceControl() {
     }
   }, []);
 
+  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
+  if (HIDE_DEBUG_UI) return null;
+
   return (
     <div className="absolute top-1 left-1 z-[9999] flex items-center gap-1 flex-wrap">
       {/* Build badge */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Bug } from "lucide-react";
 import { refreshDebugEventFlag } from "@/lib/debugEventLogger";
+import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_debug_events";
 
