@@ -53,6 +53,10 @@ import {
   checkCribbageResultRenderMismatch,
   checkRegressiveIdentity,
   resetCribbageTracking,
+  checkCribbageHandReversion,
+  checkCribbageScoreReversion,
+  traceCribbagePresentationSourceChange,
+  resetCribbageReversionTracking,
   logCribbageScoringStart,
   logCribbageResultDisplay,
   logCribbageDealerGameStart,
@@ -606,14 +610,75 @@ export const CribbageMobileGameTable = ({
       (state.phase === 'complete' && state.winnerPlayerId)
     );
 
+    // Compute isSnapshotPhase early — used by multiple invariants
+    const isSnapshotPhase = Boolean(countingStateSnapshot && !countingDelayActive) || winSequencePhase !== 'idle';
+
     // INV-4: regressive-identity
     checkRegressiveIdentity(gameId, dealerGameId, currentHandNumber);
 
+    // INV-5: hand-reversion — detect presentation hand returning to 6 cards after discard
+    const instrPlayer = players.find(p => p.user_id === currentUserId);
+    if (instrPlayer && !isSnapshotPhase) {
+      const authState = cribbageState?.playerStates?.[instrPlayer.id];
+      const presState = state.playerStates?.[instrPlayer.id];
+      if (authState && presState) {
+        const toCardId = (c: { rank: string; suit: string }) => `${c.rank}${c.suit}`;
+        checkCribbageHandReversion({
+          gameId,
+          handNumber: currentHandNumber,
+          authoritativeHandSize: authState.hand?.length ?? 0,
+          presentationHandSize: presState.hand?.length ?? 0,
+          authoritativeCardIds: (authState.hand ?? []).map(toCardId),
+          presentationCardIds: (presState.hand ?? []).map(toCardId),
+          progressVector: null,
+          source: viewState ? 'sync-presentation' : 'authoritative-fallback',
+          roundId: currentRoundId || undefined,
+          dealerGameId: dealerGameId || undefined,
+        });
+      }
+    }
+
+    // INV-6: score-reversion — detect presentation score decreasing
+    const presentationScores: Record<string, number> = {};
+    const authoritativeScores: Record<string, number> = {};
+    for (const [pid, ps] of Object.entries(state.playerStates ?? {})) {
+      presentationScores[pid] = ps.pegScore ?? 0;
+    }
+    if (cribbageState) {
+      for (const [pid, ps] of Object.entries(cribbageState.playerStates ?? {})) {
+        authoritativeScores[pid] = ps.pegScore ?? 0;
+      }
+    }
+    const scoreSource = countingScoreOverrides ? 'counting-overrides' : countingStateSnapshot ? 'counting-snapshot' : viewState ? 'sync-presentation' : 'authoritative-fallback';
+    checkCribbageScoreReversion(
+      gameId,
+      currentHandNumber,
+      presentationScores,
+      authoritativeScores,
+      scoreSource,
+      currentRoundId || undefined,
+      dealerGameId || undefined,
+    );
+
+    // Presentation source trace — track when hand/score sources change
+    const traceSource = countingStateSnapshot && !countingDelayActive ? 'counting-snapshot'
+      : winSequencePhase !== 'idle' ? 'win-sequence'
+      : viewState ? 'sync-presentation'
+      : 'authoritative-fallback';
+    const traceHandSize = instrPlayer
+      ? (state.playerStates?.[instrPlayer.id]?.hand?.length ?? 0)
+      : 0;
+    traceCribbagePresentationSourceChange(
+      gameId,
+      currentHandNumber,
+      traceHandSize,
+      presentationScores,
+      traceSource,
+      null,
+      currentRoundId || undefined,
+    );
+
     // INV-1: stale-dealer-game-render
-    // Active mobile Cribbage does not render from state.dealerGameId; it renders from hand identity.
-    // Skip during counting/win phases: the UI intentionally renders from latched snapshots,
-    // so renderHandKey (from viewState) may transiently differ from currentHandKey (from cribbageState).
-    const isSnapshotPhase = Boolean(countingStateSnapshot && !countingDelayActive) || winSequencePhase !== 'idle';
     if (renderHandKey && currentHandKey && !isSnapshotPhase) {
       checkStaleDealerGameRender(gameId, renderHandKey, currentHandKey, currentHandNumber);
     }
@@ -663,13 +728,18 @@ export const CribbageMobileGameTable = ({
   }, [
     activeInstrumentationState,
     countingDelayActive,
+    countingScoreOverrides,
     countingStateSnapshot,
+    cribbageState,
     currentHandKey,
     currentHandNumber,
+    currentUserId,
+    players,
     currentRoundId,
     dealerGameId,
     gameId,
     renderHandKey,
+    viewState,
     winSequenceData,
     winSequencePhase,
   ]);
@@ -678,6 +748,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     return () => {
       resetCribbageTracking(gameId);
+      resetCribbageReversionTracking(gameId);
     };
   }, [gameId]);
 
