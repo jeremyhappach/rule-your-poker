@@ -2101,7 +2101,7 @@ export const CribbageMobileGameTable = ({
         payload: {
           instanceId: instanceIdRef.current,
           reason: 'no_saved_presentation_during_bootstrap',
-          savedPresentationNull: !savedPresentation,
+          hadPresentationBeforeReset: !hadPresentation,
           transitionFrozenRef: transitionFrozenRef.current,
         },
       });
@@ -2113,7 +2113,7 @@ export const CribbageMobileGameTable = ({
     
     logCribbageDebug(debugCtx, 'hand_transition:sync_reset', {
       newRoundId: currentRoundId.slice(0, 8),
-      frozenPresentation: !!savedPresentation,
+      frozenPresentation: hadPresentation,
       isBootstrapTransition,
       isTransitioningSet: !isBootstrapTransition,
       instanceId: instanceIdRef.current,
