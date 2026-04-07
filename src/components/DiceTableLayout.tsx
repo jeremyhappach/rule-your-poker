@@ -1466,8 +1466,8 @@ export function DiceTableLayout({
       let intendedPos: { x: number; y: number } | null = null;
 
       if (shouldUseFreezePresentation) {
-        const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
-        actualTransform = frozenTransform ?? 'none';
+        const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
+        actualTransform = frozenEntry?.transform ?? 'none';
         // Parse frozen transform for position tracking
         const match = actualTransform.match(/calc\(-50% \+ ([-\d.]+)px\).*calc\(-50% \+ ([-\d.]+)px\)/);
         if (match) actualPos = { x: parseFloat(match[1]), y: parseFloat(match[2]) };
@@ -1768,8 +1768,8 @@ export function DiceTableLayout({
     return (
       <div ref={containerRef} className="relative isolate" style={{ width: isTablet ? '360px' : '200px', height: isTablet ? '220px' : '120px' }}>
         {orderedDice.map((item) => {
-          const frozenTransform = frozenPresentationRef.current?.get(item.originalIndex);
-          if (!frozenTransform) return null;
+          const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
+          if (!frozenEntry) return null;
 
           const sccDie = item.die as SCCDieType;
           const isSCCDie = isSCC && 'isSCC' in sccDie && sccDie.isSCC;
@@ -1779,11 +1779,16 @@ export function DiceTableLayout({
             ? !!heldMask[item.originalIndex]
             : stableHeldSlotByDieRef.current.has(item.originalIndex);
 
+          // CRITICAL: Use the frozen value (captured when positions were computed)
+          // NOT item.die.value which may come from a different effectiveDice source
+          // after stabilization ends. This prevents value-position mismatch.
+          const frozenValue = frozenEntry.value;
+
           return (
             <div
               key={`die-${item.originalIndex}`}
               data-die-idx={item.originalIndex}
-              data-die-value={item.die.value}
+              data-die-value={frozenValue}
               data-die-held={true}
               data-die-held-layout={wasHeld}
               data-die-row="frozen"
@@ -1796,11 +1801,11 @@ export function DiceTableLayout({
               style={{
                 left: '50%',
                 top: '50%',
-                transform: frozenTransform,
+                transform: frozenEntry.transform,
               }}
             >
               <HorsesDie
-                value={item.die.value}
+                value={frozenValue}
                 isHeld={wasHeld}
                 isRolling={false}
                 canToggle={false}
