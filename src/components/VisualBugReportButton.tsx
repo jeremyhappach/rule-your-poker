@@ -33,6 +33,8 @@ interface VisualBugReportButtonProps {
   /** Extra context snapshot (render keys, progress vectors, recent events) */
   extraContext?: Record<string, unknown>;
   variant?: 'mobile' | 'desktop';
+  /** Reporter's display name for the chat announcement */
+  reporterUsername?: string;
 }
 
 function getPlatformInfo(): Record<string, string> {
@@ -68,6 +70,7 @@ export const VisualBugReportButton = ({
   hasActiveTimer,
   extraContext,
   variant = 'mobile',
+  reporterUsername,
 }: VisualBugReportButtonProps) => {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
@@ -166,7 +169,16 @@ export const VisualBugReportButton = ({
           },
         });
 
-      toast({ title: "Bug reported", description: "Thank you — report submitted." });
+      // Send dealer-style chat message announcing the bug report
+      const displayName = reporterUsername || 'A player';
+      await supabase
+        .from('chat_messages')
+        .insert({
+          game_id: gameId,
+          user_id: user.id,
+          message: `🐛 ${displayName} submitted a bug report: ${entry.label}`,
+        });
+
       setOpen(false);
 
       // Resume if we paused
