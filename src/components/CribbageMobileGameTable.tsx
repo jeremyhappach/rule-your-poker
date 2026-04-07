@@ -727,13 +727,17 @@ export const CribbageMobileGameTable = ({
   }, [
     activeInstrumentationState,
     countingDelayActive,
+    countingScoreOverrides,
     countingStateSnapshot,
+    cribbageState,
     currentHandKey,
     currentHandNumber,
+    currentPlayer,
     currentRoundId,
     dealerGameId,
     gameId,
     renderHandKey,
+    viewState,
     winSequenceData,
     winSequencePhase,
   ]);
@@ -742,6 +746,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     return () => {
       resetCribbageTracking(gameId);
+      resetCribbageReversionTracking(gameId);
     };
   }, [gameId]);
 
