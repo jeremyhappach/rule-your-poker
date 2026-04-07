@@ -1391,7 +1391,8 @@ export function DiceTableLayout({
 
   // ── DIE_VALUE_IDENTITY_MISMATCH INVARIANT ──
   // Verify that every die's rendered value matches the authoritative source for its originalIndex.
-  // If effectiveDice and visualDice diverge, this will fire.
+  // Check 1: effectiveDice vs visualDice divergence
+  // Check 2: frozen value vs effectiveDice divergence (the root cause of the post-roll-3 bug)
   if (layoutHeldDice.length > 0) {
     for (const item of orderedDice) {
       const effectiveVal = effectiveDice[item.originalIndex]?.value;
@@ -1409,6 +1410,20 @@ export function DiceTableLayout({
           isStabilizing,
           isObserver,
         });
+      }
+      // Check frozen value consistency
+      if (shouldUseFreezePresentation) {
+        const frozenEntry = frozenPresentationRef.current?.get(item.originalIndex);
+        if (frozenEntry && frozenEntry.value !== itemVal) {
+          console.error('[DIE_FROZEN_VALUE_STALE]', {
+            originalIndex: item.originalIndex,
+            frozenValue: frozenEntry.value,
+            currentEffectiveValue: itemVal,
+            rollKey,
+            isStabilizing,
+            renderPath: 'freeze',
+          });
+        }
       }
     }
   }
