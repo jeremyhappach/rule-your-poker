@@ -18,6 +18,9 @@ function isStraightBotOn(): boolean {
 }
 
 export function DiceTraceControl() {
+  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
+  const { HIDE_DEBUG_UI } = await import("@/lib/debugUIVisibility").catch(() => ({ HIDE_DEBUG_UI: false })) as any;
+
   const [recording, setRecording] = useState(isDicePresentationTraceRecording());
   const [swapCount, setSwapCount] = useState(0);
   const [frameCount, setFrameCount] = useState(0);
