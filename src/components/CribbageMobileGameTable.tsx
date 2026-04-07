@@ -610,6 +610,9 @@ export const CribbageMobileGameTable = ({
       (state.phase === 'complete' && state.winnerPlayerId)
     );
 
+    // Compute isSnapshotPhase early — used by multiple invariants
+    const isSnapshotPhase = Boolean(countingStateSnapshot && !countingDelayActive) || winSequencePhase !== 'idle';
+
     // INV-4: regressive-identity
     checkRegressiveIdentity(gameId, dealerGameId, currentHandNumber);
 
@@ -626,8 +629,8 @@ export const CribbageMobileGameTable = ({
           presentationHandSize: presState.hand?.length ?? 0,
           authoritativeCardIds: (authState.hand ?? []).map(toCardId),
           presentationCardIds: (presState.hand ?? []).map(toCardId),
-          progressVector: syncHandle.describeProgress?.(),
-          source: countingStateSnapshot ? 'counting-snapshot' : winSequencePhase !== 'idle' ? 'win-sequence' : viewState ? 'sync-presentation' : 'authoritative-fallback',
+          progressVector: null,
+          source: viewState ? 'sync-presentation' : 'authoritative-fallback',
           roundId: currentRoundId || undefined,
           dealerGameId: dealerGameId || undefined,
         });
@@ -654,7 +657,6 @@ export const CribbageMobileGameTable = ({
       scoreSource,
       currentRoundId || undefined,
       dealerGameId || undefined,
-      syncHandle.describeProgress?.(),
     );
 
     // Presentation source trace — track when hand/score sources change
@@ -671,15 +673,11 @@ export const CribbageMobileGameTable = ({
       traceHandSize,
       presentationScores,
       traceSource,
-      syncHandle.describeProgress?.(),
+      null,
       currentRoundId || undefined,
     );
 
     // INV-1: stale-dealer-game-render
-    // Active mobile Cribbage does not render from state.dealerGameId; it renders from hand identity.
-    // Skip during counting/win phases: the UI intentionally renders from latched snapshots,
-    // so renderHandKey (from viewState) may transiently differ from currentHandKey (from cribbageState).
-    const isSnapshotPhase = Boolean(countingStateSnapshot && !countingDelayActive) || winSequencePhase !== 'idle';
     if (renderHandKey && currentHandKey && !isSnapshotPhase) {
       checkStaleDealerGameRender(gameId, renderHandKey, currentHandKey, currentHandNumber);
     }
