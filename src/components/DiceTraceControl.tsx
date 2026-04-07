@@ -19,8 +19,6 @@ function isStraightBotOn(): boolean {
 }
 
 export function DiceTraceControl() {
-  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
-  if (HIDE_DEBUG_UI) return null;
 
   const [recording, setRecording] = useState(isDicePresentationTraceRecording());
   const [swapCount, setSwapCount] = useState(0);
