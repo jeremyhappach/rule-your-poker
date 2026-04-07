@@ -1267,8 +1267,8 @@ export function DiceTableLayout({
     // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
     // This ensures held dice always display in ascending value order.
     const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => {
-      const valA = visualDice[a[0]]?.value ?? 0;
-      const valB = visualDice[b[0]]?.value ?? 0;
+      const valA = effectiveDice[a[0]]?.value ?? 0;
+      const valB = effectiveDice[b[0]]?.value ?? 0;
       return valA !== valB ? valA - valB : a[0] - b[0];
     });
     const registrySize = entries.length;
@@ -1333,8 +1333,8 @@ export function DiceTableLayout({
 
   // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
   const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => {
-    const valA = visualDice[a[0]]?.value ?? 0;
-    const valB = visualDice[b[0]]?.value ?? 0;
+    const valA = effectiveDice[a[0]]?.value ?? 0;
+    const valB = effectiveDice[b[0]]?.value ?? 0;
     return valA !== valB ? valA - valB : a[0] - b[0];
   });
   const preRollHeldIndices = Array.isArray(heldMaskBeforeComplete)
@@ -1367,6 +1367,30 @@ export function DiceTableLayout({
     usePreRollLayout,
     mainBranch,
   };
+
+  // ── DIE_VALUE_IDENTITY_MISMATCH INVARIANT ──
+  // Verify that every die's rendered value matches the authoritative source for its originalIndex.
+  // If effectiveDice and visualDice diverge, this will fire.
+  if (layoutHeldDice.length > 0) {
+    for (const item of orderedDice) {
+      const effectiveVal = effectiveDice[item.originalIndex]?.value;
+      const visualVal = visualDice[item.originalIndex]?.value;
+      const itemVal = item.die.value;
+      if (effectiveVal !== undefined && visualVal !== undefined && effectiveVal !== visualVal) {
+        console.error('[DIE_VALUE_IDENTITY_MISMATCH]', {
+          originalIndex: item.originalIndex,
+          effectiveDiceValue: effectiveVal,
+          visualDiceValue: visualVal,
+          itemDieValue: itemVal,
+          isHeld: item.die.isHeld,
+          rollKey,
+          effectiveDiceSource: isStabilizing ? 'lastValidDiceRef' : hasValidCurrentDice ? 'presentationDice' : shouldFallbackToCache ? 'lastValidDiceRef' : 'presentationDice',
+          isStabilizing,
+          isObserver,
+        });
+      }
+    }
+  }
 
   // ── PRE-COMPUTE RENDER DECISIONS (shared by trace + JSX) ──
   // This ensures the trace captures the EXACT same transforms applied in the render.
@@ -1783,7 +1807,7 @@ export function DiceTableLayout({
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
           runKey={flyInRunId}
-          dice={visualDice}
+          dice={effectiveDice}
           animatingIndices={animatingDiceIndices}
           targetPositions={animatingDiceIndices.map((_, displayIdx) =>
             getUnheldPosition(displayIdx, animatingDiceIndices.length),
