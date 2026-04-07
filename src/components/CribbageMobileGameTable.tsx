@@ -694,7 +694,7 @@ export const CribbageMobileGameTable = ({
     }
 
     // INV-7: tap-failure — detect when cards should be tappable but interaction is blocked
-    if (!isSnapshotPhase && instrPlayer && currentPlayerId) {
+    if (!isSnapshotPhase && instrPlayer) {
       const myState = state.playerStates?.[instrPlayer.id];
       const isMyPeggingTurn = state.pegging?.currentTurnPlayerId === instrPlayer.id;
       const hasPlayable = myState?.hand ? myState.hand.some(
@@ -772,7 +772,7 @@ export const CribbageMobileGameTable = ({
     cribbageState,
     currentHandKey,
     currentHandNumber,
-    currentPlayerId,
+    currentUserId,
     currentUserId,
     isProcessing,
     isTransitioning,
