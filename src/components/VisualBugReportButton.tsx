@@ -33,6 +33,8 @@ interface VisualBugReportButtonProps {
   /** Extra context snapshot (render keys, progress vectors, recent events) */
   extraContext?: Record<string, unknown>;
   variant?: 'mobile' | 'desktop';
+  /** Reporter's display name for the chat announcement */
+  reporterUsername?: string;
 }
 
 function getPlatformInfo(): Record<string, string> {
