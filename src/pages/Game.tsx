@@ -56,6 +56,7 @@ import { persistTransition } from "@/lib/persistSyncDebugEvent";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
+import { VisualBugReportButton } from "@/components/VisualBugReportButton";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
 import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { PlayerClickDialog } from "@/components/PlayerClickDialog";
