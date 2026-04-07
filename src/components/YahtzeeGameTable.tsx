@@ -1228,6 +1228,21 @@ export function YahtzeeGameTable({
 
           console.log('[BOT POST-ROLL WAIT START]', { roll, turnIdentity });
           await new Promise(r => setTimeout(r, 1800));
+
+          // TEMP DEBUG PAUSE FOR HELD-ROW ORDERING INVESTIGATION
+          // MUST REMOVE AFTER CAPTURE / FIX IS COMPLETE
+          if (isYahtzeeBotPauseEnabled()) {
+            console.log('[BOT DEBUG PAUSE START]', {
+              roll,
+              turnIdentity,
+              rollKey: botRollKey,
+              dice: describeBotDiceState(ps.dice),
+              pauseMs: 5000,
+            });
+            await new Promise(r => setTimeout(r, 5000));
+            console.log('[BOT DEBUG PAUSE END]', { roll, turnIdentity });
+          }
+
           const cancelledAfterRollWait = isCancelled(`after-roll-wait:roll-${roll}`);
           console.log('[BOT POST-ROLL WAIT END]', { roll, turnIdentity, cancelled: cancelledAfterRollWait });
 
