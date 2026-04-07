@@ -665,8 +665,8 @@ export const CribbageMobileGameTable = ({
       : winSequencePhase !== 'idle' ? 'win-sequence'
       : viewState ? 'sync-presentation'
       : 'authoritative-fallback';
-    const traceHandSize = currentPlayer
-      ? (state.playerStates?.[currentPlayer.id]?.hand?.length ?? 0)
+    const traceHandSize = instrPlayer
+      ? (state.playerStates?.[instrPlayer.id]?.hand?.length ?? 0)
       : 0;
     traceCribbagePresentationSourceChange(
       gameId,
@@ -733,7 +733,8 @@ export const CribbageMobileGameTable = ({
     cribbageState,
     currentHandKey,
     currentHandNumber,
-    currentPlayer,
+    currentUserId,
+    players,
     currentRoundId,
     dealerGameId,
     gameId,
