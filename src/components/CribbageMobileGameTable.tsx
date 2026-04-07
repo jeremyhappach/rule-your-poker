@@ -3553,6 +3553,7 @@ export const CribbageMobileGameTable = ({
                 authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
                 renderSource: 'sync-presentation',
               }}
+            />
           )}
 
           
