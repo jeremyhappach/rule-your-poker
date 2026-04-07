@@ -57,6 +57,7 @@ import {
   checkCribbageScoreReversion,
   traceCribbagePresentationSourceChange,
   resetCribbageReversionTracking,
+  checkCribbageTapFailure,
   logCribbageScoringStart,
   logCribbageResultDisplay,
   logCribbageDealerGameStart,
