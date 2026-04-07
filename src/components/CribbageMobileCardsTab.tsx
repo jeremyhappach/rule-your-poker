@@ -7,6 +7,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 interface Player {
   id: string;
