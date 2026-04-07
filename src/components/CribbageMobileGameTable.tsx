@@ -703,7 +703,9 @@ export const CribbageMobileGameTable = ({
           return val + (state.pegging?.currentCount ?? 0) <= 31;
         }
       ) : false;
-      const cardsTabMounted = activeTab === 'cards' && isGameplayMode && !isTransitioning
+      // Inline check for whether cards tab would be mounted (isGameplayMode is declared later)
+      const wouldBeGameplayMode = !effectiveShowHighCardSelection && !isDealerSelection && initialLoadComplete && !!renderHandKey;
+      const cardsTabMounted = activeTab === 'cards' && wouldBeGameplayMode && !isTransitioning
         && !countingStateSnapshot && !countingAnimationActiveRef.current
         && renderHandKey === currentHandKey && !!viewState;
 
@@ -725,7 +727,7 @@ export const CribbageMobileGameTable = ({
           isTransitioning,
           isFrozen: syncHandle.isFrozen,
           activeTab,
-          isGameplayMode,
+          wouldBeGameplayMode,
         },
       });
     }
