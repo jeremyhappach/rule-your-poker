@@ -288,7 +288,10 @@ export function DiceTableLayout({
   const lastHeldTransformByDieRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   // Frozen presentation snapshot: captured at the moment all dice become held (lock-in / roll 3).
   // Each die's position is frozen exactly where it was, preventing any post-lock movement.
-  const frozenPresentationRef = useRef<Map<number, string> | null>(null);
+  // CRITICAL: Stores BOTH transform AND value so the freeze render always uses the values
+  // that determined the slot positions, even if effectiveDice source changes between renders
+  // (e.g., stabilization cache → presentationDice).
+  const frozenPresentationRef = useRef<Map<number, { transform: string; value: number }> | null>(null);
   const frozenForRollKeyRef = useRef<string | number | undefined>(undefined);
   const lastScatterTransformByDieRef = useRef<Map<number, { x: number; y: number; rotate: number }>>(new Map());
   const renderDecisionByDieRef = useRef<
@@ -1029,15 +1032,25 @@ export function DiceTableLayout({
   const shouldUseFreezePresentation = !hasNoOrderedDice && allHeld && !isAnimatingFlyIn && rollKeyProcessed;
   if (shouldUseFreezePresentation) {
     // Capture frozen positions ONCE per rollKey lock
-    if (!frozenPresentationRef.current || frozenForRollKeyRef.current !== rollKey) {
-      const frozenMap = new Map<number, string>();
+    // CRITICAL: Also recompute if effectiveDice values changed since last capture.
+    // This prevents the bug where stabilization cache values are used to compute positions
+    // but then presentationDice values (which may differ) are rendered at those positions.
+    const currentValueFingerprint = orderedDice.map(d => d.die.value).join(',');
+    const prevFrozenFingerprint = frozenPresentationRef.current
+      ? Array.from(frozenPresentationRef.current.entries())
+          .sort((a, b) => a[0] - b[0])
+          .map(([, entry]) => entry.value)
+          .join(',')
+      : null;
+    const valuesChanged = prevFrozenFingerprint !== null && prevFrozenFingerprint !== currentValueFingerprint;
+
+    if (!frozenPresentationRef.current || frozenForRollKeyRef.current !== rollKey || valuesChanged) {
+      const frozenMap = new Map<number, { transform: string; value: number }>();
       const heldYOffset = -35;
       const unheldYOffset = 50;
 
       // CRITICAL: Use heldMaskBeforeComplete to determine which dice were in the held row
       // vs scatter BEFORE all-held. This prevents roll-3 from moving scatter dice into held row.
-      // The registry can be polluted during fly-in animation (all dice get isHeld=true from game logic
-      // but some were animating in scatter), so heldMaskBeforeComplete is the authoritative source.
       const heldMask = Array.isArray(heldMaskBeforeComplete) ? heldMaskBeforeComplete : null;
 
       // Build held-row positions for ONLY the dice that were held before freeze
@@ -1067,15 +1080,19 @@ export function DiceTableLayout({
           const posIdx = sortedPreHeld.indexOf(item.originalIndex);
           if (posIdx >= 0 && preHeldPositions[posIdx]) {
             const pos = preHeldPositions[posIdx];
-            frozenMap.set(item.originalIndex,
-              `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`);
+            frozenMap.set(item.originalIndex, {
+              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
+              value: item.die.value,
+            });
             return;
           }
           // Fallback: use cached held position
           const cachedHeld = lastHeldTransformByDieRef.current.get(item.originalIndex);
           if (cachedHeld) {
-            frozenMap.set(item.originalIndex,
-              `translate(calc(-50% + ${cachedHeld.x}px), calc(-50% + ${cachedHeld.y + heldYOffset}px))`);
+            frozenMap.set(item.originalIndex, {
+              transform: `translate(calc(-50% + ${cachedHeld.x}px), calc(-50% + ${cachedHeld.y + heldYOffset}px))`,
+              value: item.die.value,
+            });
             return;
           }
         }
@@ -1088,16 +1105,20 @@ export function DiceTableLayout({
         const scatterPos = stableScatter ?? lastScatter;
 
         if (scatterPos) {
-          frozenMap.set(item.originalIndex,
-            `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`);
+          frozenMap.set(item.originalIndex, {
+            transform: `translate(calc(-50% + ${scatterPos.x}px), calc(-50% + ${scatterPos.y + unheldYOffset}px)) rotate(${scatterPos.rotate}deg)`,
+            value: item.die.value,
+          });
         } else {
           // Ultimate fallback: use held position (all dice in a row)
           const actualDiceCount = orderedDice.length;
           const positions = getHeldPositions(actualDiceCount, dieWidth, gap);
           const idx = orderedDice.findIndex(d => d.originalIndex === item.originalIndex);
           const pos = positions[idx] || { x: 0, y: 0 };
-          frozenMap.set(item.originalIndex,
-            `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`);
+          frozenMap.set(item.originalIndex, {
+            transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y + heldYOffset}px))`,
+            value: item.die.value,
+          });
         }
       });
 
