@@ -35,11 +35,11 @@ export function checkStaleDealerGameRender(
     'cribbage',
     'stale-dealer-game-render',
     renderedIdentity === authoritativeIdentity,
-    `Rendered identity ${renderedIdentity.slice(0, 8)} != auth ${authoritativeIdentity.slice(0, 8)}`,
+    `Rendered identity ${renderedIdentity.slice(0, 32)} != auth ${authoritativeIdentity.slice(0, 32)}`,
     {
       gameId,
-      renderedIdentity: renderedIdentity.slice(0, 16),
-      authoritativeIdentity: authoritativeIdentity.slice(0, 16),
+      renderedIdentity: renderedIdentity.slice(0, 40),
+      authoritativeIdentity: authoritativeIdentity.slice(0, 40),
       handNumber,
     },
   );
@@ -118,7 +118,7 @@ export function checkRegressiveIdentity(
       'regressive-identity',
       ok,
       `Hand regressed from ${prev.handNumber} to ${handNumber} in same dealer-game`,
-      { gameId, dealerGameId: dealerGameId.slice(0, 8), prev: prev.handNumber, handNumber },
+      { gameId, dealerGameId: dealerGameId.slice(0, 16), prev: prev.handNumber, handNumber },
     );
     if (ok) _lastAccepted[gameId] = { dealerGameId, handNumber };
     return result;
@@ -225,7 +225,7 @@ export function checkCribbageScoreReversion(
   for (const [pid, newScore] of Object.entries(presentationScores)) {
     const prevScore = prev[pid];
     if (prevScore !== undefined && newScore < prevScore && prevScore > 0) {
-      regressions.push({ playerId: pid.slice(0, 8), prevScore, newScore });
+      regressions.push({ playerId: pid.slice(0, 16), prevScore, newScore });
     }
   }
 
@@ -241,10 +241,10 @@ export function checkCribbageScoreReversion(
       handNumber,
       regressions,
       presentationScores: Object.fromEntries(
-        Object.entries(presentationScores).map(([k, v]) => [k.slice(0, 8), v]),
+        Object.entries(presentationScores).map(([k, v]) => [k.slice(0, 16), v]),
       ),
       authoritativeScores: Object.fromEntries(
-        Object.entries(authoritativeScores).map(([k, v]) => [k.slice(0, 8), v]),
+        Object.entries(authoritativeScores).map(([k, v]) => [k.slice(0, 16), v]),
       ),
       source,
       roundId,
@@ -274,7 +274,7 @@ export function traceCribbagePresentationSourceChange(
   const key = gameId;
   const scoreFingerprint = Object.entries(scores)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k.slice(0, 8)}:${v}`)
+    .map(([k, v]) => `${k.slice(0, 16)}:${v}`)
     .join(',');
 
   const prev = _lastPresentationTrace[key];
@@ -314,6 +314,85 @@ export function resetCribbageReversionTracking(gameId?: string): void {
   }
 }
 
+// ── INV-7: CRIBBAGE_TAP_FAILURE ───────────────────────────────
+//
+// Fires if the player is the authoritative turn owner during an actionable phase
+// but card interaction is disabled or suppressed.
+
+interface TapFailureCheck {
+  gameId: string;
+  handNumber: number;
+  roundId?: string;
+  dealerGameId?: string;
+  phase: string;
+  isMyTurn: boolean;
+  isProcessing: boolean;
+  canPlayAnyCard: boolean;
+  haveDiscarded: boolean;
+  cardCount: number;
+  /** true if the cards tab is actually mounted */
+  cardsTabMounted: boolean;
+  /** extra context for diagnosis */
+  extra?: Record<string, unknown>;
+}
+
+export function checkCribbageTapFailure(params: TapFailureCheck): boolean {
+  // Only check during actionable phases
+  if (params.phase !== 'discarding' && params.phase !== 'pegging') return true;
+
+  // Discarding: should be tappable if not yet discarded and cards exist
+  if (params.phase === 'discarding') {
+    if (params.haveDiscarded) return true; // already discarded, no interaction expected
+    if (params.cardCount === 0) return true; // no cards to tap
+    if (!params.cardsTabMounted) {
+      return checkInvariant(
+        'cribbage',
+        'tap-failure',
+        false,
+        `Discard phase active but cards tab not mounted`,
+        { ...params, extra: undefined, ...params.extra },
+      );
+    }
+    if (params.isProcessing) {
+      return checkInvariant(
+        'cribbage',
+        'tap-failure',
+        false,
+        `Discard phase active but isProcessing=true blocks taps`,
+        { ...params, extra: undefined, ...params.extra },
+      );
+    }
+    return true;
+  }
+
+  // Pegging: should be tappable if it's my turn and I have playable cards
+  if (params.phase === 'pegging') {
+    if (!params.isMyTurn) return true; // not my turn, no interaction expected
+    if (!params.canPlayAnyCard) return true; // auto-Go, no tap expected
+    if (!params.cardsTabMounted) {
+      return checkInvariant(
+        'cribbage',
+        'tap-failure',
+        false,
+        `Pegging: my turn with playable cards but cards tab not mounted`,
+        { ...params, extra: undefined, ...params.extra },
+      );
+    }
+    if (params.isProcessing) {
+      return checkInvariant(
+        'cribbage',
+        'tap-failure',
+        false,
+        `Pegging: my turn with playable cards but isProcessing=true blocks taps`,
+        { ...params, extra: undefined, ...params.extra },
+      );
+    }
+    return true;
+  }
+
+  return true;
+}
+
 // ── Debug-gated transition events ─────────────────────────────
 
 export function logCribbageDealerGameStart(
@@ -323,7 +402,7 @@ export function logCribbageDealerGameStart(
   roundId?: string,
 ): void {
   persistTransition(gameId, 'cribbage', handNumber, 'dealer-game-start', {
-    dealerGameId: dealerGameId.slice(0, 8),
+    dealerGameId: dealerGameId.slice(0, 16),
   }, roundId);
 }
 
@@ -334,7 +413,7 @@ export function logCribbageHandStart(
   roundId?: string,
 ): void {
   persistTransition(gameId, 'cribbage', handNumber, 'hand-start', {
-    dealerId: dealerId.slice(0, 8),
+    dealerId: dealerId.slice(0, 16),
   }, roundId);
 }
 
@@ -354,7 +433,7 @@ export function logCribbageResultDisplay(
   roundId?: string,
 ): void {
   persistTransition(gameId, 'cribbage', handNumber, 'result-display', {
-    winnerId: winnerId?.slice(0, 8) ?? null,
+    winnerId: winnerId?.slice(0, 16) ?? null,
     winnerScore,
   }, roundId);
 }
