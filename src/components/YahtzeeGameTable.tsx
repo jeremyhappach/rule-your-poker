@@ -1070,6 +1070,20 @@ export function YahtzeeGameTable({
               turnIdentity,
             });
             await new Promise(r => setTimeout(r, 900));
+
+            // TEMP DEBUG PAUSE FOR HELD-ROW ORDERING INVESTIGATION
+            // MUST REMOVE AFTER CAPTURE / FIX IS COMPLETE
+            // Pause AFTER holds are visually applied so we can screenshot the held-row state
+            if (isYahtzeeBotPauseEnabled()) {
+              console.log('[BOT DEBUG PAUSE AFTER HOLDS]', {
+                roll,
+                turnIdentity,
+                dice: describeBotDiceState(ps.dice),
+                pauseMs: 5000,
+              });
+              await new Promise(r => setTimeout(r, 5000));
+              console.log('[BOT DEBUG PAUSE AFTER HOLDS END]', { roll, turnIdentity });
+            }
             const cancelledAfterHoldWait = isCancelled(`after-hold-wait:roll-${roll}`);
             console.log('[BOT AFTER HOLD WAIT]', {
               roundId: currentRoundId,
