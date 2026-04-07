@@ -1368,6 +1368,30 @@ export function DiceTableLayout({
     mainBranch,
   };
 
+  // ── DIE_VALUE_IDENTITY_MISMATCH INVARIANT ──
+  // Verify that every die's rendered value matches the authoritative source for its originalIndex.
+  // If effectiveDice and visualDice diverge, this will fire.
+  if (layoutHeldDice.length > 0) {
+    for (const item of orderedDice) {
+      const effectiveVal = effectiveDice[item.originalIndex]?.value;
+      const visualVal = visualDice[item.originalIndex]?.value;
+      const itemVal = item.die.value;
+      if (effectiveVal !== undefined && visualVal !== undefined && effectiveVal !== visualVal) {
+        console.error('[DIE_VALUE_IDENTITY_MISMATCH]', {
+          originalIndex: item.originalIndex,
+          effectiveDiceValue: effectiveVal,
+          visualDiceValue: visualVal,
+          itemDieValue: itemVal,
+          isHeld: item.die.isHeld,
+          rollKey,
+          effectiveDiceSource: isStabilizing ? 'lastValidDiceRef' : hasValidCurrentDice ? 'presentationDice' : shouldFallbackToCache ? 'lastValidDiceRef' : 'presentationDice',
+          isStabilizing,
+          isObserver,
+        });
+      }
+    }
+  }
+
   // ── PRE-COMPUTE RENDER DECISIONS (shared by trace + JSX) ──
   // This ensures the trace captures the EXACT same transforms applied in the render.
   const precomputedRenderDecisions = useMemo(() => {
