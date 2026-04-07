@@ -81,26 +81,83 @@ export const VisualBugReportButton = ({
 
   const bugTypes = getBugTypesForGame(gameType);
 
+  /** Shared context for all telemetry events */
+  const telemetryContext = useCallback(() => ({
+    game_id: gameId,
+    dealer_game_id: dealerGameId || null,
+    round_id: roundId || null,
+    hand_number: handNumber ?? null,
+    phase: phase || null,
+  }), [gameId, dealerGameId, roundId, handNumber, phase]);
+
+  /** Fire-and-forget debug_sync_events telemetry */
+  const emitTelemetry = useCallback((
+    eventName: string,
+    extra: Record<string, unknown> = {},
+  ) => {
+    supabase
+      .from('debug_sync_events')
+      .insert({
+        game_id: gameId,
+        game_type: gameType || 'unknown',
+        hand_number: handNumber ?? 0,
+        round_id: roundId || null,
+        event_type: 'transition',
+        severity: 'info',
+        event_name: eventName,
+        payload: {
+          ...telemetryContext(),
+          ...buildMetaPayload(),
+          ...extra,
+        },
+      } as any)
+      .then(({ error }) => {
+        if (error) console.warn('[BUG_REPORT] telemetry write failed:', error.message);
+      });
+  }, [gameId, gameType, handNumber, roundId, telemetryContext]);
+
   const handleOpen = useCallback(() => {
     setOpen(true);
     setSelectedType(null);
     setNote('');
 
-    // Pause if there's an active timer and game isn't already paused
-    if (hasActiveTimer && !isPaused && onPause) {
-      onPause();
+    const didPause = !!(hasActiveTimer && !isPaused && onPause);
+
+    emitTelemetry('ui:visual_bug_modal_opened', {
+      has_active_timer: !!hasActiveTimer,
+      was_already_paused: !!isPaused,
+      will_pause: didPause,
+    });
+
+    if (didPause) {
+      onPause!();
       pausedByBugReport.current = true;
+
+      emitTelemetry('ui:visual_bug_pause_applied', {
+        has_active_timer: true,
+        pause_source: 'bug-report',
+      });
     }
-  }, [hasActiveTimer, isPaused, onPause]);
+  }, [hasActiveTimer, isPaused, onPause, emitTelemetry]);
 
   const handleClose = useCallback(() => {
     setOpen(false);
-    // Resume only if we initiated the pause
-    if (pausedByBugReport.current && onResume) {
-      onResume();
+    const didResume = !!(pausedByBugReport.current && onResume);
+
+    emitTelemetry('ui:visual_bug_modal_cancelled', {
+      did_resume: didResume,
+      pause_was_from_bug_report: pausedByBugReport.current,
+    });
+
+    if (didResume) {
+      onResume!();
       pausedByBugReport.current = false;
+
+      emitTelemetry('ui:visual_bug_pause_resumed', {
+        resume_trigger: 'cancel',
+      });
     }
-  }, [onResume]);
+  }, [onResume, emitTelemetry]);
 
   const handleSubmit = useCallback(async () => {
     if (!selectedType) return;
@@ -147,7 +204,7 @@ export const VisualBugReportButton = ({
         return;
       }
 
-      // Also emit debug sync event for correlation
+      // Enriched debug sync event for correlation
       await supabase
         .from('debug_sync_events')
         .insert({
@@ -162,6 +219,8 @@ export const VisualBugReportButton = ({
             bug_type: entry.value,
             bug_label: entry.label,
             note: note.trim() || null,
+            reporter_user_id: user.id,
+            phase: phase || null,
             dealer_game_id: dealerGameId || null,
             viewer_player_id: viewerPlayerId || null,
             active_tab: activeTab || null,
@@ -169,22 +228,25 @@ export const VisualBugReportButton = ({
           },
         });
 
-      // Send dealer-style chat message announcing the bug report
-      const displayName = reporterUsername || 'A player';
-      await supabase
-        .from('chat_messages')
-        .insert({
-          game_id: gameId,
-          user_id: user.id,
-          message: `🐛 ${displayName} submitted a bug report: ${entry.label}`,
-        });
+      // Telemetry: submission event
+      emitTelemetry('ui:visual_bug_report_submitted', {
+        bug_type: entry.value,
+        bug_label: entry.label,
+        had_note: !!(note.trim()),
+        reporter_user_id: user.id,
+      });
 
       setOpen(false);
 
       // Resume if we paused
-      if (pausedByBugReport.current && onResume) {
-        onResume();
+      const didResume = !!(pausedByBugReport.current && onResume);
+      if (didResume) {
+        onResume!();
         pausedByBugReport.current = false;
+
+        emitTelemetry('ui:visual_bug_pause_resumed', {
+          resume_trigger: 'submit',
+        });
       }
     } catch (err) {
       console.error('[BUG_REPORT] Submit error:', err);
@@ -192,7 +254,7 @@ export const VisualBugReportButton = ({
     } finally {
       setSubmitting(false);
     }
-  }, [selectedType, note, gameId, dealerGameId, roundId, handNumber, phase, currentTurnPlayerId, viewerPlayerId, activeTab, gameType, extraContext, bugTypes, toast, onResume]);
+  }, [selectedType, note, gameId, dealerGameId, roundId, handNumber, phase, currentTurnPlayerId, viewerPlayerId, activeTab, gameType, extraContext, bugTypes, toast, onResume, emitTelemetry]);
 
   return (
     <>
