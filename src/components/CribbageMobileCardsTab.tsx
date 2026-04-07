@@ -74,7 +74,10 @@ export const CribbageMobileCardsTab = ({
     }
   }, [roundId]);
 
+  const myPlayerState = cribbageState.playerStates[currentPlayerId];
+
   // ── CRIBBAGE_RENDERED_CARDS trace ──────────────────────────────
+  // TEMP DEBUG — CRIBBAGE RENDER TRACE — REMOVE AFTER INVESTIGATION
   // Fires only when the set of rendered card IDs changes.
   const prevRenderedFingerprintRef = useRef<string>('');
   useEffect(() => {
@@ -86,11 +89,10 @@ export const CribbageMobileCardsTab = ({
     const authIds = renderTrace.authoritativeHand?.map(cardId) ?? null;
     const presentationIds = renderedIds; // viewState drives this component
 
-    // TEMP DEBUG — CRIBBAGE RENDERED CARDS TRACE — REMOVE AFTER INVESTIGATION
     persistSyncDebugEvent({
       gameId,
       gameType: 'cribbage',
-      handNumber: 0, // filled from phase context below
+      handNumber: 0,
       roundId: roundId ?? null,
       eventType: 'transition',
       severity: 'info',
@@ -142,10 +144,6 @@ export const CribbageMobileCardsTab = ({
 
     prevRenderedFingerprintRef.current = fingerprint;
   });
-  // myPlayerState needed above — declare before the trace but reference is fine
-  // since the trace useEffect runs after render
-  
-  const myPlayerState = cribbageState.playerStates[currentPlayerId];
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
   const canPlayAnyCard = myPlayerState && hasPlayableCard(myPlayerState.hand, cribbageState.pegging.currentCount);
   const haveDiscarded = myPlayerState?.discardedToCrib.length > 0;
