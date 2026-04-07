@@ -6964,6 +6964,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   }}
                 />
               )}
+              <VisualBugReportButton
+                gameId={gameId!}
+                gameType={game.game_type}
+                dealerGameId={currentRound?.dealer_game_id || game.current_game_uuid || null}
+                roundId={currentRound?.id || null}
+                handNumber={game.total_hands ?? null}
+                phase={currentRound?.status || game.status}
+                currentTurnPlayerId={null}
+                viewerPlayerId={currentPlayer?.id || null}
+                activeTab={null}
+                isPaused={game.is_paused}
+                hasActiveTimer={!!decisionDeadline && !game.is_paused}
+                onPause={handleTogglePause}
+                onResume={handleTogglePause}
+                variant="desktop"
+              />
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
                 <p className="text-muted-foreground">
@@ -7063,7 +7079,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       fetchGameData();
                     } catch (error: any) {
                       toast({ title: "Error", description: error.message, variant: "destructive" });
-                    }
+              }
+              <VisualBugReportButton
+                gameId={gameId!}
+                gameType={game.game_type}
+                dealerGameId={currentRound?.dealer_game_id || game.current_game_uuid || null}
+                roundId={currentRound?.id || null}
+                handNumber={game.total_hands ?? null}
+                phase={currentRound?.status || game.status}
+                currentTurnPlayerId={null}
+                viewerPlayerId={currentPlayer?.id || null}
+                activeTab={null}
+                isPaused={game.is_paused}
+                hasActiveTimer={!!decisionDeadline && !game.is_paused}
+                onPause={handleTogglePause}
+                onResume={handleTogglePause}
+                variant="mobile"
+              />
                   }}
                   canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting') && !game.real_money}
                   onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
