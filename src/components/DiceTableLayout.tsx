@@ -1267,8 +1267,8 @@ export function DiceTableLayout({
     // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
     // This ensures held dice always display in ascending value order.
     const entries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => {
-      const valA = visualDice[a[0]]?.value ?? 0;
-      const valB = visualDice[b[0]]?.value ?? 0;
+      const valA = effectiveDice[a[0]]?.value ?? 0;
+      const valB = effectiveDice[b[0]]?.value ?? 0;
       return valA !== valB ? valA - valB : a[0] - b[0];
     });
     const registrySize = entries.length;
@@ -1333,8 +1333,8 @@ export function DiceTableLayout({
 
   // CANONICAL HELD-ROW POLICY: sort by (die value ASC, originalIndex ASC).
   const stableHeldRegistryEntries = [...stableHeldSlotByDieRef.current.entries()].sort((a, b) => {
-    const valA = visualDice[a[0]]?.value ?? 0;
-    const valB = visualDice[b[0]]?.value ?? 0;
+    const valA = effectiveDice[a[0]]?.value ?? 0;
+    const valB = effectiveDice[b[0]]?.value ?? 0;
     return valA !== valB ? valA - valB : a[0] - b[0];
   });
   const preRollHeldIndices = Array.isArray(heldMaskBeforeComplete)
@@ -1783,7 +1783,7 @@ export function DiceTableLayout({
       {isAnimatingFlyIn && animationOrigin && animatingDiceIndices.length > 0 && (
         <DiceRollAnimation
           runKey={flyInRunId}
-          dice={visualDice}
+          dice={effectiveDice}
           animatingIndices={animatingDiceIndices}
           targetPositions={animatingDiceIndices.map((_, displayIdx) =>
             getUnheldPosition(displayIdx, animatingDiceIndices.length),
