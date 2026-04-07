@@ -617,7 +617,8 @@ export const CribbageMobileGameTable = ({
     checkRegressiveIdentity(gameId, dealerGameId, currentHandNumber);
 
     // INV-5: hand-reversion — detect presentation hand returning to 6 cards after discard
-    if (currentPlayer && !isSnapshotPhase) {
+    const instrPlayer = players.find(p => p.user_id === currentUserId);
+    if (instrPlayer && !isSnapshotPhase) {
       const authState = cribbageState?.playerStates?.[currentPlayer.id];
       const presState = state.playerStates?.[currentPlayer.id];
       if (authState && presState) {
