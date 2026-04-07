@@ -6979,6 +6979,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onPause={handleTogglePause}
                 onResume={handleTogglePause}
                 variant="desktop"
+                reporterUsername={currentPlayer?.profiles?.username}
               />
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
@@ -7104,6 +7105,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 onPause={handleTogglePause}
                 onResume={handleTogglePause}
                 variant="mobile"
+                reporterUsername={currentPlayer?.profiles?.username}
               />
               {/* Last Hand badge in header */}
               {game.pending_session_end && (
