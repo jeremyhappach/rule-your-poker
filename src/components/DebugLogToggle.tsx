@@ -36,6 +36,9 @@ export function DebugLogToggle() {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
+  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
+  if (HIDE_DEBUG_UI) return null;
+
   return (
     <button
       type="button"
