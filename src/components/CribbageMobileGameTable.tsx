@@ -3545,8 +3545,17 @@ export const CribbageMobileGameTable = ({
               gameId={gameId}
               isDealer={isCribDealer(currentPlayerId)}
               roundId={currentRoundId}
+              renderTrace={{
+                renderHandKey,
+                currentHandKey,
+                dealerGameId: dealerGameId ?? null,
+                isFrozen: syncHandle.isFrozen,
+                authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
+                renderSource: 'sync-presentation',
+              }}
             />
           )}
+
           
           {/* Counting animation placeholder */}
           {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (

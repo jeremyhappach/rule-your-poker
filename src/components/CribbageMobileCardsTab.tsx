@@ -7,6 +7,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 interface Player {
   id: string;
@@ -15,6 +16,16 @@ interface Player {
   chips: number;
   is_bot?: boolean;
   profiles?: { username: string };
+}
+
+/** Diagnostic context passed from parent for render tracing */
+interface RenderTraceContext {
+  renderHandKey: string;
+  currentHandKey: string;
+  dealerGameId: string | null;
+  isFrozen: boolean;
+  authoritativeHand: CribbageCard[] | null;
+  renderSource: string;
 }
 
 interface CribbageMobileCardsTabProps {
@@ -29,6 +40,13 @@ interface CribbageMobileCardsTabProps {
   isDealer: boolean;
   /** Used to reset selectedCards on hand boundary transitions */
   roundId?: string;
+  /** Diagnostic context for render tracing — omit to disable */
+  renderTrace?: RenderTraceContext;
+}
+
+/** Card identity string for tracing */
+function cardId(c: CribbageCard): string {
+  return `${c.rank}${c.suit[0]}`;
 }
 
 export const CribbageMobileCardsTab = ({
@@ -42,6 +60,7 @@ export const CribbageMobileCardsTab = ({
   gameId,
   isDealer,
   roundId,
+  renderTrace,
 }: CribbageMobileCardsTabProps) => {
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [isEmoticonSending, setIsEmoticonSending] = useState(false);
@@ -54,8 +73,77 @@ export const CribbageMobileCardsTab = ({
       setSelectedCards([]);
     }
   }, [roundId]);
-  
+
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
+
+  // ── CRIBBAGE_RENDERED_CARDS trace ──────────────────────────────
+  // TEMP DEBUG — CRIBBAGE RENDER TRACE — REMOVE AFTER INVESTIGATION
+  // Fires only when the set of rendered card IDs changes.
+  const prevRenderedFingerprintRef = useRef<string>('');
+  useEffect(() => {
+    if (!myPlayerState || !renderTrace) return;
+    const renderedIds = myPlayerState.hand.map(cardId);
+    const fingerprint = renderedIds.join(',');
+    if (fingerprint === prevRenderedFingerprintRef.current) return;
+
+    const authIds = renderTrace.authoritativeHand?.map(cardId) ?? null;
+    const presentationIds = renderedIds; // viewState drives this component
+
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: 0,
+      roundId: roundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'CRIBBAGE_RENDERED_CARDS',
+      payload: {
+        renderedCardIds: renderedIds,
+        renderedCount: renderedIds.length,
+        renderHandKey: renderTrace.renderHandKey?.slice(0, 30),
+        currentHandKey: renderTrace.currentHandKey?.slice(0, 30),
+        dealerGameId: renderTrace.dealerGameId?.slice(0, 8) ?? null,
+        renderSource: renderTrace.renderSource,
+        phase: cribbageState.phase,
+        isFrozen: renderTrace.isFrozen,
+        presentationHandIds: presentationIds,
+        authoritativeHandIds: authIds,
+        prevFingerprint: prevRenderedFingerprintRef.current || null,
+      },
+    });
+
+    // CRIBBAGE_RENDER_SOURCE_MISMATCH — detect stale visuals during active play
+    if (
+      authIds &&
+      (cribbageState.phase === 'discarding' || cribbageState.phase === 'pegging') &&
+      renderTrace.renderHandKey === renderTrace.currentHandKey
+    ) {
+      const authFingerprint = [...authIds].sort().join(',');
+      const renderedSorted = [...renderedIds].sort().join(',');
+      if (authFingerprint !== renderedSorted) {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: 0,
+          roundId: roundId ?? null,
+          eventType: 'invariant',
+          severity: 'error',
+          eventName: 'CRIBBAGE_RENDER_SOURCE_MISMATCH',
+          payload: {
+            renderedCardIds: renderedIds,
+            authoritativeCardIds: authIds,
+            renderHandKey: renderTrace.renderHandKey?.slice(0, 30),
+            currentHandKey: renderTrace.currentHandKey?.slice(0, 30),
+            renderSource: renderTrace.renderSource,
+            phase: cribbageState.phase,
+            isFrozen: renderTrace.isFrozen,
+          },
+        });
+      }
+    }
+
+    prevRenderedFingerprintRef.current = fingerprint;
+  });
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
   const canPlayAnyCard = myPlayerState && hasPlayableCard(myPlayerState.hand, cribbageState.pegging.currentCount);
   const haveDiscarded = myPlayerState?.discardedToCrib.length > 0;
