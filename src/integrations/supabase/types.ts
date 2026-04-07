@@ -1521,6 +1521,66 @@ export type Database = {
           },
         ]
       }
+      visual_bug_reports: {
+        Row: {
+          active_tab: string | null
+          bug_label: string
+          bug_type: string
+          build_meta: Json
+          created_at: string
+          current_turn_player_id: string | null
+          dealer_game_id: string | null
+          extra_context: Json
+          game_id: string
+          hand_number: number | null
+          id: string
+          note: string | null
+          phase: string | null
+          platform_info: Json
+          reporter_user_id: string
+          round_id: string | null
+          viewer_player_id: string | null
+        }
+        Insert: {
+          active_tab?: string | null
+          bug_label: string
+          bug_type: string
+          build_meta?: Json
+          created_at?: string
+          current_turn_player_id?: string | null
+          dealer_game_id?: string | null
+          extra_context?: Json
+          game_id: string
+          hand_number?: number | null
+          id?: string
+          note?: string | null
+          phase?: string | null
+          platform_info?: Json
+          reporter_user_id: string
+          round_id?: string | null
+          viewer_player_id?: string | null
+        }
+        Update: {
+          active_tab?: string | null
+          bug_label?: string
+          bug_type?: string
+          build_meta?: Json
+          created_at?: string
+          current_turn_player_id?: string | null
+          dealer_game_id?: string | null
+          extra_context?: Json
+          game_id?: string
+          hand_number?: number | null
+          id?: string
+          note?: string | null
+          phase?: string | null
+          platform_info?: Json
+          reporter_user_id?: string
+          round_id?: string | null
+          viewer_player_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
