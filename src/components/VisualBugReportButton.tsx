@@ -70,6 +70,7 @@ export const VisualBugReportButton = ({
   hasActiveTimer,
   extraContext,
   variant = 'mobile',
+  reporterUsername,
 }: VisualBugReportButtonProps) => {
   const [open, setOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
