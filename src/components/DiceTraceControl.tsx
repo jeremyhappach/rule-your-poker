@@ -9,6 +9,7 @@ import {
   getDicePresentationTraceBuffer,
   getSwapEvents,
 } from "@/lib/dicePresentationTrace";
+import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 const DEBUG_BUILD_STAMP = "2026-04-06T-trace-ui";
 const LS_KEY = "ptp_debug_yahtzee_straight";
@@ -19,7 +20,7 @@ function isStraightBotOn(): boolean {
 
 export function DiceTraceControl() {
   // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
-  const { HIDE_DEBUG_UI } = await import("@/lib/debugUIVisibility").catch(() => ({ HIDE_DEBUG_UI: false })) as any;
+  if (HIDE_DEBUG_UI) return null;
 
   const [recording, setRecording] = useState(isDicePresentationTraceRecording());
   const [swapCount, setSwapCount] = useState(0);
