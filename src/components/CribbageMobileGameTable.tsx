@@ -2152,12 +2152,16 @@ export const CribbageMobileGameTable = ({
           latchRoundId: roundIdLatchRef.current?.slice(0, 8),
           phase: newCribbageState.phase,
         }, traceId);
-        persistTransition(gameId, 'cribbage', currentHandNumber, 'identity-latch-drop', {
-          source,
-          handlerRoundId: currentRoundId?.slice(0, 8),
-          latchRoundId: roundIdLatchRef.current?.slice(0, 8),
-          phase: newCribbageState.phase,
-        }, currentRoundId);
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:identity_latch_drop',
+          payload: {
+            source,
+            handlerRoundId: currentRoundId?.slice(0, 8),
+            latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+            phase: newCribbageState.phase,
+          },
+        });
         return;
       }
       
