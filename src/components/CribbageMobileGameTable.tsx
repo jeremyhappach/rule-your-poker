@@ -2142,6 +2142,25 @@ export const CribbageMobileGameTable = ({
       const source = fromRealtime ? 'realtime' : 'poll';
       const traceId = newTraceId();
       
+      // ── Identity latch guard ──
+      // If the roundId for this handler (captured at subscription creation) no longer
+      // matches the live latch, this is a stale tail-end event. Drop it.
+      if (roundIdLatchRef.current !== currentRoundId) {
+        logCribbageDebug(debugCtx, 'snapshot_dropped:identity_latch', {
+          source,
+          handlerRoundId: currentRoundId?.slice(0, 8),
+          latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+          phase: newCribbageState.phase,
+        }, traceId);
+        persistTransition(gameId, 'cribbage', currentHandNumber, 'identity-latch-drop', {
+          source,
+          handlerRoundId: currentRoundId?.slice(0, 8),
+          latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+          phase: newCribbageState.phase,
+        }, currentRoundId);
+        return;
+      }
+      
       // Log snapshot received
       logCribbageDebug(debugCtx, `snapshot_received:${source}`, cribbageStateSummary(newCribbageState), traceId);
       
