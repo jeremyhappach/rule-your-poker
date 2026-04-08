@@ -3285,6 +3285,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       rawAllDecisionsIn: game?.all_decisions_in,
       cardIdentity: currentCardIdentity.substring(0, 20),
     });
+
+    // HOLM_RENDERED_COMMUNITY upfront instrumentation — captures exact cards on screen
+    const communityArr = (communityCards ?? []) as Array<{ rank?: string; suit?: string }>;
+    const renderedCardIds = communityArr.map(c => `${c.rank ?? '?'}${c.suit ?? '?'}`);
+    const renderSource = holmView ? 'sync-presentation' : (cachedRoundData ? 'cache' : 'authoritative-fallback');
+    traceHolmRenderedCommunity(
+      game.id,
+      holmView!.handNumber,
+      currentRound?.id ?? '',
+      renderedCardIds,
+      effectiveCommunityCardsRevealed,
+      renderSource as 'sync-presentation' | 'authoritative-fallback' | 'cache',
+    );
   }
     
   // Only log when community cards might have an issue (no cards during in_progress)
