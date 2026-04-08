@@ -306,8 +306,13 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
+  // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
+  const roundIdLatchRef = useRef<string>(roundId);
+
   // Reset ALL state when roundId changes (new hand boundary)
   useEffect(() => {
+    // Update identity latch FIRST — stale handlers check this before accepting
+    roundIdLatchRef.current = roundId;
     // Reset sync framework — clears stale presentation/authoritative/freeze
     ginSync.reset(null);
     // Reset local state

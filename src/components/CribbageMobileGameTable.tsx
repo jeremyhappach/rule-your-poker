@@ -2038,6 +2038,9 @@ export const CribbageMobileGameTable = ({
   const prevRoundIdRef = useRef<string>(currentRoundId);
   // Track the roundId that cribbageState belongs to, so we can detect stale-hand renders.
   const cribbageStateRoundIdRef = useRef<string>(currentRoundId);
+  // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
+  // Handlers from stale subscriptions/polls compare against this to reject cross-hand leaks.
+  const roundIdLatchRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
