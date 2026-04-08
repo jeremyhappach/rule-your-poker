@@ -306,8 +306,13 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
 
+  // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
+  const roundIdLatchRef = useRef<string>(roundId);
+
   // Reset ALL state when roundId changes (new hand boundary)
   useEffect(() => {
+    // Update identity latch FIRST — stale handlers check this before accepting
+    roundIdLatchRef.current = roundId;
     // Reset sync framework — clears stale presentation/authoritative/freeze
     ginSync.reset(null);
     // Reset local state
@@ -471,6 +476,21 @@ export const GinRummyGameTable = ({
 
     const applyState = (state: GinRummyState, source: string) => {
       if (!isActive) return;
+      // ── Identity latch guard ──
+      // If the roundId for this handler no longer matches the live latch,
+      // this is a stale tail-end event from a previous subscription/poll cycle.
+      if (roundIdLatchRef.current !== roundId) {
+        logDebugEvent({
+          gameId, roundId, userId: currentUserId, clientRole: 'actor',
+          eventType: 'gin:identity_latch_drop',
+          payload: ginStateSummary(state, {
+            source,
+            handlerRoundId: roundId?.slice(0, 8),
+            latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+          }),
+        });
+        return;
+      }
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: `gin:snapshot_received:${source}`,

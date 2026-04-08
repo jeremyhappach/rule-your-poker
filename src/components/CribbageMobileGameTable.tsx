@@ -2038,10 +2038,15 @@ export const CribbageMobileGameTable = ({
   const prevRoundIdRef = useRef<string>(currentRoundId);
   // Track the roundId that cribbageState belongs to, so we can detect stale-hand renders.
   const cribbageStateRoundIdRef = useRef<string>(currentRoundId);
+  // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
+  // Handlers from stale subscriptions/polls compare against this to reject cross-hand leaks.
+  const roundIdLatchRef = useRef<string>(currentRoundId);
   useEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
+    // Update identity latch FIRST — stale handlers check this before accepting
+    roundIdLatchRef.current = currentRoundId;
     
     // Detect bootstrap boundary: roundId changing from '' (dealer selection) to a real value
     const isBootstrapTransition = !oldId || oldId === '';
@@ -2136,6 +2141,29 @@ export const CribbageMobileGameTable = ({
       
       const source = fromRealtime ? 'realtime' : 'poll';
       const traceId = newTraceId();
+      
+      // ── Identity latch guard ──
+      // If the roundId for this handler (captured at subscription creation) no longer
+      // matches the live latch, this is a stale tail-end event. Drop it.
+      if (roundIdLatchRef.current !== currentRoundId) {
+        logCribbageDebug(debugCtx, 'snapshot_dropped:identity_latch', {
+          source,
+          handlerRoundId: currentRoundId?.slice(0, 8),
+          latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+          phase: newCribbageState.phase,
+        }, traceId);
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:identity_latch_drop',
+          payload: {
+            source,
+            handlerRoundId: currentRoundId?.slice(0, 8),
+            latchRoundId: roundIdLatchRef.current?.slice(0, 8),
+            phase: newCribbageState.phase,
+          },
+        });
+        return;
+      }
       
       // Log snapshot received
       logCribbageDebug(debugCtx, `snapshot_received:${source}`, cribbageStateSummary(newCribbageState), traceId);
