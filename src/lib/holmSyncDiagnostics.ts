@@ -331,3 +331,60 @@ export function resetSoloPlayerTracking(): void {
   lastSoloCapture.handContextId = '';
   lastSoloCapture.playerId = '';
 }
+
+// ── INV-7: Rendered community card trace ─────────────────────
+// Upfront instrumentation: captures exact community card IDs displayed on screen
+// to prove stale card displays in post-session forensics.
+
+import { persistSyncDebugEvent } from './persistSyncDebugEvent';
+
+/**
+ * HOLM_RENDERED_COMMUNITY trace.
+ * Persists the exact community cards currently rendered, the hand number,
+ * and the source (sync presentation vs raw DB) for forensic correlation.
+ */
+export function traceHolmRenderedCommunity(
+  gameId: string,
+  handNumber: number,
+  roundId: string,
+  renderedCards: string[],
+  revealedCount: number,
+  source: 'sync-presentation' | 'authoritative-fallback' | 'cache',
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType: 'holm-game',
+    handNumber,
+    roundId,
+    eventType: 'transition',
+    severity: 'info',
+    eventName: 'rendered-community',
+    payload: {
+      cards: renderedCards.slice(0, revealedCount),
+      allCards: renderedCards,
+      revealedCount,
+      source,
+    },
+  });
+}
+
+/**
+ * INV-8: Card fetch roundId mismatch.
+ * Fires when a card fetch response arrives for a roundId that no longer
+ * matches the current active round, indicating a stale response.
+ */
+export function checkCardFetchRoundMismatch(
+  gameId: string,
+  handNumber: number,
+  fetchedRoundId: string,
+  currentRoundId: string | null,
+): boolean {
+  if (!currentRoundId || fetchedRoundId === currentRoundId) return true;
+  return checkInvariant(
+    'holm',
+    'card-fetch-round-mismatch',
+    false,
+    `Card fetch returned for round ${fetchedRoundId.slice(0, 8)} but current round is ${currentRoundId.slice(0, 8)}`,
+    { gameId, handNumber, fetchedRoundId, currentRoundId },
+  );
+}

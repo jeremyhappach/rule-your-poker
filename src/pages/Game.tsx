@@ -50,7 +50,7 @@ import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { logSyncGateResult } from "@/lib/debugSyncInvariants";
-import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
+import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking, traceHolmRenderedCommunity, checkCardFetchRoundMismatch } from "@/lib/holmSyncDiagnostics";
 import { logThreeFiveSevenSyncGate, logThreeFiveSevenSummary, checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { persistTransition } from "@/lib/persistSyncDebugEvent";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
@@ -331,8 +331,12 @@ function buildHolmSnapshot(
       playerId: p.id,
       userId: p.user_id,
       position: p.position,
-      decision: p.current_decision,
-      decisionLocked: p.decision_locked ?? false,
+      decision: roundStatus === 'betting' ? (p.decision_locked ? p.current_decision : p.current_decision) : p.current_decision,
+      // P0-2 FIX: Force decisionLocked=false during betting phase.
+      // The DB pre-clears decision_locked before round creation (holmGameLogic.ts:553),
+      // but realtime can deliver the new round BEFORE the player update propagates,
+      // causing stale decision_locked=true to leak into the new hand's snapshot.
+      decisionLocked: roundStatus === 'betting' ? false : (p.decision_locked ?? false),
       autoFold: p.auto_fold,
       sittingOut: p.sitting_out,
     })),
@@ -3281,6 +3285,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       rawAllDecisionsIn: game?.all_decisions_in,
       cardIdentity: currentCardIdentity.substring(0, 20),
     });
+
+    // HOLM_RENDERED_COMMUNITY upfront instrumentation — captures exact cards on screen
+    const communityArr = (communityCards ?? []) as Array<{ rank?: string; suit?: string }>;
+    const renderedCardIds = communityArr.map(c => `${c.rank ?? '?'}${c.suit ?? '?'}`);
+    const renderSource = holmView ? 'sync-presentation' : (cachedRoundData ? 'cache' : 'authoritative-fallback');
+    traceHolmRenderedCommunity(
+      game.id,
+      holmView!.handNumber,
+      currentRound?.id ?? '',
+      renderedCardIds,
+      effectiveCommunityCardsRevealed,
+      renderSource as 'sync-presentation' | 'authoritative-fallback' | 'cache',
+    );
   }
     
   // Only log when community cards might have an issue (no cards during in_progress)
@@ -4427,6 +4444,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         if (roundData) {
           const prevPlayerCardsRoundId = cardStateContext?.roundId ?? null;
+          // P0-4: Capture the target roundId BEFORE the async fetch so we can verify on response
+          const targetRoundId = roundData.id;
 
           // Store authoritative card context from the round record
           const newCardContext: CardStateContext = {
@@ -4440,38 +4459,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const { data: cardsData, error: cardsError } = await supabase
             .from('player_cards')
             .select('player_id, cards')
-            .eq('round_id', roundData.id);
+            .eq('round_id', targetRoundId);
 
           console.log('[FETCH] 🃏 Cards fetch result:', {
-            roundId: roundData.id,
+            roundId: targetRoundId,
             cardsCount: cardsData?.length || 0,
             cardsError: cardsError?.message,
             playerIds: cardsData?.map(c => c.player_id)
           });
 
-          if (cardsData && cardsData.length > 0) {
+          // P0-4 FIX: Card fetch race guard — verify the roundId we fetched for
+          // still matches the current card state context. If another fetch has already
+          // advanced to a newer round, discard this stale response.
+          if (isStale()) {
+            console.log('[FETCH] Ignoring stale card fetch (fetchSeq advanced)', { targetRoundId });
+          } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
-            if (!isStale()) {
-              setPlayerCards(
-                cardsData.map((cd) => ({
-                  player_id: cd.player_id,
-                  cards: cd.cards as unknown as CardType[],
-                }))
-              );
-            }
+            setPlayerCards(
+              cardsData.map((cd) => ({
+                player_id: cd.player_id,
+                cards: cd.cards as unknown as CardType[],
+              }))
+            );
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
           } else {
             // IMPORTANT: If the round id changed but the new round has no cards yet,
             // we MUST clear local cards to avoid rendering the previous hand while we wait.
-            if (prevPlayerCardsRoundId && prevPlayerCardsRoundId !== roundData.id) {
+            if (prevPlayerCardsRoundId && prevPlayerCardsRoundId !== targetRoundId) {
               console.warn('[FETCH] No cards yet for NEW round - clearing stale playerCards until backend inserts land', {
                 prevPlayerCardsRoundId,
-                nextRoundId: roundData.id,
+                nextRoundId: targetRoundId,
               });
-              if (!isStale()) {
-                setPlayerCards([]);
-              }
+              setPlayerCards([]);
             } else {
               console.log('[FETCH] No cards found for round, keeping existing cards (same round - likely timing)');
             }
@@ -4519,6 +4539,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           });
           resetRegressiveRevealTracking(`${snapshot.roundId}:${snapshot.handNumber}`);
           holmSync.reset(snapshot);
+
+          // ── P0-1 + P0-3 FIX: Clear lifted caches on hand boundary (roundId change) ──
+          // These refs live outside the sync framework and previously only cleared on
+          // current_game_uuid change, causing stale community cards to leak across hands
+          // within the same dealer game.
+          communityCardsCacheRef.current = { cards: null, round: null, show: false };
+          showdownCardsCacheRef.current = new Map();
+          showdownRoundNumberRef.current = null;
+          maxRevealedRef.current = snapshot.communityCardsRevealed;
+          cardIdentityRef.current = '';
+          setCommunityCacheEpoch((e) => e + 1);
+          console.log('[holm-sync] P0-1/P0-3: Cleared lifted caches on hand boundary', {
+            newRoundId: snapshot.roundId,
+            resetRevealedTo: snapshot.communityCardsRevealed,
+          });
         } else {
           const result = holmSync.receiveAuthoritativeUpdate(snapshot);
           logSyncGateResult('holm-sync', result.accepted, result.reason,
