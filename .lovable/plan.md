@@ -1,48 +1,55 @@
 
-## 3-5-7 Presentation Cutover Plan
+## Platform Stabilization Plan — v2
 
-### Current State
-- Shadow sync is confirmed structurally sound (monotonic vector, zero real invariants)
-- `threeFiveSevenSync.presentationState` exists but is unused by the render path
-- 3-5-7 renders from raw `game.*` / `currentRound.*` (lines ~7711-7850)
-- Holm already demonstrates the pattern: `holmView` gates pot, dealerPosition, roundStatus, etc.
+### Current Mode: LIVE VALIDATION
 
-### What Changes
+---
 
-**Step 1: Create `threeFiveSevenView` (alias for presentation state)**
-- Add `const threeFiveSevenView = threeFiveSevenSync.presentationState;` alongside `holmView`
-- Gate it: only active when `game_type` matches 3-5-7
+### Phase 1 — Holm P0 (Identity Boundaries & Cache Invalidation)
+**Status: Implemented — awaiting live validation**
 
-**Step 2: Gate 5 render fields through presentation state**
-In the fallback MobileGameTable render (~line 7711), mirror the existing Holm pattern:
+- P0-1: Community card cache invalidation at hand boundary
+- P0-2: decisionLocked suppression during betting
+- P0-3: maxRevealed / card identity cache reset at hand boundary
+- P0-4: Card fetch race guard — post-fetch roundId verification before commit
+- Instrumentation: HOLM_RENDERED_COMMUNITY, card fetch roundId match invariant
 
-| Prop | Current source | New source (when 3-5-7) |
-|------|---------------|------------------------|
-| `pot` | `potForDisplay` | `threeFiveSevenView.pot` |
-| `currentRound` | `game.current_round` | `threeFiveSevenView.roundNumber` |
-| `roundStatus` | `currentRound?.status` | `threeFiveSevenView.roundStatus` |
-| `allDecisionsIn` | `game.all_decisions_in` | derived: all players `decisionLocked` |
-| `currentTurnPosition` | `currentRound?.current_turn_position` | `threeFiveSevenView.currentTurnPosition` |
+### Phase 2 — Cribbage / Gin Rummy P1 (Identity Latch)
+**Status: Implemented — awaiting live validation**
+**Note: Not yet proven to solve the full presentation-oscillation issue. Identity latch drops stale snapshots at hand boundaries but oscillation root cause may have additional vectors.**
 
-**Step 3: Create `threeFiveSevenPlayers` (decision overlay)**
-Mirror the existing `holmPlayers` pattern: overlay `current_decision` and `decision_locked` from presentation state onto raw players. This ensures decision badges read from the gated state.
+- P1-1: Cribbage roundId identity latch — stale realtime/poll rejection
+- P1-2: Cribbage tap failure guard — verified existing instrumentation uses viewState
+- P1-3: Gin Rummy roundId identity latch — stale applyState rejection
+- Instrumentation: identity_latch_drop debug events
 
-**Step 4: Wire invariant checks to compare presentation vs authoritative**
-Now that we have a real "rendered" state, update the stale-round and stale-hand invariants to compare `threeFiveSevenView` values against the authoritative snapshot.
+### Phase 3 — Yahtzee P2 (Turn Spotlight & Held-Dice Stability)
+**Status: Audited — previously addressed in existing code, not independently validated**
+**Note: Code audit confirmed optimistic-before-clear ordering (P2-1) and localDice/stableCacheKey pattern (P2-2) are structurally sound. No new code changes were made. Requires live validation to confirm.**
 
-### What Does NOT Change
-- Action handlers (handleStay, handleFold) continue reading raw DB state for mutation correctness
-- Card dealing, community cards, chucky cards — remain on raw state (not in the snapshot yet)
-- Animation triggers — remain on raw state
-- Hard resets at roundId boundaries — preserved as-is
-- All instrumentation stays active
+- P2-1: Turn spotlight flash — optimistic applied before scoringInProgress clear
+- P2-2: Held-dice identity — localDice is sole source during active turn
+- Architecture note: Yahtzee does not call yahtzeeSync.reset(), so vector-reset vulnerability does not apply
 
-### Why This Is Safe
-- Follows the exact same pattern already proven stable for Holm
-- Presentation state equals authoritative state when not frozen (no freeze windows configured yet)
-- Shadow sync confirmed the progress vector is monotonic — presentation will track correctly
-- Invariants will immediately catch any drift
+### Phase 4 — Horses / SCC (Ad-Hoc Sync Hardening)
+**Status: Hardened — NOT migrated to useGameStateSync**
+**Note: Due to complexity of useHorsesMobileController (2752 lines), Phase 4 was executed as a hardening pass on the existing ad-hoc sync pattern, not a full framework migration. Progress-vector gating and identity latch were added inline. Full migration remains a future option if hardening proves insufficient.**
 
-### Risk Mitigation
-- If any invariant fires post-cutover, we can revert to raw state for that field without code churn
-- No freeze windows in this step — presentation = authoritative passthrough
+- PLATFORM-1/2: Progress-vector gating with monotonic rejection
+- Identity latch: roundIdLatchRef with baseline reset on identity change
+- Instrumentation: HORSES/SCC_SYNC rejection logging
+- Both Horses and SCC share the same controller (isSCC flag)
+
+---
+
+### Validation Order
+1. **Holm** — first priority
+2. **Cribbage / Gin Rummy** — second
+3. **Yahtzee** — third
+4. **Horses / SCC** — separate, with understanding that Phase 4 was hardening, not migration
+
+### What Is NOT Claimed
+- Presentation-oscillation is not proven resolved (Phase 2 addresses one vector)
+- Yahtzee fixes are audited, not independently proven (Phase 3)
+- Horses/SCC are not on the sync framework (Phase 4)
+- No freeze windows are active in any game
