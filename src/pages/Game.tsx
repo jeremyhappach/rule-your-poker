@@ -4468,11 +4468,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerIds: cardsData?.map(c => c.player_id)
           });
 
-          // P0-4 FIX: Card fetch race guard — verify the roundId we fetched for
-          // still matches the current card state context. If another fetch has already
-          // advanced to a newer round, discard this stale response.
+          // P0-4 FIX (tightened): Card fetch race guard.
+          // Beyond the generic fetchSeq staleness check, explicitly verify that the
+          // roundId we fetched cards for still matches the current live round context.
+          // This catches the case where a NEW fetch has already been dispatched for a
+          // newer round but fetchSeq hasn't advanced yet (same fetchGameData call).
+          const currentLiveRoundId = holmSyncLastRoundIdRef.current ?? cardStateContext?.roundId ?? null;
+          const roundIdStillCurrent = !currentLiveRoundId || targetRoundId === currentLiveRoundId;
+
           if (isStale()) {
             console.log('[FETCH] Ignoring stale card fetch (fetchSeq advanced)', { targetRoundId });
+          } else if (!roundIdStillCurrent) {
+            // Explicit roundId mismatch — the round has advanced since we started the fetch
+            console.warn('[FETCH] ⚠️ P0-4: Dropping card fetch — targetRoundId no longer matches live context', {
+              targetRoundId: targetRoundId.slice(0, 8),
+              currentLiveRoundId: currentLiveRoundId?.slice(0, 8),
+            });
+            checkCardFetchRoundMismatch(
+              gameId!,
+              gameData.total_hands ?? 0,
+              targetRoundId,
+              currentLiveRoundId,
+            );
           } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
             setPlayerCards(
