@@ -203,11 +203,14 @@ export function useHorsesMobileController({
   const acceptedStateRef = useRef<HorsesStateFromDB | null>(null);
   const acceptedProgressRef = useRef<ProgressVector>([0, 0, 0, 0]);
   const prevRoundIdForSyncRef = useRef<string | null>(null);
+  // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
+  const roundIdLatchRef = useRef<string | null>(currentRoundId);
 
   // Reset sync baseline when roundId changes (new hand / rollover)
   // NOTE: Ref cleanup for later-declared refs is done in a useEffect below (boundaryCleanupRoundRef).
   if (currentRoundId !== prevRoundIdForSyncRef.current) {
     prevRoundIdForSyncRef.current = currentRoundId;
+    roundIdLatchRef.current = currentRoundId;
     acceptedStateRef.current = null;
     acceptedProgressRef.current = [0, 0, 0, 0, 0];
     
@@ -222,14 +225,17 @@ export function useHorsesMobileController({
     const cmp = compareProgress(currentProgress, incomingProgress);
 
     if (cmp === -1) {
-      // Regressive - reject
+      // Regressive - reject and instrument
+      console.log(`[${isSCC ? 'SCC' : 'HORSES'}_SYNC] ❌ Rejected regressive snapshot`, {
+        current: currentProgress,
+        incoming: incomingProgress,
+        gamePhase: horsesState.gamePhase,
+        turn: horsesState.currentTurnPlayerId?.slice(0, 8),
+      });
       return acceptedStateRef.current;
     }
 
     // Accept: forward or equal
-    if (cmp === 1) {
-    }
-
     acceptedStateRef.current = horsesState;
     acceptedProgressRef.current = incomingProgress;
     return horsesState;
