@@ -2045,6 +2045,8 @@ export const CribbageMobileGameTable = ({
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
+    // Update identity latch FIRST — stale handlers check this before accepting
+    roundIdLatchRef.current = currentRoundId;
     
     // Detect bootstrap boundary: roundId changing from '' (dealer selection) to a real value
     const isBootstrapTransition = !oldId || oldId === '';
