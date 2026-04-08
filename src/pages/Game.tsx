@@ -50,7 +50,7 @@ import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { logSyncGateResult } from "@/lib/debugSyncInvariants";
-import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
+import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking, traceHolmRenderedCommunity, checkCardFetchRoundMismatch } from "@/lib/holmSyncDiagnostics";
 import { logThreeFiveSevenSyncGate, logThreeFiveSevenSummary, checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { persistTransition } from "@/lib/persistSyncDebugEvent";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
