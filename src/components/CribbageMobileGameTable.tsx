@@ -1301,11 +1301,54 @@ export const CribbageMobileGameTable = ({
     })();
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
+    // SAFETY: Clamp negative baselines to 0. Negative scores are always a computation artifact
+    // (e.g., subtracting hand+crib from a stale pegScore during a replay edge case).
+    const hasNegative = Object.values(baselineScores).some(s => s < 0);
+    if (hasNegative) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'error',
+        eventName: 'crib-negative-score-render',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          computedBaselines: baselineScores,
+          stateScores,
+          cachedScores: cachedScores ?? null,
+          isReconnect,
+          source: cachedScores ? 'cached' : isReconnect ? 'reverse-engineered' : 'state-direct',
+        },
+      });
+      // Clamp all negatives to 0
+      for (const pid of Object.keys(baselineScores)) {
+        if (baselineScores[pid] < 0) baselineScores[pid] = 0;
+      }
+    }
     countingBaselineScoresRef.current = baselineScores;
 
     // Keep cache aligned with what we're using as the baseline for this hand.
     lastPeggingScoresRef.current = baselineScores;
     setCountingScoreOverrides(baselineScores);
+    
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-postscore-animation-trigger',
+      payload: {
+        roundId: currentRoundId?.slice(0, 8),
+        handNumber: currentHandNumber,
+        countingStartKey,
+        isReconnect,
+        baselineScores,
+        clampedNegatives: hasNegative,
+      },
+    });
 
     if (isReconnect) {
       // On reconnect, skip the 2-second pegging announcement delay entirely.
