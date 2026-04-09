@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -2459,7 +2459,7 @@ export const CribbageMobileGameTable = ({
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   // Handlers from stale subscriptions/polls compare against this to reject cross-hand leaks.
   const roundIdLatchRef = useRef<string>(currentRoundId);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (currentRoundId === prevRoundIdRef.current) return;
     const oldId = prevRoundIdRef.current;
     prevRoundIdRef.current = currentRoundId;
