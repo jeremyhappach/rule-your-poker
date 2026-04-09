@@ -41,10 +41,13 @@ export const CribbagePegBoard = ({
   const currentDisplayScores: Record<string, number> = {};
   for (const player of players) {
     const state = playerStates[player.id];
-    const rawPegScore = state?.pegScore ?? 0;
+    const rawPegScore = state?.pegScore ?? undefined;
     const overrideScore = overrideScores?.[player.id];
     const displayScore = overrideScore ?? rawPegScore;
-    currentDisplayScores[player.id] = displayScore;
+    // CRITICAL: If score source is missing/undefined, hold last known valid score
+    // This prevents the 0-fallback animation during hand boundary resets
+    const prevKnown = prevRenderedScoresRef.current[player.id];
+    currentDisplayScores[player.id] = displayScore !== undefined ? displayScore : (prevKnown ?? 0);
   }
 
   // Check for regression: any player's score decreased from previous render
@@ -88,11 +91,8 @@ export const CribbagePegBoard = ({
     <div className="space-y-1.5">
       {/* Progress bars for each player */}
       {players.map((player, index) => {
-        const state = playerStates[player.id];
-        // Use override score during counting phase, otherwise use actual pegScore
-        const rawScore = overrideScores?.[player.id] ?? state?.pegScore ?? 0;
-        // SAFETY: Never render negative scores — always a computation artifact
-        const score = Math.max(0, rawScore);
+        // Use the already-computed display score which includes hold-last-valid logic
+        const score = Math.max(0, currentDisplayScores[player.id] ?? 0);
         const percentage = Math.min(100, (score / winningScore) * 100);
         // Ensure peg is always visible even at 0 — minimum 2% width
         const displayPercentage = score > 0 ? Math.max(2, percentage) : 0;
