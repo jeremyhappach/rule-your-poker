@@ -3530,7 +3530,32 @@ export const CribbageMobileGameTable = ({
   );
   const shouldShowPreparingNextHand = isBootstrapMode && !shouldShowAwaitingAnteAnnouncement;
 
-  useEffect(() => {
+  // ── STALE-ACTIVE-HAND INVARIANT TRACE ──
+  // Log when viewState exists but is blocked from rendering due to round identity mismatch.
+  // This proves the stale first-paint source and confirms the guard is working.
+  if (viewState && renderHandKey && currentHandKey && renderHandKey !== currentHandKey) {
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      roundId: currentRoundId ?? null,
+      eventType: 'invariant',
+      severity: 'warn',
+      eventName: 'crib-stale-active-hand-blocked',
+      payload: {
+        renderHandKey: renderHandKey.slice(0, 30),
+        currentHandKey: currentHandKey.slice(0, 30),
+        currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+        isTransitioning,
+        initialLoadComplete,
+        viewStatePhase: viewState.phase,
+        viewStatePlayerCount: Object.keys(viewState.playerStates).length,
+        renderSource: 'viewState (sync-presentation)',
+        blockedSurfaces: ['felt-content', 'opponent-overlay', 'cards-tab'],
+      },
+    });
+  }
+
     if (!isBootstrapMode || !shouldShowAwaitingAnteAnnouncement) return;
 
     const priorTriggerCount = incrementGuardCount(
