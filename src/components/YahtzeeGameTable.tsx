@@ -376,6 +376,10 @@ export function YahtzeeGameTable({
   // Local dice state — OWNED by the active player during their turn.
   // Seeded from DB once on turn start; after that, only local actions mutate it.
   const [localDice, setLocalDice] = useState<YahtzeeDie[]>([]);
+  // Ref mirror of localDice — always up-to-date for synchronous reads in handlers
+  // (React closures capture stale state; this ref avoids the hold→roll race condition)
+  const localDiceRef = useRef<YahtzeeDie[]>([]);
+  useEffect(() => { localDiceRef.current = localDice; }, [localDice]);
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
   // Ref for pending debounced hold DB write (batches rapid toggles into one write)
   const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
