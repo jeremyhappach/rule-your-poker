@@ -1727,6 +1727,33 @@ export const CribbageMobileGameTable = ({
         const loadedState = roundData.cribbage_state as unknown as CribbageState;
         syncHandle.receiveAuthoritativeUpdate(loadedState);
         setCribbageState(loadedState);
+        // FIX: Unfreeze transition if this load is the first valid state for the new hand.
+        // Without this, isTransitioning stays true forever because the realtime handler
+        // rejects the duplicate state as "no progress" and never reaches the unfreeze path.
+        if (transitionFrozenRef.current) {
+          const frozenForRound = transitionFrozenForRoundRef.current;
+          if (!frozenForRound || frozenForRound === fetchRoundId) {
+            transitionFrozenRef.current = false;
+            transitionFrozenForRoundRef.current = null;
+            syncHandle.unfreezePresentation();
+            setIsTransitioning(false);
+            persistSyncDebugEvent({
+              gameId,
+              gameType: 'cribbage',
+              handNumber: currentHandNumber,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: 'crib-load-unfreeze',
+              payload: {
+                fetchToken,
+                roundId: fetchRoundId.slice(0, 8),
+                frozenForRound: frozenForRound?.slice(0, 8),
+                source: 'loadOrInitializeState',
+                phase: loadedState.phase,
+              },
+            });
+          }
+        }
         return;
       }
 
@@ -1764,6 +1791,16 @@ export const CribbageMobileGameTable = ({
       
       syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
+      // FIX: Same unfreeze as existing-state path above
+      if (transitionFrozenRef.current) {
+        const frozenForRound = transitionFrozenForRoundRef.current;
+        if (!frozenForRound || frozenForRound === fetchRoundId) {
+          transitionFrozenRef.current = false;
+          transitionFrozenForRoundRef.current = null;
+          syncHandle.unfreezePresentation();
+          setIsTransitioning(false);
+        }
+      }
     };
 
     loadOrInitializeState();
