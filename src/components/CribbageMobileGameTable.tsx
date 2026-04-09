@@ -515,6 +515,12 @@ export const CribbageMobileGameTable = ({
   // Ref to track if counting animation is active - used by realtime handler to avoid stale closure
   const countingAnimationActiveRef = useRef(false);
   
+  // REPLAY GUARD: Tracks handKeys for which counting has COMPLETED (animation finished).
+  // This ref is NEVER cleared on hand boundary resets — it accumulates across hands.
+  // Prevents the counting init effect from replaying for a hand that already finished counting,
+  // even if roundId change clears all other guards.
+  const countingCompletedHandKeysRef = useRef<Set<string>>(new Set());
+  
   // Store the cribbage state snapshot used for counting animation - this prevents the animation
   // from disappearing when DB phase transitions to 'complete' during counting
   const [countingStateSnapshot, setCountingStateSnapshot] = useState<CribbageState | null>(null);
@@ -1208,6 +1214,28 @@ export const CribbageMobileGameTable = ({
     // Only snapshot once per counting phase instance
     if (countingDelayFiredRef.current === countingStartKey) return;
 
+    // REPLAY GUARD: If counting already completed for this handKey, do NOT replay.
+    // This survives roundId boundary resets because countingCompletedHandKeysRef is never cleared.
+    if (countingCompletedHandKeysRef.current.has(countingStartKey)) {
+      console.warn('[CRIBBAGE] crib-replay-detected: counting already completed for', countingStartKey);
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib-replay-detected',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          event: 'counting-init',
+          handKey: countingStartKey,
+          timesCompleted: 1,
+        },
+      });
+      return;
+    }
+
     // ── Reconnect / late-join eligibility check ──────────────────────
     // If countingStartedAt exists and significant time has elapsed, this is a reconnect.
     // Determine whether counting animation is still worth showing or should be skipped entirely.
@@ -1273,11 +1301,54 @@ export const CribbageMobileGameTable = ({
     })();
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
+    // SAFETY: Clamp negative baselines to 0. Negative scores are always a computation artifact
+    // (e.g., subtracting hand+crib from a stale pegScore during a replay edge case).
+    const hasNegative = Object.values(baselineScores).some(s => s < 0);
+    if (hasNegative) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'error',
+        eventName: 'crib-negative-score-render',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          computedBaselines: baselineScores,
+          stateScores,
+          cachedScores: cachedScores ?? null,
+          isReconnect,
+          source: cachedScores ? 'cached' : isReconnect ? 'reverse-engineered' : 'state-direct',
+        },
+      });
+      // Clamp all negatives to 0
+      for (const pid of Object.keys(baselineScores)) {
+        if (baselineScores[pid] < 0) baselineScores[pid] = 0;
+      }
+    }
     countingBaselineScoresRef.current = baselineScores;
 
     // Keep cache aligned with what we're using as the baseline for this hand.
     lastPeggingScoresRef.current = baselineScores;
     setCountingScoreOverrides(baselineScores);
+    
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-postscore-animation-trigger',
+      payload: {
+        roundId: currentRoundId?.slice(0, 8),
+        handNumber: currentHandNumber,
+        countingStartKey,
+        isReconnect,
+        baselineScores,
+        clampedNegatives: hasNegative,
+      },
+    });
 
     if (isReconnect) {
       // On reconnect, skip the 2-second pegging announcement delay entirely.
@@ -2937,6 +3008,32 @@ export const CribbageMobileGameTable = ({
       return;
     }
     startNextHandFiredRef.current = handKey;
+    
+    // REPLAY GUARD: Mark this handKey as completed so it can never replay
+    // even if roundId boundary reset clears all other guards.
+    countingCompletedHandKeysRef.current.add(handKey);
+    // Prune old keys to prevent unbounded growth (keep last 10)
+    if (countingCompletedHandKeysRef.current.size > 10) {
+      const keys = Array.from(countingCompletedHandKeysRef.current);
+      for (let i = 0; i < keys.length - 10; i++) {
+        countingCompletedHandKeysRef.current.delete(keys[i]);
+      }
+    }
+    
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-transition-next-hand-start',
+      payload: {
+        oldRoundId: currentRoundId?.slice(0, 8),
+        oldHandNumber: currentHandNumber,
+        triggerSource: 'handleCountingComplete',
+        handKey,
+      },
+    });
     
     // Mark counting animation as complete and clear snapshot.
     // IMPORTANT: Do NOT set countingAnimationActiveRef.current = false here.

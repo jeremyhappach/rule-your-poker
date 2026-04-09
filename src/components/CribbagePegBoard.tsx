@@ -90,7 +90,9 @@ export const CribbagePegBoard = ({
       {players.map((player, index) => {
         const state = playerStates[player.id];
         // Use override score during counting phase, otherwise use actual pegScore
-        const score = overrideScores?.[player.id] ?? state?.pegScore ?? 0;
+        const rawScore = overrideScores?.[player.id] ?? state?.pegScore ?? 0;
+        // SAFETY: Never render negative scores — always a computation artifact
+        const score = Math.max(0, rawScore);
         const percentage = Math.min(100, (score / winningScore) * 100);
         // Ensure peg is always visible even at 0 — minimum 2% width
         const displayPercentage = score > 0 ? Math.max(2, percentage) : 0;
