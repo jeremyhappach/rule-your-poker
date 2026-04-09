@@ -3556,6 +3556,7 @@ export const CribbageMobileGameTable = ({
     });
   }
 
+  useEffect(() => {
     if (!isBootstrapMode || !shouldShowAwaitingAnteAnnouncement) return;
 
     const priorTriggerCount = incrementGuardCount(
