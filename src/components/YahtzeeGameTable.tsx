@@ -597,7 +597,10 @@ export function YahtzeeGameTable({
     const isFirstRoll = myPs.rollsRemaining === 3;
     const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
 
-    heldSnapshotRef.current = localDice.map(d => d.isHeld);
+    // Use ref to get the LATEST localDice — avoids stale closure when user
+    // holds a die and immediately taps Roll before React re-renders.
+    const currentLocalDice = localDiceRef.current;
+    heldSnapshotRef.current = currentLocalDice.map(d => d.isHeld);
     rollSerialRef.current += 1;
     const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
     localRollKeyRef.current = t;
@@ -609,7 +612,7 @@ export function YahtzeeGameTable({
       ...myPs,
       dice: myPs.dice.map((d, i) => ({
         ...d,
-        isHeld: localDice[i]?.isHeld ?? d.isHeld,
+        isHeld: currentLocalDice[i]?.isHeld ?? d.isHeld,
       })),
     };
 
