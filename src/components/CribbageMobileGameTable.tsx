@@ -1214,6 +1214,28 @@ export const CribbageMobileGameTable = ({
     // Only snapshot once per counting phase instance
     if (countingDelayFiredRef.current === countingStartKey) return;
 
+    // REPLAY GUARD: If counting already completed for this handKey, do NOT replay.
+    // This survives roundId boundary resets because countingCompletedHandKeysRef is never cleared.
+    if (countingCompletedHandKeysRef.current.has(countingStartKey)) {
+      console.warn('[CRIBBAGE] crib-replay-detected: counting already completed for', countingStartKey);
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib-replay-detected',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          event: 'counting-init',
+          handKey: countingStartKey,
+          timesCompleted: 1,
+        },
+      });
+      return;
+    }
+
     // ── Reconnect / late-join eligibility check ──────────────────────
     // If countingStartedAt exists and significant time has elapsed, this is a reconnect.
     // Determine whether counting animation is still worth showing or should be skipped entirely.
