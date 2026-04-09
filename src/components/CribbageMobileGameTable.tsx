@@ -133,13 +133,23 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * Generate a unique hand key from cribbage state to detect hand transitions.
  * Uses dealerPlayerId + first player's hand signature to uniquely identify a hand.
  */
+/**
+ * Generate a stable hand identity key from cribbage state.
+ * CRITICAL: This must be STABLE across pegging updates.
+ * Uses the full original deal (hand + discarded + played cards for first player)
+ * so the key doesn't change when cards move from hand → playedCards during pegging.
+ */
 function getHandKey(state: CribbageState | null): string {
   if (!state) return '';
   const firstPlayerId = state.turnOrder[0];
   const firstPlayerHand = state.playerStates[firstPlayerId]?.hand || [];
-  // Include discardedToCrib to differentiate pre/post discard
   const discarded = state.playerStates[firstPlayerId]?.discardedToCrib || [];
-  const handSig = [...firstPlayerHand, ...discarded]
+  // Include cards this player has played during pegging to keep the key stable
+  // as cards move from hand → playedCards
+  const playedByFirstPlayer = (state.pegging?.playedCards || [])
+    .filter(pc => pc.playerId === firstPlayerId)
+    .map(pc => pc.card);
+  const handSig = [...firstPlayerHand, ...discarded, ...playedByFirstPlayer]
     .map(c => `${c.rank}${c.suit}`)
     .sort()
     .join(',');
@@ -3831,6 +3841,57 @@ export const CribbageMobileGameTable = ({
       if (arr) arr.sort((a, b) => a.roundNumber - b.roundNumber);
     });
   }
+
+  // ── ANNOUNCEMENT TRACER ──────────────────────────────────────
+  // Derive current banner text (mirrors the inline IIFE in JSX) for change tracking
+  const derivedBannerText = useMemo(() => {
+    if (isHighCardMode) return effectiveHighCardAnnouncement ?? '(none)';
+    if (isBootstrapMode) return shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...';
+    if (!viewState) return '(no viewState)';
+    if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return '(win overlay)';
+    if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
+      return `${winSequenceData.winnerName} Wins! +$${winSequenceData.totalWinnings}`;
+    }
+    const isCountingAnimActive = !!countingStateSnapshot;
+    const countingOutroActive = isCountingAnimActive && countingDelayActive;
+    const effectivePhase = isCountingAnimActive
+      ? (countingOutroActive ? 'pegging' : countingStateSnapshot!.phase)
+      : viewState.phase;
+    const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
+    if (isCountingComplete) return 'Dealing Next Hand...';
+    if (effectivePhase === 'counting') return countingAnnouncement ? `${countingTargetLabel}: ${countingAnnouncement}` : countingTargetLabel ? `Scoring ${countingTargetLabel}...` : 'Scoring hands...';
+    if (effectivePhase === 'discarding') return 'Discard to Crib';
+    if (effectivePhase === 'cutting') return 'Cut Card';
+    return '(pegging/none)';
+  }, [isHighCardMode, isBootstrapMode, shouldShowAwaitingAnteAnnouncement, viewState, winSequencePhase, winSequenceData, countingStateSnapshot, countingDelayActive, postCountingTransitionActive, countingAnnouncement, countingTargetLabel, effectiveHighCardAnnouncement]);
+
+  const prevBannerTextRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevBannerTextRef.current !== null && prevBannerTextRef.current !== derivedBannerText) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-announcement-change',
+        payload: {
+          previousText: prevBannerTextRef.current,
+          nextText: derivedBannerText,
+          roundId: currentRoundId?.slice(0, 8),
+          renderMode: isHighCardMode ? 'highCard' : isBootstrapMode ? 'bootstrap' : 'gameplay',
+          phase: viewState?.phase ?? null,
+          isTransitioning,
+          postCountingTransitionActive,
+          renderHandKey: renderHandKey?.slice(0, 20),
+          currentHandKey: currentHandKey?.slice(0, 20),
+          winSequencePhase,
+          countingSnapshotActive: !!countingStateSnapshot,
+        },
+      });
+    }
+    prevBannerTextRef.current = derivedBannerText;
+  }, [derivedBannerText, gameId, currentHandNumber, currentRoundId, isHighCardMode, isBootstrapMode, viewState?.phase, isTransitioning, postCountingTransitionActive, renderHandKey, currentHandKey, winSequencePhase, countingStateSnapshot]);
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
