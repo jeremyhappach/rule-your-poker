@@ -50,9 +50,11 @@ import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { logSyncGateResult } from "@/lib/debugSyncInvariants";
-import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking, traceHolmRenderedCommunity, checkCardFetchRoundMismatch } from "@/lib/holmSyncDiagnostics";
+import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking, traceHolmRenderedCommunity } from "@/lib/holmSyncDiagnostics";
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { logThreeFiveSevenSyncGate, logThreeFiveSevenSummary, checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { persistTransition } from "@/lib/persistSyncDebugEvent";
+// persistSyncDebugEvent already imported above
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -423,6 +425,7 @@ const Game = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerCards, setPlayerCards] = useState<PlayerCards[]>([]);
   const [cardStateContext, setCardStateContext] = useState<CardStateContext | null>(null); // Authoritative card count
+  const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
@@ -1670,10 +1673,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
             lastKnownRoundRef.current = incomingRound;
             
-            // CRITICAL: Do NOT clear cards here - causes "Wait..." flash
-            // Let fetchGameData atomically replace cards with new round's cards
+            // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
+            setPlayerCards([]);
             setCardStateContext(null);
-            // Don't call setPlayerCards([])
+            persistSyncDebugEvent({
+              gameId: gameId!,
+              gameType: 'holm-game',
+              handNumber: game?.total_hands ?? 0,
+              roundId: null,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: 'hand-boundary-reset',
+              payload: { source: 'realtime-round-change', oldRound: localRound, newRound: incomingRound },
+            });
             
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
@@ -4444,8 +4456,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         if (roundData) {
           const prevPlayerCardsRoundId = cardStateContext?.roundId ?? null;
-          // P0-4: Capture the target roundId BEFORE the async fetch so we can verify on response
           const targetRoundId = roundData.id;
+
+          // FIX 3: Mint a fetch token BEFORE the async fetch
+          const fetchToken = ++cardFetchTokenRef.current;
+          const fetchRoundId = targetRoundId;
 
           // Store authoritative card context from the round record
           const newCardContext: CardStateContext = {
@@ -4455,6 +4470,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           };
           console.log('[FETCH] Setting card state context:', newCardContext);
           setCardStateContext(newCardContext);
+
+          // Log card-fetch-start
+          persistSyncDebugEvent({
+            gameId: gameId!,
+            gameType: gameData.game_type ?? 'unknown',
+            handNumber: gameData.total_hands ?? 0,
+            roundId: fetchRoundId,
+            eventType: 'transition',
+            severity: 'info',
+            eventName: 'card-fetch-start',
+            payload: { fetchToken, fetchRoundId },
+          });
           
           const { data: cardsData, error: cardsError } = await supabase
             .from('player_cards')
@@ -4468,30 +4495,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             playerIds: cardsData?.map(c => c.player_id)
           });
 
-          // P0-4 FIX (tightened): Card fetch race guard.
-          // Beyond the generic fetchSeq staleness check, explicitly verify that the
-          // roundId we fetched cards for still matches the current live round context.
-          // This catches the case where a NEW fetch has already been dispatched for a
-          // newer round but fetchSeq hasn't advanced yet (same fetchGameData call).
-          const currentLiveRoundId = holmSyncLastRoundIdRef.current ?? cardStateContext?.roundId ?? null;
-          const roundIdStillCurrent = !currentLiveRoundId || targetRoundId === currentLiveRoundId;
-
+          // FIX 1: REMOVED broken roundIdStillCurrent guard.
+          // FIX 3: Use ONLY fetchToken + isStale() for staleness.
           if (isStale()) {
             console.log('[FETCH] Ignoring stale card fetch (fetchSeq advanced)', { targetRoundId });
-          } else if (!roundIdStillCurrent) {
-            // Explicit roundId mismatch — the round has advanced since we started the fetch
-            console.warn('[FETCH] ⚠️ P0-4: Dropping card fetch — targetRoundId no longer matches live context', {
-              targetRoundId: targetRoundId.slice(0, 8),
-              currentLiveRoundId: currentLiveRoundId?.slice(0, 8),
+          } else if (fetchToken !== cardFetchTokenRef.current) {
+            // A newer fetch was dispatched while we were awaiting — drop this one
+            console.warn('[FETCH] ⚠️ Dropping card fetch — fetchToken superseded', {
+              ourToken: fetchToken,
+              currentToken: cardFetchTokenRef.current,
+              fetchRoundId,
             });
-            checkCardFetchRoundMismatch(
-              gameId!,
-              gameData.total_hands ?? 0,
-              targetRoundId,
-              currentLiveRoundId,
-            );
+            persistSyncDebugEvent({
+              gameId: gameId!,
+              gameType: gameData.game_type ?? 'unknown',
+              handNumber: gameData.total_hands ?? 0,
+              roundId: fetchRoundId,
+              eventType: 'sync-gate',
+              severity: 'warn',
+              eventName: 'card-fetch-drop-stale',
+              payload: { fetchToken, currentToken: cardFetchTokenRef.current, fetchRoundId },
+            });
           } else if (cardsData && cardsData.length > 0) {
             console.log('[FETCH] Setting player cards for round:', cardsData.length, 'players');
+            persistSyncDebugEvent({
+              gameId: gameId!,
+              gameType: gameData.game_type ?? 'unknown',
+              handNumber: gameData.total_hands ?? 0,
+              roundId: fetchRoundId,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: 'card-fetch-apply',
+              payload: { fetchToken, fetchRoundId, cardCount: cardsData.length },
+            });
             setPlayerCards(
               cardsData.map((cd) => ({
                 player_id: cd.player_id,
@@ -4501,10 +4537,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else if (cardsError) {
             console.error('[FETCH] ❌ Cards fetch error (RLS?):', cardsError);
           } else {
-            // IMPORTANT: If the round id changed but the new round has no cards yet,
-            // we MUST clear local cards to avoid rendering the previous hand while we wait.
+            // If the round id changed but the new round has no cards yet,
+            // clear local cards to avoid rendering previous hand.
             if (prevPlayerCardsRoundId && prevPlayerCardsRoundId !== targetRoundId) {
-              console.warn('[FETCH] No cards yet for NEW round - clearing stale playerCards until backend inserts land', {
+              console.warn('[FETCH] No cards yet for NEW round - clearing stale playerCards', {
                 prevPlayerCardsRoundId,
                 nextRoundId: targetRoundId,
               });
@@ -7826,7 +7862,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
               currentRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
               allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : (game.all_decisions_in || false)) : false}
-              playerCards={isInProgress ? playerCards : []}
+              playerCards={isInProgress ? (cardStateContext?.roundId && currentRound?.id && cardStateContext.roundId !== currentRound.id ? [] : playerCards) : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
               lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
