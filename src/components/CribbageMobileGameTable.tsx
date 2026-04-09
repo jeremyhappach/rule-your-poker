@@ -2119,6 +2119,7 @@ export const CribbageMobileGameTable = ({
       gameType: 'cribbage',
       handNumber: currentHandNumber,
       eventType: 'transition',
+      severity: 'info',
       eventName: 'hand-boundary-reset',
       payload: {
         oldRoundId: oldId?.slice(0, 8),
