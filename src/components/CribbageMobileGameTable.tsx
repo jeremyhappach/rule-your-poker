@@ -417,6 +417,12 @@ export const CribbageMobileGameTable = ({
   const [cribbageState, setCribbageState] = useState<CribbageState | null>(null);
   // Keep latest state in a ref so effects can avoid depending on object identity churn.
   const cribbageStateRef = useRef<CribbageState | null>(null);
+
+  // ── Latched pegboard data: persists across bootstrap mode to prevent pegboard unmount flicker ──
+  const latchedPegboardDataRef = useRef<{
+    playerStates: Record<string, import('@/lib/cribbageTypes').CribbagePlayerState>;
+    winningScore: number;
+  } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Local tracking of current round for proper hand transitions
@@ -3533,6 +3539,14 @@ export const CribbageMobileGameTable = ({
   const isHighCardMode = effectiveShowHighCardSelection;
   const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
   const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
+
+  // Latch pegboard data whenever we have valid gameplay state
+  if (isGameplayMode && viewState) {
+    latchedPegboardDataRef.current = {
+      playerStates: viewState.playerStates,
+      winningScore: viewState.pointsToWin,
+    };
+  }
   const shouldShowAwaitingAnteAnnouncement = currentHandNumber <= 1 && (
     isDealerSelection ||
     effectiveShowHighCardSelection ||
