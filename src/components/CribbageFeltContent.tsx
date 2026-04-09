@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
-import { CribbagePegBoard } from './CribbagePegBoard';
+// CribbagePegBoard now rendered by parent for mount stability
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { logDebugEvent } from '@/lib/debugEventLogger';
