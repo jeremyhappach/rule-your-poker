@@ -3842,6 +3842,57 @@ export const CribbageMobileGameTable = ({
     });
   }
 
+  // ── ANNOUNCEMENT TRACER ──────────────────────────────────────
+  // Derive current banner text (mirrors the inline IIFE in JSX) for change tracking
+  const derivedBannerText = useMemo(() => {
+    if (isHighCardMode) return effectiveHighCardAnnouncement ?? '(none)';
+    if (isBootstrapMode) return shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...';
+    if (!viewState) return '(no viewState)';
+    if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return '(win overlay)';
+    if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
+      return `${winSequenceData.winnerName} Wins! +$${winSequenceData.totalWinnings}`;
+    }
+    const isCountingAnimActive = !!countingStateSnapshot;
+    const countingOutroActive = isCountingAnimActive && countingDelayActive;
+    const effectivePhase = isCountingAnimActive
+      ? (countingOutroActive ? 'pegging' : countingStateSnapshot!.phase)
+      : viewState.phase;
+    const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
+    if (isCountingComplete) return 'Dealing Next Hand...';
+    if (effectivePhase === 'counting') return countingAnnouncement ? `${countingTargetLabel}: ${countingAnnouncement}` : countingTargetLabel ? `Scoring ${countingTargetLabel}...` : 'Scoring hands...';
+    if (effectivePhase === 'discarding') return 'Discard to Crib';
+    if (effectivePhase === 'cutting') return 'Cut Card';
+    return '(pegging/none)';
+  }, [isHighCardMode, isBootstrapMode, shouldShowAwaitingAnteAnnouncement, viewState, winSequencePhase, winSequenceData, countingStateSnapshot, countingDelayActive, postCountingTransitionActive, countingAnnouncement, countingTargetLabel, effectiveHighCardAnnouncement]);
+
+  const prevBannerTextRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevBannerTextRef.current !== null && prevBannerTextRef.current !== derivedBannerText) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-announcement-change',
+        payload: {
+          previousText: prevBannerTextRef.current,
+          nextText: derivedBannerText,
+          roundId: currentRoundId?.slice(0, 8),
+          renderMode: isHighCardMode ? 'highCard' : isBootstrapMode ? 'bootstrap' : 'gameplay',
+          phase: viewState?.phase ?? null,
+          isTransitioning,
+          postCountingTransitionActive,
+          renderHandKey: renderHandKey?.slice(0, 20),
+          currentHandKey: currentHandKey?.slice(0, 20),
+          winSequencePhase,
+          countingSnapshotActive: !!countingStateSnapshot,
+        },
+      });
+    }
+    prevBannerTextRef.current = derivedBannerText;
+  }, [derivedBannerText, gameId, currentHandNumber, currentRoundId, isHighCardMode, isBootstrapMode, viewState?.phase, isTransitioning, postCountingTransitionActive, renderHandKey, currentHandKey, winSequencePhase, countingStateSnapshot]);
+
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
