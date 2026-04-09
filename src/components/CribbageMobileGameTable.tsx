@@ -3795,10 +3795,9 @@ export const CribbageMobileGameTable = ({
     });
   }
 
-  // If transitioning between hands with no visual to show, render minimal blank shell
-  if (isBootstrapMode && isTransitioning) {
-    return <div className="h-full flex flex-col overflow-hidden bg-background" />;
-  }
+  // NOTE: We no longer early-return a bare div during transitions.
+  // The full table shell renders below; bootstrap mode shows a transition placeholder
+  // inside the felt circle to avoid unmount/remount flicker.
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Win Sequence Overlays - Portaled above everything (gameplay mode only) */}
@@ -3946,10 +3945,13 @@ export const CribbageMobileGameTable = ({
               </>
             )}
 
-            {/* BOOTSTRAP MODE: just the game title */}
+            {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount */}
             {isBootstrapMode && (
-              <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-                <h2 className="text-sm font-bold text-white drop-shadow-lg">Cribbage</h2>
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center">
+                <h2 className="text-sm font-bold text-white drop-shadow-lg mb-2">Cribbage</h2>
+                {isTransitioning && (
+                  <p className="text-xs text-white/60 animate-pulse">Preparing next hand…</p>
+                )}
               </div>
             )}
 
