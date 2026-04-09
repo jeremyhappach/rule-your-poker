@@ -146,6 +146,47 @@ function getHandKey(state: CribbageState | null): string {
   return `${state.dealerPlayerId}-${handSig}`;
 }
 
+const HAND_BOUNDARY_GUARD_LIMIT = 24;
+
+function pruneGuardSet(set: Set<string>, max = HAND_BOUNDARY_GUARD_LIMIT) {
+  if (set.size <= max) return;
+  const keys = Array.from(set);
+  for (let i = 0; i < keys.length - max; i += 1) {
+    set.delete(keys[i]);
+  }
+}
+
+function pruneGuardMap(map: Map<string, number>, max = HAND_BOUNDARY_GUARD_LIMIT) {
+  if (map.size <= max) return;
+  const keys = Array.from(map.keys());
+  for (let i = 0; i < keys.length - max; i += 1) {
+    map.delete(keys[i]);
+  }
+}
+
+function incrementGuardCount(map: Map<string, number>, key: string): number {
+  const prior = map.get(key) ?? 0;
+  map.set(key, prior + 1);
+  pruneGuardMap(map);
+  return prior;
+}
+
+function markGuardConsumed(set: Set<string>, key: string): boolean {
+  if (set.has(key)) return false;
+  set.add(key);
+  pruneGuardSet(set);
+  return true;
+}
+
+function buildBoundaryGuardKey(
+  dealerGameId: string | null,
+  roundId: string | null | undefined,
+  handNumber: number,
+  handKey?: string | null,
+) {
+  return `${dealerGameId ?? 'no-dealer'}:${roundId ?? 'no-round'}:${handNumber}:${handKey ?? 'no-hand-key'}`;
+}
+
 export const CribbageMobileGameTable = ({
   gameId,
   roundId,
@@ -372,6 +413,10 @@ export const CribbageMobileGameTable = ({
   // These start from props but can be updated when starting a new hand
   const [currentRoundId, setCurrentRoundId] = useState(roundId);
   const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
+  const roundBoundaryGuardKey = useMemo(
+    () => buildBoundaryGuardKey(dealerGameId, currentRoundId, currentHandNumber),
+    [dealerGameId, currentRoundId, currentHandNumber],
+  );
 
   // Sync local round tracking when props change (e.g., when parent reloads game state)
   // CRITICAL: With multiple clients, props can temporarily lag behind a locally-started next hand.
@@ -520,6 +565,17 @@ export const CribbageMobileGameTable = ({
   // Prevents the counting init effect from replaying for a hand that already finished counting,
   // even if roundId change clears all other guards.
   const countingCompletedHandKeysRef = useRef<Set<string>>(new Set());
+  const awaitingAnteAnnouncementConsumedRef = useRef<Set<string>>(new Set());
+  const nextHandInitConsumedRef = useRef<Set<string>>(new Set());
+  const preparingNextHandEnterConsumedRef = useRef<Set<string>>(new Set());
+  const flyawayAnimationConsumedRef = useRef<Set<string>>(new Set());
+  const cribCutReplayConsumedRef = useRef<Set<string>>(new Set());
+  const wrongInitBranchLoggedRef = useRef<Set<string>>(new Set());
+  const awaitingAnteAnnouncementCountRef = useRef<Map<string, number>>(new Map());
+  const nextHandInitCountRef = useRef<Map<string, number>>(new Map());
+  const preparingNextHandEnterCountRef = useRef<Map<string, number>>(new Map());
+  const animationReplayCountRef = useRef<Map<string, number>>(new Map());
+  const preparingNextHandActiveKeyRef = useRef<string | null>(null);
   
   // Store the cribbage state snapshot used for counting animation - this prevents the animation
   // from disappearing when DB phase transitions to 'complete' during counting
@@ -1236,6 +1292,28 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
+    const priorFlyawayCount = incrementGuardCount(
+      animationReplayCountRef.current,
+      `${countingStartKey}:flyaway`,
+    );
+    if (!markGuardConsumed(flyawayAnimationConsumedRef.current, countingStartKey)) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib-animation-replay-detected',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          animationType: 'flyaway',
+          priorCount: priorFlyawayCount,
+        },
+      });
+      return;
+    }
+
     // ── Reconnect / late-join eligibility check ──────────────────────
     // If countingStartedAt exists and significant time has elapsed, this is a reconnect.
     // Determine whether counting animation is still worth showing or should be skipped entirely.
@@ -1736,13 +1814,15 @@ export const CribbageMobileGameTable = ({
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
   useEffect(() => {
     // Guard: need roundId to proceed
-    if (!roundId) {
+    if (!currentRoundId) {
       console.log('[CRIBBAGE] No roundId yet, waiting...');
       return;
     }
     
     const fetchToken = ++cribbageFetchTokenRef.current;
-    const fetchRoundId = roundId;
+    const fetchRoundId = currentRoundId;
+    const fetchHandNumber = currentHandNumber;
+    const initGuardKey = buildBoundaryGuardKey(dealerGameId, fetchRoundId, fetchHandNumber);
     
     const loadOrInitializeState = async () => {
       if (hasInitializedRef.current || initialLoadComplete) {
@@ -1822,11 +1902,95 @@ export const CribbageMobileGameTable = ({
       // If state already exists, use it (game already in progress or resumed)
       if (roundData?.cribbage_state) {
         console.log('[CRIBBAGE] Using existing state from DB');
+        const loadedState = roundData.cribbage_state as unknown as CribbageState;
+        const priorInitCount = incrementGuardCount(nextHandInitCountRef.current, initGuardKey);
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: fetchHandNumber,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: 'crib-next-hand-init-trigger',
+          payload: {
+            roundId: fetchRoundId.slice(0, 8),
+            handNumber: fetchHandNumber,
+            triggerSource: 'existing_round_state',
+            priorTriggerCount: priorInitCount,
+          },
+        });
+        if (loadedState.cutCard || loadedState.crib.length > 0) {
+          const priorAnimationCount = incrementGuardCount(
+            animationReplayCountRef.current,
+            `${initGuardKey}:crib_cut_reveal`,
+          );
+          if (!markGuardConsumed(cribCutReplayConsumedRef.current, initGuardKey)) {
+            persistSyncDebugEvent({
+              gameId,
+              gameType: 'cribbage',
+              handNumber: fetchHandNumber,
+              eventType: 'invariant',
+              severity: 'warn',
+              eventName: 'crib-animation-replay-detected',
+              payload: {
+                roundId: fetchRoundId.slice(0, 8),
+                handNumber: fetchHandNumber,
+                animationType: 'crib_cut_reveal',
+                priorCount: priorAnimationCount,
+              },
+            });
+            persistSyncDebugEvent({
+              gameId,
+              gameType: 'cribbage',
+              handNumber: fetchHandNumber,
+              eventType: 'invariant',
+              severity: 'warn',
+              eventName: 'crib-replay-detected',
+              payload: {
+                roundId: fetchRoundId.slice(0, 8),
+                handNumber: fetchHandNumber,
+                event: 'loadOrInitializeState:existing_round_state',
+                handKey: initGuardKey,
+                timesCompleted: priorInitCount + 1,
+              },
+            });
+            return;
+          }
+        }
+        if (!markGuardConsumed(nextHandInitConsumedRef.current, initGuardKey)) {
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: fetchHandNumber,
+            eventType: 'invariant',
+            severity: 'warn',
+            eventName: 'crib-replay-detected',
+            payload: {
+              roundId: fetchRoundId.slice(0, 8),
+              handNumber: fetchHandNumber,
+              event: 'loadOrInitializeState:existing_round_state',
+              handKey: initGuardKey,
+              timesCompleted: priorInitCount + 1,
+            },
+          });
+          return;
+        }
         hasInitializedRef.current = true;
         setInitialLoadComplete(true);
-        const loadedState = roundData.cribbage_state as unknown as CribbageState;
         syncHandle.receiveAuthoritativeUpdate(loadedState);
         setCribbageState(loadedState);
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: fetchHandNumber,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: 'crib-load-success',
+          payload: {
+            fetchToken,
+            roundId: fetchRoundId.slice(0, 8),
+            source: 'existing_round_state',
+          },
+        });
         // FIX: Unfreeze transition if this load is the first valid state for the new hand.
         // Without this, isTransitioning stays true forever because the realtime handler
         // rejects the duplicate state as "no progress" and never reaches the unfreeze path.
@@ -1863,15 +2027,94 @@ export const CribbageMobileGameTable = ({
       
       if (isFirstHand) {
         console.log('[CRIBBAGE] First hand - starting high card selection');
+        const priorInitCount = incrementGuardCount(nextHandInitCountRef.current, initGuardKey);
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: fetchHandNumber,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: 'crib-next-hand-init-trigger',
+          payload: {
+            roundId: fetchRoundId.slice(0, 8),
+            handNumber: fetchHandNumber,
+            triggerSource: 'first_hand_selection',
+            priorTriggerCount: priorInitCount,
+          },
+        });
+        if (!markGuardConsumed(nextHandInitConsumedRef.current, initGuardKey)) {
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: fetchHandNumber,
+            eventType: 'invariant',
+            severity: 'warn',
+            eventName: 'crib-replay-detected',
+            payload: {
+              roundId: fetchRoundId.slice(0, 8),
+              handNumber: fetchHandNumber,
+              event: 'loadOrInitializeState:first_hand_selection',
+              handKey: initGuardKey,
+              timesCompleted: priorInitCount + 1,
+            },
+          });
+          return;
+        }
         // Inject "new game starting" message into chat (idempotent per dealer_game_id)
         announceNewGameStarting();
         setShowHighCardSelection(true);
         setInitialLoadComplete(true);
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: fetchHandNumber,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: 'crib-load-success',
+          payload: {
+            fetchToken,
+            roundId: fetchRoundId.slice(0, 8),
+            source: 'first_hand_selection',
+          },
+        });
         return;
       }
 
       // Not first hand but no state - initialize with session dealer
       console.log('[CRIBBAGE] Not first hand, initializing with session dealer');
+      const priorInitCount = incrementGuardCount(nextHandInitCountRef.current, initGuardKey);
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: fetchHandNumber,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-next-hand-init-trigger',
+        payload: {
+          roundId: fetchRoundId.slice(0, 8),
+          handNumber: fetchHandNumber,
+          triggerSource: 'initialized_new_state',
+          priorTriggerCount: priorInitCount,
+        },
+      });
+      if (!markGuardConsumed(nextHandInitConsumedRef.current, initGuardKey)) {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: fetchHandNumber,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-replay-detected',
+          payload: {
+            roundId: fetchRoundId.slice(0, 8),
+            handNumber: fetchHandNumber,
+            event: 'loadOrInitializeState:initialized_new_state',
+            handKey: initGuardKey,
+            timesCompleted: priorInitCount + 1,
+          },
+        });
+        return;
+      }
       hasInitializedRef.current = true;
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
@@ -1891,6 +2134,19 @@ export const CribbageMobileGameTable = ({
       
       syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: fetchHandNumber,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-load-success',
+        payload: {
+          fetchToken,
+          roundId: fetchRoundId.slice(0, 8),
+          source: 'initialized_new_state',
+        },
+      });
       // FIX: Same unfreeze as existing-state path above
       if (transitionFrozenRef.current) {
         const frozenForRound = transitionFrozenForRoundRef.current;
@@ -1904,7 +2160,7 @@ export const CribbageMobileGameTable = ({
     };
 
     loadOrInitializeState();
-  }, [roundId, initialLoadComplete, injectDealerMessage, announceNewGameStarting]); // Re-run if roundId changes, include initialLoadComplete in deps
+  }, [currentRoundId, currentHandNumber, dealerGameId, initialLoadComplete, injectDealerMessage, announceNewGameStarting]); // Re-run if current round changes, include initialLoadComplete in deps
 
   // Keep showHighCardSelection from "sticking" after the real cribbage_state arrives (non-host clients)
   useEffect(() => {
@@ -3256,6 +3512,187 @@ export const CribbageMobileGameTable = ({
   const isHighCardMode = effectiveShowHighCardSelection;
   const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
   const isGameplayMode = !isHighCardMode && !isBootstrapMode;
+  const shouldShowAwaitingAnteAnnouncement = currentHandNumber <= 1 && (
+    isDealerSelection ||
+    effectiveShowHighCardSelection ||
+    (!initialLoadComplete && !renderHandKey && !postCountingTransitionActive)
+  );
+  const shouldShowPreparingNextHand = isBootstrapMode && !shouldShowAwaitingAnteAnnouncement;
+
+  useEffect(() => {
+    if (!isBootstrapMode || !shouldShowAwaitingAnteAnnouncement) return;
+
+    const priorTriggerCount = incrementGuardCount(
+      awaitingAnteAnnouncementCountRef.current,
+      roundBoundaryGuardKey,
+    );
+
+    if (!markGuardConsumed(awaitingAnteAnnouncementConsumedRef.current, roundBoundaryGuardKey)) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib-replay-detected',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          event: 'awaiting-ante-announcement',
+          handKey: roundBoundaryGuardKey,
+          timesCompleted: priorTriggerCount + 1,
+        },
+      });
+      return;
+    }
+
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-awaiting-ante-announcement-trigger',
+      payload: {
+        dealer_game_id: dealerGameId,
+        roundId: currentRoundId?.slice(0, 8),
+        handNumber: currentHandNumber,
+        triggerSource: isDealerSelection
+          ? 'dealer_selection'
+          : effectiveShowHighCardSelection
+            ? 'high_card_selection'
+            : 'bootstrap_first_hand',
+        priorTriggerCount,
+      },
+    });
+  }, [
+    currentHandNumber,
+    currentRoundId,
+    dealerGameId,
+    effectiveShowHighCardSelection,
+    gameId,
+    isBootstrapMode,
+    isDealerSelection,
+    roundBoundaryGuardKey,
+    shouldShowAwaitingAnteAnnouncement,
+  ]);
+
+  useEffect(() => {
+    if (!shouldShowPreparingNextHand) return;
+
+    const priorEnterCount = incrementGuardCount(
+      preparingNextHandEnterCountRef.current,
+      roundBoundaryGuardKey,
+    );
+
+    if (!markGuardConsumed(preparingNextHandEnterConsumedRef.current, roundBoundaryGuardKey)) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib-replay-detected',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          event: 'preparing-next-hand-enter',
+          handKey: roundBoundaryGuardKey,
+          timesCompleted: priorEnterCount + 1,
+        },
+      });
+      return;
+    }
+
+    preparingNextHandActiveKeyRef.current = roundBoundaryGuardKey;
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-preparing-next-hand-enter',
+      payload: {
+        roundId: currentRoundId?.slice(0, 8),
+        handNumber: currentHandNumber,
+        source: postCountingTransitionActive
+          ? 'post_counting_transition'
+          : isTransitioning
+            ? 'boundary_reset'
+            : 'bootstrap_wait',
+        priorEnterCount,
+      },
+    });
+
+    if (!initialLoadComplete && currentHandNumber > 1 && !markGuardConsumed(wrongInitBranchLoggedRef.current, roundBoundaryGuardKey)) {
+      return;
+    }
+
+    if (!initialLoadComplete && currentHandNumber > 1) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'crib-wrong-init-branch',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          branchEntered: 'awaiting_ante_bootstrap',
+          expectedBranch: 'preparing_next_hand',
+          stateSummary: {
+            initialLoadComplete,
+            isDealerSelection,
+            effectiveShowHighCardSelection,
+            isTransitioning,
+            postCountingTransitionActive,
+            hasRenderHandKey: Boolean(renderHandKey),
+            hasCurrentPlayerId: Boolean(currentPlayerId),
+          },
+        },
+      });
+    }
+  }, [
+    currentHandNumber,
+    currentPlayerId,
+    currentRoundId,
+    effectiveShowHighCardSelection,
+    gameId,
+    initialLoadComplete,
+    isDealerSelection,
+    isTransitioning,
+    postCountingTransitionActive,
+    renderHandKey,
+    roundBoundaryGuardKey,
+    shouldShowPreparingNextHand,
+  ]);
+
+  const prevPreparingNextHandVisibleRef = useRef(false);
+  useEffect(() => {
+    const wasVisible = prevPreparingNextHandVisibleRef.current;
+    if (wasVisible && !shouldShowPreparingNextHand && preparingNextHandActiveKeyRef.current) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-preparing-next-hand-exit',
+        payload: {
+          roundId: currentRoundId?.slice(0, 8),
+          handNumber: currentHandNumber,
+          reason: isGameplayMode
+            ? 'gameplay_ready'
+            : isHighCardMode
+              ? 'high_card_selection'
+              : 'state_reset',
+        },
+      });
+      preparingNextHandActiveKeyRef.current = null;
+    }
+    prevPreparingNextHandVisibleRef.current = shouldShowPreparingNextHand;
+  }, [currentHandNumber, currentRoundId, gameId, isGameplayMode, isHighCardMode, shouldShowPreparingNextHand]);
 
   // ── TRACE-3: high-card render decision (every render where isHighCardMode=true) ──
   if (isHighCardMode) {
@@ -3690,7 +4127,7 @@ export const CribbageMobileGameTable = ({
               return (
                 <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                   <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {initialLoadComplete ? 'Preparing next hand...' : 'Awaiting ante decisions...'}
+                    {shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...'}
                   </p>
                 </div>
               );
@@ -3815,7 +4252,7 @@ export const CribbageMobileGameTable = ({
           {activeTab === 'cards' && (isHighCardMode || isBootstrapMode) && (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground text-sm">
-                {isHighCardMode ? 'Drawing for dealer...' : (initialLoadComplete ? 'Preparing next hand...' : 'Awaiting ante decisions...')}
+                {isHighCardMode ? 'Drawing for dealer...' : (shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...')}
               </p>
             </div>
           )}
