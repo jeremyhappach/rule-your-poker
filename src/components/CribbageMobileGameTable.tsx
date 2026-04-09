@@ -1761,7 +1761,7 @@ export const CribbageMobileGameTable = ({
         // rejects the duplicate state as "no progress" and never reaches the unfreeze path.
         if (transitionFrozenRef.current) {
           const frozenForRound = transitionFrozenForRoundRef.current;
-          if (!frozenForRound || frozenForRound === fetchRoundId) {
+          if (frozenForRound === fetchRoundId) {
             transitionFrozenRef.current = false;
             transitionFrozenForRoundRef.current = null;
             syncHandle.unfreezePresentation();
