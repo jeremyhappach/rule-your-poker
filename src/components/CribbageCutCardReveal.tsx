@@ -22,21 +22,26 @@ export const CribbageCutCardReveal = ({
   cardBackColors,
   handBoundaryKey,
 }: CribbageCutCardRevealProps) => {
+  const initialCardKey = card ? `${card.rank}-${card.suit}` : null;
+  const initialFlipKey = initialCardKey ? `${handBoundaryKey ?? 'no-hand-key'}:${initialCardKey}` : null;
   const [isFlipping, setIsFlipping] = useState(false);
-  const [showFace, setShowFace] = useState(false);
+  const [showFace, setShowFace] = useState(Boolean(card));
   
-  // Track which cards we've already revealed (by rank-suit key) to prevent re-animation
-  // This persists across re-renders and phase transitions
-  const revealedCardsRef = useRef<Set<string>>(new Set());
-  const currentCardKeyRef = useRef<string | null>(null);
+  // Track which cut card reveals have already been consumed for this hand boundary.
+  // Seed from the initial visible card so remounts during pegging don't fake a new reveal edge.
+  const cutCardFlipConsumedRef = useRef<Set<string>>(new Set(initialFlipKey ? [initialFlipKey] : []));
+  const currentCardKeyRef = useRef<string | null>(initialCardKey);
+  const previousVisibleCardKeyRef = useRef<string | null>(initialCardKey);
   const lastBoundaryKeyRef = useRef<string | undefined>(handBoundaryKey);
 
-  // Reset the revealed-cards cache when hand boundary changes (prevents re-flip on remount)
+  // Reset hand-scoped refs when the hand boundary changes.
   if (handBoundaryKey !== lastBoundaryKeyRef.current) {
     lastBoundaryKeyRef.current = handBoundaryKey;
-    // Don't clear if the current card is still the same — only on true hand change
-    revealedCardsRef.current = new Set();
-    currentCardKeyRef.current = null;
+    const nextCardKey = card ? `${card.rank}-${card.suit}` : null;
+    const nextFlipKey = nextCardKey ? `${handBoundaryKey ?? 'no-hand-key'}:${nextCardKey}` : null;
+    cutCardFlipConsumedRef.current = new Set(nextFlipKey ? [nextFlipKey] : []);
+    currentCardKeyRef.current = nextCardKey;
+    previousVisibleCardKeyRef.current = nextCardKey;
   }
 
   // Log mount/remount with hand boundary key
@@ -48,9 +53,21 @@ export const CribbageCutCardReveal = ({
         handBoundaryKey: handBoundaryKey ?? null,
         hasCard: card !== null,
         cardKey: card ? `${card.rank}${card.suit}` : null,
+        mountedWithVisibleCard: card !== null,
         ...buildMetaPayload(),
       },
     });
+    if (card) {
+      logDebugEvent({
+        gameId: 'cut-card-reveal',
+        eventType: 'crib-cut-flip-replay-detected',
+        payload: {
+          handBoundaryKey: handBoundaryKey ?? null,
+          cardKey: `${card.rank}-${card.suit}`,
+          reason: 'mounted_with_visible_card_guarded',
+        },
+      });
+    }
     return () => {
       logDebugEvent({
         gameId: 'cut-card-reveal',
@@ -61,10 +78,11 @@ export const CribbageCutCardReveal = ({
   }, [handBoundaryKey]);
 
   useEffect(() => {
-    // Generate stable key for current card
     const cardKey = card ? `${card.rank}-${card.suit}` : null;
+    const flipKey = cardKey ? `${handBoundaryKey ?? 'no-hand-key'}:${cardKey}` : null;
+    const visibilityEdge = !previousVisibleCardKeyRef.current && !!cardKey;
+    previousVisibleCardKeyRef.current = cardKey;
     
-    // Card removed - reset show face but keep revealed set
     if (!cardKey) {
       currentCardKeyRef.current = null;
       setShowFace(false);
@@ -72,23 +90,37 @@ export const CribbageCutCardReveal = ({
       return;
     }
     
-    // Same card - no action needed
-    if (cardKey === currentCardKeyRef.current) {
+    if (cardKey === currentCardKeyRef.current && !visibilityEdge) {
       return;
     }
     
     currentCardKeyRef.current = cardKey;
     
-    // Check if we've already animated this card (e.g., during counting delay)
-    if (revealedCardsRef.current.has(cardKey)) {
-      // Already revealed this card before - show face immediately, no animation
+    if (!visibilityEdge) {
+      setShowFace(true);
+      setIsFlipping(false);
+      return;
+    }
+
+    if (flipKey && cutCardFlipConsumedRef.current.has(flipKey)) {
+      logDebugEvent({
+        gameId: 'cut-card-reveal',
+        eventType: 'crib-cut-flip-replay-detected',
+        payload: {
+          handBoundaryKey: handBoundaryKey ?? null,
+          cardKey,
+          reason: 'duplicate_visibility_edge_same_hand',
+        },
+      });
       setShowFace(true);
       setIsFlipping(false);
       return;
     }
     
-    // New card we haven't seen - trigger flip animation
-    revealedCardsRef.current.add(cardKey);
+    if (flipKey) {
+      cutCardFlipConsumedRef.current.add(flipKey);
+    }
+
     setIsFlipping(true);
     setShowFace(false);
 
@@ -106,7 +138,7 @@ export const CribbageCutCardReveal = ({
       clearTimeout(flipTimer);
       clearTimeout(endTimer);
     };
-  }, [card?.rank, card?.suit]);
+  }, [card?.rank, card?.suit, handBoundaryKey]);
 
   if (!card) return null;
 
