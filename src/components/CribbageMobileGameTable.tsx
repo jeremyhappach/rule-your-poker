@@ -2089,6 +2089,44 @@ export const CribbageMobileGameTable = ({
     // already suppress rendering when presentation is null, so no visual gap occurs.
     const hadPresentation = syncHandle.presentationState !== null;
     syncHandle.reset(null);
+    // FIX A: HARD RESET cribbageState on hand boundary — stale cards are unacceptable.
+    // Previous comment said "Do NOT null out cribbageState" to avoid unmount, but
+    // the isTransitioning + renderHandKey guards already handle the visual gap.
+    setCribbageState(null);
+    cribbageStateRef.current = null;
+    // Also reset counting/scoring latches that could carry over
+    setCountingScoreOverrides(null);
+    setCountingStateSnapshot(null);
+    setCountingDelayActive(false);
+    countingAnimationActiveRef.current = false;
+    countingDelayFiredRef.current = null;
+    countingBaselineScoresRef.current = null;
+    countingHandKeyRef.current = null;
+    lastPeggingScoresRef.current = null;
+    setPostCountingTransitionActive(false);
+    // Reset win sequence state to prevent prior-hand win from leaking
+    setWinSequencePhase('idle');
+    setWinSequenceData(null);
+    winSequenceFiredRef.current = null;
+    winSequenceScheduledRef.current = null;
+    // Reset initial load flag so loadOrInitializeState runs for the new round
+    setInitialLoadComplete(false);
+    hasInitializedRef.current = false;
+    
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      eventName: 'hand-boundary-reset',
+      payload: {
+        oldRoundId: oldId?.slice(0, 8),
+        newRoundId: currentRoundId.slice(0, 8),
+        hadPresentation,
+        clearedCribbageState: true,
+      },
+    });
+    
     if (hadPresentation) {
       syncHandle.freezePresentation();
       transitionFrozenRef.current = true;
