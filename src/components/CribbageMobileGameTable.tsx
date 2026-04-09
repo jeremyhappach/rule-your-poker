@@ -15,6 +15,7 @@ import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
+import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
@@ -4057,9 +4058,29 @@ export const CribbageMobileGameTable = ({
               </>
             )}
 
+            {/* STABLE PEGBOARD — mounted across ALL modes when we have data */}
+            {!isHighCardMode && latchedPegboardDataRef.current && (
+              <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
+                <CribbagePegBoard
+                  players={players}
+                  playerStates={
+                    isGameplayMode && viewState
+                      ? viewState.playerStates
+                      : latchedPegboardDataRef.current.playerStates
+                  }
+                  winningScore={
+                    isGameplayMode && viewState
+                      ? viewState.pointsToWin
+                      : latchedPegboardDataRef.current.winningScore
+                  }
+                  overrideScores={countingScoreOverrides ?? undefined}
+                />
+              </div>
+            )}
+
             {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount */}
             {isBootstrapMode && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center">
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
                 <h2 className="text-sm font-bold text-white drop-shadow-lg mb-2">Cribbage</h2>
                 {isTransitioning && (
                   <p className="text-xs text-white/60 animate-pulse">Preparing next hand…</p>
