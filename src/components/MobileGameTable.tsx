@@ -3927,15 +3927,18 @@ export const MobileGameTable = ({
                 <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
                   {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
                 </span>
-                {/* Only show No Limit/Max for non-dice games */}
-                <span className="text-white/40 text-xs font-medium">
-                  {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
-                </span>
-                {/* Only show legs for 3-5-7 games (not holm) */}
-                {gameType !== 'holm-game' && (
-                  <span className="text-white/40 text-xs font-medium">
-                    {legsToWin} legs to win
-                  </span>
+                {/* Only show No Limit/Max and legs for 3-5-7 games */}
+                {gameType !== 'cribbage' && gameType !== 'gin-rummy' && (
+                  <>
+                    <span className="text-white/40 text-xs font-medium">
+                      {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+                    </span>
+                    {gameType !== 'holm-game' && (
+                      <span className="text-white/40 text-xs font-medium">
+                        {legsToWin} legs to win
+                      </span>
+                    )}
+                  </>
                 )}
               </>
             )}
