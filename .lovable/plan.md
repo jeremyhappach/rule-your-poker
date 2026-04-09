@@ -1,55 +1,81 @@
 
-## Platform Stabilization Plan — v2
+## Platform Stabilization Plan — v3
 
 ### Current Mode: LIVE VALIDATION
 
 ---
 
 ### Phase 1 — Holm P0 (Identity Boundaries & Cache Invalidation)
-**Status: Implemented — awaiting live validation**
+**Status: LOCKED — stable in production**
+**Lock policy: No changes except crash fixes or invariant violations**
 
 - P0-1: Community card cache invalidation at hand boundary
 - P0-2: decisionLocked suppression during betting
 - P0-3: maxRevealed / card identity cache reset at hand boundary
-- P0-4: Card fetch race guard — post-fetch roundId verification before commit
-- Instrumentation: HOLM_RENDERED_COMMUNITY, card fetch roundId match invariant
+- P0-4: Card fetch race guard — REMOVED broken roundId guard, replaced with fetchToken-only pattern
+- P0-5: Hard clear playerCards + cardStateContext on every roundId change
+- P0-6: Render safety guard — never render cards when cardStateContext.roundId !== currentRound.id
+- P0-7: Solo capture gated by allDecisionsIn to prevent stale decision leakage
+- Instrumentation: card-fetch-start, card-fetch-drop-stale, hand-boundary-reset, solo-capture-attempt
 
-### Phase 2 — Cribbage / Gin Rummy P1 (Identity Latch)
+**Production telemetry (post-fix):** card-fetch-round-mismatch ceased; solo-player-stale-relock caught by new guard.
+
+### Phase 2 — Cribbage Stabilization (Same Holm Pattern)
 **Status: Implemented — awaiting live validation**
-**Note: Not yet proven to solve the full presentation-oscillation issue. Identity latch drops stale snapshots at hand boundaries but oscillation root cause may have additional vectors.**
 
-- P1-1: Cribbage roundId identity latch — stale realtime/poll rejection
-- P1-2: Cribbage tap failure guard — verified existing instrumentation uses viewState
-- P1-3: Gin Rummy roundId identity latch — stale applyState rejection
+Applied same 3 principles from Holm:
+
+1. **HARD RESET at hand boundary** (CribbageMobileGameTable)
+   - `setCribbageState(null)` on roundId change (previously explicitly avoided)
+   - Full reset of counting/scoring latches, win sequence state, pegging scores
+   - `initialLoadComplete` and `hasInitializedRef` reset to trigger fresh load
+   - `persistSyncDebugEvent` instrumentation: `hand-boundary-reset`
+
+2. **FETCH TOKEN** (CribbageMobileGameTable loadOrInitializeState)
+   - `cribbageFetchTokenRef` incremented before each load
+   - Token checked after every `await` point
+   - Prevents stale load results from overwriting fresh state
+
+3. **RENDER GATE** (already present)
+   - Mobile cards tab: `viewState && !isTransitioning && renderHandKey === currentHandKey`
+   - Mobile felt content: `isGameplayMode && viewState`
+   - Desktop: `!cribbageState` returns loading state; `!isTransitioning` gates card display
+   - Identity latch: `roundIdLatchRef` drops stale realtime/poll snapshots
+
+**Known Cribbage issues targeted:**
+- Discarded cards reappearing → fixed by hard-nulling cribbageState + sync reset
+- Score regression → existing INV-6 monitoring; counting baselines reset on boundary
+- Tap failures → existing INV-7; isProcessing/counting state now properly cleared
+
+### Phase 2b — Gin Rummy (Identity Latch)
+**Status: Implemented — awaiting live validation after Cribbage**
+
+- Gin Rummy roundId identity latch — stale applyState rejection
 - Instrumentation: identity_latch_drop debug events
 
 ### Phase 3 — Yahtzee P2 (Turn Spotlight & Held-Dice Stability)
 **Status: Audited — previously addressed in existing code, not independently validated**
-**Note: Code audit confirmed optimistic-before-clear ordering (P2-1) and localDice/stableCacheKey pattern (P2-2) are structurally sound. No new code changes were made. Requires live validation to confirm.**
 
 - P2-1: Turn spotlight flash — optimistic applied before scoringInProgress clear
 - P2-2: Held-dice identity — localDice is sole source during active turn
-- Architecture note: Yahtzee does not call yahtzeeSync.reset(), so vector-reset vulnerability does not apply
 
 ### Phase 4 — Horses / SCC (Ad-Hoc Sync Hardening)
-**Status: Hardened — NOT migrated to useGameStateSync**
-**Note: Due to complexity of useHorsesMobileController (2752 lines), Phase 4 was executed as a hardening pass on the existing ad-hoc sync pattern, not a full framework migration. Progress-vector gating and identity latch were added inline. Full migration remains a future option if hardening proves insufficient.**
+**Status: Hardened — NOT migrated to useGameStateSync. DO NOT TOUCH until Cribbage/Gin/Yahtzee validated.**
 
-- PLATFORM-1/2: Progress-vector gating with monotonic rejection
+- Progress-vector gating with monotonic rejection
 - Identity latch: roundIdLatchRef with baseline reset on identity change
-- Instrumentation: HORSES/SCC_SYNC rejection logging
-- Both Horses and SCC share the same controller (isSCC flag)
 
 ---
 
 ### Validation Order
-1. **Holm** — first priority
-2. **Cribbage / Gin Rummy** — second
-3. **Yahtzee** — third
-4. **Horses / SCC** — separate, with understanding that Phase 4 was hardening, not migration
+1. ~~**Holm**~~ — ✅ LOCKED
+2. **Cribbage** — NEXT: live validation
+3. **Gin Rummy** — after Cribbage
+4. **Yahtzee** — after Gin
+5. **Horses / SCC** — separate, hardening only
 
 ### What Is NOT Claimed
-- Presentation-oscillation is not proven resolved (Phase 2 addresses one vector)
-- Yahtzee fixes are audited, not independently proven (Phase 3)
-- Horses/SCC are not on the sync framework (Phase 4)
-- No freeze windows are active in any game
+- Cribbage fixes are not yet validated in production
+- Presentation-oscillation may have additional vectors beyond identity latch
+- Yahtzee fixes are audited, not independently proven
+- Horses/SCC are not on the sync framework

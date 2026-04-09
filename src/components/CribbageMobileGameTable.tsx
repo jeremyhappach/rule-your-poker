@@ -45,6 +45,7 @@ import { useGameStateSync } from '@/lib/gameStateSync';
 import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { logDebugEvent } from '@/lib/debugEventLogger';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
 import {
@@ -1657,6 +1658,9 @@ export const CribbageMobileGameTable = ({
     }
   }, [countingScoreOverrides, cribbageState, roundId]);
 
+  // FIX B: Fetch token to prevent overlapping loads from racing
+  const cribbageFetchTokenRef = useRef(0);
+  
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
   useEffect(() => {
@@ -1666,13 +1670,16 @@ export const CribbageMobileGameTable = ({
       return;
     }
     
+    const fetchToken = ++cribbageFetchTokenRef.current;
+    const fetchRoundId = roundId;
+    
     const loadOrInitializeState = async () => {
       if (hasInitializedRef.current || initialLoadComplete) {
         console.log('[CRIBBAGE] Already initialized, skipping');
         return;
       }
       
-      console.log('[CRIBBAGE] Loading state for round:', roundId);
+      console.log('[CRIBBAGE] Loading state for round:', fetchRoundId);
 
       // Clear any stale dealer_selection_state from a previous game in this session
       // to prevent old cards from flashing during draw-for-button.
@@ -1683,11 +1690,23 @@ export const CribbageMobileGameTable = ({
           .eq('id', gameId);
       }
       
+      // FIX B: Check token after first await
+      if (fetchToken !== cribbageFetchTokenRef.current) {
+        console.log('[CRIBBAGE] Fetch token stale after dealer_selection clear, dropping');
+        return;
+      }
+      
       const { data: roundData, error } = await supabase
         .from('rounds')
         .select('cribbage_state, hand_number')
-        .eq('id', roundId)
+        .eq('id', fetchRoundId)
         .single();
+
+      // FIX B: Check token after DB fetch
+      if (fetchToken !== cribbageFetchTokenRef.current) {
+        console.log('[CRIBBAGE] Fetch token stale after round load, dropping');
+        return;
+      }
 
       if (error) {
         console.error('[CRIBBAGE] Error loading state:', error);
@@ -1735,7 +1754,13 @@ export const CribbageMobileGameTable = ({
       await supabase
         .from('rounds')
         .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-        .eq('id', roundId);
+        .eq('id', fetchRoundId);
+      
+      // FIX B: Check token after write
+      if (fetchToken !== cribbageFetchTokenRef.current) {
+        console.log('[CRIBBAGE] Fetch token stale after state init write, dropping');
+        return;
+      }
       
       syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
@@ -2089,6 +2114,45 @@ export const CribbageMobileGameTable = ({
     // already suppress rendering when presentation is null, so no visual gap occurs.
     const hadPresentation = syncHandle.presentationState !== null;
     syncHandle.reset(null);
+    // FIX A: HARD RESET cribbageState on hand boundary — stale cards are unacceptable.
+    // Previous comment said "Do NOT null out cribbageState" to avoid unmount, but
+    // the isTransitioning + renderHandKey guards already handle the visual gap.
+    setCribbageState(null);
+    cribbageStateRef.current = null;
+    // Also reset counting/scoring latches that could carry over
+    setCountingScoreOverrides(null);
+    setCountingStateSnapshot(null);
+    setCountingDelayActive(false);
+    countingAnimationActiveRef.current = false;
+    countingDelayFiredRef.current = null;
+    countingBaselineScoresRef.current = null;
+    countingHandKeyRef.current = null;
+    lastPeggingScoresRef.current = null;
+    setPostCountingTransitionActive(false);
+    // Reset win sequence state to prevent prior-hand win from leaking
+    setWinSequencePhase('idle');
+    setWinSequenceData(null);
+    winSequenceFiredRef.current = null;
+    winSequenceScheduledRef.current = null;
+    // Reset initial load flag so loadOrInitializeState runs for the new round
+    setInitialLoadComplete(false);
+    hasInitializedRef.current = false;
+    
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'hand-boundary-reset',
+      payload: {
+        oldRoundId: oldId?.slice(0, 8),
+        newRoundId: currentRoundId.slice(0, 8),
+        hadPresentation,
+        clearedCribbageState: true,
+      },
+    });
+    
     if (hadPresentation) {
       syncHandle.freezePresentation();
       transitionFrozenRef.current = true;
