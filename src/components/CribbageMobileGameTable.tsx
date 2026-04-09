@@ -1679,6 +1679,23 @@ export const CribbageMobileGameTable = ({
         return;
       }
       
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-load-start',
+        payload: {
+          fetchToken,
+          roundId: fetchRoundId.slice(0, 8),
+          initialLoadComplete: false,
+          hasInitializedRef: false,
+          isTransitioning,
+          transitionFrozen: transitionFrozenRef.current,
+        },
+      });
+      
       console.log('[CRIBBAGE] Loading state for round:', fetchRoundId);
 
       // Clear any stale dealer_selection_state from a previous game in this session
@@ -1693,6 +1710,12 @@ export const CribbageMobileGameTable = ({
       // FIX B: Check token after first await
       if (fetchToken !== cribbageFetchTokenRef.current) {
         console.log('[CRIBBAGE] Fetch token stale after dealer_selection clear, dropping');
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage', handNumber: currentHandNumber,
+          eventType: 'transition', severity: 'warn',
+          eventName: 'crib-load-drop-token',
+          payload: { fetchToken, currentToken: cribbageFetchTokenRef.current, roundId: fetchRoundId.slice(0, 8), dropPoint: 'after_dealer_selection_clear' },
+        });
         return;
       }
       
@@ -1705,6 +1728,12 @@ export const CribbageMobileGameTable = ({
       // FIX B: Check token after DB fetch
       if (fetchToken !== cribbageFetchTokenRef.current) {
         console.log('[CRIBBAGE] Fetch token stale after round load, dropping');
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage', handNumber: currentHandNumber,
+          eventType: 'transition', severity: 'warn',
+          eventName: 'crib-load-drop-token',
+          payload: { fetchToken, currentToken: cribbageFetchTokenRef.current, roundId: fetchRoundId.slice(0, 8), dropPoint: 'after_round_load' },
+        });
         return;
       }
 
@@ -1727,6 +1756,33 @@ export const CribbageMobileGameTable = ({
         const loadedState = roundData.cribbage_state as unknown as CribbageState;
         syncHandle.receiveAuthoritativeUpdate(loadedState);
         setCribbageState(loadedState);
+        // FIX: Unfreeze transition if this load is the first valid state for the new hand.
+        // Without this, isTransitioning stays true forever because the realtime handler
+        // rejects the duplicate state as "no progress" and never reaches the unfreeze path.
+        if (transitionFrozenRef.current) {
+          const frozenForRound = transitionFrozenForRoundRef.current;
+          if (!frozenForRound || frozenForRound === fetchRoundId) {
+            transitionFrozenRef.current = false;
+            transitionFrozenForRoundRef.current = null;
+            syncHandle.unfreezePresentation();
+            setIsTransitioning(false);
+            persistSyncDebugEvent({
+              gameId,
+              gameType: 'cribbage',
+              handNumber: currentHandNumber,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: 'crib-load-unfreeze',
+              payload: {
+                fetchToken,
+                roundId: fetchRoundId.slice(0, 8),
+                frozenForRound: frozenForRound?.slice(0, 8),
+                source: 'loadOrInitializeState',
+                phase: loadedState.phase,
+              },
+            });
+          }
+        }
         return;
       }
 
@@ -1764,6 +1820,16 @@ export const CribbageMobileGameTable = ({
       
       syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
+      // FIX: Same unfreeze as existing-state path above
+      if (transitionFrozenRef.current) {
+        const frozenForRound = transitionFrozenForRoundRef.current;
+        if (!frozenForRound || frozenForRound === fetchRoundId) {
+          transitionFrozenRef.current = false;
+          transitionFrozenForRoundRef.current = null;
+          syncHandle.unfreezePresentation();
+          setIsTransitioning(false);
+        }
+      }
     };
 
     loadOrInitializeState();
@@ -2144,12 +2210,17 @@ export const CribbageMobileGameTable = ({
       handNumber: currentHandNumber,
       eventType: 'transition',
       severity: 'info',
-      eventName: 'hand-boundary-reset',
+      eventName: 'crib-boundary-reset',
       payload: {
         oldRoundId: oldId?.slice(0, 8),
         newRoundId: currentRoundId.slice(0, 8),
         hadPresentation,
         clearedCribbageState: true,
+        initialLoadComplete_before: true,
+        initialLoadComplete_after: false,
+        hasInitializedRef_before: true,
+        hasInitializedRef_after: false,
+        isBootstrapTransition,
       },
     });
     
