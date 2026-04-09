@@ -7707,7 +7707,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   anteAmount={game.ante_amount || 1}
                   pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
                   isHost={isCreator}
-                  onGameComplete={isGinRummyGameOver ? handleGameOverComplete : () => {}}
+                  onGameComplete={handleGameOverComplete}
                 />
                 {/* Dealer selection overlay on the gin table */}
                 {isGinRummyDealerSelection && (
