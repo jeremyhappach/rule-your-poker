@@ -7450,7 +7450,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     pot={potForDisplay}
                     currentRound={game.current_round || 0}
                     allDecisionsIn={true}
-                    playerCards={playerCards}
+                    playerCards={cardStateContext?.roundId && currentRound?.id && cardStateContext.roundId !== currentRound.id ? [] : playerCards}
                     timeLeft={null}
                     lastRoundResult={game.last_round_result ?? null}
                     dealerPosition={game.dealer_position}
