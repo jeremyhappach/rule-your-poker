@@ -51,10 +51,8 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { logSyncGateResult } from "@/lib/debugSyncInvariants";
 import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking, traceHolmRenderedCommunity } from "@/lib/holmSyncDiagnostics";
-import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
+import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { logThreeFiveSevenSyncGate, logThreeFiveSevenSummary, checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand } from "@/lib/threeFiveSevenSyncDiagnostics";
-import { persistTransition } from "@/lib/persistSyncDebugEvent";
-// persistSyncDebugEvent already imported above
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -2540,10 +2538,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       if (needsSync) {
         console.log('[357 SYNC POLL] ⚠️⚠️⚠️ DESYNC DETECTED! DB:', dbRound, 'Local:', localRound, '- FORCING SYNC!');
         lastKnownRoundRef.current = dbRound;
-        // CRITICAL: Do NOT clear cards here - let fetchGameData atomically replace them
-        // Clearing cards causes brief "Wait..." flash
+        // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
+        setPlayerCards([]);
         setCardStateContext(null);
-        // Don't call setPlayerCards([]) - just fetch and replace
         fetchGameData();
       }
     };
