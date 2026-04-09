@@ -133,13 +133,23 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * Generate a unique hand key from cribbage state to detect hand transitions.
  * Uses dealerPlayerId + first player's hand signature to uniquely identify a hand.
  */
+/**
+ * Generate a stable hand identity key from cribbage state.
+ * CRITICAL: This must be STABLE across pegging updates.
+ * Uses the full original deal (hand + discarded + played cards for first player)
+ * so the key doesn't change when cards move from hand → playedCards during pegging.
+ */
 function getHandKey(state: CribbageState | null): string {
   if (!state) return '';
   const firstPlayerId = state.turnOrder[0];
   const firstPlayerHand = state.playerStates[firstPlayerId]?.hand || [];
-  // Include discardedToCrib to differentiate pre/post discard
   const discarded = state.playerStates[firstPlayerId]?.discardedToCrib || [];
-  const handSig = [...firstPlayerHand, ...discarded]
+  // Include cards this player has played during pegging to keep the key stable
+  // as cards move from hand → playedCards
+  const playedByFirstPlayer = (state.pegging?.playedCards || [])
+    .filter(pc => pc.playerId === firstPlayerId)
+    .map(pc => pc.card);
+  const handSig = [...firstPlayerHand, ...discarded, ...playedByFirstPlayer]
     .map(c => `${c.rank}${c.suit}`)
     .sort()
     .join(',');
