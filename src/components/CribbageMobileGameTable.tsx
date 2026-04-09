@@ -2966,6 +2966,32 @@ export const CribbageMobileGameTable = ({
     }
     startNextHandFiredRef.current = handKey;
     
+    // REPLAY GUARD: Mark this handKey as completed so it can never replay
+    // even if roundId boundary reset clears all other guards.
+    countingCompletedHandKeysRef.current.add(handKey);
+    // Prune old keys to prevent unbounded growth (keep last 10)
+    if (countingCompletedHandKeysRef.current.size > 10) {
+      const keys = Array.from(countingCompletedHandKeysRef.current);
+      for (let i = 0; i < keys.length - 10; i++) {
+        countingCompletedHandKeysRef.current.delete(keys[i]);
+      }
+    }
+    
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-transition-next-hand-start',
+      payload: {
+        oldRoundId: currentRoundId?.slice(0, 8),
+        oldHandNumber: currentHandNumber,
+        triggerSource: 'handleCountingComplete',
+        handKey,
+      },
+    });
+    
     // Mark counting animation as complete and clear snapshot.
     // IMPORTANT: Do NOT set countingAnimationActiveRef.current = false here.
     // With multiple clients, the parent can advance (roundId/handNumber props change) before
