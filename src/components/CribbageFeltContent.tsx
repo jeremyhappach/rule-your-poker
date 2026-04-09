@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
-import { CribbagePegBoard } from './CribbagePegBoard';
+// CribbagePegBoard now rendered by parent for mount stability
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { logDebugEvent } from '@/lib/debugEventLogger';
@@ -160,15 +160,7 @@ export const CribbageFeltContent = ({
           </div>
         )}
 
-        {/* Peg Board - stays in normal position during counting, uses animated scores */}
-        <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
-          <CribbagePegBoard
-            players={players}
-            playerStates={cribbageState.playerStates}
-            winningScore={cribbageState.pointsToWin}
-            overrideScores={countingScoreOverrides}
-          />
-        </div>
+        {/* Peg Board now rendered by parent (CribbageMobileGameTable) for mount stability */}
       </>
     );
   }
@@ -188,35 +180,7 @@ export const CribbageFeltContent = ({
         </div>
       )}
 
-      {/* Peg Board - Center area */}
-      <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
-        {/* Log score sources for non-counting pegboard renders */}
-        {(() => {
-          logDebugEvent({
-            gameId: 'pegboard-source',
-            eventType: 'crib:pegboard:main_render',
-            payload: {
-              feltInstanceId: feltInstanceIdRef.current,
-              phase: cribbageState.phase,
-              phaseForLayout,
-              hasCountingOverrides: !!countingScoreOverrides,
-              overrideScores: countingScoreOverrides
-                ? Object.fromEntries(Object.entries(countingScoreOverrides).map(([id, s]) => [id.slice(0, 8), s]))
-                : null,
-              rawPegScores: Object.fromEntries(
-                Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
-              ),
-            },
-          });
-          return null;
-        })()}
-        <CribbagePegBoard 
-          players={players}
-          playerStates={cribbageState.playerStates}
-          winningScore={cribbageState.pointsToWin}
-          overrideScores={countingScoreOverrides}
-        />
-      </div>
+      {/* Peg Board now rendered by parent (CribbageMobileGameTable) for mount stability */}
 
       {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own) */}
       {(showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && (
