@@ -1658,6 +1658,9 @@ export const CribbageMobileGameTable = ({
     }
   }, [countingScoreOverrides, cribbageState, roundId]);
 
+  // FIX B: Fetch token to prevent overlapping loads from racing
+  const cribbageFetchTokenRef = useRef(0);
+  
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
   useEffect(() => {
@@ -1667,13 +1670,16 @@ export const CribbageMobileGameTable = ({
       return;
     }
     
+    const fetchToken = ++cribbageFetchTokenRef.current;
+    const fetchRoundId = roundId;
+    
     const loadOrInitializeState = async () => {
       if (hasInitializedRef.current || initialLoadComplete) {
         console.log('[CRIBBAGE] Already initialized, skipping');
         return;
       }
       
-      console.log('[CRIBBAGE] Loading state for round:', roundId);
+      console.log('[CRIBBAGE] Loading state for round:', fetchRoundId);
 
       // Clear any stale dealer_selection_state from a previous game in this session
       // to prevent old cards from flashing during draw-for-button.
@@ -1684,11 +1690,23 @@ export const CribbageMobileGameTable = ({
           .eq('id', gameId);
       }
       
+      // FIX B: Check token after first await
+      if (fetchToken !== cribbageFetchTokenRef.current) {
+        console.log('[CRIBBAGE] Fetch token stale after dealer_selection clear, dropping');
+        return;
+      }
+      
       const { data: roundData, error } = await supabase
         .from('rounds')
         .select('cribbage_state, hand_number')
-        .eq('id', roundId)
+        .eq('id', fetchRoundId)
         .single();
+
+      // FIX B: Check token after DB fetch
+      if (fetchToken !== cribbageFetchTokenRef.current) {
+        console.log('[CRIBBAGE] Fetch token stale after round load, dropping');
+        return;
+      }
 
       if (error) {
         console.error('[CRIBBAGE] Error loading state:', error);
@@ -1736,7 +1754,13 @@ export const CribbageMobileGameTable = ({
       await supabase
         .from('rounds')
         .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-        .eq('id', roundId);
+        .eq('id', fetchRoundId);
+      
+      // FIX B: Check token after write
+      if (fetchToken !== cribbageFetchTokenRef.current) {
+        console.log('[CRIBBAGE] Fetch token stale after state init write, dropping');
+        return;
+      }
       
       syncHandle.receiveAuthoritativeUpdate(newState);
       setCribbageState(newState);
