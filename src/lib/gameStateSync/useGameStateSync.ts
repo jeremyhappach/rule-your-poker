@@ -112,6 +112,15 @@ export function useGameStateSync<T>(
           clearTimeout(optimisticTimerRef.current);
           optimisticTimerRef.current = null;
         }
+        // Immediately propagate to presentation — effective is now authoritative (incoming)
+        if (!frozenRef.current) {
+          setPresentation(incoming);
+        }
+      }
+    } else {
+      // No optimistic active — effective is authoritative, propagate immediately
+      if (!frozenRef.current) {
+        setPresentation(incoming);
       }
     }
 
