@@ -376,6 +376,10 @@ export function YahtzeeGameTable({
   // Local dice state — OWNED by the active player during their turn.
   // Seeded from DB once on turn start; after that, only local actions mutate it.
   const [localDice, setLocalDice] = useState<YahtzeeDie[]>([]);
+  // Ref mirror of localDice — always up-to-date for synchronous reads in handlers
+  // (React closures capture stale state; this ref avoids the hold→roll race condition)
+  const localDiceRef = useRef<YahtzeeDie[]>([]);
+  useEffect(() => { localDiceRef.current = localDice; }, [localDice]);
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
   // Ref for pending debounced hold DB write (batches rapid toggles into one write)
   const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -593,7 +597,10 @@ export function YahtzeeGameTable({
     const isFirstRoll = myPs.rollsRemaining === 3;
     const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
 
-    heldSnapshotRef.current = localDice.map(d => d.isHeld);
+    // Use ref to get the LATEST localDice — avoids stale closure when user
+    // holds a die and immediately taps Roll before React re-renders.
+    const currentLocalDice = localDiceRef.current;
+    heldSnapshotRef.current = currentLocalDice.map(d => d.isHeld);
     rollSerialRef.current += 1;
     const t = `yahtzee:${currentRoundId}:${myPlayer.id}:${rollSerialRef.current}`;
     localRollKeyRef.current = t;
@@ -605,7 +612,7 @@ export function YahtzeeGameTable({
       ...myPs,
       dice: myPs.dice.map((d, i) => ({
         ...d,
-        isHeld: localDice[i]?.isHeld ?? d.isHeld,
+        isHeld: currentLocalDice[i]?.isHeld ?? d.isHeld,
       })),
     };
 

@@ -112,6 +112,15 @@ export function useGameStateSync<T>(
           clearTimeout(optimisticTimerRef.current);
           optimisticTimerRef.current = null;
         }
+        // Immediately propagate to presentation — effective is now authoritative (incoming)
+        if (!frozenRef.current) {
+          setPresentation(incoming);
+        }
+      }
+    } else {
+      // No optimistic active — effective is authoritative, propagate immediately
+      if (!frozenRef.current) {
+        setPresentation(incoming);
       }
     }
 
@@ -122,6 +131,15 @@ export function useGameStateSync<T>(
   const applyOptimistic = useCallback((localState: T) => {
     optRef.current = localState;
     setOptimistic(localState);
+
+    // CRITICAL: Immediately propagate to presentation when not frozen.
+    // Without this, presentation only updates via useEffect (runs AFTER render),
+    // creating a 1-render gap where other state changes (e.g. scoringInProgress=false)
+    // are visible but presentation still shows the OLD state — causing brief flashes
+    // like "my roll" after turn advance.
+    if (!frozenRef.current) {
+      setPresentation(localState);
+    }
 
     // Clear any existing timer
     if (optimisticTimerRef.current) {
