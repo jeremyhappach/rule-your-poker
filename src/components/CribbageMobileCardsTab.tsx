@@ -26,6 +26,11 @@ interface RenderTraceContext {
   isFrozen: boolean;
   authoritativeHand: CribbageCard[] | null;
   renderSource: string;
+  expectedRoundId: string | null;
+  sourceRoundId: string | null;
+  handNumber: number;
+  isGameplayMode: boolean;
+  viewStateIsCurrentRound: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
@@ -75,62 +80,149 @@ export const CribbageMobileCardsTab = ({
   }, [roundId]);
 
   const myPlayerState = cribbageState.playerStates[currentPlayerId];
+  const clientId = currentPlayer.user_id.slice(0, 8);
+  const sourceHand = myPlayerState?.hand ?? [];
+  const expectedRoundId = renderTrace?.expectedRoundId ?? roundId ?? null;
+  const sourceRoundId = renderTrace?.sourceRoundId ?? null;
+  const roundIdentityMismatch = !!(renderTrace && expectedRoundId && sourceRoundId && expectedRoundId !== sourceRoundId);
+  const handIdentityMismatch = !!(
+    renderTrace &&
+    renderTrace.renderHandKey &&
+    renderTrace.currentHandKey &&
+    renderTrace.renderHandKey !== renderTrace.currentHandKey
+  );
+  const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch);
+  const renderedHand = activeHandBlocked ? [] : sourceHand;
+  const sourceCardIds = sourceHand.map(cardId);
+  const renderedCardIds = renderedHand.map(cardId);
+  const sourceFingerprint = sourceCardIds.join(',');
+  const renderedFingerprint = renderedCardIds.join(',');
+  const activeHandSourceName = 'cribbageState.playerStates[currentPlayerId].hand';
 
-  // ── CRIBBAGE_RENDERED_CARDS trace ──────────────────────────────
-  // TEMP DEBUG — CRIBBAGE RENDER TRACE — REMOVE AFTER INVESTIGATION
-  // Fires only when the set of rendered card IDs changes.
-  const prevRenderedFingerprintRef = useRef<string>('');
+  const prevRenderSourceFingerprintRef = useRef<string>('');
+  const prevBlockedFingerprintRef = useRef<string>('');
+  const prevHydratedFingerprintRef = useRef<string>('');
   useEffect(() => {
     if (!myPlayerState || !renderTrace) return;
-    const renderedIds = myPlayerState.hand.map(cardId);
-    const fingerprint = renderedIds.join(',');
-    if (fingerprint === prevRenderedFingerprintRef.current) return;
 
     const authIds = renderTrace.authoritativeHand?.map(cardId) ?? null;
-    const presentationIds = renderedIds; // viewState drives this component
-
-    persistSyncDebugEvent({
-      gameId,
-      gameType: 'cribbage',
-      handNumber: 0,
-      roundId: roundId ?? null,
-      eventType: 'transition',
-      severity: 'info',
-      eventName: 'CRIBBAGE_RENDERED_CARDS',
-      payload: {
-        renderedCardIds: renderedIds,
-        renderedCount: renderedIds.length,
-        renderHandKey: renderTrace.renderHandKey?.slice(0, 30),
-        currentHandKey: renderTrace.currentHandKey?.slice(0, 30),
-        dealerGameId: renderTrace.dealerGameId?.slice(0, 8) ?? null,
-        renderSource: renderTrace.renderSource,
-        phase: cribbageState.phase,
-        isFrozen: renderTrace.isFrozen,
-        presentationHandIds: presentationIds,
-        authoritativeHandIds: authIds,
-        prevFingerprint: prevRenderedFingerprintRef.current || null,
-      },
+    const renderFingerprint = JSON.stringify({
+      expectedRoundId,
+      sourceRoundId,
+      renderHandKey: renderTrace.renderHandKey,
+      currentHandKey: renderTrace.currentHandKey,
+      sourceFingerprint,
+      renderedFingerprint,
+      activeHandBlocked,
     });
 
-    // CRIBBAGE_RENDER_SOURCE_MISMATCH — detect stale visuals during active play
+    if (renderFingerprint !== prevRenderSourceFingerprintRef.current) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: renderTrace.handNumber,
+        roundId: expectedRoundId ?? null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'crib-active-hand-render-source',
+        payload: {
+          clientId,
+          currentRoundId: expectedRoundId?.slice(0, 8) ?? null,
+          sourceRoundId: sourceRoundId?.slice(0, 8) ?? null,
+          currentHandKey: renderTrace.currentHandKey?.slice(0, 30) ?? null,
+          renderHandKey: renderTrace.renderHandKey?.slice(0, 30) ?? null,
+          sourceName: activeHandSourceName,
+          sourceCardIds,
+          sourceCardCount: sourceCardIds.length,
+          renderedCardIds,
+          renderedCardCount: renderedCardIds.length,
+          sourceIdentity: sourceRoundId
+            ? `${sourceRoundId.slice(0, 8)}:${renderTrace.renderHandKey?.slice(0, 30) ?? ''}`
+            : null,
+          isGameplayMode: renderTrace.isGameplayMode,
+          viewStateIsCurrentRound: renderTrace.viewStateIsCurrentRound,
+          renderSource: renderTrace.renderSource,
+          usedPresentationState: renderTrace.renderSource === 'sync-presentation',
+          usedLocalFallback: false,
+          phase: cribbageState.phase,
+          isFrozen: renderTrace.isFrozen,
+          authoritativeHandIds: authIds,
+        },
+      });
+      prevRenderSourceFingerprintRef.current = renderFingerprint;
+    }
+
+    if (activeHandBlocked && sourceCardIds.length > 0) {
+      const blockedFingerprint = `${expectedRoundId}:${sourceRoundId}:${renderTrace.renderHandKey}:${renderTrace.currentHandKey}:${sourceFingerprint}`;
+      if (blockedFingerprint !== prevBlockedFingerprintRef.current) {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: renderTrace.handNumber,
+          roundId: expectedRoundId ?? null,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-stale-active-hand-blocked',
+          payload: {
+            clientId,
+            currentRoundId: expectedRoundId?.slice(0, 8) ?? null,
+            sourceRoundId: sourceRoundId?.slice(0, 8) ?? null,
+            currentHandKey: renderTrace.currentHandKey?.slice(0, 30) ?? null,
+            renderHandKey: renderTrace.renderHandKey?.slice(0, 30) ?? null,
+            blockedSourceName: activeHandSourceName,
+            sourceCardIds,
+            sourceCardCount: sourceCardIds.length,
+            isGameplayMode: renderTrace.isGameplayMode,
+            viewStateIsCurrentRound: renderTrace.viewStateIsCurrentRound,
+          },
+        });
+        prevBlockedFingerprintRef.current = blockedFingerprint;
+      }
+    }
+
+    if (!activeHandBlocked && renderedCardIds.length > 0) {
+      const hydratedFingerprint = `${expectedRoundId}:${renderTrace.currentHandKey}:${renderedFingerprint}`;
+      if (hydratedFingerprint !== prevHydratedFingerprintRef.current) {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: renderTrace.handNumber,
+          roundId: expectedRoundId ?? null,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: 'crib-active-hand-hydrated',
+          payload: {
+            clientId,
+            roundId: expectedRoundId?.slice(0, 8) ?? null,
+            handKey: renderTrace.currentHandKey?.slice(0, 30) ?? null,
+            source: activeHandSourceName,
+            cardIds: renderedCardIds,
+            cardCount: renderedCardIds.length,
+          },
+        });
+        prevHydratedFingerprintRef.current = hydratedFingerprint;
+      }
+    }
+
     if (
       authIds &&
+      !activeHandBlocked &&
       (cribbageState.phase === 'discarding' || cribbageState.phase === 'pegging') &&
       renderTrace.renderHandKey === renderTrace.currentHandKey
     ) {
       const authFingerprint = [...authIds].sort().join(',');
-      const renderedSorted = [...renderedIds].sort().join(',');
+      const renderedSorted = [...renderedCardIds].sort().join(',');
       if (authFingerprint !== renderedSorted) {
         persistSyncDebugEvent({
           gameId,
           gameType: 'cribbage',
-          handNumber: 0,
-          roundId: roundId ?? null,
+          handNumber: renderTrace.handNumber,
+          roundId: expectedRoundId ?? null,
           eventType: 'invariant',
           severity: 'error',
           eventName: 'CRIBBAGE_RENDER_SOURCE_MISMATCH',
           payload: {
-            renderedCardIds: renderedIds,
+            renderedCardIds,
             authoritativeCardIds: authIds,
             renderHandKey: renderTrace.renderHandKey?.slice(0, 30),
             currentHandKey: renderTrace.currentHandKey?.slice(0, 30),
@@ -141,17 +233,29 @@ export const CribbageMobileCardsTab = ({
         });
       }
     }
-
-    prevRenderedFingerprintRef.current = fingerprint;
-  });
+  }, [
+    activeHandBlocked,
+    activeHandSourceName,
+    clientId,
+    cribbageState.phase,
+    expectedRoundId,
+    gameId,
+    myPlayerState,
+    renderTrace,
+    renderedCardIds,
+    renderedFingerprint,
+    sourceCardIds,
+    sourceFingerprint,
+    sourceRoundId,
+  ]);
   const isMyTurn = cribbageState.pegging.currentTurnPlayerId === currentPlayerId;
-  const canPlayAnyCard = myPlayerState && hasPlayableCard(myPlayerState.hand, cribbageState.pegging.currentCount);
+  const canPlayAnyCard = myPlayerState && hasPlayableCard(renderedHand, cribbageState.pegging.currentCount);
   const haveDiscarded = myPlayerState?.discardedToCrib.length > 0;
   const expectedDiscard = playerCount === 2 ? 2 : 1;
   
   // Pre-discard: show 6 cards compactly; post-discard: show 4 cards relaxed
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
-  const cardCount = myPlayerState?.hand.length || 0;
+  const cardCount = renderedHand.length;
 
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
@@ -164,7 +268,7 @@ export const CribbageMobileCardsTab = ({
       }
     } else if (cribbageState.phase === 'pegging') {
       if (isMyTurn) {
-        const card = myPlayerState.hand[index];
+        const card = renderedHand[index];
         if (card && getCardPointValue(card) + cribbageState.pegging.currentCount <= 31) {
           onPlayCard(index);
         } else {
@@ -209,6 +313,31 @@ export const CribbageMobileCardsTab = ({
     );
   }
 
+  const renderPlayerInfoRow = () => (
+    <div className="flex items-center justify-center gap-2 py-0.5">
+      <QuickEmoticonPicker 
+        onSelect={handleQuickEmoticon} 
+        disabled={isEmoticonSending || !currentPlayer}
+      />
+      <p className="font-semibold text-sm text-foreground">
+        {currentPlayer.profiles?.username || 'You'}
+      </p>
+      <span className="font-bold text-lg text-poker-gold">
+        ${formatChipValue(currentPlayer.chips)}
+      </span>
+    </div>
+  );
+
+  if (activeHandBlocked) {
+    return (
+      <div className="h-full px-2 flex flex-col">
+        <div className="flex items-center justify-center min-h-[92px] py-0" />
+        <div className="flex items-center justify-center min-h-[28px]" />
+        {renderPlayerInfoRow()}
+      </div>
+    );
+  }
+
   return (
     <div className="h-full px-2 flex flex-col">
       {/* Cards display - adaptive layout */}
@@ -222,7 +351,7 @@ export const CribbageMobileCardsTab = ({
             cardCount <= 4 ? "scale-[1.55]" : cardCount <= 5 ? "scale-[1.35]" : "scale-[1.18]"
           )}
         >
-          {myPlayerState.hand.map((card, index) => {
+          {renderedHand.map((card, index) => {
             const isSelected = selectedCards.includes(index);
             const isPlayable = cribbageState.phase === 'pegging' && 
               isMyTurn && 
@@ -294,19 +423,7 @@ export const CribbageMobileCardsTab = ({
       </div>
 
       {/* Player info row - same styling as MobileGameTable, below action buttons */}
-      <div className="flex items-center justify-center gap-2 py-0.5">
-        {/* Quick emoticon picker - left of player name */}
-        <QuickEmoticonPicker 
-          onSelect={handleQuickEmoticon} 
-          disabled={isEmoticonSending || !currentPlayer}
-        />
-        <p className="font-semibold text-sm text-foreground">
-          {currentPlayer.profiles?.username || 'You'}
-        </p>
-        <span className="font-bold text-lg text-poker-gold">
-          ${formatChipValue(currentPlayer.chips)}
-        </span>
-      </div>
+      {renderPlayerInfoRow()}
 
       {/* Crib is shown on the felt during counting - no duplicate display here */}
     </div>

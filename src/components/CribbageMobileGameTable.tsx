@@ -4330,7 +4330,7 @@ export const CribbageMobileGameTable = ({
               currentPlayer={currentPlayer}
               gameId={gameId}
               isDealer={isCribDealer(currentPlayerId)}
-              roundId={currentRoundId}
+              roundId={roundId}
               renderTrace={{
                 renderHandKey,
                 currentHandKey,
@@ -4338,6 +4338,11 @@ export const CribbageMobileGameTable = ({
                 isFrozen: syncHandle.isFrozen,
                 authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
                 renderSource: 'sync-presentation',
+                expectedRoundId: roundId ?? null,
+                sourceRoundId: currentRoundId ?? null,
+                handNumber,
+                isGameplayMode,
+                viewStateIsCurrentRound,
               }}
             />
           )}
