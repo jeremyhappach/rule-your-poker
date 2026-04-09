@@ -123,6 +123,15 @@ export function useGameStateSync<T>(
     optRef.current = localState;
     setOptimistic(localState);
 
+    // CRITICAL: Immediately propagate to presentation when not frozen.
+    // Without this, presentation only updates via useEffect (runs AFTER render),
+    // creating a 1-render gap where other state changes (e.g. scoringInProgress=false)
+    // are visible but presentation still shows the OLD state — causing brief flashes
+    // like "my roll" after turn advance.
+    if (!frozenRef.current) {
+      setPresentation(localState);
+    }
+
     // Clear any existing timer
     if (optimisticTimerRef.current) {
       clearTimeout(optimisticTimerRef.current);
