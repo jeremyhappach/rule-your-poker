@@ -3509,9 +3509,20 @@ export const CribbageMobileGameTable = ({
   // BUG A FIX: Bootstrap depends on renderHandKey (presentation identity), NOT viewState existence.
   // viewState can be non-null while renderHandKey is still empty during state-layer mismatch.
   // renderHandKey is '' when viewState is null OR when viewState has no meaningful hand identity.
+  //
+  // STALE-FIRST-PAINT INVARIANT: viewState must belong to the CURRENT hand identity before
+  // any gameplay surface renders from it. Without this check, a render triggered by a new
+  // currentRoundId (which updates currentHandKey) can still see old viewState (old renderHandKey)
+  // because the boundary-reset effect hasn't fired yet. useLayoutEffect mitigates the paint
+  // timing, but this invariant is the true data-source correctness guard.
+  const viewStateIsCurrentRound = !!(
+    renderHandKey &&
+    currentHandKey &&
+    renderHandKey === currentHandKey
+  );
   const isHighCardMode = effectiveShowHighCardSelection;
   const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
-  const isGameplayMode = !isHighCardMode && !isBootstrapMode;
+  const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
   const shouldShowAwaitingAnteAnnouncement = currentHandNumber <= 1 && (
     isDealerSelection ||
     effectiveShowHighCardSelection ||
