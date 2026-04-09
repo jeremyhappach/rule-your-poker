@@ -1790,8 +1790,13 @@ export const MobileGameTable = ({
     }
 
     // Prefer the actual stayed player while decisions are still present; fall back to parsing the winner from lastRoundResult.
+    // FIX 4: Only allow solo capture AFTER decisions are finalized
+    if (!allDecisionsIn) return;
+
     const stayed = players.find(p => p.current_decision === 'stay');
     if (stayed) {
+      // Log solo-capture-applied
+      console.log('[HOLM-SOLO] Solo capture applied', { playerId: stayed.id, handContextId, allDecisionsIn });
       setSoloVsChuckyPlayerIdLocked(stayed.id);
       return;
     }
