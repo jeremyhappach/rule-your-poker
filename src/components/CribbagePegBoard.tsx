@@ -41,10 +41,13 @@ export const CribbagePegBoard = ({
   const currentDisplayScores: Record<string, number> = {};
   for (const player of players) {
     const state = playerStates[player.id];
-    const rawPegScore = state?.pegScore ?? 0;
+    const rawPegScore = state?.pegScore ?? undefined;
     const overrideScore = overrideScores?.[player.id];
     const displayScore = overrideScore ?? rawPegScore;
-    currentDisplayScores[player.id] = displayScore;
+    // CRITICAL: If score source is missing/undefined, hold last known valid score
+    // This prevents the 0-fallback animation during hand boundary resets
+    const prevKnown = prevRenderedScoresRef.current[player.id];
+    currentDisplayScores[player.id] = displayScore !== undefined ? displayScore : (prevKnown ?? 0);
   }
 
   // Check for regression: any player's score decreased from previous render
