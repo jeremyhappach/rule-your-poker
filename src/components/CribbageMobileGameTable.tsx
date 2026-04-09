@@ -2529,8 +2529,9 @@ export const CribbageMobileGameTable = ({
     // the isTransitioning + renderHandKey guards already handle the visual gap.
     setCribbageState(null);
     cribbageStateRef.current = null;
-    // Also reset counting/scoring latches that could carry over
-    setCountingScoreOverrides(null);
+    // NOTE: Do NOT clear countingScoreOverrides here.
+    // The catch-up effect releases them once the new hand's pegScores are authoritative.
+    // Clearing here causes a transient dip to the raw (lower) pegScore before rehydration.
     setCountingStateSnapshot(null);
     setCountingDelayActive(false);
     countingAnimationActiveRef.current = false;
