@@ -515,6 +515,12 @@ export const CribbageMobileGameTable = ({
   // Ref to track if counting animation is active - used by realtime handler to avoid stale closure
   const countingAnimationActiveRef = useRef(false);
   
+  // REPLAY GUARD: Tracks handKeys for which counting has COMPLETED (animation finished).
+  // This ref is NEVER cleared on hand boundary resets — it accumulates across hands.
+  // Prevents the counting init effect from replaying for a hand that already finished counting,
+  // even if roundId change clears all other guards.
+  const countingCompletedHandKeysRef = useRef<Set<string>>(new Set());
+  
   // Store the cribbage state snapshot used for counting animation - this prevents the animation
   // from disappearing when DB phase transitions to 'complete' during counting
   const [countingStateSnapshot, setCountingStateSnapshot] = useState<CribbageState | null>(null);
