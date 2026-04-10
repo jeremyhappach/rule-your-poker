@@ -395,7 +395,7 @@ const Game = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [game, setGame] = useState<GameData | null>(null);
 
