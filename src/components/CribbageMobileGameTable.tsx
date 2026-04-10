@@ -1558,6 +1558,37 @@ export const CribbageMobileGameTable = ({
         });
 
         if (allCaughtUp) {
+          // ── Trace: crib-next-hand-reveal-score-catchup ──
+          // Detect if the override being cleared had a higher score than what presentation shows,
+          // meaning the presentation "caught up" a previously-missing pegging point.
+          const catchupDetails: Array<{ pid: string; override: number; presentation: number }> = [];
+          for (const [pid, overrideScore] of Object.entries(countingScoreOverrides)) {
+            const presScore = viewState.playerStates[pid]?.pegScore ?? 0;
+            if (presScore > overrideScore) {
+              catchupDetails.push({ pid: pid.slice(0, 8), override: overrideScore, presentation: presScore });
+            }
+          }
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: currentHandNumber,
+            eventType: catchupDetails.length > 0 ? 'invariant' : 'transition',
+            severity: catchupDetails.length > 0 ? 'warning' : 'info',
+            eventName: 'crib-next-hand-reveal-score-catchup',
+            payload: {
+              roundId: currentRoundId?.slice(0, 8),
+              handNumber: currentHandNumber,
+              viewPhase,
+              overrideValues: Object.fromEntries(Object.entries(countingScoreOverrides).map(([id, s]) => [id.slice(0, 8), s])),
+              presentationScores: Object.fromEntries(
+                Object.entries(viewState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+              ),
+              catchupDetails,
+              hadCatchup: catchupDetails.length > 0,
+              timestamp: Date.now(),
+            },
+          });
+
           logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
             viewPhase,
             overrideValues: countingScoreOverrides,
