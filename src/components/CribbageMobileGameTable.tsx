@@ -1067,6 +1067,35 @@ export const CribbageMobileGameTable = ({
       scores[playerId] = ps.pegScore ?? 0;
     }
     lastPeggingScoresRef.current = scores;
+
+    // ── Trace: crib-last-pegging-score-awarded ──
+    // Captures every pegging-phase score snapshot so we can identify the LAST one before counting.
+    const allCardsPlayed = Object.values(cribbageState.playerStates).every(ps => ps.hand.length === 0);
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-last-pegging-score-awarded',
+      payload: {
+        roundId: currentRoundId?.slice(0, 8),
+        handNumber: currentHandNumber,
+        phase: cribbageState.phase,
+        playedCardsCount: cribbageState.pegging.playedCards.length,
+        allCardsPlayed,
+        lastEvent: cribbageState.lastEvent ? {
+          type: cribbageState.lastEvent.type,
+          playerId: cribbageState.lastEvent.playerId?.slice(0, 8),
+          points: cribbageState.lastEvent.points,
+          label: cribbageState.lastEvent.label,
+        } : null,
+        pegScores: Object.fromEntries(
+          Object.entries(scores).map(([id, s]) => [id.slice(0, 8), s])
+        ),
+        timestamp: Date.now(),
+      },
+    });
   }, [cribbageState?.phase, cribbageState?.pegging?.playedCards?.length, cribbageState?.playerStates]);
 
   // Helper to get player username - defined early so it can be used in effects
@@ -1424,6 +1453,38 @@ export const CribbageMobileGameTable = ({
     }
     countingBaselineScoresRef.current = baselineScores;
 
+    // ── Trace: crib-last-pegging-score-mismatch ──
+    // Compare cached pegging scores vs state scores to detect if final pegging points were missed.
+    if (cachedScores) {
+      const mismatches: Array<{ pid: string; cached: number; state: number; delta: number }> = [];
+      for (const [pid, stateScore] of Object.entries(stateScores)) {
+        const cached = cachedScores[pid] ?? 0;
+        if (cached !== stateScore) {
+          mismatches.push({ pid: pid.slice(0, 8), cached, state: stateScore, delta: stateScore - cached });
+        }
+      }
+      if (mismatches.length > 0) {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          eventType: 'invariant',
+          severity: mismatches.some(m => m.delta > 2) ? 'error' : 'info',
+          eventName: 'crib-last-pegging-score-mismatch',
+          payload: {
+            roundId: currentRoundId?.slice(0, 8),
+            handNumber: currentHandNumber,
+            mismatches,
+            cachedScores: Object.fromEntries(Object.entries(cachedScores).map(([id, s]) => [id.slice(0, 8), s])),
+            stateScores: Object.fromEntries(Object.entries(stateScores).map(([id, s]) => [id.slice(0, 8), s])),
+            baselineChoice: baselineScores === stateScores ? 'stateScores' : baselineScores === cachedScores ? 'cachedScores' : 'other',
+            isReconnect,
+            timestamp: Date.now(),
+          },
+        });
+      }
+    }
+
     // Keep cache aligned with what we're using as the baseline for this hand.
     lastPeggingScoresRef.current = baselineScores;
     setCountingScoreOverrides(baselineScores);
@@ -1497,6 +1558,37 @@ export const CribbageMobileGameTable = ({
         });
 
         if (allCaughtUp) {
+          // ── Trace: crib-next-hand-reveal-score-catchup ──
+          // Detect if the override being cleared had a higher score than what presentation shows,
+          // meaning the presentation "caught up" a previously-missing pegging point.
+          const catchupDetails: Array<{ pid: string; override: number; presentation: number }> = [];
+          for (const [pid, overrideScore] of Object.entries(countingScoreOverrides)) {
+            const presScore = viewState.playerStates[pid]?.pegScore ?? 0;
+            if (presScore > overrideScore) {
+              catchupDetails.push({ pid: pid.slice(0, 8), override: overrideScore, presentation: presScore });
+            }
+          }
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: currentHandNumber,
+            eventType: catchupDetails.length > 0 ? 'invariant' : 'transition',
+            severity: catchupDetails.length > 0 ? 'warn' : 'info',
+            eventName: 'crib-next-hand-reveal-score-catchup',
+            payload: {
+              roundId: currentRoundId?.slice(0, 8),
+              handNumber: currentHandNumber,
+              viewPhase,
+              overrideValues: Object.fromEntries(Object.entries(countingScoreOverrides).map(([id, s]) => [id.slice(0, 8), s])),
+              presentationScores: Object.fromEntries(
+                Object.entries(viewState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.pegScore ?? 0])
+              ),
+              catchupDetails,
+              hadCatchup: catchupDetails.length > 0,
+              timestamp: Date.now(),
+            },
+          });
+
           logCribbageDebug(debugCtx, 'peg:clearing_stale_overrides', {
             viewPhase,
             overrideValues: countingScoreOverrides,

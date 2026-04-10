@@ -85,6 +85,40 @@ export const CribbagePegBoard = ({
     });
   }
 
+  // ── Trace: crib-last-pegging-score-rendered ──
+  // Fires every render so we can correlate pegboard display with authoritative scores.
+  // Only log when scores actually change to avoid spam.
+  const prevTraceScoresRef = useRef<string>('');
+  const currentTraceKey = JSON.stringify(currentDisplayScores);
+  if (currentTraceKey !== prevTraceScoresRef.current) {
+    prevTraceScoresRef.current = currentTraceKey;
+    logDebugEvent({
+      gameId: 'pegboard',
+      eventType: 'crib:last-pegging-score-rendered',
+      payload: {
+        renderCount: renderCountRef.current,
+        displayedScores: Object.fromEntries(
+          Object.entries(currentDisplayScores).map(([id, s]) => [id.slice(0, 8), s])
+        ),
+        scoreSource: Object.fromEntries(
+          players.map(p => {
+            const hasOverride = overrideScores?.[p.id] !== undefined;
+            const hasRaw = playerStates[p.id]?.pegScore !== undefined;
+            const usedPrev = !hasOverride && !hasRaw;
+            return [p.id.slice(0, 8), hasOverride ? 'override' : usedPrev ? 'latched' : 'viewState'];
+          })
+        ),
+        rawPegScores: Object.fromEntries(
+          players.map(p => [p.id.slice(0, 8), playerStates[p.id]?.pegScore ?? null])
+        ),
+        overrideScores: overrideScores
+          ? Object.fromEntries(Object.entries(overrideScores).map(([id, s]) => [id.slice(0, 8), s]))
+          : null,
+        timestamp: Date.now(),
+      },
+    });
+  }
+
   prevRenderedScoresRef.current = { ...currentDisplayScores };
   
   return (
