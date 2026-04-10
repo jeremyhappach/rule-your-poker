@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
@@ -395,7 +396,7 @@ const Game = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [game, setGame] = useState<GameData | null>(null);
 
@@ -1461,39 +1462,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // NOTE: Buck passed cache clear was removed - redundant with NEW HAND DETECTED
   // The round number change is more reliable and fires shortly after buck passes
 
+  // Auth is handled by useAuthGuard hook above.
+  // Fetch superuser status when user becomes available.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        // Store the game URL to redirect back after auth
-        const currentPath = window.location.pathname;
-        sessionStorage.setItem('redirectAfterAuth', currentPath);
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        // Fetch superuser status from profiles
-        supabase.from('profiles').select('is_superuser').eq('id', session.user.id).single().then(({ data }) => {
-          setIsSuperuser(data?.is_superuser ?? false);
-        });
-      }
+    if (!user) return;
+    supabase.from('profiles').select('is_superuser').eq('id', user.id).single().then(({ data }) => {
+      setIsSuperuser(data?.is_superuser ?? false);
     });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        // Store the game URL to redirect back after auth
-        const currentPath = window.location.pathname;
-        sessionStorage.setItem('redirectAfterAuth', currentPath);
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        // Fetch superuser status from profiles
-        supabase.from('profiles').select('is_superuser').eq('id', session.user.id).single().then(({ data }) => {
-          setIsSuperuser(data?.is_superuser ?? false);
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [user?.id]);
 
   // Fetch game defaults for decision timer - CACHED to reduce DB queries
   const gameDefaultsCacheRef = useRef<Record<string, number>>({});
