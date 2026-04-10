@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { Button } from "@/components/ui/button";
 import { GameLobby } from "@/components/GameLobby";
 import {
@@ -47,7 +47,7 @@ import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isReady } = useAuthGuard({ pageLabel: "Index" });
   const [isLoading, setIsLoading] = useState(true);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   const [currentUsername, setCurrentUsername] = useState("");
@@ -79,6 +79,16 @@ const Index = () => {
   // Track user's last seen timestamp
   useLastSeenTracker(user?.id ?? null);
 
+  // Sync loading state from auth guard
+  useEffect(() => {
+    if (isReady) setIsLoading(false);
+  }, [isReady]);
+
+  // Fetch username when user is available
+  useEffect(() => {
+    if (user) fetchUsername(user.id);
+  }, [user?.id]);
+
   // Refetch balance when dialog opens
   const handleBalanceButtonClick = () => {
     refetchBalance();
@@ -88,44 +98,6 @@ const Index = () => {
       setShowBalanceDialog(true);
     }
   };
-
-  useEffect(() => {
-    let mounted = true;
-    
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-        
-        if (!session) {
-          navigate("/auth");
-        } else {
-          setUser(session.user);
-          fetchUsername(session.user.id);
-        }
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    };
-    
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        fetchUsername(session.user.id);
-        setIsLoading(false);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
 
   const fetchUsername = async (userId: string) => {
     const { data } = await supabase
