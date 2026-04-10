@@ -1573,7 +1573,7 @@ export const CribbageMobileGameTable = ({
             gameType: 'cribbage',
             handNumber: currentHandNumber,
             eventType: catchupDetails.length > 0 ? 'invariant' : 'transition',
-            severity: catchupDetails.length > 0 ? 'warning' : 'info',
+            severity: catchupDetails.length > 0 ? 'warn' : 'info',
             eventName: 'crib-next-hand-reveal-score-catchup',
             payload: {
               roundId: currentRoundId?.slice(0, 8),
