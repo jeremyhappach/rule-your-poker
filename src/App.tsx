@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { toast } from "sonner";
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -23,9 +24,20 @@ const App = () => {
   useEffect(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
       console.error("[UNHANDLED REJECTION]", event.reason);
-      // Show user-friendly error without crashing the app
+      persistSyncDebugEvent({
+        gameId: "00000000-0000-0000-0000-000000000000",
+        gameType: "auth",
+        handNumber: 0,
+        eventType: "invariant",
+        severity: "error",
+        eventName: "app-window-reload-or-crash",
+        payload: {
+          route: window.location.pathname,
+          error: String(event.reason?.message ?? event.reason ?? "unknown"),
+          ts: Date.now(),
+        },
+      });
       toast.error("An error occurred. Please try again.");
-      // Prevent the default crash behavior
       event.preventDefault();
     };
 
