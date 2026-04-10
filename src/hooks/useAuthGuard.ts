@@ -1,0 +1,184 @@
+/**
+ * Centralised auth guard with tracing and transient-loss resilience.
+ *
+ * Problem solved:
+ *   `onAuthStateChange` can fire with `session === null` on transient events
+ *   (token refresh race, network blip, iOS BFCache restore).  The old code
+ *   immediately navigated to /auth, kicking the user out mid-game.
+ *
+ * Fix:
+ *   1. Distinguish real SIGNED_OUT from transient null by re-checking
+ *      `getSession()` after a short delay.
+ *   2. Log every auth state change to `debug_sync_events` for forensics.
+ *   3. Never redirect while a token refresh is plausibly in progress.
+ */
+
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { User, AuthChangeEvent } from "@supabase/supabase-js";
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
+
+const TRANSIENT_RECHECK_MS = 1500; // wait before assuming session is truly gone
+
+interface AuthGuardOptions {
+  /** Additional context for trace events */
+  pageLabel: string;
+}
+
+export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const prevAuthEvent = useRef<string | null>(null);
+  const recheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    // ── helpers ──────────────────────────────────────────────
+    function traceAuthEvent(
+      eventName: string,
+      payload: Record<string, unknown>,
+    ) {
+      persistSyncDebugEvent({
+        gameId: "00000000-0000-0000-0000-000000000000",
+        gameType: "auth",
+        handNumber: 0,
+        roundId: null,
+        eventType: "auth",
+        severity: eventName.includes("lost") || eventName.includes("failure")
+          ? "warning"
+          : "info",
+        eventName,
+        payload: {
+          ...payload,
+          route: window.location.pathname,
+          page: pageLabel,
+          visibilityState: document.visibilityState,
+          online: navigator.onLine,
+          ts: Date.now(),
+        },
+      });
+    }
+
+    function redirectToAuth(reason: string) {
+      if (!mounted) return;
+      const currentPath = window.location.pathname;
+      traceAuthEvent("app-unexpected-navigation-login", {
+        previousRoute: currentPath,
+        nextRoute: "/auth",
+        reason,
+        authState: user ? "had-user" : "no-user",
+      });
+      sessionStorage.setItem("redirectAfterAuth", currentPath);
+      navigate("/auth");
+    }
+
+    async function verifySessionOrRedirect(trigger: string) {
+      // Double-check: maybe the token refreshed by now
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      if (freshSession) {
+        // Transient loss – session recovered
+        traceAuthEvent("app-auth-session-recovered", {
+          trigger,
+          userId: freshSession.user.id,
+        });
+        setUser(freshSession.user);
+        setIsReady(true);
+      } else {
+        // Confirmed loss
+        traceAuthEvent("app-auth-session-lost", {
+          trigger,
+          previousUserId: user?.id ?? null,
+          tokenRefreshInProgress: false,
+        });
+        redirectToAuth(trigger);
+      }
+    }
+
+    // ── initial session check ────────────────────────────────
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      if (!session) {
+        traceAuthEvent("app-auth-session-lost", {
+          trigger: "initial-getSession",
+          previousUserId: null,
+        });
+        redirectToAuth("initial-no-session");
+      } else {
+        setUser(session.user);
+        setIsReady(true);
+        traceAuthEvent("app-auth-state-change", {
+          oldState: "none",
+          newState: "authenticated",
+          triggerSource: "initial-getSession",
+          userId: session.user.id,
+        });
+      }
+    });
+
+    // ── auth state subscription ──────────────────────────────
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent, session) => {
+        if (!mounted) return;
+
+        const oldEvent = prevAuthEvent.current;
+        prevAuthEvent.current = event;
+
+        traceAuthEvent("app-auth-state-change", {
+          oldState: oldEvent ?? "none",
+          newState: event,
+          triggerSource: "onAuthStateChange",
+          userId: session?.user?.id ?? null,
+          hasSession: !!session,
+        });
+
+        if (session) {
+          // Clear any pending recheck
+          if (recheckTimerRef.current) {
+            clearTimeout(recheckTimerRef.current);
+            recheckTimerRef.current = null;
+          }
+          setUser(session.user);
+          setIsReady(true);
+        } else {
+          // ── CRITICAL CHANGE ────────────────────────────────
+          // Do NOT immediately redirect.  Wait and re-verify.
+          // This prevents kicking users on transient refresh gaps.
+          if (event === "SIGNED_OUT") {
+            // Explicit sign-out: redirect immediately
+            redirectToAuth("explicit-SIGNED_OUT");
+          } else {
+            // Transient null (TOKEN_REFRESHED race, network blip, etc.)
+            traceAuthEvent("app-auth-session-lost", {
+              trigger: `transient-null-event-${event}`,
+              previousUserId: user?.id ?? null,
+              tokenRefreshInProgress: true,
+            });
+
+            // Schedule a recheck
+            if (recheckTimerRef.current) clearTimeout(recheckTimerRef.current);
+            recheckTimerRef.current = setTimeout(() => {
+              recheckTimerRef.current = null;
+              verifySessionOrRedirect(`recheck-after-${event}`);
+            }, TRANSIENT_RECHECK_MS);
+          }
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+      if (recheckTimerRef.current) {
+        clearTimeout(recheckTimerRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate]);
+
+  return { user, isReady };
+}
