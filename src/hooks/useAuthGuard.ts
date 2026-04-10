@@ -46,10 +46,10 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
         gameType: "auth",
         handNumber: 0,
         roundId: null,
-        eventType: "auth",
-        severity: eventName.includes("lost") || eventName.includes("failure")
-          ? "warning"
-          : "info",
+      eventType: "transition",
+      severity: eventName.includes("lost") || eventName.includes("failure")
+        ? "warn"
+        : "info",
         eventName,
         payload: {
           ...payload,
