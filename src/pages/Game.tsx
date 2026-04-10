@@ -1462,39 +1462,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // NOTE: Buck passed cache clear was removed - redundant with NEW HAND DETECTED
   // The round number change is more reliable and fires shortly after buck passes
 
+  // Auth is handled by useAuthGuard hook above.
+  // Fetch superuser status when user becomes available.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        // Store the game URL to redirect back after auth
-        const currentPath = window.location.pathname;
-        sessionStorage.setItem('redirectAfterAuth', currentPath);
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        // Fetch superuser status from profiles
-        supabase.from('profiles').select('is_superuser').eq('id', session.user.id).single().then(({ data }) => {
-          setIsSuperuser(data?.is_superuser ?? false);
-        });
-      }
+    if (!user) return;
+    supabase.from('profiles').select('is_superuser').eq('id', user.id).single().then(({ data }) => {
+      setIsSuperuser(data?.is_superuser ?? false);
     });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        // Store the game URL to redirect back after auth
-        const currentPath = window.location.pathname;
-        sessionStorage.setItem('redirectAfterAuth', currentPath);
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-        // Fetch superuser status from profiles
-        supabase.from('profiles').select('is_superuser').eq('id', session.user.id).single().then(({ data }) => {
-          setIsSuperuser(data?.is_superuser ?? false);
-        });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [user?.id]);
 
   // Fetch game defaults for decision timer - CACHED to reduce DB queries
   const gameDefaultsCacheRef = useRef<Record<string, number>>({});
