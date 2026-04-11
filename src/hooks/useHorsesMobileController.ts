@@ -223,35 +223,39 @@ export function useHorsesMobileController({
 
   const syncHandle = useGameStateSync<HorsesStateFromDB | null>(null, syncConfig);
 
-  // Identity latch: reset sync on round boundary changes
+  // Identity latch: reset sync on round boundary changes (MUST be in effect, not render phase)
   const prevRoundIdForSyncRef = useRef<string | null>(null);
-  if (currentRoundId !== prevRoundIdForSyncRef.current) {
-    prevRoundIdForSyncRef.current = currentRoundId;
-    syncHandle.reset(null);
-    resetHorsesSyncInstrumentation();
-  }
+  useEffect(() => {
+    if (currentRoundId !== prevRoundIdForSyncRef.current) {
+      prevRoundIdForSyncRef.current = currentRoundId;
+      syncHandle.reset(null);
+      resetHorsesSyncInstrumentation();
+    }
+  }, [currentRoundId]);
 
-  // Feed incoming horsesState prop through the sync framework
+  // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop
+  const incomingHorsesState = horsesState;
   const incomingHorsesStateRef = useRef(horsesState);
   incomingHorsesStateRef.current = horsesState;
 
+  // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   useEffect(() => {
-    if (!horsesState) return;
-    const result = syncHandle.receiveAuthoritativeUpdate(horsesState);
+    if (!incomingHorsesState) return;
+    const result = syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
 
     // Persist instrumentation
     if (gameId) {
-      const handNumber = horsesState.turnOrder?.length ?? 0;
+      const handNumber = incomingHorsesState.turnOrder?.length ?? 0;
       persistHorsesProgressVector(
         gameId,
         isSCC ? 'ship-captain-crew' : 'horses',
         handNumber,
         currentRoundId,
         result,
-        horsesState,
+        incomingHorsesState,
       );
     }
-  }, [horsesState, gameId, currentRoundId, isSCC]);
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC]);
 
   // Presentation source instrumentation
   useEffect(() => {
