@@ -2594,6 +2594,9 @@ export function useHorsesMobileController({
           preRollSig,
         });
 
+        // FREEZE presentation: prevent sync framework from pushing DB updates during observer animation
+        syncHandle.freezePresentation();
+
         // End rolling state after the animation window. Do NOT clear the display state.
         observerRollingTimerRef.current = window.setTimeout(() => {
           setObserverDisplayState((prev) => {
