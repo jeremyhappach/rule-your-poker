@@ -1757,47 +1757,30 @@ export const MobileGameTable = ({
     if (soloVsChuckyPlayerIdLocked) return;
     if (!(isSoloVsChuckyRaw || soloVsChuckyTableLocked || holmWinPotTriggerId)) return;
 
-    // CRITICAL FIX: Don't capture if isSoloVsChuckyRaw is true but the handContextId hasn't
-    // been confirmed yet. During hand transitions, stale current_decision='stay' from the
-    // PREVIOUS hand makes isSoloVsChuckyRaw momentarily true. Without this guard, the capture
-    // effect locks the WRONG player (from the previous hand), and the "if locked, return" guard
-    // above prevents it from ever correcting to the right player.
-    //
-    // We detect this stale state by checking: if isSoloVsChuckyRaw is driving the capture
-    // (not holmWinPotTriggerId), and the chucky_active flag is NOT set yet, and the round
-    // is still in an early phase (betting/pending/ante), then this is stale data — skip.
+    // FIX 6 (CRITICAL): Solo capture MUST require exactly 1 stayer.
+    // Without this, holmWinPotTriggerId from a SHOWDOWN win (2+ stayers) allows
+    // entry into the capture path, and players.find() locks the first stayer as
+    // "solo" even though it's a multi-player showdown. The correction effect
+    // (stayedPlayersCount > 1) is also suppressed by holmWinPotTriggerId,
+    // so the wrong lock persists across hand boundaries.
+    // Proven failure: Pedro Strop session hand 4 (showdown) → Hap incorrectly
+    // locked as solo because holmWinPotTriggerId bypassed all guards.
+    if (stayedPlayersCount !== 1) {
+      return;
+    }
+
     const isEarlyPhaseForCapture = roundStatus === 'betting' || roundStatus === 'pending' || roundStatus === 'ante';
-    // CRITICAL: If allDecisionsIn is true, we're past the stale-decision danger zone — allow capture
-    // even if roundStatus hasn't transitioned yet. Without this, the showdown cache populates cards
-    // (via isShowdownActive) but the lock never fires, causing dual display: face-up at chip stack
-    // AND tabled in center.
     if (isSoloVsChuckyRaw && !holmWinPotTriggerId && !chuckyActive && isEarlyPhaseForCapture && !allDecisionsIn) {
       return;
     }
 
-    // CRITICAL FIX: Prevent stale re-capture during hand transitions.
-    // When handContextId changes, the reset effect (above) clears soloVsChuckyPlayerIdLocked to null,
-    // but stale current_decision='stay' from the PREVIOUS hand makes isSoloVsChuckyRaw momentarily true.
-    // The capture effect re-fires because soloVsChuckyPlayerIdLocked changed to null, then locks the
-    // WRONG player (from the previous hand's lingering decisions).
-    //
-    // Guard: If roundStatus is still 'completed' or 'showdown' from the previous hand AND chucky is
-    // not active for this hand AND there's no active pot animation, this is stale data — skip.
-    // During a REAL solo-vs-Chucky, chuckyActive will be true before/during capture, or
-    // allDecisionsIn will drive the capture before roundStatus reaches these terminal phases.
     if (!chuckyActive && !holmWinPotTriggerId && (roundStatus === 'completed' || roundStatus === 'showdown') && !allDecisionsIn) {
       return;
     }
 
-    // Prefer the actual stayed player while decisions are still present; fall back to parsing the winner from lastRoundResult.
-    // FIX 4: Only allow solo capture AFTER decisions are finalized
     if (!allDecisionsIn) return;
 
     // FIX 5: Require decision_locked === true to confirm the stay belongs to the CURRENT hand.
-    // Stale current_decision='stay' from the previous hand can persist briefly at hand boundaries,
-    // and combined with stale allDecisionsIn=true, would lock the WRONG player as solo.
-    // decision_locked is force-cleared to false during betting phase, so it's a reliable
-    // signal that the decision is current.
     const stayed = players.find(p => p.current_decision === 'stay' && p.decision_locked === true);
     const staleCandidate = !stayed ? players.find(p => p.current_decision === 'stay') : null;
 
