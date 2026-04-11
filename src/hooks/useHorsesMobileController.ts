@@ -2605,6 +2605,9 @@ export function useHorsesMobileController({
             return { ...prev, isRolling: false };
           });
           observerRollingTimerRef.current = null;
+
+          // UNFREEZE presentation: observer animation complete
+          syncHandle.unfreezePresentation();
         }, durationMs);
       }
 
