@@ -861,6 +861,9 @@ export const MobileGameTable = ({
       // CRITICAL FIX: Clear cached winning result to prevent "Beat" badge persistence on rollovers
       // This ensures the SCC/Horses "Beat" badge doesn't show stale results from the prior round
       cachedWinningResultRef.current = null;
+
+      // Clear render trace fingerprints for new hand boundary
+      resetHolmRenderTrace(handContextId);
       
       prevHandContextRef.current = handContextId;
     }
