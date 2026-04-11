@@ -1750,6 +1750,12 @@ export const MobileGameTable = ({
     soloVsChuckyAnimatedRef.current = false;
     // Mark this handContextId so the capture effect knows not to re-capture stale data
     soloVsChuckyLockHandRef.current = handContextId ?? null;
+    // CRITICAL: Also clear showdownModeLocked here — if it persists from the prior showdown hand,
+    // isAnyPlayerInShowdown stays true into the next hand, causing the solo player's cards to
+    // briefly render in their normal seat (dual-render) before shouldHideForTabling catches up.
+    // resetHandUiCaches also clears this, but it can be deferred during animations — this effect
+    // fires immediately on handContextId change, closing the 1–2 frame window.
+    setShowdownModeLocked(false);
   }, [handContextId]);
 
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
