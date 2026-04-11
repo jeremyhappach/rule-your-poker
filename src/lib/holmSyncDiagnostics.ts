@@ -5,7 +5,7 @@
  * Prefix: [holm-sync]
  */
 
-import { checkInvariant, logSyncSummary } from './debugSyncInvariants';
+import { checkInvariant } from './debugSyncInvariants';
 import type { HolmAuthoritativeSnapshot } from '@/lib/gameStateSync/holmProgress';
 
 // ── Phase rules ───────────────────────────────────────────────
@@ -17,77 +17,6 @@ const PHASE_MAX_REVEALED: Record<string, number> = {
   completed: 4,
 };
 
-// ── Holm state summary ────────────────────────────────────────
-
-export interface HolmSyncSummary {
-  gameId: string;
-  handNumber: number;
-  roundStatus: string;
-  decidedCount: number;
-  progressVector: number[];
-  communityCardsRevealed: number;
-  effectiveVisibleCommunityCount: number;
-  playerCardCounts: Record<string, number>;
-  communityCardIdentity: string;
-  visibleCommunityCards: string[];
-  evaluationResult?: string | null;
-  sourceIdentity?: string;
-}
-
-/**
- * Build a compact summary of the current Holm presentation state.
- */
-export function buildHolmSyncSummary(
-  gameId: string,
-  presentation: HolmAuthoritativeSnapshot | null,
-  effectiveRevealed: number,
-  playerCards?: Array<{ playerId: string; cards: unknown[] }>,
-  evaluationResult?: string | null,
-): HolmSyncSummary | null {
-  if (!presentation) return null;
-
-  const decidedCount = presentation.players.filter(p => p.decisionLocked).length;
-  const communityArr = (presentation.communityCards ?? []) as Array<{ rank?: string; suit?: string }>;
-
-  const playerCardCounts: Record<string, number> = {};
-  if (playerCards) {
-    for (const pc of playerCards) {
-      playerCardCounts[pc.playerId.slice(0, 8)] = pc.cards?.length ?? 0;
-    }
-  }
-
-  return {
-    gameId: gameId.slice(0, 8),
-    handNumber: presentation.handNumber,
-    roundStatus: presentation.roundStatus,
-    decidedCount,
-    progressVector: [
-      presentation.handNumber,
-      ({ betting: 0, processing: 1, showdown: 2, completed: 3 }[presentation.roundStatus]) ?? 0,
-      decidedCount,
-      presentation.communityCardsRevealed,
-    ],
-    communityCardsRevealed: presentation.communityCardsRevealed,
-    effectiveVisibleCommunityCount: effectiveRevealed,
-    playerCardCounts,
-    communityCardIdentity: communityArr.map(c => `${c.rank ?? '?'}${c.suit ?? '?'}`).join(','),
-    visibleCommunityCards: communityArr
-      .slice(0, effectiveRevealed)
-      .map(c => `${c.rank ?? '?'}${c.suit ?? '?'}`),
-    evaluationResult: evaluationResult ?? null,
-  };
-}
-
-/**
- * Log a Holm sync summary at a specific boundary.
- */
-export function logHolmSummary(
-  label: string,
-  summary: HolmSyncSummary | null,
-): void {
-  if (!summary) return;
-  logSyncSummary('holm-sync', label, summary as unknown as Record<string, unknown>);
-}
 
 // ── Holm invariant checks ─────────────────────────────────────
 
@@ -332,41 +261,6 @@ export function resetSoloPlayerTracking(): void {
   lastSoloCapture.playerId = '';
 }
 
-// ── INV-7: Rendered community card trace ─────────────────────
-// Upfront instrumentation: captures exact community card IDs displayed on screen
-// to prove stale card displays in post-session forensics.
-
-import { persistSyncDebugEvent } from './persistSyncDebugEvent';
-
-/**
- * HOLM_RENDERED_COMMUNITY trace.
- * Persists the exact community cards currently rendered, the hand number,
- * and the source (sync presentation vs raw DB) for forensic correlation.
- */
-export function traceHolmRenderedCommunity(
-  gameId: string,
-  handNumber: number,
-  roundId: string,
-  renderedCards: string[],
-  revealedCount: number,
-  source: 'sync-presentation' | 'authoritative-fallback' | 'cache',
-): void {
-  persistSyncDebugEvent({
-    gameId,
-    gameType: 'holm-game',
-    handNumber,
-    roundId,
-    eventType: 'transition',
-    severity: 'info',
-    eventName: 'rendered-community',
-    payload: {
-      cards: renderedCards.slice(0, revealedCount),
-      allCards: renderedCards,
-      revealedCount,
-      source,
-    },
-  });
-}
 
 /**
  * INV-8: Card fetch roundId mismatch.
