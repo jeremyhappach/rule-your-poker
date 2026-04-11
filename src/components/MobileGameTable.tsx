@@ -58,6 +58,8 @@ import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
+import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
+import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
@@ -859,6 +861,9 @@ export const MobileGameTable = ({
       // CRITICAL FIX: Clear cached winning result to prevent "Beat" badge persistence on rollovers
       // This ensures the SCC/Horses "Beat" badge doesn't show stale results from the prior round
       cachedWinningResultRef.current = null;
+
+      // Clear render trace fingerprints for new hand boundary
+      resetHolmRenderTrace(handContextId);
       
       prevHandContextRef.current = handContextId;
     }
@@ -3771,42 +3776,44 @@ export const MobileGameTable = ({
 
     // INSTRUMENTATION: Log every frame where normal-seat cards render for a Holm opponent
     if (gameType === 'holm-game' && player.id !== currentPlayer?.id) {
+      const tracePayload: HolmRenderPayload = {
+        clientId: currentUserId,
+        gameId: gameId ?? '',
+        roundId: handContextId ?? undefined,
+        handNumber: 0,
+        handContextId: handContextId ?? '',
+        renderedPlayerId: player.id,
+        cardIds: cards.length > 0 ? cards.map(c => `${c.rank}${c.suit}`).join(',') : `${cardCountToShow}-backs`,
+        cardSource: isShowdown ? (hasExposedCards ? 'showdownCache' : 'announcementShowdown') : 'expectedCardCount',
+        isShowdown,
+        shouldHideForTabling,
+        isHolmWinWinner,
+        isSoloVsChuckyPlayer,
+        isSoloVsChuckyPlayerRaw,
+        isSoloVsChucky: !!isSoloVsChucky,
+        soloVsChuckyPlayerIdLocked,
+        soloVsChuckyTableLocked,
+        showdownModeLocked,
+        stayedPlayersCount,
+        playerDecision,
+        decisionLocked: player.decision_locked ?? false,
+        playerExplicitlyStayed,
+        apparentIsActivePlayer,
+        isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+      };
+
       const willRenderFaceUp = isShowdown && !shouldHideForTabling && playerExplicitlyStayed;
       const willRenderCardBacks = !isShowdown && !shouldHideForTabling && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0;
       if (willRenderFaceUp || willRenderCardBacks) {
-        console.log('[holm-normal-seat-render-final]', {
-          clientId: currentUserId,
-          roundId: currentRound?.toString(),
-          handContextId,
-          component: 'opponent-slot',
-          slotIndex: effectiveSlotIndex,
-          renderedPlayerId: player.id,
-          renderType: willRenderFaceUp ? 'face-up' : 'card-backs',
-          cardIds: willRenderFaceUp ? cards.map(c => `${c.rank}${c.suit}`) : `${cardCountToShow} backs`,
-          cardSource: willRenderFaceUp ? (hasExposedCards ? 'showdownCache' : 'announcementShowdown') : 'expectedCardCount',
-          // all gating booleans
-          isShowdown,
-          shouldHideForTabling,
-          isHolmWinWinner,
-          isSoloVsChuckyPlayer,
-          isSoloVsChuckyPlayerRaw,
-          isSoloVsChucky,
-          soloVsChuckyPlayerIdLocked,
-          soloVsChuckyTableLocked,
-          hasExposedCards,
-          isInAnnouncementShowdown,
-          isShowingAnnouncement,
-          playerExplicitlyStayed,
-          apparentIsActivePlayer,
-          playerDecision,
-          stayedPlayersCount,
-          decisionLocked: player.decision_locked,
-          showdownModeLocked,
-          // solo area simultaneous check
-          soloAreaAlsoActive: isSoloVsChucky,
-          soloAreaPlayerId: soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id,
-          soloAreaWouldRenderSamePlayer: (soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id) === player.id,
-        });
+        traceNormalSeatRender(tracePayload, willRenderFaceUp ? 'face-up' : 'card-backs');
+      }
+
+      // Trace blocked: would have rendered but shouldHideForTabling suppressed it
+      const wouldRenderFaceUp = isShowdown && playerExplicitlyStayed;
+      const wouldRenderCardBacks = !isShowdown && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0;
+      if (shouldHideForTabling && (wouldRenderFaceUp || wouldRenderCardBacks)) {
+        const blockReason = isHolmWinWinner ? 'holmWinWinner' : isSoloVsChuckyPlayer ? 'soloLocked' : isSoloVsChuckyPlayerRaw ? 'soloRaw' : 'is357WinWinner';
+        traceNormalSeatBlocked(tracePayload, blockReason);
       }
     }
 
@@ -5280,19 +5287,30 @@ export const MobileGameTable = ({
           if (soloPlayerCards.length === 0) return null;
 
           // INSTRUMENTATION: Log every frame where solo-area renders
-          console.log('[holm-solo-area-render-final]', {
+          traceSoloAreaRender({
             clientId: currentUserId,
-            roundId: currentRound?.toString(),
-            handContextId,
-            component: 'solo-tabled-area',
+            gameId: gameId ?? '',
+            roundId: handContextId ?? undefined,
+            handNumber: 0,
+            handContextId: handContextId ?? '',
             renderedPlayerId: soloPlayer.id,
-            cardIds: soloPlayerCards.map(c => `${c.rank}${c.suit}`),
+            cardIds: soloPlayerCards.map(c => `${c.rank}${c.suit}`).join(','),
             cardSource: soloVsChuckyPlayerIdLocked ? 'lockedId' : 'rawFind',
+            isShowdown: !!showdownModeLocked,
+            shouldHideForTabling: false,
+            isHolmWinWinner: false,
+            isSoloVsChuckyPlayer: true,
+            isSoloVsChuckyPlayerRaw: false,
+            isSoloVsChucky: !!isSoloVsChucky,
             soloVsChuckyPlayerIdLocked,
             soloVsChuckyTableLocked,
-            isSoloVsChuckyRaw,
+            showdownModeLocked: !!showdownModeLocked,
             stayedPlayersCount,
-            showdownModeLocked,
+            playerDecision: soloPlayer.current_decision,
+            decisionLocked: soloPlayer.decision_locked,
+            playerExplicitlyStayed: soloPlayer.current_decision === 'stay',
+            apparentIsActivePlayer: true,
+            isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
           });
           
           // Sort cards by rank (ascending) like PlayerHand does
