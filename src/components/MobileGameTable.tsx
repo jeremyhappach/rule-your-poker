@@ -1793,10 +1793,77 @@ export const MobileGameTable = ({
     // FIX 4: Only allow solo capture AFTER decisions are finalized
     if (!allDecisionsIn) return;
 
-    const stayed = players.find(p => p.current_decision === 'stay');
+    // FIX 5: Require decision_locked === true to confirm the stay belongs to the CURRENT hand.
+    // Stale current_decision='stay' from the previous hand can persist briefly at hand boundaries,
+    // and combined with stale allDecisionsIn=true, would lock the WRONG player as solo.
+    // decision_locked is force-cleared to false during betting phase, so it's a reliable
+    // signal that the decision is current.
+    const stayed = players.find(p => p.current_decision === 'stay' && p.decision_locked === true);
+    const staleCandidate = !stayed ? players.find(p => p.current_decision === 'stay') : null;
+
+    if (staleCandidate && !stayed) {
+      // Log blocked capture — candidate had stay but no decision_locked
+      console.log('[HOLM-SOLO] Solo capture BLOCKED — stale decision_locked', {
+        candidatePlayerId: staleCandidate.id,
+        current_decision: staleCandidate.current_decision,
+        decision_locked: staleCandidate.decision_locked,
+        allDecisionsIn,
+        handContextId,
+        roundStatus,
+        chuckyActive,
+      });
+      import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'holm-game',
+          handNumber: 0,
+          roundId: null,
+          eventType: 'sync-gate',
+          severity: 'warning',
+          eventName: 'solo-lock-capture-blocked',
+          payload: {
+            candidatePlayerId: staleCandidate.id,
+            current_decision: staleCandidate.current_decision,
+            decision_locked: staleCandidate.decision_locked,
+            allDecisionsIn,
+            handContextId,
+            roundStatus,
+            chuckyActive,
+          },
+        });
+      }).catch(() => {});
+      return;
+    }
+
     if (stayed) {
-      // Log solo-capture-applied
-      console.log('[HOLM-SOLO] Solo capture applied', { playerId: stayed.id, handContextId, allDecisionsIn });
+      console.log('[HOLM-SOLO] Solo capture applied', {
+        playerId: stayed.id,
+        current_decision: stayed.current_decision,
+        decision_locked: stayed.decision_locked,
+        allDecisionsIn,
+        handContextId,
+        roundStatus,
+        chuckyActive,
+      });
+      import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'holm-game',
+          handNumber: 0,
+          roundId: null,
+          eventType: 'transition',
+          severity: 'info',
+          eventName: 'solo-lock-capture-applied',
+          payload: {
+            playerId: stayed.id,
+            decision_locked: stayed.decision_locked,
+            allDecisionsIn,
+            handContextId,
+            roundStatus,
+            chuckyActive,
+          },
+        });
+      }).catch(() => {});
       setSoloVsChuckyPlayerIdLocked(stayed.id);
       return;
     }
