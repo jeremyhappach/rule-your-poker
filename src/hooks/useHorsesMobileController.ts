@@ -950,6 +950,11 @@ export function useHorsesMobileController({
     setCompletedTurnHold(null);
     setBotTurnActiveId(null);
     
+    // SAFETY: Ensure presentation is unfrozen at round boundaries to prevent stuck freeze
+    if (syncHandle.isFrozen) {
+      syncHandle.unfreezePresentation();
+    }
+    
   }, [currentRoundId]);
 
   // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
@@ -987,6 +992,9 @@ export function useHorsesMobileController({
 
     setCompletedTurnHold(holdPayload);
 
+    // FREEZE presentation: hold dice display stable during the 3s completed-turn visual
+    syncHandle.freezePresentation();
+
     // Clear the hold after the duration
     if (completedTurnHoldTimerRef.current) {
       window.clearTimeout(completedTurnHoldTimerRef.current);
@@ -1001,6 +1009,9 @@ export function useHorsesMobileController({
         return prev;
       });
       completedTurnHoldTimerRef.current = null;
+
+      // UNFREEZE presentation: completed-turn hold expired, allow latest authoritative state through
+      syncHandle.unfreezePresentation();
     }, holdDuration);
   }, [
     enabled,
@@ -1437,6 +1448,9 @@ export function useHorsesMobileController({
     setLocalHand(newHand);
     setIsRolling(true);
 
+    // FREEZE presentation: prevent sync framework from pushing DB updates to UI during animation
+    syncHandle.freezePresentation();
+
 
     // CRITICAL: Save state IMMEDIATELY with animation metadata so observers get rollKey + rollStartedAt
     // right away and can start fly-in animation in sync.
@@ -1450,6 +1464,9 @@ export function useHorsesMobileController({
         `[ROLL_DEBUG] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`,
       );
       setIsRolling(false);
+
+      // UNFREEZE presentation: animation complete, allow sync framework to propagate latest authoritative state
+      syncHandle.unfreezePresentation();
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
       if (isSCC) {
@@ -2588,6 +2605,9 @@ export function useHorsesMobileController({
           preRollSig,
         });
 
+        // FREEZE presentation: prevent sync framework from pushing DB updates during observer animation
+        syncHandle.freezePresentation();
+
         // End rolling state after the animation window. Do NOT clear the display state.
         observerRollingTimerRef.current = window.setTimeout(() => {
           setObserverDisplayState((prev) => {
@@ -2596,6 +2616,9 @@ export function useHorsesMobileController({
             return { ...prev, isRolling: false };
           });
           observerRollingTimerRef.current = null;
+
+          // UNFREEZE presentation: observer animation complete
+          syncHandle.unfreezePresentation();
         }, durationMs);
       }
 
