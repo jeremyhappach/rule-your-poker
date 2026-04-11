@@ -259,11 +259,9 @@ export function resetCribbageReversionTracking(gameId?: string): void {
   if (gameId) {
     delete _lastPresentationHandSize[`${gameId}:hand`];
     delete _lastPresentationScores[gameId];
-    delete _lastPresentationTrace[gameId];
   } else {
     _lastPresentationHandSize = {};
     _lastPresentationScores = {};
-    _lastPresentationTrace = {};
   }
 }
 
