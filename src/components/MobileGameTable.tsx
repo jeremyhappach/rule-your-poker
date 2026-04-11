@@ -5284,19 +5284,30 @@ export const MobileGameTable = ({
           if (soloPlayerCards.length === 0) return null;
 
           // INSTRUMENTATION: Log every frame where solo-area renders
-          console.log('[holm-solo-area-render-final]', {
+          traceSoloAreaRender({
             clientId: currentUserId,
-            roundId: currentRound?.toString(),
-            handContextId,
-            component: 'solo-tabled-area',
+            gameId: gameId ?? '',
+            roundId: handContextId ?? undefined,
+            handNumber: 0,
+            handContextId: handContextId ?? '',
             renderedPlayerId: soloPlayer.id,
-            cardIds: soloPlayerCards.map(c => `${c.rank}${c.suit}`),
+            cardIds: soloPlayerCards.map(c => `${c.rank}${c.suit}`).join(','),
             cardSource: soloVsChuckyPlayerIdLocked ? 'lockedId' : 'rawFind',
+            isShowdown: !!showdownModeLocked,
+            shouldHideForTabling: false,
+            isHolmWinWinner: false,
+            isSoloVsChuckyPlayer: true,
+            isSoloVsChuckyPlayerRaw: false,
+            isSoloVsChucky: !!isSoloVsChucky,
             soloVsChuckyPlayerIdLocked,
             soloVsChuckyTableLocked,
-            isSoloVsChuckyRaw,
+            showdownModeLocked: !!showdownModeLocked,
             stayedPlayersCount,
-            showdownModeLocked,
+            playerDecision: soloPlayer.current_decision,
+            decisionLocked: soloPlayer.decision_locked,
+            playerExplicitlyStayed: soloPlayer.current_decision === 'stay',
+            apparentIsActivePlayer: true,
+            isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
           });
           
           // Sort cards by rank (ascending) like PlayerHand does
