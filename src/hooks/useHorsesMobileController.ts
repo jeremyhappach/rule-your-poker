@@ -260,13 +260,10 @@ export function useHorsesMobileController({
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
   useEffect(() => {
-    const isTerminal =
-      !!incomingHorsesState?.winnerPlayerId ||
-      incomingHorsesState?.gamePhase === 'complete';
+    const isTerminal = incomingHorsesState?.gamePhase === 'complete';
     if (!isTerminal) return;
 
-    console.log(`${logPrefix} Terminal state detected — forcing unfreeze`, {
-      winnerPlayerId: incomingHorsesState?.winnerPlayerId,
+    console.log(`[HORSES_TERMINAL_UNFREEZE] Terminal state detected — forcing unfreeze`, {
       gamePhase: incomingHorsesState?.gamePhase,
       wasFrozen: syncHandle.isFrozen,
     });
@@ -278,7 +275,7 @@ export function useHorsesMobileController({
     }
     setCompletedTurnHold(null);
     syncHandle.unfreezePresentation();
-  }, [incomingHorsesState?.winnerPlayerId, incomingHorsesState?.gamePhase]);
+  }, [incomingHorsesState?.gamePhase]);
 
   // Presentation source instrumentation
   useEffect(() => {
