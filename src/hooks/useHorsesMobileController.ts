@@ -1437,6 +1437,9 @@ export function useHorsesMobileController({
     setLocalHand(newHand);
     setIsRolling(true);
 
+    // FREEZE presentation: prevent sync framework from pushing DB updates to UI during animation
+    syncHandle.freezePresentation();
+
 
     // CRITICAL: Save state IMMEDIATELY with animation metadata so observers get rollKey + rollStartedAt
     // right away and can start fly-in animation in sync.
@@ -1450,6 +1453,9 @@ export function useHorsesMobileController({
         `[ROLL_DEBUG] Animation timeout fired at ${new Date(animationEndTime).toISOString()} (after ${animationEndTime - rollStartTime}ms)`,
       );
       setIsRolling(false);
+
+      // UNFREEZE presentation: animation complete, allow sync framework to propagate latest authoritative state
+      syncHandle.unfreezePresentation();
 
       // For SCC: Check if we rolled midnight (12 cargo) - auto-lock since it's the best possible
       if (isSCC) {
