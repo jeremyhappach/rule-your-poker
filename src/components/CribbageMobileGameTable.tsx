@@ -1408,7 +1408,6 @@ export const CribbageMobileGameTable = ({
     // The authoritative pegScore is ALWAYS correct at this point (confirmed by instrumentation).
     //
     // On reconnect, reverse-engineer the baseline since pegScore may already include counting points.
-    const isReconnect = !!state.countingStartedAt && (Date.now() - new Date(state.countingStartedAt).getTime()) > 2500;
     const baselineScores = isReconnect ? calculateCountingBaselineScores(state) : stateScores;
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
