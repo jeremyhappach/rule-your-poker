@@ -1399,30 +1399,17 @@ export const CribbageMobileGameTable = ({
     }
 
     const cachedScores = lastPeggingScoresRef.current;
-    const baselineScores = (() => {
-      if (cachedScores) {
-        // Normal flow: compare cached pegging scores with live state
-        const deltas = Object.keys(stateScores).map((pid) => (stateScores[pid] ?? 0) - (cachedScores[pid] ?? 0));
-        const maxDelta = deltas.length ? Math.max(...deltas) : 0;
-        const minDelta = deltas.length ? Math.min(...deltas) : 0;
-
-        // Accept small forward-only drift (e.g., the missing "Last" point) and use the live state.
-        if (minDelta >= 0 && maxDelta <= 2) return stateScores;
-
-        // Otherwise, trust the cached pegging scores.
-        return cachedScores;
-      }
-
-      // Reconnect / fresh mount: no cached pegging scores.
-      // The DB pegScore may already include counting points if the other client has been scoring.
-      // Reverse-engineer the pre-counting baseline by subtracting hand+crib totals.
-      if (isReconnect) {
-        return calculateCountingBaselineScores(state);
-      }
-
-      // First-time mount with no cache — use state scores directly
-      return stateScores;
-    })();
+    // FIX: ALWAYS use authoritative stateScores (from cribbageState.playerStates.pegScore) as
+    // the counting baseline. The previous logic fell back to cachedScores when the delta exceeded 2,
+    // but the cache is inherently stale: lastPeggingScoresRef only updates when phase === 'pegging',
+    // and the final pegging award + phase transition to 'counting' happen atomically in the DB.
+    // This means multi-point final pegging events (e.g., run of 3) produce a delta > 2 between
+    // the cached and authoritative scores, causing the old code to lock in the stale baseline.
+    // The authoritative pegScore is ALWAYS correct at this point (confirmed by instrumentation).
+    //
+    // On reconnect, reverse-engineer the baseline since pegScore may already include counting points.
+    const isReconnect = !!state.countingStartedAt && (Date.now() - new Date(state.countingStartedAt).getTime()) > 2500;
+    const baselineScores = isReconnect ? calculateCountingBaselineScores(state) : stateScores;
 
     // Stable baseline for the counting overlay (do NOT derive from animated overrides)
     // SAFETY: Clamp negative baselines to 0. Negative scores are always a computation artifact
