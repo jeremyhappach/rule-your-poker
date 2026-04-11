@@ -60,7 +60,7 @@ export interface HolmRenderPayload {
   showdownModeLocked: boolean;
   stayedPlayersCount: number;
   playerDecision: string | null;
-  decisionLocked: boolean;
+  decisionLocked: boolean | null;
   playerExplicitlyStayed: boolean;
   apparentIsActivePlayer: boolean;
   isSoloVsChuckyRaw: boolean;
