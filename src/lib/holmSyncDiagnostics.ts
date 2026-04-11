@@ -5,7 +5,7 @@
  * Prefix: [holm-sync]
  */
 
-import { checkInvariant, logSyncSummary } from './debugSyncInvariants';
+import { checkInvariant } from './debugSyncInvariants';
 import type { HolmAuthoritativeSnapshot } from '@/lib/gameStateSync/holmProgress';
 
 // ── Phase rules ───────────────────────────────────────────────

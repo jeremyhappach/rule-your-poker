@@ -254,23 +254,6 @@ export function useHorsesMobileController({
     syncHandle.unfreezePresentation();
   }, [incomingHorsesState?.gamePhase]);
 
-  // Presentation source instrumentation
-  useEffect(() => {
-    if (!gameId) return;
-    const presentation = syncHandle.presentationState;
-    const source = syncHandle.isOptimistic ? 'optimistic' : syncHandle.isFrozen ? 'frozen' : 'authoritative';
-    const progress = getHorsesProgress(presentation);
-    const handNumber = presentation?.turnOrder?.length ?? 0;
-    persistHorsesPresentationSource(
-      gameId,
-      isSCC ? 'ship-captain-crew' : 'horses',
-      handNumber,
-      currentRoundId,
-      source,
-      progress,
-      presentation,
-    );
-  }, [syncHandle.presentationState, syncHandle.isOptimistic, syncHandle.isFrozen, gameId, currentRoundId, isSCC]);
 
   // Shadow the parameter: all downstream code reads from presentation state.
   // eslint-disable-next-line no-param-reassign
