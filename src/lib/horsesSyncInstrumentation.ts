@@ -2,12 +2,12 @@
  * Horses sync framework instrumentation — persisted debug events.
  *
  * Events:
- *   horses-progress-vector     — logged on every accepted/rejected update
- *   horses-presentation-source — logged when presentation state changes source
+ *   horses-progress-vector     — logged on every accepted update
+ *   horses-presentation-source — logged when presentation state source changes
  *   horses-regression-blocked  — logged when a regressive snapshot is rejected
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { persistSyncDebugEvent } from './persistSyncDebugEvent';
 import type { ProgressVector, AuthoritativeUpdateResult } from './gameStateSync/types';
 import type { HorsesStateFromDB } from '@/hooks/useHorsesMobileController';
 
@@ -40,19 +40,16 @@ export function persistHorsesProgressVector(
   if (fingerprint === _lastProgressFingerprint) return;
   _lastProgressFingerprint = fingerprint;
 
-  const severity = result.reason === 'regressive' ? 'warning' : 'info';
-  const eventName = result.reason === 'regressive'
-    ? 'horses-regression-blocked'
-    : 'horses-progress-vector';
+  const isRegressive = result.reason === 'regressive';
 
-  supabase.from('debug_sync_events').insert({
-    game_id: gameId,
-    game_type: gameType,
-    hand_number: handNumber,
-    round_id: roundId,
-    event_type: 'sync-gate',
-    severity,
-    event_name: eventName,
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber,
+    roundId,
+    eventType: 'sync-gate',
+    severity: isRegressive ? 'warn' : 'info',
+    eventName: isRegressive ? 'horses-regression-blocked' : 'horses-progress-vector',
     payload: {
       accepted: result.accepted,
       reason: result.reason,
@@ -61,7 +58,7 @@ export function persistHorsesProgressVector(
       incomingProgress: result.incomingProgress,
       incomingState: compactState(incomingState),
     },
-  }).then(() => {}).catch(() => {});
+  });
 }
 
 export function persistHorsesPresentationSource(
@@ -77,20 +74,20 @@ export function persistHorsesPresentationSource(
   if (fingerprint === _lastPresentationFingerprint) return;
   _lastPresentationFingerprint = fingerprint;
 
-  supabase.from('debug_sync_events').insert({
-    game_id: gameId,
-    game_type: gameType,
-    hand_number: handNumber,
-    round_id: roundId,
-    event_type: 'transition',
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber,
+    roundId,
+    eventType: 'transition',
     severity: 'info',
-    event_name: 'horses-presentation-source',
+    eventName: 'horses-presentation-source',
     payload: {
       source,
       progress,
       state: compactState(state),
     },
-  }).then(() => {}).catch(() => {});
+  });
 }
 
 export function resetHorsesSyncInstrumentation(): void {
