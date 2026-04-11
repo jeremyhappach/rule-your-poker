@@ -1819,7 +1819,7 @@ export const MobileGameTable = ({
           handNumber: 0,
           roundId: null,
           eventType: 'sync-gate',
-          severity: 'warning',
+          severity: 'warn',
           eventName: 'solo-lock-capture-blocked',
           payload: {
             candidatePlayerId: staleCandidate.id,
