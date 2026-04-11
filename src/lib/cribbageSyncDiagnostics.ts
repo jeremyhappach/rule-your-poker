@@ -254,53 +254,6 @@ export function checkCribbageScoreReversion(
   );
 }
 
-// ── PRESENTATION SOURCE TRACE ─────────────────────────────────
-
-let _lastPresentationTrace: Record<string, {
-  handSize: number;
-  scoreFingerprint: string;
-  source: string;
-}> = {};
-
-export function traceCribbagePresentationSourceChange(
-  gameId: string,
-  handNumber: number,
-  handSize: number,
-  scores: Record<string, number>,
-  source: string,
-  progressVector: unknown,
-  roundId?: string,
-): void {
-  const key = gameId;
-  const scoreFingerprint = Object.entries(scores)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k.slice(0, 16)}:${v}`)
-    .join(',');
-
-  const prev = _lastPresentationTrace[key];
-  _lastPresentationTrace[key] = { handSize, scoreFingerprint, source };
-
-  if (!prev) return;
-
-  const handChanged = prev.handSize !== handSize;
-  const scoreChanged = prev.scoreFingerprint !== scoreFingerprint;
-  const sourceChanged = prev.source !== source;
-
-  if (!handChanged && !scoreChanged && !sourceChanged) return;
-
-  persistTransition(gameId, 'cribbage', handNumber, 'presentation-source-change', {
-    prevSource: prev.source,
-    nextSource: source,
-    prevHandSize: prev.handSize,
-    nextHandSize: handSize,
-    prevScoreFingerprint: prev.scoreFingerprint,
-    nextScoreFingerprint: scoreFingerprint,
-    sourceChanged,
-    handChanged,
-    scoreChanged,
-    progressVector,
-  }, roundId);
-}
 
 export function resetCribbageReversionTracking(gameId?: string): void {
   if (gameId) {
