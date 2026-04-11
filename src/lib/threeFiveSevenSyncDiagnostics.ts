@@ -5,9 +5,8 @@
  * Prefix: [357-sync]
  */
 
-import { checkInvariant, logSyncSummary, logSyncGateResult } from './debugSyncInvariants';
-import type { ThreeFiveSevenAuthoritativeSnapshot } from '@/lib/gameStateSync/threeFiveSevenProgress';
-import { persistInvariantViolation, persistSyncGate } from './persistSyncDebugEvent';
+import { checkInvariant } from './debugSyncInvariants';
+import { persistInvariantViolation } from './persistSyncDebugEvent';
 import { buildMetaPayload } from './buildMeta';
 
 // ── INV-1: Stale round render ─────────────────────────────────
@@ -84,34 +83,3 @@ export function checkThreeFiveSevenDecisionAfterCompleted(
   );
 }
 
-// ── Sync gate logger (with DB persistence) ────────────────────
-export function logThreeFiveSevenSyncGate(
-  gameId: string,
-  handNumber: number,
-  accepted: boolean,
-  reason: string,
-  current: unknown,
-  incoming: unknown,
-  extra?: Record<string, unknown>,
-): void {
-  logSyncGateResult('357-sync', accepted, reason, { current, incoming }, extra);
-  persistSyncGate(gameId, '3-5-7', handNumber, accepted, reason, { current, incoming },
-    extra?.phase as string | undefined,
-  );
-}
-
-// ── State summary ─────────────────────────────────────────────
-export function logThreeFiveSevenSummary(
-  label: string,
-  snapshot: ThreeFiveSevenAuthoritativeSnapshot | null,
-): void {
-  if (!snapshot) return;
-  logSyncSummary('357-sync', label, {
-    hand: snapshot.handNumber,
-    round: snapshot.roundNumber,
-    phase: snapshot.roundStatus,
-    decided: snapshot.players.filter(p => p.decisionLocked).length,
-    pot: snapshot.pot,
-    cardsDealt: snapshot.cardsDealt,
-  });
-}

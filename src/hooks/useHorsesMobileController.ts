@@ -9,11 +9,6 @@ import { useGameStateSync } from "@/lib/gameStateSync/useGameStateSync";
 import { newTraceId } from "@/lib/debugEventLogger";
 import type { ProgressVector, GameStateSyncConfig } from "@/lib/gameStateSync/types";
 import {
-  persistHorsesProgressVector,
-  persistHorsesPresentationSource,
-  resetHorsesSyncInstrumentation,
-} from "@/lib/horsesSyncInstrumentation";
-import {
   HorsesHand,
   HorsesHandResult,
   HorsesDie as HorsesDieType,
@@ -229,7 +224,6 @@ export function useHorsesMobileController({
     if (currentRoundId !== prevRoundIdForSyncRef.current) {
       prevRoundIdForSyncRef.current = currentRoundId;
       syncHandle.reset(null);
-      resetHorsesSyncInstrumentation();
     }
   }, [currentRoundId]);
 
@@ -241,20 +235,7 @@ export function useHorsesMobileController({
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   useEffect(() => {
     if (!incomingHorsesState) return;
-    const result = syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
-
-    // Persist instrumentation
-    if (gameId) {
-      const handNumber = incomingHorsesState.turnOrder?.length ?? 0;
-      persistHorsesProgressVector(
-        gameId,
-        isSCC ? 'ship-captain-crew' : 'horses',
-        handNumber,
-        currentRoundId,
-        result,
-        incomingHorsesState,
-      );
-    }
+    syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
   }, [incomingHorsesState, gameId, currentRoundId, isSCC]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
@@ -263,10 +244,6 @@ export function useHorsesMobileController({
     const isTerminal = incomingHorsesState?.gamePhase === 'complete';
     if (!isTerminal) return;
 
-    console.log(`[HORSES_TERMINAL_UNFREEZE] Terminal state detected — forcing unfreeze`, {
-      gamePhase: incomingHorsesState?.gamePhase,
-      wasFrozen: syncHandle.isFrozen,
-    });
 
     // Clear any active turn-hold timer
     if (completedTurnHoldTimerRef.current) {

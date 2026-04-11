@@ -50,10 +50,9 @@ import { logDebugEvent } from "@/lib/debugEventLogger";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
-import { logSyncGateResult } from "@/lib/debugSyncInvariants";
-import { buildHolmSyncSummary, logHolmSummary, runHolmInvariants, resetRegressiveRevealTracking, traceHolmRenderedCommunity } from "@/lib/holmSyncDiagnostics";
+import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
-import { logThreeFiveSevenSyncGate, logThreeFiveSevenSummary, checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand } from "@/lib/threeFiveSevenSyncDiagnostics";
+import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -3208,7 +3207,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       ? holmView.communityCardsRevealed
       : (currentRound?.community_cards_revealed ?? 0);
     maxRevealedRef.current = resetRevealed;
-    console.log('[holm-sync] maxRevealed reset on new cards', { resetRevealed, cardIdentity: currentCardIdentity.substring(0, 20) });
+    
   } else if (currentRound?.community_cards_revealed !== undefined) {
     // Same hand, only increase max (never decrease)
     // For Holm: use presentation state as input (already monotonic via sync framework)
@@ -3260,29 +3259,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       chuckyActive: holmView!.chuckyActive ?? false,
     });
 
-    console.log('[holm-sync] reveal state', {
-      phase: holmView!.roundStatus,
-      syncRevealed: holmView!.communityCardsRevealed,
-      rawRevealed: currentRound?.community_cards_revealed,
-      maxRevealed: maxRevealedRef.current,
-      shouldUseMax,
-      effective: effectiveCommunityCardsRevealed,
-      rawAllDecisionsIn: game?.all_decisions_in,
-      cardIdentity: currentCardIdentity.substring(0, 20),
-    });
-
-    // HOLM_RENDERED_COMMUNITY upfront instrumentation — captures exact cards on screen
-    const communityArr = (communityCards ?? []) as Array<{ rank?: string; suit?: string }>;
-    const renderedCardIds = communityArr.map(c => `${c.rank ?? '?'}${c.suit ?? '?'}`);
-    const renderSource = holmView ? 'sync-presentation' : (cachedRoundData ? 'cache' : 'authoritative-fallback');
-    traceHolmRenderedCommunity(
-      game.id,
-      holmView!.handNumber,
-      currentRound?.id ?? '',
-      renderedCardIds,
-      effectiveCommunityCardsRevealed,
-      renderSource as 'sync-presentation' | 'authoritative-fallback' | 'cache',
-    );
   }
     
   // Only log when community cards might have an issue (no cards during in_progress)
@@ -4576,18 +4552,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           maxRevealedRef.current = snapshot.communityCardsRevealed;
           cardIdentityRef.current = '';
           setCommunityCacheEpoch((e) => e + 1);
-          console.log('[holm-sync] P0-1/P0-3: Cleared lifted caches on hand boundary', {
-            newRoundId: snapshot.roundId,
-            resetRevealedTo: snapshot.communityCardsRevealed,
-          });
         } else {
           const result = holmSync.receiveAuthoritativeUpdate(snapshot);
-          logSyncGateResult('holm-sync', result.accepted, result.reason,
-            { current: result.previousProgress, incoming: result.incomingProgress },
-            { hand: snapshot.handNumber, phase: snapshot.roundStatus, revealed: snapshot.communityCardsRevealed },
-          );
-          const summary = buildHolmSyncSummary(gameId!, snapshot, snapshot.communityCardsRevealed);
-          logHolmSummary(result.accepted ? 'accepted' : 'rejected', summary);
         }
         holmSyncLastRoundIdRef.current = snapshot.roundId;
       }
@@ -4603,17 +4569,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const snapshot = buildThreeFiveSevenSnapshot(gameData, (playersData || []) as Player[], threeFiveSevenRound);
       if (snapshot) {
         if (threeFiveSevenSyncLastRoundIdRef.current && threeFiveSevenSyncLastRoundIdRef.current !== snapshot.roundId) {
-          console.log('[GameStateSync:357] 🔄 Hard reset — roundId changed', {
-            prev: threeFiveSevenSyncLastRoundIdRef.current,
-            next: snapshot.roundId,
-          });
+          console.log('[GameStateSync:357] 🔄 Hard reset — roundId changed');
           threeFiveSevenSync.reset(snapshot);
         } else {
           const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
-          logThreeFiveSevenSyncGate(gameData.id, snapshot.handNumber, result.accepted, result.reason, result.previousProgress, result.incomingProgress,
-            { hand: snapshot.handNumber, round: snapshot.roundNumber, phase: snapshot.roundStatus },
-          );
-          logThreeFiveSevenSummary(result.accepted ? 'accepted' : 'rejected', snapshot);
 
           // Presentation cutover invariant checks — compare rendered (presentation) vs authoritative
           if (result.accepted) {
