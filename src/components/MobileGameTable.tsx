@@ -58,6 +58,8 @@ import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
+import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
+import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
