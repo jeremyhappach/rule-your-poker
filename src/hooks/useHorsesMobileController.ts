@@ -987,6 +987,9 @@ export function useHorsesMobileController({
 
     setCompletedTurnHold(holdPayload);
 
+    // FREEZE presentation: hold dice display stable during the 3s completed-turn visual
+    syncHandle.freezePresentation();
+
     // Clear the hold after the duration
     if (completedTurnHoldTimerRef.current) {
       window.clearTimeout(completedTurnHoldTimerRef.current);
@@ -1001,6 +1004,9 @@ export function useHorsesMobileController({
         return prev;
       });
       completedTurnHoldTimerRef.current = null;
+
+      // UNFREEZE presentation: completed-turn hold expired, allow latest authoritative state through
+      syncHandle.unfreezePresentation();
     }, holdDuration);
   }, [
     enabled,
