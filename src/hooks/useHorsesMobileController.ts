@@ -950,6 +950,11 @@ export function useHorsesMobileController({
     setCompletedTurnHold(null);
     setBotTurnActiveId(null);
     
+    // SAFETY: Ensure presentation is unfrozen at round boundaries to prevent stuck freeze
+    if (syncHandle.isFrozen) {
+      syncHandle.unfreezePresentation();
+    }
+    
   }, [currentRoundId]);
 
   // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
