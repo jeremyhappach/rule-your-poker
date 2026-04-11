@@ -3746,7 +3746,15 @@ export const MobileGameTable = ({
     const is357WinWinner = threeFiveSevenWinnerId === player.id && threeFiveSevenWinPhase !== 'idle';
     const soloLockedIdForSlot = soloVsChuckyPlayerIdLocked;
     const isSoloVsChuckyPlayer = isSoloVsChucky && soloLockedIdForSlot === player.id && player.id !== currentPlayer?.id;
-    const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer;
+    // FIX 7: Also suppress normal-seat render via raw solo derivation BEFORE lock captures.
+    // Without this, there's a 1–2 frame gap where soloVsChuckyPlayerIdLocked is null (just reset
+    // on handContextId change) but isSoloVsChucky is already true and the solo-area is already
+    // rendering via players.find(). During that gap, shouldHideForTabling is false and card
+    // backs briefly appear in the normal seat.
+    const isSoloVsChuckyPlayerRaw = isSoloVsChucky && !soloLockedIdForSlot &&
+      player.current_decision === 'stay' && player.decision_locked === true &&
+      player.id !== currentPlayer?.id && stayedPlayersCount === 1;
+    const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer || isSoloVsChuckyPlayerRaw;
     
     // Determine if name should appear below cards (for upper corners and middle positions during showdown)
     const isUpperCorner = effectiveSlotIndex === 2 || effectiveSlotIndex === 3;
