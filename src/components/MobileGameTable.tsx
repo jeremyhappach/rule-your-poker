@@ -3796,7 +3796,7 @@ export const MobileGameTable = ({
         decisionLocked: player.decision_locked ?? false,
         playerExplicitlyStayed,
         apparentIsActivePlayer,
-        isSoloVsChuckyRaw,
+        isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
       };
 
       const willRenderFaceUp = isShowdown && !shouldHideForTabling && playerExplicitlyStayed;
