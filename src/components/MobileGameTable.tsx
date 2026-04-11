@@ -1873,7 +1873,7 @@ export const MobileGameTable = ({
         }
       }
     }
-  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive, allDecisionsIn, handContextId, gameId]);
+  }, [isSoloVsChuckyRaw, soloVsChuckyTableLocked, holmWinPotTriggerId, players, soloVsChuckyPlayerIdLocked, lastRoundResult, roundStatus, chuckyActive, allDecisionsIn, handContextId, gameId, stayedPlayersCount]);
 
   // Reset of solo-vs-Chucky locks is also handled inside resetHandUiCaches (and is deferred during animations)
   // so tabled cards can't snap back mid pot-to-player animation.
