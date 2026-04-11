@@ -3818,6 +3818,10 @@ export const MobileGameTable = ({
         const blockReason = isHolmWinWinner ? 'holmWinWinner' : isSoloVsChuckyPlayer ? 'soloLocked' : isSoloVsChuckyPlayerRaw ? 'soloRaw' : 'is357WinWinner';
         traceNormalSeatBlocked(tracePayload, blockReason);
       }
+      // FIX 8 validation: specific event when solo-player exclusion fires
+      if (isSoloVsChuckyPlayerRaw && !isSoloVsChuckyPlayer && (wouldRenderFaceUp || wouldRenderCardBacks)) {
+        traceNormalSeatBlocked(tracePayload, 'solo-player-raw-exclusion');
+      }
     }
 
     const cardsElement = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
