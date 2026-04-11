@@ -202,53 +202,78 @@ export function useHorsesMobileController({
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
 
-  // ── Sync Framework: Progress-vector gating ──────────────────
-  // Gate incoming horsesState snapshots to prevent stale realtime/poll
-  // updates from regressing visible state.
-  const acceptedStateRef = useRef<HorsesStateFromDB | null>(null);
-  const acceptedProgressRef = useRef<ProgressVector>([0, 0, 0, 0]);
-  const prevRoundIdForSyncRef = useRef<string | null>(null);
-  // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
-  const roundIdLatchRef = useRef<string | null>(currentRoundId);
+  // ── Sync Framework: Full 3-layer model via useGameStateSync ──
+  const syncConfig = useMemo<GameStateSyncConfig<HorsesStateFromDB | null>>(() => ({
+    getProgress: (state) => getHorsesProgress(state),
+    debugLabel: isSCC ? 'SCC' : 'Horses',
+    describeState: (state) => {
+      if (!state) return { state: null };
+      const ps = state.playerStates ?? {};
+      const completedCount = Object.values(ps).filter(s => s?.isComplete).length;
+      return {
+        phase: state.gamePhase,
+        turn: state.currentTurnPlayerId?.slice(0, 8) ?? null,
+        completed: completedCount,
+        turnOrderLen: state.turnOrder?.length ?? 0,
+      };
+    },
+    optimisticTimeoutMs: 5000, // generous for dice animations
+    isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+  }), [isSCC]);
 
-  // Reset sync baseline when roundId changes (new hand / rollover)
-  // NOTE: Ref cleanup for later-declared refs is done in a useEffect below (boundaryCleanupRoundRef).
+  const syncHandle = useGameStateSync<HorsesStateFromDB | null>(null, syncConfig);
+
+  // Identity latch: reset sync on round boundary changes
+  const prevRoundIdForSyncRef = useRef<string | null>(null);
   if (currentRoundId !== prevRoundIdForSyncRef.current) {
     prevRoundIdForSyncRef.current = currentRoundId;
-    roundIdLatchRef.current = currentRoundId;
-    acceptedStateRef.current = null;
-    acceptedProgressRef.current = [0, 0, 0, 0, 0];
-    
+    syncHandle.reset(null);
+    resetHorsesSyncInstrumentation();
   }
 
-  // Gate the incoming horsesState prop through progress comparison
-  const gatedHorsesState = useMemo(() => {
-    if (!horsesState) return acceptedStateRef.current;
+  // Feed incoming horsesState prop through the sync framework
+  const incomingHorsesStateRef = useRef(horsesState);
+  incomingHorsesStateRef.current = horsesState;
 
-    const incomingProgress = getHorsesProgress(horsesState);
-    const currentProgress = acceptedProgressRef.current;
-    const cmp = compareProgress(currentProgress, incomingProgress);
+  useEffect(() => {
+    if (!horsesState) return;
+    const result = syncHandle.receiveAuthoritativeUpdate(horsesState);
 
-    if (cmp === -1) {
-      // Regressive - reject and instrument
-      console.log(`[${isSCC ? 'SCC' : 'HORSES'}_SYNC] ❌ Rejected regressive snapshot`, {
-        current: currentProgress,
-        incoming: incomingProgress,
-        gamePhase: horsesState.gamePhase,
-        turn: horsesState.currentTurnPlayerId?.slice(0, 8),
-      });
-      return acceptedStateRef.current;
+    // Persist instrumentation
+    if (gameId) {
+      const handNumber = horsesState.turnOrder?.length ?? 0;
+      persistHorsesProgressVector(
+        gameId,
+        isSCC ? 'ship-captain-crew' : 'horses',
+        handNumber,
+        currentRoundId,
+        result,
+        horsesState,
+      );
     }
+  }, [horsesState, gameId, currentRoundId, isSCC]);
 
-    // Accept: forward or equal
-    acceptedStateRef.current = horsesState;
-    acceptedProgressRef.current = incomingProgress;
-    return horsesState;
-  }, [horsesState, gameId, currentRoundId, currentUserId]);
+  // Presentation source instrumentation
+  useEffect(() => {
+    if (!gameId) return;
+    const presentation = syncHandle.presentationState;
+    const source = syncHandle.isOptimistic ? 'optimistic' : syncHandle.isFrozen ? 'frozen' : 'authoritative';
+    const progress = getHorsesProgress(presentation);
+    const handNumber = presentation?.turnOrder?.length ?? 0;
+    persistHorsesPresentationSource(
+      gameId,
+      isSCC ? 'ship-captain-crew' : 'horses',
+      handNumber,
+      currentRoundId,
+      source,
+      progress,
+      presentation,
+    );
+  }, [syncHandle.presentationState, syncHandle.isOptimistic, syncHandle.isFrozen, gameId, currentRoundId, isSCC]);
 
-  // Shadow the parameter: all downstream code reads from the gated version.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-var
-  horsesState = gatedHorsesState; // eslint-disable-line no-param-reassign
+  // Shadow the parameter: all downstream code reads from presentation state.
+  // eslint-disable-next-line no-param-reassign
+  horsesState = syncHandle.presentationState;
   
   // Local state for dice rolling animation (only used by the local user when it's their turn)
   // Use union type to support both game types
