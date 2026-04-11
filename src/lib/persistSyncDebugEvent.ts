@@ -12,12 +12,10 @@ import { supabase } from '@/integrations/supabase/client';
 
 // ── Toggle ────────────────────────────────────────────────────
 //
-// TEMPORARY INVESTIGATION MODE: Default ON for all clients.
-// To disable, set localStorage ptp_debug_sync_events = "0" or URL ?debug_sync_events=0
-// When investigation is complete, flip GLOBAL_DEBUG_DEFAULT back to false.
-//
+// Production default: OFF. Enable per-session via URL ?debug_sync_events=1
+// or localStorage ptp_debug_sync_events = "1"
 
-const GLOBAL_DEBUG_DEFAULT = true;
+const GLOBAL_DEBUG_DEFAULT = false;
 
 let _enabled: boolean | null = null;
 

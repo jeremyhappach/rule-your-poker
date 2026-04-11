@@ -93,41 +93,6 @@ export function getRecentViolations(): readonly InvariantViolation[] {
   return recentViolations;
 }
 
-// ── State summary logger ──────────────────────────────────────
-
-/**
- * Log a compact state summary for a game. Only fires when verbose mode is on.
- *
- * @param prefix  e.g. 'holm-sync', 'gin-sync'
- * @param label   e.g. 'accepted', 'rejected', 'render', 'result'
- * @param summary compact object with key state dimensions
- */
-export function logSyncSummary(
-  prefix: string,
-  label: string,
-  summary: Record<string, unknown>,
-): void {
-  if (!isSyncInvariantVerbose()) return;
-  console.log(`[${prefix}] 📊 ${label}`, summary);
-}
-
-/**
- * Log an accepted/rejected authoritative update with progress info.
- */
-export function logSyncGateResult(
-  prefix: string,
-  accepted: boolean,
-  reason: string,
-  progress: {
-    current: unknown;
-    incoming: unknown;
-  },
-  extra?: Record<string, unknown>,
-): void {
-  if (!isSyncInvariantVerbose()) return;
-  const icon = accepted ? '✅' : '❌';
-  console.log(`[${prefix}] ${icon} ${accepted ? 'Accepted' : 'Rejected'} (${reason})`, {
-    ...progress,
-    ...extra,
-  });
-}
+// ── State summary logger (removed — was console noise) ────────
+// logSyncSummary and logSyncGateResult removed.
+// Invariant violations (checkInvariant) remain the only diagnostic output.

@@ -130,9 +130,3 @@ export function ginStateSummary(state: {
   };
 }
 
-// ── Horses / Dice helpers (disabled) ──────────────────────────
-
-/** @deprecated Horses debug logging removed — returns empty object */
-export function horsesStateSummary(_state: unknown, _extra?: Record<string, unknown>): Record<string, unknown> {
-  return {};
-}
