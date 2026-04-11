@@ -3787,7 +3787,7 @@ export const MobileGameTable = ({
         isHolmWinWinner,
         isSoloVsChuckyPlayer,
         isSoloVsChuckyPlayerRaw,
-        isSoloVsChucky,
+        isSoloVsChucky: !!isSoloVsChucky,
         soloVsChuckyPlayerIdLocked,
         soloVsChuckyTableLocked,
         showdownModeLocked,
