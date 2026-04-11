@@ -57,7 +57,7 @@ import {
   resetCribbageTracking,
   checkCribbageHandReversion,
   checkCribbageScoreReversion,
-  traceCribbagePresentationSourceChange,
+  
   resetCribbageReversionTracking,
   checkCribbageTapFailure,
   logCribbageScoringStart,
@@ -742,22 +742,6 @@ export const CribbageMobileGameTable = ({
     );
 
     // Presentation source trace — track when hand/score sources change
-    const traceSource = countingStateSnapshot && !countingDelayActive ? 'counting-snapshot'
-      : winSequencePhase !== 'idle' ? 'win-sequence'
-      : viewState ? 'sync-presentation'
-      : 'authoritative-fallback';
-    const traceHandSize = instrPlayer
-      ? (state.playerStates?.[instrPlayer.id]?.hand?.length ?? 0)
-      : 0;
-    traceCribbagePresentationSourceChange(
-      gameId,
-      currentHandNumber,
-      traceHandSize,
-      presentationScores,
-      traceSource,
-      null,
-      currentRoundId || undefined,
-    );
 
     // INV-1: stale-dealer-game-render
     if (renderHandKey && currentHandKey && !isSnapshotPhase) {
