@@ -4734,6 +4734,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
 
           if (result.accepted) {
+            // ── 357-presentation-write diagnostic (always-on) ──
+            const presBeforeSnapshot = result.presentationBefore as ThreeFiveSevenAuthoritativeSnapshot | null;
+            if (result.presentationAction === 'written') {
+              persist357Investigation(gameData.id, snapshot.handNumber, '357-presentation-write-committed', {
+                reason: result.reason,
+                presentationRoundIdBefore: presBeforeSnapshot?.roundId?.slice(0, 8) ?? null,
+                presentationHandNumberBefore: presBeforeSnapshot?.handNumber ?? null,
+                presentationRoundNumberBefore: presBeforeSnapshot?.roundNumber ?? null,
+                writtenRoundId: snapshot.roundId.slice(0, 8),
+                writtenHandNumber: snapshot.handNumber,
+                writtenRoundNumber: snapshot.roundNumber,
+                wasFrozenAtWrite: result.wasFrozenAtWrite,
+                incomingProgress: result.incomingProgress,
+              }, snapshot.roundId);
+            } else if (result.presentationAction === 'skipped-frozen') {
+              persist357Investigation(gameData.id, snapshot.handNumber, '357-presentation-write-skipped-frozen', {
+                reason: result.reason,
+                presentationRoundIdBefore: presBeforeSnapshot?.roundId?.slice(0, 8) ?? null,
+                presentationHandNumberBefore: presBeforeSnapshot?.handNumber ?? null,
+                wasFrozenAtWrite: result.wasFrozenAtWrite,
+                incomingProgress: result.incomingProgress,
+              }, snapshot.roundId);
+            }
+
             // ── 357-authoritative-update-accepted (always-on) ──
             persist357Investigation(gameData.id, snapshot.handNumber, '357-authoritative-update-accepted', {
               reason: result.reason,
@@ -4742,6 +4766,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               previousProgress: result.previousProgress,
               incomingRoundNumber: snapshot.roundNumber,
               incomingPhase: snapshot.roundStatus,
+              presentationAction: result.presentationAction,
+              wasFrozenAtWrite: result.wasFrozenAtWrite,
             }, snapshot.roundId);
 
             // Presentation cutover invariant checks
@@ -4764,6 +4790,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 isOptimistic: threeFiveSevenSync.isOptimistic,
                 isFirstUpdate: !prevRoundId357,
                 progressVector: result.incomingProgress,
+                presentationAction: result.presentationAction,
+                wasFrozenAtWrite: result.wasFrozenAtWrite,
+                presentationBeforeRoundId: presBeforeSnapshot?.roundId?.slice(0, 8) ?? null,
               }, snapshot.roundId);
             }
           } else {
