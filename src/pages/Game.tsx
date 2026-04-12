@@ -714,10 +714,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [players, threeFiveSevenView, is357GameType]);
 
   // ── 3-5-7 stuck-old-round detection (render-phase invariant) ──
+  // ── 357: Post-render presentation hydration check (fires AFTER React commit) ──
   useEffect(() => {
     if (!is357GameType) return;
     const auth357 = threeFiveSevenSync.authoritativeState;
     const pres357 = threeFiveSevenSync.presentationState;
+
+    // CRITICAL DIAGNOSTIC: If authoritative exists but presentation is still null,
+    // this proves presentation never hydrated even after React rendered.
+    if (auth357 && !pres357) {
+      persist357Investigation(gameId!, auth357.handNumber, '357-presentation-null-after-render', {
+        authoritativeRoundId: auth357.roundId.slice(0, 8),
+        authoritativeHandNumber: auth357.handNumber,
+        authoritativeRoundNumber: auth357.roundNumber,
+        authoritativePhase: auth357.roundStatus,
+        isFrozen: threeFiveSevenSync.isFrozen,
+        isOptimistic: threeFiveSevenSync.isOptimistic,
+        presentationIsNull: true,
+      }, auth357.roundId);
+    }
+
     if (!auth357 || !pres357) return;
     checkThreeFiveSevenStuckOldRound(
       gameId!,
