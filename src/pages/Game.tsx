@@ -3954,6 +3954,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               loserPlayerIds: loserIds.map(id => id.slice(0, 8)),
               amount,
               sourceLastRoundResultPresent: !!game?.last_round_result,
+              transitionType: tType357,
             });
             setChipTransferAmount(amount);
             setChipTransferWinnerId(winnerId);
@@ -3967,6 +3968,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               rawLastRoundResultPresent: !!game?.last_round_result,
               parsedWinnerPresent: !!winnerMatch,
               parsedAmountPresent: !!amountMatch,
+              transitionType: tType357,
             });
           }
         } else {
@@ -3978,6 +3980,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             parsedWinnerPresent: !!winnerMatch,
             parsedLosersPresent: !!losersMatch,
             parsedAmountPresent: !!amountMatch,
+            transitionType: tType357,
           });
         }
       } else if (game?.game_type === '3-5-7' && !lastResult.includes('|||WINNER:') && lastResult.length > 0) {
@@ -3987,6 +3990,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           reason: 'no-winner-field',
           rawLastRoundResultPresent: true,
           rawLastRoundResultValue: lastResult.slice(0, 60),
+          transitionType: tType357,
         });
       }
       
