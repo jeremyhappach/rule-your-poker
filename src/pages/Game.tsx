@@ -3529,7 +3529,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // CRITICAL: Verify at least one player has a decision for THIS round.
     // If no decisions exist, all_decisions_in is stale from a prior round — reset it.
-    const activePlayers = (game?.players || []).filter(
+    const activePlayers = (players || []).filter(
       (p: any) => p.status === "active" && !p.sitting_out
     );
     const withDecision = activePlayers.filter(
