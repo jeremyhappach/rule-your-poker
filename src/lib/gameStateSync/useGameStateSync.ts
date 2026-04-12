@@ -39,12 +39,14 @@ export function useGameStateSync<T>(
   const authRef = useRef<T>(initialState);
   const optRef = useRef<T | null>(null);
   const frozenRef = useRef(false);
+  const presentationRef = useRef<T>(initialState);
   const optimisticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
   useEffect(() => { optRef.current = optimistic; }, [optimistic]);
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
+  useEffect(() => { presentationRef.current = presentation; }, [presentation]);
 
   // The "effective" state: optimistic if active, else authoritative
   const effective = optimistic ?? authoritative;
@@ -59,25 +61,28 @@ export function useGameStateSync<T>(
   // ── Receive authoritative update (from realtime / poll) ──────
   const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
     const currentAuth = authRef.current;
+    const presPre = presentationRef.current;
 
     const currentProgress = getProgress(currentAuth);
     const incomingProgress = getProgress(incoming);
 
     // Skip identical snapshots
     if (isEqual(currentAuth, incoming)) {
-      return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0 };
+      return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
     }
 
     const cmp = compareProgress(currentProgress, incomingProgress);
 
     // Reject regressive updates
     if (cmp === -1) {
-      return { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp };
+      return { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
     }
 
     // Accept: update authoritative
     authRef.current = incoming;
     setAuthoritative(incoming);
+
+    let presentationAction: 'written' | 'skipped-frozen' = 'skipped-frozen';
 
     // If optimistic is active, check if DB has caught up
     if (optRef.current !== null) {
@@ -94,17 +99,21 @@ export function useGameStateSync<T>(
         }
         // Immediately propagate to presentation — effective is now authoritative (incoming)
         if (!frozenRef.current) {
+          presentationRef.current = incoming;
           setPresentation(incoming);
+          presentationAction = 'written';
         }
       }
     } else {
       // No optimistic active — effective is authoritative, propagate immediately
       if (!frozenRef.current) {
+        presentationRef.current = incoming;
         setPresentation(incoming);
+        presentationAction = 'written';
       }
     }
 
-    return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp };
+    return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
   }, [getProgress, isEqual]);
 
   // ── Apply optimistic local state ─────────────────────────────
@@ -155,18 +164,22 @@ export function useGameStateSync<T>(
     setFrozen(false);
     // Commit latest effective to presentation
     const latest = optRef.current ?? authRef.current;
+    presentationRef.current = latest;
     setPresentation(latest);
   }, []);
 
   const commitToPresentation = useCallback((state: T) => {
+    presentationRef.current = state;
     setPresentation(state);
   }, []);
 
   // ── Full reset (hand/round boundary) ─────────────────────────
   const reset = useCallback((newInitial: T) => {
+    const presPre = presentationRef.current;
     authRef.current = newInitial;
     optRef.current = null;
     frozenRef.current = false;
+    presentationRef.current = newInitial;
     setAuthoritative(newInitial);
     setOptimistic(null);
     setPresentation(newInitial);
@@ -175,6 +188,8 @@ export function useGameStateSync<T>(
       clearTimeout(optimisticTimerRef.current);
       optimisticTimerRef.current = null;
     }
+    // Expose pre-reset presentation for diagnostics (via ref accessible to callers)
+    (reset as any)._lastResetPresentationBefore = presPre;
   }, []);
 
   // Cleanup timer on unmount

@@ -23,6 +23,12 @@ export interface AuthoritativeUpdateResult {
   incomingProgress: ProgressVector;
   /** -1 regressive, 0 equal, 1 forward */
   comparison: number;
+  /** What happened to the presentation layer during this update */
+  presentationAction: 'written' | 'skipped-frozen' | 'not-applicable';
+  /** Whether frozen ref was true at the moment of the write decision */
+  wasFrozenAtWrite: boolean;
+  /** Synchronous presentation value BEFORE the write (from ref) */
+  presentationBefore: unknown;
 }
 
 /**
