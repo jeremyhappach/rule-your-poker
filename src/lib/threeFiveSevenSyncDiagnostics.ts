@@ -9,6 +9,25 @@ import { checkInvariant } from './debugSyncInvariants';
 import { persistInvariantViolation } from './persistSyncDebugEvent';
 import { buildMetaPayload } from './buildMeta';
 
+// ── Transition-type classifier ────────────────────────────────
+/**
+ * Derive a canonical transitionType from last_round_result string.
+ * Called ONCE per transition, then forwarded to all downstream events.
+ */
+export type ThreeFiveSevenTransitionType = 'showdown' | 'fold-win' | 'pussy-tax' | 'sweep' | 'leg-win' | 'tie' | 'other';
+
+export function classify357TransitionType(lastRoundResult: string | null | undefined): ThreeFiveSevenTransitionType {
+  if (!lastRoundResult) return 'other';
+  if (lastRoundResult.startsWith('357_SWEEP')) return 'sweep';
+  if (lastRoundResult.includes('|||WINNER:')) return 'showdown';
+  if (lastRoundResult.includes('won a leg')) return 'leg-win';
+  if (lastRoundResult.toLowerCase().includes('pussy tax')) return 'pussy-tax';
+  if (lastRoundResult.includes('tied with')) return 'tie';
+  // Solo stayer (only one player stayed — fold-win)
+  if (lastRoundResult.includes('won a leg') === false && lastRoundResult.includes('won') && !lastRoundResult.includes('showdown')) return 'fold-win';
+  return 'other';
+}
+
 // ── INV-1: Stale round render ─────────────────────────────────
 export function checkThreeFiveSevenStaleRound(
   gameId: string,

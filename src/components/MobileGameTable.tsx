@@ -61,6 +61,7 @@ import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { persistTransition } from "@/lib/persistSyncDebugEvent";
+import { classify357TransitionType } from "@/lib/threeFiveSevenSyncDiagnostics";
 
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
@@ -2695,6 +2696,7 @@ export const MobileGameTable = ({
     const key = `${currentRound}-${lastRoundResult?.slice(0, 20)}`;
     if (key === prev357AnnouncementRef.current) return;
     
+    const tType = classify357TransitionType(lastRoundResult);
     if (announcementEligible) {
       prev357AnnouncementRef.current = key;
       persistTransition(gameId, '3-5-7', 0, '357-announcement-rendered', {
@@ -2703,6 +2705,7 @@ export const MobileGameTable = ({
         awaitingNextRound,
         roundStatus: roundStatus ?? null,
         renderedMessageType: lastRoundResult?.includes('|||WINNER:') ? 'showdown' : lastRoundResult?.includes('pussy tax') ? 'pussy-tax' : 'other',
+        transitionType: tType,
       });
     } else if (lastRoundResult && !announcementEligible) {
       prev357AnnouncementRef.current = key;
@@ -2712,6 +2715,7 @@ export const MobileGameTable = ({
         awaitingNextRound,
         roundStatus: roundStatus ?? null,
         rawLastRoundResultPresent: !!lastRoundResult,
+        transitionType: tType,
       });
     }
   }, [gameId, gameType, lastRoundResult, awaitingNextRound, roundStatus, allDecisionsIn, chuckyActive, gameStatus, currentRound, threeFiveSevenWinTriggerId]);

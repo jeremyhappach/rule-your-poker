@@ -52,7 +52,7 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
-import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound } from "@/lib/threeFiveSevenSyncDiagnostics";
+import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
@@ -3880,6 +3880,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       
       // ── 357-awaiting-next-round-trigger ──
+      const tType357 = game?.game_type === '3-5-7' ? classify357TransitionType(game?.last_round_result) : null;
       if (game?.game_type === '3-5-7') {
         const syncView = threeFiveSevenSync.presentationState;
         persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-awaiting-next-round-trigger', {
@@ -3890,6 +3891,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           syncLastRoundResultPresent: !!syncView?.lastRoundResult,
           syncRoundNumber: syncView?.roundNumber ?? null,
           isFrozen: threeFiveSevenSync.isFrozen,
+          transitionType: tType357,
         });
       }
       
@@ -3952,6 +3954,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               loserPlayerIds: loserIds.map(id => id.slice(0, 8)),
               amount,
               sourceLastRoundResultPresent: !!game?.last_round_result,
+              transitionType: tType357,
             });
             setChipTransferAmount(amount);
             setChipTransferWinnerId(winnerId);
@@ -3965,6 +3968,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               rawLastRoundResultPresent: !!game?.last_round_result,
               parsedWinnerPresent: !!winnerMatch,
               parsedAmountPresent: !!amountMatch,
+              transitionType: tType357,
             });
           }
         } else {
@@ -3976,6 +3980,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             parsedWinnerPresent: !!winnerMatch,
             parsedLosersPresent: !!losersMatch,
             parsedAmountPresent: !!amountMatch,
+            transitionType: tType357,
           });
         }
       } else if (game?.game_type === '3-5-7' && !lastResult.includes('|||WINNER:') && lastResult.length > 0) {
@@ -3985,6 +3990,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           reason: 'no-winner-field',
           rawLastRoundResultPresent: true,
           rawLastRoundResultValue: lastResult.slice(0, 60),
+          transitionType: tType357,
         });
       }
       
@@ -4185,6 +4191,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 rawLastRoundResultPresentBeforeClear: !!freshGame?.last_round_result,
                 awaitingNextRoundBeforeClear: !!freshGame?.awaiting_next_round,
                 nextRoundNumber: freshGame?.next_round_number,
+                transitionType: classify357TransitionType(freshGame?.last_round_result),
               });
             }
             
@@ -4259,6 +4266,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           roundNumber: game?.current_round,
           delayMs: 4000,
           rawLastRoundResultPresent: !!game?.last_round_result,
+          transitionType: tType357,
         });
       }
       console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');

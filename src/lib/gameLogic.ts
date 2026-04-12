@@ -1956,6 +1956,7 @@ export async function endRound(gameId: string) {
               amount: amountPerLoser,
               bothStayed: playersWhoStayed.length > 1,
               handRanks: hands.map(h => ({ pid: h.playerId.slice(0, 8), rank: h.evaluation.rank, value: h.evaluation.value })),
+              transitionType: 'showdown',
             }, round.id);
             
             resultMessage = showdownResult;
@@ -2001,6 +2002,7 @@ export async function endRound(gameId: string) {
     });
     
     // ── 357-last-round-result-persisted ──
+    const { classify357TransitionType } = await import('./threeFiveSevenSyncDiagnostics');
     persistTransition(gameId, '3-5-7', game.total_hands || 1, '357-last-round-result-persisted', {
       roundId: round.id.slice(0, 8),
       roundNumber: currentRound,
@@ -2009,6 +2011,7 @@ export async function endRound(gameId: string) {
       awaitingNextRound: !updateError && (updateResult?.length ?? 0) > 0,
       winnerPlayerId: resultMessage.match(/\|\|\|WINNER:([^|]+)/)?.[1]?.slice(0, 8) ?? null,
       amount: parseInt(resultMessage.match(/\|\|\|AMOUNT:(\d+)/)?.[1] ?? '0', 10),
+      transitionType: classify357TransitionType(resultMessage),
     }, round.id);
     
     return; // Exit after showdown handling
