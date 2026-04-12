@@ -2491,11 +2491,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // CRITICAL: Detect Holm stuck state where all_decisions_in is already true (often set by backend timeout
     // enforcement) but the round is still 'betting'. In this state, the UI can appear stuck (spotlight/turn
     // confusion) unless a client calls endHolmRound.
+    // GUARD: Verify at least one player has a decision — a stale all_decisions_in from a prior hand
+    // can race with new round creation and cause endHolmRound to fire with zero decisions.
+    const holmPlayersWithDecision = (players || []).filter(
+      (p: any) => p.status === 'active' && !p.sitting_out && (p.current_decision === 'stay' || p.current_decision === 'fold')
+    );
     const holmAllDecidedButBettingStuck =
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
       game?.all_decisions_in === true &&
       latestRound?.status === 'betting' &&
+      holmPlayersWithDecision.length > 0 &&
       currentPlayer;
     
     // Also detect when Holm game started but no round was created

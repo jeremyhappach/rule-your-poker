@@ -1012,6 +1012,17 @@ export async function endHolmRound(gameId: string) {
     stayedPositions: stayedPlayers.map(p => p.position)
   });
 
+  // CRITICAL GUARD: If NO player has any decision (stay or fold), this is a premature call.
+  // A stale all_decisions_in=true from a previous hand can race with a new round creation,
+  // causing endHolmRound to fire with zero decisions (treating it as "everyone folded" → pussy tax).
+  const playersWithDecision = players.filter(p => p.current_decision === 'stay' || p.current_decision === 'fold');
+  if (playersWithDecision.length === 0 && activePlayers.length > 0) {
+    console.error('[HOLM END] ❌ PREMATURE CALL - no player decisions exist. Reverting round lock and resetting stale flags.');
+    await supabase.from('rounds').update({ status: 'betting' }).eq('id', capturedRoundId);
+    await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
+    return;
+  }
+
   // Case 1: Everyone folded - pussy tax
   if (stayedPlayers.length === 0) {
     console.log('[HOLM END] ⚠️⚠️⚠️ Case 1: Everyone folded, applying pussy tax ⚠️⚠️⚠️');
