@@ -83,3 +83,28 @@ export function checkThreeFiveSevenDecisionAfterCompleted(
   );
 }
 
+// ── INV-5: Stuck old round detected ───────────────────────────
+export function checkThreeFiveSevenStuckOldRound(
+  gameId: string,
+  presentationRoundId: string | null,
+  authoritativeRoundId: string | null,
+  presentationRoundNumber: number | null,
+  authoritativeRoundNumber: number | null,
+  handNumber: number,
+): boolean {
+  if (!presentationRoundId || !authoritativeRoundId) return true;
+  if (presentationRoundId === authoritativeRoundId) return true;
+  // Presentation is showing a different (old) round than authoritative
+  persistInvariantViolation(gameId, '3-5-7', handNumber, 'stuck-old-round-detected', {
+    presentationRoundId: presentationRoundId.slice(0, 8),
+    authoritativeRoundId: authoritativeRoundId.slice(0, 8),
+    presentationRoundNumber,
+    authoritativeRoundNumber,
+    ...buildMetaPayload(),
+  });
+  return checkInvariant('357', 'stuck-old-round-detected', false,
+    `Presentation stuck on round ${presentationRoundNumber} (${presentationRoundId.slice(0, 8)}) while authoritative is round ${authoritativeRoundNumber} (${authoritativeRoundId.slice(0, 8)})`,
+    { presentationRoundId, authoritativeRoundId, presentationRoundNumber, authoritativeRoundNumber, handNumber, gameId },
+  );
+}
+
