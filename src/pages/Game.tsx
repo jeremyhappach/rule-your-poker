@@ -4559,7 +4559,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
-    // ── 3-5-7 shadow sync feed (Phase 2: read-only) ──
+    // ── 3-5-7 sync feed (Phase 3 — presentation cutover) ──
     if (gameData.game_type === '3-5-7' || gameData.game_type === '357' || gameData.game_type === '3-5-7-game') {
       const threeFiveSevenRound = pickActive357Round(gameData.rounds as Round[], {
         currentRoundNumber: gameData.current_round,
@@ -4567,14 +4567,87 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         dealerGameId: gameData.current_game_uuid,
       });
       const snapshot = buildThreeFiveSevenSnapshot(gameData, (playersData || []) as Player[], threeFiveSevenRound);
+
+      // ── DIAGNOSTIC: Log every authoritative arrival ──
+      const prevRoundId357 = threeFiveSevenSyncLastRoundIdRef.current;
+      const currentPresentation357 = threeFiveSevenSync.presentationState;
+      persistSyncDebugEvent({
+        gameId: gameData.id,
+        gameType: '3-5-7',
+        handNumber: gameData.total_hands ?? 0,
+        roundId: snapshot?.roundId ?? null,
+        eventType: 'sync-gate',
+        severity: 'info',
+        eventName: '357-authoritative-update-received',
+        payload: {
+          snapshotExists: !!snapshot,
+          incomingRoundId: snapshot?.roundId?.slice(0, 8) ?? null,
+          incomingHandNumber: snapshot?.handNumber ?? null,
+          incomingRoundNumber: snapshot?.roundNumber ?? null,
+          incomingPhase: snapshot?.roundStatus ?? null,
+          incomingDecidedCount: snapshot?.players.filter(p => p.decisionLocked).length ?? 0,
+          prevRoundId: prevRoundId357?.slice(0, 8) ?? null,
+          presentationRoundId: currentPresentation357?.roundId?.slice(0, 8) ?? null,
+          presentationHandNumber: currentPresentation357?.handNumber ?? null,
+          presentationRoundNumber: currentPresentation357?.roundNumber ?? null,
+          presentationPhase: currentPresentation357?.roundStatus ?? null,
+          isFrozen: threeFiveSevenSync.isFrozen,
+          isOptimistic: threeFiveSevenSync.isOptimistic,
+          lastRoundResult: gameData.last_round_result ?? null,
+          awaitingNextRound: gameData.awaiting_next_round ?? false,
+          gameCurrentRound: gameData.current_round,
+          gameTotalHands: gameData.total_hands,
+        },
+      });
+
       if (snapshot) {
-        if (threeFiveSevenSyncLastRoundIdRef.current && threeFiveSevenSyncLastRoundIdRef.current !== snapshot.roundId) {
-          console.log('[GameStateSync:357] 🔄 Hard reset — roundId changed');
+        if (prevRoundId357 && prevRoundId357 !== snapshot.roundId) {
+          // ── Identity boundary reset ──
+          persistSyncDebugEvent({
+            gameId: gameData.id,
+            gameType: '3-5-7',
+            handNumber: snapshot.handNumber,
+            roundId: snapshot.roundId,
+            eventType: 'transition',
+            severity: 'info',
+            eventName: '357-round-boundary-reset',
+            payload: {
+              oldRoundId: prevRoundId357.slice(0, 8),
+              newRoundId: snapshot.roundId.slice(0, 8),
+              oldRoundNumber: currentPresentation357?.roundNumber ?? null,
+              newRoundNumber: snapshot.roundNumber,
+              oldHandNumber: currentPresentation357?.handNumber ?? null,
+              newHandNumber: snapshot.handNumber,
+              wasFrozen: threeFiveSevenSync.isFrozen,
+            },
+          });
           threeFiveSevenSync.reset(snapshot);
         } else {
           const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
 
-          // Presentation cutover invariant checks — compare rendered (presentation) vs authoritative
+          if (!result.accepted) {
+            // ── DIAGNOSTIC: Log rejection ──
+            persistSyncDebugEvent({
+              gameId: gameData.id,
+              gameType: '3-5-7',
+              handNumber: snapshot.handNumber,
+              roundId: snapshot.roundId,
+              eventType: 'sync-gate',
+              severity: 'warn',
+              eventName: '357-authoritative-update-rejected',
+              payload: {
+                reason: result.reason,
+                comparison: result.comparison,
+                incomingProgress: result.incomingProgress,
+                previousProgress: result.previousProgress,
+                incomingRoundNumber: snapshot.roundNumber,
+                incomingPhase: snapshot.roundStatus,
+                incomingDecidedCount: snapshot.players.filter(p => p.decisionLocked).length,
+              },
+            });
+          }
+
+          // Presentation cutover invariant checks
           if (result.accepted) {
             const presentedState = threeFiveSevenSync.presentationState;
             const renderedRound = presentedState?.roundNumber ?? 0;
@@ -4584,6 +4657,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         }
         threeFiveSevenSyncLastRoundIdRef.current = snapshot.roundId;
+      } else {
+        // ── DIAGNOSTIC: No snapshot built — log why ──
+        persistSyncDebugEvent({
+          gameId: gameData.id,
+          gameType: '3-5-7',
+          handNumber: gameData.total_hands ?? 0,
+          roundId: null,
+          eventType: 'sync-gate',
+          severity: 'warn',
+          eventName: '357-no-snapshot-built',
+          payload: {
+            roundFound: !!threeFiveSevenRound,
+            roundId: threeFiveSevenRound?.id?.slice(0, 8) ?? null,
+            gameStatus: gameData.status,
+            currentRound: gameData.current_round,
+            totalHands: gameData.total_hands,
+            dealerGameId: gameData.current_game_uuid?.slice(0, 8) ?? null,
+            roundCount: (gameData.rounds as Round[])?.length ?? 0,
+          },
+        });
       }
     }
 
