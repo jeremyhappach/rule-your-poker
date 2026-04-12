@@ -3575,7 +3575,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.status,
     game?.total_hands,
     game?.current_round,
-    game?.players,
+    players,
     gameId,
   ]);
   
