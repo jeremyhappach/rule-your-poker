@@ -3881,7 +3881,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // ── 357-awaiting-next-round-trigger ──
       if (game?.game_type === '3-5-7') {
-        const syncView = threeFiveSevenSyncHandle?.presentationState;
+        const syncView = threeFiveSevenSync.presentationState;
         persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-awaiting-next-round-trigger', {
           roundNumber: game?.current_round,
           awaitingNextRound: true,
@@ -3889,7 +3889,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           rawLastRoundResultLength: (game?.last_round_result || '').length,
           syncLastRoundResultPresent: !!syncView?.lastRoundResult,
           syncRoundNumber: syncView?.roundNumber ?? null,
-          isFrozen: threeFiveSevenSyncHandle?.isFrozen ?? null,
+          isFrozen: threeFiveSevenSync.isFrozen,
         });
       }
       
