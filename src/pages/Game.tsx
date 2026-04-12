@@ -3879,6 +3879,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         last_result: game?.last_round_result
       });
       
+      // ── 357-awaiting-next-round-trigger ──
+      if (game?.game_type === '3-5-7') {
+        const syncView = threeFiveSevenSyncHandle?.presentationState;
+        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-awaiting-next-round-trigger', {
+          roundNumber: game?.current_round,
+          awaitingNextRound: true,
+          rawLastRoundResultPresent: !!game?.last_round_result,
+          rawLastRoundResultLength: (game?.last_round_result || '').length,
+          syncLastRoundResultPresent: !!syncView?.lastRoundResult,
+          syncRoundNumber: syncView?.roundNumber ?? null,
+          isFrozen: threeFiveSevenSyncHandle?.isFrozen ?? null,
+        });
+      }
+      
       // Check if this is a pussy tax scenario and trigger animation
       // CRITICAL: Skip if 357 win animation is active - we're showing legs/pot going to winner
       // Use ref for closure access (state would be stale in setTimeout)
@@ -3931,12 +3945,47 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               loserIds,
               amount
             });
+            // ── 357-chip-animation-triggered ──
+            persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-triggered', {
+              roundNumber: game?.current_round,
+              winnerPlayerId: winnerId.slice(0, 8),
+              loserPlayerIds: loserIds.map(id => id.slice(0, 8)),
+              amount,
+              sourceLastRoundResultPresent: !!game?.last_round_result,
+            });
             setChipTransferAmount(amount);
             setChipTransferWinnerId(winnerId);
             setChipTransferLoserIds(loserIds);
             setChipTransferTriggerId(`showdown-${Date.now()}`);
+          } else {
+            // ── 357-chip-animation-skipped ──
+            persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+              roundNumber: game?.current_round,
+              reason: loserIds.length === 0 ? 'no-losers' : 'zero-amount',
+              rawLastRoundResultPresent: !!game?.last_round_result,
+              parsedWinnerPresent: !!winnerMatch,
+              parsedAmountPresent: !!amountMatch,
+            });
           }
+        } else {
+          // ── 357-chip-animation-skipped ──
+          persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+            roundNumber: game?.current_round,
+            reason: 'parse-failed',
+            rawLastRoundResultPresent: !!game?.last_round_result,
+            parsedWinnerPresent: !!winnerMatch,
+            parsedLosersPresent: !!losersMatch,
+            parsedAmountPresent: !!amountMatch,
+          });
         }
+      } else if (game?.game_type === '3-5-7' && !lastResult.includes('|||WINNER:') && lastResult.length > 0) {
+        // ── 357-chip-animation-skipped (no WINNER field — tie or non-showdown) ──
+        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+          roundNumber: game?.current_round,
+          reason: 'no-winner-field',
+          rawLastRoundResultPresent: true,
+          rawLastRoundResultValue: lastResult.slice(0, 60),
+        });
       }
       
       // Check if this is a Holm Chucky loss and trigger animation (player pays into pot)
