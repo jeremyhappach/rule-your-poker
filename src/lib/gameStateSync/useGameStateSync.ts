@@ -61,25 +61,28 @@ export function useGameStateSync<T>(
   // ── Receive authoritative update (from realtime / poll) ──────
   const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
     const currentAuth = authRef.current;
+    const presPre = presentationRef.current;
 
     const currentProgress = getProgress(currentAuth);
     const incomingProgress = getProgress(incoming);
 
     // Skip identical snapshots
     if (isEqual(currentAuth, incoming)) {
-      return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0 };
+      return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
     }
 
     const cmp = compareProgress(currentProgress, incomingProgress);
 
     // Reject regressive updates
     if (cmp === -1) {
-      return { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp };
+      return { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
     }
 
     // Accept: update authoritative
     authRef.current = incoming;
     setAuthoritative(incoming);
+
+    let presentationAction: 'written' | 'skipped-frozen' = 'skipped-frozen';
 
     // If optimistic is active, check if DB has caught up
     if (optRef.current !== null) {
@@ -96,17 +99,21 @@ export function useGameStateSync<T>(
         }
         // Immediately propagate to presentation — effective is now authoritative (incoming)
         if (!frozenRef.current) {
+          presentationRef.current = incoming;
           setPresentation(incoming);
+          presentationAction = 'written';
         }
       }
     } else {
       // No optimistic active — effective is authoritative, propagate immediately
       if (!frozenRef.current) {
+        presentationRef.current = incoming;
         setPresentation(incoming);
+        presentationAction = 'written';
       }
     }
 
-    return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp };
+    return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
   }, [getProgress, isEqual]);
 
   // ── Apply optimistic local state ─────────────────────────────
