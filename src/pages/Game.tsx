@@ -698,6 +698,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const threeFiveSevenView = threeFiveSevenSync.presentationState;
   const threeFiveSevenRefView = threeFiveSevenSync.presentationRefValue as ThreeFiveSevenAuthoritativeSnapshot | null;
 
+  // 3-5-7 presentation players — overlay decisions from presentation state
+  // Action handlers continue to use raw `players` for mutation correctness.
+  const is357GameType = game?.game_type === '3-5-7' || game?.game_type === '357' || game?.game_type === '3-5-7-game';
+
   // ── 357: RENDER-TIME wiring diagnostic (fires every render, not in useEffect) ──
   // This proves whether React state vs ref vs effective are in sync AT RENDER TIME.
   const prev357RenderDiagRef = useRef<string>('');
@@ -733,9 +737,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }
 
-  // 3-5-7 presentation players — overlay decisions from presentation state
-  // Action handlers continue to use raw `players` for mutation correctness.
-  const is357GameType = game?.game_type === '3-5-7' || game?.game_type === '357' || game?.game_type === '3-5-7-game';
   const threeFiveSevenPlayers = useMemo(() => {
     if (!threeFiveSevenView || !is357GameType) return players;
     return players.map(p => {
