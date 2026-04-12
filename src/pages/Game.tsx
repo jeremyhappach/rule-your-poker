@@ -3883,7 +3883,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const tType357 = game?.game_type === '3-5-7' ? classify357TransitionType(game?.last_round_result) : null;
       if (game?.game_type === '3-5-7') {
         const syncView = threeFiveSevenSync.presentationState;
-        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-awaiting-next-round-trigger', {
+        persist357Investigation(gameId, game?.total_hands || 1, '357-awaiting-next-round-trigger', {
           roundNumber: game?.current_round,
           awaitingNextRound: true,
           rawLastRoundResultPresent: !!game?.last_round_result,
@@ -3948,7 +3948,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               amount
             });
             // ── 357-chip-animation-triggered ──
-            persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-triggered', {
+            persist357Investigation(gameId, game?.total_hands || 1, '357-chip-animation-triggered', {
               roundNumber: game?.current_round,
               winnerPlayerId: winnerId.slice(0, 8),
               loserPlayerIds: loserIds.map(id => id.slice(0, 8)),
@@ -3962,7 +3962,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setChipTransferTriggerId(`showdown-${Date.now()}`);
           } else {
             // ── 357-chip-animation-skipped ──
-            persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+            persist357Investigation(gameId, game?.total_hands || 1, '357-chip-animation-skipped', {
               roundNumber: game?.current_round,
               reason: loserIds.length === 0 ? 'no-losers' : 'zero-amount',
               rawLastRoundResultPresent: !!game?.last_round_result,
@@ -3973,7 +3973,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         } else {
           // ── 357-chip-animation-skipped ──
-          persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+          persist357Investigation(gameId, game?.total_hands || 1, '357-chip-animation-skipped', {
             roundNumber: game?.current_round,
             reason: 'parse-failed',
             rawLastRoundResultPresent: !!game?.last_round_result,
@@ -3985,7 +3985,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       } else if (game?.game_type === '3-5-7' && !lastResult.includes('|||WINNER:') && lastResult.length > 0) {
         // ── 357-chip-animation-skipped (no WINNER field — tie or non-showdown) ──
-        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+        persist357Investigation(gameId, game?.total_hands || 1, '357-chip-animation-skipped', {
           roundNumber: game?.current_round,
           reason: 'no-winner-field',
           rawLastRoundResultPresent: true,
@@ -4186,7 +4186,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             
             // ── 357-auto-proceed-fired ──
             if (freshGame?.game_type === '3-5-7') {
-              persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-auto-proceed-fired', {
+              persist357Investigation(gameId, game?.total_hands || 1, '357-auto-proceed-fired', {
                 roundNumber: game?.current_round,
                 rawLastRoundResultPresentBeforeClear: !!freshGame?.last_round_result,
                 awaitingNextRoundBeforeClear: !!freshGame?.awaiting_next_round,
@@ -4262,7 +4262,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // ── 357-auto-proceed-started ──
       if (game?.game_type === '3-5-7') {
-        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-auto-proceed-started', {
+        persist357Investigation(gameId, game?.total_hands || 1, '357-auto-proceed-started', {
           roundNumber: game?.current_round,
           delayMs: 4000,
           rawLastRoundResultPresent: !!game?.last_round_result,
