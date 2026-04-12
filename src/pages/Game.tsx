@@ -3514,6 +3514,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.game_type,
     gameId
   ]);
+  // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
+  const holmRecoveryAttemptedRef = useRef<string | null>(null);
+
   // Auto-execute pre-fold/pre-stay OR auto-fold when it becomes player's turn in Holm games
   // For 3-5-7, auto-fold immediately when round starts if player has auto_fold=true
   const instantAutoFoldKeyRef = useRef<string | null>(null);
