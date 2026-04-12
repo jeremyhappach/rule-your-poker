@@ -3879,6 +3879,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         last_result: game?.last_round_result
       });
       
+      // ── 357-awaiting-next-round-trigger ──
+      if (game?.game_type === '3-5-7') {
+        const syncView = threeFiveSevenSync.presentationState;
+        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-awaiting-next-round-trigger', {
+          roundNumber: game?.current_round,
+          awaitingNextRound: true,
+          rawLastRoundResultPresent: !!game?.last_round_result,
+          rawLastRoundResultLength: (game?.last_round_result || '').length,
+          syncLastRoundResultPresent: !!syncView?.lastRoundResult,
+          syncRoundNumber: syncView?.roundNumber ?? null,
+          isFrozen: threeFiveSevenSync.isFrozen,
+        });
+      }
+      
       // Check if this is a pussy tax scenario and trigger animation
       // CRITICAL: Skip if 357 win animation is active - we're showing legs/pot going to winner
       // Use ref for closure access (state would be stale in setTimeout)
@@ -3931,12 +3945,47 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               loserIds,
               amount
             });
+            // ── 357-chip-animation-triggered ──
+            persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-triggered', {
+              roundNumber: game?.current_round,
+              winnerPlayerId: winnerId.slice(0, 8),
+              loserPlayerIds: loserIds.map(id => id.slice(0, 8)),
+              amount,
+              sourceLastRoundResultPresent: !!game?.last_round_result,
+            });
             setChipTransferAmount(amount);
             setChipTransferWinnerId(winnerId);
             setChipTransferLoserIds(loserIds);
             setChipTransferTriggerId(`showdown-${Date.now()}`);
+          } else {
+            // ── 357-chip-animation-skipped ──
+            persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+              roundNumber: game?.current_round,
+              reason: loserIds.length === 0 ? 'no-losers' : 'zero-amount',
+              rawLastRoundResultPresent: !!game?.last_round_result,
+              parsedWinnerPresent: !!winnerMatch,
+              parsedAmountPresent: !!amountMatch,
+            });
           }
+        } else {
+          // ── 357-chip-animation-skipped ──
+          persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+            roundNumber: game?.current_round,
+            reason: 'parse-failed',
+            rawLastRoundResultPresent: !!game?.last_round_result,
+            parsedWinnerPresent: !!winnerMatch,
+            parsedLosersPresent: !!losersMatch,
+            parsedAmountPresent: !!amountMatch,
+          });
         }
+      } else if (game?.game_type === '3-5-7' && !lastResult.includes('|||WINNER:') && lastResult.length > 0) {
+        // ── 357-chip-animation-skipped (no WINNER field — tie or non-showdown) ──
+        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-chip-animation-skipped', {
+          roundNumber: game?.current_round,
+          reason: 'no-winner-field',
+          rawLastRoundResultPresent: true,
+          rawLastRoundResultValue: lastResult.slice(0, 60),
+        });
       }
       
       // Check if this is a Holm Chucky loss and trigger animation (player pays into pot)
@@ -4034,7 +4083,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused')
+              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused, awaiting_next_round')
               .eq('id', gameId)
               .single();
             
@@ -4129,6 +4178,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               }
             }
             
+            // ── 357-auto-proceed-fired ──
+            if (freshGame?.game_type === '3-5-7') {
+              persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-auto-proceed-fired', {
+                roundNumber: game?.current_round,
+                rawLastRoundResultPresentBeforeClear: !!freshGame?.last_round_result,
+                awaitingNextRoundBeforeClear: !!freshGame?.awaiting_next_round,
+                nextRoundNumber: freshGame?.next_round_number,
+              });
+            }
+            
             // First, clear the result and proceed to next round
             await proceedToNextRound(gameId);
             
@@ -4194,6 +4253,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }, 4000);
       
+      // ── 357-auto-proceed-started ──
+      if (game?.game_type === '3-5-7') {
+        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-auto-proceed-started', {
+          roundNumber: game?.current_round,
+          delayMs: 4000,
+          rawLastRoundResultPresent: !!game?.last_round_result,
+        });
+      }
       console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
     }
     // If awaiting changed to false, clear any existing timer

@@ -60,6 +60,7 @@ import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
+import { persistTransition } from "@/lib/persistSyncDebugEvent";
 
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
@@ -2679,6 +2680,41 @@ export const MobileGameTable = ({
       return `${winnerName} won showdown (secret reveal)`;
     }
   }, [lastRoundResult, gameType, revealAtShowdown, currentPlayerStayed]);
+
+  // ── 357 announcement instrumentation ──
+  const prev357AnnouncementRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gameType === 'holm-game' || !gameId) return;
+    // The announcement renders when: lastRoundResult is present AND (awaitingNextRound OR roundStatus completed/showdown OR allDecisionsIn)
+    const announcementEligible = !!lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') &&
+      !(lastRoundResult.includes('won the game')) &&
+      !(threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
+      gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
+      (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive);
+    
+    const key = `${currentRound}-${lastRoundResult?.slice(0, 20)}`;
+    if (key === prev357AnnouncementRef.current) return;
+    
+    if (announcementEligible) {
+      prev357AnnouncementRef.current = key;
+      persistTransition(gameId, '3-5-7', 0, '357-announcement-rendered', {
+        roundNumber: currentRound,
+        rawLastRoundResultPresent: !!lastRoundResult,
+        awaitingNextRound,
+        roundStatus: roundStatus ?? null,
+        renderedMessageType: lastRoundResult?.includes('|||WINNER:') ? 'showdown' : lastRoundResult?.includes('pussy tax') ? 'pussy-tax' : 'other',
+      });
+    } else if (lastRoundResult && !announcementEligible) {
+      prev357AnnouncementRef.current = key;
+      persistTransition(gameId, '3-5-7', 0, '357-announcement-skipped', {
+        roundNumber: currentRound,
+        reason: gameStatus === 'configuring' ? 'configuring-phase' : gameStatus === 'ante_decision' ? 'ante-decision-phase' : 'eligibility-failed',
+        awaitingNextRound,
+        roundStatus: roundStatus ?? null,
+        rawLastRoundResultPresent: !!lastRoundResult,
+      });
+    }
+  }, [gameId, gameType, lastRoundResult, awaitingNextRound, roundStatus, allDecisionsIn, chuckyActive, gameStatus, currentRound, threeFiveSevenWinTriggerId]);
 
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
