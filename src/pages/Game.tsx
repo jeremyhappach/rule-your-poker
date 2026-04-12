@@ -4083,7 +4083,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused')
+              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused, awaiting_next_round')
               .eq('id', gameId)
               .single();
             
