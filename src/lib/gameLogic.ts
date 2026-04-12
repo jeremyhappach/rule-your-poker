@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, formatHandRankDetailed, has357Hand } from "./cardUtils";
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
+import { persistTransition } from "./persistSyncDebugEvent";
 
 /**
  * Snapshot all players' chip counts after a hand completes.
@@ -1945,6 +1946,18 @@ export async function endRound(gameId: string) {
               resultMessage: showdownResult
             });
             
+            // ── 357-showdown-resolved ──
+            persistTransition(gameId, '3-5-7', game.total_hands || 1, '357-showdown-resolved', {
+              roundId: round.id.slice(0, 8),
+              handNumber: game.total_hands || 1,
+              roundNumber: currentRound,
+              winnerPlayerId: winner.playerId.slice(0, 8),
+              loserPlayerIds: loserIds.map((id: string) => id.slice(0, 8)),
+              amount: amountPerLoser,
+              bothStayed: playersWhoStayed.length > 1,
+              handRanks: hands.map(h => ({ pid: h.playerId.slice(0, 8), rank: h.evaluation.rank, value: h.evaluation.value })),
+            }, round.id);
+            
             resultMessage = showdownResult;
           } else {
             console.log('[endRound] SHOWDOWN: ERROR - No winning player found');
@@ -1986,6 +1999,17 @@ export async function endRound(gameId: string) {
       rowsUpdated: updateResult?.length,
       awaiting: updateResult?.[0]?.awaiting_next_round
     });
+    
+    // ── 357-last-round-result-persisted ──
+    persistTransition(gameId, '3-5-7', game.total_hands || 1, '357-last-round-result-persisted', {
+      roundId: round.id.slice(0, 8),
+      roundNumber: currentRound,
+      lastRoundResultPresent: !!resultMessage,
+      lastRoundResultLength: resultMessage.length,
+      awaitingNextRound: !updateError && (updateResult?.length ?? 0) > 0,
+      winnerPlayerId: resultMessage.match(/\|\|\|WINNER:([^|]+)/)?.[1]?.slice(0, 8) ?? null,
+      amount: parseInt(resultMessage.match(/\|\|\|AMOUNT:(\d+)/)?.[1] ?? '0', 10),
+    }, round.id);
     
     return; // Exit after showdown handling
   } else {
