@@ -2554,12 +2554,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
       // If backend already flagged all_decisions_in but the round is still betting, force recovery.
-      if (holmAllDecidedButBettingStuck) {
-        console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound');
-        try {
-          await endHolmRound(gameId!);
-        } catch (e) {
-          console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
+      // MEDIUM FIX: Only attempt once per round identity to avoid spamming DB with repeated
+      // endHolmRound calls (which each do atomic lock attempts + player fetches).
+      if (holmAllDecidedButBettingStuck && latestRound?.id) {
+        const recoveryKey = `holm-betting-stuck-${latestRound.id}`;
+        if (holmRecoveryAttemptedRef.current !== recoveryKey) {
+          holmRecoveryAttemptedRef.current = recoveryKey;
+          console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound (once per round)');
+          try {
+            await endHolmRound(gameId!);
+          } catch (e) {
+            console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
+          }
         }
       }
       

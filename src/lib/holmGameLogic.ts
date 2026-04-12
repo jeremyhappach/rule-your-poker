@@ -2497,13 +2497,20 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
-  // Mark all existing rounds as completed before starting a new hand
-  console.log('[HOLM NEXT] Marking all existing rounds as completed');
-  await supabase
+  // Mark existing rounds for THIS dealer game as completed before starting a new hand
+  // MEDIUM FIX: Scope to current dealer_game_id to avoid mutating rounds from other dealer games
+  const currentDealerGameId = game.current_game_uuid;
+  console.log('[HOLM NEXT] Marking existing rounds as completed for dealer game:', currentDealerGameId?.slice(0, 8));
+  const roundCleanupQuery = supabase
     .from('rounds')
     .update({ status: 'completed' })
     .eq('game_id', gameId)
     .neq('status', 'completed');
+  if (currentDealerGameId) {
+    await roundCleanupQuery.eq('dealer_game_id', currentDealerGameId);
+  } else {
+    await roundCleanupQuery;
+  }
 
   console.log('[HOLM NEXT] Cleared awaiting_next_round; starting next hand');
 
