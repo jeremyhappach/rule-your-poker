@@ -7554,6 +7554,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </>
         )}
 
+  // ── 3-5-7 stuck-old-round detection (render-phase invariant) ──
+  useEffect(() => {
+    if (!is357GameType) return;
+    const auth357 = threeFiveSevenSync.authoritativeState;
+    const pres357 = threeFiveSevenSync.presentationState;
+    if (!auth357 || !pres357) return;
+    checkThreeFiveSevenStuckOldRound(
+      gameId!,
+      pres357.roundId,
+      auth357.roundId,
+      pres357.roundNumber,
+      auth357.roundNumber,
+      auth357.handNumber,
+    );
+
+    // Also log presentation source for diagnostics
+    persistSyncDebugEvent({
+      gameId: gameId!,
+      gameType: '3-5-7',
+      handNumber: auth357.handNumber,
+      roundId: auth357.roundId,
+      eventType: 'sync-gate',
+      severity: 'info',
+      eventName: '357-presentation-source',
+      payload: {
+        presentationRoundId: pres357.roundId.slice(0, 8),
+        presentationRoundNumber: pres357.roundNumber,
+        presentationPhase: pres357.roundStatus,
+        authoritativeRoundId: auth357.roundId.slice(0, 8),
+        authoritativeRoundNumber: auth357.roundNumber,
+        authoritativePhase: auth357.roundStatus,
+        isFrozen: threeFiveSevenSync.isFrozen,
+        isOptimistic: threeFiveSevenSync.isOptimistic,
+        match: pres357.roundId === auth357.roundId,
+      },
+    });
+  }, [is357GameType, threeFiveSevenSync.authoritativeState, threeFiveSevenSync.presentationState, gameId]);
 
 
 
