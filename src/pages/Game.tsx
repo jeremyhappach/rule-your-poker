@@ -4178,6 +4178,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               }
             }
             
+            // ── 357-auto-proceed-fired ──
+            if (freshGame?.game_type === '3-5-7') {
+              persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-auto-proceed-fired', {
+                roundNumber: game?.current_round,
+                rawLastRoundResultPresentBeforeClear: !!freshGame?.last_round_result,
+                awaitingNextRoundBeforeClear: !!freshGame?.awaiting_next_round,
+                nextRoundNumber: freshGame?.next_round_number,
+              });
+            }
+            
             // First, clear the result and proceed to next round
             await proceedToNextRound(gameId);
             
@@ -4243,6 +4253,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         }
       }, 4000);
       
+      // ── 357-auto-proceed-started ──
+      if (game?.game_type === '3-5-7') {
+        persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-auto-proceed-started', {
+          roundNumber: game?.current_round,
+          delayMs: 4000,
+          rawLastRoundResultPresent: !!game?.last_round_result,
+        });
+      }
       console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
     }
     // If awaiting changed to false, clear any existing timer
