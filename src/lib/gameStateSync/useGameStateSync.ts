@@ -173,9 +173,11 @@ export function useGameStateSync<T>(
 
   // ── Full reset (hand/round boundary) ─────────────────────────
   const reset = useCallback((newInitial: T) => {
+    const presPre = presentationRef.current;
     authRef.current = newInitial;
     optRef.current = null;
     frozenRef.current = false;
+    presentationRef.current = newInitial;
     setAuthoritative(newInitial);
     setOptimistic(null);
     setPresentation(newInitial);
@@ -184,6 +186,8 @@ export function useGameStateSync<T>(
       clearTimeout(optimisticTimerRef.current);
       optimisticTimerRef.current = null;
     }
+    // Expose pre-reset presentation for diagnostics (via ref accessible to callers)
+    (reset as any)._lastResetPresentationBefore = presPre;
   }, []);
 
   // Cleanup timer on unmount
