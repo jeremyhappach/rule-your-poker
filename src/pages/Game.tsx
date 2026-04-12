@@ -52,7 +52,7 @@ import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
-import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType } from "@/lib/threeFiveSevenSyncDiagnostics";
+import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
