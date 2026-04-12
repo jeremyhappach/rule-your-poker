@@ -4191,6 +4191,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 rawLastRoundResultPresentBeforeClear: !!freshGame?.last_round_result,
                 awaitingNextRoundBeforeClear: !!freshGame?.awaiting_next_round,
                 nextRoundNumber: freshGame?.next_round_number,
+                transitionType: classify357TransitionType(freshGame?.last_round_result),
               });
             }
             
@@ -4265,6 +4266,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           roundNumber: game?.current_round,
           delayMs: 4000,
           rawLastRoundResultPresent: !!game?.last_round_result,
+          transitionType: tType357,
         });
       }
       console.log('[AWAITING_NEXT_ROUND] Timer started, will fire in 4 seconds');
