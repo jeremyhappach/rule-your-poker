@@ -4716,18 +4716,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }, snapshot.roundId);
           threeFiveSevenSync.reset(snapshot);
 
-          // ── 357-presentation-initialized: verify reset took effect ──
-          const postResetPresentation = threeFiveSevenSync.presentationState;
-          persist357Investigation(gameData.id, snapshot.handNumber, '357-presentation-initialized', {
+          // ── 357-presentation-cleared-by-reset: trace what reset did ──
+          persist357Investigation(gameData.id, snapshot.handNumber, '357-presentation-cleared-by-reset', {
             resetTriggeredBy: 'identity-boundary',
-            presentationRoundId: postResetPresentation?.roundId?.slice(0, 8) ?? null,
-            presentationHandNumber: postResetPresentation?.handNumber ?? null,
-            presentationRoundNumber: postResetPresentation?.roundNumber ?? null,
-            expectedRoundId: snapshot.roundId.slice(0, 8),
-            expectedHandNumber: snapshot.handNumber,
-            expectedRoundNumber: snapshot.roundNumber,
-            match: postResetPresentation?.roundId === snapshot.roundId,
-            isFrozen: threeFiveSevenSync.isFrozen,
+            presentationRoundIdBefore: currentPresentation357?.roundId?.slice(0, 8) ?? null,
+            presentationHandNumberBefore: currentPresentation357?.handNumber ?? null,
+            presentationRoundNumberBefore: currentPresentation357?.roundNumber ?? null,
+            resetCalledWithRoundId: snapshot.roundId.slice(0, 8),
+            resetCalledWithHandNumber: snapshot.handNumber,
+            resetCalledWithRoundNumber: snapshot.roundNumber,
+            // After reset, presentationState is still the React state from current render (stale read).
+            // The REAL proof is whether presentation updates on the NEXT render.
+            postResetPresentationRoundId: threeFiveSevenSync.presentationState?.roundId?.slice(0, 8) ?? null,
+            isFrozenAfterReset: threeFiveSevenSync.isFrozen,
           }, snapshot.roundId);
         } else {
           const result = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
