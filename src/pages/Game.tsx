@@ -3512,6 +3512,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // 3-5-7 RECOVERY: If the atomic all_decisions_in flag is already true but the round is still
   // stuck in "betting", a previous client likely set the flag but crashed/refreshed before
   // calling endRound(). This must be idempotent and race-safe.
+  //
+  // CRITICAL GUARD: Verify that players in this round actually have decisions before firing.
+  // A stale all_decisions_in=true from a previous hand can race with a new round's creation,
+  // causing endRound to fire with zero decisions (which treats it as "everyone folded" → pussy tax).
   useEffect(() => {
     const is357Game =
       game?.game_type === "3-5-7" || game?.game_type === "3-5-7-game" || game?.game_type === "357";
@@ -3523,6 +3527,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
     if (!currentRound || currentRound.status !== "betting") return;
 
+    // CRITICAL: Verify at least one player has a decision for THIS round.
+    // If no decisions exist, all_decisions_in is stale from a prior round — reset it.
+    const activePlayers = (game?.players || []).filter(
+      (p: any) => p.status === "active" && !p.sitting_out
+    );
+    const withDecision = activePlayers.filter(
+      (p: any) => p.current_decision === "stay" || p.current_decision === "fold"
+    );
+
+    if (withDecision.length === 0 && activePlayers.length > 0) {
+      console.error("[357 RECOVERY] ❌ STALE all_decisions_in - no player decisions exist. Resetting flag.", {
+        gameId,
+        roundId: currentRound.id,
+        activeCount: activePlayers.length,
+      });
+      // Reset the stale flag so this effect doesn't loop
+      void supabase
+        .from("games")
+        .update({ all_decisions_in: false })
+        .eq("id", gameId);
+      return;
+    }
+
     const key = `${currentRound.id}:recoverEndRound`;
     if (recover357EndRoundKeyRef.current === key) return;
     recover357EndRoundKeyRef.current = key;
@@ -3532,6 +3559,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       roundId: currentRound.id,
       handNumber: game?.total_hands,
       roundNumber: game?.current_round,
+      decidedPlayers: withDecision.length,
     });
 
     void endRound(gameId).catch((err) => {
@@ -3547,6 +3575,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.status,
     game?.total_hands,
     game?.current_round,
+    game?.players,
     gameId,
   ]);
   

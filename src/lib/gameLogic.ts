@@ -1029,8 +1029,12 @@ async function checkAllDecisionsIn(gameId: string) {
   // (e.g. client crash / refresh right after the atomic flag update). In that case the game
   // would be permanently stuck because this function would "skip" forever.
   // endRound is idempotent and has its own atomic round lock, so it's safe to call here.
+  //
+  // CRITICAL GUARD: Before calling endRound, verify that at least one player in the CURRENT
+  // round actually has a decision. A stale all_decisions_in=true from a previous hand/round
+  // can race with a new round creation, causing endRound to fire with zero decisions.
   if (game?.all_decisions_in) {
-    console.warn(`[CHECK_ALL_DECISIONS] all_decisions_in already true - attempting recovery endRound`, {
+    console.warn(`[CHECK_ALL_DECISIONS] all_decisions_in already true - checking if decisions exist`, {
       gameId: shortGameId,
       status: game.status,
       isPaused: game.is_paused,
@@ -1038,6 +1042,28 @@ async function checkAllDecisionsIn(gameId: string) {
     });
 
     if (!game.is_paused && game.status === 'in_progress') {
+      // Verify players actually have decisions before allowing recovery endRound
+      const { data: currentPlayers } = await supabase
+        .from('players')
+        .select('id, current_decision, status, sitting_out')
+        .eq('game_id', gameId)
+        .eq('status', 'active')
+        .eq('sitting_out', false);
+
+      const withDecision = (currentPlayers || []).filter(
+        p => p.current_decision === 'stay' || p.current_decision === 'fold'
+      );
+
+      if (withDecision.length === 0 && (currentPlayers || []).length > 0) {
+        // Stale all_decisions_in from a prior round — reset it and bail
+        console.error(`[CHECK_ALL_DECISIONS] ❌ STALE all_decisions_in - ${(currentPlayers || []).length} active players but ZERO decisions. Resetting flag.`);
+        await supabase
+          .from('games')
+          .update({ all_decisions_in: false })
+          .eq('id', gameId);
+        return;
+      }
+
       try {
         await endRound(gameId);
       } catch (err) {
