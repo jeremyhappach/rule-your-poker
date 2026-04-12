@@ -60,8 +60,7 @@ import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
-import { persistTransition } from "@/lib/persistSyncDebugEvent";
-import { classify357TransitionType } from "@/lib/threeFiveSevenSyncDiagnostics";
+import { classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
@@ -2699,7 +2698,7 @@ export const MobileGameTable = ({
     const tType = classify357TransitionType(lastRoundResult);
     if (announcementEligible) {
       prev357AnnouncementRef.current = key;
-      persistTransition(gameId, '3-5-7', 0, '357-announcement-rendered', {
+      persist357Investigation(gameId, 0, '357-announcement-rendered', {
         roundNumber: currentRound,
         rawLastRoundResultPresent: !!lastRoundResult,
         awaitingNextRound,
@@ -2709,7 +2708,7 @@ export const MobileGameTable = ({
       });
     } else if (lastRoundResult && !announcementEligible) {
       prev357AnnouncementRef.current = key;
-      persistTransition(gameId, '3-5-7', 0, '357-announcement-skipped', {
+      persist357Investigation(gameId, 0, '357-announcement-skipped', {
         roundNumber: currentRound,
         reason: gameStatus === 'configuring' ? 'configuring-phase' : gameStatus === 'ante_decision' ? 'ante-decision-phase' : 'eligibility-failed',
         awaitingNextRound,
