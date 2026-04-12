@@ -696,6 +696,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
   // Convenience alias: null when not a 3-5-7 game or no round active yet
   const threeFiveSevenView = threeFiveSevenSync.presentationState;
+  const threeFiveSevenRefView = threeFiveSevenSync.presentationRefValue as ThreeFiveSevenAuthoritativeSnapshot | null;
+
+  // ── 357: RENDER-TIME wiring diagnostic (fires every render, not in useEffect) ──
+  // This proves whether React state vs ref vs effective are in sync AT RENDER TIME.
+  const prev357RenderDiagRef = useRef<string>('');
+  if (is357GameType && gameId) {
+    const reactState = threeFiveSevenView;
+    const refValue = threeFiveSevenRefView;
+    const authState = threeFiveSevenSync.authoritativeState;
+    const effectiveState = threeFiveSevenSync.effectiveState;
+    const fingerprint = `${reactState?.roundId ?? 'null'}|${refValue?.roundId ?? 'null'}|${authState?.roundId ?? 'null'}`;
+    if (fingerprint !== prev357RenderDiagRef.current) {
+      prev357RenderDiagRef.current = fingerprint;
+      const reactIsNull = !reactState;
+      const refIsNull = !refValue;
+      const authIsNull = !authState;
+      const mismatch = (!reactIsNull !== !refIsNull) || (!reactIsNull !== !authIsNull);
+      persist357Investigation(gameId, authState?.handNumber ?? 0, '357-render-wiring-check', {
+        reactStateRoundId: reactState?.roundId?.slice(0, 8) ?? null,
+        reactStateHandNumber: reactState?.handNumber ?? null,
+        reactStateRoundNumber: reactState?.roundNumber ?? null,
+        refValueRoundId: refValue?.roundId?.slice(0, 8) ?? null,
+        refValueHandNumber: refValue?.handNumber ?? null,
+        refValueRoundNumber: refValue?.roundNumber ?? null,
+        authoritativeRoundId: authState?.roundId?.slice(0, 8) ?? null,
+        authoritativeHandNumber: authState?.handNumber ?? null,
+        effectiveRoundId: (effectiveState as ThreeFiveSevenAuthoritativeSnapshot | null)?.roundId?.slice(0, 8) ?? null,
+        isFrozen: threeFiveSevenSync.isFrozen,
+        isOptimistic: threeFiveSevenSync.isOptimistic,
+        reactIsNull,
+        refIsNull,
+        authIsNull,
+        mismatch,
+      });
+    }
+  }
 
   // 3-5-7 presentation players — overlay decisions from presentation state
   // Action handlers continue to use raw `players` for mutation correctness.
