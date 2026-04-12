@@ -3880,6 +3880,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       
       // ── 357-awaiting-next-round-trigger ──
+      const tType357 = game?.game_type === '3-5-7' ? classify357TransitionType(game?.last_round_result) : null;
       if (game?.game_type === '3-5-7') {
         const syncView = threeFiveSevenSync.presentationState;
         persistTransition(gameId, '3-5-7', game?.total_hands || 1, '357-awaiting-next-round-trigger', {
@@ -3890,6 +3891,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           syncLastRoundResultPresent: !!syncView?.lastRoundResult,
           syncRoundNumber: syncView?.roundNumber ?? null,
           isFrozen: threeFiveSevenSync.isFrozen,
+          transitionType: tType357,
         });
       }
       
