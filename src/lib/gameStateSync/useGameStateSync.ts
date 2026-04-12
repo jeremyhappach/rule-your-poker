@@ -39,12 +39,14 @@ export function useGameStateSync<T>(
   const authRef = useRef<T>(initialState);
   const optRef = useRef<T | null>(null);
   const frozenRef = useRef(false);
+  const presentationRef = useRef<T>(initialState);
   const optimisticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
   useEffect(() => { optRef.current = optimistic; }, [optimistic]);
   useEffect(() => { frozenRef.current = frozen; }, [frozen]);
+  useEffect(() => { presentationRef.current = presentation; }, [presentation]);
 
   // The "effective" state: optimistic if active, else authoritative
   const effective = optimistic ?? authoritative;
