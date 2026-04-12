@@ -2554,12 +2554,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
       // If backend already flagged all_decisions_in but the round is still betting, force recovery.
-      if (holmAllDecidedButBettingStuck) {
-        console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound');
-        try {
-          await endHolmRound(gameId!);
-        } catch (e) {
-          console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
+      // MEDIUM FIX: Only attempt once per round identity to avoid spamming DB with repeated
+      // endHolmRound calls (which each do atomic lock attempts + player fetches).
+      if (holmAllDecidedButBettingStuck && latestRound?.id) {
+        const recoveryKey = `holm-betting-stuck-${latestRound.id}`;
+        if (holmRecoveryAttemptedRef.current !== recoveryKey) {
+          holmRecoveryAttemptedRef.current = recoveryKey;
+          console.log('[CRITICAL POLL] Detected Holm all_decisions_in=true but round still betting - attempting to run endHolmRound (once per round)');
+          try {
+            await endHolmRound(gameId!);
+          } catch (e) {
+            console.error('[CRITICAL POLL] Failed to recover Holm betting-stuck state:', e);
+          }
         }
       }
       
@@ -3508,6 +3514,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.game_type,
     gameId
   ]);
+  // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
+  const holmRecoveryAttemptedRef = useRef<string | null>(null);
+
   // Auto-execute pre-fold/pre-stay OR auto-fold when it becomes player's turn in Holm games
   // For 3-5-7, auto-fold immediately when round starts if player has auto_fold=true
   const instantAutoFoldKeyRef = useRef<string | null>(null);
