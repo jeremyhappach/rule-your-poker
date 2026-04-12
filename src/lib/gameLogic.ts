@@ -1946,8 +1946,9 @@ export async function endRound(gameId: string) {
               resultMessage: showdownResult
             });
             
-            // ── 357-showdown-resolved ──
-            persistTransition(gameId, '3-5-7', game.total_hands || 1, '357-showdown-resolved', {
+            // ── 357-showdown-resolved (always-on investigation) ──
+            const { persist357Investigation } = await import('./threeFiveSevenSyncDiagnostics');
+            persist357Investigation(gameId, game.total_hands || 1, '357-showdown-resolved', {
               roundId: round.id.slice(0, 8),
               handNumber: game.total_hands || 1,
               roundNumber: currentRound,
@@ -2001,9 +2002,9 @@ export async function endRound(gameId: string) {
       awaiting: updateResult?.[0]?.awaiting_next_round
     });
     
-    // ── 357-last-round-result-persisted ──
-    const { classify357TransitionType } = await import('./threeFiveSevenSyncDiagnostics');
-    persistTransition(gameId, '3-5-7', game.total_hands || 1, '357-last-round-result-persisted', {
+    // ── 357-last-round-result-persisted (always-on investigation) ──
+    const { classify357TransitionType, persist357Investigation: persist357Inv } = await import('./threeFiveSevenSyncDiagnostics');
+    persist357Inv(gameId, game.total_hands || 1, '357-last-round-result-persisted', {
       roundId: round.id.slice(0, 8),
       roundNumber: currentRound,
       lastRoundResultPresent: !!resultMessage,
