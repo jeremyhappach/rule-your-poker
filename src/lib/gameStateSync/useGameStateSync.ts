@@ -164,10 +164,12 @@ export function useGameStateSync<T>(
     setFrozen(false);
     // Commit latest effective to presentation
     const latest = optRef.current ?? authRef.current;
+    presentationRef.current = latest;
     setPresentation(latest);
   }, []);
 
   const commitToPresentation = useCallback((state: T) => {
+    presentationRef.current = state;
     setPresentation(state);
   }, []);
 
