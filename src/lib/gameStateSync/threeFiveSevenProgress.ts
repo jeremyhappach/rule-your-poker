@@ -48,6 +48,7 @@ export interface ThreeFiveSevenAuthoritativeSnapshot {
   // Game context
   pot: number;
   lastRoundResult: string | null;
+  awaitingNextRound: boolean;
   buckPosition: number;
   dealerPosition: number;
   cardsDealt: number;

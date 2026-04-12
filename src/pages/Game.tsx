@@ -384,6 +384,7 @@ function buildThreeFiveSevenSnapshot(
     decisionDeadline: currentRound.decision_deadline,
     pot: gameData.pot ?? 0,
     lastRoundResult: gameData.last_round_result ?? null,
+    awaitingNextRound: gameData.awaiting_next_round ?? false,
     buckPosition: gameData.buck_position ?? 0,
     dealerPosition: gameData.dealer_position ?? 0,
     cardsDealt: currentRound.cards_dealt,
@@ -8084,14 +8085,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               playerCards={isInProgress ? (cardStateContext?.roundId && currentRound?.id && cardStateContext.roundId !== currentRound.id ? [] : playerCards) : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
-              lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
+              lastRoundResult={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
               potMaxValue={game.pot_max_value || 10}
               pendingSessionEnd={game.pending_session_end || false}
-              awaitingNextRound={isInProgress ? (game.awaiting_next_round || false) : false}
+              awaitingNextRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
               gameType={game.game_type}
               communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
