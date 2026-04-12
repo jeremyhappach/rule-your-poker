@@ -81,6 +81,8 @@ export interface GameStateSyncHandle<T> {
   // ── Read ──────────────────────────────────────────────────────
   /** The state the UI should render. */
   presentationState: T;
+  /** Synchronous ref value of presentation (bypasses React async state). */
+  presentationRefValue: T;
   /** Latest authoritative state from DB. */
   authoritativeState: T;
   /** Current optimistic state (if any), else authoritative. */
