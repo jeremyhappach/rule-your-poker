@@ -1499,6 +1499,26 @@ export async function endRound(gameId: string) {
   if (playersNoDecision.length > 0) {
     console.error(`[END_ROUND] ⚠️ WARNING: ${playersNoDecision.length} players have NO DECISION! positions: [${playersNoDecision.map(p => p.position).join(', ')}]`);
   }
+
+  // CRITICAL GUARD: If NO player has any decision (stay or fold), this is a premature call.
+  // This happens when a stale all_decisions_in=true from a previous hand races with the
+  // new round creation. Revert the atomic lock so the round can be processed correctly later.
+  const activePlayers = allPlayers.filter(p => p.status === 'active' && !p.sitting_out);
+  const activeWithDecision = activePlayers.filter(p => p.current_decision === 'stay' || p.current_decision === 'fold');
+  if (activeWithDecision.length === 0 && activePlayers.length > 0) {
+    console.error(`[END_ROUND] ❌ PREMATURE CALL - ${activePlayers.length} active players but ZERO decisions. Reverting round lock.`);
+    // Revert: set round back to betting so the real endRound can process it later
+    await supabase
+      .from('rounds')
+      .update({ status: 'betting' })
+      .eq('id', round.id);
+    // Also reset all_decisions_in since it was stale
+    await supabase
+      .from('games')
+      .update({ all_decisions_in: false })
+      .eq('id', gameId);
+    return;
+  }
   
   let resultMessage = '';
 
