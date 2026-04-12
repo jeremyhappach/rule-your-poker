@@ -203,6 +203,7 @@ export function useGameStateSync<T>(
 
   return {
     presentationState: presentation,
+    presentationRefValue: presentationRef.current,
     authoritativeState: authoritative,
     effectiveState: effective,
     isFrozen: frozen,
