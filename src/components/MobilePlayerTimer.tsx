@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 
 interface MobilePlayerTimerProps {
   timeLeft: number | null;
@@ -18,6 +18,21 @@ export const MobilePlayerTimer = ({
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+
+  // Track activation identity to suppress transition on first active frame
+  const wasActiveRef = useRef(false);
+  const [suppressTransition, setSuppressTransition] = useState(false);
+
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) {
+      // Just became active — suppress transition for this frame
+      setSuppressTransition(true);
+      requestAnimationFrame(() => {
+        setSuppressTransition(false);
+      });
+    }
+    wasActiveRef.current = isActive;
+  }, [isActive]);
   
   const progress = useMemo(() => {
     if (!isActive || timeLeft === null || maxTime <= 0) return 0;
