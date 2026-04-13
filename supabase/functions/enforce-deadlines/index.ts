@@ -670,10 +670,11 @@ serve(async (req) => {
              actionsTaken.push('Bot timeout: Skipped (already processed)');
            }
          } else {
-           // Human turn: lock the decision to fold, but NEVER mutate persistent auto_fold.
+           // Human turn: lock the decision to fold AND enable persistent auto_fold.
+           // This ensures the player stays in auto-fold mode until they manually opt back in.
            const { data: humanUpdateResult } = await supabase
              .from('players')
-             .update({ current_decision: 'fold', decision_locked: true })
+             .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
              .eq('id', currentTurnPlayer.id)
              .eq('decision_locked', false)
              .select();
