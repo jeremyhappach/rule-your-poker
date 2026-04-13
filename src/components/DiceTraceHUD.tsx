@@ -55,6 +55,8 @@ export function isDiceTraceRecording() {
 }
 
 export const DiceTraceHUD: React.FC<DiceTraceHUDProps> = ({ enabled = true }) => {
+  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
+  const { HIDE_DEBUG_UI } = await import("@/lib/debugUIVisibility");
   const [recording, setRecording] = useState(false);
   const [copied, setCopied] = useState(false);
   const [eventCount, setEventCount] = useState(0);
