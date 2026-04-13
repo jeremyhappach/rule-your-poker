@@ -670,10 +670,11 @@ serve(async (req) => {
              actionsTaken.push('Bot timeout: Skipped (already processed)');
            }
          } else {
-           // Human turn: lock the decision to fold, but NEVER mutate persistent auto_fold.
+           // Human turn: lock the decision to fold AND enable persistent auto_fold.
+           // This ensures the player stays in auto-fold mode until they manually opt back in.
            const { data: humanUpdateResult } = await supabase
              .from('players')
-             .update({ current_decision: 'fold', decision_locked: true })
+             .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
              .eq('id', currentTurnPlayer.id)
              .eq('decision_locked', false)
              .select();
@@ -684,22 +685,22 @@ serve(async (req) => {
            } else {
              actionsTaken.push(`Decision timeout: Auto-folded player at position ${currentTurnPos}`);
 
-             // DEBUG LOG: Log the timeout decision (auto_fold is the player's existing preference; we do not change it)
-             try {
-               await supabase
-                 .from('game_state_debug_log')
-                 .insert({
-                   game_id: gameId,
-                   dealer_game_id: game.current_game_uuid || null,
-                   round_id: currentRound.id,
-                   player_id: currentTurnPlayer.id,
-                   event_type: 'DEADLINE_EXPIRED',
-                   game_status: game.status,
-                   round_status: currentRound.status,
-                   player_decision: 'fold',
-                   decision_locked: true,
-                   auto_fold: !!(currentTurnPlayer as any).auto_fold,
-                   deadline_expired: true,
+              // DEBUG LOG: Log the timeout decision with auto_fold now set to true
+              try {
+                await supabase
+                  .from('game_state_debug_log')
+                  .insert({
+                    game_id: gameId,
+                    dealer_game_id: game.current_game_uuid || null,
+                    round_id: currentRound.id,
+                    player_id: currentTurnPlayer.id,
+                    event_type: 'DEADLINE_EXPIRED',
+                    game_status: game.status,
+                    round_status: currentRound.status,
+                    player_decision: 'fold',
+                    decision_locked: true,
+                    auto_fold: true,
+                    deadline_expired: true,
                    source_location: 'enforce-deadlines:holm-timeout',
                    details: {
                      position: currentTurnPos,
