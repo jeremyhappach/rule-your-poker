@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Circle, Square, Copy, Check } from "lucide-react";
+import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 export interface DiceTraceEvent {
   ts: number;
@@ -101,6 +102,8 @@ export const DiceTraceHUD: React.FC<DiceTraceHUDProps> = ({ enabled = true }) =>
     }
   }, []);
 
+  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION
+  if (HIDE_DEBUG_UI) return null;
   if (!enabled) return null;
 
   return (
