@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Circle, Square, Copy, Check } from "lucide-react";
+import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 export interface DiceTraceEvent {
   ts: number;
