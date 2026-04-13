@@ -6031,21 +6031,7 @@ export const MobileGameTable = ({
             </div>
           ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
             /* Player timer bar - shown when it's player's turn to decide */
-            <div key={`timer-${currentRound}-${currentTurnPosition}`} className="w-full">
-              <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
-                <div 
-                  className={`h-full transition-[width] duration-1000 ease-linear ${
-                    timeLeft <= 3 ? 'bg-red-500' : 
-                    timeLeft <= 5 ? 'bg-yellow-500' : 
-                    'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.max(0, (timeLeft / maxTime) * 100)}%` }}
-                />
-              </div>
-              <p className="text-xs text-center text-muted-foreground mt-0.5">
-                {timeLeft}s remaining
-              </p>
-            </div>
+            <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
           ) : isGameOver && lastRoundResult && !(
             gameType !== 'holm-game' && (
               threeFiveSevenWinTriggerId || 
