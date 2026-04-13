@@ -2339,11 +2339,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return Math.max(0, Math.floor((deadline - now) / 1000));
     };
 
-    // Seed visual timer to FULL on the first frame of a new deadline.
-    // The first interval tick (1s later) will sync to the real server-derived value.
-    // This prevents the meter from appearing at ~27-28s due to client receive latency.
+    // Set real backend-derived time immediately — no fake seeding.
+    // The TimerBar and MobilePlayerTimer suppress CSS transitions on the
+    // first frame of a new deadline identity, so no fill-up glitch occurs.
     if (!isPausedRef.current) {
-      setTimeLeft(decisionTimerRef.current);
+      setTimeLeft(calculateRemaining());
     }
 
     // Update every second - check pause state via ref FIRST before any calculation
