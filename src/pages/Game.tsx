@@ -2339,9 +2339,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return Math.max(0, Math.floor((deadline - now) / 1000));
     };
 
-    // Set initial value only if not paused
+    // Seed visual timer to FULL on the first frame of a new deadline.
+    // The first interval tick (1s later) will sync to the real server-derived value.
+    // This prevents the meter from appearing at ~27-28s due to client receive latency.
     if (!isPausedRef.current) {
-      setTimeLeft(calculateRemaining());
+      setTimeLeft(decisionTimerRef.current);
     }
 
     // Update every second - check pause state via ref FIRST before any calculation
