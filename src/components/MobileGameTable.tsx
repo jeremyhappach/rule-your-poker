@@ -166,6 +166,33 @@ interface ChatBubbleData {
   username?: string;
   expiresAt: number;
 }
+/** Timer bar that snaps to full on mount (no fill-up animation) */
+const TimerBar = ({ timeLeft, maxTime }: { timeLeft: number; maxTime: number }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // Enable CSS transition only after the first paint so the bar
+    // appears instantly at its correct width on mount.
+    requestAnimationFrame(() => setMounted(true));
+  }, []);
+  const pct = Math.max(0, (timeLeft / maxTime) * 100);
+  return (
+    <div className="w-full">
+      <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
+        <div
+          className={`h-full ${mounted ? 'transition-[width] duration-1000 ease-linear' : ''} ${
+            timeLeft <= 3 ? 'bg-red-500' :
+            timeLeft <= 5 ? 'bg-yellow-500' :
+            'bg-green-500'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-center text-muted-foreground mt-0.5">
+        {timeLeft}s remaining
+      </p>
+    </div>
+  );
+};
 
 interface MobileGameTableProps {
   gameId?: string;
