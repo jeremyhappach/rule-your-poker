@@ -225,6 +225,41 @@ export function YahtzeeGameTable({
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
 
+  // ── HELD-DIE TRACE: Presentation state cutover ──
+  const prevPresentationTurnRef = useRef<string | null>(null);
+  const prevPresentationRollKeyRef = useRef<string | number | null>(null);
+  useEffect(() => {
+    if (!viewState?.currentTurnPlayerId) return;
+    const turnPs = viewState.playerStates[viewState.currentTurnPlayerId];
+    if (!turnPs?.dice?.length) return;
+
+    const turnChanged = prevPresentationTurnRef.current !== viewState.currentTurnPlayerId;
+    const rollChanged = prevPresentationRollKeyRef.current !== (turnPs.rollKey ?? null);
+    prevPresentationTurnRef.current = viewState.currentTurnPlayerId;
+    prevPresentationRollKeyRef.current = turnPs.rollKey ?? null;
+
+    if (!turnChanged && !rollChanged) return;
+
+    import('@/lib/yahtzeeHeldDieTrace').then(({ traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled }) => {
+      if (!isYahtzeeHeldTraceEnabled()) return;
+      const dice = turnPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+      const reason = turnChanged ? 'turn-change' : 'roll-end';
+      traceYahtzeeHeldDie({
+        gameId,
+        dealerGameId: dealerGameId ?? null,
+        roundId: currentRoundId ?? null,
+        handNumber: viewState.currentRound ?? 0,
+        turnPlayerId: viewState.currentTurnPlayerId,
+        rollNumber: 3 - turnPs.rollsRemaining,
+        rollGeneration: turnPs.rollKey != null ? String(turnPs.rollKey) : null,
+        sourceLayer: 'presentation',
+        renderReason: reason,
+        dice: buildDieTuples(dice, 'presentation', reason, gameId, turnPs.rollKey != null ? String(turnPs.rollKey) : null),
+        timestamp: Date.now(),
+      });
+    });
+  }, [viewState?.currentTurnPlayerId, viewState?.playerStates, gameId, dealerGameId, currentRoundId]);
+
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
   const [lastScoredCategory, setLastScoredCategory] = useState<YahtzeeCategory | null>(null);
