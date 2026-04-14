@@ -16,24 +16,15 @@
 import { persistInvariantViolation } from './persistSyncDebugEvent';
 
 // ── Toggle ────────────────────────────────────────────────────
+// Trace is ALWAYS active during held-die corruption investigation.
+// Console logging is sampled (1-in-10) to avoid spam.
 
-let _enabled: boolean | null = null;
+let _consoleLogCounter = 0;
+const CONSOLE_SAMPLE_RATE = 10; // log 1 in N trace events
 
-function checkEnabled(): boolean {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const v = params.get('debug_yahtzee_held_trace');
-    if (v === '' || v === '1' || v?.toLowerCase() === 'true') return true;
-  } catch { /* */ }
-  try {
-    if (window.localStorage.getItem('ptp_debug_yahtzee_held_trace') === '1') return true;
-  } catch { /* */ }
-  return false;
-}
-
+/** @deprecated Always returns true — kept for call-site compat */
 export function isYahtzeeHeldTraceEnabled(): boolean {
-  if (_enabled === null) _enabled = checkEnabled();
-  return _enabled;
+  return true;
 }
 
 // ── Per-die tuple ─────────────────────────────────────────────
