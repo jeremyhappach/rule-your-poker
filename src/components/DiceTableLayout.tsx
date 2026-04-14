@@ -263,6 +263,7 @@ export function DiceTableLayout({
   rollKey,
   isQualified,
   cacheKey,
+  traceContext,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
   const { isTablet } = useDeviceSize();
@@ -1639,6 +1640,52 @@ export function DiceTableLayout({
     prevFrameHeldSlotsRef.current = currentHeldSlots;
   }
   // ── END INVARIANT CHECKS ──
+
+  // ── HELD-DIE CORRUPTION TRACE: Render boundary ──
+  if (traceContext && gameType === 'yahtzee' && precomputedRenderDecisions.length > 0) {
+    import('@/lib/yahtzeeHeldDieTrace').then(({
+      traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled,
+      checkHeldDieInScatter, checkHeldDieReanimated, checkValueHoldMismatch, checkCrossRollStateReuse,
+    }) => {
+      const rollGen = rollKey != null ? String(rollKey) : null;
+      const renderDice = precomputedRenderDecisions.map(d => ({ value: d.value, isHeld: d.isHeld }));
+      const renderDecisions = precomputedRenderDecisions.map(d => ({
+        displayedRow: d.displayedRow,
+        transformOwner: d.transformOwner,
+        slotIndexInHeldRow: d.slotIndexInHeldRow,
+        originalIndex: d.originalIndex,
+        value: d.value,
+        isHeld: d.isHeld,
+      }));
+
+      // Always run invariant checks (persist violations regardless of trace flag)
+      if (traceContext.authoritativeDice) {
+        checkHeldDieInScatter(traceContext.gameId, traceContext.handNumber, traceContext.roundId, traceContext.authoritativeDice, renderDecisions);
+        checkValueHoldMismatch(traceContext.gameId, traceContext.handNumber, traceContext.roundId, traceContext.authoritativeDice, renderDecisions);
+      }
+      checkHeldDieReanimated(traceContext.gameId, traceContext.handNumber, traceContext.roundId, renderDecisions);
+      checkCrossRollStateReuse(traceContext.gameId, traceContext.handNumber, traceContext.roundId, rollGen, renderDecisions);
+
+      // Verbose trace when enabled
+      if (isYahtzeeHeldTraceEnabled()) {
+        traceYahtzeeHeldDie({
+          gameId: traceContext.gameId,
+          dealerGameId: traceContext.dealerGameId,
+          roundId: traceContext.roundId,
+          handNumber: traceContext.handNumber,
+          turnPlayerId: traceContext.turnPlayerId,
+          rollNumber: traceContext.rollNumber,
+          rollGeneration: rollGen,
+          sourceLayer: 'render',
+          renderReason: isAnimatingFlyIn ? 'roll-start' : shouldUseFreezePresentation ? 'freeze' : 'roll-end',
+          dice: buildDieTuples(renderDice, 'render',
+            isAnimatingFlyIn ? 'roll-start' : shouldUseFreezePresentation ? 'freeze' : 'roll-end',
+            traceContext.gameId, rollGen, renderDecisions),
+          timestamp: Date.now(),
+        });
+      }
+    });
+  }
 
   const renderedDice = orderedDice.map((entry) => entry.die);
   const heldSlotIndexByDie = new Map<number, number>(
