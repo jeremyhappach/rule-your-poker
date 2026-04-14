@@ -803,15 +803,17 @@ export function DiceTableLayout({
       const d = visualDice[i];
       if (!d) return false;
 
-      // CRITICAL FIX for Roll 3 animation:
-      // When heldMaskBeforeComplete is provided (from the roller), trust it EXCLUSIVELY.
-      // The old OR logic (!!heldMask[i] || !!d.isHeld) broke Roll 3 because the game logic
-      // auto-marks ALL dice as isHeld when rollsRemaining === 0. This caused unheldIndices
-      // to be empty, skipping the fly-in animation entirely for observers.
-      //
-      // The mask is authoritative: it captures what was held at the START of the roll.
-      // The current d.isHeld can already reflect post-roll state (all held on Roll 3).
-      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+      // FIX B2: A die with isHeld === true must NEVER participate in fly-in animation.
+      // Use authoritative/presentation isHeld as the single source of truth.
+      // This prevents held dice from re-entering scatter or re-animating.
+      if (d.isHeld) return false;
+
+      // Also check authoritative state if available (traceContext)
+      if (traceContext?.authoritativeDice?.[i]?.isHeld) return false;
+
+      // When heldMaskBeforeComplete is provided (from the roller), trust it.
+      // The mask captures what was held at the START of the roll.
+      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : false;
       return !wasHeldAtRollStart;
     });
 
