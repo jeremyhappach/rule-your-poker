@@ -755,7 +755,22 @@ export function DiceTableLayout({
       rollKey !== undefined &&
       rollKey !== prevRollKeyRef.current &&
       (lastSeenGlobal === undefined || rollKey !== lastSeenGlobal);
-    if (!isNewRollKey) return;
+    if (!isNewRollKey) {
+      // Not a new roll — but if we're mid-animation, don't interrupt
+      return;
+    }
+
+    // FIX A: If a fly-in is currently running, cancel it before starting the new one.
+    if (isAnimatingFlyIn) {
+      console.log('[FIX_A] Cancelling in-progress fly-in for new rollKey', { oldRollKey: prevRollKeyRef.current, newRollKey: rollKey });
+      setIsAnimatingFlyIn(false);
+      setAnimatingDiceIndices([]);
+      setShowUnheldDice(true);
+      if (animationCompleteTimeoutRef.current) {
+        clearTimeout(animationCompleteTimeoutRef.current);
+        animationCompleteTimeoutRef.current = null;
+      }
+    }
 
     prevRollKeyRef.current = rollKey;
     if (cacheKeyStr) lastSeenRollKeyByCacheKey.set(cacheKeyStr, rollKey);
