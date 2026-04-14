@@ -192,6 +192,30 @@ export function YahtzeeGameTable({
     if (yahtzeeState) {
       console.log('[YAHTZEE_SYNC] Incoming authoritative snapshot', describeYahtzeeSnapshot(yahtzeeState));
       yahtzeeSync.receiveAuthoritativeUpdate(yahtzeeState);
+
+      // ── HELD-DIE TRACE: Authoritative update accepted ──
+      if (yahtzeeState.currentTurnPlayerId) {
+        const turnPs = yahtzeeState.playerStates[yahtzeeState.currentTurnPlayerId];
+        if (turnPs?.dice?.length) {
+          import('@/lib/yahtzeeHeldDieTrace').then(({ traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled }) => {
+            if (!isYahtzeeHeldTraceEnabled()) return;
+            const dice = turnPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+            traceYahtzeeHeldDie({
+              gameId,
+              dealerGameId: dealerGameId ?? null,
+              roundId: currentRoundId ?? null,
+              handNumber: yahtzeeState.currentRound ?? 0,
+              turnPlayerId: yahtzeeState.currentTurnPlayerId,
+              rollNumber: 3 - turnPs.rollsRemaining,
+              rollGeneration: turnPs.rollKey != null ? String(turnPs.rollKey) : null,
+              sourceLayer: 'authoritative',
+              renderReason: 'authoritative-update',
+              dice: buildDieTuples(dice, 'authoritative', 'authoritative-update', gameId, turnPs.rollKey != null ? String(turnPs.rollKey) : null),
+              timestamp: Date.now(),
+            });
+          });
+        }
+      }
     }
   }, [yahtzeeState]);
 
@@ -200,6 +224,41 @@ export function YahtzeeGameTable({
   const authoritativeYahtzeeState = yahtzeeSync.authoritativeState;
   // Alias: all RENDER paths use viewState; all MUTATION/BOT paths use yahtzeeState
   const viewState = stableYahtzeeState;
+
+  // ── HELD-DIE TRACE: Presentation state cutover ──
+  const prevPresentationTurnRef = useRef<string | null>(null);
+  const prevPresentationRollKeyRef = useRef<string | number | null>(null);
+  useEffect(() => {
+    if (!viewState?.currentTurnPlayerId) return;
+    const turnPs = viewState.playerStates[viewState.currentTurnPlayerId];
+    if (!turnPs?.dice?.length) return;
+
+    const turnChanged = prevPresentationTurnRef.current !== viewState.currentTurnPlayerId;
+    const rollChanged = prevPresentationRollKeyRef.current !== (turnPs.rollKey ?? null);
+    prevPresentationTurnRef.current = viewState.currentTurnPlayerId;
+    prevPresentationRollKeyRef.current = turnPs.rollKey ?? null;
+
+    if (!turnChanged && !rollChanged) return;
+
+    import('@/lib/yahtzeeHeldDieTrace').then(({ traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled }) => {
+      if (!isYahtzeeHeldTraceEnabled()) return;
+      const dice = turnPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+      const reason = turnChanged ? 'turn-change' : 'roll-end';
+      traceYahtzeeHeldDie({
+        gameId,
+        dealerGameId: dealerGameId ?? null,
+        roundId: currentRoundId ?? null,
+        handNumber: viewState.currentRound ?? 0,
+        turnPlayerId: viewState.currentTurnPlayerId,
+        rollNumber: 3 - turnPs.rollsRemaining,
+        rollGeneration: turnPs.rollKey != null ? String(turnPs.rollKey) : null,
+        sourceLayer: 'presentation',
+        renderReason: reason,
+        dice: buildDieTuples(dice, 'presentation', reason, gameId, turnPs.rollKey != null ? String(turnPs.rollKey) : null),
+        timestamp: Date.now(),
+      });
+    });
+  }, [viewState?.currentTurnPlayerId, viewState?.playerStates, gameId, dealerGameId, currentRoundId]);
 
   const [isRolling, setIsRolling] = useState(false);
   const [uiRolling, setUiRolling] = useState(false);
@@ -1822,6 +1881,21 @@ export function YahtzeeGameTable({
                 animationOrigin={useCached ? undefined : getDiceAnimationOrigin()}
                 rollKey={feltRollKey}
                 cacheKey={stableCacheKey}
+                traceContext={{
+                  gameId,
+                  dealerGameId: dealerGameId ?? null,
+                  roundId: currentRoundId ?? null,
+                  handNumber: viewState?.currentRound ?? 0,
+                  turnPlayerId: currentTurnPlayerId ?? null,
+                  rollNumber: (() => {
+                    const ps = viewState?.playerStates?.[currentTurnPlayerId ?? ''];
+                    return ps ? 3 - ps.rollsRemaining : 0;
+                  })(),
+                  authoritativeDice: (() => {
+                    const ps = authoritativeYahtzeeState?.playerStates?.[currentTurnPlayerId ?? ''];
+                    return ps?.dice?.map(d => ({ value: d.value, isHeld: d.isHeld }));
+                  })(),
+                }}
               />
             </div>
           );
