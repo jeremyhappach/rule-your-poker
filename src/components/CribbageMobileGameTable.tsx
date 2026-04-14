@@ -3411,6 +3411,20 @@ export const CribbageMobileGameTable = ({
         triggerWinSequence(countedState);
         return;
       }
+
+      // CRITICAL FIX: Persist the final counted state to the CURRENT round BEFORE
+      // creating the next hand's round. Without this, the old round's cribbage_state
+      // never receives the applyHandCountScores result (lastHandCount, final pegScores),
+      // causing ~40% of hands to lose their detailed scoring breakdown for audits.
+      if (currentRoundId) {
+        const { error: persistError } = await supabase
+          .from('rounds')
+          .update({ cribbage_state: JSON.parse(JSON.stringify(countedState)) })
+          .eq('id', currentRoundId);
+        if (persistError) {
+          console.warn('[CRIBBAGE] Failed to persist final counted state to old round:', persistError.message);
+        }
+      }
       
       // CRITICAL: Create a NEW round record for the next hand.
       // This ensures event logging is properly scoped to (dealer_game_id, hand_number).
