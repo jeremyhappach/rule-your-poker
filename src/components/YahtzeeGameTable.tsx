@@ -1881,6 +1881,21 @@ export function YahtzeeGameTable({
                 animationOrigin={useCached ? undefined : getDiceAnimationOrigin()}
                 rollKey={feltRollKey}
                 cacheKey={stableCacheKey}
+                traceContext={{
+                  gameId,
+                  dealerGameId: dealerGameId ?? null,
+                  roundId: currentRoundId ?? null,
+                  handNumber: viewState?.currentRound ?? 0,
+                  turnPlayerId: currentTurnPlayerId ?? null,
+                  rollNumber: (() => {
+                    const ps = viewState?.playerStates?.[currentTurnPlayerId ?? ''];
+                    return ps ? 3 - ps.rollsRemaining : 0;
+                  })(),
+                  authoritativeDice: (() => {
+                    const ps = authoritativeYahtzeeState?.playerStates?.[currentTurnPlayerId ?? ''];
+                    return ps?.dice?.map(d => ({ value: d.value, isHeld: d.isHeld }));
+                  })(),
+                }}
               />
             </div>
           );
