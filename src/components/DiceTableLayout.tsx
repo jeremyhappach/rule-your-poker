@@ -368,7 +368,22 @@ export function DiceTableLayout({
        return;
      }
 
-     // Only hold states changed — debounce
+     // FIX B1: Only debounce held→scatter (release) transitions.
+     // scatter→held transitions apply immediately so held dice never linger in scatter.
+     const hasNewHolds = dice.some((d, i) => d.isHeld && !debouncedDice[i]?.isHeld);
+     const hasNewReleases = dice.some((d, i) => !d.isHeld && debouncedDice[i]?.isHeld);
+
+     if (hasNewHolds && !hasNewReleases) {
+       // Pure scatter→held: apply immediately, no debounce
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
+       setDebouncedDice(dice);
+       return;
+     }
+
+     // Has releases (held→scatter) — debounce to avoid flicker
      if (observerDebounceTimerRef.current) {
        clearTimeout(observerDebounceTimerRef.current);
      }
