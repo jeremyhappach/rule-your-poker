@@ -368,7 +368,22 @@ export function DiceTableLayout({
        return;
      }
 
-     // Only hold states changed — debounce
+     // FIX B1: Only debounce held→scatter (release) transitions.
+     // scatter→held transitions apply immediately so held dice never linger in scatter.
+     const hasNewHolds = dice.some((d, i) => d.isHeld && !debouncedDice[i]?.isHeld);
+     const hasNewReleases = dice.some((d, i) => !d.isHeld && debouncedDice[i]?.isHeld);
+
+     if (hasNewHolds && !hasNewReleases) {
+       // Pure scatter→held: apply immediately, no debounce
+       if (observerDebounceTimerRef.current) {
+         clearTimeout(observerDebounceTimerRef.current);
+         observerDebounceTimerRef.current = null;
+       }
+       setDebouncedDice(dice);
+       return;
+     }
+
+     // Has releases (held→scatter) — debounce to avoid flicker
      if (observerDebounceTimerRef.current) {
        clearTimeout(observerDebounceTimerRef.current);
      }
@@ -729,8 +744,8 @@ export function DiceTableLayout({
 
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
-    // While a fly-in is in progress, ignore prop churn (DB updates, hold toggles) to avoid refires/stutter.
-    if (isAnimatingFlyIn) return;
+    // FIX A: Do NOT return early when isAnimatingFlyIn.
+    // If a new rollKey arrives mid-animation, cancel the current fly-in and restart.
 
     // Prevent "same rollKey" replays across remounts by persisting last-seen rollKey per cacheKey.
     const cacheKeyStr = String(cacheKey ?? "");
@@ -740,7 +755,22 @@ export function DiceTableLayout({
       rollKey !== undefined &&
       rollKey !== prevRollKeyRef.current &&
       (lastSeenGlobal === undefined || rollKey !== lastSeenGlobal);
-    if (!isNewRollKey) return;
+    if (!isNewRollKey) {
+      // Not a new roll — but if we're mid-animation, don't interrupt
+      return;
+    }
+
+    // FIX A: If a fly-in is currently running, cancel it before starting the new one.
+    if (isAnimatingFlyIn) {
+      console.log('[FIX_A] Cancelling in-progress fly-in for new rollKey', { oldRollKey: prevRollKeyRef.current, newRollKey: rollKey });
+      setIsAnimatingFlyIn(false);
+      setAnimatingDiceIndices([]);
+      setShowUnheldDice(true);
+      if (animationCompleteTimeoutRef.current) {
+        clearTimeout(animationCompleteTimeoutRef.current);
+        animationCompleteTimeoutRef.current = null;
+      }
+    }
 
     prevRollKeyRef.current = rollKey;
     if (cacheKeyStr) lastSeenRollKeyByCacheKey.set(cacheKeyStr, rollKey);
@@ -788,15 +818,17 @@ export function DiceTableLayout({
       const d = visualDice[i];
       if (!d) return false;
 
-      // CRITICAL FIX for Roll 3 animation:
-      // When heldMaskBeforeComplete is provided (from the roller), trust it EXCLUSIVELY.
-      // The old OR logic (!!heldMask[i] || !!d.isHeld) broke Roll 3 because the game logic
-      // auto-marks ALL dice as isHeld when rollsRemaining === 0. This caused unheldIndices
-      // to be empty, skipping the fly-in animation entirely for observers.
-      //
-      // The mask is authoritative: it captures what was held at the START of the roll.
-      // The current d.isHeld can already reflect post-roll state (all held on Roll 3).
-      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : !!d.isHeld;
+      // FIX B2: A die with isHeld === true must NEVER participate in fly-in animation.
+      // Use authoritative/presentation isHeld as the single source of truth.
+      // This prevents held dice from re-entering scatter or re-animating.
+      if (d.isHeld) return false;
+
+      // Also check authoritative state if available (traceContext)
+      if (traceContext?.authoritativeDice?.[i]?.isHeld) return false;
+
+      // When heldMaskBeforeComplete is provided (from the roller), trust it.
+      // The mask captures what was held at the START of the roll.
+      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : false;
       return !wasHeldAtRollStart;
     });
 
