@@ -119,8 +119,9 @@ export function traceYahtzeeHeldDie(event: HeldDieTraceEvent): void {
     });
   }
 
-  // Verbose console log when enabled
-  if (isYahtzeeHeldTraceEnabled()) {
+  // Sampled console log (1-in-N) to avoid spam
+  _consoleLogCounter++;
+  if (_consoleLogCounter % CONSOLE_SAMPLE_RATE === 0) {
     const heldDice = event.dice.filter(d => d.isHeld);
     const scatterDice = event.dice.filter(d => d.visualZone === 'scatter');
     console.log(
@@ -264,8 +265,8 @@ export function checkCrossRollStateReuse(
           prevRollGen: prev.rollGeneration.slice(-20),
           currRollGen: currentRollGeneration.slice(-20),
         };
-        // This is noisy — only log when trace is enabled, don't persist as invariant
-        if (isYahtzeeHeldTraceEnabled()) {
+        // Sampled console warn — not persisted as invariant (too noisy)
+        if (_consoleLogCounter % CONSOLE_SAMPLE_RATE === 0) {
           console.warn('[TRACE] yahtzee-cross-roll-state-reuse', payload);
         }
       }
