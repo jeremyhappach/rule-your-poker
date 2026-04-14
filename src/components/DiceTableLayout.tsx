@@ -744,8 +744,8 @@ export function DiceTableLayout({
 
   // NOTE: useLayoutEffect prevents a 1-frame flash where dice render in-place before we hide them.
   useLayoutEffect(() => {
-    // While a fly-in is in progress, ignore prop churn (DB updates, hold toggles) to avoid refires/stutter.
-    if (isAnimatingFlyIn) return;
+    // FIX A: Do NOT return early when isAnimatingFlyIn.
+    // If a new rollKey arrives mid-animation, cancel the current fly-in and restart.
 
     // Prevent "same rollKey" replays across remounts by persisting last-seen rollKey per cacheKey.
     const cacheKeyStr = String(cacheKey ?? "");
