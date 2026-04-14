@@ -192,6 +192,30 @@ export function YahtzeeGameTable({
     if (yahtzeeState) {
       console.log('[YAHTZEE_SYNC] Incoming authoritative snapshot', describeYahtzeeSnapshot(yahtzeeState));
       yahtzeeSync.receiveAuthoritativeUpdate(yahtzeeState);
+
+      // ── HELD-DIE TRACE: Authoritative update accepted ──
+      if (yahtzeeState.currentTurnPlayerId) {
+        const turnPs = yahtzeeState.playerStates[yahtzeeState.currentTurnPlayerId];
+        if (turnPs?.dice?.length) {
+          import('@/lib/yahtzeeHeldDieTrace').then(({ traceYahtzeeHeldDie, buildDieTuples, isYahtzeeHeldTraceEnabled }) => {
+            if (!isYahtzeeHeldTraceEnabled()) return;
+            const dice = turnPs.dice.map(d => ({ value: d.value, isHeld: d.isHeld }));
+            traceYahtzeeHeldDie({
+              gameId,
+              dealerGameId: dealerGameId ?? null,
+              roundId: currentRoundId ?? null,
+              handNumber: yahtzeeState.currentRound ?? 0,
+              turnPlayerId: yahtzeeState.currentTurnPlayerId,
+              rollNumber: 3 - turnPs.rollsRemaining,
+              rollGeneration: turnPs.rollKey ?? null,
+              sourceLayer: 'authoritative',
+              renderReason: 'authoritative-update',
+              dice: buildDieTuples(dice, 'authoritative', 'authoritative-update', gameId, turnPs.rollKey ?? null),
+              timestamp: Date.now(),
+            });
+          });
+        }
+      }
     }
   }, [yahtzeeState]);
 

@@ -25,6 +25,18 @@ const lastSeenRollKeyByCacheKey = new Map<string, string | number>();
 const lastFlyInRollKeyByCacheKey = new Map<string, string | number>();
 let diceTableLayoutInstanceCounter = 0;
 
+/** Optional trace context for held-die corruption instrumentation */
+export interface DiceTraceContext {
+  gameId: string;
+  dealerGameId: string | null;
+  roundId: string | null;
+  handNumber: number;
+  turnPlayerId: string | null;
+  rollNumber: number;
+  /** Authoritative dice state for cross-layer invariant checks */
+  authoritativeDice?: { value: number; isHeld: boolean }[];
+}
+
 interface DiceTableLayoutProps {
   dice: (HorsesDieType | SCCDieType)[];
   isRolling?: boolean;
@@ -59,6 +71,8 @@ interface DiceTableLayoutProps {
    * shows the previous player's dice values during turn transitions.
    */
   cacheKey?: string | number;
+  /** Trace context for held-die corruption instrumentation (Yahtzee only) */
+  traceContext?: DiceTraceContext;
 }
 
 // Staggered positions for unheld dice (as pixel offsets from center)
