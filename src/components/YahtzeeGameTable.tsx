@@ -207,10 +207,10 @@ export function YahtzeeGameTable({
               handNumber: yahtzeeState.currentRound ?? 0,
               turnPlayerId: yahtzeeState.currentTurnPlayerId,
               rollNumber: 3 - turnPs.rollsRemaining,
-              rollGeneration: turnPs.rollKey ?? null,
+              rollGeneration: turnPs.rollKey != null ? String(turnPs.rollKey) : null,
               sourceLayer: 'authoritative',
               renderReason: 'authoritative-update',
-              dice: buildDieTuples(dice, 'authoritative', 'authoritative-update', gameId, turnPs.rollKey ?? null),
+              dice: buildDieTuples(dice, 'authoritative', 'authoritative-update', gameId, turnPs.rollKey != null ? String(turnPs.rollKey) : null),
               timestamp: Date.now(),
             });
           });
