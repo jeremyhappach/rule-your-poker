@@ -818,12 +818,17 @@ export function DiceTableLayout({
       const d = visualDice[i];
       if (!d) return false;
 
-      // FIX B2: A die with isHeld === true must NEVER participate in fly-in animation.
-      // Use authoritative/presentation isHeld as the single source of truth.
-      // This prevents held dice from re-entering scatter or re-animating.
-      if (d.isHeld) return false;
+      // FIX A: Animation eligibility must be based on held-at-roll-START, not post-roll isHeld.
+      // On the final roll, game logic marks ALL dice isHeld=true after resolving,
+      // but dice that were NOT held before the roll must still animate (fly-in).
+      // Use heldMaskBeforeComplete as the authoritative "held at roll start" signal.
+      if (heldMask) {
+        // heldMask captures pre-roll hold state — trust it exclusively
+        return !heldMask[i];
+      }
 
-      // Also check authoritative state if available (traceContext)
+      // Fallback when no heldMask: use current isHeld (pre-roll-3 rolls)
+      if (d.isHeld) return false;
       if (traceContext?.authoritativeDice?.[i]?.isHeld) return false;
 
       // When heldMaskBeforeComplete is provided (from the roller), trust it.
@@ -1754,7 +1759,25 @@ export function DiceTableLayout({
       }
     }
 
-    const isHeldInLayout = effectivelyHeld && !!heldPos;
+    let isHeldInLayout = effectivelyHeld && !!heldPos;
+
+    // FIX B2: Final render-boundary mutual exclusion rule.
+    // If authoritative/presentation says die is held AND it's not currently animating fly-in,
+    // it must NEVER render in scatter — not even for a single frame.
+    // Force it into the held row with a fallback position if needed.
+    if (!isHeldInLayout && actuallyHeld && !isThisDieAnimating && !usePreRollLayout) {
+      const heldSourceDice = orderedDice.filter((dieItem) => dieItem.die.isHeld);
+      const heldIdx = heldSourceDice.findIndex((dieItem) => dieItem.originalIndex === item.originalIndex);
+      if (heldIdx >= 0) {
+        const allHeldPositions = getHeldPositions(heldSourceDice.length, dieWidth, gap);
+        heldPos = allHeldPositions[heldIdx];
+      } else {
+        // Ultimate fallback: single die centered
+        heldPos = getHeldPositions(1, dieWidth, gap)[0];
+      }
+      isHeldInLayout = true;
+    }
+
     if (targetLayer === "held" ? !isHeldInLayout : isHeldInLayout) return null;
 
     const hasValidStablePos =
