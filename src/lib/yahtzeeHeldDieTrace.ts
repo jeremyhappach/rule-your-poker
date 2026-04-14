@@ -16,24 +16,15 @@
 import { persistInvariantViolation } from './persistSyncDebugEvent';
 
 // ── Toggle ────────────────────────────────────────────────────
+// Trace is ALWAYS active during held-die corruption investigation.
+// Console logging is sampled (1-in-10) to avoid spam.
 
-let _enabled: boolean | null = null;
+let _consoleLogCounter = 0;
+const CONSOLE_SAMPLE_RATE = 10; // log 1 in N trace events
 
-function checkEnabled(): boolean {
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const v = params.get('debug_yahtzee_held_trace');
-    if (v === '' || v === '1' || v?.toLowerCase() === 'true') return true;
-  } catch { /* */ }
-  try {
-    if (window.localStorage.getItem('ptp_debug_yahtzee_held_trace') === '1') return true;
-  } catch { /* */ }
-  return false;
-}
-
+/** @deprecated Always returns true — kept for call-site compat */
 export function isYahtzeeHeldTraceEnabled(): boolean {
-  if (_enabled === null) _enabled = checkEnabled();
-  return _enabled;
+  return true;
 }
 
 // ── Per-die tuple ─────────────────────────────────────────────
@@ -128,8 +119,9 @@ export function traceYahtzeeHeldDie(event: HeldDieTraceEvent): void {
     });
   }
 
-  // Verbose console log when enabled
-  if (isYahtzeeHeldTraceEnabled()) {
+  // Sampled console log (1-in-N) to avoid spam
+  _consoleLogCounter++;
+  if (_consoleLogCounter % CONSOLE_SAMPLE_RATE === 0) {
     const heldDice = event.dice.filter(d => d.isHeld);
     const scatterDice = event.dice.filter(d => d.visualZone === 'scatter');
     console.log(
@@ -273,8 +265,8 @@ export function checkCrossRollStateReuse(
           prevRollGen: prev.rollGeneration.slice(-20),
           currRollGen: currentRollGeneration.slice(-20),
         };
-        // This is noisy — only log when trace is enabled, don't persist as invariant
-        if (isYahtzeeHeldTraceEnabled()) {
+        // Sampled console warn — not persisted as invariant (too noisy)
+        if (_consoleLogCounter % CONSOLE_SAMPLE_RATE === 0) {
           console.warn('[TRACE] yahtzee-cross-roll-state-reuse', payload);
         }
       }
