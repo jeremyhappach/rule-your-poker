@@ -706,7 +706,7 @@ export function YahtzeeGameTable({
       ...rawState,
       playerStates: {
         ...rawState.playerStates,
-        [myPlayer.id]: { ...newPs, rollKey: t },
+        [myPlayer.id]: { ...newPs, rollKey: t, heldMaskBeforeComplete: heldSnapshotRef.current ?? undefined },
       },
     };
     // Apply optimistic override — sync framework will reject stale DB updates until caught up
@@ -1461,7 +1461,7 @@ export function YahtzeeGameTable({
       value: d.value,
       isHeld: d.isHeld,
     }));
-    return { dice: dice as HorsesDieType[], rollKey: ps.rollKey };
+    return { dice: dice as HorsesDieType[], rollKey: ps.rollKey, heldMaskBeforeComplete: ps.heldMaskBeforeComplete };
   }, [currentTurnPlayerId, viewState]);
 
   /* ---- Animation origin ---- */
@@ -1880,6 +1880,7 @@ export function YahtzeeGameTable({
                 hideUnrolledDice={true}
                 animationOrigin={useCached ? undefined : getDiceAnimationOrigin()}
                 rollKey={feltRollKey}
+                heldMaskBeforeComplete={useCached ? undefined : diceState?.heldMaskBeforeComplete}
                 cacheKey={stableCacheKey}
                 traceContext={{
                   gameId,
