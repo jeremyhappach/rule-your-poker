@@ -827,14 +827,9 @@ export function DiceTableLayout({
         return !heldMask[i];
       }
 
-      // Fallback when no heldMask: use current isHeld (pre-roll-3 rolls)
-      if (d.isHeld) return false;
-      if (traceContext?.authoritativeDice?.[i]?.isHeld) return false;
-
-      // When heldMaskBeforeComplete is provided (from the roller), trust it.
-      // The mask captures what was held at the START of the roll.
-      const wasHeldAtRollStart = heldMask ? !!heldMask[i] : false;
-      return !wasHeldAtRollStart;
+      // No heldMask available — fall back to current isHeld (safe for roll 1/2 where
+      // game logic hasn't force-held all dice yet)
+      return !d.isHeld;
     });
 
     // Track how many were held at the START of this roll (for Y offset calculation)

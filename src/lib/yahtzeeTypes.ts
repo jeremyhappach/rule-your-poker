@@ -91,6 +91,8 @@ export interface YahtzeePlayerState {
   scorecard: YahtzeeScorecard;
   /** Stable per-roll key for fly-in animation — string format: yahtzee:{roundId}:{playerId}:{serial} */
   rollKey?: string | number;
+  /** Snapshot of isHeld[] captured BEFORE the roll — used by observers for animation eligibility */
+  heldMaskBeforeComplete?: boolean[];
 }
 
 /** The full Yahtzee state stored in rounds.yahtzee_state JSONB */
