@@ -3140,6 +3140,90 @@ export const MobileGameTable = ({
     }
   }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
 
+  // ── Holm reveal-render-boundary instrumentation (L2) ────────
+  // Observe transitions in *what is rendered face-up* for community + Chucky cards
+  // so we can prove whether the on-screen reveal matches the authoritative *_revealed.
+  const lastRenderedCommunityRef = useRef(0);
+  const lastRenderedChuckyRef = useRef(0);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!gameId) return;
+
+    const ctx: HolmSequenceContext = {
+      gameId,
+      roundId: handContextId ?? null,
+      handNumber: currentRound ?? 0,
+      stayerPlayerId: soloVsChuckyPlayerIdLocked,
+    };
+
+    // Community: rendered count = same as authoritative since CommunityCards consumes the prop directly
+    const communityRendered = isDelayingCommunityCards
+      ? staggeredCardCount
+      : (communityCardsRevealed ?? 0);
+    const communityShould = communityCardsRevealed ?? 0;
+
+    if (communityRendered !== lastRenderedCommunityRef.current) {
+      // Log only the newest transitioning card index
+      const idx = Math.max(0, communityRendered - 1);
+      logRevealRenderFrame(ctx, {
+        cardType: 'community',
+        cardIndex: idx,
+        shouldBeFaceUp: idx < communityShould,
+        actuallyRenderedFaceUp: idx < communityRendered,
+        renderOrderStep: 0, // assigned inside logger
+        extra: {
+          communityRendered,
+          communityShould,
+          isDelayingCommunityCards,
+          staggeredCardCount,
+        },
+      });
+      lastRenderedCommunityRef.current = communityRendered;
+    }
+
+    // Chucky: rendered count = cachedChuckyCardsRevealed (drives the inline DOM)
+    const chuckyRendered = cachedChuckyCardsRevealed;
+    const chuckyShould = chuckyCardsRevealed ?? 0;
+
+    if (chuckyRendered !== lastRenderedChuckyRef.current) {
+      const idx = Math.max(0, chuckyRendered - 1);
+      logRevealRenderFrame(ctx, {
+        cardType: 'chucky',
+        cardIndex: idx,
+        shouldBeFaceUp: idx < chuckyShould,
+        actuallyRenderedFaceUp: idx < chuckyRendered,
+        renderOrderStep: 0,
+        extra: {
+          chuckyRendered,
+          chuckyShould,
+          cachedChuckyActive,
+          cachedChuckyTotal: cachedChuckyCards?.length ?? 0,
+        },
+      });
+      lastRenderedChuckyRef.current = chuckyRendered;
+    }
+  }, [
+    gameType,
+    gameId,
+    handContextId,
+    currentRound,
+    soloVsChuckyPlayerIdLocked,
+    communityCardsRevealed,
+    isDelayingCommunityCards,
+    staggeredCardCount,
+    cachedChuckyCardsRevealed,
+    chuckyCardsRevealed,
+    cachedChuckyActive,
+    cachedChuckyCards,
+  ]);
+
+  // Reset render trackers when hand context changes
+  useEffect(() => {
+    lastRenderedCommunityRef.current = 0;
+    lastRenderedChuckyRef.current = 0;
+  }, [handContextId]);
+
   // Detect when a player earns a leg (3-5-7 games only)
   // IMPORTANT: MobileGameTable can remount between hands/round transitions; we must NOT treat existing legs as "new" on mount.
   const legsTrackerInitializedRef = useRef(false);
