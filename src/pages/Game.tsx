@@ -2342,8 +2342,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Set real backend-derived time immediately — no fake seeding.
     // The TimerBar and MobilePlayerTimer suppress CSS transitions on the
     // first frame of a new deadline identity, so no fill-up glitch occurs.
+    // FIX: Floor seed at 1 so the render gate (timeLeft > 0) doesn't reject
+    // the timer when client clock is slightly past the deadline on first frame.
+    // The next 1s tick syncs to the true value (which may then become 0 → cleared).
     if (!isPausedRef.current) {
-      setTimeLeft(calculateRemaining());
+      const seed = calculateRemaining();
+      setTimeLeft(seed > 0 ? seed : 1);
     }
 
     // Update every second - check pause state via ref FIRST before any calculation
