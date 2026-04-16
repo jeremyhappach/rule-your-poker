@@ -16,6 +16,18 @@ import { compareProgress, jsonEqual } from './stateProgress';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
 
+function clonePresentationState<T>(state: T): T {
+  if (Array.isArray(state)) {
+    return [...state] as T;
+  }
+
+  if (state && typeof state === 'object') {
+    return { ...(state as Record<string, unknown>) } as T;
+  }
+
+  return state;
+}
+
 export function useGameStateSync<T>(
   initialState: T,
   config: GameStateSyncConfig<T>,
@@ -41,6 +53,7 @@ export function useGameStateSync<T>(
   const frozenRef = useRef(false);
   const presentationRef = useRef<T>(initialState);
   const optimisticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPostResetHydrationRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
@@ -54,7 +67,12 @@ export function useGameStateSync<T>(
   // ── Auto-propagate to presentation when not frozen ───────────
   useEffect(() => {
     if (!frozen) {
-      setPresentation(effective);
+      const nextPresentation = pendingPostResetHydrationRef.current
+        ? clonePresentationState(effective)
+        : effective;
+
+      presentationRef.current = nextPresentation;
+      setPresentation(nextPresentation);
     }
   }, [effective, frozen]);
 
@@ -65,9 +83,28 @@ export function useGameStateSync<T>(
 
     const currentProgress = getProgress(currentAuth);
     const incomingProgress = getProgress(incoming);
+    const shouldForcePostResetHydration = pendingPostResetHydrationRef.current && !frozenRef.current;
 
     // Skip identical snapshots
     if (isEqual(currentAuth, incoming)) {
+      if (shouldForcePostResetHydration) {
+        const hydratedPresentation = clonePresentationState(incoming);
+        presentationRef.current = hydratedPresentation;
+        setPresentation(hydratedPresentation);
+        pendingPostResetHydrationRef.current = false;
+
+        return {
+          accepted: true,
+          reason: 'equal',
+          previousProgress: currentProgress,
+          incomingProgress,
+          comparison: 0,
+          presentationAction: 'written',
+          wasFrozenAtWrite: false,
+          presentationBefore: presPre,
+        };
+      }
+
       return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
     }
 
@@ -101,6 +138,7 @@ export function useGameStateSync<T>(
         if (!frozenRef.current) {
           presentationRef.current = incoming;
           setPresentation(incoming);
+          pendingPostResetHydrationRef.current = false;
           presentationAction = 'written';
         }
       }
@@ -109,6 +147,7 @@ export function useGameStateSync<T>(
       if (!frozenRef.current) {
         presentationRef.current = incoming;
         setPresentation(incoming);
+        pendingPostResetHydrationRef.current = false;
         presentationAction = 'written';
       }
     }
@@ -176,13 +215,15 @@ export function useGameStateSync<T>(
   // ── Full reset (hand/round boundary) ─────────────────────────
   const reset = useCallback((newInitial: T) => {
     const presPre = presentationRef.current;
+    const freshPresentation = clonePresentationState(newInitial);
     authRef.current = newInitial;
     optRef.current = null;
     frozenRef.current = false;
-    presentationRef.current = newInitial;
+    presentationRef.current = freshPresentation;
+    pendingPostResetHydrationRef.current = true;
     setAuthoritative(newInitial);
     setOptimistic(null);
-    setPresentation(newInitial);
+    setPresentation(freshPresentation);
     setFrozen(false);
     if (optimisticTimerRef.current) {
       clearTimeout(optimisticTimerRef.current);
