@@ -57,6 +57,7 @@ describe('useGameStateSync reset hydration', () => {
   let root: Root;
 
   beforeEach(async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true;
     latestHandle = null;
     latestPresentation = null;
     presentationRenderCount = 0;
@@ -76,6 +77,7 @@ describe('useGameStateSync reset hydration', () => {
     });
 
     container.remove();
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
   });
 
   it('forces a fresh presentation object on reset', async () => {

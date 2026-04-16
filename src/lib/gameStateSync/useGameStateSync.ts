@@ -67,7 +67,11 @@ export function useGameStateSync<T>(
   // ── Auto-propagate to presentation when not frozen ───────────
   useEffect(() => {
     if (!frozen) {
-      setPresentation(effective);
+      setPresentation(
+        pendingPostResetHydrationRef.current
+          ? clonePresentationState(effective)
+          : effective,
+      );
     }
   }, [effective, frozen]);
 
