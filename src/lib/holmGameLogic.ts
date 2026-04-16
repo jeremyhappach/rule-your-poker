@@ -1303,7 +1303,16 @@ export async function endHolmRound(gameId: string) {
       .then(({ error }) => { if (error) console.error('[HOLM END] is_public update error:', error); });
 
     console.log('[HOLM END] Chucky cards stored, revealing one at a time with suspense...');
-    
+
+    logRevealSequenceStep(revealCtx, {
+      sequenceStep: 'pre-chucky-pause',
+      revealPhase: 'pre-chucky-pause',
+      revealTriggerReason: 'sequence-pause-start',
+      communityRevealed: 4,
+      chuckyRevealed: 0,
+      chuckyTotal: chuckyCardCount,
+    });
+
     // Reveal Chucky's cards one at a time with suspenseful delays
     // Wrapped in try-catch to ensure all cards get revealed even if individual updates fail
     try {
@@ -1333,6 +1342,16 @@ export async function endHolmRound(gameId: string) {
           console.error('[HOLM END] Error revealing card', i, ':', revealError);
         }
         console.log('[HOLM END] Revealed Chucky card', i, 'of', chuckyCardCount);
+
+        logRevealSequenceStep(revealCtx, {
+          sequenceStep: `chucky-${i}`,
+          revealPhase: i === chuckyCardCount ? 'chucky-complete' : 'chucky-revealing',
+          revealTriggerReason: 'chucky-update',
+          communityRevealed: 4,
+          chuckyRevealed: i,
+          chuckyTotal: chuckyCardCount,
+          extra: { delayBeforeMs: delay, dbWriteError: revealError?.message ?? null },
+        });
       }
     } catch (revealLoopError) {
       console.error('[HOLM END] Chucky reveal loop failed:', revealLoopError);
@@ -1342,6 +1361,16 @@ export async function endHolmRound(gameId: string) {
         .update({ chucky_cards_revealed: chuckyCardCount })
         .eq('id', capturedRoundId);
       console.log('[HOLM END] Force-revealed all', chuckyCardCount, 'Chucky cards after error');
+
+      logRevealSequenceStep(revealCtx, {
+        sequenceStep: 'chucky-force-reveal',
+        revealPhase: 'chucky-complete',
+        revealTriggerReason: 'force-reveal',
+        communityRevealed: 4,
+        chuckyRevealed: chuckyCardCount,
+        chuckyTotal: chuckyCardCount,
+        extra: { error: String(revealLoopError) },
+      });
     }
     
     console.log('[HOLM END] All Chucky cards revealed');
@@ -1349,12 +1378,22 @@ export async function endHolmRound(gameId: string) {
     // Keep hand description visible - it will be replaced by result announcement after comparison
     // 2-second delay so players can compare hands before result
     console.log('[HOLM END] Pausing 2 seconds for players to compare hands...');
+    logRevealSequenceStep(revealCtx, {
+      sequenceStep: 'pre-resolution-pause',
+      revealPhase: 'pre-resolution-pause',
+      revealTriggerReason: 'sequence-pause-start',
+      communityRevealed: 4,
+      chuckyRevealed: chuckyCardCount,
+      chuckyTotal: chuckyCardCount,
+    });
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Use round.pot as the authoritative pot value (game.pot may be stale)
     const roundPot = round.pot || game.pot || 0;
     try {
+      logResolutionGate(revealCtx, 'winner-announcement-start', { roundPot });
       await handleChuckyShowdown(gameId, capturedRoundId, player, communityCards, game, chuckyCards, roundPot);
+      logResolutionGate(revealCtx, 'hand-resolution-complete', { roundPot });
     } catch (error) {
       console.error('[HOLM END] ERROR in handleChuckyShowdown:', error);
       // CRITICAL: On error, mark round as completed AND set awaiting_next_round to allow progression
