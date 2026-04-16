@@ -61,6 +61,11 @@ import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
+import {
+  logRevealRenderFrame,
+  logResolutionGate,
+  type SequenceContext as HolmSequenceContext,
+} from "@/lib/holmRevealInstrumentation";
 
 
 // Persist pot display across MobileGameTable remounts (Game.tsx uses changing `key`, which
