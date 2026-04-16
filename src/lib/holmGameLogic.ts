@@ -1159,7 +1159,24 @@ export async function endHolmRound(gameId: string) {
     
     const player = stayedPlayers[0];
     const playerUsername = getDisplayName(aliasPlayersList, player, player.profiles?.username || player.user_id);
-    
+
+    // ── Holm reveal-sequence instrumentation: reset + init ───
+    const revealCtx: SequenceContext = {
+      gameId,
+      roundId: capturedRoundId,
+      handNumber: capturedHandNumber,
+      stayerPlayerId: player.id,
+    };
+    resetHolmRevealTracker(gameId, capturedHandNumber);
+    logRevealSequenceStep(revealCtx, {
+      sequenceStep: 'init-solo-vs-chucky',
+      revealPhase: 'idle',
+      revealTriggerReason: 'init',
+      communityRevealed: round.community_cards_revealed ?? 2,
+      chuckyRevealed: 0,
+      chuckyTotal: game.chucky_cards || 4,
+    });
+
     // Step 1: Expose player's cards by setting all_decisions_in
     console.log('[HOLM END] Step 1: Exposing player cards...');
     await supabase
@@ -1177,6 +1194,15 @@ export async function endHolmRound(gameId: string) {
       .from('rounds')
       .update({ community_cards_revealed: 4 })
       .eq('id', capturedRoundId);
+
+    logRevealSequenceStep(revealCtx, {
+      sequenceStep: 'community-3-and-4',
+      revealPhase: 'community-revealing',
+      revealTriggerReason: 'community-update',
+      communityRevealed: 4,
+      chuckyRevealed: 0,
+      chuckyTotal: game.chucky_cards || 4,
+    });
     
     // Brief pause to allow UI to update with community cards
     await new Promise(resolve => setTimeout(resolve, 500));
