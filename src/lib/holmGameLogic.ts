@@ -1,4 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
+import {
+  logRevealSequenceStep,
+  logResolutionGate,
+  resetHolmRevealTracker,
+  type SequenceContext,
+} from "./holmRevealInstrumentation";
 import { createDeck, shuffleDeck, type Card, type Suit, type Rank, evaluateHand, formatHandRank, formatHandRankDetailed } from "./cardUtils";
 import { getDisplayName } from "./botAlias";
 import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
