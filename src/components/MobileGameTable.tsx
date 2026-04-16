@@ -4614,6 +4614,18 @@ export const MobileGameTable = ({
               setPotOutAnimationActive(true);
               setDisplayedPot(0);
               console.log('[HOLM WIN] POT-OUT animation started, snapped pot was:', allDecisionsSnappedPotRef.current);
+              if (gameType === 'holm-game' && gameId) {
+                logResolutionGate(
+                  {
+                    gameId,
+                    roundId: handContextId ?? null,
+                    handNumber: currentRound ?? 0,
+                    stayerPlayerId: soloVsChuckyPlayerIdLocked,
+                  },
+                  'chip-transfer-start',
+                  { trigger: 'holm-win-pot-animation', amount: holmWinPotAmount },
+                );
+              }
             }}
             onAnimationComplete={() => {
               // FIX: Mark animation as completed to keep pot hidden
@@ -4621,6 +4633,18 @@ export const MobileGameTable = ({
               setHolmWinPotHiddenUntilReset(true);
               setPotOutAnimationActive(false); // Clear POT-OUT flag
               onHolmWinPotAnimationComplete?.();
+              if (gameType === 'holm-game' && gameId) {
+                logResolutionGate(
+                  {
+                    gameId,
+                    roundId: handContextId ?? null,
+                    handNumber: currentRound ?? 0,
+                    stayerPlayerId: soloVsChuckyPlayerIdLocked,
+                  },
+                  'next-transition-start',
+                  { trigger: 'holm-win-pot-animation-complete' },
+                );
+              }
             }}
           />
         )}
