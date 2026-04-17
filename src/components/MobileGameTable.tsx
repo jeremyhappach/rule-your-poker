@@ -2338,7 +2338,7 @@ export const MobileGameTable = ({
     
     // No new cards but we have cached - keep cached (prevents flicker during brief DB gaps)
     return cachedCards;
-  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus]);
+  }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
