@@ -2363,9 +2363,23 @@ export const MobileGameTable = ({
       // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
       chosen = { source: 'empty-hand-transitioning', cards: [] };
     } else if (gameType === 'holm-game' && roundStatus === 'completed') {
-      // HOLM COMPLETED GUARD: Hide active player cards once round is completed
-      // to prevent a brief flash of the old hand before the next round arrives.
-      chosen = { source: 'empty-holm-completed', cards: [] };
+      // HOLM COMPLETED GUARD: Keep cards visible for the remainder of the same hand
+      // (covers chip-award animation window). Only hide once handContextId actually
+      // advances to the next hand.
+      const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
+      const cachedCards = currentPlayerCardsRef.current.cards;
+      const sameHand = handContextId != null && handContextId === cachedHandContextId;
+
+      if (sameHand && rawCurrentPlayerCards.length > 0) {
+        chosen = { source: 'holm-completed-raw-same-hand', cards: rawCurrentPlayerCards };
+      } else if (sameHand && cachedCards.length > 0) {
+        chosen = { source: 'holm-completed-cached-same-hand', cards: cachedCards };
+      } else if (rawCurrentPlayerCards.length > 0 && cachedHandContextId == null) {
+        // First render after completion before cache seeded — accept raw.
+        chosen = { source: 'holm-completed-raw-uncached', cards: rawCurrentPlayerCards };
+      } else {
+        chosen = { source: 'empty-holm-completed', cards: [] };
+      }
     } else {
       const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
       const cachedCards = currentPlayerCardsRef.current.cards;
