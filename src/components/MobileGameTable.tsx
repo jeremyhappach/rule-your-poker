@@ -2303,27 +2303,7 @@ export const MobileGameTable = ({
     ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
     : [];
   
-  // ── INSTRUMENTATION (chip-anim disappearing-cards bug) ──────────────
-  // Track the source branch chosen by the currentPlayerCards useMemo on this
-  // render so the post-render effect can persist a diagnostic event. No
-  // behavior change — purely observational.
-  const currentPlayerCardsSourceRef = useRef<string>('init');
-  const chipAnimDiagPrevRef = useRef<{
-    source: string;
-    cardCount: number;
-    triggerId: string | null;
-    handContextId: string | null;
-    currentPlayerId: string | null;
-    armedAt: number | null; // when trigger first observed
-  }>({
-    source: 'init',
-    cardCount: 0,
-    triggerId: null,
-    handContextId: null,
-    currentPlayerId: null,
-    armedAt: null,
-  });
-
+  
   // Update cache only when:
   // 1. handContextId changes (new hand started) - reset to new cards (or empty if not yet received)
   // 2. handContextId is the same AND we have new cards - update with fresh cards
