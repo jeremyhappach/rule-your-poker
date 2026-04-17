@@ -1658,6 +1658,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `id=eq.${gameId}`
         },
         simulateRealtime('games', (payload) => {
+          const newData = payload.new as any;
+          const oldData = payload.old as any;
           
           console.log('[REALTIME] 🔔 Games table UPDATE:', {
             eventType: payload.eventType,
