@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -2423,15 +2424,17 @@ export const MobileGameTable = ({
       triggerChanged;
 
     if (shouldLog && gameType === 'holm-game' && gameId) {
-      import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
-        persistSyncDebugEvent({
-          gameId,
-          gameType: 'holm-game',
-          handNumber: 0,
-          roundId: handContextId ?? null,
-          eventType: 'transition',
-          severity: droppedToZero && (triggerActive || recentlyArmed) ? 'warn' : 'info',
-          eventName: 'chip-anim-card-source',
+      // Always-on instrumentation — writes directly to debug_events,
+      // bypassing all debug flags / URL params / localStorage gates.
+      // Volume is bounded by the shouldLog guards above.
+      supabase
+        .from('debug_events' as any)
+        .insert({
+          game_id: gameId,
+          round_id: handContextId ?? null,
+          user_id: null,
+          client_role: 'observer',
+          event_type: 'chip-anim-card-source',
           payload: {
             instanceLabel,
             // chosen source
@@ -2467,9 +2470,12 @@ export const MobileGameTable = ({
             gameStatus: gameStatus ?? null,
             isHandTransitioning,
             isInProgress: gameStatus === 'in_progress',
+            ts: nowMs,
           },
+        } as any)
+        .then(({ error }) => {
+          if (error) console.warn('[chip-anim-diag] write failed:', error.message);
         });
-      }).catch(() => { /* non-blocking */ });
     }
 
     chipAnimDiagPrevRef.current = {
