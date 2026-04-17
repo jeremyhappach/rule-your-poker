@@ -2355,8 +2355,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // the timer when client clock is slightly past the deadline on first frame.
     // The next 1s tick syncs to the true value (which may then become 0 → cleared).
     if (!isPausedRef.current) {
-      const seed = calculateRemaining();
-      setTimeLeft(seed > 0 ? seed : 1);
+      const rawRemaining = calculateRemaining();
+      const seed = rawRemaining > 0 ? rawRemaining : 1;
+      setTimeLeft(seed);
+
+      // ── Targeted turn-transition timer instrumentation (issue #2) ──
+      // One row per new decision_deadline identity. Captures server vs client
+      // skew, raw vs seeded remaining, fresh-mount flag, and current sim mode.
+      try {
+        const { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed } =
+          require('@/lib/turnTransitionInstrumentation');
+        const roundIdForLog = currentRoundData?.id ?? null;
+        if (gameId && shouldLogTurnTransition(gameId, roundIdForLog, decisionDeadline)) {
+          const fresh = isFreshMountForRound(gameId, roundIdForLog);
+          const turnPos = currentRoundData?.current_turn_position ?? null;
+          const turnOwner = turnPos != null
+            ? (players.find(p => p.position === turnPos)?.id ?? null)
+            : null;
+          logTurnTransitionSeed({
+            gameId,
+            roundId: roundIdForLog,
+            handNumber: currentRoundData?.hand_number ?? game?.total_hands ?? null,
+            userId: user?.id ?? null,
+            turnOwnerId: turnOwner,
+            serverDeadlineIso: decisionDeadline,
+            clientReceiveTs: Date.now(),
+            rawRemainingSec: rawRemaining,
+            seedValue: seed,
+            isFreshMount: fresh,
+          });
+        }
+      } catch { /* never break gameplay on instrumentation errors */ }
     }
 
     // Update every second - check pause state via ref FIRST before any calculation
