@@ -401,6 +401,14 @@ const Game = () => {
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [game, setGame] = useState<GameData | null>(null);
 
+  // Push game context into network simulation runtime for log enrichment
+  useEffect(() => {
+    configureNetworkSim({
+      gameId: gameId ?? null,
+      handNumber: game?.total_hands ?? null,
+    });
+  }, [gameId, game?.total_hands]);
+
   // POT STABILITY:
   // Backend updates can briefly emit pot=null during hand/round transitions (frontend was coercing null -> 0).
   // Keep last non-null pot so the UI never flashes back to $0 while chip stacks are already updated.
