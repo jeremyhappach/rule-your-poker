@@ -47,7 +47,7 @@ import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { logDebugEvent } from "@/lib/debugEventLogger";
-import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed } from "@/lib/turnTransitionInstrumentation";
+import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed, logTurnTimerFirstRender, checkTimerRefill } from "@/lib/turnTransitionInstrumentation";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
@@ -2365,16 +2365,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // skew, raw vs seeded remaining, fresh-mount flag, and current sim mode.
       try {
         const roundIdForLog = currentRound?.id ?? null;
+        const turnPos = currentRound?.current_turn_position ?? null;
+        const turnOwner = turnPos != null
+          ? (players.find(p => p.position === turnPos)?.id ?? null)
+          : null;
+        const handNumberForLog = currentRound?.hand_number ?? game?.total_hands ?? null;
+
         if (gameId && shouldLogTurnTransition(gameId, roundIdForLog, decisionDeadline)) {
           const fresh = isFreshMountForRound(gameId, roundIdForLog);
-          const turnPos = currentRound?.current_turn_position ?? null;
-          const turnOwner = turnPos != null
-            ? (players.find(p => p.position === turnPos)?.id ?? null)
-            : null;
           logTurnTransitionSeed({
             gameId,
             roundId: roundIdForLog,
-            handNumber: currentRound?.hand_number ?? game?.total_hands ?? null,
+            handNumber: handNumberForLog,
             userId: user?.id ?? null,
             turnOwnerId: turnOwner,
             serverDeadlineIso: decisionDeadline,
@@ -2383,6 +2385,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             seedValue: seed,
             isFreshMount: fresh,
             configuredTimerSec: decisionTimerRef.current ?? null,
+          });
+        }
+
+        // First-render snapshot (idempotent per deadline identity).
+        if (gameId) {
+          logTurnTimerFirstRender({
+            gameId,
+            roundId: roundIdForLog,
+            handNumber: handNumberForLog,
+            userId: user?.id ?? null,
+            turnOwnerId: turnOwner,
+            configuredTimerSec: decisionTimerRef.current ?? null,
+            serverDeadlineIso: decisionDeadline,
+            clientReceiveTs: Date.now(),
+            rawRemainingSec: rawRemaining,
+            seedValueSec: seed,
+            initialRenderTimeLeft: seed,
+            firstFrameAnimationSuppressed: true,
           });
         }
       } catch { /* never break gameplay on instrumentation errors */ }
@@ -2398,6 +2418,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const remaining = calculateRemaining();
       console.log('[TIMER COUNTDOWN] Tick (from deadline):', remaining);
       setTimeLeft(remaining);
+
+      // Refill / upward-jump detection (only logs if delta > 1s within same identity).
+      try {
+        if (gameId) {
+          checkTimerRefill({
+            gameId,
+            roundId: currentRound?.id ?? null,
+            userId: user?.id ?? null,
+            serverDeadlineIso: decisionDeadline,
+            newTimeLeft: remaining,
+          });
+        }
+      } catch { /* never break gameplay */ }
     }, 1000);
 
     // Store in ref for external access (realtime handler)
