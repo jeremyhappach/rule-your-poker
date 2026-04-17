@@ -2242,10 +2242,18 @@ export const MobileGameTable = ({
     handContextId: null,
   });
   // Frozen snapshot of currentPlayerCards held for the duration of a Holm
-  // win-pot animation (keyed by holmWinPotTriggerId).
-  const holmWinPotFrozenCardsRef = useRef<{ triggerId: string | null; cards: CardType[] }>({
+  // win-pot animation. Lifetime is bound to handContextId (NOT to the trigger
+  // prop) so the snapshot survives even if the parent clears
+  // holmWinPotTriggerId early (e.g., via the isInProgress gate or premature
+  // completion). Snapshot only releases when the hand actually advances.
+  const holmWinPotFrozenCardsRef = useRef<{
+    triggerId: string | null;
+    cards: CardType[];
+    handContextId: string | null;
+  }>({
     triggerId: null,
     cards: [],
+    handContextId: null,
   });
   
   // HAND TRANSITION GUARD: When handContextId changes, briefly hide cards to prevent stale card flash.
@@ -2302,17 +2310,37 @@ export const MobileGameTable = ({
     // Immune to any upstream setPlayerCards([]) cascade (realtime round-completed,
     // fetch-no-cards, etc.) that would otherwise blank the active player box
     // mid-animation. Self-clears when the trigger goes away.
+    // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
+    // animation is active, return a frozen snapshot. Lifetime is bound to
+    // handContextId, NOT to holmWinPotTriggerId, so the snapshot survives
+    // any premature trigger clear (parent isInProgress gate, completion skew).
     if (holmWinPotTriggerId) {
       if (holmWinPotFrozenCardsRef.current.triggerId !== holmWinPotTriggerId) {
         const snapshot = rawCurrentPlayerCards.length > 0
           ? rawCurrentPlayerCards
           : currentPlayerCardsRef.current.cards;
-        holmWinPotFrozenCardsRef.current = { triggerId: holmWinPotTriggerId, cards: snapshot };
+        holmWinPotFrozenCardsRef.current = {
+          triggerId: holmWinPotTriggerId,
+          cards: snapshot,
+          handContextId: handContextId ?? null,
+        };
       }
       return holmWinPotFrozenCardsRef.current.cards;
     }
-    if (holmWinPotFrozenCardsRef.current.triggerId !== null) {
-      holmWinPotFrozenCardsRef.current = { triggerId: null, cards: [] };
+    // Release snapshot ONLY when the hand actually advances. While we're still
+    // on the same hand, keep returning the frozen cards even after the trigger
+    // prop has been cleared by the parent.
+    if (
+      holmWinPotFrozenCardsRef.current.triggerId !== null &&
+      holmWinPotFrozenCardsRef.current.handContextId !== (handContextId ?? null)
+    ) {
+      holmWinPotFrozenCardsRef.current = { triggerId: null, cards: [], handContextId: null };
+    }
+    if (
+      holmWinPotFrozenCardsRef.current.triggerId !== null &&
+      holmWinPotFrozenCardsRef.current.cards.length > 0
+    ) {
+      return holmWinPotFrozenCardsRef.current.cards;
     }
 
     // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
