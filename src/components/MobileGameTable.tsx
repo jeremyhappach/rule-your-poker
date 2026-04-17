@@ -2241,6 +2241,12 @@ export const MobileGameTable = ({
     cards: [],
     handContextId: null,
   });
+  // Frozen snapshot of currentPlayerCards held for the duration of a Holm
+  // win-pot animation (keyed by holmWinPotTriggerId).
+  const holmWinPotFrozenCardsRef = useRef<{ triggerId: string | null; cards: CardType[] }>({
+    triggerId: null,
+    cards: [],
+  });
   
   // HAND TRANSITION GUARD: When handContextId changes, briefly hide cards to prevent stale card flash.
   // This is similar to the Cribbage pattern - a short transition period ensures old cards disappear
@@ -2291,20 +2297,33 @@ export const MobileGameTable = ({
   // 2. handContextId is the same AND we have new cards - update with fresh cards
   // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
   const currentPlayerCards = useMemo(() => {
+    // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
+    // animation is active, return a frozen snapshot captured at trigger start.
+    // Immune to any upstream setPlayerCards([]) cascade (realtime round-completed,
+    // fetch-no-cards, etc.) that would otherwise blank the active player box
+    // mid-animation. Self-clears when the trigger goes away.
+    if (holmWinPotTriggerId) {
+      if (holmWinPotFrozenCardsRef.current.triggerId !== holmWinPotTriggerId) {
+        const snapshot = rawCurrentPlayerCards.length > 0
+          ? rawCurrentPlayerCards
+          : currentPlayerCardsRef.current.cards;
+        holmWinPotFrozenCardsRef.current = { triggerId: holmWinPotTriggerId, cards: snapshot };
+      }
+      return holmWinPotFrozenCardsRef.current.cards;
+    }
+    if (holmWinPotFrozenCardsRef.current.triggerId !== null) {
+      holmWinPotFrozenCardsRef.current = { triggerId: null, cards: [] };
+    }
+
     // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
     if (isHandTransitioning) {
       return [];
     }
-    
+
     // HOLM COMPLETED GUARD: Hide active player cards once round is completed
     // to prevent a brief flash of the old hand before the next round arrives.
-    // EXCEPTION: While the win-pot/chip-award animation is active, return the last
-    // known snapshot so the winning player's cards don't vanish mid-animation.
     // Showdown card display uses a separate cache (showdownCardsCache), not this path.
     if (gameType === 'holm-game' && roundStatus === 'completed') {
-      if (holmWinPotTriggerId) {
-        return currentPlayerCardsRef.current.cards;
-      }
       return [];
     }
     
