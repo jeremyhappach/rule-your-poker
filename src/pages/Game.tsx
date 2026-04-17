@@ -1974,6 +1974,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         })
       )
+      .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
 
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
