@@ -2493,7 +2493,7 @@ export const MobileGameTable = ({
     isHandTransitioning,
     gameType,
     gameId,
-    currentRound?.id,
+    currentRound,
     instanceLabel,
   ]);
 
