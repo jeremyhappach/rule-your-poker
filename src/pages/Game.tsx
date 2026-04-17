@@ -2382,6 +2382,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             rawRemainingSec: rawRemaining,
             seedValue: seed,
             isFreshMount: fresh,
+            configuredTimerSec: decisionTimerRef.current ?? null,
           });
         }
       } catch { /* never break gameplay on instrumentation errors */ }
@@ -3327,6 +3328,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     setPendingDecision(null);
   }, [cardStateContext?.roundId, currentRound?.id, currentRound?.round_number, game?.status]);
+
+  // ── Hand/round boundary hard reset for player_cards (Holm wrong-tabled-cards fix) ──
+  // Guarantees no prior-hand player_cards can survive into the next hand,
+  // independent of fetch timing or RLS visibility on completed rounds.
+  // Fetch path repopulates with the new round's cards immediately after.
+  useEffect(() => {
+    if (!currentRound?.id) return;
+    setPlayerCards([]);
+    setCardStateContext(null);
+  }, [currentRound?.id]);
 
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;

@@ -9,6 +9,7 @@
  *   - seed value handed to setTimeLeft (post-floor)
  *   - whether this represents a fresh mount (no prior deadline tracked)
  *   - active network sim mode
+ *   - configured per-game decision timer + seed-as-pct-of-configured (no hardcoded sec thresholds)
  *
  * Writes to public.debug_events with event_type='turn-transition-timer-seed'.
  * Fire-and-forget — never blocks gameplay. Always-on (lightweight, one row
@@ -28,7 +29,12 @@ interface SeedLogParams {
   rawRemainingSec: number;          // calculateRemaining() result (pre-floor)
   seedValue: number;                // value actually passed to setTimeLeft
   isFreshMount: boolean;            // first time we see this deadline identity
+  configuredTimerSec: number | null; // game_defaults.decision_timer_seconds for this game
 }
+
+// Threshold (relative to configured timer) below which a fresh seed is suspicious.
+// 0.5 = seeded with less than half the configured duration on a brand-new turn.
+const SUSPICIOUS_SEED_PCT = 0.5;
 
 // Track last-seen deadline per (gameId, roundId) so we only log on identity change
 const lastSeenDeadline = new Map<string, string>();
@@ -51,6 +57,12 @@ export function isFreshMountForRound(gameId: string, roundId: string | null): bo
 export function logTurnTransitionSeed(params: SeedLogParams): void {
   if (!params.userId) return;
 
+  // Relative-to-configured analysis (no hardcoded second thresholds).
+  const cfg = params.configuredTimerSec && params.configuredTimerSec > 0 ? params.configuredTimerSec : null;
+  const seedPct = cfg ? params.seedValue / cfg : null;
+  const rawPct = cfg ? params.rawRemainingSec / cfg : null;
+  const isLowSeed = seedPct !== null && seedPct < SUSPICIOUS_SEED_PCT;
+
   const payload = {
     turn_owner_id: params.turnOwnerId,
     server_deadline_iso: params.serverDeadlineIso,
@@ -62,6 +74,10 @@ export function logTurnTransitionSeed(params: SeedLogParams): void {
     is_fresh_mount: params.isFreshMount,
     network_sim_mode: getNetworkSimMode(),
     hand_number: params.handNumber,
+    configured_timer_sec: cfg,
+    seed_pct_of_configured: seedPct,
+    raw_pct_of_configured: rawPct,
+    is_low_seed: isLowSeed,
   };
 
   supabase
