@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -2303,27 +2303,7 @@ export const MobileGameTable = ({
     ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
     : [];
   
-  // ── INSTRUMENTATION (chip-anim disappearing-cards bug) ──────────────
-  // Track the source branch chosen by the currentPlayerCards useMemo on this
-  // render so the post-render effect can persist a diagnostic event. No
-  // behavior change — purely observational.
-  const currentPlayerCardsSourceRef = useRef<string>('init');
-  const chipAnimDiagPrevRef = useRef<{
-    source: string;
-    cardCount: number;
-    triggerId: string | null;
-    handContextId: string | null;
-    currentPlayerId: string | null;
-    armedAt: number | null; // when trigger first observed
-  }>({
-    source: 'init',
-    cardCount: 0,
-    triggerId: null,
-    handContextId: null,
-    currentPlayerId: null,
-    armedAt: null,
-  });
-
+  
   // Update cache only when:
   // 1. handContextId changes (new hand started) - reset to new cards (or empty if not yet received)
   // 2. handContextId is the same AND we have new cards - update with fresh cards
@@ -2407,115 +2387,8 @@ export const MobileGameTable = ({
       }
     }
 
-    currentPlayerCardsSourceRef.current = chosen.source;
     return chosen.cards;
   }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId]);
-
-  // ── Post-render diagnostic for chip-animation disappearing-cards bug ──
-  // Logs to debug_events ONLY when:
-  //   (a) holmWinPotTriggerId is currently active, OR
-  //   (b) holmWinPotTriggerId was active recently (armedAt set) and we're still on the same hand, OR
-  //   (c) selected card count dropped from >0 to 0, OR
-  //   (d) selected source changed.
-  // Keeps log volume bounded.
-  useEffect(() => {
-    const prev = chipAnimDiagPrevRef.current;
-    const nowMs = Date.now();
-    const triggerActive = !!holmWinPotTriggerId;
-    const recentlyArmed = prev.armedAt !== null && (nowMs - prev.armedAt) < 10_000;
-    const sameHand = prev.handContextId === (handContextId ?? null);
-    const sourceChanged = prev.source !== currentPlayerCardsSourceRef.current;
-    const droppedToZero = prev.cardCount > 0 && currentPlayerCards.length === 0;
-    const triggerChanged = prev.triggerId !== (holmWinPotTriggerId ?? null);
-    const playerChanged = prev.currentPlayerId !== (currentPlayer?.id ?? null);
-    const handChanged = prev.handContextId !== (handContextId ?? null);
-
-    const shouldLog =
-      triggerActive ||
-      (recentlyArmed && sameHand) ||
-      droppedToZero ||
-      sourceChanged ||
-      triggerChanged;
-
-    if (shouldLog && gameType === 'holm-game' && gameId) {
-      // Always-on instrumentation — writes directly to debug_events,
-      // bypassing all debug flags / URL params / localStorage gates.
-      // Volume is bounded by the shouldLog guards above.
-      supabase
-        .from('debug_events' as any)
-        .insert({
-          game_id: gameId,
-          round_id: handContextId ?? null,
-          user_id: null,
-          client_role: 'observer',
-          event_type: 'chip-anim-card-source',
-          payload: {
-            instanceLabel,
-            // chosen source
-            source: currentPlayerCardsSourceRef.current,
-            prevSource: prev.source,
-            sourceChanged,
-            // card counts by origin
-            selectedCount: currentPlayerCards.length,
-            prevSelectedCount: prev.cardCount,
-            droppedToZero,
-            rawCount: rawCurrentPlayerCards.length,
-            cachedCount: currentPlayerCardsRef.current.cards.length,
-            cachedHandContextId: currentPlayerCardsRef.current.handContextId,
-            frozenCount: holmWinPotFrozenCardsRef.current.cards.length,
-            frozenTriggerId: holmWinPotFrozenCardsRef.current.triggerId,
-            frozenHandContextId: holmWinPotFrozenCardsRef.current.handContextId,
-            // identity
-            currentPlayerId: currentPlayer?.id ?? null,
-            prevCurrentPlayerId: prev.currentPlayerId,
-            playerChanged,
-            handContextId: handContextId ?? null,
-            prevHandContextId: prev.handContextId,
-            handChanged,
-            // trigger lifecycle
-            holmWinPotTriggerId: holmWinPotTriggerId ?? null,
-            prevTriggerId: prev.triggerId,
-            triggerChanged,
-            triggerActive,
-            recentlyArmed,
-            armedAt: prev.armedAt,
-            // contextual flags
-            roundStatus: roundStatus ?? null,
-            gameStatus: gameStatus ?? null,
-            isHandTransitioning,
-            isInProgress: gameStatus === 'in_progress',
-            ts: nowMs,
-          },
-        } as any)
-        .then(({ error }) => {
-          if (error) console.warn('[chip-anim-diag] write failed:', error.message);
-        });
-    }
-
-    chipAnimDiagPrevRef.current = {
-      source: currentPlayerCardsSourceRef.current,
-      cardCount: currentPlayerCards.length,
-      triggerId: holmWinPotTriggerId ?? null,
-      handContextId: handContextId ?? null,
-      currentPlayerId: currentPlayer?.id ?? null,
-      armedAt: triggerActive
-        ? (prev.armedAt ?? nowMs)
-        : (recentlyArmed && sameHand ? prev.armedAt : null),
-    };
-  }, [
-    currentPlayerCards,
-    holmWinPotTriggerId,
-    handContextId,
-    currentPlayer?.id,
-    rawCurrentPlayerCards.length,
-    roundStatus,
-    gameStatus,
-    isHandTransitioning,
-    gameType,
-    gameId,
-    currentRound,
-    instanceLabel,
-  ]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
