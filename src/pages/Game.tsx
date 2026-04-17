@@ -1256,7 +1256,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // Optimistic UI update
       setGame(prev => prev ? { ...prev, is_paused: false, paused_time_remaining: null } : prev);
-      setDecisionDeadline(newDeadline);
+      // Normalize ISO to canonical form to prevent identity drift across realtime payloads
+      setDecisionDeadline(newDeadline ? new Date(newDeadline).toISOString() : newDeadline);
       
       // Update game and current round deadline
       const { error: gameError } = await supabase
@@ -5085,8 +5086,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ?? currentRound?.decision_deadline ?? null;
       
       if (effectiveDeadline) {
-        // Store the deadline for server-driven timer
-        setDecisionDeadline(effectiveDeadline);
+        // Store the deadline for server-driven timer.
+        // Normalize ISO to canonical form so identical instants from different sources
+        // (Postgres realtime ".919+00:00" vs ISO ".919Z") don't trigger false re-seeds.
+        const normalizedDeadline = (() => {
+          try { return new Date(effectiveDeadline).toISOString(); }
+          catch { return effectiveDeadline; }
+        })();
+        setDecisionDeadline(normalizedDeadline);
         
         // Holm game: turn-based, needs current_turn_position
         if (gameData.game_type === 'holm-game' && currentRound.current_turn_position) {

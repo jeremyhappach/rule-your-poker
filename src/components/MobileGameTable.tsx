@@ -2298,8 +2298,13 @@ export const MobileGameTable = ({
     
     // HOLM COMPLETED GUARD: Hide active player cards once round is completed
     // to prevent a brief flash of the old hand before the next round arrives.
+    // EXCEPTION: While the win-pot/chip-award animation is active, return the last
+    // known snapshot so the winning player's cards don't vanish mid-animation.
     // Showdown card display uses a separate cache (showdownCardsCache), not this path.
     if (gameType === 'holm-game' && roundStatus === 'completed') {
+      if (holmWinPotTriggerId) {
+        return currentPlayerCardsRef.current.cards;
+      }
       return [];
     }
     
@@ -2308,15 +2313,16 @@ export const MobileGameTable = ({
     
     // Case 1: handContextId changed - this is a new hand
     if (handContextId !== cachedHandContextId) {
-      // If we have cards for the new hand, use them
+      // If we have cards for the new hand, use them and update cache
       if (rawCurrentPlayerCards.length > 0) {
         currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
         return rawCurrentPlayerCards;
       }
-      // New hand but no cards yet - clear the cache and return empty
-      // This prevents stale cards from flashing
-      currentPlayerCardsRef.current = { cards: [], handContextId: handContextId ?? null };
-      return [];
+      // New hand but no cards yet — DO NOT wipe the cache here.
+      // The 150ms isHandTransitioning guard above already returns [] during the
+      // transition window. Wiping the cache before fresh data arrives causes a
+      // visible disappear/reappear flash on deal. Wait for real data to arrive.
+      return cachedCards;
     }
     
     // Case 2: Same hand - prefer new cards if available, otherwise keep cached
