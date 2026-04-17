@@ -1888,7 +1888,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
-        }
+        })
       )
       .on(
         'postgres_changes',
@@ -1898,7 +1898,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'players',
           filter: `game_id=eq.${gameId}`
         },
-        (payload) => {
+        simulateRealtime('players', (payload) => {
           console.log('[REALTIME] Players table changed:', payload.eventType, payload);
           
           // CRITICAL: Immediate fetch for INSERT (new player joined) - essential for PreGameLobby
@@ -1935,7 +1935,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             debouncedFetch();
           }
-        }
+        })
       )
       .on(
         'postgres_changes',
@@ -1945,7 +1945,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        (payload) => {
+        simulateRealtime('rounds', (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
 
           // If horses_state or yahtzee_state changed, patch it into local state immediately so
@@ -1972,9 +1972,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
-        }
+        })
       )
-      .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
 
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
