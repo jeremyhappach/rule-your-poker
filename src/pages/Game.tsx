@@ -3363,15 +3363,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setPendingDecision(null);
   }, [cardStateContext?.roundId, currentRound?.id, currentRound?.round_number, game?.status]);
 
-  // ── Hand/round boundary hard reset for player_cards (Holm wrong-tabled-cards fix) ──
-  // Guarantees no prior-hand player_cards can survive into the next hand,
-  // independent of fetch timing or RLS visibility on completed rounds.
-  // Fetch path repopulates with the new round's cards immediately after.
-  useEffect(() => {
-    if (!currentRound?.id) return;
-    setPlayerCards([]);
-    setCardStateContext(null);
-  }, [currentRound?.id]);
+  // NOTE: Boundary reset effect removed — caused 2–3 competing clears with the
+  // realtime/fetch paths (Game.tsx ~1750, ~4793), producing a multi-flash on deal.
+  // Realtime round-change handler + fetch-no-cards handler already cover the boundary.
 
   // Compute current card identity to detect new hands
   const communityCards = currentRound?.community_cards as CardType[] | undefined;
