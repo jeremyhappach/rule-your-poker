@@ -50,6 +50,7 @@ import { logDebugEvent } from "@/lib/debugEventLogger";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
+import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
