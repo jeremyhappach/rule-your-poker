@@ -2302,16 +2302,34 @@ export const MobileGameTable = ({
     ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
     : [];
   
+  // ── INSTRUMENTATION (chip-anim disappearing-cards bug) ──────────────
+  // Track the source branch chosen by the currentPlayerCards useMemo on this
+  // render so the post-render effect can persist a diagnostic event. No
+  // behavior change — purely observational.
+  const currentPlayerCardsSourceRef = useRef<string>('init');
+  const chipAnimDiagPrevRef = useRef<{
+    source: string;
+    cardCount: number;
+    triggerId: string | null;
+    handContextId: string | null;
+    currentPlayerId: string | null;
+    armedAt: number | null; // when trigger first observed
+  }>({
+    source: 'init',
+    cardCount: 0,
+    triggerId: null,
+    handContextId: null,
+    currentPlayerId: null,
+    armedAt: null,
+  });
+
   // Update cache only when:
   // 1. handContextId changes (new hand started) - reset to new cards (or empty if not yet received)
   // 2. handContextId is the same AND we have new cards - update with fresh cards
   // 3. handContextId is null but we have cards - accept them (fallback for legacy behavior)
   const currentPlayerCards = useMemo(() => {
-    // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
-    // animation is active, return a frozen snapshot captured at trigger start.
-    // Immune to any upstream setPlayerCards([]) cascade (realtime round-completed,
-    // fetch-no-cards, etc.) that would otherwise blank the active player box
-    // mid-animation. Self-clears when the trigger goes away.
+    let chosen: { source: string; cards: CardType[] };
+
     // ANIMATION-SCOPED FROZEN SNAPSHOT: While the Holm win-pot/chip-award
     // animation is active, return a frozen snapshot. Lifetime is bound to
     // handContextId, NOT to holmWinPotTriggerId, so the snapshot survives
@@ -2327,67 +2345,157 @@ export const MobileGameTable = ({
           handContextId: handContextId ?? null,
         };
       }
-      return holmWinPotFrozenCardsRef.current.cards;
-    }
-    // Release snapshot ONLY when the hand actually advances. While we're still
-    // on the same hand, keep returning the frozen cards even after the trigger
-    // prop has been cleared by the parent.
-    if (
+      chosen = { source: 'frozen-trigger-active', cards: holmWinPotFrozenCardsRef.current.cards };
+    } else if (
       holmWinPotFrozenCardsRef.current.triggerId !== null &&
       holmWinPotFrozenCardsRef.current.handContextId !== (handContextId ?? null)
     ) {
+      // Hand advanced — release snapshot.
       holmWinPotFrozenCardsRef.current = { triggerId: null, cards: [], handContextId: null };
-    }
-    if (
+      chosen = { source: 'frozen-released-hand-advanced', cards: [] };
+    } else if (
       holmWinPotFrozenCardsRef.current.triggerId !== null &&
       holmWinPotFrozenCardsRef.current.cards.length > 0
     ) {
-      return holmWinPotFrozenCardsRef.current.cards;
+      chosen = { source: 'frozen-trigger-cleared-same-hand', cards: holmWinPotFrozenCardsRef.current.cards };
+    } else if (isHandTransitioning) {
+      // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
+      chosen = { source: 'empty-hand-transitioning', cards: [] };
+    } else if (gameType === 'holm-game' && roundStatus === 'completed') {
+      // HOLM COMPLETED GUARD: Hide active player cards once round is completed
+      // to prevent a brief flash of the old hand before the next round arrives.
+      chosen = { source: 'empty-holm-completed', cards: [] };
+    } else {
+      const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
+      const cachedCards = currentPlayerCardsRef.current.cards;
+
+      if (handContextId !== cachedHandContextId) {
+        // Case 1: handContextId changed - this is a new hand
+        if (rawCurrentPlayerCards.length > 0) {
+          currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+          chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
+        } else {
+          // Wait for real data to arrive — don't wipe cache.
+          chosen = { source: 'cached-new-hand-no-raw-yet', cards: cachedCards };
+        }
+      } else if (rawCurrentPlayerCards.length > 0) {
+        // Case 2: Same hand - prefer new cards if available
+        const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
+        const cachedFp = cachedCards.map(c => `${c.rank}${c.suit}`).join('|');
+        if (rawFp !== cachedFp) {
+          currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+        }
+        chosen = { source: 'raw-same-hand', cards: rawCurrentPlayerCards };
+      } else {
+        // No new cards but we have cached - keep cached
+        chosen = { source: 'cached-same-hand-no-raw', cards: cachedCards };
+      }
     }
 
-    // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
-    if (isHandTransitioning) {
-      return [];
-    }
-
-    // HOLM COMPLETED GUARD: Hide active player cards once round is completed
-    // to prevent a brief flash of the old hand before the next round arrives.
-    // Showdown card display uses a separate cache (showdownCardsCache), not this path.
-    if (gameType === 'holm-game' && roundStatus === 'completed') {
-      return [];
-    }
-    
-    const cachedHandContextId = currentPlayerCardsRef.current.handContextId;
-    const cachedCards = currentPlayerCardsRef.current.cards;
-    
-    // Case 1: handContextId changed - this is a new hand
-    if (handContextId !== cachedHandContextId) {
-      // If we have cards for the new hand, use them and update cache
-      if (rawCurrentPlayerCards.length > 0) {
-        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
-        return rawCurrentPlayerCards;
-      }
-      // New hand but no cards yet — DO NOT wipe the cache here.
-      // The 150ms isHandTransitioning guard above already returns [] during the
-      // transition window. Wiping the cache before fresh data arrives causes a
-      // visible disappear/reappear flash on deal. Wait for real data to arrive.
-      return cachedCards;
-    }
-    
-    // Case 2: Same hand - prefer new cards if available, otherwise keep cached
-    if (rawCurrentPlayerCards.length > 0) {
-      // Check if cards actually changed (different fingerprint)
-      const rawFp = rawCurrentPlayerCards.map(c => `${c.rank}${c.suit}`).join('|');
-      const cachedFp = cachedCards.map(c => `${c.rank}${c.suit}`).join('|');
-      if (rawFp !== cachedFp) {
-        currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
-      }
-      return rawCurrentPlayerCards;
-    }
-    
-    // No new cards but we have cached - keep cached (prevents flicker during brief DB gaps)
-    return cachedCards;
+    currentPlayerCardsSourceRef.current = chosen.source;
+    return chosen.cards;
   }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId]);
+
+  // ── Post-render diagnostic for chip-animation disappearing-cards bug ──
+  // Logs to debug_events ONLY when:
+  //   (a) holmWinPotTriggerId is currently active, OR
+  //   (b) holmWinPotTriggerId was active recently (armedAt set) and we're still on the same hand, OR
+  //   (c) selected card count dropped from >0 to 0, OR
+  //   (d) selected source changed.
+  // Keeps log volume bounded.
+  useEffect(() => {
+    const prev = chipAnimDiagPrevRef.current;
+    const nowMs = Date.now();
+    const triggerActive = !!holmWinPotTriggerId;
+    const recentlyArmed = prev.armedAt !== null && (nowMs - prev.armedAt) < 10_000;
+    const sameHand = prev.handContextId === (handContextId ?? null);
+    const sourceChanged = prev.source !== currentPlayerCardsSourceRef.current;
+    const droppedToZero = prev.cardCount > 0 && currentPlayerCards.length === 0;
+    const triggerChanged = prev.triggerId !== (holmWinPotTriggerId ?? null);
+    const playerChanged = prev.currentPlayerId !== (currentPlayer?.id ?? null);
+    const handChanged = prev.handContextId !== (handContextId ?? null);
+
+    const shouldLog =
+      triggerActive ||
+      (recentlyArmed && sameHand) ||
+      droppedToZero ||
+      sourceChanged ||
+      triggerChanged;
+
+    if (shouldLog && gameType === 'holm-game' && gameId) {
+      import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'holm-game',
+          handNumber: 0,
+          roundId: currentRound?.id ?? null,
+          eventType: 'transition',
+          severity: droppedToZero && (triggerActive || recentlyArmed) ? 'warn' : 'info',
+          eventName: 'chip-anim-card-source',
+          payload: {
+            instanceLabel,
+            // chosen source
+            source: currentPlayerCardsSourceRef.current,
+            prevSource: prev.source,
+            sourceChanged,
+            // card counts by origin
+            selectedCount: currentPlayerCards.length,
+            prevSelectedCount: prev.cardCount,
+            droppedToZero,
+            rawCount: rawCurrentPlayerCards.length,
+            cachedCount: currentPlayerCardsRef.current.cards.length,
+            cachedHandContextId: currentPlayerCardsRef.current.handContextId,
+            frozenCount: holmWinPotFrozenCardsRef.current.cards.length,
+            frozenTriggerId: holmWinPotFrozenCardsRef.current.triggerId,
+            frozenHandContextId: holmWinPotFrozenCardsRef.current.handContextId,
+            // identity
+            currentPlayerId: currentPlayer?.id ?? null,
+            prevCurrentPlayerId: prev.currentPlayerId,
+            playerChanged,
+            handContextId: handContextId ?? null,
+            prevHandContextId: prev.handContextId,
+            handChanged,
+            // trigger lifecycle
+            holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+            prevTriggerId: prev.triggerId,
+            triggerChanged,
+            triggerActive,
+            recentlyArmed,
+            armedAt: prev.armedAt,
+            // contextual flags
+            roundStatus: roundStatus ?? null,
+            gameStatus: gameStatus ?? null,
+            isHandTransitioning,
+            isInProgress: gameStatus === 'in_progress',
+          },
+        });
+      }).catch(() => { /* non-blocking */ });
+    }
+
+    chipAnimDiagPrevRef.current = {
+      source: currentPlayerCardsSourceRef.current,
+      cardCount: currentPlayerCards.length,
+      triggerId: holmWinPotTriggerId ?? null,
+      handContextId: handContextId ?? null,
+      currentPlayerId: currentPlayer?.id ?? null,
+      armedAt: triggerActive
+        ? (prev.armedAt ?? nowMs)
+        : (recentlyArmed && sameHand ? prev.armedAt : null),
+    };
+  }, [
+    currentPlayerCards,
+    holmWinPotTriggerId,
+    handContextId,
+    currentPlayer?.id,
+    rawCurrentPlayerCards.length,
+    roundStatus,
+    gameStatus,
+    isHandTransitioning,
+    gameType,
+    gameId,
+    currentRound?.id,
+    instanceLabel,
+  ]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
