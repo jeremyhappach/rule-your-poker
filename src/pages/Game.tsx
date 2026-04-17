@@ -47,6 +47,7 @@ import { Share2, Bot } from "lucide-react";
 import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDeleted } from "@/lib/sessionEventLog";
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { logDebugEvent } from "@/lib/debugEventLogger";
+import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed } from "@/lib/turnTransitionInstrumentation";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
@@ -2363,19 +2364,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // One row per new decision_deadline identity. Captures server vs client
       // skew, raw vs seeded remaining, fresh-mount flag, and current sim mode.
       try {
-        const { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed } =
-          require('@/lib/turnTransitionInstrumentation');
-        const roundIdForLog = currentRoundData?.id ?? null;
+        const roundIdForLog = currentRound?.id ?? null;
         if (gameId && shouldLogTurnTransition(gameId, roundIdForLog, decisionDeadline)) {
           const fresh = isFreshMountForRound(gameId, roundIdForLog);
-          const turnPos = currentRoundData?.current_turn_position ?? null;
+          const turnPos = currentRound?.current_turn_position ?? null;
           const turnOwner = turnPos != null
             ? (players.find(p => p.position === turnPos)?.id ?? null)
             : null;
           logTurnTransitionSeed({
             gameId,
             roundId: roundIdForLog,
-            handNumber: currentRoundData?.hand_number ?? game?.total_hands ?? null,
+            handNumber: currentRound?.hand_number ?? game?.total_hands ?? null,
             userId: user?.id ?? null,
             turnOwnerId: turnOwner,
             serverDeadlineIso: decisionDeadline,
