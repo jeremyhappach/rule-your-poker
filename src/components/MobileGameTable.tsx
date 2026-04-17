@@ -234,6 +234,7 @@ interface MobileGameTableProps {
   anteAmount?: number;
   pussyTaxValue?: number;
   gameStatus?: string; // For ante animation trigger
+  instanceLabel?: string; // For diagnostic instrumentation only — identifies which MobileGameTable render-site is mounted
   handContextId?: string | null; // Authoritative round id to hard-reset UI caches (prevents stale community/Chucky cards)
   anteAnimationTriggerId?: string | null; // Direct trigger for ante animation from Game.tsx
   anteAnimationExpectedPot?: number | null; // Expected pot after antes (for re-ante scenarios where pot isn't updated yet)
@@ -387,6 +388,7 @@ export const MobileGameTable = ({
   anteAmount = 0,
   pussyTaxValue = 1,
   gameStatus,
+  instanceLabel = 'unknown',
   handContextId,
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
