@@ -2091,15 +2091,17 @@ export const MobileGameTable = ({
     showCommunityCards,
   ]);
   
-  if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound && !isInGameOverStatus) {
+  // Preserve showdown cache while Holm win-pot / chip-award animation is active
+  // so the winning player's cards remain visible in their active player box.
+  if (currentRound && showdownRoundRef.current !== null && showdownRoundRef.current !== currentRound && !isInGameOverStatus && !holmWinPotTriggerId) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
     showdownHandContextRef.current = null;
   }
   
   // Also clear if we're in early phase, no announcement, AND allDecisionsIn is false (truly new hand)
-  // But NEVER clear during game_over - cards must remain visible for pot animation
-  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult && !allDecisionsIn && !isInGameOverStatus) {
+  // But NEVER clear during game_over or active win-pot animation - cards must remain visible
+  if (showdownRoundRef.current !== null && isInEarlyPhase && !lastRoundResult && !allDecisionsIn && !isInGameOverStatus && !holmWinPotTriggerId) {
     showdownRoundRef.current = null;
     showdownCardsCache.current = new Map();
     showdownHandContextRef.current = null;
@@ -2110,7 +2112,8 @@ export const MobileGameTable = ({
   if (
     showdownHandContextRef.current !== null &&
     showdownHandContextRef.current !== (handContextId ?? null) &&
-    !isInGameOverStatus
+    !isInGameOverStatus &&
+    !holmWinPotTriggerId
   ) {
     console.log('[SHOWDOWN_CACHE] Clearing cache - handContextId changed:', {
       prev: showdownHandContextRef.current,
