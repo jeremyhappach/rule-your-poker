@@ -3,9 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Palette, Volume2, Vibrate } from 'lucide-react';
+import { Palette, Volume2, Vibrate, Wifi } from 'lucide-react';
 import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode } from '@/hooks/useVisualPreferences';
+import { NetworkSimMode, NETWORK_SIM_MODE_LABELS } from '@/lib/networkSim';
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -31,6 +33,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
   const [useHaptic, setUseHaptic] = useState(true);
   const [playSounds, setPlaySounds] = useState(true);
+  const [networkSimMode, setNetworkSimMode] = useState<NetworkSimMode>('off');
+  const [networkSimLogging, setNetworkSimLogging] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +55,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
       setDeckColorMode((data as any).deck_color_mode || 'two_color');
       setUseHaptic((data as any).use_haptic ?? true);
       setPlaySounds((data as any).play_sounds ?? true);
+      setNetworkSimMode(((data as any).network_sim_mode ?? 'off') as NetworkSimMode);
+      setNetworkSimLogging(Boolean((data as any).network_sim_logging));
     }
     setLoading(false);
   };
@@ -65,6 +71,8 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
         deck_color_mode: deckColorMode,
         use_haptic: useHaptic,
         play_sounds: playSounds,
+        network_sim_mode: networkSimMode,
+        network_sim_logging: networkSimLogging,
       } as any)
       .eq('id', userId);
 
@@ -244,6 +252,50 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
             id="use-haptic"
             checked={useHaptic}
             onCheckedChange={setUseHaptic}
+          />
+        </div>
+      </div>
+
+      {/* Network Simulation (Debug / Testing) */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Wifi className="h-4 w-4" />
+          <h3 className="font-semibold">Network Simulation</h3>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Simulate cross-country / poor-network conditions on this client only.
+          Server logic is unaffected. A red banner appears bottom-left whenever simulation is on.
+        </p>
+
+        <div className="space-y-2">
+          <Label htmlFor="network-sim-mode">Mode</Label>
+          <Select
+            value={networkSimMode}
+            onValueChange={(v) => setNetworkSimMode(v as NetworkSimMode)}
+          >
+            <SelectTrigger id="network-sim-mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(NETWORK_SIM_MODE_LABELS) as NetworkSimMode[]).map((m) => (
+                <SelectItem key={m} value={m}>{NETWORK_SIM_MODE_LABELS[m]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Off · Moderate (~150ms) · Heavy (~500ms) · Reorder/Burst · Cross-Country (~250ms + spikes)
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="network-sim-logging" className="cursor-pointer">Persistent Sim Logging</Label>
+            <p className="text-xs text-muted-foreground">Write each delayed/reordered event to the network_sim_events table.</p>
+          </div>
+          <Switch
+            id="network-sim-logging"
+            checked={networkSimLogging}
+            onCheckedChange={setNetworkSimLogging}
           />
         </div>
       </div>

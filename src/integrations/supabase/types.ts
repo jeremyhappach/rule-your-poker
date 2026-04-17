@@ -889,6 +889,54 @@ export type Database = {
         }
         Relationships: []
       }
+      network_sim_events: {
+        Row: {
+          actual_delivery_ts: string | null
+          created_at: string
+          delay_ms: number | null
+          event_type: string
+          game_id: string | null
+          hand_number: number | null
+          id: string
+          original_receive_ts: string | null
+          round_id: string | null
+          sim_mode: string
+          source: string | null
+          summary: Json
+          user_id: string
+        }
+        Insert: {
+          actual_delivery_ts?: string | null
+          created_at?: string
+          delay_ms?: number | null
+          event_type: string
+          game_id?: string | null
+          hand_number?: number | null
+          id?: string
+          original_receive_ts?: string | null
+          round_id?: string | null
+          sim_mode: string
+          source?: string | null
+          summary?: Json
+          user_id: string
+        }
+        Update: {
+          actual_delivery_ts?: string | null
+          created_at?: string
+          delay_ms?: number | null
+          event_type?: string
+          game_id?: string | null
+          hand_number?: number | null
+          id?: string
+          original_receive_ts?: string | null
+          round_id?: string | null
+          sim_mode?: string
+          source?: string | null
+          summary?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       performance_traces: {
         Row: {
           created_at: string
@@ -1145,6 +1193,8 @@ export type Database = {
           is_superuser: boolean
           last_seen_at: string | null
           mute_dealer_chat: boolean
+          network_sim_logging: boolean
+          network_sim_mode: string
           play_sounds: boolean
           table_layout: string
           use_haptic: boolean
@@ -1161,6 +1211,8 @@ export type Database = {
           is_superuser?: boolean
           last_seen_at?: string | null
           mute_dealer_chat?: boolean
+          network_sim_logging?: boolean
+          network_sim_mode?: string
           play_sounds?: boolean
           table_layout?: string
           use_haptic?: boolean
@@ -1177,6 +1229,8 @@ export type Database = {
           is_superuser?: boolean
           last_seen_at?: string | null
           mute_dealer_chat?: boolean
+          network_sim_logging?: boolean
+          network_sim_mode?: string
           play_sounds?: boolean
           table_layout?: string
           use_haptic?: boolean

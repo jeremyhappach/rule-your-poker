@@ -50,6 +50,7 @@ import { logDebugEvent } from "@/lib/debugEventLogger";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
+import { simulateRealtime, configureNetworkSim } from "@/lib/networkSim";
 import { runHolmInvariants, resetRegressiveRevealTracking } from "@/lib/holmSyncDiagnostics";
 import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebugEvent";
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
@@ -399,6 +400,14 @@ const Game = () => {
   const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
   const [game, setGame] = useState<GameData | null>(null);
+
+  // Push game context into network simulation runtime for log enrichment
+  useEffect(() => {
+    configureNetworkSim({
+      gameId: gameId ?? null,
+      handNumber: game?.total_hands ?? null,
+    });
+  }, [gameId, game?.total_hands]);
 
   // POT STABILITY:
   // Backend updates can briefly emit pot=null during hand/round transitions (frontend was coercing null -> 0).
@@ -1656,7 +1665,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        (payload) => {
+        simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           
@@ -1889,7 +1898,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] No specific trigger, using debounced fetch');
             debouncedFetch();
           }
-        }
+        })
       )
       .on(
         'postgres_changes',
@@ -1899,7 +1908,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'players',
           filter: `game_id=eq.${gameId}`
         },
-        (payload) => {
+        simulateRealtime('players', (payload) => {
           console.log('[REALTIME] Players table changed:', payload.eventType, payload);
           
           // CRITICAL: Immediate fetch for INSERT (new player joined) - essential for PreGameLobby
@@ -1936,7 +1945,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             debouncedFetch();
           }
-        }
+        })
       )
       .on(
         'postgres_changes',
@@ -1946,7 +1955,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        (payload) => {
+        simulateRealtime('rounds', (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
 
           // If horses_state or yahtzee_state changed, patch it into local state immediately so
@@ -1973,7 +1982,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
-        }
+        })
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
