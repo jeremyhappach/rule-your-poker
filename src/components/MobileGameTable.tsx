@@ -2428,7 +2428,7 @@ export const MobileGameTable = ({
           gameId,
           gameType: 'holm-game',
           handNumber: 0,
-          roundId: currentRound?.id ?? null,
+          roundId: handContextId ?? null,
           eventType: 'transition',
           severity: droppedToZero && (triggerActive || recentlyArmed) ? 'warn' : 'info',
           eventName: 'chip-anim-card-source',
