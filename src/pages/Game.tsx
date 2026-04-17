@@ -7587,6 +7587,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <>
                 {/* Show game table as background during dealer selection (non-gin-rummy) */}
                 <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
+                    instanceLabel="dealer-selection-bg"
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -7654,6 +7655,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             )) ? (
               <div className="relative">
                 <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                    instanceLabel="status-keyed"
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -7801,6 +7803,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
+                    instanceLabel="game-over-or-win-anim-ungated"
                     gameId={gameId}
                     players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
                     currentUserId={user?.id}
@@ -8094,6 +8097,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             return (
               <MobileGameTable
                 key={gameId ?? 'unknown-game'}
+                instanceLabel="cribbage-or-special"
                 gameId={gameId}
                 players={players}
                 currentUserId={user?.id}
@@ -8208,6 +8212,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           return (
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
+              instanceLabel="main-in-progress-gated"
               gameId={gameId}
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
