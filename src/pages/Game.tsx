@@ -5679,6 +5679,48 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
+  // SAFETY AUTO-ADVANCE (non-Holm): if a game has been sitting in 'game_over' with
+  // game_over_at already set, every animation/win-sequence has finished. Without this,
+  // Horses/SCC/Yahtzee/Cribbage/Gin Rummy/3-5-7 sessions can stay frozen forever
+  // because no UI button is wired to onNextGame. Holm has its own auto-confirm above
+  // (which fires before game_over_at is set), so we only handle the post-game_over_at
+  // window here. Triggers after a 10s grace period so any still-running animation can finish.
+  useEffect(() => {
+    if (game?.status !== 'game_over') return;
+    if (!game?.game_over_at) return; // 357 / horses-win-animation paths still in charge
+    if (game?.game_type === 'holm-game') return; // Holm uses the effect above
+    // Don't fight the 357 win-animation while it is still active
+    if (is357WinAnimationActiveRef.current) return;
+    // Don't preempt Horses pot-to-winner animation
+    if (horsesWinPotTriggerId) return;
+
+    const ageMs = Date.now() - new Date(game.game_over_at).getTime();
+    const delayMs = Math.max(0, 10_000 - ageMs);
+
+    console.log('[GAME OVER AUTO-ADVANCE] Scheduling fallback transition', {
+      gameType: game?.game_type,
+      delayMs,
+      ageMs,
+    });
+
+    const timer = window.setTimeout(async () => {
+      // Re-verify state before acting; another client may have already moved on
+      const { data: fresh } = await supabase
+        .from('games')
+        .select('status, game_over_at')
+        .eq('id', gameId)
+        .single();
+      if (fresh?.status !== 'game_over') {
+        console.log('[GAME OVER AUTO-ADVANCE] Status changed, skipping');
+        return;
+      }
+      console.log('[GAME OVER AUTO-ADVANCE] Forcing handleGameOverComplete');
+      await handleGameOverComplete();
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [game?.status, game?.game_over_at, game?.game_type, gameId, horsesWinPotTriggerId, handleGameOverComplete]);
+
   // Unmount cleanup for 357 timers (don't rely on effect cleanups that run on every re-render)
   useEffect(() => {
     return () => {
