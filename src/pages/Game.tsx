@@ -6151,24 +6151,60 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     
     // Get pot amount from cache (since DB pot is already reset to 0)
-    const potAmount = cachedPotForHorsesWinRef.current || game?.pot || 0;
-    
-    // Don't animate with $0 pot
-    if (potAmount <= 0) {
-      console.warn('[HORSES WIN POT] Skipping animation - pot is 0:', { potAmount, cached: cachedPotForHorsesWinRef.current });
-      return;
-    }
-    
-    // Mark as processed and remember which round triggered it
+    const localPot = cachedPotForHorsesWinRef.current || game?.pot || 0;
+
+    // Mark as processed early so the async branch doesn't re-enter on re-render
     horsesWinProcessedRef.current = resultMessage;
     horsesWinAnimationRoundRef.current = game?.current_round ?? null;
-    
-    console.log('[HORSES WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPlayer.position, 'pot:', potAmount);
-    
-    setHorsesWinPotAmount(potAmount);
-    setHorsesWinWinnerPosition(winnerPlayer.position);
-    setHorsesWinPotTriggerId(`horses-win-${Date.now()}`);
-  }, [game?.status, game?.game_type, game?.last_round_result, game?.current_round, players, horsesWinPotTriggerId]);
+
+    const triggerWithPot = (potAmount: number) => {
+      if (potAmount <= 0) {
+        console.warn('[HORSES WIN POT] Skipping animation - pot is 0 even after game_results lookup:', { potAmount });
+        // Reset processed ref so the safety fallback path or a later state change can retry
+        horsesWinProcessedRef.current = null;
+        horsesWinAnimationRoundRef.current = null;
+        return;
+      }
+      console.log('[HORSES WIN POT] Triggering pot animation for:', winnerName, 'position:', winnerPlayer!.position, 'pot:', potAmount);
+      setHorsesWinPotAmount(potAmount);
+      setHorsesWinWinnerPosition(winnerPlayer!.position);
+      setHorsesWinPotTriggerId(`horses-win-${Date.now()}`);
+    };
+
+    if (localPot > 0) {
+      triggerWithPot(localPot);
+      return;
+    }
+
+    // Refresh-resilient fallback: pot was reset before this client could cache it.
+    // Authoritative pot lives in game_results.pot_won for the current dealer game / hand.
+    console.log('[HORSES WIN POT] Local pot is 0; querying game_results for authoritative pot');
+    void (async () => {
+      try {
+        const dealerGameId = game?.current_game_uuid;
+        const handNumber = game?.total_hands ?? 1;
+        let query = supabase
+          .from('game_results')
+          .select('pot_won, dealer_game_id, hand_number, created_at')
+          .eq('game_id', gameId)
+          .eq('hand_number', handNumber)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (dealerGameId) query = query.eq('dealer_game_id', dealerGameId);
+        const { data, error } = await query;
+        if (error) {
+          console.warn('[HORSES WIN POT] game_results lookup failed:', error);
+          triggerWithPot(0);
+          return;
+        }
+        const pot = (data && data[0]?.pot_won) || 0;
+        triggerWithPot(pot);
+      } catch (err) {
+        console.warn('[HORSES WIN POT] game_results lookup threw:', err);
+        triggerWithPot(0);
+      }
+    })();
+  }, [game?.status, game?.game_type, game?.last_round_result, game?.current_round, game?.current_game_uuid, game?.total_hands, players, horsesWinPotTriggerId, gameId]);
 
   // Cache pot value for 3-5-7 win animation (pot gets reset before game_over)
   const cachedPotFor357WinRef = useRef<number>(0);
