@@ -1644,6 +1644,10 @@ export type Database = {
         Args: { _round_id: string }
         Returns: Json
       }
+      cribbage_apply_discard: {
+        Args: { _card_indices: number[]; _player_id: string; _round_id: string }
+        Returns: Json
+      }
       decrement_player_chips: {
         Args: { amount: number; player_ids: string[] }
         Returns: undefined
