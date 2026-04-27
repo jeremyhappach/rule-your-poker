@@ -6183,22 +6183,45 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       try {
         const dealerGameId = game?.current_game_uuid;
         const handNumber = game?.total_hands ?? 1;
-        let query = supabase
+        const gameType = game?.game_type;
+
+        // Triple-key scoping required: game_id + dealer_game_id + hand_number.
+        // If dealer_game_id is missing we MUST NOT fall back to a recency-only
+        // lookup — that could pull pot_won from a prior dealer game in the same
+        // session. Bail to safety fallback instead.
+        if (!dealerGameId) {
+          console.warn('[HORSES WIN POT] No current_game_uuid; cannot safely look up pot_won. Letting safety fallback handle.');
+          triggerWithPot(0);
+          return;
+        }
+
+        const { data, error } = await supabase
           .from('game_results')
-          .select('pot_won, dealer_game_id, hand_number, created_at')
+          .select('pot_won, dealer_game_id, hand_number, game_type, game_id, created_at')
           .eq('game_id', gameId)
+          .eq('dealer_game_id', dealerGameId)
           .eq('hand_number', handNumber)
           .order('created_at', { ascending: false })
           .limit(1);
-        if (dealerGameId) query = query.eq('dealer_game_id', dealerGameId);
-        const { data, error } = await query;
+
         if (error) {
           console.warn('[HORSES WIN POT] game_results lookup failed:', error);
           triggerWithPot(0);
           return;
         }
-        const pot = (data && data[0]?.pot_won) || 0;
-        triggerWithPot(pot);
+
+        const row = data && data[0];
+        // Sanity: row must match the active Horses/SCC dealer game.
+        if (!row) {
+          triggerWithPot(0);
+          return;
+        }
+        if (row.game_type && gameType && row.game_type !== gameType) {
+          console.warn('[HORSES WIN POT] game_results game_type mismatch; ignoring', { rowType: row.game_type, gameType });
+          triggerWithPot(0);
+          return;
+        }
+        triggerWithPot(row.pot_won || 0);
       } catch (err) {
         console.warn('[HORSES WIN POT] game_results lookup threw:', err);
         triggerWithPot(0);
