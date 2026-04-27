@@ -252,6 +252,15 @@ export function discardToCrib(
 }
 
 /**
+ * Advance to cutting phase and reveal cut card.
+ * Exposed so the post-discard RPC client path can finalize the phase transition
+ * after both players' discards have been merged server-side.
+ */
+export function advanceCribbageToCutting(state: CribbageState): CribbageState {
+  return advanceToCutting(state);
+}
+
+/**
  * Advance to cutting phase and reveal cut card
  */
 function advanceToCutting(state: CribbageState): CribbageState {
