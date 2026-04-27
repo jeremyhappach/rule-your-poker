@@ -3087,58 +3087,70 @@ export const CribbageMobileGameTable = ({
 
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
-    
+
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
-    
+
+    setIsProcessing(true);
     try {
-      // CRITICAL: Fetch fresh state from DB to prevent stale card decisions.
-      // Without this, a player can discard cards from a PREVIOUS hand's state
-      // during the brief window before the realtime subscription delivers the new hand.
-      const { data: freshRound, error: fetchError } = await supabase
-        .from('rounds')
-        .select('cribbage_state')
-        .eq('id', currentRoundId)
-        .single();
-      
-      if (fetchError || !freshRound?.cribbage_state) {
-        console.error('[CRIBBAGE] Failed to fetch fresh state before discard:', fetchError);
-        toast.error('Failed to sync game state. Try again.');
+      // Atomic server-side merge: prevents lost-update races between two players
+      // discarding simultaneously. Server locks the round row, validates phase
+      // and ownership, and merges only this player's discard into the existing state.
+      const { data: mergedRaw, error: rpcError } = await supabase.rpc(
+        'cribbage_apply_discard',
+        {
+          _round_id: currentRoundId,
+          _player_id: currentPlayerId,
+          _card_indices: cardIndices,
+        }
+      );
+
+      if (rpcError) {
+        console.error('[CRIBBAGE] Discard RPC failed:', rpcError);
+        toast.error(rpcError.message || 'Failed to discard');
         return;
       }
-      
-      const freshState = freshRound.cribbage_state as unknown as CribbageState;
-      
-      // Verify we're still in discarding phase
-      if (freshState.phase !== 'discarding') {
-        console.warn('[CRIBBAGE] Stale state detected - no longer in discarding phase');
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        return;
+
+      const merged = mergedRaw as unknown as CribbageState;
+      if (!merged) return;
+
+      // Promote authoritative state immediately
+      syncHandle.receiveAuthoritativeUpdate(merged);
+      setCribbageState(merged);
+      logCribbageDebug(debugCtx, 'db_write_success', cribbageStateSummary(merged), tid);
+
+      // If both players have now discarded, advance to cutting phase.
+      // Phase advancement is intentionally client-side because it requires RNG
+      // (cut card selection). Guarded by a phase='discarding' conditional update
+      // so only one client's advancement wins.
+      if (merged.phase === 'discarding') {
+        const expected = Object.keys(merged.playerStates).length === 2 ? 2 : 1;
+        const allDone = Object.values(merged.playerStates).every(
+          ps => ps.discardedToCrib.length === expected
+        );
+        if (allDone) {
+          // discardToCrib with empty indices would no-op; instead synthesize the
+          // cutting transition by re-running discardToCrib with the LAST discarder's
+          // payload — but a cleaner path: call discardToCrib only if our discard
+          // was the one that completed. We already merged; just construct the next
+          // state by invoking the local logic on a state where this player is the
+          // "last to discard". Since merged already has both discards applied,
+          // we need a dedicated advance helper. Use a conditional update.
+          // Lazy import to avoid circular ref.
+          const { advanceCribbageToCutting } = await import('@/lib/cribbageGameLogic');
+          const advanced = advanceCribbageToCutting(merged);
+          await supabase
+            .from('rounds')
+            .update({ cribbage_state: JSON.parse(JSON.stringify(advanced)) })
+            .eq('id', currentRoundId)
+            .eq('cribbage_state->>phase', 'discarding');
+        }
       }
-      
-      // Verify player hasn't already discarded
-      const freshPlayerState = freshState.playerStates[currentPlayerId];
-      if (!freshPlayerState || freshPlayerState.discardedToCrib.length > 0) {
-        console.warn('[CRIBBAGE] Already discarded in fresh state');
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        return;
-      }
-      
-      // Validate card indices against fresh hand
-      if (cardIndices.some(i => i >= freshPlayerState.hand.length)) {
-        console.warn('[CRIBBAGE] Card indices invalid in fresh state');
-        syncHandle.receiveAuthoritativeUpdate(freshState);
-        setCribbageState(freshState);
-        toast.error('Cards no longer available');
-        return;
-      }
-      
-      const newState = discardToCrib(freshState, currentPlayerId, cardIndices);
-      await updateState(newState, tid);
     } catch (err) {
+      console.error('[CRIBBAGE] handleDiscard error:', err);
       toast.error((err as Error).message);
+    } finally {
+      setIsProcessing(false);
     }
   }, [cribbageState, currentPlayerId, currentRoundId, debugCtx]);
 
