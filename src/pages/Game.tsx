@@ -5679,42 +5679,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status, game?.game_over_at, game?.last_round_result, game?.game_type, game?.dealer_position, players, handleDealerConfirmGameOver, gameId]);
 
-  // SAFETY AUTO-ADVANCE (non-Holm): if a game has been sitting in 'game_over' with
-  // game_over_at already set, every animation/win-sequence has finished. Without this,
-  // Horses/SCC/Yahtzee/Cribbage/Gin Rummy/3-5-7 sessions can stay frozen forever
-  // because no UI button is wired to onNextGame. Holm has its own auto-confirm above
-  // (which fires before game_over_at is set), so we only handle the post-game_over_at
-  // window here. Triggers after a 10s grace period so any still-running animation can finish.
+  // SAFETY AUTO-ADVANCE (Horses / SCC only):
+  // Horses and SCC dealer games end after a single hand. If the win animation
+  // (horsesWinPotTriggerId) never fires — e.g. because pot caching missed or the
+  // animation handler bailed silently — the game can sit in 'game_over' with
+  // game_over_at already set and no UI affordance to advance.
+  //
+  // We deliberately scope this fallback to Horses/SCC ONLY:
+  //   - Holm has its own auto-confirm path
+  //   - 3-5-7, Cribbage, Gin Rummy, Yahtzee have their own dealer-driven completion
+  //     flows; a broad fallback there would mask real bugs and could preempt
+  //     legitimate animations.
+  //
+  // Triggers only after game_over_at + 15s, only if no win animation is active,
+  // and only after re-verifying status from the DB.
   useEffect(() => {
     if (game?.status !== 'game_over') return;
-    if (!game?.game_over_at) return; // 357 / horses-win-animation paths still in charge
-    if (game?.game_type === 'holm-game') return; // Holm uses the effect above
-    // Don't fight the 357 win-animation while it is still active
-    if (is357WinAnimationActiveRef.current) return;
-    // Don't preempt Horses pot-to-winner animation
-    if (horsesWinPotTriggerId) return;
+    if (!game?.game_over_at) return;
+    const gt = game?.game_type;
+    if (gt !== 'horses' && gt !== 'ship-captain-crew') return;
+    if (horsesWinPotTriggerId) return; // win animation in progress
 
     const ageMs = Date.now() - new Date(game.game_over_at).getTime();
-    const delayMs = Math.max(0, 10_000 - ageMs);
+    const delayMs = Math.max(0, 15_000 - ageMs);
 
-    console.log('[GAME OVER AUTO-ADVANCE] Scheduling fallback transition', {
-      gameType: game?.game_type,
-      delayMs,
-      ageMs,
-    });
+    console.log('[HORSES/SCC GAME-OVER FALLBACK] Scheduled', { gt, delayMs, ageMs });
 
     const timer = window.setTimeout(async () => {
-      // Re-verify state before acting; another client may have already moved on
       const { data: fresh } = await supabase
         .from('games')
         .select('status, game_over_at')
         .eq('id', gameId)
         .single();
-      if (fresh?.status !== 'game_over') {
-        console.log('[GAME OVER AUTO-ADVANCE] Status changed, skipping');
-        return;
-      }
-      console.log('[GAME OVER AUTO-ADVANCE] Forcing handleGameOverComplete');
+      if (fresh?.status !== 'game_over') return;
+      console.warn('[HORSES/SCC GAME-OVER FALLBACK] Forcing handleGameOverComplete');
       await handleGameOverComplete();
     }, delayMs);
 
