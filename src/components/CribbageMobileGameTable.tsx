@@ -2964,11 +2964,33 @@ export const CribbageMobileGameTable = ({
           await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
           
           try {
-            const newState = discardToCrib(cribbageState, player.id, discardIndices);
-            await supabase
-              .from('rounds')
-              .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-              .eq('id', roundId);
+            // Use atomic RPC to prevent lost-update races with concurrent human discards
+            const { data: mergedRaw, error: rpcError } = await supabase.rpc(
+              'cribbage_apply_discard',
+              {
+                _round_id: roundId,
+                _player_id: player.id,
+                _card_indices: discardIndices,
+              }
+            );
+            if (rpcError) throw rpcError;
+            const merged = mergedRaw as unknown as CribbageState | null;
+            // If both players have now discarded, advance to cutting (guarded conditional)
+            if (merged && merged.phase === 'discarding') {
+              const expected = Object.keys(merged.playerStates).length === 2 ? 2 : 1;
+              const allDone = Object.values(merged.playerStates).every(
+                ps => ps.discardedToCrib.length === expected
+              );
+              if (allDone) {
+                const { advanceCribbageToCutting } = await import('@/lib/cribbageGameLogic');
+                const advanced = advanceCribbageToCutting(merged);
+                await supabase
+                  .from('rounds')
+                  .update({ cribbage_state: JSON.parse(JSON.stringify(advanced)) })
+                  .eq('id', roundId)
+                  .eq('cribbage_state->>phase', 'discarding');
+              }
+            }
           } catch (err) {
             console.error('[CRIBBAGE BOT] Discard error:', err);
           } finally {
