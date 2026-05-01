@@ -1361,6 +1361,10 @@ export const CribbageMobileGameTable = ({
     countingAnimationActiveRef.current = true;
     countingDelayFiredRef.current = countingStartKey;
     countingHandKeyRef.current = countingStartKey;
+    // Latch authoritative identity for ALL subsequent writes / win triggers / delayed callbacks.
+    countingIdentityRef.current = currentRoundId
+      ? { roundId: currentRoundId, handNumber: currentHandNumber }
+      : null;
     // Write countingHandKey to state so reconnecting clients can validate
     const stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
     setCountingStateSnapshot(stateWithHandKey);
