@@ -563,8 +563,13 @@ export const CribbageMobileGameTable = ({
   // If the counting overlay ever remounts/re-inits, it must start from the pegging baseline
   // (not from the already-animated overrides), otherwise scores can double.
   const countingBaselineScoresRef = useRef<Record<string, number> | null>(null);
-  // Stable id for the currently-animated counting instance (latched when counting begins)
+  // Stable id for the currently-animated counting instance (latched when counting begins).
+  // Used ONLY for dedupe (already-fired guards). NEVER for cross-client identity validation.
   const countingHandKeyRef = useRef<string | null>(null);
+  // AUTHORITATIVE identity for the counting instance. All writes / win triggers / delayed
+  // callbacks must validate against this. Reconstructed handKeys are NOT trusted because
+  // they can collide across hands when cutCard happens to match.
+  const countingIdentityRef = useRef<{ roundId: string; handNumber: number } | null>(null);
 
   // Cache the latest pegging-phase scores so counting can always start from the true pre-count baseline
   // even if the DB state already contains post-count totals or has incomplete playedCards data.
