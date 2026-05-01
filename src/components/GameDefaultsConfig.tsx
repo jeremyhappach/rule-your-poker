@@ -50,6 +50,7 @@ const GAME_TYPES = [
   { value: 'gin-rummy', label: 'Gin Rummy', icon: Spade, category: 'card' },
   { value: 'horses', label: 'Horses', icon: Dice5, category: 'dice' },
   { value: 'ship-captain-crew', label: 'Ship Captain Crew', icon: Anchor, category: 'dice' },
+  { value: 'yahtzee', label: 'Yahtzee', icon: Dice5, category: 'dice' },
 ];
 
 export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigProps) {
