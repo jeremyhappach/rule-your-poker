@@ -3396,7 +3396,7 @@ export const CribbageMobileGameTable = ({
           gameType: 'cribbage',
           handNumber: currentHandNumber,
           eventType: 'invariant',
-          severity: 'warning',
+          severity: 'warn',
           eventName: 'crib-counting-complete-stale-rejected',
           payload: {
             expectedHandKey,
