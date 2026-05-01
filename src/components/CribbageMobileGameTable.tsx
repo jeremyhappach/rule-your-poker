@@ -1831,7 +1831,24 @@ export const CribbageMobileGameTable = ({
     // Don't re-trigger if win sequence already fired/scheduled for this winner
     
     const pointsToWin = cribbageState.pointsToWin;
-    
+
+    // FIX C: Identity guard — only trust countingScoreOverrides for the hand we
+    // actually started counting on. If countingHandKeyRef has drifted from the
+    // current state's identity (because realtime advanced the hand under us),
+    // the override values are stale and must NOT be used to declare a win.
+    const expectedHandKey = countingHandKeyRef.current;
+    if (expectedHandKey) {
+      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
+      if (liveHandKey !== expectedHandKey) {
+        console.warn('[CRIBBAGE] Reactive win detector: REJECTED stale countingScoreOverrides', {
+          expectedHandKey,
+          liveHandKey,
+          currentHandNumber,
+        });
+        return;
+      }
+    }
+
     // Check if any player has reached the winning threshold
     for (const [playerId, score] of Object.entries(countingScoreOverrides)) {
       if (score >= pointsToWin) {
@@ -1884,7 +1901,7 @@ export const CribbageMobileGameTable = ({
         return; // Only one winner
       }
     }
-  }, [countingScoreOverrides, cribbageState, roundId]);
+  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber]);
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
@@ -3373,6 +3390,47 @@ export const CribbageMobileGameTable = ({
     // (IMPORTANT: use the key latched when counting started; currentHandNumber can drift if
     // props advance while our local counting animation is still finishing).
     const handKey = countingHandKeyRef.current ?? `${dealerGameId}:${currentHandNumber}`;
+
+    // FIX B: Round/hand identity guard.
+    // If the counting animation we just finished is for a hand that has already been
+    // superseded by realtime updates (the round/hand has advanced past the one we
+    // started counting on), do NOT write back stale scores or trigger a win sequence.
+    // This prevents the "instant skunk on next deal" race where Client B's counting
+    // callback fires after Client A has already advanced the hand.
+    const expectedHandKey = countingHandKeyRef.current;
+    if (expectedHandKey) {
+      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
+      if (liveHandKey !== expectedHandKey) {
+        console.warn('[CRIBBAGE] handleCountingComplete: REJECTED stale counting completion', {
+          expectedHandKey,
+          liveHandKey,
+          currentRoundId: currentRoundId?.slice(0, 8),
+          currentHandNumber,
+          phase: cribbageState.phase,
+        });
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-counting-complete-stale-rejected',
+          payload: {
+            expectedHandKey,
+            liveHandKey,
+            currentRoundId: currentRoundId?.slice(0, 8),
+            phase: cribbageState.phase,
+          },
+        });
+        // Still clear local counting UI so we don't get stuck visually,
+        // but DO NOT write to DB or trigger win sequence.
+        setCountingStateSnapshot(null);
+        setCountingWinFrozen(false);
+        syncHandle.unfreezePresentation();
+        return;
+      }
+    }
+
     if (startNextHandFiredRef.current === handKey) {
       console.log('[CRIBBAGE] handleCountingComplete already fired for this hand, skipping', { handKey });
       return;
@@ -3389,6 +3447,7 @@ export const CribbageMobileGameTable = ({
         countingCompletedHandKeysRef.current.delete(keys[i]);
       }
     }
+
     
     persistSyncDebugEvent({
       gameId,
