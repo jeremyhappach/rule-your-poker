@@ -817,6 +817,51 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     );
   };
 
+  const renderYahtzeeSettings = () => {
+    const yahtzeeDefaults = getDefaultByType('yahtzee');
+    if (!yahtzeeDefaults) return <div className="text-muted-foreground text-center py-4">No defaults found for Yahtzee</div>;
+
+    return (
+      <>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Timer className="h-4 w-4" />
+          Timing Settings
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="yahtzee-timer">Decision Timer (seconds)</Label>
+          <Input
+            id="yahtzee-timer"
+            type="text"
+            inputMode="numeric"
+            value={yahtzeeDefaults.decision_timer_seconds}
+            onChange={(e) => updateDefault('yahtzee', 'decision_timer_seconds', e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Time each player has per turn</p>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <DollarSign className="h-4 w-4" />
+            Game Settings
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="yahtzee-ante">Ante Amount ($)</Label>
+            <Input
+              id="yahtzee-ante"
+              type="text"
+              inputMode="numeric"
+              value={yahtzeeDefaults.ante_amount}
+              onChange={(e) => updateDefault('yahtzee', 'ante_amount', e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Amount each player antes</p>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   const renderSettingsForGameType = () => {
     switch (selectedGameType) {
       case 'holm':
@@ -831,6 +876,8 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
         return renderHorsesSettings();
       case 'ship-captain-crew':
         return renderSCCSettings();
+      case 'yahtzee':
+        return renderYahtzeeSettings();
       default:
         return null;
     }
