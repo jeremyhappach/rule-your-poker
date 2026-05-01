@@ -3604,13 +3604,38 @@ export const CribbageMobileGameTable = ({
       // creating the next hand's round. Without this, the old round's cribbage_state
       // never receives the applyHandCountScores result (lastHandCount, final pegScores),
       // causing ~40% of hands to lose their detailed scoring breakdown for audits.
-      if (currentRoundId) {
-        const { error: persistError } = await supabase
+      // WRITE-TIME IDENTITY GUARD: scope the write to the latched (roundId, hand_number).
+      // If another client has already advanced this round (different hand_number), the
+      // update affects 0 rows and we abort the new-hand creation below.
+      const writeRoundId = expectedIdentity?.roundId ?? currentRoundId;
+      const writeHandNumber = expectedIdentity?.handNumber ?? currentHandNumber;
+      if (writeRoundId) {
+        const { data: persistedRows, error: persistError } = await supabase
           .from('rounds')
           .update({ cribbage_state: JSON.parse(JSON.stringify(countedState)) })
-          .eq('id', currentRoundId);
+          .eq('id', writeRoundId)
+          .eq('hand_number', writeHandNumber)
+          .select('id');
         if (persistError) {
           console.warn('[CRIBBAGE] Failed to persist final counted state to old round:', persistError.message);
+        } else if (!persistedRows || persistedRows.length === 0) {
+          console.warn('[CRIBBAGE] Counted-state write affected 0 rows — round/hand has advanced. Aborting new-hand creation.', {
+            writeRoundId: writeRoundId.slice(0, 8),
+            writeHandNumber,
+          });
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: writeHandNumber,
+            eventType: 'invariant',
+            severity: 'warn',
+            eventName: 'crib-counted-state-write-zero-rows',
+            payload: {
+              writeRoundId: writeRoundId.slice(0, 8),
+              writeHandNumber,
+            },
+          });
+          return;
         }
       }
       
