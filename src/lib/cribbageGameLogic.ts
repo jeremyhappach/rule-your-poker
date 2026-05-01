@@ -718,12 +718,16 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
         multiplier = 2; // Skunk
       }
 
+       // FIX A: Clear lastHandCount on the WIN branch as well so a re-entrant
+       // call (or a lagging client whose state still carries lastHandCount) cannot
+       // re-apply the same hand+crib totals on top of an already-rebased pegScore.
        return {
          ...baseUpdatedState,
         phase: 'complete',
         winnerPlayerId: playerId,
         loserScore: lowestScore,
         payoutMultiplier: multiplier,
+        lastHandCount: null,
       };
     }
   }
