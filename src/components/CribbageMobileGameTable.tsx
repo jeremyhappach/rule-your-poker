@@ -2624,6 +2624,7 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = null;
     countingBaselineScoresRef.current = null;
     countingHandKeyRef.current = null;
+    countingIdentityRef.current = null;
     lastPeggingScoresRef.current = null;
     setPostCountingTransitionActive(false);
     // Reset win sequence state to prevent prior-hand win from leaking
