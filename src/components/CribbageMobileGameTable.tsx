@@ -1843,18 +1843,32 @@ export const CribbageMobileGameTable = ({
     
     const pointsToWin = cribbageState.pointsToWin;
 
-    // FIX C: Identity guard — only trust countingScoreOverrides for the hand we
-    // actually started counting on. If countingHandKeyRef has drifted from the
-    // current state's identity (because realtime advanced the hand under us),
-    // the override values are stale and must NOT be used to declare a win.
-    const expectedHandKey = countingHandKeyRef.current;
-    if (expectedHandKey) {
-      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
-      if (liveHandKey !== expectedHandKey) {
-        console.warn('[CRIBBAGE] Reactive win detector: REJECTED stale countingScoreOverrides', {
-          expectedHandKey,
-          liveHandKey,
-          currentHandNumber,
+    // IDENTITY GUARD (authoritative): only trust countingScoreOverrides for the
+    // exact (roundId, handNumber) we started counting on. Reconstructed handKeys
+    // are NOT used for identity — they can collide across hands.
+    const expectedIdentity = countingIdentityRef.current;
+    if (expectedIdentity) {
+      if (
+        expectedIdentity.roundId !== currentRoundId ||
+        expectedIdentity.handNumber !== currentHandNumber
+      ) {
+        console.warn('[CRIBBAGE] Reactive win detector: REJECTED stale countingScoreOverrides (identity mismatch)', {
+          expected: expectedIdentity,
+          live: { roundId: currentRoundId, handNumber: currentHandNumber },
+        });
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-reactive-win-stale-rejected',
+          payload: {
+            expectedRoundId: expectedIdentity.roundId?.slice(0, 8),
+            expectedHandNumber: expectedIdentity.handNumber,
+            liveRoundId: currentRoundId?.slice(0, 8),
+            liveHandNumber: currentHandNumber,
+          },
         });
         return;
       }
@@ -1903,16 +1917,52 @@ export const CribbageMobileGameTable = ({
           loserScore: minLoserScore,
           payoutMultiplier: multiplier,
         };
-        
-        // Short delay to let the winning combo highlight and peg advance visually settle
+
+        // Capture identity at schedule time — re-validate at fire time so a hand
+        // boundary during the 2s delay aborts the win trigger.
+        const scheduledIdentity = expectedIdentity
+          ? { ...expectedIdentity }
+          : { roundId: currentRoundId, handNumber: currentHandNumber };
+
         setTimeout(() => {
+          const liveIdentity = countingIdentityRef.current;
+          if (
+            !liveIdentity ||
+            liveIdentity.roundId !== scheduledIdentity.roundId ||
+            liveIdentity.handNumber !== scheduledIdentity.handNumber
+          ) {
+            console.warn('[CRIBBAGE] Reactive win delayed callback: ABORTED (identity drift during delay)', {
+              scheduled: scheduledIdentity,
+              live: liveIdentity,
+            });
+            persistSyncDebugEvent({
+              gameId,
+              gameType: 'cribbage',
+              handNumber: scheduledIdentity.handNumber,
+              eventType: 'invariant',
+              severity: 'warn',
+              eventName: 'crib-reactive-win-delayed-aborted',
+              payload: {
+                scheduledRoundId: scheduledIdentity.roundId?.slice(0, 8),
+                scheduledHandNumber: scheduledIdentity.handNumber,
+                liveRoundId: liveIdentity?.roundId?.slice(0, 8) ?? null,
+                liveHandNumber: liveIdentity?.handNumber ?? null,
+              },
+            });
+            // Release the schedule guard so a legitimate later win for the same
+            // winner key isn't permanently suppressed.
+            if (winSequenceScheduledRef.current === winKey && winSequenceFiredRef.current !== winKey) {
+              winSequenceScheduledRef.current = null;
+            }
+            return;
+          }
           triggerWinSequence(stateWithWinner);
         }, 2000);
         
         return; // Only one winner
       }
     }
-  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber]);
+  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber, currentRoundId, gameId, triggerWinSequence]);
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
