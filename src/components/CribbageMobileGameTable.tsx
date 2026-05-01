@@ -1962,7 +1962,9 @@ export const CribbageMobileGameTable = ({
         return; // Only one winner
       }
     }
-  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber, currentRoundId, gameId, triggerWinSequence]);
+    // triggerWinSequence intentionally omitted from deps (declared later; captured via closure).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber, currentRoundId, gameId]);
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
