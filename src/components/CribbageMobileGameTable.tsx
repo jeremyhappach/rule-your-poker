@@ -3455,21 +3455,17 @@ export const CribbageMobileGameTable = ({
     // props advance while our local counting animation is still finishing).
     const handKey = countingHandKeyRef.current ?? `${dealerGameId}:${currentHandNumber}`;
 
-    // FIX B: Round/hand identity guard.
-    // If the counting animation we just finished is for a hand that has already been
-    // superseded by realtime updates (the round/hand has advanced past the one we
-    // started counting on), do NOT write back stale scores or trigger a win sequence.
-    // This prevents the "instant skunk on next deal" race where Client B's counting
-    // callback fires after Client A has already advanced the hand.
-    const expectedHandKey = countingHandKeyRef.current;
-    if (expectedHandKey) {
-      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
-      if (liveHandKey !== expectedHandKey) {
-        console.warn('[CRIBBAGE] handleCountingComplete: REJECTED stale counting completion', {
-          expectedHandKey,
-          liveHandKey,
-          currentRoundId: currentRoundId?.slice(0, 8),
-          currentHandNumber,
+    // IDENTITY GUARD (authoritative): use latched (roundId, handNumber). Reconstructed
+    // handKeys (cutCard-based) are NOT trusted — they can collide across hands.
+    const expectedIdentity = countingIdentityRef.current;
+    if (expectedIdentity) {
+      if (
+        expectedIdentity.roundId !== currentRoundId ||
+        expectedIdentity.handNumber !== currentHandNumber
+      ) {
+        console.warn('[CRIBBAGE] handleCountingComplete: REJECTED stale counting completion (identity mismatch)', {
+          expected: expectedIdentity,
+          live: { roundId: currentRoundId, handNumber: currentHandNumber },
           phase: cribbageState.phase,
         });
         persistSyncDebugEvent({
@@ -3480,9 +3476,10 @@ export const CribbageMobileGameTable = ({
           severity: 'warn',
           eventName: 'crib-counting-complete-stale-rejected',
           payload: {
-            expectedHandKey,
-            liveHandKey,
-            currentRoundId: currentRoundId?.slice(0, 8),
+            expectedRoundId: expectedIdentity.roundId?.slice(0, 8),
+            expectedHandNumber: expectedIdentity.handNumber,
+            liveRoundId: currentRoundId?.slice(0, 8),
+            liveHandNumber: currentHandNumber,
             phase: cribbageState.phase,
           },
         });
@@ -3493,6 +3490,40 @@ export const CribbageMobileGameTable = ({
         syncHandle.unfreezePresentation();
         return;
       }
+    }
+
+    // FINALIZATION PHASE GUARD: refuse to finalize unless we are actually in the
+    // counting phase AND pegging is structurally complete (all hands empty).
+    // This prevents corrupted hand history (skipped pegging, missing phases).
+    const peggingComplete = Object.values(cribbageState.playerStates).every(
+      (ps) => Array.isArray(ps.hand) && ps.hand.length === 0
+    );
+    const phaseAllowsFinalize =
+      cribbageState.phase === 'counting' || cribbageState.phase === 'complete';
+    if (!phaseAllowsFinalize || !peggingComplete) {
+      console.warn('[CRIBBAGE] handleCountingComplete: REJECTED — phase or pegging not complete', {
+        phase: cribbageState.phase,
+        peggingComplete,
+        handLengths: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.hand?.length ?? -1])
+        ),
+      });
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'error',
+        eventName: 'crib-finalize-phase-guard-rejected',
+        payload: {
+          phase: cribbageState.phase,
+          peggingComplete,
+        },
+      });
+      setCountingStateSnapshot(null);
+      setCountingWinFrozen(false);
+      syncHandle.unfreezePresentation();
+      return;
     }
 
     if (startNextHandFiredRef.current === handKey) {
