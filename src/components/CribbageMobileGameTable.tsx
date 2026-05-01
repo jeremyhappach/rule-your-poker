@@ -1831,7 +1831,24 @@ export const CribbageMobileGameTable = ({
     // Don't re-trigger if win sequence already fired/scheduled for this winner
     
     const pointsToWin = cribbageState.pointsToWin;
-    
+
+    // FIX C: Identity guard — only trust countingScoreOverrides for the hand we
+    // actually started counting on. If countingHandKeyRef has drifted from the
+    // current state's identity (because realtime advanced the hand under us),
+    // the override values are stale and must NOT be used to declare a win.
+    const expectedHandKey = countingHandKeyRef.current;
+    if (expectedHandKey) {
+      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
+      if (liveHandKey !== expectedHandKey) {
+        console.warn('[CRIBBAGE] Reactive win detector: REJECTED stale countingScoreOverrides', {
+          expectedHandKey,
+          liveHandKey,
+          currentHandNumber,
+        });
+        return;
+      }
+    }
+
     // Check if any player has reached the winning threshold
     for (const [playerId, score] of Object.entries(countingScoreOverrides)) {
       if (score >= pointsToWin) {
@@ -1884,7 +1901,7 @@ export const CribbageMobileGameTable = ({
         return; // Only one winner
       }
     }
-  }, [countingScoreOverrides, cribbageState, roundId]);
+  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber]);
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
