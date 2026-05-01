@@ -563,8 +563,13 @@ export const CribbageMobileGameTable = ({
   // If the counting overlay ever remounts/re-inits, it must start from the pegging baseline
   // (not from the already-animated overrides), otherwise scores can double.
   const countingBaselineScoresRef = useRef<Record<string, number> | null>(null);
-  // Stable id for the currently-animated counting instance (latched when counting begins)
+  // Stable id for the currently-animated counting instance (latched when counting begins).
+  // Used ONLY for dedupe (already-fired guards). NEVER for cross-client identity validation.
   const countingHandKeyRef = useRef<string | null>(null);
+  // AUTHORITATIVE identity for the counting instance. All writes / win triggers / delayed
+  // callbacks must validate against this. Reconstructed handKeys are NOT trusted because
+  // they can collide across hands when cutCard happens to match.
+  const countingIdentityRef = useRef<{ roundId: string; handNumber: number } | null>(null);
 
   // Cache the latest pegging-phase scores so counting can always start from the true pre-count baseline
   // even if the DB state already contains post-count totals or has incomplete playedCards data.
@@ -652,6 +657,8 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = null;
     countingBaselineScoresRef.current = null;
     countingHandKeyRef.current = null;
+    countingIdentityRef.current = null;
+    countingIdentityRef.current = null;
     setPostCountingTransitionActive(false);
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
@@ -1354,6 +1361,10 @@ export const CribbageMobileGameTable = ({
     countingAnimationActiveRef.current = true;
     countingDelayFiredRef.current = countingStartKey;
     countingHandKeyRef.current = countingStartKey;
+    // Latch authoritative identity for ALL subsequent writes / win triggers / delayed callbacks.
+    countingIdentityRef.current = currentRoundId
+      ? { roundId: currentRoundId, handNumber: currentHandNumber }
+      : null;
     // Write countingHandKey to state so reconnecting clients can validate
     const stateWithHandKey: CribbageState = { ...state, countingHandKey: countingStartKey };
     setCountingStateSnapshot(stateWithHandKey);
@@ -1832,18 +1843,32 @@ export const CribbageMobileGameTable = ({
     
     const pointsToWin = cribbageState.pointsToWin;
 
-    // FIX C: Identity guard — only trust countingScoreOverrides for the hand we
-    // actually started counting on. If countingHandKeyRef has drifted from the
-    // current state's identity (because realtime advanced the hand under us),
-    // the override values are stale and must NOT be used to declare a win.
-    const expectedHandKey = countingHandKeyRef.current;
-    if (expectedHandKey) {
-      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
-      if (liveHandKey !== expectedHandKey) {
-        console.warn('[CRIBBAGE] Reactive win detector: REJECTED stale countingScoreOverrides', {
-          expectedHandKey,
-          liveHandKey,
-          currentHandNumber,
+    // IDENTITY GUARD (authoritative): only trust countingScoreOverrides for the
+    // exact (roundId, handNumber) we started counting on. Reconstructed handKeys
+    // are NOT used for identity — they can collide across hands.
+    const expectedIdentity = countingIdentityRef.current;
+    if (expectedIdentity) {
+      if (
+        expectedIdentity.roundId !== currentRoundId ||
+        expectedIdentity.handNumber !== currentHandNumber
+      ) {
+        console.warn('[CRIBBAGE] Reactive win detector: REJECTED stale countingScoreOverrides (identity mismatch)', {
+          expected: expectedIdentity,
+          live: { roundId: currentRoundId, handNumber: currentHandNumber },
+        });
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-reactive-win-stale-rejected',
+          payload: {
+            expectedRoundId: expectedIdentity.roundId?.slice(0, 8),
+            expectedHandNumber: expectedIdentity.handNumber,
+            liveRoundId: currentRoundId?.slice(0, 8),
+            liveHandNumber: currentHandNumber,
+          },
         });
         return;
       }
@@ -1892,16 +1917,54 @@ export const CribbageMobileGameTable = ({
           loserScore: minLoserScore,
           payoutMultiplier: multiplier,
         };
-        
-        // Short delay to let the winning combo highlight and peg advance visually settle
+
+        // Capture identity at schedule time — re-validate at fire time so a hand
+        // boundary during the 2s delay aborts the win trigger.
+        const scheduledIdentity = expectedIdentity
+          ? { ...expectedIdentity }
+          : { roundId: currentRoundId, handNumber: currentHandNumber };
+
         setTimeout(() => {
+          const liveIdentity = countingIdentityRef.current;
+          if (
+            !liveIdentity ||
+            liveIdentity.roundId !== scheduledIdentity.roundId ||
+            liveIdentity.handNumber !== scheduledIdentity.handNumber
+          ) {
+            console.warn('[CRIBBAGE] Reactive win delayed callback: ABORTED (identity drift during delay)', {
+              scheduled: scheduledIdentity,
+              live: liveIdentity,
+            });
+            persistSyncDebugEvent({
+              gameId,
+              gameType: 'cribbage',
+              handNumber: scheduledIdentity.handNumber,
+              eventType: 'invariant',
+              severity: 'warn',
+              eventName: 'crib-reactive-win-delayed-aborted',
+              payload: {
+                scheduledRoundId: scheduledIdentity.roundId?.slice(0, 8),
+                scheduledHandNumber: scheduledIdentity.handNumber,
+                liveRoundId: liveIdentity?.roundId?.slice(0, 8) ?? null,
+                liveHandNumber: liveIdentity?.handNumber ?? null,
+              },
+            });
+            // Release the schedule guard so a legitimate later win for the same
+            // winner key isn't permanently suppressed.
+            if (winSequenceScheduledRef.current === winKey && winSequenceFiredRef.current !== winKey) {
+              winSequenceScheduledRef.current = null;
+            }
+            return;
+          }
           triggerWinSequence(stateWithWinner);
         }, 2000);
         
         return; // Only one winner
       }
     }
-  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber]);
+    // triggerWinSequence intentionally omitted from deps (declared later; captured via closure).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countingScoreOverrides, cribbageState, roundId, dealerGameId, currentHandNumber, currentRoundId, gameId]);
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
@@ -2617,6 +2680,7 @@ export const CribbageMobileGameTable = ({
     countingDelayFiredRef.current = null;
     countingBaselineScoresRef.current = null;
     countingHandKeyRef.current = null;
+    countingIdentityRef.current = null;
     lastPeggingScoresRef.current = null;
     setPostCountingTransitionActive(false);
     // Reset win sequence state to prevent prior-hand win from leaking
@@ -3391,21 +3455,17 @@ export const CribbageMobileGameTable = ({
     // props advance while our local counting animation is still finishing).
     const handKey = countingHandKeyRef.current ?? `${dealerGameId}:${currentHandNumber}`;
 
-    // FIX B: Round/hand identity guard.
-    // If the counting animation we just finished is for a hand that has already been
-    // superseded by realtime updates (the round/hand has advanced past the one we
-    // started counting on), do NOT write back stale scores or trigger a win sequence.
-    // This prevents the "instant skunk on next deal" race where Client B's counting
-    // callback fires after Client A has already advanced the hand.
-    const expectedHandKey = countingHandKeyRef.current;
-    if (expectedHandKey) {
-      const liveHandKey = `${dealerGameId ?? 'unknown-dealer'}-${currentHandNumber}-${cribbageState.dealerPlayerId}-${cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit}` : 'nocut'}`;
-      if (liveHandKey !== expectedHandKey) {
-        console.warn('[CRIBBAGE] handleCountingComplete: REJECTED stale counting completion', {
-          expectedHandKey,
-          liveHandKey,
-          currentRoundId: currentRoundId?.slice(0, 8),
-          currentHandNumber,
+    // IDENTITY GUARD (authoritative): use latched (roundId, handNumber). Reconstructed
+    // handKeys (cutCard-based) are NOT trusted — they can collide across hands.
+    const expectedIdentity = countingIdentityRef.current;
+    if (expectedIdentity) {
+      if (
+        expectedIdentity.roundId !== currentRoundId ||
+        expectedIdentity.handNumber !== currentHandNumber
+      ) {
+        console.warn('[CRIBBAGE] handleCountingComplete: REJECTED stale counting completion (identity mismatch)', {
+          expected: expectedIdentity,
+          live: { roundId: currentRoundId, handNumber: currentHandNumber },
           phase: cribbageState.phase,
         });
         persistSyncDebugEvent({
@@ -3416,9 +3476,10 @@ export const CribbageMobileGameTable = ({
           severity: 'warn',
           eventName: 'crib-counting-complete-stale-rejected',
           payload: {
-            expectedHandKey,
-            liveHandKey,
-            currentRoundId: currentRoundId?.slice(0, 8),
+            expectedRoundId: expectedIdentity.roundId?.slice(0, 8),
+            expectedHandNumber: expectedIdentity.handNumber,
+            liveRoundId: currentRoundId?.slice(0, 8),
+            liveHandNumber: currentHandNumber,
             phase: cribbageState.phase,
           },
         });
@@ -3429,6 +3490,40 @@ export const CribbageMobileGameTable = ({
         syncHandle.unfreezePresentation();
         return;
       }
+    }
+
+    // FINALIZATION PHASE GUARD: refuse to finalize unless we are actually in the
+    // counting phase AND pegging is structurally complete (all hands empty).
+    // This prevents corrupted hand history (skipped pegging, missing phases).
+    const peggingComplete = Object.values(cribbageState.playerStates).every(
+      (ps) => Array.isArray(ps.hand) && ps.hand.length === 0
+    );
+    const phaseAllowsFinalize =
+      cribbageState.phase === 'counting' || cribbageState.phase === 'complete';
+    if (!phaseAllowsFinalize || !peggingComplete) {
+      console.warn('[CRIBBAGE] handleCountingComplete: REJECTED — phase or pegging not complete', {
+        phase: cribbageState.phase,
+        peggingComplete,
+        handLengths: Object.fromEntries(
+          Object.entries(cribbageState.playerStates).map(([id, ps]) => [id.slice(0, 8), ps.hand?.length ?? -1])
+        ),
+      });
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: currentHandNumber,
+        eventType: 'invariant',
+        severity: 'error',
+        eventName: 'crib-finalize-phase-guard-rejected',
+        payload: {
+          phase: cribbageState.phase,
+          peggingComplete,
+        },
+      });
+      setCountingStateSnapshot(null);
+      setCountingWinFrozen(false);
+      syncHandle.unfreezePresentation();
+      return;
     }
 
     if (startNextHandFiredRef.current === handKey) {
@@ -3509,13 +3604,38 @@ export const CribbageMobileGameTable = ({
       // creating the next hand's round. Without this, the old round's cribbage_state
       // never receives the applyHandCountScores result (lastHandCount, final pegScores),
       // causing ~40% of hands to lose their detailed scoring breakdown for audits.
-      if (currentRoundId) {
-        const { error: persistError } = await supabase
+      // WRITE-TIME IDENTITY GUARD: scope the write to the latched (roundId, hand_number).
+      // If another client has already advanced this round (different hand_number), the
+      // update affects 0 rows and we abort the new-hand creation below.
+      const writeRoundId = expectedIdentity?.roundId ?? currentRoundId;
+      const writeHandNumber = expectedIdentity?.handNumber ?? currentHandNumber;
+      if (writeRoundId) {
+        const { data: persistedRows, error: persistError } = await supabase
           .from('rounds')
           .update({ cribbage_state: JSON.parse(JSON.stringify(countedState)) })
-          .eq('id', currentRoundId);
+          .eq('id', writeRoundId)
+          .eq('hand_number', writeHandNumber)
+          .select('id');
         if (persistError) {
           console.warn('[CRIBBAGE] Failed to persist final counted state to old round:', persistError.message);
+        } else if (!persistedRows || persistedRows.length === 0) {
+          console.warn('[CRIBBAGE] Counted-state write affected 0 rows — round/hand has advanced. Aborting new-hand creation.', {
+            writeRoundId: writeRoundId.slice(0, 8),
+            writeHandNumber,
+          });
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: writeHandNumber,
+            eventType: 'invariant',
+            severity: 'warn',
+            eventName: 'crib-counted-state-write-zero-rows',
+            payload: {
+              writeRoundId: writeRoundId.slice(0, 8),
+              writeHandNumber,
+            },
+          });
+          return;
         }
       }
       
