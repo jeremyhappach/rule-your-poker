@@ -658,6 +658,7 @@ export const CribbageMobileGameTable = ({
     countingBaselineScoresRef.current = null;
     countingHandKeyRef.current = null;
     countingIdentityRef.current = null;
+    countingIdentityRef.current = null;
     setPostCountingTransitionActive(false);
   }, [cribbageState?.phase, cribbageState?.lastHandCount ? 'has-count' : 'no-count']);
 
