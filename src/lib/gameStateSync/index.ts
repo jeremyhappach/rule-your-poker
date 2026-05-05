@@ -30,3 +30,5 @@ export type {
   VisualContractEvent,
 } from './visualContract';
 export { logVisualContractEvent } from './visualContractEvents';
+export { reportMissingVisualContract } from './missingContractInvariant';
+export type { MissingContractReport } from './missingContractInvariant';
