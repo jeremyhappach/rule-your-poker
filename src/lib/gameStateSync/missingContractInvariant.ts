@@ -16,6 +16,7 @@
  */
 
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { buildAnimationEnvelope } from '@/lib/clientContext';
 
 export interface MissingContractReport {
   gameId: string;
