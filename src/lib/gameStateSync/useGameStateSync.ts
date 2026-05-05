@@ -81,13 +81,16 @@ export function useGameStateSync<T>(
 
   // ── Auto-propagate to presentation when not frozen ───────────
   useEffect(() => {
-    if (!frozen) {
+    if (!frozen && contractRef.current === null) {
       const nextPresentation = pendingPostResetHydrationRef.current
         ? clonePresentationState(effective)
         : effective;
 
       presentationRef.current = nextPresentation;
       setPresentation(nextPresentation);
+    } else if (contractRef.current !== null) {
+      // Contract active: buffer the latest effective for post-contract flush.
+      contractBufferRef.current = effective;
     }
   }, [effective, frozen]);
 
