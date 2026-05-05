@@ -64,6 +64,12 @@ export function useGameStateSync<T>(
   const optimisticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPostResetHydrationRef = useRef(false);
 
+  // ── Visual contract refs ─────────────────────────────────────
+  const contractRef = useRef<VisualContractIdentity | null>(null);
+  const contractTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contractBufferRef = useRef<T | null>(null);
+  const [activeContract, setActiveContract] = useState<VisualContractIdentity | null>(null);
+
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
   useEffect(() => { optRef.current = optimistic; }, [optimistic]);
