@@ -245,10 +245,111 @@ export function useGameStateSync<T>(
     setPresentation(state);
   }, []);
 
+  // ── Visual contract API ──────────────────────────────────────
+  // Internal: flush buffered effective into presentation (post-contract).
+  const flushContractBuffer = useCallback((identity: VisualContractIdentity) => {
+    const buffered = contractBufferRef.current ?? optRef.current ?? authRef.current;
+    contractBufferRef.current = null;
+    if (!frozenRef.current) {
+      presentationRef.current = buffered;
+      setPresentation(buffered);
+    }
+    logVisualContractEvent('visual-contract-flushed-buffer', identity, resolvedGameType);
+  }, [resolvedGameType]);
+
+  const clearContract = useCallback(() => {
+    contractRef.current = null;
+    setActiveContract(null);
+    if (contractTimerRef.current) {
+      clearTimeout(contractTimerRef.current);
+      contractTimerRef.current = null;
+    }
+  }, []);
+
+  const beginVisualContract = useCallback((opts: VisualContractOptions): VisualContractIdentity => {
+    const identity: VisualContractIdentity = {
+      ...opts.identity,
+      contractType: opts.type,
+    };
+
+    // Supersede any existing contract of differing identity.
+    if (contractRef.current && !identityEquals(contractRef.current, identity)) {
+      logVisualContractEvent('visual-contract-aborted-identity-drift', contractRef.current, resolvedGameType, {
+        reason: 'superseded',
+        nextIdentity: identity,
+      });
+      const prev = contractRef.current;
+      clearContract();
+      // Don't flush here — new contract will lock again immediately.
+      // But the previous contract's buffer is dropped to the new lock.
+      contractBufferRef.current = null;
+      void prev;
+    }
+
+    contractRef.current = identity;
+    setActiveContract(identity);
+    contractBufferRef.current = null;
+
+    const timeoutMs = opts.timeoutMs ?? DEFAULT_VISUAL_CONTRACT_TIMEOUT;
+    if (contractTimerRef.current) clearTimeout(contractTimerRef.current);
+    contractTimerRef.current = setTimeout(() => {
+      const active = contractRef.current;
+      if (active && identityEquals(active, identity)) {
+        logVisualContractEvent('visual-contract-timeout', active, resolvedGameType, { timeoutMs });
+        clearContract();
+        flushContractBuffer(active);
+      }
+    }, timeoutMs);
+
+    logVisualContractEvent('visual-contract-started', identity, resolvedGameType, {
+      expectedSteps: opts.expectedSteps ?? null,
+      timeoutMs,
+    });
+
+    return identity;
+  }, [clearContract, flushContractBuffer, resolvedGameType]);
+
+  const completeVisualContract = useCallback((identity: VisualContractIdentity): boolean => {
+    const active = contractRef.current;
+    if (!active || !identityEquals(active, identity)) {
+      logVisualContractEvent('visual-contract-aborted-identity-drift', identity, resolvedGameType, {
+        reason: 'complete-identity-mismatch',
+        active,
+      });
+      return false;
+    }
+    logVisualContractEvent('visual-contract-completed', active, resolvedGameType);
+    clearContract();
+    flushContractBuffer(active);
+    return true;
+  }, [clearContract, flushContractBuffer, resolvedGameType]);
+
+  const abortVisualContract = useCallback((identity: VisualContractIdentity, reason: string): boolean => {
+    const active = contractRef.current;
+    if (!active || !identityEquals(active, identity)) return false;
+    logVisualContractEvent('visual-contract-aborted-identity-drift', active, resolvedGameType, { reason });
+    clearContract();
+    flushContractBuffer(active);
+    return true;
+  }, [clearContract, flushContractBuffer, resolvedGameType]);
+
   // ── Full reset (hand/round boundary) ─────────────────────────
   const reset = useCallback((newInitial: T) => {
     const presPre = presentationRef.current;
     const freshPresentation = clonePresentationState(newInitial);
+    // Abort any in-flight contract — boundary change supersedes.
+    if (contractRef.current) {
+      logVisualContractEvent('visual-contract-aborted-identity-drift', contractRef.current, resolvedGameType, {
+        reason: 'reset-boundary',
+      });
+      contractRef.current = null;
+      setActiveContract(null);
+      if (contractTimerRef.current) {
+        clearTimeout(contractTimerRef.current);
+        contractTimerRef.current = null;
+      }
+      contractBufferRef.current = null;
+    }
     authRef.current = newInitial;
     optRef.current = null;
     frozenRef.current = false;
@@ -264,14 +365,13 @@ export function useGameStateSync<T>(
     }
     // Expose pre-reset presentation for diagnostics (via ref accessible to callers)
     (reset as any)._lastResetPresentationBefore = presPre;
-  }, []);
+  }, [resolvedGameType]);
 
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
-      if (optimisticTimerRef.current) {
-        clearTimeout(optimisticTimerRef.current);
-      }
+      if (optimisticTimerRef.current) clearTimeout(optimisticTimerRef.current);
+      if (contractTimerRef.current) clearTimeout(contractTimerRef.current);
     };
   }, []);
 
@@ -289,5 +389,10 @@ export function useGameStateSync<T>(
     unfreezePresentation,
     commitToPresentation,
     reset,
+    beginVisualContract,
+    completeVisualContract,
+    abortVisualContract,
+    isVisualContractActive: activeContract !== null,
+    activeVisualContract: activeContract,
   };
 }
