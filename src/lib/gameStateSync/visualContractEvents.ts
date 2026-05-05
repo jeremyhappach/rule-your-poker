@@ -4,9 +4,15 @@
  *
  * Aborts/timeouts persist regardless of debug flag (treated like invariants);
  * normal start/complete/buffer events are debug-gated.
+ *
+ * Every event payload is enriched with the standard animation envelope
+ * (clientId, clientTimestamp, shortGameId, animationPath) so reports can be
+ * correlated across clients without console access. The contract's
+ * `contractType` is the canonical `animationPath`.
  */
 
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { buildAnimationEnvelope } from '@/lib/clientContext';
 import type { VisualContractEventName, VisualContractIdentity } from './visualContract';
 
 const ALWAYS_PERSIST: VisualContractEventName[] = [
@@ -21,6 +27,7 @@ export function logVisualContractEvent(
   details?: Record<string, unknown>,
 ): void {
   const isAbnormal = ALWAYS_PERSIST.includes(name);
+  const envelope = buildAnimationEnvelope(identity.gameId, identity.contractType);
 
   persistSyncDebugEvent({
     gameId: identity.gameId,
@@ -31,6 +38,7 @@ export function logVisualContractEvent(
     severity: isAbnormal ? 'warn' : 'info',
     eventName: name,
     payload: {
+      ...envelope,
       contractType: identity.contractType,
       turnId: identity.turnId ?? null,
       phase: identity.phase ?? null,
@@ -38,3 +46,4 @@ export function logVisualContractEvent(
     },
   });
 }
+
