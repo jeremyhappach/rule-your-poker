@@ -13,8 +13,15 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { GameStateSyncConfig, GameStateSyncHandle, AuthoritativeUpdateResult } from './types';
 import { compareProgress, jsonEqual } from './stateProgress';
+import {
+  identityEquals,
+  type VisualContractIdentity,
+  type VisualContractOptions,
+} from './visualContract';
+import { logVisualContractEvent } from './visualContractEvents';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
+const DEFAULT_VISUAL_CONTRACT_TIMEOUT = 10000;
 
 function clonePresentationState<T>(state: T): T {
   if (Array.isArray(state)) {
