@@ -231,6 +231,11 @@ export const VisualBugReportButton = ({
             dealer_game_id: dealerGameId || null,
             viewer_player_id: viewerPlayerId || null,
             active_tab: activeTab || null,
+            client_id: getClientId(),
+            client_timestamp: getClientTimestamp(),
+            short_game_id: getShortGameId(gameId),
+            animationPath: `bug-report:${entry.value}`,
+            requires_debug_events_correlation: CORRELATION_REQUIRED_BUG_TYPES.has(entry.value),
             ...buildMetaPayload(),
           },
         });
