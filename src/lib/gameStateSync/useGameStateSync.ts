@@ -94,6 +94,10 @@ export function useGameStateSync<T>(
     }
   }, [effective, frozen]);
 
+  // Helper: presentation may be written only if not frozen and no active contract.
+  const canWritePresentation = (): boolean =>
+    !frozenRef.current && contractRef.current === null;
+
   // ── Receive authoritative update (from realtime / poll) ──────
   const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
     const currentAuth = authRef.current;
@@ -101,7 +105,8 @@ export function useGameStateSync<T>(
 
     const currentProgress = getProgress(currentAuth);
     const incomingProgress = getProgress(incoming);
-    const shouldForcePostResetHydration = pendingPostResetHydrationRef.current && !frozenRef.current;
+    const writable = canWritePresentation();
+    const shouldForcePostResetHydration = pendingPostResetHydrationRef.current && writable;
 
     // Skip identical snapshots
     if (isEqual(currentAuth, incoming)) {
@@ -137,6 +142,16 @@ export function useGameStateSync<T>(
     authRef.current = incoming;
     setAuthoritative(incoming);
 
+    // If contract active, buffer and log — never write presentation here.
+    if (contractRef.current !== null) {
+      contractBufferRef.current = optRef.current ?? incoming;
+      logVisualContractEvent('visual-contract-buffered-authoritative', contractRef.current, resolvedGameType, {
+        incomingProgress,
+        currentProgress,
+      });
+      return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'skipped-frozen', wasFrozenAtWrite: true, presentationBefore: presPre };
+    }
+
     let presentationAction: 'written' | 'skipped-frozen' = 'skipped-frozen';
 
     // If optimistic is active, check if DB has caught up
@@ -171,7 +186,7 @@ export function useGameStateSync<T>(
     }
 
     return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
-  }, [getProgress, isEqual]);
+  }, [getProgress, isEqual, resolvedGameType]);
 
   // ── Apply optimistic local state ─────────────────────────────
   const applyOptimistic = useCallback((localState: T) => {
