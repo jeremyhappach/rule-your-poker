@@ -3373,10 +3373,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Hand context key: Holm reuses the same round_number (and sometimes the same round id) across hands.
   // So we include the card identity + chucky state to force child UI caches to reset on true hand changes.
+  // CRITICAL (Holm regression fix): For Holm, derive identity from holmView (presentationState) so
+  // identity and the data flowing into capture logic come from the SAME layer. Otherwise, when the
+  // visual contract freezes presentation at hand N while raw round advances to hand N+1, capture
+  // logic ran with identity=N+1 + data=N (buffered), re-locking the prior solo player.
+  const holmHandIdentityCards = (game?.game_type === 'holm-game' && holmView)
+    ? (holmView.communityCards as CardType[] | undefined)?.map(c => `${c.rank}${c.suit}`).join(',') ?? ''
+    : currentCardIdentity;
+  const holmHandChuckyActive = (game?.game_type === 'holm-game' && holmView)
+    ? (holmView.chuckyActive ? '1' : '0')
+    : (currentRound?.chucky_active ? '1' : '0');
   const handContextKey =
     cardStateContext?.roundId ??
     (currentRound?.id
-      ? `${currentRound.id}:${currentCardIdentity}:${currentRound?.chucky_active ? '1' : '0'}:${currentRound?.chucky_cards_revealed ?? 0}`
+      ? (game?.game_type === 'holm-game' && holmView
+          ? `${currentRound.id}:h${holmView.handNumber}:${holmHandIdentityCards}:${holmHandChuckyActive}:${holmView.communityCardsRevealed}`
+          : `${currentRound.id}:${currentCardIdentity}:${holmHandChuckyActive}:${currentRound?.chucky_cards_revealed ?? 0}`)
       : null);
 
   // Reset when starting new game OR when cards change (new hand)
