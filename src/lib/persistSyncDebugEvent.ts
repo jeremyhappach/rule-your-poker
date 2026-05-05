@@ -194,3 +194,45 @@ export function persistCorrection(
     payload: { field, incorrectValue, correctedValue },
   });
 }
+
+// ── Animation/dice envelope helper ────────────────────────────
+
+import { buildAnimationEnvelope } from './clientContext';
+
+/**
+ * Persist an animation/dice/reveal event. The envelope
+ * (clientId, clientTimestamp, shortGameId, animationPath) is added
+ * automatically. `animationPath` is REQUIRED.
+ *
+ * Use this for any yahtzee-dice-*, animation, reveal, or win-related
+ * log so reports can be correlated across clients.
+ */
+export function persistAnimationEvent(args: {
+  gameId: string;
+  gameType: string;
+  handNumber: number;
+  roundId?: string | null;
+  /** REQUIRED short label e.g. 'yahtzee-dice-roll', 'cribbage-cut-card'. */
+  animationPath: string;
+  eventName: string;
+  severity?: 'info' | 'warn' | 'error';
+  /** Treat as invariant violation (always persists). */
+  invariant?: boolean;
+  payload?: Record<string, unknown>;
+}): void {
+  if (!args.animationPath) {
+    console.warn('[anim-event] missing animationPath for', args.eventName);
+    return;
+  }
+  const envelope = buildAnimationEnvelope(args.gameId, args.animationPath);
+  persistSyncDebugEvent({
+    gameId: args.gameId,
+    gameType: args.gameType,
+    handNumber: args.handNumber,
+    roundId: args.roundId ?? null,
+    eventType: args.invariant ? 'invariant' : 'transition',
+    severity: args.severity ?? 'info',
+    eventName: args.eventName,
+    payload: { ...envelope, ...(args.payload ?? {}) },
+  });
+}
