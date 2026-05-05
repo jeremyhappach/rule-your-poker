@@ -1,3 +1,5 @@
+import type { VisualContractIdentity, VisualContractOptions } from './visualContract';
+
 /**
  * Multiplayer Anti-Regression Framework — Core Types
  *
