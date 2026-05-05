@@ -10,8 +10,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getBugTypesForGame } from "@/lib/visualBugTypes";
+import { getBugTypesForGame, CORRELATION_REQUIRED_BUG_TYPES } from "@/lib/visualBugTypes";
 import { buildMetaPayload, BUILD_META } from "@/lib/buildMeta";
+import { getClientId, getClientTimestamp, getShortGameId } from "@/lib/clientContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -191,7 +192,13 @@ export const VisualBugReportButton = ({
           ...buildMetaPayload(),
           appVersion: BUILD_META.appVersion,
         },
-        extra_context: extraContext ?? {},
+        extra_context: {
+          ...(extraContext ?? {}),
+          client_id: getClientId(),
+          client_timestamp: getClientTimestamp(),
+          short_game_id: getShortGameId(gameId),
+          requires_debug_events_correlation: CORRELATION_REQUIRED_BUG_TYPES.has(entry.value),
+        },
       };
 
       const { error } = await supabase
@@ -224,6 +231,11 @@ export const VisualBugReportButton = ({
             dealer_game_id: dealerGameId || null,
             viewer_player_id: viewerPlayerId || null,
             active_tab: activeTab || null,
+            client_id: getClientId(),
+            client_timestamp: getClientTimestamp(),
+            short_game_id: getShortGameId(gameId),
+            animationPath: `bug-report:${entry.value}`,
+            requires_debug_events_correlation: CORRELATION_REQUIRED_BUG_TYPES.has(entry.value),
             ...buildMetaPayload(),
           },
         });

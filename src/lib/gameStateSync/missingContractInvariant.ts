@@ -16,6 +16,7 @@
  */
 
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { buildAnimationEnvelope } from '@/lib/clientContext';
 
 export interface MissingContractReport {
   gameId: string;
@@ -70,6 +71,7 @@ export function reportMissingVisualContract(report: MissingContractReport): void
     }
   }
 
+  const envelope = buildAnimationEnvelope(report.gameId, report.animationPath);
   persistSyncDebugEvent({
     gameId: report.gameId,
     gameType: report.gameType,
@@ -79,7 +81,7 @@ export function reportMissingVisualContract(report: MissingContractReport): void
     severity: 'warn',
     eventName: 'visual-contract-missing-for-animation',
     payload: {
-      animationPath: report.animationPath,
+      ...envelope,
       phase: report.phase,
       turnId: report.turnId ?? null,
       ...(report.details ?? {}),
