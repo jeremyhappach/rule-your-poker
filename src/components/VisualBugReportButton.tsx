@@ -192,7 +192,13 @@ export const VisualBugReportButton = ({
           ...buildMetaPayload(),
           appVersion: BUILD_META.appVersion,
         },
-        extra_context: extraContext ?? {},
+        extra_context: {
+          ...(extraContext ?? {}),
+          client_id: getClientId(),
+          client_timestamp: getClientTimestamp(),
+          short_game_id: getShortGameId(gameId),
+          requires_debug_events_correlation: CORRELATION_REQUIRED_BUG_TYPES.has(entry.value),
+        },
       };
 
       const { error } = await supabase
