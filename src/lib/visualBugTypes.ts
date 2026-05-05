@@ -13,6 +13,7 @@ export interface BugTypeEntry {
 
 /** Master bug type list — single source of truth */
 const MASTER_BUG_TYPES: BugTypeEntry[] = [
+  { label: 'Animation / Visual Desync', value: 'animation_visual_desync', categories: ['all'] },
   { label: 'Dice Row Hopping', value: 'dice_row_hopping', categories: ['dice'] },
   { label: 'Dice Value Mismatch', value: 'dice_value_mismatch', categories: ['dice'] },
   { label: 'Duplicate Animation', value: 'duplicate_animation', categories: ['all'] },
@@ -25,6 +26,21 @@ const MASTER_BUG_TYPES: BugTypeEntry[] = [
   { label: 'Stale Score', value: 'stale_score', categories: ['all'] },
   { label: 'Wrong Player / Wrong Turn', value: 'wrong_turn', categories: ['all'] },
 ];
+
+/**
+ * Bug types that REQUIRE debug_events correlation downstream.
+ * When a report has one of these, the submission flags it for
+ * cross-referencing visual-contract / animation events by clientId.
+ */
+export const CORRELATION_REQUIRED_BUG_TYPES = new Set<string>([
+  'animation_visual_desync',
+  'duplicate_animation',
+  'reanimation_stutter',
+  'dice_row_hopping',
+  'dice_value_mismatch',
+  'stale_cards',
+  'stale_score',
+]);
 
 const DICE_GAME_TYPES = new Set(['horses', 'scc', 'yahtzee']);
 const CARD_GAME_TYPES = new Set(['holm-game', '3-5-7', 'cribbage', 'gin-rummy']);
