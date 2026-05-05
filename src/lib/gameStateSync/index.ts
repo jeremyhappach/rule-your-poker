@@ -22,3 +22,11 @@ export type {
   GameStateSyncConfig,
   GameStateSyncHandle,
 } from './types';
+export { identityEquals } from './visualContract';
+export type {
+  VisualContractIdentity,
+  VisualContractOptions,
+  VisualContractEventName,
+  VisualContractEvent,
+} from './visualContract';
+export { logVisualContractEvent } from './visualContractEvents';

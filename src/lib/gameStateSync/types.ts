@@ -1,3 +1,5 @@
+import type { VisualContractIdentity, VisualContractOptions } from './visualContract';
+
 /**
  * Multiplayer Anti-Regression Framework — Core Types
  *
@@ -56,6 +58,13 @@ export interface GameStateSyncConfig<T> {
 
   /** Optional label used in debug logging. */
   debugLabel?: string;
+
+  /**
+   * Required for visual contract event persistence — identifies the
+   * concrete game (e.g. 'cribbage', 'holm', 'horses', 'yahtzee', 'gin-rummy').
+   * Falls back to debugLabel when omitted.
+   */
+  gameType?: string;
 
   /** Optional lightweight snapshot description for debug logging. */
   describeState?: (state: T) => unknown;
@@ -137,4 +146,34 @@ export interface GameStateSyncHandle<T> {
     * given initial state. Cancels any pending optimistic timers.
     */
    reset: (newInitial: T) => void;
+
+   // ── Visual contract API ──────────────────────────────────────
+   /**
+    * Begin a visual contract: locks presentation against authoritative
+    * replacement until completion / identity drift / timeout.
+    *
+    * Returns the resolved identity (use it to call complete/abort).
+    * If a contract is already active and identities differ, the active
+    * contract is aborted with reason 'superseded' before the new one starts.
+    */
+   beginVisualContract: (opts: VisualContractOptions) => VisualContractIdentity;
+
+   /**
+    * Complete the active contract. Identity must match the active one
+    * (otherwise the call is ignored & logged). Flushes buffered authoritative
+    * state into presentation.
+    */
+   completeVisualContract: (identity: VisualContractIdentity) => boolean;
+
+   /**
+    * Abort the active contract (e.g. user navigation, error). Same identity
+    * matching as complete. Flushes buffered authoritative state.
+    */
+   abortVisualContract: (identity: VisualContractIdentity, reason: string) => boolean;
+
+   /** True while any visual contract is active. */
+   isVisualContractActive: boolean;
+
+   /** Identity of the active visual contract, or null. */
+   activeVisualContract: VisualContractIdentity | null;
 }
