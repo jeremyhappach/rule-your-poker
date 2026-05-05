@@ -45,8 +45,10 @@ export function useGameStateSync<T>(
     isEqual = jsonEqual,
     debugLabel,
     describeState,
+    gameType,
   } = config;
   const logPrefix = debugLabel ? `[GameStateSync:${debugLabel}]` : '[GameStateSync]';
+  const resolvedGameType = gameType ?? debugLabel ?? 'unknown';
 
   // ── Core state layers ────────────────────────────────────────
   const [authoritative, setAuthoritative] = useState<T>(initialState);
