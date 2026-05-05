@@ -10,8 +10,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getBugTypesForGame } from "@/lib/visualBugTypes";
+import { getBugTypesForGame, CORRELATION_REQUIRED_BUG_TYPES } from "@/lib/visualBugTypes";
 import { buildMetaPayload, BUILD_META } from "@/lib/buildMeta";
+import { getClientId, getClientTimestamp, getShortGameId } from "@/lib/clientContext";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
