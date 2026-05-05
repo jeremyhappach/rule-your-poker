@@ -198,8 +198,10 @@ export function useGameStateSync<T>(
     // creating a 1-render gap where other state changes (e.g. scoringInProgress=false)
     // are visible but presentation still shows the OLD state — causing brief flashes
     // like "my roll" after turn advance.
-    if (!frozenRef.current) {
+    if (!frozenRef.current && contractRef.current === null) {
       setPresentation(localState);
+    } else if (contractRef.current !== null) {
+      contractBufferRef.current = localState;
     }
 
     // Clear any existing timer
