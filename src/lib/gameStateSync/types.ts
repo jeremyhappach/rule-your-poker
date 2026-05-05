@@ -57,6 +57,13 @@ export interface GameStateSyncConfig<T> {
   /** Optional label used in debug logging. */
   debugLabel?: string;
 
+  /**
+   * Required for visual contract event persistence — identifies the
+   * concrete game (e.g. 'cribbage', 'holm', 'horses', 'yahtzee', 'gin-rummy').
+   * Falls back to debugLabel when omitted.
+   */
+  gameType?: string;
+
   /** Optional lightweight snapshot description for debug logging. */
   describeState?: (state: T) => unknown;
 
