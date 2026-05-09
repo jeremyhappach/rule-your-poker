@@ -2876,6 +2876,27 @@ export const CribbageMobileGameTable = ({
           });
         }
       }
+
+      // FREEZE LATCH SAFETY: Even if the snapshot was rejected (e.g., no-progress vs
+      // current presentation), if the freeze is still held for the round identity that
+      // the snapshot belongs to, release it. Identity has caught up — there is no
+      // reason to keep last-good frozen presentation past the new round's first snapshot,
+      // regardless of arrival path (realtime, poll, optimistic-confirm, reconnect).
+      if (!result.accepted && transitionFrozenRef.current) {
+        const frozenForRound = transitionFrozenForRoundRef.current;
+        if (frozenForRound && frozenForRound === currentRoundId) {
+          transitionFrozenRef.current = false;
+          transitionFrozenForRoundRef.current = null;
+          syncHandle.unfreezePresentation();
+          setIsTransitioning(false);
+          logCribbageDebug(debugCtx, 'hand_transition:unfrozen_on_rejected_snapshot', {
+            frozenForRound: frozenForRound.slice(0, 8),
+            currentRoundId: currentRoundId?.slice(0, 8),
+            snapshotPhase: newCribbageState.phase,
+            rejectReason: result.reason,
+          });
+        }
+      }
       
       // Reset poll interval when realtime works
       if (fromRealtime) {
@@ -4413,7 +4434,7 @@ export const CribbageMobileGameTable = ({
                   countingScoreOverrides={countingScoreOverrides ?? undefined}
                   countingOutroActive={countingDelayActive && !!countingStateSnapshot}
                   thirtyOneDelayActive={thirtyOneDelayActive}
-                  handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
+                  handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
                 />
 
                 {/* Counting Phase Overlay */}
