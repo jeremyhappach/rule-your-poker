@@ -4413,7 +4413,7 @@ export const CribbageMobileGameTable = ({
                   countingScoreOverrides={countingScoreOverrides ?? undefined}
                   countingOutroActive={countingDelayActive && !!countingStateSnapshot}
                   thirtyOneDelayActive={thirtyOneDelayActive}
-                  handBoundaryKey={`${currentRoundId}-${currentHandNumber}`}
+                  handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
                 />
 
                 {/* Counting Phase Overlay */}
