@@ -5088,9 +5088,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // For Holm, use presentation-layer deadline only (no raw fallback to avoid identity drift).
       // For non-Holm games, presentation deadline is not provided, so raw is the only/correct source.
-      const isHolm = gameData.game_type === 'holm-game';
-      const holmPresentationDeadline = isHolm ? holmSync.presentationState?.decisionDeadline : null;
-      const effectiveDeadline = isHolm
+      const isHolmDeadline = gameData.game_type === 'holm-game';
+      const holmPresentationDeadline = isHolmDeadline ? holmSync.presentationState?.decisionDeadline : null;
+      const effectiveDeadline = isHolmDeadline
         ? (holmPresentationDeadline ?? null)
         : (currentRound?.decision_deadline ?? null);
       
