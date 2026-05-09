@@ -1,81 +1,59 @@
+## Sync Framework Compliance Bundle
 
-## Platform Stabilization Plan — v3
+Single bundled cleanup applying the framework contract uniformly across all games. Scoring, rules, animations, visual contracts, and timeouts are untouched. No new instrumentation.
 
-### Current Mode: LIVE VALIDATION
+### Scope (strict allowlist)
 
----
+1. **Eliminate `?? raw` / `?? currentRound` fallbacks** in render paths
+   - Holm: `Game.tsx` ~7937, 7944, 8230 (and any sibling occurrences)
+   - 3-5-7: `Game.tsx` ~8330, 8337
+   - Cribbage: `CribbageMobileGameTable.tsx` ~431–435
+   - Yahtzee: `YahtzeeGameTable.tsx` ~340–345
+   - Horses/SCC: `HorsesPlayerArea.tsx` ~260+
+   - Rule: when `presentationState` exists, render reads MUST come from it. No raw fallback. If presentation is null/undefined at first paint, render the empty/loading branch the game already has — do not paper over it with `currentRound`.
 
-### Phase 1 — Holm P0 (Identity Boundaries & Cache Invalidation)
-**Status: LOCKED — stable in production**
-**Lock policy: No changes except crash fixes or invariant violations**
+2. **Identity source unification**
+   - Cribbage: replace remaining raw `currentRoundId-${currentHandNumber}` keys passed into presentation-driven children with `renderHandKey` (already in scope). Audit `CribbageMobileGameTable.tsx` for any other handBoundaryKey/effect-key sourced from raw.
+   - Yahtzee: reset/turn-transition effects keyed on raw `currentRoundId` → key on presentation-derived round identity (`viewState`-derived).
+   - Horses/SCC: bot/timeout/cleanup effects use raw `currentRoundId` while turn identity is derived from `horsesState` (presentation). Compute a single `presentationRoundId` once per render and use it for ALL effect deps that are paired with presentation-derived reads. DB target IDs (for write payloads) keep raw round — only the *gating identity* unifies.
+   - Holm: timer effect keyed on raw round → presentation-derived identity.
 
-- P0-1: Community card cache invalidation at hand boundary
-- P0-2: decisionLocked suppression during betting
-- P0-3: maxRevealed / card identity cache reset at hand boundary
-- P0-4: Card fetch race guard — REMOVED broken roundId guard, replaced with fetchToken-only pattern
-- P0-5: Hard clear playerCards + cardStateContext on every roundId change
-- P0-6: Render safety guard — never render cards when cardStateContext.roundId !== currentRound.id
-- P0-7: Solo capture gated by allDecisionsIn to prevent stale decision leakage
-- Instrumentation: card-fetch-start, card-fetch-drop-stale, hand-boundary-reset, solo-capture-attempt
+3. **Callback/effect read cleanup**
+   - Effects and bot callbacks that read state at fire time must use `presentationRefValue` (sync ref) instead of stale closure over `presentationState`, where the read is paired with a presentation-derived identity check.
+   - Yahtzee bot/timeout effects: read `yahtzeeView`-equivalent via `presentationRefValue` at callback fire time.
+   - Horses/SCC bot/timeout effects: same.
+   - Do NOT touch DB write payload construction — only the gating reads.
 
-**Production telemetry (post-fix):** card-fetch-round-mismatch ceased; solo-player-stale-relock caught by new guard.
+4. **Cribbage remaining identity cleanup**
+   - Audit any `useEffect` in `CribbageMobileGameTable.tsx` whose dep array contains `currentRoundId` or `currentHandNumber` while the body reads `viewState`. Replace deps with `renderHandKey` (or presentation-derived equivalent).
 
-### Phase 2 — Cribbage Stabilization (Same Holm Pattern)
-**Status: Implemented — awaiting live validation**
+### Out of scope (will reject during review)
 
-Applied same 3 principles from Holm:
+- Scoring math, game rules, animation timing, visual contract logic, timeouts, new logs, speculative fixes.
 
-1. **HARD RESET at hand boundary** (CribbageMobileGameTable)
-   - `setCribbageState(null)` on roundId change (previously explicitly avoided)
-   - Full reset of counting/scoring latches, win sequence state, pegging scores
-   - `initialLoadComplete` and `hasInitializedRef` reset to trigger fresh load
-   - `persistSyncDebugEvent` instrumentation: `hand-boundary-reset`
+### Operational
 
-2. **FETCH TOKEN** (CribbageMobileGameTable loadOrInitializeState)
-   - `cribbageFetchTokenRef` incremented before each load
-   - Token checked after every `await` point
-   - Prevents stale load results from overwriting fresh state
+- Single branch, single deploy.
+- Revert path: this is a localized read/key-source swap; reverting the bundle restores the prior `?? raw` fallbacks and raw effect keys exactly.
+- Validation: next cross-country session. If any regression, revert bundle.
 
-3. **RENDER GATE** (already present)
-   - Mobile cards tab: `viewState && !isTransitioning && renderHandKey === currentHandKey`
-   - Mobile felt content: `isGameplayMode && viewState`
-   - Desktop: `!cribbageState` returns loading state; `!isTransitioning` gates card display
-   - Identity latch: `roundIdLatchRef` drops stale realtime/poll snapshots
+### Technical notes
 
-**Known Cribbage issues targeted:**
-- Discarded cards reappearing → fixed by hard-nulling cribbageState + sync reset
-- Score regression → existing INV-6 monitoring; counting baselines reset on boundary
-- Tap failures → existing INV-7; isProcessing/counting state now properly cleared
+- Pattern for fallback removal:
+  ```ts
+  // BEFORE
+  const x = viewState?.foo ?? currentRound?.foo;
+  // AFTER
+  const x = viewState?.foo;
+  if (x == null) return <EmptyOrLoading />;
+  ```
+  Use the game's existing empty/loading branch; do not invent new ones.
 
-### Phase 2b — Gin Rummy (Identity Latch)
-**Status: Implemented — awaiting live validation after Cribbage**
+- Pattern for identity unification (Horses/SCC):
+  ```ts
+  const presentationRoundId = horsesView?.roundId ?? null;
+  // all effects gating on presentation reads:
+  useEffect(() => { ... }, [presentationRoundId, ...]);
+  ```
 
-- Gin Rummy roundId identity latch — stale applyState rejection
-- Instrumentation: identity_latch_drop debug events
-
-### Phase 3 — Yahtzee P2 (Turn Spotlight & Held-Dice Stability)
-**Status: Audited — previously addressed in existing code, not independently validated**
-
-- P2-1: Turn spotlight flash — optimistic applied before scoringInProgress clear
-- P2-2: Held-dice identity — localDice is sole source during active turn
-
-### Phase 4 — Horses / SCC (Ad-Hoc Sync Hardening)
-**Status: Hardened — NOT migrated to useGameStateSync. DO NOT TOUCH until Cribbage/Gin/Yahtzee validated.**
-
-- Progress-vector gating with monotonic rejection
-- Identity latch: roundIdLatchRef with baseline reset on identity change
-
----
-
-### Validation Order
-1. ~~**Holm**~~ — ✅ LOCKED
-2. **Cribbage** — NEXT: live validation
-3. **Gin Rummy** — after Cribbage
-4. **Yahtzee** — after Gin
-5. **Horses / SCC** — separate, hardening only
-
-### What Is NOT Claimed
-- Cribbage fixes are not yet validated in production
-- Presentation-oscillation may have additional vectors beyond identity latch
-- Yahtzee fixes are audited, not independently proven
-- Horses/SCC are not on the sync framework
+- `presentationRefValue` usage stays narrow: only inside callbacks/timers where closure staleness is the actual bug surface.
