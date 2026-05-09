@@ -305,8 +305,9 @@ export function YahtzeeGameTable({
 
   // Guard: prevent double-execution of handleGameComplete
   const gameCompleteProcessedRef = useRef(false);
-  // Reset guard when a new round starts
-  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [currentRoundId]);
+  // Reset guard when a new round starts — keyed on presentation-derived round identity
+  // to avoid clearing caches before the presentation layer transitions to the new round.
+  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [viewState?.currentRound]);
 
   // Debounce ref for stale-turn-render: only fire after 2+ consecutive mismatches
   // to allow for expected one-frame lag during sync gate acceptance
