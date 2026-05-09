@@ -7941,7 +7941,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     chuckyActive={currentRound?.chucky_active}
                     gameType={game.game_type}
                     gameStatus={(is357WinAnimationActive && game.game_type !== 'holm-game') ? 'game_over' : game.status}
-                    roundStatus={holmView?.roundStatus ?? currentRound?.status}
+                    roundStatus={holmView?.roundStatus}
                     isGameOver={game.status === 'game_over' || game.status === 'session_ended' || !!game.game_over_at}
                     isDealer={isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false}
                     onNextGame={handleDealerConfirmGameOver}
