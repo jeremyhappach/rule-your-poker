@@ -8227,7 +8227,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pendingSessionEnd={game.pending_session_end || false}
                 awaitingNextRound={game.awaiting_next_round || false}
                 gameType={game.game_type}
-                roundStatus={game.game_type === 'holm-game' ? holmView?.roundStatus : currentRound?.status}
+                roundStatus={currentRound?.status}
                 isPaused={game.is_paused || false}
                 anteAmount={game.ante_amount || 1}
                 pussyTaxValue={game.pussy_tax_value || 1}
