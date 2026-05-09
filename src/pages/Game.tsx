@@ -7934,7 +7934,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onStay={() => {}}
                     onFold={() => {}}
                     onSelectSeat={handleSelectSeat}
-                    communityCards={game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)}
+                    communityCards={game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)}
                     communityCardsRevealed={effectiveCommunityCardsRevealed}
                     chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
                     chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
@@ -8227,7 +8227,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 pendingSessionEnd={game.pending_session_end || false}
                 awaitingNextRound={game.awaiting_next_round || false}
                 gameType={game.game_type}
-                roundStatus={holmView?.roundStatus ?? currentRound?.status}
+                roundStatus={game.game_type === 'holm-game' ? holmView?.roundStatus : currentRound?.status}
                 isPaused={game.is_paused || false}
                 anteAmount={game.ante_amount || 1}
                 pussyTaxValue={game.pussy_tax_value || 1}
@@ -8342,14 +8342,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pendingSessionEnd={game.pending_session_end || false}
               awaitingNextRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
               gameType={game.game_type}
-              communityCards={isInProgress ? (game.game_type === 'holm-game' && holmView ? (holmView.communityCards as CardType[]) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
+              communityCards={isInProgress ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? (game.game_type === 'holm-game' && holmView ? holmView.buckPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
-              currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? currentRound?.current_turn_position ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
+              buckPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
               chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
               chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
               chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
-              roundStatus={isInProgress ? (holmView?.roundStatus ?? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
+              roundStatus={isInProgress ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
