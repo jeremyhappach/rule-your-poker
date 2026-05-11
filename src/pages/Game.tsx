@@ -3381,15 +3381,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const holmHandIdentityCards = (game?.game_type === 'holm-game' && holmView)
     ? (holmView.communityCards as CardType[] | undefined)?.map(c => `${c.rank}${c.suit}`).join(',') ?? ''
     : currentCardIdentity;
-  const holmHandChuckyActive = (game?.game_type === 'holm-game' && holmView)
-    ? (holmView.chuckyActive ? '1' : '0')
-    : (currentRound?.chucky_active ? '1' : '0');
+  // Hand identity is stable across the WHOLE hand. It must NOT include intra-hand
+  // reveal progression (communityCardsRevealed, chuckyActive, chuckyCardsRevealed),
+  // otherwise downstream caches/animations reset mid-reveal and replay/batch cards.
   const handContextKey =
     game?.game_type === 'holm-game' && holmView
-      ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}:${holmHandChuckyActive}`
+      ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}`
       : (cardStateContext?.roundId ??
         (currentRound?.id
-          ? `${currentRound.id}:${currentCardIdentity}:${holmHandChuckyActive}:${currentRound?.chucky_cards_revealed ?? 0}`
+          ? `${currentRound.id}:${currentCardIdentity}`
           : null));
 
   // Reset when starting new game OR when cards change (new hand)

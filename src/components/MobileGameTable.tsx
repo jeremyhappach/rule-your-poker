@@ -1558,10 +1558,15 @@ export const MobileGameTable = ({
   // This fixes the bug where wrong cards are displayed during solo vs Chucky showdown
   const showdownHandContextRef = useRef<string | null>(null);
   
-  // Cache Chucky cards to persist through announcement phase
+  // Cache Chucky cards to persist through announcement phase.
+  // cachedChuckyCardsRevealed is a LOCAL, MONOTONIC, SEQUENTIAL render count.
+  // The incoming chuckyCardsRevealed prop is treated as a TARGET only; a stepper
+  // effect below advances the rendered count one card at a time toward that target.
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  // Target reveal count (latest authoritative value); rendered count steps toward this.
+  const chuckyTargetRevealedRef = useRef<number>(0);
   // Track which handContextId the cached Chucky cards belong to
   const cachedChuckyHandContextRef = useRef<string | null>(null);
   
@@ -1620,6 +1625,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
+      chuckyTargetRevealedRef.current = 0;
       cachedChuckyHandContextRef.current = null;
     }
 
@@ -1665,6 +1671,7 @@ export const MobileGameTable = ({
     setCachedChuckyCards(null);
     setCachedChuckyActive(false);
     setCachedChuckyCardsRevealed(0);
+    chuckyTargetRevealedRef.current = 0;
     cachedChuckyHandContextRef.current = null;
 
     // Solo-vs-Chucky tabling lock (must clear together with caches)
@@ -3130,25 +3137,28 @@ export const MobileGameTable = ({
     };
   }, [gameType, communityCardsRevealed]);
 
-  // Cache Chucky cards when available, clear only when buck passes or new game starts
+  // Cache Chucky cards when available, clear only when buck passes or new game starts.
+  // NOTE: cachedChuckyCardsRevealed is the LOCAL rendered count, advanced by the
+  // sequential stepper effect below. Here we only update the TARGET ref, never the
+  // rendered count directly (which would let target jumps like 0→2 show both cards
+  // simultaneously under jittered/coalesced snapshots).
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     
     // CRITICAL: Clear cached Chucky cards when entering dealer config phases
-    // This prevents old cards from the previous game showing up
     if (isDealerConfigPhase) {
       if (cachedChuckyCards && cachedChuckyCards.length > 0) {
         console.log('[MOBILE_CHUCKY] Dealer config phase - clearing cached Chucky cards');
         setCachedChuckyCards(null);
         setCachedChuckyActive(false);
         setCachedChuckyCardsRevealed(0);
+        chuckyTargetRevealedRef.current = 0;
         cachedChuckyHandContextRef.current = null;
       }
       return;
     }
     
     // CRITICAL: Clear cached Chucky cards when handContextId changes (new hand started)
-    // This prevents stale Chucky cards from previous hand showing on new hand
     if (
       cachedChuckyHandContextRef.current !== null &&
       handContextId !== null &&
@@ -3161,6 +3171,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
+      chuckyTargetRevealedRef.current = 0;
       cachedChuckyHandContextRef.current = null;
       return;
     }
@@ -3171,21 +3182,22 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
+      chuckyTargetRevealedRef.current = 0;
       cachedChuckyHandContextRef.current = null;
       return;
     }
     
     // Cache Chucky data when it's available AND track which hand it belongs to
     if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
-      // Only update cache if handContextId matches or we don't have a cached context yet
       if (cachedChuckyHandContextRef.current === null || cachedChuckyHandContextRef.current === handContextId) {
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards]);
         setCachedChuckyActive(true);
-        // CRITICAL: Only allow revealed count to increase, never decrease
-        // This prevents Chucky cards from briefly reverting to card back during DB sync
-        const newRevealed = chuckyCardsRevealed || 0;
-        setCachedChuckyCardsRevealed(prev => Math.max(prev, newRevealed));
+        // Update TARGET only (monotonic). Rendered count is advanced by the stepper.
+        const newTarget = chuckyCardsRevealed || 0;
+        if (newTarget > chuckyTargetRevealedRef.current) {
+          chuckyTargetRevealedRef.current = newTarget;
+        }
         cachedChuckyHandContextRef.current = handContextId ?? null;
       } else {
         console.warn('[MOBILE_CHUCKY] Skipping cache - handContextId mismatch:', {
@@ -3195,6 +3207,25 @@ export const MobileGameTable = ({
       }
     }
   }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
+
+  // Sequential stepper: advance cachedChuckyCardsRevealed one card at a time toward
+  // the target. Latches community-fully-revealed before stepping so Chucky reveal
+  // never overlaps community reveal. Resets are handled by hand-identity changes.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!cachedChuckyActive) return;
+    if (!holmCommunityFullyRevealed) return; // Latch: community must finish first
+    const target = chuckyTargetRevealedRef.current;
+    if (cachedChuckyCardsRevealed >= target) return;
+    const t = setTimeout(() => {
+      setCachedChuckyCardsRevealed(prev => {
+        const tgt = chuckyTargetRevealedRef.current;
+        return prev < tgt ? prev + 1 : prev;
+      });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed]);
+
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────
   // Observe transitions in *what is rendered face-up* for community + Chucky cards
