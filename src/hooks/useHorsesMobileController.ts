@@ -1086,7 +1086,7 @@ export function useHorsesMobileController({
   // Only show the overlay to the player who rolled no qualify, not to spectators
   useEffect(() => {
     if (!enabled || !isSCC) return;
-    if (!currentRoundId) return;
+    if (!presentationRoundId) return;
     if (!myPlayer) return;
     
     // Only check the current user's state
@@ -1095,7 +1095,7 @@ export function useHorsesMobileController({
     
     const result = myPlayerState.result as SCCHandResult;
     if (!result.isQualified) {
-      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
+      const noQualifyKey = `${presentationRoundId}:${myPlayer.id}`;
       if (noQualifyShownForRef.current.has(noQualifyKey)) return;
       
       noQualifyShownForRef.current.add(noQualifyKey);
@@ -1104,7 +1104,7 @@ export function useHorsesMobileController({
       setNoQualifyPlayerName(null);
       setShowNoQualifyAnimation(true);
     }
-  }, [enabled, isSCC, currentRoundId, myPlayer, horsesState?.playerStates]);
+  }, [enabled, isSCC, presentationRoundId, myPlayer, horsesState?.playerStates]);
 
   // Handler to reset the no qualify animation
   const handleNoQualifyAnimationComplete = useCallback(() => {
