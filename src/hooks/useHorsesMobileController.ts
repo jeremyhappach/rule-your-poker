@@ -1299,7 +1299,7 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
     if (isPaused) return; // Never enforce timeouts when game is paused
-    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!presentationRoundId || !currentTurnPlayerId) return;
     if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
     if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
     if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
@@ -1323,7 +1323,7 @@ export function useHorsesMobileController({
     if (!iAmTurnOwner && !iAmController) return;
 
     // Prevent duplicate timeout processing
-    const timeoutKey = `${currentRoundId}:${currentTurnPlayerId}:timeout`;
+    const timeoutKey = `${presentationRoundId}:${currentTurnPlayerId}:timeout`;
     if (timeoutProcessedRef.current === timeoutKey) return;
     timeoutProcessedRef.current = timeoutKey;
 
