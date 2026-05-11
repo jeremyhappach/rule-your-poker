@@ -1010,7 +1010,12 @@ export function useHorsesMobileController({
     currentTurnState?.isComplete,
     currentTurnState?.result,
   ]);
+
+  useEffect(() => {
+    if (!enabled || gamePhase !== "playing") return;
+    if (!presentationRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
+
 
     const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
     if (announcedTurnsRef.current.has(announceKey)) return;
