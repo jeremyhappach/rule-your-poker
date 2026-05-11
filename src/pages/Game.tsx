@@ -3384,12 +3384,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? (holmView.chuckyActive ? '1' : '0')
     : (currentRound?.chucky_active ? '1' : '0');
   const handContextKey =
-    cardStateContext?.roundId ??
-    (currentRound?.id
-      ? (game?.game_type === 'holm-game' && holmView
-          ? `${currentRound.id}:h${holmView.handNumber}:${holmHandIdentityCards}:${holmHandChuckyActive}:${holmView.communityCardsRevealed}`
-          : `${currentRound.id}:${currentCardIdentity}:${holmHandChuckyActive}:${currentRound?.chucky_cards_revealed ?? 0}`)
-      : null);
+    game?.game_type === 'holm-game' && holmView
+      ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}:${holmHandChuckyActive}:${holmView.communityCardsRevealed}`
+      : (cardStateContext?.roundId ??
+        (currentRound?.id
+          ? `${currentRound.id}:${currentCardIdentity}:${holmHandChuckyActive}:${currentRound?.chucky_cards_revealed ?? 0}`
+          : null));
 
   // Reset when starting new game OR when cards change (new hand)
   if (game?.status === 'game_selection' || game?.status === 'configuring' || game?.status === 'dealer_selection') {
@@ -3441,10 +3441,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const effectiveCommunityCardsRevealed = shouldUseMax
     ? maxRevealedRef.current
     : baseRevealedCount;
+
+  const presentationRoundIdForCards = game?.game_type === 'holm-game' && holmView
+    ? holmView.roundId
+    : (currentRound?.id ?? null);
+  const playerCardsForPresentation = cardStateContext?.roundId && presentationRoundIdForCards && cardStateContext.roundId !== presentationRoundIdForCards
+    ? []
+    : playerCards;
+  const allDecisionsInForPresentation = game?.game_type === 'holm-game' && holmView
+    ? holmView.players.filter(p => !p.sittingOut).every(p => p.decisionLocked)
+    : (game?.all_decisions_in || false);
+  const chuckyCardsForPresentation = game?.game_type === 'holm-game' && holmView
+    ? (holmView.chuckyCards as CardType[] | undefined)
+    : (currentRound?.chucky_cards as CardType[] | undefined);
+  const chuckyActiveForPresentation = game?.game_type === 'holm-game' && holmView
+    ? holmView.chuckyActive
+    : currentRound?.chucky_active;
+  const chuckyCardsRevealedForPresentation = game?.game_type === 'holm-game' && holmView
+    ? 0
+    : currentRound?.chucky_cards_revealed;
   
   // [holm-sync] Invariant checks + diagnostic log at render boundary
   if (isHolmWithSync && game?.status === 'in_progress') {
-    const handKey = `${currentRound?.id}:${holmView!.handNumber}`;
+    const handKey = `${holmView!.roundId}:${holmView!.handNumber}`;
     runHolmInvariants({
       gameId: game?.id,
       roundStatus: holmView!.roundStatus,
