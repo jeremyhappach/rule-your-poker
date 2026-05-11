@@ -7943,7 +7943,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     pot={potForDisplay}
                     currentRound={game.current_round || 0}
                     allDecisionsIn={true}
-                    playerCards={cardStateContext?.roundId && currentRound?.id && cardStateContext.roundId !== currentRound.id ? [] : playerCards}
+                    playerCards={playerCardsForPresentation}
                     timeLeft={null}
                     lastRoundResult={game.last_round_result ?? null}
                     dealerPosition={game.dealer_position}
@@ -7958,9 +7958,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onSelectSeat={handleSelectSeat}
                     communityCards={game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)}
                     communityCardsRevealed={effectiveCommunityCardsRevealed}
-                    chuckyCards={currentRound?.chucky_cards as CardType[] | undefined}
-                    chuckyCardsRevealed={currentRound?.chucky_cards_revealed}
-                    chuckyActive={currentRound?.chucky_active}
+                    chuckyCards={chuckyCardsForPresentation}
+                    chuckyCardsRevealed={chuckyCardsRevealedForPresentation}
+                    chuckyActive={chuckyActiveForPresentation}
                     gameType={game.game_type}
                     gameStatus={(is357WinAnimationActive && game.game_type !== 'holm-game') ? 'game_over' : game.status}
                     roundStatus={holmView?.roundStatus}
@@ -8351,8 +8351,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               currentUserId={user?.id}
               pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
               currentRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
-              allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : (game.all_decisions_in || false)) : false}
-              playerCards={isInProgress ? (cardStateContext?.roundId && currentRound?.id && cardStateContext.roundId !== currentRound.id ? [] : playerCards) : []}
+              allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
+              playerCards={isInProgress ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? decisionTimerSeconds : undefined}
               lastRoundResult={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
@@ -8368,9 +8368,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
               buckPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
               currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
-              chuckyCards={isInProgress ? (currentRound?.chucky_cards as CardType[] | undefined) : undefined}
-              chuckyActive={isInProgress ? currentRound?.chucky_active : undefined}
-              chuckyCardsRevealed={isInProgress ? currentRound?.chucky_cards_revealed : undefined}
+              chuckyCards={isInProgress ? chuckyCardsForPresentation : undefined}
+              chuckyActive={isInProgress ? chuckyActiveForPresentation : undefined}
+              chuckyCardsRevealed={isInProgress ? chuckyCardsRevealedForPresentation : undefined}
               roundStatus={isInProgress ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
