@@ -1617,7 +1617,7 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (isPaused) return; // Block bot auto-play when game is paused
     if (gamePhase !== "playing") return;
-    if (!currentRoundId) return;
+    if (!presentationRoundId) return;
     if (!currentUserId) return;
 
     // Auto-play for bots OR human players with auto_fold (auto-roll mode)
@@ -1625,7 +1625,7 @@ export function useHorsesMobileController({
     const botId = shouldAutoPlay ? currentTurnPlayer?.id : null;
     if (!botId) return;
 
-    const processingKey = `${currentRoundId}:${botId}`;
+    const processingKey = `${presentationRoundId}:${botId}`;
 
     // If we're already running this exact bot turn loop, do not start another.
     if (botProcessingKeyRef.current === processingKey) return;
