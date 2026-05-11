@@ -1115,7 +1115,7 @@ export function useHorsesMobileController({
   // Detect when ANY player's SCC hand is complete and they rolled Midnight (cargo = 12)
   useEffect(() => {
     if (!enabled || !isSCC) return;
-    if (!currentRoundId) return;
+    if (!presentationRoundId) return;
     
     const playerStates = horsesState?.playerStates;
     if (!playerStates) return;
@@ -1126,7 +1126,7 @@ export function useHorsesMobileController({
       const result = state.result as SCCHandResult;
       // Midnight = qualified with cargo of 12 (highest possible)
       if (result.isQualified && result.cargoSum === 12) {
-        const midnightKey = `${currentRoundId}:${playerId}`;
+        const midnightKey = `${presentationRoundId}:${playerId}`;
         if (midnightShownForRef.current.has(midnightKey)) continue;
         
         midnightShownForRef.current.add(midnightKey);
@@ -1139,7 +1139,7 @@ export function useHorsesMobileController({
         break;
       }
     }
-  }, [enabled, isSCC, currentRoundId, horsesState?.playerStates, players, getPlayerUsername]);
+  }, [enabled, isSCC, presentationRoundId, horsesState?.playerStates, players, getPlayerUsername]);
 
   // Handler to reset the midnight animation
   const handleMidnightAnimationComplete = useCallback(() => {
