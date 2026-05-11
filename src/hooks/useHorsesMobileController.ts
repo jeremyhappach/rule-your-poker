@@ -950,10 +950,10 @@ export function useHorsesMobileController({
   // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
-    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!presentationRoundId || !currentTurnPlayerId) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
 
-    const holdKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    const holdKey = `${presentationRoundId}:${currentTurnPlayerId}`;
     if (lastCompletedTurnKeyRef.current === holdKey) return; // Already holding this turn
     lastCompletedTurnKeyRef.current = holdKey;
 
@@ -1005,15 +1005,11 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
-    currentRoundId,
+    presentationRoundId,
     currentTurnPlayerId,
     currentTurnState?.isComplete,
     currentTurnState?.result,
   ]);
-
-  useEffect(() => {
-    if (!enabled || gamePhase !== "playing") return;
-    if (!currentRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
 
     const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
