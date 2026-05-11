@@ -48,6 +48,7 @@ export interface HolmAuthoritativeSnapshot {
   communityCardsRevealed: number;
   chuckyCards: unknown[];
   chuckyActive: boolean;
+  chuckyCardsRevealed: number;
 
   // Pot & game context
   pot: number;
