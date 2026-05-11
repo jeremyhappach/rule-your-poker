@@ -2115,31 +2115,33 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
-    if (!currentRoundId || !gameId) return;
+    if (!presentationRoundId || !gameId) return;
     if (!turnOrder.length) return;
 
     const playerStates = horsesState?.playerStates ?? {};
     const allComplete = turnOrder.every(pid => playerStates[pid]?.isComplete);
     if (!allComplete) return;
 
-    const key = `allcomplete:${currentRoundId}`;
+    const key = `allcomplete:${presentationRoundId}`;
     if (allCompleteRecoveryRef.current === key) return;
     allCompleteRecoveryRef.current = key;
 
     console.warn("[HORSES] All players complete but gamePhase still 'playing' - forcing complete");
     
+    const writeRoundId = currentRoundId;
     const forceComplete = async () => {
+      if (!writeRoundId) return;
       // Fetch latest state from DB to avoid clobbering
       const { data: roundRow } = await supabase
         .from("rounds")
         .select("horses_state")
-        .eq("id", currentRoundId)
+        .eq("id", writeRoundId)
         .single();
 
       const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
       if (!latestState) return;
 
-      await updateHorsesState(currentRoundId, {
+      await updateHorsesState(writeRoundId, {
         ...latestState,
         currentTurnPlayerId: null,
         gamePhase: "complete",
@@ -2149,7 +2151,7 @@ export function useHorsesMobileController({
     // Small delay to avoid racing with normal advance
     const t = window.setTimeout(forceComplete, 2000);
     return () => window.clearTimeout(t);
-  }, [enabled, gamePhase, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
+  }, [enabled, gamePhase, presentationRoundId, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
 
   const rawFeltDice = useMemo(() => {
     const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;
