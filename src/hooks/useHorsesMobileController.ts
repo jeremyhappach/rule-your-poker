@@ -1150,7 +1150,7 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
-    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!presentationRoundId || !currentTurnPlayerId) return;
 
     if (!currentTurnState?.isComplete) return;
 
@@ -1161,7 +1161,7 @@ export function useHorsesMobileController({
     const iAmController = candidateBotControllerUserId === currentUserId;
     if (!iAmTurnOwner && !iAmController) return;
 
-    const key = `${currentRoundId}:${currentTurnPlayerId}`;
+    const key = `${presentationRoundId}:${currentTurnPlayerId}`;
     if (stuckAdvanceKeyRef.current === key) return;
     stuckAdvanceKeyRef.current = key;
 
@@ -1169,19 +1169,23 @@ export function useHorsesMobileController({
       (playerId) => horsesState?.playerStates?.[playerId]?.isComplete,
     );
 
+    // Capture raw round id for DB write targets after identity gating passes.
+    const writeRoundId = currentRoundId;
+
     const t = window.setTimeout(() => {
       if (allPlayersComplete) {
         void (async () => {
+          if (!writeRoundId) return;
           const { data: roundRow } = await supabase
             .from("rounds")
             .select("horses_state")
-            .eq("id", currentRoundId)
+            .eq("id", writeRoundId)
             .single();
 
           const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
           if (!latestState) return;
 
-          await updateHorsesState(currentRoundId, {
+          await updateHorsesState(writeRoundId, {
             ...latestState,
             currentTurnPlayerId: null,
             gamePhase: "complete",
@@ -1197,6 +1201,7 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
+    presentationRoundId,
     currentRoundId,
     currentTurnPlayerId,
     currentTurnState?.isComplete,
