@@ -1017,7 +1017,7 @@ export function useHorsesMobileController({
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
 
 
-    const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    const announceKey = `${presentationRoundId}:${currentTurnPlayerId}`;
     if (announcedTurnsRef.current.has(announceKey)) return;
     announcedTurnsRef.current.add(announceKey);
 
