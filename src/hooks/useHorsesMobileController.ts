@@ -1036,7 +1036,7 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
-    currentRoundId,
+    presentationRoundId,
     currentTurnPlayerId,
     currentTurnPlayer,
     currentTurnState?.isComplete,
