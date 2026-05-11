@@ -3386,7 +3386,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     : (currentRound?.chucky_active ? '1' : '0');
   const handContextKey =
     game?.game_type === 'holm-game' && holmView
-      ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}:${holmHandChuckyActive}:${holmView.communityCardsRevealed}`
+      ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}:${holmHandChuckyActive}`
       : (cardStateContext?.roundId ??
         (currentRound?.id
           ? `${currentRound.id}:${currentCardIdentity}:${holmHandChuckyActive}:${currentRound?.chucky_cards_revealed ?? 0}`
