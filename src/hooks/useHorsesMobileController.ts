@@ -1942,7 +1942,7 @@ export function useHorsesMobileController({
 
   useEffect(() => {
     if (!enabled) return;
-    if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
+    if (gamePhase !== "complete" || !gameId || !presentationRoundId) return;
     if (winningPlayerIds.length === 0) return;
     
     // CRITICAL: Block win processing when game is paused - prevents rollover triggering
@@ -1951,7 +1951,7 @@ export function useHorsesMobileController({
     }
 
     // Prevent duplicate processing
-    if (processedWinRoundRef.current === currentRoundId) return;
+    if (processedWinRoundRef.current === presentationRoundId) return;
 
     // ANY human player can attempt processing — atomic DB guards prevent duplicates.
     const myPlayerId = myPlayer?.id;
@@ -1959,7 +1959,7 @@ export function useHorsesMobileController({
 
     const processWin = async () => {
       // Mark as processed IMMEDIATELY to prevent local double-processing
-      processedWinRoundRef.current = currentRoundId;
+      processedWinRoundRef.current = presentationRoundId;
 
       if (winningPlayerIds.length > 1) {
         // ATOMIC GUARD: Only one client claims the tie processing
