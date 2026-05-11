@@ -1382,6 +1382,7 @@ export function useHorsesMobileController({
     enabled,
     gamePhase,
     isPaused,
+    presentationRoundId,
     currentRoundId,
     currentTurnPlayerId,
     currentTurnPlayer,
