@@ -1920,7 +1920,7 @@ export function useHorsesMobileController({
     enabled,
     isPaused,
     gamePhase,
-    currentRoundId,
+    presentationRoundId,
     currentUserId,
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
