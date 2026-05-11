@@ -258,6 +258,11 @@ export function useHorsesMobileController({
   // Shadow the parameter: all downstream code reads from presentation state.
   // eslint-disable-next-line no-param-reassign
   horsesState = syncHandle.presentationState;
+
+  // SYNC COMPLIANCE: single presentation-derived identity for effect gating / stale guards / keys.
+  // Equals raw currentRoundId only when presentation has actually advanced to that round's state.
+  // Raw currentRoundId remains the DB write target after identity gating passes.
+  const presentationRoundId = horsesState ? currentRoundId : null;
   
   // Local state for dice rolling animation (only used by the local user when it's their turn)
   // Use union type to support both game types
