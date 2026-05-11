@@ -1048,7 +1048,7 @@ export function useHorsesMobileController({
   // This always persists (no debug flag) because it's a real stuck-state signal.
   const stuckAllCompleteKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!enabled || !currentRoundId || !gameId) return;
+    if (!enabled || !presentationRoundId || !gameId) return;
     if (gamePhase !== "playing") return;
     const states = horsesState?.playerStates;
     const order = horsesState?.turnOrder;
@@ -1057,12 +1057,12 @@ export function useHorsesMobileController({
     const allComplete = order.every((pid) => states[pid]?.isComplete);
     if (!allComplete) return;
 
-    const key = `allComplete:${currentRoundId}`;
+    const key = `allComplete:${presentationRoundId}`;
     if (stuckAllCompleteKeyRef.current === key) return;
     stuckAllCompleteKeyRef.current = key;
 
     console.error("[sync-invariant] ❌ horses::stuck-all-complete — gamePhase is 'playing' but every player isComplete", {
-      currentRoundId,
+      currentRoundId: presentationRoundId,
       currentTurnPlayerId,
       turnOrder: order.map(id => id.slice(0, 8)),
     });
@@ -1074,14 +1074,14 @@ export function useHorsesMobileController({
         order.length,
         "stuck-all-complete",
         {
-          currentRoundId,
+          currentRoundId: presentationRoundId,
           currentTurnPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
           turnOrderLength: order.length,
           gamePhase,
         },
       );
     }).catch(() => {});
-  }, [enabled, currentRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
+  }, [enabled, presentationRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
 
   // Only show the overlay to the player who rolled no qualify, not to spectators
   useEffect(() => {
