@@ -3459,7 +3459,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? holmView.chuckyActive
     : currentRound?.chucky_active;
   const chuckyCardsRevealedForPresentation = game?.game_type === 'holm-game' && holmView
-    ? 0
+    ? holmView.chuckyCardsRevealed
     : currentRound?.chucky_cards_revealed;
   
   // [holm-sync] Invariant checks + diagnostic log at render boundary
