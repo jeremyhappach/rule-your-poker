@@ -1625,6 +1625,7 @@ export const MobileGameTable = ({
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
       setCachedChuckyCardsRevealed(0);
+      chuckyTargetRevealedRef.current = 0;
       cachedChuckyHandContextRef.current = null;
     }
 
