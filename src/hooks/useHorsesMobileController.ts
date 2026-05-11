@@ -258,6 +258,11 @@ export function useHorsesMobileController({
   // Shadow the parameter: all downstream code reads from presentation state.
   // eslint-disable-next-line no-param-reassign
   horsesState = syncHandle.presentationState;
+
+  // SYNC COMPLIANCE: single presentation-derived identity for effect gating / stale guards / keys.
+  // Equals raw currentRoundId only when presentation has actually advanced to that round's state.
+  // Raw currentRoundId remains the DB write target after identity gating passes.
+  const presentationRoundId = horsesState ? currentRoundId : null;
   
   // Local state for dice rolling animation (only used by the local user when it's their turn)
   // Use union type to support both game types
@@ -945,10 +950,10 @@ export function useHorsesMobileController({
   // and hold it visible for 3 seconds. This creates a smooth transition without flicker.
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
-    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!presentationRoundId || !currentTurnPlayerId) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
 
-    const holdKey = `${currentRoundId}:${currentTurnPlayerId}`;
+    const holdKey = `${presentationRoundId}:${currentTurnPlayerId}`;
     if (lastCompletedTurnKeyRef.current === holdKey) return; // Already holding this turn
     lastCompletedTurnKeyRef.current = holdKey;
 
@@ -1000,7 +1005,7 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
-    currentRoundId,
+    presentationRoundId,
     currentTurnPlayerId,
     currentTurnState?.isComplete,
     currentTurnState?.result,
@@ -1008,10 +1013,11 @@ export function useHorsesMobileController({
 
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
-    if (!currentRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
+    if (!presentationRoundId || !currentTurnPlayerId || !currentTurnPlayer) return;
     if (!currentTurnState?.isComplete || !currentTurnState?.result) return;
 
-    const announceKey = `${currentRoundId}:${currentTurnPlayerId}`;
+
+    const announceKey = `${presentationRoundId}:${currentTurnPlayerId}`;
     if (announcedTurnsRef.current.has(announceKey)) return;
     announcedTurnsRef.current.add(announceKey);
 
@@ -1030,7 +1036,7 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
-    currentRoundId,
+    presentationRoundId,
     currentTurnPlayerId,
     currentTurnPlayer,
     currentTurnState?.isComplete,
@@ -1042,7 +1048,7 @@ export function useHorsesMobileController({
   // This always persists (no debug flag) because it's a real stuck-state signal.
   const stuckAllCompleteKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!enabled || !currentRoundId || !gameId) return;
+    if (!enabled || !presentationRoundId || !gameId) return;
     if (gamePhase !== "playing") return;
     const states = horsesState?.playerStates;
     const order = horsesState?.turnOrder;
@@ -1051,12 +1057,12 @@ export function useHorsesMobileController({
     const allComplete = order.every((pid) => states[pid]?.isComplete);
     if (!allComplete) return;
 
-    const key = `allComplete:${currentRoundId}`;
+    const key = `allComplete:${presentationRoundId}`;
     if (stuckAllCompleteKeyRef.current === key) return;
     stuckAllCompleteKeyRef.current = key;
 
     console.error("[sync-invariant] ❌ horses::stuck-all-complete — gamePhase is 'playing' but every player isComplete", {
-      currentRoundId,
+      currentRoundId: presentationRoundId,
       currentTurnPlayerId,
       turnOrder: order.map(id => id.slice(0, 8)),
     });
@@ -1068,19 +1074,19 @@ export function useHorsesMobileController({
         order.length,
         "stuck-all-complete",
         {
-          currentRoundId,
+          currentRoundId: presentationRoundId,
           currentTurnPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
           turnOrderLength: order.length,
           gamePhase,
         },
       );
     }).catch(() => {});
-  }, [enabled, currentRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
+  }, [enabled, presentationRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
 
   // Only show the overlay to the player who rolled no qualify, not to spectators
   useEffect(() => {
     if (!enabled || !isSCC) return;
-    if (!currentRoundId) return;
+    if (!presentationRoundId) return;
     if (!myPlayer) return;
     
     // Only check the current user's state
@@ -1089,7 +1095,7 @@ export function useHorsesMobileController({
     
     const result = myPlayerState.result as SCCHandResult;
     if (!result.isQualified) {
-      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
+      const noQualifyKey = `${presentationRoundId}:${myPlayer.id}`;
       if (noQualifyShownForRef.current.has(noQualifyKey)) return;
       
       noQualifyShownForRef.current.add(noQualifyKey);
@@ -1098,7 +1104,7 @@ export function useHorsesMobileController({
       setNoQualifyPlayerName(null);
       setShowNoQualifyAnimation(true);
     }
-  }, [enabled, isSCC, currentRoundId, myPlayer, horsesState?.playerStates]);
+  }, [enabled, isSCC, presentationRoundId, myPlayer, horsesState?.playerStates]);
 
   // Handler to reset the no qualify animation
   const handleNoQualifyAnimationComplete = useCallback(() => {
@@ -1109,7 +1115,7 @@ export function useHorsesMobileController({
   // Detect when ANY player's SCC hand is complete and they rolled Midnight (cargo = 12)
   useEffect(() => {
     if (!enabled || !isSCC) return;
-    if (!currentRoundId) return;
+    if (!presentationRoundId) return;
     
     const playerStates = horsesState?.playerStates;
     if (!playerStates) return;
@@ -1120,7 +1126,7 @@ export function useHorsesMobileController({
       const result = state.result as SCCHandResult;
       // Midnight = qualified with cargo of 12 (highest possible)
       if (result.isQualified && result.cargoSum === 12) {
-        const midnightKey = `${currentRoundId}:${playerId}`;
+        const midnightKey = `${presentationRoundId}:${playerId}`;
         if (midnightShownForRef.current.has(midnightKey)) continue;
         
         midnightShownForRef.current.add(midnightKey);
@@ -1133,7 +1139,7 @@ export function useHorsesMobileController({
         break;
       }
     }
-  }, [enabled, isSCC, currentRoundId, horsesState?.playerStates, players, getPlayerUsername]);
+  }, [enabled, isSCC, presentationRoundId, horsesState?.playerStates, players, getPlayerUsername]);
 
   // Handler to reset the midnight animation
   const handleMidnightAnimationComplete = useCallback(() => {
@@ -1144,7 +1150,7 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
-    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!presentationRoundId || !currentTurnPlayerId) return;
 
     if (!currentTurnState?.isComplete) return;
 
@@ -1155,7 +1161,7 @@ export function useHorsesMobileController({
     const iAmController = candidateBotControllerUserId === currentUserId;
     if (!iAmTurnOwner && !iAmController) return;
 
-    const key = `${currentRoundId}:${currentTurnPlayerId}`;
+    const key = `${presentationRoundId}:${currentTurnPlayerId}`;
     if (stuckAdvanceKeyRef.current === key) return;
     stuckAdvanceKeyRef.current = key;
 
@@ -1163,19 +1169,23 @@ export function useHorsesMobileController({
       (playerId) => horsesState?.playerStates?.[playerId]?.isComplete,
     );
 
+    // Capture raw round id for DB write targets after identity gating passes.
+    const writeRoundId = currentRoundId;
+
     const t = window.setTimeout(() => {
       if (allPlayersComplete) {
         void (async () => {
+          if (!writeRoundId) return;
           const { data: roundRow } = await supabase
             .from("rounds")
             .select("horses_state")
-            .eq("id", currentRoundId)
+            .eq("id", writeRoundId)
             .single();
 
           const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
           if (!latestState) return;
 
-          await updateHorsesState(currentRoundId, {
+          await updateHorsesState(writeRoundId, {
             ...latestState,
             currentTurnPlayerId: null,
             gamePhase: "complete",
@@ -1191,6 +1201,7 @@ export function useHorsesMobileController({
   }, [
     enabled,
     gamePhase,
+    presentationRoundId,
     currentRoundId,
     currentTurnPlayerId,
     currentTurnState?.isComplete,
@@ -1288,7 +1299,7 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled || gamePhase !== "playing") return;
     if (isPaused) return; // Never enforce timeouts when game is paused
-    if (!currentRoundId || !currentTurnPlayerId) return;
+    if (!presentationRoundId || !currentTurnPlayerId) return;
     if (currentTurnPlayer?.is_bot) return; // Bots handle themselves via bot loop
     if (currentTurnPlayer?.auto_fold) return; // Already in auto-roll mode, let bot loop handle
     if (!horsesState?.turnDeadline) return; // Only process timeouts when a real server deadline exists
@@ -1312,7 +1323,7 @@ export function useHorsesMobileController({
     if (!iAmTurnOwner && !iAmController) return;
 
     // Prevent duplicate timeout processing
-    const timeoutKey = `${currentRoundId}:${currentTurnPlayerId}:timeout`;
+    const timeoutKey = `${presentationRoundId}:${currentTurnPlayerId}:timeout`;
     if (timeoutProcessedRef.current === timeoutKey) return;
     timeoutProcessedRef.current = timeoutKey;
 
@@ -1371,6 +1382,7 @@ export function useHorsesMobileController({
     enabled,
     gamePhase,
     isPaused,
+    presentationRoundId,
     currentRoundId,
     currentTurnPlayerId,
     currentTurnPlayer,
@@ -1605,7 +1617,7 @@ export function useHorsesMobileController({
     if (!enabled) return;
     if (isPaused) return; // Block bot auto-play when game is paused
     if (gamePhase !== "playing") return;
-    if (!currentRoundId) return;
+    if (!presentationRoundId) return;
     if (!currentUserId) return;
 
     // Auto-play for bots OR human players with auto_fold (auto-roll mode)
@@ -1613,7 +1625,7 @@ export function useHorsesMobileController({
     const botId = shouldAutoPlay ? currentTurnPlayer?.id : null;
     if (!botId) return;
 
-    const processingKey = `${currentRoundId}:${botId}`;
+    const processingKey = `${presentationRoundId}:${botId}`;
 
     // If we're already running this exact bot turn loop, do not start another.
     if (botProcessingKeyRef.current === processingKey) return;
@@ -1908,7 +1920,7 @@ export function useHorsesMobileController({
     enabled,
     isPaused,
     gamePhase,
-    currentRoundId,
+    presentationRoundId,
     currentUserId,
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
@@ -1930,7 +1942,7 @@ export function useHorsesMobileController({
 
   useEffect(() => {
     if (!enabled) return;
-    if (gamePhase !== "complete" || !gameId || !currentRoundId) return;
+    if (gamePhase !== "complete" || !gameId || !presentationRoundId) return;
     if (winningPlayerIds.length === 0) return;
     
     // CRITICAL: Block win processing when game is paused - prevents rollover triggering
@@ -1939,7 +1951,7 @@ export function useHorsesMobileController({
     }
 
     // Prevent duplicate processing
-    if (processedWinRoundRef.current === currentRoundId) return;
+    if (processedWinRoundRef.current === presentationRoundId) return;
 
     // ANY human player can attempt processing — atomic DB guards prevent duplicates.
     const myPlayerId = myPlayer?.id;
@@ -1947,7 +1959,7 @@ export function useHorsesMobileController({
 
     const processWin = async () => {
       // Mark as processed IMMEDIATELY to prevent local double-processing
-      processedWinRoundRef.current = currentRoundId;
+      processedWinRoundRef.current = presentationRoundId;
 
       if (winningPlayerIds.length > 1) {
         // ATOMIC GUARD: Only one client claims the tie processing
@@ -2103,31 +2115,33 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!enabled) return;
     if (gamePhase !== "playing") return;
-    if (!currentRoundId || !gameId) return;
+    if (!presentationRoundId || !gameId) return;
     if (!turnOrder.length) return;
 
     const playerStates = horsesState?.playerStates ?? {};
     const allComplete = turnOrder.every(pid => playerStates[pid]?.isComplete);
     if (!allComplete) return;
 
-    const key = `allcomplete:${currentRoundId}`;
+    const key = `allcomplete:${presentationRoundId}`;
     if (allCompleteRecoveryRef.current === key) return;
     allCompleteRecoveryRef.current = key;
 
     console.warn("[HORSES] All players complete but gamePhase still 'playing' - forcing complete");
     
+    const writeRoundId = currentRoundId;
     const forceComplete = async () => {
+      if (!writeRoundId) return;
       // Fetch latest state from DB to avoid clobbering
       const { data: roundRow } = await supabase
         .from("rounds")
         .select("horses_state")
-        .eq("id", currentRoundId)
+        .eq("id", writeRoundId)
         .single();
 
       const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
       if (!latestState) return;
 
-      await updateHorsesState(currentRoundId, {
+      await updateHorsesState(writeRoundId, {
         ...latestState,
         currentTurnPlayerId: null,
         gamePhase: "complete",
@@ -2137,7 +2151,7 @@ export function useHorsesMobileController({
     // Small delay to avoid racing with normal advance
     const t = window.setTimeout(forceComplete, 2000);
     return () => window.clearTimeout(t);
-  }, [enabled, gamePhase, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
+  }, [enabled, gamePhase, presentationRoundId, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
 
   const rawFeltDice = useMemo(() => {
     const logPrefix = `[FELT_DICE_DEBUG ${isSCC ? 'SCC' : 'HORSES'}]`;
