@@ -348,6 +348,7 @@ function buildHolmSnapshot(
     communityCardsRevealed: clampedRevealed,
     chuckyCards: (currentRound.chucky_cards ?? []) as unknown[],
     chuckyActive: currentRound.chucky_active ?? false,
+    chuckyCardsRevealed: currentRound.chucky_cards_revealed ?? 0,
     pot: gameData.pot ?? 0,
     lastRoundResult: gameData.last_round_result ?? null,
     buckPosition: gameData.buck_position ?? 0,
