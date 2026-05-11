@@ -1558,10 +1558,15 @@ export const MobileGameTable = ({
   // This fixes the bug where wrong cards are displayed during solo vs Chucky showdown
   const showdownHandContextRef = useRef<string | null>(null);
   
-  // Cache Chucky cards to persist through announcement phase
+  // Cache Chucky cards to persist through announcement phase.
+  // cachedChuckyCardsRevealed is a LOCAL, MONOTONIC, SEQUENTIAL render count.
+  // The incoming chuckyCardsRevealed prop is treated as a TARGET only; a stepper
+  // effect below advances the rendered count one card at a time toward that target.
   const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, setCachedChuckyCardsRevealed] = useState<number>(0);
+  // Target reveal count (latest authoritative value); rendered count steps toward this.
+  const chuckyTargetRevealedRef = useRef<number>(0);
   // Track which handContextId the cached Chucky cards belong to
   const cachedChuckyHandContextRef = useRef<string | null>(null);
   
