@@ -1,59 +1,79 @@
-## Sync Framework Compliance Bundle
+# Cause A — Unify Presentation-Derived Identity (Cribbage, Gin Rummy, Yahtzee)
 
-Single bundled cleanup applying the framework contract uniformly across all games. Scoring, rules, animations, visual contracts, and timeouts are untouched. No new instrumentation.
+Eliminates the identity-mixing class that produced 6 of 10 reported bugs (Bugs 2, 3, 4, 5, 6, 9).
 
-### Scope (strict allowlist)
+## What's wrong today
 
-1. **Eliminate `?? raw` / `?? currentRound` fallbacks** in render paths
-   - Holm: `Game.tsx` ~7937, 7944, 8230 (and any sibling occurrences)
-   - 3-5-7: `Game.tsx` ~8330, 8337
-   - Cribbage: `CribbageMobileGameTable.tsx` ~431–435
-   - Yahtzee: `YahtzeeGameTable.tsx` ~340–345
-   - Horses/SCC: `HorsesPlayerArea.tsx` ~260+
-   - Rule: when `presentationState` exists, render reads MUST come from it. No raw fallback. If presentation is null/undefined at first paint, render the empty/loading branch the game already has — do not paper over it with `currentRound`.
+Render selectors and boundary effects in three games read identity from a mix of:
+- raw DB fields (`game.current_round`, `game.total_hands`, `round.id`, `round.cribbage_state.currentTurnPlayerId`)
+- presentation-derived fields (`presentation.handNumber`, `presentation.roundId`)
+- viewState-derived fields (`viewState.handNumber`, `viewState.currentTurnPlayerId`)
 
-2. **Identity source unification**
-   - Cribbage: replace remaining raw `currentRoundId-${currentHandNumber}` keys passed into presentation-driven children with `renderHandKey` (already in scope). Audit `CribbageMobileGameTable.tsx` for any other handBoundaryKey/effect-key sourced from raw.
-   - Yahtzee: reset/turn-transition effects keyed on raw `currentRoundId` → key on presentation-derived round identity (`viewState`-derived).
-   - Horses/SCC: bot/timeout/cleanup effects use raw `currentRoundId` while turn identity is derived from `horsesState` (presentation). Compute a single `presentationRoundId` once per render and use it for ALL effect deps that are paired with presentation-derived reads. DB target IDs (for write payloads) keep raw round — only the *gating identity* unifies.
-   - Holm: timer effect keyed on raw round → presentation-derived identity.
+When network jitter makes one source advance before another, selectors render a hand from identity X while another selector reads identity Y. Symptoms: stale cards, replayed cut-card, scorecard flash, "wrong roll", result-display unmount.
 
-3. **Callback/effect read cleanup**
-   - Effects and bot callbacks that read state at fire time must use `presentationRefValue` (sync ref) instead of stale closure over `presentationState`, where the read is paired with a presentation-derived identity check.
-   - Yahtzee bot/timeout effects: read `yahtzeeView`-equivalent via `presentationRefValue` at callback fire time.
-   - Horses/SCC bot/timeout effects: same.
-   - Do NOT touch DB write payload construction — only the gating reads.
+## Fix shape (one consistent pattern across all three games)
 
-4. **Cribbage remaining identity cleanup**
-   - Audit any `useEffect` in `CribbageMobileGameTable.tsx` whose dep array contains `currentRoundId` or `currentHandNumber` while the body reads `viewState`. Replace deps with `renderHandKey` (or presentation-derived equivalent).
+Per game, expose a single memoized `RenderIdentity` from the existing sync hook:
 
-### Out of scope (will reject during review)
+```ts
+type RenderIdentity = {
+  dealerGameId: string | null;
+  handNumber: number;
+  roundId: string | null;
+  turnPlayerId: string | null;       // yahtzee/cribbage
+  handContextId?: string | null;     // holm
+  signature: string;                  // stable concat for cache keys
+};
+```
 
-- Scoring math, game rules, animation timing, visual contract logic, timeouts, new logs, speculative fixes.
+Rules:
+- `RenderIdentity` is computed only from `presentation` (never from raw `game`/`round` props).
+- It changes monotonically — never goes backward within a dealer game.
+- Every render selector that touches hand/turn/round identity reads from `RenderIdentity.signature`, not from individual raw fields.
+- Every boundary effect uses `RenderIdentity.signature` as its dep / guard ref.
 
-### Operational
+## Files to change (Cause A only — Cause B and C are separate follow-ups)
 
-- Single branch, single deploy.
-- Revert path: this is a localized read/key-source swap; reverting the bundle restores the prior `?? raw` fallbacks and raw effect keys exactly.
-- Validation: next cross-country session. If any regression, revert bundle.
+### Shared
+- `src/lib/gameStateSync/types.ts` — add `RenderIdentity` type.
+- `src/lib/gameStateSync/useGameStateSync.ts` — derive and return `renderIdentity` alongside existing presentation. No change to sync semantics.
 
-### Technical notes
+### Cribbage (Bugs 2, 3, 4)
+- `src/components/CribbageMobileGameTable.tsx`
+  - Active-hand selector (around line 753 + the `currentHandKey` / `renderHandKey` site near 800s) reads from `renderIdentity` instead of mixing `currentRoundId` with viewState.
+  - Cut-card animation site keys its trigger ref on `${renderIdentity.signature}:cutCard` instead of the `cutCard` prop reference.
+  - "Preparing next hand" effect deps switch to `renderIdentity.signature`.
+- `src/components/CribbageMobileCardsTab.tsx` — card-list selector reads `renderIdentity.signature` (eliminates `crib-stale-active-hand-blocked` storm).
+- `src/lib/cribbageSyncDiagnostics.ts` — no logic change; expectations still hold.
 
-- Pattern for fallback removal:
-  ```ts
-  // BEFORE
-  const x = viewState?.foo ?? currentRound?.foo;
-  // AFTER
-  const x = viewState?.foo;
-  if (x == null) return <EmptyOrLoading />;
-  ```
-  Use the game's existing empty/loading branch; do not invent new ones.
+### Gin Rummy (Bug 5)
+- `src/components/GinRummyGameTable.tsx`
+  - Result/scoring panel currently reads `presentation.handNumber` mixed with prop `handNumber` (lines ~330–365). Switch both to `renderIdentity.handNumber`.
+  - Result snapshot cache key includes `renderIdentity.signature` so cached scoring invalidates atomically with render hand.
 
-- Pattern for identity unification (Horses/SCC):
-  ```ts
-  const presentationRoundId = horsesView?.roundId ?? null;
-  // all effects gating on presentation reads:
-  useEffect(() => { ... }, [presentationRoundId, ...]);
-  ```
+### Yahtzee (Bugs 6, 9)
+- `src/components/YahtzeeGameTable.tsx`
+  - Turn/roll display reads `renderIdentity.turnPlayerId` (not raw turn id from round state).
+  - Held-die zone selector keys on `(renderIdentity.signature, rollGen)` so a turn flip can't repaint held dice into scatter.
+  - Roll counter reads `presentation`-derived roll generation.
 
-- `presentationRefValue` usage stays narrow: only inside callbacks/timers where closure staleness is the actual bug surface.
+## Out of scope for this change
+
+- Holm reveal latches (Bugs 1, 7, 8) — these are Cause B, separate PR.
+- Source-level useRef guards on cribbage `preparing-next-hand` and Holm 357 announcement double-fire (Bugs 2, 7) — these are Cause C and ride on top of the new identity from Cause A.
+- Any change to scoring math, sync framework, RPCs, or migrations.
+- No new instrumentation (per standing constraint).
+
+## Verification
+
+- The three diagnostic invariants `stale-dealer-game-render`, `stale-hand-render`, `result-render-mismatch` should stop firing under normal play. They remain in place — they're now the regression tripwire for Cause A.
+- Cribbage `crib-stale-active-hand-blocked` and `crib-replay-detected` should drop sharply (some C-class re-entry will remain until Cause C lands).
+- Yahtzee `yahtzee-held-die-rendered-in-scatter` should drop except in true held-mask races (those are Cause B).
+
+## Order of work in this PR
+
+1. Add `RenderIdentity` to types + sync hook.
+2. Wire Cribbage `MobileGameTable` + `MobileCardsTab` first (largest blast radius).
+3. Wire Gin Rummy result panel.
+4. Wire Yahtzee turn/roll/held-die zone selectors.
+5. Smoke-test the build; do not run the cross-country test until B and C also land (the user has explicitly asked for forensic consolidation, not partial deploys).
