@@ -1870,8 +1870,9 @@ export function YahtzeeGameTable({
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
         {gamePhase === 'playing' && currentPlayer && (() => {
-          if (isMyTurn && myPlayer) {
-            // My turn: show interactive scorecard ON the felt
+          if (showInteractiveScorecard && myPlayer) {
+            // My turn (or sticky-latched within the turn-transition window):
+            // show interactive scorecard ON the felt
             return (
               <>
                 <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
