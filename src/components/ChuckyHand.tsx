@@ -41,36 +41,52 @@ export const ChuckyHand = ({ cards, show, revealed = cards.length, x, y }: Chuck
     cardsIdentityRef.current = currentCardsIdentity;
   }, [currentCardsIdentity]);
   
-  // Handle reveal progression - use max revealed to prevent flicker from prop fluctuations
+  // ── Sequential reveal queue (Cause B latch) ─────────────────────────
+  // Identity-scoped on currentCardsIdentity. Target = `revealed` (monotonic
+  // via maxRevealedRef). Renders one Chucky flip at a time, with a fixed
+  // inter-flip gap. Even if `revealed` jumps (e.g. 0→4 in one tick), cards
+  // step sequentially. Completed flips never replay until cards identity
+  // truly changes.
+  const queueIdRef = useRef<string>('');
+  const FLIP_GAP_MS = 800;
+
   useEffect(() => {
-    // CRITICAL: Only allow revealed count to increase, never decrease
-    // This prevents flickering when the prop briefly fluctuates during state updates
+    // Monotonic target — never decrease
     const effectiveRevealed = Math.max(revealed, maxRevealedRef.current);
-    
-    if (effectiveRevealed > prevRevealedRef.current) {
-      maxRevealedRef.current = effectiveRevealed; // Update max
-      
-      const newlyRevealed: number[] = [];
-      for (let i = prevRevealedRef.current; i < effectiveRevealed; i++) {
-        newlyRevealed.push(i);
-      }
-      
-      newlyRevealed.forEach((cardIndex, i) => {
-        const isLastCard = i === newlyRevealed.length - 1 && newlyRevealed.length > 1;
-        const delay = isLastCard ? 1500 : i * 200;
-        
-        const timeout = setTimeout(() => {
-          setFlippedCards(prev => new Set([...prev, cardIndex]));
-        }, delay);
-        
-        flipTimeoutsRef.current.push(timeout);
+    if (effectiveRevealed <= prevRevealedRef.current) return;
+
+    maxRevealedRef.current = effectiveRevealed;
+    prevRevealedRef.current = effectiveRevealed;
+
+    const queueId = currentCardsIdentity;
+    queueIdRef.current = queueId;
+
+    const tick = () => {
+      // Identity guard: bail if a new hand started
+      if (queueIdRef.current !== queueId) return;
+      if (cardsIdentityRef.current !== queueId) return;
+
+      // Reveal next un-flipped index up to maxRevealedRef
+      let next = -1;
+      setFlippedCards(prev => {
+        for (let i = 0; i < maxRevealedRef.current; i++) {
+          if (!prev.has(i)) { next = i; break; }
+        }
+        if (next === -1) return prev;
+        const nextSet = new Set(prev);
+        nextSet.add(next);
+        return nextSet;
       });
-      
-      prevRevealedRef.current = effectiveRevealed;
-    }
-    // REMOVED: The else branch that reset flipped cards when revealed < prevRevealedRef
-    // This was causing the flickering when props briefly fluctuated
-  }, [revealed]);
+
+      if (next === -1) return;
+
+      const t = setTimeout(tick, FLIP_GAP_MS);
+      flipTimeoutsRef.current.push(t);
+    };
+
+    const t = setTimeout(tick, 0);
+    flipTimeoutsRef.current.push(t);
+  }, [revealed, currentCardsIdentity]);
   
   useEffect(() => {
     return () => {

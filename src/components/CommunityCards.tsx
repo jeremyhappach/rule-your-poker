@@ -87,34 +87,52 @@ export const CommunityCards = ({ cards, revealed, highlightedIndices = [], kicke
     }
   }, [cards.length]);
   
-  // Handle card flipping when revealed count increases
+  // ── Sequential reveal queue (Cause B latch) ─────────────────────────
+  // Identity-scoped on handId. Target = `revealed` (monotonic). Renders one
+  // flip at a time with a fixed inter-flip gap. If the target jumps (e.g.
+  // 0→4 in a single tick), we still step through cards one-by-one rather
+  // than firing multiple parallel timeouts. Completed flips are latched and
+  // never replay until handId truly changes.
+  const flipQueueIdRef = useRef<string>('');
+  const FLIP_GAP_MS = 800;
+
   useEffect(() => {
     if (cards.length === 0) return;
     if (handId !== animatedHandIdRef.current) return;
     if (revealed <= lastRevealedRef.current) return;
-    
-    const previousRevealed = lastRevealedRef.current;
+
     lastRevealedRef.current = revealed;
-    
-    const toFlip: number[] = [];
-    for (let i = Math.max(2, previousRevealed); i < revealed; i++) {
-      if (!flippedCardsRef.current.has(i)) {
-        toFlip.push(i);
+
+    // Identity for this queue run — handId. If a new hand arrives mid-queue,
+    // the sync block at the top of render will reset refs and the next effect
+    // pass starts a fresh queue.
+    const queueId = handId;
+    flipQueueIdRef.current = queueId;
+
+    const tick = () => {
+      // Identity guard: if hand changed, abandon this queue
+      if (flipQueueIdRef.current !== queueId) return;
+      if (handId !== animatedHandIdRef.current) return;
+
+      // Find the next un-flipped card index that should be face-up.
+      // Indices < 2 are auto-face-up (handled in render); queue starts at 2.
+      let next = -1;
+      for (let i = 2; i < lastRevealedRef.current; i++) {
+        if (!flippedCardsRef.current.has(i)) { next = i; break; }
       }
-    }
-    
-    if (toFlip.length === 0) return;
-    
-    toFlip.forEach((cardIndex, arrayIndex) => {
-      const isLastCard = arrayIndex === toFlip.length - 1 && toFlip.length > 1;
-      const delay = isLastCard ? 1500 : arrayIndex * 200;
-      
-      const timeout = setTimeout(() => {
-        flippedCardsRef.current = new Set([...flippedCardsRef.current, cardIndex]);
-        setRenderTrigger(n => n + 1);
-      }, delay);
-      timeoutsRef.current.push(timeout);
-    });
+      if (next === -1) return;
+
+      flippedCardsRef.current = new Set([...flippedCardsRef.current, next]);
+      setRenderTrigger(n => n + 1);
+
+      // Schedule next sequentially — only one timer in flight at a time.
+      const t = setTimeout(tick, FLIP_GAP_MS);
+      timeoutsRef.current.push(t);
+    };
+
+    // Kick off if no flip is pending (queue is at most one timer)
+    const t = setTimeout(tick, 0);
+    timeoutsRef.current.push(t);
   }, [revealed, handId, cards.length]);
   
   // Cleanup timeouts on unmount

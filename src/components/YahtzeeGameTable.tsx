@@ -474,6 +474,37 @@ export function YahtzeeGameTable({
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
   const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
 
+  // ── Cause B: Yahtzee scorecard sticky-mount latch ─────────────────────
+  // The interactive scorecard mounts on `isMyTurn`. During turn transitions
+  // (`currentTurnPlayerId` flipping briefly to null/other, or scoring atomic-
+  // write windows), `isMyTurn` can flicker false→true and unmount/remount
+  // the scorecard. Latch identity is `myPlayer.id`; once shown, keep it
+  // briefly mounted even if isMyTurn drops. If isMyTurn returns within the
+  // window, the unmount timer is cancelled and no remount happens. Reset
+  // happens only on a true identity change (turn player advanced past me).
+  const [stickyScorecardMounted, setStickyScorecardMounted] = useState(false);
+  const scorecardUnmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isMyTurn) {
+      if (scorecardUnmountTimerRef.current) {
+        clearTimeout(scorecardUnmountTimerRef.current);
+        scorecardUnmountTimerRef.current = null;
+      }
+      setStickyScorecardMounted(true);
+      return;
+    }
+    if (stickyScorecardMounted && !scorecardUnmountTimerRef.current) {
+      scorecardUnmountTimerRef.current = setTimeout(() => {
+        setStickyScorecardMounted(false);
+        scorecardUnmountTimerRef.current = null;
+      }, 350);
+    }
+  }, [isMyTurn, stickyScorecardMounted]);
+  useEffect(() => () => {
+    if (scorecardUnmountTimerRef.current) clearTimeout(scorecardUnmountTimerRef.current);
+  }, []);
+  const showInteractiveScorecard = isMyTurn || stickyScorecardMounted;
+
   // Clockwise distance for seat positioning
   const getClockwiseDistance = useCallback((targetPosition: number) => {
     if (!myPlayer) return 0;
@@ -1839,8 +1870,9 @@ export function YahtzeeGameTable({
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
         {gamePhase === 'playing' && currentPlayer && (() => {
-          if (isMyTurn && myPlayer) {
-            // My turn: show interactive scorecard ON the felt
+          if (showInteractiveScorecard && myPlayer) {
+            // My turn (or sticky-latched within the turn-transition window):
+            // show interactive scorecard ON the felt
             return (
               <>
                 <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
