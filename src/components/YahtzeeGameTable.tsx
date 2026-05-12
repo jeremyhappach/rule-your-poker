@@ -474,6 +474,37 @@ export function YahtzeeGameTable({
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
   const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
 
+  // ── Cause B: Yahtzee scorecard sticky-mount latch ─────────────────────
+  // The interactive scorecard mounts on `isMyTurn`. During turn transitions
+  // (`currentTurnPlayerId` flipping briefly to null/other, or scoring atomic-
+  // write windows), `isMyTurn` can flicker false→true and unmount/remount
+  // the scorecard. Latch identity is `myPlayer.id`; once shown, keep it
+  // briefly mounted even if isMyTurn drops. If isMyTurn returns within the
+  // window, the unmount timer is cancelled and no remount happens. Reset
+  // happens only on a true identity change (turn player advanced past me).
+  const [stickyScorecardMounted, setStickyScorecardMounted] = useState(false);
+  const scorecardUnmountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (isMyTurn) {
+      if (scorecardUnmountTimerRef.current) {
+        clearTimeout(scorecardUnmountTimerRef.current);
+        scorecardUnmountTimerRef.current = null;
+      }
+      setStickyScorecardMounted(true);
+      return;
+    }
+    if (stickyScorecardMounted && !scorecardUnmountTimerRef.current) {
+      scorecardUnmountTimerRef.current = setTimeout(() => {
+        setStickyScorecardMounted(false);
+        scorecardUnmountTimerRef.current = null;
+      }, 350);
+    }
+  }, [isMyTurn, stickyScorecardMounted]);
+  useEffect(() => () => {
+    if (scorecardUnmountTimerRef.current) clearTimeout(scorecardUnmountTimerRef.current);
+  }, []);
+  const showInteractiveScorecard = isMyTurn || stickyScorecardMounted;
+
   // Clockwise distance for seat positioning
   const getClockwiseDistance = useCallback((targetPosition: number) => {
     if (!myPlayer) return 0;
