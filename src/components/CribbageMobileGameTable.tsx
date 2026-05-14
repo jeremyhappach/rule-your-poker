@@ -3606,7 +3606,21 @@ export const CribbageMobileGameTable = ({
       // Apply hand+crib totals AFTER the animation so the backend never "spoils" the result
       // by jumping pegScore at the start of counting.
       const countedState = applyHandCountScores(cribbageState);
-      
+
+      // OBSERVATIONAL TELEMETRY ONLY — append-only fairness archive.
+      // Fire-and-forget; never blocks gameplay; idempotent on (dealer_game_id, hand_number).
+      try {
+        archiveCribbageHand({
+          gameId,
+          dealerGameId,
+          roundId: expectedIdentity?.roundId ?? currentRoundId ?? null,
+          handNumber: expectedIdentity?.handNumber ?? currentHandNumber,
+          state: countedState,
+        });
+      } catch (archiveErr) {
+        console.warn('[CRIBBAGE_ARCHIVE] non-blocking error:', archiveErr);
+      }
+
       // CRITICAL FIX: Check if applyHandCountScores detected a winner.
       // This catches edge cases where the reactive win detection didn't fire
       // (e.g., due to animation timing or ref guards).
