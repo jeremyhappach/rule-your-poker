@@ -167,6 +167,54 @@ export type Database = {
           },
         ]
       }
+      cribbage_hand_archive: {
+        Row: {
+          archived_at: string
+          crib: Json | null
+          cribbage_state: Json
+          cut_card: Json | null
+          dealer_game_id: string
+          dealer_player_id: string | null
+          dealt_hands: Json
+          game_id: string
+          hand_counts: Json
+          hand_number: number
+          id: string
+          peg_scores: Json
+          round_id: string | null
+        }
+        Insert: {
+          archived_at?: string
+          crib?: Json | null
+          cribbage_state: Json
+          cut_card?: Json | null
+          dealer_game_id: string
+          dealer_player_id?: string | null
+          dealt_hands?: Json
+          game_id: string
+          hand_counts?: Json
+          hand_number: number
+          id?: string
+          peg_scores?: Json
+          round_id?: string | null
+        }
+        Update: {
+          archived_at?: string
+          crib?: Json | null
+          cribbage_state?: Json
+          cut_card?: Json | null
+          dealer_game_id?: string
+          dealer_player_id?: string | null
+          dealt_hands?: Json
+          game_id?: string
+          hand_counts?: Json
+          hand_number?: number
+          id?: string
+          peg_scores?: Json
+          round_id?: string | null
+        }
+        Relationships: []
+      }
       custom_game_names: {
         Row: {
           created_at: string
