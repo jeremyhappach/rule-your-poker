@@ -1434,6 +1434,7 @@ export const DealerGameSetup = ({
       config_complete: true,
       status: 'ante_decision',
       ante_decision_deadline: anteDeadline,
+      config_deadline: null,
       // Reset card game specific fields
       leg_value: 0,
       legs_to_win: 0,
