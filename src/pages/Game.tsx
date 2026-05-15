@@ -4628,19 +4628,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (gameError) {
       const code = (gameError as any)?.code;
       if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
-        if (!missingGameHandledRef.current) {
-          missingGameHandledRef.current = true;
-          setGame(null);
-          setPlayers([]);
-          toast({
-            title: 'Session deleted',
-            description: 'Not enough players, deleting this empty session.',
-            duration: 3000,
-          });
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
-        }
+        // P0 GUARD (NAV-02): a single fetch returning "0 rows" can be a transient
+        // post-write replica race. Defer to the polling checkGameExists effect, which
+        // requires repeated strikes + a fresh confirm before navigating.
+        console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
         return;
       }
 
@@ -4649,19 +4640,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     if (!gameData) {
-      if (!missingGameHandledRef.current) {
-        missingGameHandledRef.current = true;
-        setGame(null);
-        setPlayers([]);
-        toast({
-          title: 'Session deleted',
-          description: 'Not enough players, deleting this empty session.',
-          duration: 3000,
-        });
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
-      }
+      // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
+      console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
       return;
     }
 
