@@ -1424,6 +1424,7 @@ export const DealerGameSetup = ({
         .eq('id', dealerPlayerId);
       
       console.log(`[DEALER SETUP] ✅ Cribbage going to ante_decision, dealer_game_id:`, dealerGameId);
+      if (configTimeoutRef.current) { clearTimeout(configTimeoutRef.current); configTimeoutRef.current = null; }
       onConfigComplete();
       return;
     }
