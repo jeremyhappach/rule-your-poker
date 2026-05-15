@@ -212,7 +212,35 @@ serve(async (req) => {
       
       if (msUntilDeadline <= 0) {
         console.log('[ENFORCE-CLIENT] Config deadline EXPIRED for game', gameId);
-        
+
+        // P0 GUARD (TIMER-01): re-fetch authoritative state and suppress
+        // if the game has already advanced past the configuration phase.
+        const { data: freshGame } = await supabase
+          .from('games')
+          .select('status, config_complete, current_game_uuid, config_deadline')
+          .eq('id', gameId)
+          .maybeSingle();
+
+        const allowedStatuses = ['dealer_selection', 'configuring', 'game_selection'];
+        if (
+          !freshGame ||
+          !allowedStatuses.includes(freshGame.status) ||
+          freshGame.config_complete === true ||
+          freshGame.current_game_uuid != null ||
+          !freshGame.config_deadline ||
+          new Date(freshGame.config_deadline).getTime() > now.getTime()
+        ) {
+          console.log('[ENFORCE-CLIENT] config-timeout-suppressed (game advanced)', {
+            gameId,
+            status: freshGame?.status,
+            config_complete: freshGame?.config_complete,
+            current_game_uuid: freshGame?.current_game_uuid,
+            config_deadline: freshGame?.config_deadline,
+          });
+          actionsTaken.push('config-timeout-suppressed: game already advanced');
+          // Skip the rest of the config branch.
+        } else {
+
         const { data: players } = await supabase
           .from('players')
           .select('*')
