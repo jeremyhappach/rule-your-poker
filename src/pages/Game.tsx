@@ -5729,7 +5729,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'handleGameOverComplete');
     
     // Skip dealer_announcement, go directly to game_selection
-    const { error } = await supabase
+    // P0 GUARD (MUT-02): atomic DB claim — only the first writer flipping
+    // status away from 'game_over' wins. Late/duplicate writers see 0 rows.
+    const { data: claimRows, error } = await supabase
       .from('games')
       .update({ 
         status: 'game_selection',
@@ -5746,11 +5748,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         total_hands: 0,
         dealer_position: newDealerPosition // Set new dealer position
       })
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .eq('status', 'game_over')
+      .select('id');
 
     if (error) {
       console.error('[GAME OVER] Failed to start game selection:', error);
       gameOverTransitionRef.current = false;
+      return;
+    }
+    if (!claimRows || claimRows.length === 0) {
+      console.log('[GAME OVER] mut02-claim-lost (status no longer game_over) — another client advanced');
+      gameOverTransitionRef.current = false;
+      await fetchGameData();
       return;
     }
 
