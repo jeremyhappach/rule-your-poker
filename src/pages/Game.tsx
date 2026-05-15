@@ -5410,6 +5410,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[GAME OVER COMPLETE] Already processing transition, skipping duplicate call');
       return;
     }
+
+    // P0 GUARD (MUT-02): Single-executor leader election.
+    // Only ONE client may run destructive game-over lifecycle. Leader is:
+    //   1. The seated human at dealer_position (if active and not sitting out), else
+    //   2. The lowest-position active (non-sitting-out) human player.
+    // Non-leader clients no-op. The DB-level atomic claim below is a second line of defense.
+    try {
+      if (!user?.id) {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (no user)');
+        return;
+      }
+      const { data: leaderGame } = await supabase
+        .from('games')
+        .select('status, dealer_position, current_game_uuid')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (!leaderGame || leaderGame.status !== 'game_over') {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (status not game_over)', { status: leaderGame?.status });
+        return;
+      }
+      const { data: leaderPlayers } = await supabase
+        .from('players')
+        .select('id, user_id, position, is_bot, sitting_out, status')
+        .eq('game_id', gameId);
+      const humans = (leaderPlayers || []).filter((p: any) =>
+        !p.is_bot && !p.sitting_out && p.status === 'active'
+      );
+      let leaderUserId: string | null = null;
+      const dealerSeat = humans.find((p: any) => p.position === leaderGame.dealer_position);
+      if (dealerSeat) {
+        leaderUserId = dealerSeat.user_id;
+      } else if (humans.length > 0) {
+        const sorted = [...humans].sort((a: any, b: any) => a.position - b.position);
+        leaderUserId = sorted[0].user_id;
+      }
+      if (!leaderUserId) {
+        // No active humans — let the existing no-humans branch run (safe, no other humans race).
+        console.log('[GAME OVER COMPLETE] mut02-leader-no-humans (allowing run for cleanup)');
+      } else if (leaderUserId !== user.id) {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (not leader)', {
+          leaderUserId: leaderUserId.slice(0, 8),
+          self: user.id.slice(0, 8),
+        });
+        return;
+      }
+    } catch (leaderErr) {
+      console.warn('[GAME OVER COMPLETE] mut02-leader-check-failed (continuing)', leaderErr);
+    }
+
     gameOverTransitionRef.current = true;
 
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
