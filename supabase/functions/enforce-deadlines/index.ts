@@ -946,6 +946,40 @@ serve(async (req) => {
               msOverdue,
             });
 
+            // P0 GUARD (TIMER-02): re-fetch authoritative round + game state.
+            // Suppress if status changed, deadline cleared/extended, hand/round
+            // moved on, or game paused.
+            const { data: freshRound357 } = await supabase
+              .from('rounds')
+              .select('id, status, decision_deadline, hand_number, round_number, dealer_game_id')
+              .eq('id', currentRound.id)
+              .maybeSingle();
+            const { data: freshGame357 } = await supabase
+              .from('games')
+              .select('status, is_paused, current_game_uuid, current_round, total_hands')
+              .eq('id', gameId)
+              .maybeSingle();
+            const stale =
+              !freshRound357 ||
+              !freshGame357 ||
+              freshGame357.is_paused === true ||
+              (freshGame357.status !== 'in_progress' && freshGame357.status !== 'betting') ||
+              freshRound357.status !== 'betting' ||
+              !freshRound357.decision_deadline ||
+              new Date(freshRound357.decision_deadline).getTime() > now.getTime() ||
+              freshRound357.hand_number !== currentRound.hand_number ||
+              freshRound357.round_number !== currentRound.round_number ||
+              (currentRound.dealer_game_id && freshRound357.dealer_game_id !== currentRound.dealer_game_id);
+            if (stale) {
+              console.log('[ENFORCE-CLIENT] 357-timeout-suppressed (stale)', {
+                roundId: currentRound.id,
+                roundStatus: freshRound357?.status,
+                gameStatus: freshGame357?.status,
+                isPaused: freshGame357?.is_paused,
+              });
+              actionsTaken.push('357-timeout-suppressed: stale');
+            } else {
+
             const { data: players } = await supabase
               .from('players')
               .select('id, user_id, position, is_bot, sitting_out, status, ante_decision, current_decision, decision_locked')
@@ -964,14 +998,18 @@ serve(async (req) => {
                 positions: undecided.map((p: any) => p.position),
               });
 
-              // Mark any undecided player as folded/locked so the game can progress.
-              await supabase
+              // Per-player atomic claim — only update those still unlocked.
+              const { data: foldedRows } = await supabase
                 .from('players')
                 .update({ current_decision: 'fold', decision_locked: true })
-                .in('id', undecidedIds);
+                .in('id', undecidedIds)
+                .eq('decision_locked', false)
+                .select('id');
 
-              actionsTaken.push(`3-5-7 timeout: Auto-folded ${undecidedIds.length} undecided players`);
+              actionsTaken.push(`3-5-7 timeout: Auto-folded ${foldedRows?.length ?? 0}/${undecidedIds.length} undecided players`);
             }
+            } // end TIMER-02 357 guard else
+          }
 
             // Re-read and, if everyone has decided, set all_decisions_in=true
             const { data: postPlayers } = await supabase
