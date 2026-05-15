@@ -2988,24 +2988,59 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
+  // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
   useEffect(() => {
-    // Don't auto-sit-out if game is paused
     if (game?.is_paused) return;
-    
-    if (anteTimeLeft === 0 && game?.status === 'ante_decision' && user) {
-      const currentPlayer = players.find(p => p.user_id === user.id);
-      if (currentPlayer && !currentPlayer.ante_decision) {
+    if (anteTimeLeft !== 0 || game?.status !== 'ante_decision' || !user) return;
+
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer || currentPlayer.ante_decision) return;
+
+    let cancelled = false;
+    (async () => {
+      // Confirm DB still says: game in ante_decision, not paused, deadline expired, player undecided.
+      const [{ data: freshGame }, { data: freshPlayer }] = await Promise.all([
+        supabase
+          .from('games')
+          .select('status, is_paused, ante_decision_deadline')
+          .eq('id', gameId)
+          .maybeSingle(),
         supabase
           .from('players')
-          .update({
-            ante_decision: 'sit_out',
-            sitting_out: true,
-            waiting: false,
-          })
-          .eq('id', currentPlayer.id);
+          .select('id, ante_decision, sitting_out')
+          .eq('id', currentPlayer.id)
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+
+      const deadlineMs = freshGame?.ante_decision_deadline ? new Date(freshGame.ante_decision_deadline).getTime() : 0;
+      const stillValid =
+        freshGame &&
+        freshGame.status === 'ante_decision' &&
+        !freshGame.is_paused &&
+        deadlineMs > 0 &&
+        deadlineMs <= Date.now() &&
+        freshPlayer &&
+        !freshPlayer.ante_decision;
+
+      if (!stillValid) {
+        console.log('[ANTE AUTO-SIT-OUT] auto-sit-out-suppressed (state changed)', {
+          status: freshGame?.status,
+          is_paused: freshGame?.is_paused,
+          deadlineMs,
+          ante_decision: freshPlayer?.ante_decision,
+        });
+        return;
       }
-    }
-  }, [anteTimeLeft, game?.status, game?.is_paused, players, user]);
+
+      await supabase
+        .from('players')
+        .update({ ante_decision: 'sit_out', sitting_out: true, waiting: false })
+        .eq('id', currentPlayer.id);
+    })();
+
+    return () => { cancelled = true; };
+  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user]);
 
   // Session ending tracking (removed toast)
 
