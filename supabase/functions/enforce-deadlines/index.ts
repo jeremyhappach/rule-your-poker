@@ -1008,8 +1008,6 @@ serve(async (req) => {
 
               actionsTaken.push(`3-5-7 timeout: Auto-folded ${foldedRows?.length ?? 0}/${undecidedIds.length} undecided players`);
             }
-            } // end TIMER-02 357 guard else
-          }
 
             // Re-read and, if everyone has decided, set all_decisions_in=true
             const { data: postPlayers } = await supabase
@@ -1034,6 +1032,7 @@ serve(async (req) => {
                 actionsTaken.push('3-5-7 timeout: Set all_decisions_in=true');
               }
             }
+            } // end TIMER-02 357 guard else
           }
         }
       }
