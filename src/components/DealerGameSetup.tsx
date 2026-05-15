@@ -1381,6 +1381,7 @@ export const DealerGameSetup = ({
           config_complete: true,
           status: 'ante_decision',
           ante_decision_deadline: anteDeadline,
+          config_deadline: null,
           pot: 0, // No pot in cribbage - direct player transfers
           leg_value: 0,
           legs_to_win: 0,
