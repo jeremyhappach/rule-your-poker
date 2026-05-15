@@ -5676,7 +5676,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       await logStatusChanged(gameId, user?.id, 'game_over', 'dealer_selection', 'Bot won with make it take it, running dealer selection');
       
-      const { error } = await supabase
+      // P0 GUARD (MUT-02): atomic DB claim
+      const { data: dsClaim, error } = await supabase
         .from('games')
         .update({ 
           status: 'dealer_selection',
@@ -5692,11 +5693,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           total_hands: 0
           // Don't set dealer_position - DealerSelection will handle it
         })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .eq('status', 'game_over')
+        .select('id');
 
       if (error) {
         console.error('[GAME OVER] Failed to start dealer selection:', error);
         gameOverTransitionRef.current = false;
+        return;
+      }
+      if (!dsClaim || dsClaim.length === 0) {
+        console.log('[GAME OVER] mut02-claim-lost (dealer_selection branch)');
+        gameOverTransitionRef.current = false;
+        await fetchGameData();
         return;
       }
 
