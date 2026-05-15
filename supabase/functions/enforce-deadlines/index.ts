@@ -498,6 +498,7 @@ serve(async (req) => {
               actionsTaken.push(`Ante timeout: Only ${antedUpPlayers.length} player(s) anted up, returning to waiting_for_players`);
             }
           }
+          } // end TIMER-02 ante guard else
         }
       }
     }
