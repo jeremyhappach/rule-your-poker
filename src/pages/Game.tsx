@@ -5410,6 +5410,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[GAME OVER COMPLETE] Already processing transition, skipping duplicate call');
       return;
     }
+
+    // P0 GUARD (MUT-02): Single-executor leader election.
+    // Only ONE client may run destructive game-over lifecycle. Leader is:
+    //   1. The seated human at dealer_position (if active and not sitting out), else
+    //   2. The lowest-position active (non-sitting-out) human player.
+    // Non-leader clients no-op. The DB-level atomic claim below is a second line of defense.
+    try {
+      if (!user?.id) {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (no user)');
+        return;
+      }
+      const { data: leaderGame } = await supabase
+        .from('games')
+        .select('status, dealer_position, current_game_uuid')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (!leaderGame || leaderGame.status !== 'game_over') {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (status not game_over)', { status: leaderGame?.status });
+        return;
+      }
+      const { data: leaderPlayers } = await supabase
+        .from('players')
+        .select('id, user_id, position, is_bot, sitting_out, status')
+        .eq('game_id', gameId);
+      const humans = (leaderPlayers || []).filter((p: any) =>
+        !p.is_bot && !p.sitting_out && p.status === 'active'
+      );
+      let leaderUserId: string | null = null;
+      const dealerSeat = humans.find((p: any) => p.position === leaderGame.dealer_position);
+      if (dealerSeat) {
+        leaderUserId = dealerSeat.user_id;
+      } else if (humans.length > 0) {
+        const sorted = [...humans].sort((a: any, b: any) => a.position - b.position);
+        leaderUserId = sorted[0].user_id;
+      }
+      if (!leaderUserId) {
+        // No active humans — let the existing no-humans branch run (safe, no other humans race).
+        console.log('[GAME OVER COMPLETE] mut02-leader-no-humans (allowing run for cleanup)');
+      } else if (leaderUserId !== user.id) {
+        console.log('[GAME OVER COMPLETE] mut02-leader-skip (not leader)', {
+          leaderUserId: leaderUserId.slice(0, 8),
+          self: user.id.slice(0, 8),
+        });
+        return;
+      }
+    } catch (leaderErr) {
+      console.warn('[GAME OVER COMPLETE] mut02-leader-check-failed (continuing)', leaderErr);
+    }
+
     gameOverTransitionRef.current = true;
 
     console.log('[GAME OVER COMPLETE] Starting transition to next game, gameId:', gameId);
@@ -5627,7 +5676,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       await logStatusChanged(gameId, user?.id, 'game_over', 'dealer_selection', 'Bot won with make it take it, running dealer selection');
       
-      const { error } = await supabase
+      // P0 GUARD (MUT-02): atomic DB claim
+      const { data: dsClaim, error } = await supabase
         .from('games')
         .update({ 
           status: 'dealer_selection',
@@ -5643,11 +5693,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           total_hands: 0
           // Don't set dealer_position - DealerSelection will handle it
         })
-        .eq('id', gameId);
+        .eq('id', gameId)
+        .eq('status', 'game_over')
+        .select('id');
 
       if (error) {
         console.error('[GAME OVER] Failed to start dealer selection:', error);
         gameOverTransitionRef.current = false;
+        return;
+      }
+      if (!dsClaim || dsClaim.length === 0) {
+        console.log('[GAME OVER] mut02-claim-lost (dealer_selection branch)');
+        gameOverTransitionRef.current = false;
+        await fetchGameData();
         return;
       }
 
@@ -5680,7 +5738,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'handleGameOverComplete');
     
     // Skip dealer_announcement, go directly to game_selection
-    const { error } = await supabase
+    // P0 GUARD (MUT-02): atomic DB claim — only the first writer flipping
+    // status away from 'game_over' wins. Late/duplicate writers see 0 rows.
+    const { data: claimRows, error } = await supabase
       .from('games')
       .update({ 
         status: 'game_selection',
@@ -5697,11 +5757,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         total_hands: 0,
         dealer_position: newDealerPosition // Set new dealer position
       })
-      .eq('id', gameId);
+      .eq('id', gameId)
+      .eq('status', 'game_over')
+      .select('id');
 
     if (error) {
       console.error('[GAME OVER] Failed to start game selection:', error);
       gameOverTransitionRef.current = false;
+      return;
+    }
+    if (!claimRows || claimRows.length === 0) {
+      console.log('[GAME OVER] mut02-claim-lost (status no longer game_over) — another client advanced');
+      gameOverTransitionRef.current = false;
+      await fetchGameData();
       return;
     }
 
