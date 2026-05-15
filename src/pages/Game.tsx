@@ -919,6 +919,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // If an empty session was deleted (no longer exists in DB), leave the game route.
   const missingGameHandledRef = useRef(false);
+  // P0 GUARD (NAV-02): require multiple consecutive "missing" confirmations before navigating.
+  const missingGameStrikesRef = useRef(0);
+  const MISSING_GAME_STRIKES_REQUIRED = 3;
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
@@ -930,43 +933,73 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const checkGameExists = async () => {
       const { data, error } = await supabase
         .from('games')
-        .select('id')
+        .select('id, status')
         .eq('id', gameId)
         .maybeSingle();
 
       if (cancelled) return;
 
       // CRITICAL: Distinguish "game doesn't exist" from "query failed" (e.g. network/auth error on reconnect).
-      // Only treat as missing when there's NO error and NO data, or the specific PGRST116 "0 rows" code.
-      // If there's a network/auth error, data will be null but the game may still exist.
       if (error) {
         const code = (error as any)?.code;
-        if (code === 'PGRST116') {
-          // Explicit "0 rows" - game is genuinely missing
-        } else {
-          // Network/auth/other error - do NOT treat as deletion
-          console.warn('[CHECK GAME] Query error (not treating as deletion):', error.message);
+        if (code !== 'PGRST116') {
+          // Network/auth/other error — never count as a strike, never navigate.
+          console.warn('[CHECK GAME] Query error (transient, not counting):', error.message);
           return;
         }
       }
 
       const isMissing = !data;
 
-      if (isMissing && !missingGameHandledRef.current) {
-        missingGameHandledRef.current = true;
-        console.log('[CHECK GAME] Game confirmed missing from DB - navigating to home');
-        setGame(null);
-        setPlayers([]);
-        toast({
-          title: 'Session deleted',
-          description: 'Not enough players, deleting this empty session.',
-          duration: 3000,
-        });
-        // Delay navigation so user sees the toast
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
+      if (!isMissing) {
+        // Reset strike counter on any successful confirmation.
+        if (missingGameStrikesRef.current > 0) {
+          console.log('[CHECK GAME] missing-strike-reset (game still present)');
+        }
+        missingGameStrikesRef.current = 0;
+        return;
       }
+
+      missingGameStrikesRef.current += 1;
+      if (missingGameStrikesRef.current < MISSING_GAME_STRIKES_REQUIRED) {
+        console.log('[CHECK GAME] missing-game-strike (transient, not navigating yet)', {
+          strikes: missingGameStrikesRef.current,
+          required: MISSING_GAME_STRIKES_REQUIRED,
+        });
+        return;
+      }
+
+      // Final fresh confirmation before navigation — guards against stale poll caching.
+      const { data: confirmData, error: confirmError } = await supabase
+        .from('games')
+        .select('id')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (confirmError && (confirmError as any)?.code !== 'PGRST116') {
+        console.warn('[CHECK GAME] missing-game-confirm-error, suppressing navigation', confirmError.message);
+        missingGameStrikesRef.current = 0;
+        return;
+      }
+      if (confirmData) {
+        console.log('[CHECK GAME] missing-game-confirm-recovered (game reappeared)');
+        missingGameStrikesRef.current = 0;
+        return;
+      }
+
+      if (missingGameHandledRef.current) return;
+      missingGameHandledRef.current = true;
+      console.log('[CHECK GAME] Game confirmed missing from DB after repeated checks - navigating to home');
+      setGame(null);
+      setPlayers([]);
+      toast({
+        title: 'Session deleted',
+        description: 'Not enough players, deleting this empty session.',
+        duration: 3000,
+      });
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
     };
 
     checkGameExists();
