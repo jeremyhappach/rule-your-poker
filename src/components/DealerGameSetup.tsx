@@ -1074,6 +1074,7 @@ export const DealerGameSetup = ({
       config_complete: true,
       status: 'ante_decision',
       ante_decision_deadline: anteDeadline,
+      config_deadline: null,
       current_game_uuid: dealerGameId, // Reference the dealer_games record
     };
 
