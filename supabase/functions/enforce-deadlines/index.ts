@@ -364,13 +364,36 @@ serve(async (req) => {
         const anteDeadline = new Date(game.ante_decision_deadline);
         if (now > anteDeadline) {
           console.log('[ENFORCE-CLIENT] Ante deadline expired for game', gameId);
-          
+
+          // P0 GUARD (TIMER-02): re-fetch authoritative game state. Suppress
+          // if status changed, deadline cleared, or deadline no longer expired.
+          const { data: freshAnteGame } = await supabase
+            .from('games')
+            .select('status, ante_decision_deadline, current_game_uuid, is_paused')
+            .eq('id', gameId)
+            .maybeSingle();
+          if (
+            !freshAnteGame ||
+            freshAnteGame.status !== 'ante_decision' ||
+            freshAnteGame.is_paused === true ||
+            !freshAnteGame.ante_decision_deadline ||
+            new Date(freshAnteGame.ante_decision_deadline).getTime() > now.getTime() ||
+            (game.current_game_uuid && freshAnteGame.current_game_uuid !== game.current_game_uuid)
+          ) {
+            console.log('[ENFORCE-CLIENT] ante-timeout-suppressed (stale)', {
+              status: freshAnteGame?.status,
+              ante_decision_deadline: freshAnteGame?.ante_decision_deadline,
+              is_paused: freshAnteGame?.is_paused,
+            });
+            actionsTaken.push('ante-timeout-suppressed: stale');
+          } else {
+
           // Re-fetch players after bot ante updates
           const { data: freshPlayers } = await supabase
             .from('players')
             .select('*')
             .eq('game_id', gameId);
-          
+
           // Find undecided HUMAN players and auto-sit them out (bots already handled above)
           const undecidedHumans = freshPlayers?.filter((p: any) => 
             !p.is_bot && !p.ante_decision && !p.sitting_out
