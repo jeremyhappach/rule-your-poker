@@ -269,6 +269,41 @@ export const DealerGameSetup = ({
   // Handle dealer timeout - mark as sitting out and re-evaluate
   const handleDealerTimeout = async () => {
     if (hasSubmittedRef.current) return;
+
+    // P0 CONTAINMENT: Re-fetch authoritative game state and abort if the game
+    // has already advanced past configuration. Prevents stale local timers
+    // from kicking players mid-game.
+    try {
+      const { data: guardData, error: guardErr } = await supabase
+        .from('games')
+        .select('status, current_game_uuid, config_complete')
+        .eq('id', gameId)
+        .maybeSingle();
+
+      const allowedStatuses = new Set(['dealer_selection', 'configuring', 'game_selection']);
+      const statusOk = guardData && allowedStatuses.has(guardData.status);
+      const configOk = guardData && guardData.config_complete === false;
+      const noActiveGame = !guardData?.current_game_uuid;
+
+      if (guardErr || !guardData || !statusOk || !configOk || !noActiveGame) {
+        console.warn('[DEALER SETUP] dealer-timeout-suppressed', {
+          gameId,
+          status: guardData?.status,
+          config_complete: guardData?.config_complete,
+          current_game_uuid: guardData?.current_game_uuid,
+          error: guardErr?.message,
+        });
+        if (configTimeoutRef.current) {
+          clearTimeout(configTimeoutRef.current);
+          configTimeoutRef.current = null;
+        }
+        return;
+      }
+    } catch (e) {
+      console.warn('[DEALER SETUP] dealer-timeout-suppressed (guard fetch threw)', e);
+      return;
+    }
+
     hasSubmittedRef.current = true;
 
     try {
