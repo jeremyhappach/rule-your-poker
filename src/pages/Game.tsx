@@ -919,6 +919,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // If an empty session was deleted (no longer exists in DB), leave the game route.
   const missingGameHandledRef = useRef(false);
+  // P0 GUARD (NAV-02): require multiple consecutive "missing" confirmations before navigating.
+  const missingGameStrikesRef = useRef(0);
+  const MISSING_GAME_STRIKES_REQUIRED = 3;
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
@@ -930,43 +933,73 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const checkGameExists = async () => {
       const { data, error } = await supabase
         .from('games')
-        .select('id')
+        .select('id, status')
         .eq('id', gameId)
         .maybeSingle();
 
       if (cancelled) return;
 
       // CRITICAL: Distinguish "game doesn't exist" from "query failed" (e.g. network/auth error on reconnect).
-      // Only treat as missing when there's NO error and NO data, or the specific PGRST116 "0 rows" code.
-      // If there's a network/auth error, data will be null but the game may still exist.
       if (error) {
         const code = (error as any)?.code;
-        if (code === 'PGRST116') {
-          // Explicit "0 rows" - game is genuinely missing
-        } else {
-          // Network/auth/other error - do NOT treat as deletion
-          console.warn('[CHECK GAME] Query error (not treating as deletion):', error.message);
+        if (code !== 'PGRST116') {
+          // Network/auth/other error — never count as a strike, never navigate.
+          console.warn('[CHECK GAME] Query error (transient, not counting):', error.message);
           return;
         }
       }
 
       const isMissing = !data;
 
-      if (isMissing && !missingGameHandledRef.current) {
-        missingGameHandledRef.current = true;
-        console.log('[CHECK GAME] Game confirmed missing from DB - navigating to home');
-        setGame(null);
-        setPlayers([]);
-        toast({
-          title: 'Session deleted',
-          description: 'Not enough players, deleting this empty session.',
-          duration: 3000,
-        });
-        // Delay navigation so user sees the toast
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
+      if (!isMissing) {
+        // Reset strike counter on any successful confirmation.
+        if (missingGameStrikesRef.current > 0) {
+          console.log('[CHECK GAME] missing-strike-reset (game still present)');
+        }
+        missingGameStrikesRef.current = 0;
+        return;
       }
+
+      missingGameStrikesRef.current += 1;
+      if (missingGameStrikesRef.current < MISSING_GAME_STRIKES_REQUIRED) {
+        console.log('[CHECK GAME] missing-game-strike (transient, not navigating yet)', {
+          strikes: missingGameStrikesRef.current,
+          required: MISSING_GAME_STRIKES_REQUIRED,
+        });
+        return;
+      }
+
+      // Final fresh confirmation before navigation — guards against stale poll caching.
+      const { data: confirmData, error: confirmError } = await supabase
+        .from('games')
+        .select('id')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (confirmError && (confirmError as any)?.code !== 'PGRST116') {
+        console.warn('[CHECK GAME] missing-game-confirm-error, suppressing navigation', confirmError.message);
+        missingGameStrikesRef.current = 0;
+        return;
+      }
+      if (confirmData) {
+        console.log('[CHECK GAME] missing-game-confirm-recovered (game reappeared)');
+        missingGameStrikesRef.current = 0;
+        return;
+      }
+
+      if (missingGameHandledRef.current) return;
+      missingGameHandledRef.current = true;
+      console.log('[CHECK GAME] Game confirmed missing from DB after repeated checks - navigating to home');
+      setGame(null);
+      setPlayers([]);
+      toast({
+        title: 'Session deleted',
+        description: 'Not enough players, deleting this empty session.',
+        duration: 3000,
+      });
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
     };
 
     checkGameExists();
@@ -2988,33 +3021,87 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
+  // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
   useEffect(() => {
-    // Don't auto-sit-out if game is paused
     if (game?.is_paused) return;
-    
-    if (anteTimeLeft === 0 && game?.status === 'ante_decision' && user) {
-      const currentPlayer = players.find(p => p.user_id === user.id);
-      if (currentPlayer && !currentPlayer.ante_decision) {
+    if (anteTimeLeft !== 0 || game?.status !== 'ante_decision' || !user) return;
+
+    const currentPlayer = players.find(p => p.user_id === user.id);
+    if (!currentPlayer || currentPlayer.ante_decision) return;
+
+    let cancelled = false;
+    (async () => {
+      // Confirm DB still says: game in ante_decision, not paused, deadline expired, player undecided.
+      const [{ data: freshGame }, { data: freshPlayer }] = await Promise.all([
+        supabase
+          .from('games')
+          .select('status, is_paused, ante_decision_deadline')
+          .eq('id', gameId)
+          .maybeSingle(),
         supabase
           .from('players')
-          .update({
-            ante_decision: 'sit_out',
-            sitting_out: true,
-            waiting: false,
-          })
-          .eq('id', currentPlayer.id);
+          .select('id, ante_decision, sitting_out')
+          .eq('id', currentPlayer.id)
+          .maybeSingle(),
+      ]);
+      if (cancelled) return;
+
+      const deadlineMs = freshGame?.ante_decision_deadline ? new Date(freshGame.ante_decision_deadline).getTime() : 0;
+      const stillValid =
+        freshGame &&
+        freshGame.status === 'ante_decision' &&
+        !freshGame.is_paused &&
+        deadlineMs > 0 &&
+        deadlineMs <= Date.now() &&
+        freshPlayer &&
+        !freshPlayer.ante_decision;
+
+      if (!stillValid) {
+        console.log('[ANTE AUTO-SIT-OUT] auto-sit-out-suppressed (state changed)', {
+          status: freshGame?.status,
+          is_paused: freshGame?.is_paused,
+          deadlineMs,
+          ante_decision: freshPlayer?.ante_decision,
+        });
+        return;
       }
-    }
-  }, [anteTimeLeft, game?.status, game?.is_paused, players, user]);
+
+      await supabase
+        .from('players')
+        .update({ ante_decision: 'sit_out', sitting_out: true, waiting: false })
+        .eq('id', currentPlayer.id);
+    })();
+
+    return () => { cancelled = true; };
+  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user]);
 
   // Session ending tracking (removed toast)
 
-  // Redirect to lobby when session ends
+  // Redirect to lobby when session ends.
+  // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
   useEffect(() => {
-    if (game?.status === 'session_ended') {
-      setTimeout(() => navigate('/'), 2000);
-    }
-  }, [game?.status, navigate]);
+    if (game?.status !== 'session_ended') return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      if (cancelled) return;
+      const { data: freshGame, error } = await supabase
+        .from('games')
+        .select('status, session_ended_at')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn('[NAV-01] session_ended re-fetch failed, suppressing navigation', error.message);
+        return;
+      }
+      if (!freshGame || freshGame.status !== 'session_ended') {
+        console.log('[NAV-01] session-ended-nav-suppressed (DB no longer terminal)', { status: freshGame?.status });
+        return;
+      }
+      navigate('/');
+    }, 2000);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [game?.status, gameId, navigate]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
@@ -4541,19 +4628,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (gameError) {
       const code = (gameError as any)?.code;
       if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
-        if (!missingGameHandledRef.current) {
-          missingGameHandledRef.current = true;
-          setGame(null);
-          setPlayers([]);
-          toast({
-            title: 'Session deleted',
-            description: 'Not enough players, deleting this empty session.',
-            duration: 3000,
-          });
-          setTimeout(() => {
-            navigate('/');
-          }, 2000);
-        }
+        // P0 GUARD (NAV-02): a single fetch returning "0 rows" can be a transient
+        // post-write replica race. Defer to the polling checkGameExists effect, which
+        // requires repeated strikes + a fresh confirm before navigating.
+        console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
         return;
       }
 
@@ -4562,19 +4640,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     if (!gameData) {
-      if (!missingGameHandledRef.current) {
-        missingGameHandledRef.current = true;
-        setGame(null);
-        setPlayers([]);
-        toast({
-          title: 'Session deleted',
-          description: 'Not enough players, deleting this empty session.',
-          duration: 3000,
-        });
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
-      }
+      // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
+      console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
       return;
     }
 
@@ -5523,15 +5590,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check if "make it take it" is enabled and winner is eligible
     const makeItTakeItResult = await getMakeItTakeItDealer(gameId, lastWinnerPlayerId);
     
-    // CRITICAL: Mark ALL rounds as 'completed' before transitioning to new game
-    // This prevents stale 'betting' rounds from blocking new round creation via the guard in startHolmRound
-    // We preserve the round data (don't delete) for UI display, but status must be set to completed
-    console.log('[GAME OVER] Marking all rounds as completed to prevent stale betting round issues');
-    await supabase
-      .from('rounds')
-      .update({ status: 'completed' })
-      .eq('game_id', gameId)
-      .neq('status', 'completed');
+    // CRITICAL (MUT-01): Mark rounds as 'completed' SCOPED to current dealer_game_id only.
+    // Never bulk-update across dealer games — that can stomp rounds belonging to a freshly-started game.
+    const dealerGameIdForCompletion = game?.current_game_uuid ?? null;
+    console.log('[GAME OVER] Marking rounds completed (scoped)', { dealerGameIdForCompletion });
+    if (dealerGameIdForCompletion) {
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed' })
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', dealerGameIdForCompletion)
+        .neq('status', 'completed');
+    } else {
+      console.warn('[GAME OVER] Skipping rounds-completed bulk write: no current_game_uuid');
+    }
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
