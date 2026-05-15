@@ -1479,6 +1479,7 @@ export const DealerGameSetup = ({
       .eq('id', dealerPlayerId);
     
     console.log(`[DEALER SETUP] ✅ ${gameTypeName} config complete, dealer_game_id:`, dealerGameId);
+    if (configTimeoutRef.current) { clearTimeout(configTimeoutRef.current); configTimeoutRef.current = null; }
     onConfigComplete();
   };
 
