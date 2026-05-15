@@ -5523,15 +5523,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Check if "make it take it" is enabled and winner is eligible
     const makeItTakeItResult = await getMakeItTakeItDealer(gameId, lastWinnerPlayerId);
     
-    // CRITICAL: Mark ALL rounds as 'completed' before transitioning to new game
-    // This prevents stale 'betting' rounds from blocking new round creation via the guard in startHolmRound
-    // We preserve the round data (don't delete) for UI display, but status must be set to completed
-    console.log('[GAME OVER] Marking all rounds as completed to prevent stale betting round issues');
-    await supabase
-      .from('rounds')
-      .update({ status: 'completed' })
-      .eq('game_id', gameId)
-      .neq('status', 'completed');
+    // CRITICAL (MUT-01): Mark rounds as 'completed' SCOPED to current dealer_game_id only.
+    // Never bulk-update across dealer games — that can stomp rounds belonging to a freshly-started game.
+    const dealerGameIdForCompletion = game?.current_game_uuid ?? null;
+    console.log('[GAME OVER] Marking rounds completed (scoped)', { dealerGameIdForCompletion });
+    if (dealerGameIdForCompletion) {
+      await supabase
+        .from('rounds')
+        .update({ status: 'completed' })
+        .eq('game_id', gameId)
+        .eq('dealer_game_id', dealerGameIdForCompletion)
+        .neq('status', 'completed');
+    } else {
+      console.warn('[GAME OVER] Skipping rounds-completed bulk write: no current_game_uuid');
+    }
 
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
