@@ -330,6 +330,7 @@ serve(async (req) => {
             actionsTaken.push('Config timeout: No eligible dealers, returning to waiting_for_players');
           }
         }
+        } // end TIMER-01 guard else
       }
     }
 
