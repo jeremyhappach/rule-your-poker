@@ -3044,12 +3044,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Session ending tracking (removed toast)
 
-  // Redirect to lobby when session ends
+  // Redirect to lobby when session ends.
+  // P0 GUARD (NAV-01): re-fetch authoritative state and confirm terminal status before navigating.
   useEffect(() => {
-    if (game?.status === 'session_ended') {
-      setTimeout(() => navigate('/'), 2000);
-    }
-  }, [game?.status, navigate]);
+    if (game?.status !== 'session_ended') return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      if (cancelled) return;
+      const { data: freshGame, error } = await supabase
+        .from('games')
+        .select('status, session_ended_at')
+        .eq('id', gameId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.warn('[NAV-01] session_ended re-fetch failed, suppressing navigation', error.message);
+        return;
+      }
+      if (!freshGame || freshGame.status !== 'session_ended') {
+        console.log('[NAV-01] session-ended-nav-suppressed (DB no longer terminal)', { status: freshGame?.status });
+        return;
+      }
+      navigate('/');
+    }, 2000);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [game?.status, gameId, navigate]);
 
   // Check if all ante decisions are in - with polling fallback
   // CRITICAL: Also enforce deadline for disconnected players
