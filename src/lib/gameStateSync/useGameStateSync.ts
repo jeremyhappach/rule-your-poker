@@ -205,6 +205,14 @@ export function useGameStateSync<T>(
     return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
   }, [getProgress, isEqual, resolvedGameType]);
 
+  // Stamp the latest known authoritative identity onto presentation whenever
+  // a forward/equal update is accepted (cheap; no-op when identity unwired).
+  useEffect(() => {
+    if (!identityProp) return;
+    presentationIdentityRef.current = identityProp;
+    setPresentationIdentity(identityProp);
+  }, [identityProp, authoritative]);
+
   // ── Apply optimistic local state ─────────────────────────────
   const applyOptimistic = useCallback((localState: T) => {
     optRef.current = localState;
@@ -453,5 +461,33 @@ export function useGameStateSync<T>(
     abortVisualContract,
     isVisualContractActive: activeContract !== null,
     activeVisualContract: activeContract,
+  const isIdentityStale = !!(
+    identityProp &&
+    !identityEqualsFn(presentationIdentityRef.current, identityProp)
+  );
+  const interactionsAllowed = !frozen && activeContract === null && !isIdentityStale;
+
+  return {
+    presentationState: presentation,
+    presentationRefValue: presentationRef.current,
+    authoritativeState: authoritative,
+    effectiveState: effective,
+    isFrozen: frozen,
+    isOptimistic: optimistic !== null,
+    receiveAuthoritativeUpdate,
+    applyOptimistic,
+    clearOptimistic,
+    freezePresentation,
+    unfreezePresentation,
+    commitToPresentation,
+    reset,
+    beginVisualContract,
+    completeVisualContract,
+    abortVisualContract,
+    isVisualContractActive: activeContract !== null,
+    activeVisualContract: activeContract,
+    presentationIdentity,
+    isIdentityStale,
+    interactionsAllowed,
   };
 }
