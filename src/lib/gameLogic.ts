@@ -1184,14 +1184,15 @@ export async function autoFoldUndecided(gameId: string, opts?: {
 }) {
   console.log('[AUTO-FOLD] Starting autoFoldUndecided for game:', gameId);
 
-  // SAFETY: Re-fetch authoritative game + current round before mutating.
-  // A stale callback (e.g. cribbage idle timeout) must never auto-fold.
-  const { gameTypeAllowsTimeoutAction, validateTimeoutAutoFold } =
+  // SAFETY: Re-fetch authoritative game + current round + ruleset config
+  // before mutating. A stale callback (e.g. cribbage idle timeout) must
+  // never auto-fold. Policy is read from DB config, not game_type.
+  const { resolveTimeoutPolicy, validateTimeoutAutoFold } =
     await import('./timeoutRules');
 
   const { data: game } = await supabase
     .from('games')
-    .select('id, game_type, status, is_paused, total_hands, current_round, current_game_uuid')
+    .select('id, game_type, status, is_paused, total_hands, current_round, current_game_uuid, timeout_enforcement_enabled, timeout_action')
     .eq('id', gameId)
     .single();
 
@@ -1218,7 +1219,16 @@ export async function autoFoldUndecided(gameId: string, opts?: {
     }
   }
 
+  // Resolve authoritative timeout policy: games override → game_defaults → safe default
+  const { data: gameDefault } = await supabase
+    .from('game_defaults')
+    .select('timeout_enforcement_enabled, timeout_action')
+    .eq('game_type', game.game_type || '')
+    .maybeSingle();
+  const policy = resolveTimeoutPolicy(game as any, gameDefault as any);
+
   const suppress = validateTimeoutAutoFold({
+    policy,
     game,
     round: currentRound,
     expectedRoundId: opts?.expectedRoundId ?? null,
