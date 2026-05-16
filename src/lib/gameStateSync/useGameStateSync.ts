@@ -72,6 +72,11 @@ export function useGameStateSync<T>(
   const presentationRef = useRef<T>(initialState);
   const optimisticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPostResetHydrationRef = useRef(false);
+  // P0 #2 FIX: capture the user-supplied initialState so identity-advance
+  // auto-reset can seed authoritative back to a TRUE clean baseline instead
+  // of the stale terminal prior-hand state (which would otherwise dominate
+  // every fresh next-hand snapshot as "regressive" on lower progress dims).
+  const initialStateRef = useRef<T>(initialState);
 
   // ── Visual contract refs ─────────────────────────────────────
   const contractRef = useRef<VisualContractIdentity | null>(null);
