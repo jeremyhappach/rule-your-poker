@@ -406,13 +406,23 @@ export function useGameStateSync<T>(
   }, [resolvedGameType]);
 
   // ── Identity advancement auto-reset ──────────────────────────
-  // When the caller wires `config.identity`, the framework detects forward
-  // identity changes (peer client started a new round) and resets presentation
-  // immediately — without each game having to invent its own boundary watcher.
+  // Reset fires on first actionable divergence between presentation identity
+  // and authoritative identity. The very first observation (prev=null) is
+  // adopted silently — there is no stale presentation to clear and no peer
+  // has advanced past us yet. Every subsequent forward divergence triggers
+  // reset() and emits `framework-identity-reset-fired`.
   useEffect(() => {
     if (!identityProp) return;
     const prev = presentationIdentityRef.current;
     if (identityEqualsFn(prev, identityProp)) return;
+
+    if (!prev) {
+      // First observation — adopt silently. No reset needed.
+      presentationIdentityRef.current = identityProp;
+      setPresentationIdentity(identityProp);
+      return;
+    }
+
     if (!isIdentityForward(prev, identityProp)) {
       // Non-forward identity change (e.g. dealerGameId churn during init) —
       // adopt silently without triggering a reset cascade.
@@ -420,6 +430,8 @@ export function useGameStateSync<T>(
       setPresentationIdentity(identityProp);
       return;
     }
+
+    // Actionable forward divergence.
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -429,7 +441,7 @@ export function useGameStateSync<T>(
       severity: 'info',
       eventName: 'framework-identity-advanced',
       payload: {
-        prevIdentity: prev ? identityKey(prev) : null,
+        prevIdentity: identityKey(prev),
         nextIdentity: identityKey(identityProp),
         hadActiveContract: contractRef.current !== null,
         wasFrozen: frozenRef.current,
@@ -437,6 +449,19 @@ export function useGameStateSync<T>(
     });
     // reset() reads identityPropRef.current and stamps it onto presentationIdentity.
     reset(authRef.current);
+    persistSyncDebugEvent({
+      gameId: identityProp.dealerGameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: identityProp.handNumber ?? null,
+      roundId: identityProp.roundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'framework-identity-reset-fired',
+      payload: {
+        prevIdentity: identityKey(prev),
+        nextIdentity: identityKey(identityProp),
+      },
+    });
   }, [identityProp, identityEqualsFn, reset, resolvedGameType]);
 
 
