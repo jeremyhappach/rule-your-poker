@@ -992,7 +992,7 @@ export function useHorsesMobileController({
     ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('saveMyState');
         return;
       }
@@ -1025,7 +1025,7 @@ export function useHorsesMobileController({
     async (expectedCurrentPlayerId?: string | null) => {
       if (!enabled) return;
       if (!currentRoundId) return;
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('advanceToNextTurn');
         return;
       }
@@ -1333,7 +1333,7 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
 
     const t = window.setTimeout(() => {
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('stuckAdvance-forceComplete-or-advance');
         return;
       }
@@ -1492,7 +1492,7 @@ export function useHorsesMobileController({
     timeoutProcessedRef.current = timeoutKey;
 
     const handleTimeout = async () => {
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         persistSyncDebugEvent({
           gameId: gameId ?? null,
           gameType: resolvedGameType,
@@ -2317,7 +2317,7 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
     const forceComplete = async () => {
       if (!writeRoundId) return;
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('forceComplete-allCompleteRecovery');
         return;
       }
