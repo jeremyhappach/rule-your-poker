@@ -286,6 +286,10 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!authIdentity) return;
     const prev = lastObservedIdentityRef.current;
+    // P0 #2 AUDIT FIX: dedup by roundId so a single round transition can't fire twice
+    // when handNumber/dealerGameId also bump in the same forward advance (was amplifying
+    // race windows in tie-rollover paths).
+    if (prev && prev.roundId === authIdentity.roundId) return;
     lastObservedIdentityRef.current = authIdentity;
     if (!prev) return;
     if (!isIdentityForward(prev, authIdentity)) return;
