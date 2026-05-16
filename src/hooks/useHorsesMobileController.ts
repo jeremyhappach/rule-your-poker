@@ -514,7 +514,7 @@ export function useHorsesMobileController({
         }
       }
     }
-  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber, authIdentity?.handNumber, propHandNumber]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
