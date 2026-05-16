@@ -555,6 +555,8 @@ export type Database = {
           reveal_at_showdown: boolean
           skunk_enabled: boolean
           skunk_threshold: number
+          timeout_action: string
+          timeout_enforcement_enabled: boolean
           undercut_bonus: number
           updated_at: string
         }
@@ -587,6 +589,8 @@ export type Database = {
           reveal_at_showdown?: boolean
           skunk_enabled?: boolean
           skunk_threshold?: number
+          timeout_action?: string
+          timeout_enforcement_enabled?: boolean
           undercut_bonus?: number
           updated_at?: string
         }
@@ -619,6 +623,8 @@ export type Database = {
           reveal_at_showdown?: boolean
           skunk_enabled?: boolean
           skunk_threshold?: number
+          timeout_action?: string
+          timeout_enforcement_enabled?: boolean
           undercut_bonus?: number
           updated_at?: string
         }
@@ -801,6 +807,8 @@ export type Database = {
           skunk_enabled: boolean | null
           skunk_threshold: number | null
           status: string
+          timeout_action: string | null
+          timeout_enforcement_enabled: boolean | null
           total_hands: number | null
           updated_at: string
         }
@@ -850,6 +858,8 @@ export type Database = {
           skunk_enabled?: boolean | null
           skunk_threshold?: number | null
           status?: string
+          timeout_action?: string | null
+          timeout_enforcement_enabled?: boolean | null
           total_hands?: number | null
           updated_at?: string
         }
@@ -899,6 +909,8 @@ export type Database = {
           skunk_enabled?: boolean | null
           skunk_threshold?: number | null
           status?: string
+          timeout_action?: string | null
+          timeout_enforcement_enabled?: boolean | null
           total_hands?: number | null
           updated_at?: string
         }
