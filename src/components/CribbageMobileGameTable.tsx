@@ -447,28 +447,48 @@ export const CribbageMobileGameTable = ({
   );
 
   // Forward-only merge of (a) parent props and (b) authoritative-identity feed.
-  // Identity feed wins ties because it's the canonical source — props only matter
-  // when the framework subscription has not yet hydrated.
+  //
+  // CONTRACT (post-P0 fix):
+  //  • Authoritative identity is the source of truth. Parent props are
+  //    advisory — they may LAG (parent watcher hasn't fetched the new round
+  //    yet) but they may NEVER overwrite a forward authoritative identity.
+  //  • currentRoundId is strictly forward-only. Equal-hand replacement is
+  //    forbidden because it was the regression vector that wedged Client 2
+  //    onto a stale round when `useAuthoritativeIdentity` flickered.
+  //  • Since `useAuthoritativeIdentity` is now monotonic-forward-only at the
+  //    framework level, trusting it fully cannot regress.
   useEffect(() => {
-    const incomingHandNumber = Math.max(
-      authIdentity?.handNumber ?? -Infinity,
-      handNumber ?? -Infinity,
-      currentHandNumber,
-    );
-    const incomingRoundId =
-      (authIdentity?.handNumber ?? -1) >= (handNumber ?? -1)
-        ? authIdentity?.roundId ?? roundId
-        : roundId;
+    const propHand = handNumber ?? -1;
+    const authHand = authIdentity?.handNumber ?? -1;
+
+    // Prefer auth when it is forward-of-or-equal to prop (the common case);
+    // fall back to prop only when auth has not yet observed up to prop hand.
+    const useAuth = authIdentity?.roundId != null && authHand >= propHand;
+    const incomingRoundId = useAuth ? authIdentity!.roundId! : roundId;
+    const incomingHandNumber = Math.max(authHand, propHand, currentHandNumber);
     if (!incomingRoundId) return;
 
     setCurrentHandNumber((prev) => (incomingHandNumber > prev ? incomingHandNumber : prev));
     setCurrentRoundId((prev) => {
       if (!prev) return incomingRoundId;
-      if (incomingHandNumber > currentHandNumber) return incomingRoundId;
-      if (incomingHandNumber === currentHandNumber) return incomingRoundId;
+      if (prev === incomingRoundId) return prev;
+      const prevIdent: AuthoritativeIdentity = {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: currentHandNumber,
+        roundId: prev,
+      };
+      const nextIdent: AuthoritativeIdentity = {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: incomingHandNumber,
+        roundId: incomingRoundId,
+      };
+      // Strictly forward — equal-hand-different-roundId is only allowed when
+      // the incoming identity comes from the authoritative feed (handles a
+      // race where hand_number hasn't yet been bumped on the new round row).
+      if (isIdentityForward(prevIdent, nextIdent)) return incomingRoundId;
       return prev;
     });
-  }, [roundId, handNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber]);
+  }, [roundId, handNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber, dealerGameId]);
 
   // ── Identity-advancement reset ─────────────────────────────────
   // When the dealer-game-scoped identity feed detects a forward advance (peer
