@@ -3646,18 +3646,20 @@ export const CribbageMobileGameTable = ({
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
-    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
-      try {
-        persistSyncDebugEvent({
-          gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
-          eventType: 'invariant', severity: 'warn', eventName: 'crib-stale-action-suppressed',
-          payload: { action: 'go',
-            renderHandKey: renderHandKey?.slice(0, 30), currentHandKey: currentHandKey?.slice(0, 30),
-            currentRoundId: currentRoundId?.slice(0, 8), propRoundId: roundId?.slice(0, 8),
-            currentHandNumber, propHandNumber: handNumber },
-        });
-      } catch {}
-      return;
+    {
+      const verdict = evaluateWriterIdentity('go');
+      if (!verdict.ok) {
+        try {
+          persistSyncDebugEvent({
+            gameId, gameType: 'cribbage',
+            handNumber: currentHandNumber, roundId: currentRoundId,
+            eventType: 'invariant', severity: 'warn',
+            eventName: 'crib-action-suppressed-stale-identity',
+            payload: { ...verdict.divergence, suppressReason: verdict.reason },
+          });
+        } catch {}
+        return;
+      }
     }
 
     const tid = newTraceId();
