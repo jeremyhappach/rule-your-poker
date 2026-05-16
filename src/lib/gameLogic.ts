@@ -1397,6 +1397,26 @@ export async function endRound(gameId: string) {
     .eq('id', gameId)
     .single();
 
+  // P0-CONTAINMENT: endRound() is Holm/3-5-7 lifecycle logic. It writes the shared
+  // `awaiting_next_round` / `next_round_number` fields and must NEVER fire for other
+  // game types (cribbage, gin-rummy, yahtzee, horses, scc) — doing so corrupts
+  // mid-hand state. Re-fetch the authoritative game_type and abort with a logged
+  // suppression event if this is not a Holm/3-5-7 game.
+  const gType = (game as any)?.game_type;
+  const isHolmOrThreeFiveSeven =
+    gType === '3-5-7' || gType === '3-5-7-game' || gType === '357' ||
+    gType === 'holm' || gType === 'holm-game';
+  if (!isHolmOrThreeFiveSeven) {
+    console.error('[END_ROUND] endRound-suppressed-non-holm-357', { gameId: shortGameId, gameType: gType });
+    await logGameState({
+      gameId,
+      eventType: 'RACE_CONDITION_GUARD',
+      sourceLocation: 'gameLogic:endRound:gameTypeGuard',
+      details: { suppressed: 'endRound-suppressed-non-holm-357', gameType: gType, timestamp: endRoundTimestamp },
+    });
+    return;
+  }
+
   console.log(`[END_ROUND] Game: status=${game?.status} current_round=${game?.current_round} total_hands=${game?.total_hands} pot=${game?.pot}`);
 
   if (!game || !game.current_round) {
