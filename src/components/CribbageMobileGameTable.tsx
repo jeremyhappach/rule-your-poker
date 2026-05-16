@@ -3644,53 +3644,7 @@ export const CribbageMobileGameTable = ({
       for (let i = 0; i < keys.length - 10; i++) {
         countingCompletedHandKeysRef.current.delete(keys[i]);
       }
-  }
-
-  // ── PROACTIVE STALE-COMPLETE RESET ──────────────────────────
-  // When the stale-complete latch fires we know the local hand is done but the
-  // boundary reset has not yet been triggered (parent prop roundId still lagging).
-  // Drop the OLD authoritative + presentation immediately so:
-  //   1. renderHandKey/currentHandKey collapse to '' → interactionsAllowed = false
-  //   2. The cut-card surface unmounts cleanly instead of waiting for a freeze→unfreeze
-  //      bounce that can re-trigger the flip animation on remount.
-  // The proper reset still happens when currentRoundId eventually changes; this
-  // is an early kick so OLD cards never survive long enough to be seen/touched.
-  const proactiveResetFiredForRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isStaleCompleteAwaitingNext) return;
-    const key = `${currentRoundId}:${currentHandNumber}:complete`;
-    if (proactiveResetFiredForRef.current === key) return;
-    proactiveResetFiredForRef.current = key;
-    persistSyncDebugEvent({
-      gameId,
-      gameType: 'cribbage',
-      handNumber: currentHandNumber,
-      roundId: currentRoundId ?? null,
-      eventType: 'transition',
-      severity: 'info',
-      eventName: 'crib-stale-complete-proactive-reset',
-      payload: {
-        currentRoundId: currentRoundId?.slice(0, 8) ?? null,
-        currentHandNumber,
-        renderHandKey: renderHandKey?.slice(0, 30) ?? null,
-        currentHandKey: currentHandKey?.slice(0, 30) ?? null,
-      },
-    });
-    // Clear local authoritative + sync framework presentation/auth.
-    // This collapses renderHandKey → '' so the gameplay surface unmounts and
-    // interactionsAllowed becomes false without waiting for the parent prop.
-    syncHandle.reset(null);
-    setCribbageState(null);
-    cribbageStateRef.current = null;
-  }, [
-    isStaleCompleteAwaitingNext,
-    currentRoundId,
-    currentHandNumber,
-    gameId,
-    renderHandKey,
-    currentHandKey,
-    syncHandle,
-  ]);
+    }
 
     persistSyncDebugEvent({
       gameId,
