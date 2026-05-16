@@ -1106,7 +1106,29 @@ serve(async (req) => {
       }
 
       // ============= 3B. DICE GAME (HORSES/SCC) TURN TIMEOUTS =============
-      if (game.game_type === 'horses' || game.game_type === 'ship-captain-crew') {
+      // Action-specific policy gate: this block sets auto_fold=true (overloaded
+      // as "auto-roll" in dice rulesets). Require policy.enabled === true AND
+      // policy.action === 'auto_roll' before any participation mutation here.
+      // Static game_type alone is NOT sufficient — config is authoritative.
+      const dicePolicy = await fetchTimeoutPolicy(supabase, game);
+      const diceAllowed = dicePolicy.enabled && dicePolicy.action === 'auto_roll';
+      if (!diceAllowed) {
+        if (game.game_type === 'horses' || game.game_type === 'ship-captain-crew') {
+          console.log('[ENFORCE-CLIENT] dice-timeout-suppressed: policy disallows auto_roll', {
+            gameId, policy_action: dicePolicy.action, policy_enabled: dicePolicy.enabled, policy_source: dicePolicy.source,
+          });
+          try {
+            await supabase.from('debug_events').insert({
+              event_type: 'timeout-auto-roll-suppressed-policy',
+              game_id: gameId,
+              client_role: 'enforce-deadlines:dice',
+              payload: { policy: dicePolicy, game_type: game.game_type },
+            });
+          } catch {}
+          actionsTaken.push('dice-timeout-suppressed: policy disallows auto_roll');
+        }
+      }
+      if (diceAllowed && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
         // Get the current round - scope to dealer_game_id and order by hand_number/round_number
         const roundQuery = supabase
           .from('rounds')
