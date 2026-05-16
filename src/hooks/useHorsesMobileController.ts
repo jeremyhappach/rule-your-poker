@@ -2515,18 +2515,18 @@ export function useHorsesMobileController({
     processWin();
   }, [
     enabled,
-    gamePhase,
     gameId,
     currentRoundId,
-    winningPlayerIds,
+    // P0 #2: depend on AUTHORITATIVE state, not presentation-derived winningPlayerIds.
+    incomingHorsesState,
     players,
     currentUserId,
-    completedResults,
     pot,
     anteAmount,
     getPlayerUsername,
     myPlayer,
     isPaused,
+    isSCC,
   ]);
 
   // RECOVERY: If gamePhase is "playing" but ALL players in turnOrder have isComplete,
