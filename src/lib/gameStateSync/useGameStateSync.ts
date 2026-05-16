@@ -19,6 +19,13 @@ import {
   type VisualContractOptions,
 } from './visualContract';
 import { logVisualContractEvent } from './visualContractEvents';
+import {
+  authoritativeIdentityEquals as defaultIdentityEquals,
+  isIdentityForward,
+  identityKey,
+  type AuthoritativeIdentity,
+} from './authoritativeIdentityPure';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
 const DEFAULT_VISUAL_CONTRACT_TIMEOUT = 10000;
@@ -46,6 +53,8 @@ export function useGameStateSync<T>(
     debugLabel,
     describeState,
     gameType,
+    identity: identityProp = null,
+    identityEquals: identityEqualsFn = defaultIdentityEquals,
   } = config;
   const logPrefix = debugLabel ? `[GameStateSync:${debugLabel}]` : '[GameStateSync]';
   const resolvedGameType = gameType ?? debugLabel ?? 'unknown';
@@ -69,6 +78,14 @@ export function useGameStateSync<T>(
   const contractTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contractBufferRef = useRef<T | null>(null);
   const [activeContract, setActiveContract] = useState<VisualContractIdentity | null>(null);
+
+  // ── Identity awareness refs ──────────────────────────────────
+  // presentationIdentity = identity attached to the current presentation.
+  // It is updated on every accepted authoritative update and on reset().
+  const presentationIdentityRef = useRef<AuthoritativeIdentity | null>(identityProp);
+  const [presentationIdentity, setPresentationIdentity] = useState<AuthoritativeIdentity | null>(identityProp);
+  const identityPropRef = useRef<AuthoritativeIdentity | null>(identityProp);
+  identityPropRef.current = identityProp;
 
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
@@ -187,6 +204,14 @@ export function useGameStateSync<T>(
 
     return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
   }, [getProgress, isEqual, resolvedGameType]);
+
+  // Stamp the latest known authoritative identity onto presentation whenever
+  // a forward/equal update is accepted (cheap; no-op when identity unwired).
+  useEffect(() => {
+    if (!identityProp) return;
+    presentationIdentityRef.current = identityProp;
+    setPresentationIdentity(identityProp);
+  }, [identityProp, authoritative]);
 
   // ── Apply optimistic local state ─────────────────────────────
   const applyOptimistic = useCallback((localState: T) => {
@@ -361,6 +386,10 @@ export function useGameStateSync<T>(
     setOptimistic(null);
     setPresentation(freshPresentation);
     setFrozen(false);
+    // Adopt the latest known authoritative identity as the new presentation
+    // identity (it will be re-stamped on the next accepted update too).
+    presentationIdentityRef.current = identityPropRef.current;
+    setPresentationIdentity(identityPropRef.current);
     if (optimisticTimerRef.current) {
       clearTimeout(optimisticTimerRef.current);
       optimisticTimerRef.current = null;
@@ -369,6 +398,42 @@ export function useGameStateSync<T>(
     (reset as any)._lastResetPresentationBefore = presPre;
   }, [resolvedGameType]);
 
+  // ── Identity advancement auto-reset ──────────────────────────
+  // When the caller wires `config.identity`, the framework detects forward
+  // identity changes (peer client started a new round) and resets presentation
+  // immediately — without each game having to invent its own boundary watcher.
+  useEffect(() => {
+    if (!identityProp) return;
+    const prev = presentationIdentityRef.current;
+    if (identityEqualsFn(prev, identityProp)) return;
+    if (!isIdentityForward(prev, identityProp)) {
+      // Non-forward identity change (e.g. dealerGameId churn during init) —
+      // adopt silently without triggering a reset cascade.
+      presentationIdentityRef.current = identityProp;
+      setPresentationIdentity(identityProp);
+      return;
+    }
+    persistSyncDebugEvent({
+      gameId: identityProp.dealerGameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: identityProp.handNumber ?? null,
+      roundId: identityProp.roundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'framework-identity-advanced',
+      payload: {
+        prevIdentity: prev ? identityKey(prev) : null,
+        nextIdentity: identityKey(identityProp),
+        hadActiveContract: contractRef.current !== null,
+        wasFrozen: frozenRef.current,
+      },
+    });
+    // reset() reads identityPropRef.current and stamps it onto presentationIdentity.
+    reset(authRef.current);
+  }, [identityProp, identityEqualsFn, reset, resolvedGameType]);
+
+
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
@@ -376,6 +441,12 @@ export function useGameStateSync<T>(
       if (contractTimerRef.current) clearTimeout(contractTimerRef.current);
     };
   }, []);
+
+  const isIdentityStale = !!(
+    identityProp &&
+    !identityEqualsFn(presentationIdentityRef.current, identityProp)
+  );
+  const interactionsAllowed = !frozen && activeContract === null && !isIdentityStale;
 
   return {
     presentationState: presentation,
@@ -396,5 +467,8 @@ export function useGameStateSync<T>(
     abortVisualContract,
     isVisualContractActive: activeContract !== null,
     activeVisualContract: activeContract,
+    presentationIdentity,
+    isIdentityStale,
+    interactionsAllowed,
   };
 }

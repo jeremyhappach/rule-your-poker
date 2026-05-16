@@ -1,79 +1,171 @@
-# Cause A — Unify Presentation-Derived Identity (Cribbage, Gin Rummy, Yahtzee)
+## Goal
 
-Eliminates the identity-mixing class that produced 6 of 10 reported bugs (Bugs 2, 3, 4, 5, 6, 9).
+Eliminate stale-identity blind windows as a **class** by moving identity-boundary handling into the sync framework instead of patching each game.
 
-## What's wrong today
+The defining failure: a client subscribes / polls **only the currently known round**, but authoritative state advances to a new round on the server. The client's listeners cannot observe the new round and the local presentation stays internally consistent but globally stale, until a separate parent watcher hydrates a new `roundId` prop.
 
-Render selectors and boundary effects in three games read identity from a mix of:
-- raw DB fields (`game.current_round`, `game.total_hands`, `round.id`, `round.cribbage_state.currentTurnPlayerId`)
-- presentation-derived fields (`presentation.handNumber`, `presentation.roundId`)
-- viewState-derived fields (`viewState.handNumber`, `viewState.currentTurnPlayerId`)
+---
 
-When network jitter makes one source advance before another, selectors render a hand from identity X while another selector reads identity Y. Symptoms: stale cards, replayed cut-card, scorecard flash, "wrong roll", result-display unmount.
+## Audit Findings
 
-## Fix shape (one consistent pattern across all three games)
+### 1. Subscription topology (per game)
 
-Per game, expose a single memoized `RenderIdentity` from the existing sync hook:
+| Game | Realtime channel filter | Polling key | Identity-boundary watcher |
+|---|---|---|---|
+| Cribbage (mobile) | `rounds id=eq.${currentRoundId}` | `rounds.id = currentRoundId` | `Game.tsx` watches `games` + `dealer_games` and re-derives `currentRound` from `rounds` list |
+| Cribbage (desktop, deprecated) | `rounds id=eq.${roundId}` | — | parent prop |
+| Gin Rummy | `rounds id=eq.${roundId}` | parent re-fetch | parent prop |
+| Holm | parent-driven via `Game.tsx` (`games id=eq.${gameId}` + rounds re-fetch) | parent polling | parent prop |
+| 3-5-7 | parent-driven; round_number cycles, hand_number is the identity dimension | parent polling | parent prop |
+| Yahtzee | parent-driven, single continuous game (no round boundary) | parent polling | n/a |
+| Horses / SCC | parent-driven, dice round identity from `dealer_games` + rounds | parent polling | parent prop |
+
+### 2. Root structural defect
+
+Game-table components scope their **own** realtime subscription to **the current round id only**. The only thing that can detect "round advanced" is the parent `Game.tsx` page, which watches the wider `games` / `dealer_games` rows and re-derives the `currentRound`. Between:
+
+1. peer client writes new round → DB
+2. parent page receives `games`/`dealer_games` update → re-fetches rounds → recomputes `currentRoundId`
+3. new `currentRoundId` prop flows down → child resubscribes
+
+…the child component is **structurally blind**. Its presentation state is correctly the OLD round; nothing locally can know it is stale. Cribbage manifests this most visibly because the OLD round's `phase==='complete'` state remains interactive (the stale-discard bug). Other games hide it behind freezes, overlays, or animation barriers — same underlying class.
+
+### 3. Three-layer sync framework gap
+
+`useGameStateSync` does the right thing **within an identity**: progress vector blocks regressive snapshots, optimistic→authoritative promotion is correct, visual contracts protect animations. But the framework has **no identity awareness**. `reset(newInitial)` is invoked externally by each game whenever the parent decides identity advanced. There is no canonical "authoritative actionable identity" feed that the framework owns.
+
+### 4. Per-game identity-mismatch logic is duplicated and divergent
+
+- Cribbage: `interactionsAllowed = renderHandKey === currentHandKey && currentRoundId === roundId && currentHandNumber === handNumber` + `isStaleCompleteAwaitingNext` latch + proactive reset effect.
+- Gin Rummy: roundId-keyed reset, no equivalent stale-complete handling.
+- Holm / 3-5-7 / Horses: ad hoc — rely on parent unmounting or rerender.
+
+Every game reinvents the gate and the reset trigger. The conditions for "are we blind right now?" are not encoded anywhere reusable.
+
+---
+
+## Architectural Recommendation
+
+### Canonical identity continuity model
+
+Adopt a single **AuthoritativeIdentity** object as the framework-level progression source:
 
 ```ts
-type RenderIdentity = {
+type AuthoritativeIdentity = {
   dealerGameId: string | null;
-  handNumber: number;
+  handNumber: number | null;
   roundId: string | null;
-  turnPlayerId: string | null;       // yahtzee/cribbage
-  handContextId?: string | null;     // holm
-  signature: string;                  // stable concat for cache keys
+  // optional, game-defined
+  phaseOrdinal?: number;
 };
 ```
 
-Rules:
-- `RenderIdentity` is computed only from `presentation` (never from raw `game`/`round` props).
-- It changes monotonically — never goes backward within a dealer game.
-- Every render selector that touches hand/turn/round identity reads from `RenderIdentity.signature`, not from individual raw fields.
-- Every boundary effect uses `RenderIdentity.signature` as its dep / guard ref.
+**One feed, one writer, one identity comparator** — owned by `Game.tsx` (or a thin hook `useAuthoritativeIdentity(gameId)`), driven by a session-scoped subscription to `dealer_games` + `rounds` filtered by `dealer_game_id` (NOT by `round_id`). This subscription survives round boundaries by construction.
 
-## Files to change (Cause A only — Cause B and C are separate follow-ups)
+### Framework changes
 
-### Shared
-- `src/lib/gameStateSync/types.ts` — add `RenderIdentity` type.
-- `src/lib/gameStateSync/useGameStateSync.ts` — derive and return `renderIdentity` alongside existing presentation. No change to sync semantics.
+Extend `useGameStateSync` with identity awareness:
 
-### Cribbage (Bugs 2, 3, 4)
-- `src/components/CribbageMobileGameTable.tsx`
-  - Active-hand selector (around line 753 + the `currentHandKey` / `renderHandKey` site near 800s) reads from `renderIdentity` instead of mixing `currentRoundId` with viewState.
-  - Cut-card animation site keys its trigger ref on `${renderIdentity.signature}:cutCard` instead of the `cutCard` prop reference.
-  - "Preparing next hand" effect deps switch to `renderIdentity.signature`.
-- `src/components/CribbageMobileCardsTab.tsx` — card-list selector reads `renderIdentity.signature` (eliminates `crib-stale-active-hand-blocked` storm).
-- `src/lib/cribbageSyncDiagnostics.ts` — no logic change; expectations still hold.
+```ts
+useGameStateSync(initial, {
+  ...,
+  identity: AuthoritativeIdentity,      // current authoritative identity
+  identityEquals?: (a, b) => boolean,   // default: deep equal on the 3 keys
+});
 
-### Gin Rummy (Bug 5)
-- `src/components/GinRummyGameTable.tsx`
-  - Result/scoring panel currently reads `presentation.handNumber` mixed with prop `handNumber` (lines ~330–365). Switch both to `renderIdentity.handNumber`.
-  - Result snapshot cache key includes `renderIdentity.signature` so cached scoring invalidates atomically with render hand.
+handle.presentationIdentity            // identity attached to current presentation
+handle.isIdentityStale                 // presentationIdentity !== identity
+handle.interactionsAllowed             // !isFrozen && !isVisualContractActive && !isIdentityStale
+```
 
-### Yahtzee (Bugs 6, 9)
-- `src/components/YahtzeeGameTable.tsx`
-  - Turn/roll display reads `renderIdentity.turnPlayerId` (not raw turn id from round state).
-  - Held-die zone selector keys on `(renderIdentity.signature, rollGen)` so a turn flip can't repaint held dice into scatter.
-  - Roll counter reads `presentation`-derived roll generation.
+Behavior:
 
-## Out of scope for this change
+1. **On identity change** (framework-detected, not game-detected):
+   - If presentation was already in a terminal/complete phase for the OLD identity → **immediately** clear presentation + authoritative, mark `pendingPostResetHydration = true` (same path as today's `reset(null)`).
+   - If presentation is mid-animation under a visual contract → contract abort with reason `'identity-advanced'`, then reset.
+   - Hydration of the NEW identity proceeds via the next `receiveAuthoritativeUpdate` (now arriving from the long-lived `dealer_game_id`-scoped subscription).
 
-- Holm reveal latches (Bugs 1, 7, 8) — these are Cause B, separate PR.
-- Source-level useRef guards on cribbage `preparing-next-hand` and Holm 357 announcement double-fire (Bugs 2, 7) — these are Cause C and ride on top of the new identity from Cause A.
-- Any change to scoring math, sync framework, RPCs, or migrations.
-- No new instrumentation (per standing constraint).
+2. **Render/action invariant** (framework-enforced, single source of truth):
+   - `interactionsAllowed === false` ⇒ game tables must render a safe placeholder and short-circuit input handlers.
+   - Replace every per-game `interactionsAllowed`/`activeHandBlocked`/`isStaleCompleteAwaitingNext` computation with the framework value.
 
-## Verification
+3. **Per-game animation latches remain unchanged**:
+   - Cut-card module registry, dice rollKeys, Chucky, held dice, announcements — all stay identity-scoped and survive on top of correct continuity (no change needed beyond keying by the framework's `presentationIdentity`).
 
-- The three diagnostic invariants `stale-dealer-game-render`, `stale-hand-render`, `result-render-mismatch` should stop firing under normal play. They remain in place — they're now the regression tripwire for Cause A.
-- Cribbage `crib-stale-active-hand-blocked` and `crib-replay-detected` should drop sharply (some C-class re-entry will remain until Cause C lands).
-- Yahtzee `yahtzee-held-die-rendered-in-scatter` should drop except in true held-mask races (those are Cause B).
+### Subscription topology rule
 
-## Order of work in this PR
+Codify a single rule:
 
-1. Add `RenderIdentity` to types + sync hook.
-2. Wire Cribbage `MobileGameTable` + `MobileCardsTab` first (largest blast radius).
-3. Wire Gin Rummy result panel.
-4. Wire Yahtzee turn/roll/held-die zone selectors.
-5. Smoke-test the build; do not run the cross-country test until B and C also land (the user has explicitly asked for forensic consolidation, not partial deploys).
+> **A game-table component MUST NOT scope its realtime subscription by `round_id`.**
+> All identity-bearing subscriptions are scoped by `dealer_game_id` (or `game_id` for single-round games) and filtered client-side by the current authoritative identity.
+
+The framework's `useAuthoritativeIdentity` hook owns this subscription and exposes `(identity, rounds[])`. Game tables consume the identity + read the matching round, so they cannot become blind when the round changes.
+
+---
+
+## Implementation Plan
+
+Smallest safe change ordered for incremental rollout, starting with the games where this manifests:
+
+### Phase 1 — Framework primitives (no game changes)
+
+1. Add `src/lib/gameStateSync/authoritativeIdentity.ts`:
+   - `type AuthoritativeIdentity`
+   - `identityEquals(a, b)`
+   - `useAuthoritativeIdentity(gameId)` hook: one realtime channel filtered by `dealer_game_id=eq.${dealerGameId}` on `rounds` + `dealer_games`, returns `{ identity, rounds }`. Survives round boundaries.
+
+2. Extend `useGameStateSync` config to accept `identity: AuthoritativeIdentity` and add:
+   - `presentationIdentityRef` (set on every accepted update + on reset)
+   - `isIdentityStale` computed from current `identity` prop vs `presentationIdentityRef`
+   - `interactionsAllowed` derived value
+   - Auto-reset effect: when `identity` changes vs the last accepted one, call the existing reset path (with visual-contract abort if needed). Emits `framework-identity-advanced` event.
+
+3. Unit tests covering: OLD→NEW direct advance, OLD→null→NEW bounce suppression, contract-active advance, complete-phase advance.
+
+### Phase 2 — Cribbage cutover (highest-value, fix already half-built here)
+
+4. `CribbageMobileGameTable` consumes `useAuthoritativeIdentity` instead of relying on parent props for `currentRoundId` / `currentHandNumber`.
+5. Replace `interactionsAllowed`, `isStaleCompleteAwaitingNext`, and the proactive-reset effect with framework values.
+6. Remove the round-scoped realtime subscription (`cribbage-mobile-${currentRoundId}`); polling and realtime now flow through the identity hook.
+7. Keep cut-card module registry as-is.
+
+### Phase 3 — Gin Rummy cutover
+
+8. Same swap. Removes the `gin-rummy-${roundId}` channel.
+
+### Phase 4 — Holm, 3-5-7, Horses, SCC cutover
+
+9. Each game replaces its parent-driven prop-comparison checks with the framework `interactionsAllowed` gate. Subscriptions migrate to `dealer_game_id` scope.
+
+### Phase 5 — Enforcement
+
+10. Add an ESLint rule (or a CI grep guard) that fails on `\.channel\([^)]*\$\{[^}]*roundId\}` patterns in `src/components/*GameTable*.tsx`.
+11. Update `INTEGRATION_CHECKLIST.md` with the new rule and the new framework hooks.
+
+---
+
+## Technical Notes
+
+- `useAuthoritativeIdentity` MUST subscribe to `dealer_games` AND `rounds` (filter `dealer_game_id=eq.X`). `rounds` INSERT events are what announce new-round identity advance. Today, no per-game subscription listens for INSERT — only UPDATE on a known id — which is exactly why blind windows exist.
+- Identity hashing must include `handNumber` because 3-5-7 cycles `round_number` 1/2/3 per hand and Cribbage hand identity needs both.
+- The framework's auto-reset replaces the manually-wired `syncHandle.reset(null)` calls in each game. Games may still call `reset()` for non-identity reasons (debug, error recovery).
+- Visual contracts already handle `reset-boundary` abort; the new path reuses that with reason `'identity-advanced'`.
+- No DB/schema changes. No game-logic changes. No edge-function changes. Purely client-side framework + per-game wiring.
+
+---
+
+## Risk / Rollout
+
+- Phase 1 ships dark (no game uses it). Zero risk.
+- Phase 2 (Cribbage) is the canary; if it regresses, revert by un-wiring the identity prop — framework falls back to current `reset()`-driven behavior.
+- Per-game migrations are independent; framework supports both old (manual reset) and new (identity-driven reset) modes during transition.
+- Removing round-scoped channels reduces channel count per game from 2 to 1 — a small Realtime-server load reduction, not a regression risk.
+
+---
+
+## Out of Scope (explicit)
+
+- No changes to game scoring, bot logic, or timeout policy.
+- No changes to visual contract semantics.
+- No changes to per-game animation latches (cut-card, dice, etc.).
+- No desktop-path work (deprecated).

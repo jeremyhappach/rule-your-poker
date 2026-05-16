@@ -1,4 +1,5 @@
 import type { VisualContractIdentity, VisualContractOptions } from './visualContract';
+import type { AuthoritativeIdentity } from './authoritativeIdentity';
 
 /**
  * Multiplayer Anti-Regression Framework — Core Types
@@ -81,6 +82,23 @@ export interface GameStateSyncConfig<T> {
    * Defaults to JSON.stringify comparison.
    */
   isEqual?: (a: T, b: T) => boolean;
+
+  /**
+   * OPTIONAL identity awareness. When provided, the framework auto-resets
+   * presentation on forward identity advancement and exposes
+   * `interactionsAllowed` for action gating. Omit to keep legacy
+   * manual-reset behavior.
+   */
+  identity?: AuthoritativeIdentity | null;
+
+  /**
+   * Optional identity equality override. Defaults to deep tuple equality
+   * on (dealerGameId, handNumber, roundId).
+   */
+  identityEquals?: (
+    a: AuthoritativeIdentity | null,
+    b: AuthoritativeIdentity | null,
+  ) => boolean;
 }
 
 /**
@@ -176,4 +194,26 @@ export interface GameStateSyncHandle<T> {
 
    /** Identity of the active visual contract, or null. */
    activeVisualContract: VisualContractIdentity | null;
+
+   // ── Identity awareness (only meaningful when `config.identity` is wired) ──
+   /**
+    * Identity attached to the current presentation state. Set on every
+    * accepted authoritative update and on reset(). May be null if the
+    * framework has not yet observed an identity.
+    */
+   presentationIdentity: AuthoritativeIdentity | null;
+
+   /**
+    * True when the framework has been told about an authoritative identity
+    * that differs from `presentationIdentity`. While true, render must
+    * fall back to a safe placeholder and action handlers MUST short-circuit.
+    */
+   isIdentityStale: boolean;
+
+   /**
+    * Single framework-owned action-gate. Equivalent to:
+    *   !isFrozen && !isVisualContractActive && !isIdentityStale
+    * Game tables SHOULD use this instead of reinventing per-game gates.
+    */
+   interactionsAllowed: boolean;
 }
