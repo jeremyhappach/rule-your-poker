@@ -517,5 +517,6 @@ export function useGameStateSync<T>(
     presentationIdentity,
     isIdentityStale,
     interactionsAllowed,
+    canInteractNow,
   };
 }
