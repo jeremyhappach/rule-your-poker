@@ -182,7 +182,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const [gameConfigResult, gameDefaultsResult] = await Promise.all([
     supabase
       .from('games')
-      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at')
+      .select('ante_amount, leg_value, status, current_round, total_hands, pot, current_game_uuid, game_over_at, game_type')
       .eq('id', gameId)
       .single(),
     supabase
@@ -191,9 +191,26 @@ export async function startRound(gameId: string, roundNumber: number) {
       .eq('game_type', '3-5-7')
       .maybeSingle()
   ]);
-  
+
   const gameConfig = gameConfigResult.data;
   const gameDefaults = gameDefaultsResult.data;
+
+  // P0 CONTAINMENT (CRIB-CORRUPT-01): startRound is the 3-5-7 round-creation path.
+  // It must NEVER fire against another game type — doing so inserts spurious round
+  // rows (e.g. round_number=2 reusing the current hand_number) into a game whose
+  // own round-creation logic only uses round_number=1, bypassing the unique
+  // (dealer_game_id, hand_number, round_number) lock and corrupting live state.
+  const gt = (gameConfig as any)?.game_type;
+  const is357 = gt === '3-5-7' || gt === '3-5-7-game' || gt === '357';
+  if (gameConfig && !is357) {
+    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'BLOCKED_NON_357_GAME_TYPE', {
+      roundNumber,
+      gameType: gt ?? null,
+      dealerGameId: (gameConfig as any)?.current_game_uuid ?? null,
+    });
+    console.warn('[START_ROUND] startRound-suppressed-non-357 — refusing to create round for game_type=', gt);
+    return;
+  }
 
   // CRITICAL GUARD: Block round creation if game is already over or ended
   if (gameConfig?.status === 'game_over' || gameConfig?.status === 'session_ended') {
@@ -2199,9 +2216,19 @@ export async function proceedToNextRound(gameId: string) {
   // Get the next round number
   const { data: game } = await supabase
     .from('games')
-    .select('next_round_number, status, awaiting_next_round')
+    .select('next_round_number, status, awaiting_next_round, game_type')
     .eq('id', gameId)
     .single();
+
+  // P0 CONTAINMENT (CRIB-CORRUPT-01): proceedToNextRound is the 3-5-7 round
+  // advancement path. Calling it on a cribbage / gin-rummy / etc. game inserts
+  // a spurious round mid-hand and resets visible state. Whitelist 3-5-7 only.
+  const _gt = (game as any)?.game_type;
+  const _is357 = _gt === '3-5-7' || _gt === '3-5-7-game' || _gt === '357';
+  if (game && !_is357) {
+    console.warn('[PROCEED_NEXT_ROUND] proceedToNextRound-suppressed-non-357 — game_type=', _gt);
+    return;
+  }
 
   if (!game?.next_round_number) {
     console.log('[PROCEED_NEXT_ROUND] No next round configured');

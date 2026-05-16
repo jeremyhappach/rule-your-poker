@@ -4494,6 +4494,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               });
             }
             
+            // P0 CONTAINMENT (CRIB-CORRUPT-01): proceedToNextRound is the 3-5-7
+            // round-advancement path. Cribbage and Gin Rummy create their own
+            // rounds via their own next-hand logic and must NEVER reach here.
+            // Calling proceedToNextRound on those game types inserts spurious
+            // rounds mid-hand and resets visible state (clears cards, score=0).
+            const _gtForProceed = freshGame?.game_type;
+            const _is357ForProceed = _gtForProceed === '3-5-7' || _gtForProceed === '3-5-7-game' || _gtForProceed === '357';
+            if (!_is357ForProceed) {
+              console.warn('[AWAITING_NEXT_ROUND] proceedToNextRound-suppressed-non-357 game_type=', _gtForProceed,
+                '— refusing to run 3-5-7 round-advance path against', _gtForProceed, 'game.');
+              // Clear awaiting flag so we don't loop on the timer.
+              try {
+                await supabase
+                  .from('games')
+                  .update({ awaiting_next_round: false, next_round_number: null })
+                  .eq('id', gameId)
+                  .eq('awaiting_next_round', true);
+              } catch (e) {
+                console.warn('[AWAITING_NEXT_ROUND] Failed to clear stale awaiting flag', e);
+              }
+              return;
+            }
+
             // First, clear the result and proceed to next round
             await proceedToNextRound(gameId);
             
