@@ -1281,28 +1281,40 @@ export function useHorsesMobileController({
     }).catch(() => {});
   }, [enabled, presentationRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
 
-  // Only show the overlay to the player who rolled no qualify, not to spectators
+  // Only show the overlay to the player who rolled no qualify, not to spectators.
+  //
+  // CRITICAL: read from `incomingHorsesState` (authoritative) — NOT presentationState.
+  // Presentation can briefly show stale `isComplete + !isQualified` from the previous round
+  // after a rollover advances currentRoundId, which previously caused the overlay to re-fire
+  // (loop) once per rollover. Authoritative state is fresh as soon as the new round is created.
   useEffect(() => {
     if (!enabled || !isSCC) return;
-    if (!presentationRoundId) return;
+    if (!currentRoundId) return;
     if (!myPlayer) return;
-    
-    // Only check the current user's state
-    const myPlayerState = horsesState?.playerStates?.[myPlayer.id];
+
+    const authState = incomingHorsesStateRef.current;
+    const myPlayerState = authState?.playerStates?.[myPlayer.id];
     if (!myPlayerState?.isComplete || !myPlayerState?.result) return;
-    
+
     const result = myPlayerState.result as SCCHandResult;
     if (!result.isQualified) {
-      const noQualifyKey = `${presentationRoundId}:${myPlayer.id}`;
+      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
       if (noQualifyShownForRef.current.has(noQualifyKey)) return;
-      
+
       noQualifyShownForRef.current.add(noQualifyKey);
-      
+
       // Show animation for the current user (no need for player name since it's them)
       setNoQualifyPlayerName(null);
       setShowNoQualifyAnimation(true);
     }
-  }, [enabled, isSCC, presentationRoundId, myPlayer, horsesState?.playerStates]);
+  }, [
+    enabled,
+    isSCC,
+    currentRoundId,
+    myPlayer,
+    incomingHorsesState?.playerStates?.[myPlayer?.id ?? ""]?.isComplete,
+    (incomingHorsesState?.playerStates?.[myPlayer?.id ?? ""] as any)?.result?.isQualified,
+  ]);
 
   // Handler to reset the no qualify animation
   const handleNoQualifyAnimationComplete = useCallback(() => {
