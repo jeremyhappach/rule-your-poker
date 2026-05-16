@@ -386,6 +386,7 @@ export function useHorsesMobileController({
 
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   const prevAuthTurnPlayerRef = useRef<string | null>(null);
+  const prevAuthRollKeyRef = useRef<Record<string, number>>({});
   useEffect(() => {
     if (!incomingHorsesState) return;
     const beforeTurn = prevAuthTurnPlayerRef.current;
@@ -413,7 +414,42 @@ export function useHorsesMobileController({
         },
       });
     }
-  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
+
+    // INSTRUMENTATION (Defect 1): record every authoritative snapshot arrival
+    // for the current turn player whose rollKey changed. Lets us verify whether
+    // observers actually receive roll-1/roll-2 snapshots from realtime, or only
+    // the terminal roll-3 (coalescing hypothesis).
+    if (afterTurn) {
+      const ts = (incomingHorsesState.playerStates as any)?.[afterTurn];
+      const rollKey = typeof ts?.rollKey === 'number' ? ts.rollKey : null;
+      const prevRollKey = prevAuthRollKeyRef.current[afterTurn] ?? null;
+      if (rollKey !== null && rollKey !== prevRollKey) {
+        prevAuthRollKeyRef.current[afterTurn] = rollKey;
+        const isObserver = !!myPlayer?.id && myPlayer.id !== afterTurn;
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-auth-snapshot-received',
+          payload: {
+            rollerId: afterTurn.slice(0, 8),
+            rollKey,
+            prevRollKey,
+            rollsRemaining: ts?.rollsRemaining ?? null,
+            isComplete: !!ts?.isComplete,
+            holdSeq: ts?.holdSeq ?? null,
+            diceValues: Array.isArray(ts?.dice) ? ts.dice.map((d: any) => d?.value ?? 0) : null,
+            isObserver,
+            acceptedByFramework: result.accepted,
+            wasFrozenAtWrite: result.wasFrozenAtWrite,
+            tsClient: Date.now(),
+          },
+        });
+      }
+    }
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber, myPlayer?.id]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
