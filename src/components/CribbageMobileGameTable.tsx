@@ -4821,7 +4821,7 @@ export const CribbageMobileGameTable = ({
             }
             return null;
           })()}
-          {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (renderHandKey === currentHandKey) && (
+          {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && interactionsAllowed && (
             <CribbageMobileCardsTab
               key={renderHandKey}
               cribbageState={viewState}
@@ -4846,6 +4846,7 @@ export const CribbageMobileGameTable = ({
                 handNumber,
                 isGameplayMode,
                 viewStateIsCurrentRound,
+                interactionsAllowed,
               }}
             />
           )}
