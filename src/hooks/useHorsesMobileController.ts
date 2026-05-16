@@ -286,6 +286,10 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!authIdentity) return;
     const prev = lastObservedIdentityRef.current;
+    // P0 #2 AUDIT FIX: dedup by roundId so a single round transition can't fire twice
+    // when handNumber/dealerGameId also bump in the same forward advance (was amplifying
+    // race windows in tie-rollover paths).
+    if (prev && prev.roundId === authIdentity.roundId) return;
     lastObservedIdentityRef.current = authIdentity;
     if (!prev) return;
     if (!isIdentityForward(prev, authIdentity)) return;
@@ -401,6 +405,8 @@ export function useHorsesMobileController({
   const incomingHorsesState = horsesState;
   const incomingHorsesStateRef = useRef(horsesState);
   incomingHorsesStateRef.current = horsesState;
+  const currentRoundIdRef = useRef<string | null>(currentRoundId);
+  currentRoundIdRef.current = currentRoundId;
 
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   const prevAuthTurnPlayerRef = useRef<string | null>(null);
@@ -2290,26 +2296,56 @@ export function useHorsesMobileController({
     processedWinRoundRef.current = null;
   }, [gameId]);
 
+  // P0 #2 FIX: Reset on round identity advance so a NEW round can be processed even
+  // if a prior round's id was previously recorded. Pair with the authoritative-state
+  // gate below to ensure stale presentation winners cannot retrigger on the new round.
+  useEffect(() => {
+    processedWinRoundRef.current = null;
+  }, [currentRoundId]);
+
   useEffect(() => {
     if (!enabled) return;
-    if (gamePhase !== "complete" || !gameId || !presentationRoundId) return;
-    if (winningPlayerIds.length === 0) return;
-    
-    // CRITICAL: Block win processing when game is paused - prevents rollover triggering
-    if (isPaused) {
-      return;
-    }
+    if (!gameId || !currentRoundId) return;
+    if (isPaused) return;
 
-    // Prevent duplicate processing
-    if (processedWinRoundRef.current === presentationRoundId) return;
+    // P0 #2 ROOT FIX: Derive winners from AUTHORITATIVE state, not presentation.
+    // Presentation lags behind currentRoundId (visual-contract gating), so the prior
+    // round's terminal `winningPlayerIds` from presentationState can survive into the
+    // new currentRoundId and re-trigger rollover, creating runaway round creation.
+    // Authoritative state flips to gamePhase='playing' the instant the new round arrives.
+    const authState = incomingHorsesStateRef.current;
+    if (!authState || authState.gamePhase !== 'complete') return;
 
-    // ANY human player can attempt processing — atomic DB guards prevent duplicates.
+    const authCompletedResults = Object.entries(authState.playerStates || {})
+      .filter(([_, s]: any) => s?.isComplete && s?.result)
+      .map(([playerId, s]: any) => ({ playerId, result: s.result }));
+    if (authCompletedResults.length === 0) return;
+
+    const authWinningIds = isSCC
+      ? determineSCCWinners(authCompletedResults.map(r => r.result as SCCHandResult)).map(i => authCompletedResults[i].playerId)
+      : determineWinners(authCompletedResults.map(r => r.result as HorsesHandResult)).map(i => authCompletedResults[i].playerId);
+    if (authWinningIds.length === 0) return;
+
+    // Prevent duplicate processing keyed to the AUTHORITATIVE round identity.
+    if (processedWinRoundRef.current === currentRoundId) return;
+
     const myPlayerId = myPlayer?.id;
-    if (!myPlayerId) return; // Must be a seated player
+    if (!myPlayerId) return;
+
+    // Snapshot the originating round identity. If currentRoundId advances by the time
+    // the async work runs, abort — the win belonged to a prior round.
+    const originatingRoundId = currentRoundId;
 
     const processWin = async () => {
-      // Mark as processed IMMEDIATELY to prevent local double-processing
-      processedWinRoundRef.current = presentationRoundId;
+      // Hard-scope guard: round must still be the originating one.
+      if (currentRoundIdRef.current && currentRoundIdRef.current !== originatingRoundId) {
+        return;
+      }
+      processedWinRoundRef.current = originatingRoundId;
+
+      // Replace closure-captured winningPlayerIds/completedResults with auth-derived ones.
+      const winningPlayerIds = authWinningIds;
+      const completedResults = authCompletedResults;
 
       if (winningPlayerIds.length > 1) {
         // ATOMIC GUARD: Only one client claims the tie processing.
@@ -2483,18 +2519,18 @@ export function useHorsesMobileController({
     processWin();
   }, [
     enabled,
-    gamePhase,
     gameId,
     currentRoundId,
-    winningPlayerIds,
+    // P0 #2: depend on AUTHORITATIVE state, not presentation-derived winningPlayerIds.
+    incomingHorsesState,
     players,
     currentUserId,
-    completedResults,
     pot,
     anteAmount,
     getPlayerUsername,
     myPlayer,
     isPaused,
+    isSCC,
   ]);
 
   // RECOVERY: If gamePhase is "playing" but ALL players in turnOrder have isComplete,
@@ -2873,19 +2909,18 @@ export function useHorsesMobileController({
       maxSeenRollKeyRef.current[currentTurnPlayerId] = newRollKey;
     }
 
-    // If the turn completed, ensure we stop showing rolling state, but keep dice visible.
-    // IMPORTANT: Also update the rollKey ref to prevent the "new roll detected" branch from
-    // firing if isComplete arrives slightly AFTER the rollKey update.
-    if (state.isComplete) {
+    // P0 FIX: do NOT short-circuit terminal completion when this is also a NEW rollKey.
+    // The previous behavior (return early on state.isComplete) caused observers to bypass
+    // the fly-in for the terminal (3rd) roll entirely — animation never ran for the roll
+    // that actually produced the final dice. Only treat isComplete as a "post-completion
+    // bookkeeping bump" when the rollKey hasn't advanced since we last observed.
+    const isNewRollKeyHere = newRollKey !== prevRollKey;
+    if (state.isComplete && !isNewRollKeyHere) {
       if (observerRollingTimerRef.current) {
         window.clearTimeout(observerRollingTimerRef.current);
         observerRollingTimerRef.current = null;
       }
-      // Update rollKey BEFORE setting display state to prevent race
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
-      
-      
-      // Use the final DB dice values (not masked) since the turn is done
       const finalDice = (state.dice as any[]) ?? [];
       setObserverDisplayState((prev) => {
         if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
@@ -2893,17 +2928,14 @@ export function useHorsesMobileController({
           ...prev,
           dice: finalDice as (HorsesDieType | SCCDieType)[],
           isRolling: false,
-          // IMPORTANT: do NOT update rollKey on completion.
-          // The completion rollKey bump is a server-side bookkeeping change and will cause DiceTableLayout
-          // to re-trigger fly-in if we pass it through (especially if the component remounts during the hold window).
-          preRollSig: undefined, // Clear to allow DB dice through
+          preRollSig: undefined,
         };
       });
       return;
     }
 
-    // Detect a new roll start.
-    if (newRollKey !== prevRollKey) {
+    // Detect a new roll start (intermediate or terminal).
+    if (isNewRollKeyHere) {
       // Track what rollsRemaining was BEFORE this new rollKey, so we can distinguish:
       // - Roll 3 completing (prevRollsRemaining=1 -> rollsRemaining=0) = ANIMATE
       // - Bookkeeping bump after completion (prevRollsRemaining=0 -> rollsRemaining=0) = SKIP
@@ -2957,8 +2989,48 @@ export function useHorsesMobileController({
         return;
       }
 
-      // Don't animate on the first observation (no baseline)
-      if (prevRollKey === undefined) {
+      // P0 FIX: discriminate hydration catch-up from a live first roll using rollStartedAt
+      // freshness, NOT `prevRollKey === undefined`. A null prevRollKey is true on EVERY
+      // first real roll of a turn (the observer never saw a baseline for this player on
+      // this turn), so the old guard incorrectly dropped the very first intermediate roll
+      // — and combined with terminal rolls bypassing this branch, it caused "ZERO fly-in
+      // until terminal" on SCC and "missed roll 2" on Horses.
+      //
+      // Rule: if rollStartedAt exists and is within the animation window, this is a LIVE
+      // roll → animate, regardless of prevRollKey. If rollStartedAt is missing/stale, this
+      // is a hydration snapshot → snap to final without animation.
+      const rollStartedAt = (state as any)?.rollStartedAt;
+      const localDurationFull = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+      let durationMs: number = localDurationFull;
+      let isLiveRoll = true;
+
+      if (rollStartedAt) {
+        const elapsed = Date.now() - new Date(rollStartedAt).getTime();
+        if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
+          isLiveRoll = false;
+        } else {
+          durationMs = Math.max(200, localDurationFull - elapsed);
+        }
+      } else if (prevRollKey === undefined) {
+        // No timestamp AND we've never observed this player → treat as hydration catch-up.
+        isLiveRoll = false;
+      }
+
+      if (!isLiveRoll) {
+        const finalDice = (state.dice as any[]) ?? [];
+        const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
+        lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+        lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
+        setObserverDisplayState({
+          playerId: currentTurnPlayerId,
+          dice: finalDice as (HorsesDieType | SCCDieType)[],
+          rollsRemaining: state.rollsRemaining,
+          isRolling: false,
+          heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+          heldCountBeforeComplete: derivedHeldCount2,
+          rollKey: newRollKey,
+          preRollSig: undefined,
+        });
         persistSyncDebugEvent({
           gameId: gameId ?? null,
           gameType: resolvedGameType,
@@ -2967,129 +3039,79 @@ export function useHorsesMobileController({
           eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
-            decision: 'skipped-first-observation',
+            decision: 'hydration-snap',
             rollerId: currentTurnPlayerId.slice(0, 8),
             newRollKey,
+            hasRollStartedAt: !!rollStartedAt,
             rollsRemaining: state.rollsRemaining,
             isComplete: !!state.isComplete,
             tsClient: Date.now(),
           },
         });
+        return;
       }
-      if (prevRollKey !== undefined) {
-        // AUTHORITATIVE ANIMATION TIMING: Use rollStartedAt from DB if available,
-        // falling back to local timer duration. This ensures observers animate in sync
-        // with the roller's authoritative timeline, not just local guesses.
-        const rollStartedAt = (state as any)?.rollStartedAt;
-        const rollAnimationMinEndAt = (state as any)?.rollAnimationMinEndAt;
-        let durationMs: number;
-        
-        if (rollStartedAt) {
-          const rollStartTime = new Date(rollStartedAt).getTime();
-          const elapsed = Date.now() - rollStartTime;
-          
-          if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
-            // Roll happened too long ago — snap to post-animation state, don't replay
-            const finalDice = (state.dice as any[]) ?? [];
-            const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
-            lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
-            lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
-            setObserverDisplayState({
-              playerId: currentTurnPlayerId,
-              dice: finalDice as (HorsesDieType | SCCDieType)[],
-              rollsRemaining: state.rollsRemaining,
-              isRolling: false,
-              heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
-              heldCountBeforeComplete: derivedHeldCount2,
-              rollKey: newRollKey,
-              preRollSig: undefined,
-            });
-            return;
-          }
-          
-          // Use remaining time in the animation window
-          const localDuration = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
-          durationMs = Math.max(200, localDuration - elapsed);
-        } else {
-          durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
-        }
 
+      console.log(
+        `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} (duration=${durationMs}ms, isComplete=${state.isComplete})`,
+      );
 
-        console.log(
-          `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} (duration=${durationMs}ms)`,
-        );
+      if (observerRollingTimerRef.current) {
+        window.clearTimeout(observerRollingTimerRef.current);
+        observerRollingTimerRef.current = null;
+      }
 
-        if (observerRollingTimerRef.current) {
-          window.clearTimeout(observerRollingTimerRef.current);
-          observerRollingTimerRef.current = null;
-        }
+      const preRollDice = (state.dice as any[]) ?? [];
+      const preRollSig = preRollDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+      const displayDice = preRollDice;
+      const derivedHeldCount = preRollDice.filter((d: any) => !!d?.isHeld).length;
 
-        // Start protected observer display state.
-        // IMPORTANT: At roll start, DB often still contains the *previous* roll values.
-        // We keep held dice as-is but mark unheld dice with a special "rolling" marker.
-        // Instead of masking to value=0 (which DiceTableLayout can cache as "valid"), we
-        // preserve the old values but set isRolling=true so the fly-in animation shows them.
-        const preRollDice = (state.dice as any[]) ?? [];
-        const preRollSig = preRollDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+      const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
+      const dbHoldSeq = (state as any).holdSeq ?? 0;
+      maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
 
-        // DON'T mask dice to value=0 - this gets cached and causes null dice to "land".
-        // Instead, keep the pre-roll values; the fly-in animation will overlay them anyway.
-        // DiceTableLayout only shows the animation overlay when isRolling=true.
-        const displayDice = preRollDice;
-        
-        // FIX #3: Derive heldCountBeforeComplete directly from dice (not stale metadata)
-        const derivedHeldCount = preRollDice.filter((d: any) => !!d?.isHeld).length;
-        
-        // Reset the holdSeq tracker for this new rollKey
-        const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
-        const dbHoldSeq = (state as any).holdSeq ?? 0;
-        maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
+      setObserverDisplayState({
+        playerId: currentTurnPlayerId,
+        dice: displayDice as (HorsesDieType | SCCDieType)[],
+        rollsRemaining: state.rollsRemaining,
+        isRolling: true,
+        heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+        heldCountBeforeComplete: derivedHeldCount,
+        rollKey: newRollKey,
+        holdSeq: dbHoldSeq,
+        preRollSig,
+      });
 
-        setObserverDisplayState({
-          playerId: currentTurnPlayerId,
-          dice: displayDice as (HorsesDieType | SCCDieType)[],
-          rollsRemaining: state.rollsRemaining,
-          isRolling: true,
-          heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
-          heldCountBeforeComplete: derivedHeldCount,
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'invariant', severity: 'info',
+        eventName: 'horses-observer-flyin-decision',
+        payload: {
+          decision: 'fired',
+          rollerId: currentTurnPlayerId?.slice(0, 8) ?? null,
           rollKey: newRollKey,
-          holdSeq: dbHoldSeq,
-          preRollSig,
-        });
+          prevRollKey: prevRollKey ?? null,
+          rollsRemaining: state.rollsRemaining,
+          isComplete: !!state.isComplete,
+          durationMs,
+          usedRollStartedAt: !!rollStartedAt,
+          tsClient: Date.now(),
+        },
+      });
 
-        // NOTE: presentation is NOT frozen here. observerDisplayState (scoped by
-        // playerId+rollKey) is rendered above presentation and provides the fly-in
-        // overlay; presentation continues to advance freely so authoritative
-        // turn-handoff snapshots reach the next client without delay.
-        persistSyncDebugEvent({
-          gameId: gameId ?? null,
-          gameType: resolvedGameType,
-          handNumber: monotonicHandNumber,
-          roundId: currentRoundId,
-          eventType: 'invariant', severity: 'info',
-          eventName: 'horses-observer-flyin-decision',
-          payload: {
-            decision: 'fired',
-            rollerId: currentTurnPlayerId?.slice(0, 8) ?? null,
-            rollKey: newRollKey,
-            prevRollKey: prevRollKey ?? null,
-            rollsRemaining: state.rollsRemaining,
-            durationMs,
-            usedRollStartedAt: !!(state as any)?.rollStartedAt,
-            tsClient: Date.now(),
-          },
+      observerRollingTimerRef.current = window.setTimeout(() => {
+        setObserverDisplayState((prev) => {
+          if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
+          if (prev.rollKey !== newRollKey) return prev;
+          // On terminal completion, sync to final DB dice values when animation ends so
+          // the completedTurnHold overlay layers on top of the correct final frame.
+          const finalDiceAfter = state.isComplete ? ((state.dice as any[]) ?? prev.dice) : prev.dice;
+          return { ...prev, dice: finalDiceAfter as (HorsesDieType | SCCDieType)[], isRolling: false };
         });
-
-        // End rolling state after the animation window. Do NOT clear the display state.
-        observerRollingTimerRef.current = window.setTimeout(() => {
-          setObserverDisplayState((prev) => {
-            if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
-            if (prev.rollKey !== newRollKey) return prev;
-            return { ...prev, isRolling: false };
-          });
-          observerRollingTimerRef.current = null;
-        }, durationMs);
-      }
+        observerRollingTimerRef.current = null;
+      }, durationMs);
 
       return;
     }
