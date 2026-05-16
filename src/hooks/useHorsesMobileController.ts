@@ -2290,26 +2290,56 @@ export function useHorsesMobileController({
     processedWinRoundRef.current = null;
   }, [gameId]);
 
+  // P0 #2 FIX: Reset on round identity advance so a NEW round can be processed even
+  // if a prior round's id was previously recorded. Pair with the authoritative-state
+  // gate below to ensure stale presentation winners cannot retrigger on the new round.
+  useEffect(() => {
+    processedWinRoundRef.current = null;
+  }, [currentRoundId]);
+
   useEffect(() => {
     if (!enabled) return;
-    if (gamePhase !== "complete" || !gameId || !presentationRoundId) return;
-    if (winningPlayerIds.length === 0) return;
-    
-    // CRITICAL: Block win processing when game is paused - prevents rollover triggering
-    if (isPaused) {
-      return;
-    }
+    if (!gameId || !currentRoundId) return;
+    if (isPaused) return;
 
-    // Prevent duplicate processing
-    if (processedWinRoundRef.current === presentationRoundId) return;
+    // P0 #2 ROOT FIX: Derive winners from AUTHORITATIVE state, not presentation.
+    // Presentation lags behind currentRoundId (visual-contract gating), so the prior
+    // round's terminal `winningPlayerIds` from presentationState can survive into the
+    // new currentRoundId and re-trigger rollover, creating runaway round creation.
+    // Authoritative state flips to gamePhase='playing' the instant the new round arrives.
+    const authState = incomingHorsesStateRef.current;
+    if (!authState || authState.gamePhase !== 'complete') return;
 
-    // ANY human player can attempt processing — atomic DB guards prevent duplicates.
+    const authCompletedResults = Object.entries(authState.playerStates || {})
+      .filter(([_, s]: any) => s?.isComplete && s?.result)
+      .map(([playerId, s]: any) => ({ playerId, result: s.result }));
+    if (authCompletedResults.length === 0) return;
+
+    const authWinningIds = isSCC
+      ? determineSCCWinners(authCompletedResults.map(r => r.result as SCCHandResult)).map(i => authCompletedResults[i].playerId)
+      : determineWinners(authCompletedResults.map(r => r.result as HorsesHandResult)).map(i => authCompletedResults[i].playerId);
+    if (authWinningIds.length === 0) return;
+
+    // Prevent duplicate processing keyed to the AUTHORITATIVE round identity.
+    if (processedWinRoundRef.current === currentRoundId) return;
+
     const myPlayerId = myPlayer?.id;
-    if (!myPlayerId) return; // Must be a seated player
+    if (!myPlayerId) return;
+
+    // Snapshot the originating round identity. If currentRoundId advances by the time
+    // the async work runs, abort — the win belonged to a prior round.
+    const originatingRoundId = currentRoundId;
 
     const processWin = async () => {
-      // Mark as processed IMMEDIATELY to prevent local double-processing
-      processedWinRoundRef.current = presentationRoundId;
+      // Hard-scope guard: round must still be the originating one.
+      if (currentRoundIdRef.current && currentRoundIdRef.current !== originatingRoundId) {
+        return;
+      }
+      processedWinRoundRef.current = originatingRoundId;
+
+      // Replace closure-captured winningPlayerIds/completedResults with auth-derived ones.
+      const winningPlayerIds = authWinningIds;
+      const completedResults = authCompletedResults;
 
       if (winningPlayerIds.length > 1) {
         // ATOMIC GUARD: Only one client claims the tie processing.
