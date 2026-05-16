@@ -230,6 +230,10 @@ interface MobileGameTableProps {
   // Horses (dice) state
   horsesRoundId?: string | null;
   horsesState?: HorsesStateFromDB | null;
+  /** Dealer-game (session) UUID for the dice game framework identity feed. */
+  horsesDealerGameId?: string | null;
+  /** Authoritative hand_number of the current round (drives progress vector). */
+  horsesHandNumber?: number | null;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
