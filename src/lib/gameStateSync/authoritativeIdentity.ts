@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 export {
   authoritativeIdentityEquals,
@@ -29,7 +30,12 @@ export {
 } from './authoritativeIdentityPure';
 export type { AuthoritativeIdentity } from './authoritativeIdentityPure';
 
-import type { AuthoritativeIdentity } from './authoritativeIdentityPure';
+import {
+  authoritativeIdentityEquals,
+  isIdentityForward,
+  identityKey,
+  type AuthoritativeIdentity,
+} from './authoritativeIdentityPure';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useAuthoritativeIdentity — long-lived subscription scoped by dealer_game_id
