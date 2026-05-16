@@ -1051,6 +1051,22 @@ async function checkAllDecisionsIn(gameId: string) {
   // round actually has a decision. A stale all_decisions_in=true from a previous hand/round
   // can race with a new round creation, causing endRound to fire with zero decisions.
   if (game?.all_decisions_in) {
+    // P0-CONTAINMENT: only Holm/3-5-7 use the all_decisions_in → endRound recovery
+    // path. Other game types must never trigger endRound; doing so writes
+    // awaiting_next_round into rows whose lifecycle does not own that field.
+    const gTypeCheck = (game as any)?.game_type;
+    const isHolmOrThreeFiveSeven =
+      gTypeCheck === '3-5-7' || gTypeCheck === '3-5-7-game' || gTypeCheck === '357' ||
+      gTypeCheck === 'holm' || gTypeCheck === 'holm-game';
+    if (!isHolmOrThreeFiveSeven) {
+      console.error('[CHECK_ALL_DECISIONS] checkAllDecisions-suppressed-non-holm-357', {
+        gameId: shortGameId, gameType: gTypeCheck,
+      });
+      // Also clear the stale flag so this doesn't loop forever.
+      await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
+      return;
+    }
+
     console.warn(`[CHECK_ALL_DECISIONS] all_decisions_in already true - checking if decisions exist`, {
       gameId: shortGameId,
       status: game.status,
