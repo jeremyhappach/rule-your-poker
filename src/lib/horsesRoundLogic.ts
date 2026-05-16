@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
-import { persistTransition } from "./persistSyncDebugEvent";
+import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
 import { logHorsesHandStart } from "./horsesSyncDiagnostics";
 
 export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
@@ -334,8 +334,49 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
   if (roundError || !roundData) {
     console.error('[HORSES] Failed to create round:', roundError);
+    persistSyncDebugEvent({
+      gameId,
+      gameType,
+      handNumber: newHandNumber,
+      roundId: null,
+      eventType: 'invariant', severity: 'error',
+      eventName: 'horses-round-create-failed',
+      payload: {
+        error: roundError?.message ?? 'unknown',
+        isFirstHand,
+        newRoundNumber,
+        newHandNumber,
+        dealerGameId,
+        tsClient: Date.now(),
+      },
+    });
     throw new Error('Failed to create round');
   }
+
+  // INSTRUMENTATION (P0 #2): record every successful round creation with caller
+  // identity so we can correlate runaway rollover loops to a specific client.
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber: newHandNumber,
+    roundId: roundData.id,
+    eventType: 'invariant', severity: 'info',
+    eventName: 'horses-round-created',
+    payload: {
+      newRoundId: roundData.id.slice(0, 8),
+      isFirstHand,
+      newRoundNumber,
+      newHandNumber,
+      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+      prevAwaitingNextRound: game.awaiting_next_round,
+      prevStatus: game.status,
+      potForRound,
+      activePlayerCount: activePlayers.length,
+      turnOrder: turnOrder.map(p => p.slice(0, 8)),
+      firstTurnPlayer: turnOrder[0]?.slice(0, 8) ?? null,
+      tsClient: Date.now(),
+    },
+  });
 
   logHorsesHandStart(gameId, newHandNumber, activePlayers.length, gameType, roundData.id);
 
