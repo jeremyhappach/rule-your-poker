@@ -58,17 +58,28 @@ export const CribbageCutCardReveal = ({
   const initialFlipKey = initialCardKey
     ? `${handBoundaryKey ?? 'no-hand-key'}:${initialCardKey}`
     : null;
-  // If we mount with a card already visible, treat the flip as already consumed —
-  // the user has been seeing this card; we must not animate it again.
-  if (initialFlipKey) {
-    getConsumedSet(handBoundaryKey).add(initialFlipKey);
-  }
+  // ROOT-CAUSE FIX (zero-flip regression):
+  // Do NOT eagerly seed the consumed registry at mount. A mount with a card
+  // already visible may be EITHER:
+  //   (a) a true remount within a hand boundary whose flip has already played
+  //       elsewhere — registry already contains flipKey → effect will suppress
+  //   (b) the legitimate first reveal that arrived in the same render as the
+  //       mount — registry empty → effect must animate exactly once
+  // Eager seeding collapses (a) and (b) into "always suppress", killing the
+  // legitimate first flip. Let the effect consult the registry instead.
+  const alreadyConsumedAtMount = Boolean(
+    initialFlipKey && getConsumedSet(handBoundaryKey).has(initialFlipKey)
+  );
 
   const [isFlipping, setIsFlipping] = useState(false);
-  const [showFace, setShowFace] = useState(Boolean(card));
+  // Show face immediately only on true remounts (registry already consumed).
+  // Legitimate first reveals start back-side so the flip animation can play.
+  const [showFace, setShowFace] = useState(alreadyConsumedAtMount);
 
-  const currentCardKeyRef = useRef<string | null>(initialCardKey);
-  const previousVisibleCardKeyRef = useRef<string | null>(initialCardKey);
+  const currentCardKeyRef = useRef<string | null>(null);
+  // Initialize to null so the first effect run with a card registers as a
+  // visibility edge and routes through the registry check / animation path.
+  const previousVisibleCardKeyRef = useRef<string | null>(null);
 
   // Log mount/remount with hand boundary key
   useEffect(() => {
