@@ -2911,6 +2911,24 @@ export function useHorsesMobileController({
       }
 
       // Don't animate on the first observation (no baseline)
+      if (prevRollKey === undefined) {
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-observer-flyin-decision',
+          payload: {
+            decision: 'skipped-first-observation',
+            rollerId: currentTurnPlayerId.slice(0, 8),
+            newRollKey,
+            rollsRemaining: state.rollsRemaining,
+            isComplete: !!state.isComplete,
+            tsClient: Date.now(),
+          },
+        });
+      }
       if (prevRollKey !== undefined) {
         // AUTHORITATIVE ANIMATION TIMING: Use rollStartedAt from DB if available,
         // falling back to local timer duration. This ensures observers animate in sync
