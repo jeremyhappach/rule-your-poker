@@ -501,7 +501,7 @@ export const CribbageMobileGameTable = ({
         nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
       },
     });
-  }, [authIdentity, gameId]);
+  }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, gameId]);
 
   useEffect(() => {
     cribbageStateRef.current = cribbageState;
