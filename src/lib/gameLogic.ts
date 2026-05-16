@@ -2216,9 +2216,19 @@ export async function proceedToNextRound(gameId: string) {
   // Get the next round number
   const { data: game } = await supabase
     .from('games')
-    .select('next_round_number, status, awaiting_next_round')
+    .select('next_round_number, status, awaiting_next_round, game_type')
     .eq('id', gameId)
     .single();
+
+  // P0 CONTAINMENT (CRIB-CORRUPT-01): proceedToNextRound is the 3-5-7 round
+  // advancement path. Calling it on a cribbage / gin-rummy / etc. game inserts
+  // a spurious round mid-hand and resets visible state. Whitelist 3-5-7 only.
+  const _gt = (game as any)?.game_type;
+  const _is357 = _gt === '3-5-7' || _gt === '3-5-7-game' || _gt === '357';
+  if (game && !_is357) {
+    console.warn('[PROCEED_NEXT_ROUND] proceedToNextRound-suppressed-non-357 — game_type=', _gt);
+    return;
+  }
 
   if (!game?.next_round_number) {
     console.log('[PROCEED_NEXT_ROUND] No next round configured');
