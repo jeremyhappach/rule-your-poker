@@ -3,6 +3,9 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
+import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
+import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import {
   checkStaleHandRender,
   checkPhaseRenderMismatch,
