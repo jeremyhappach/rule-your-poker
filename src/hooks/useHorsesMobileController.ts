@@ -420,7 +420,7 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'info',
+        eventType: 'invariant', severity: 'info',
         eventName: 'horses-auth-turn-handoff-received',
         payload: {
           beforeTurn: beforeTurn?.slice(0, 8) ?? null,
@@ -448,7 +448,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-auth-snapshot-received',
           payload: {
             rollerId: afterTurn.slice(0, 8),
