@@ -447,6 +447,9 @@ export async function startHorsesRound(
     eventType: 'invariant', severity: 'info',
     eventName: 'horses-round-created',
     payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      callerContext: callerContext ?? null,
       newRoundId: roundData.id.slice(0, 8),
       isFirstHand,
       newRoundNumber,
@@ -454,6 +457,8 @@ export async function startHorsesRound(
       dealerGameId: dealerGameId?.slice(0, 8) ?? null,
       prevAwaitingNextRound: game.awaiting_next_round,
       prevStatus: game.status,
+      prevAnteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      prevIsFirstHandFlag: (game as any).is_first_hand,
       potForRound,
       activePlayerCount: activePlayers.length,
       turnOrder: turnOrder.map(p => p.slice(0, 8)),
