@@ -369,6 +369,36 @@ export async function startSCCRound(
     throw new Error('Failed to create round');
   }
 
+  // P0 #2 INSTRUMENTATION: persist successful round creation with caller context
+  persistSyncDebugEvent({
+    gameId,
+    gameType: 'ship-captain-crew',
+    handNumber: newHandNumber,
+    roundId: roundData.id,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'scc-round-created',
+    payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      callerContext: callerContext ?? null,
+      newRoundId: roundData.id.slice(0, 8),
+      isFirstHand,
+      newRoundNumber,
+      newHandNumber,
+      dealerGameId: (game.current_game_uuid as string | null)?.slice(0, 8) ?? null,
+      prevAwaitingNextRound: game.awaiting_next_round,
+      prevStatus: game.status,
+      prevAnteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      prevIsFirstHandFlag: (game as any).is_first_hand,
+      potForRound,
+      activePlayerCount: activePlayers.length,
+      turnOrder: turnOrder.map(p => p.slice(0, 8)),
+      firstTurnPlayer: turnOrder[0]?.slice(0, 8) ?? null,
+      tsClient: Date.now(),
+    },
+  });
+
   logSCCAnteApplied(gameId, newHandNumber, potForRound, activePlayers.length, anteAmount, roundData.id);
 
   // STEP 2: Update game status/pointers BEFORE collecting antes
