@@ -2806,8 +2806,24 @@ export function useHorsesMobileController({
           preRollSig,
         });
 
-        // FREEZE presentation: prevent sync framework from pushing DB updates during observer animation
-        syncHandle.freezePresentation();
+        // NOTE: presentation is NOT frozen here. observerDisplayState (scoped by
+        // playerId+rollKey) is rendered above presentation and provides the fly-in
+        // overlay; presentation continues to advance freely so authoritative
+        // turn-handoff snapshots reach the next client without delay.
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-observer-roll-overlay-only',
+          payload: {
+            playerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+            rollKey: newRollKey,
+            prevRollKey,
+            durationMs,
+          },
+        });
 
         // End rolling state after the animation window. Do NOT clear the display state.
         observerRollingTimerRef.current = window.setTimeout(() => {
@@ -2817,9 +2833,6 @@ export function useHorsesMobileController({
             return { ...prev, isRolling: false };
           });
           observerRollingTimerRef.current = null;
-
-          // UNFREEZE presentation: observer animation complete
-          syncHandle.unfreezePresentation();
         }, durationMs);
       }
 
