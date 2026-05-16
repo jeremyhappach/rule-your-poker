@@ -102,9 +102,9 @@ interface GinRummyGameTableProps {
 
 export const GinRummyGameTable = ({
   gameId,
-  roundId,
+  roundId: propRoundId,
   dealerGameId,
-  handNumber,
+  handNumber: propHandNumber,
   players,
   currentUserId,
   dealerPosition,
@@ -125,11 +125,90 @@ export const GinRummyGameTable = ({
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
+  // ── Phase 2: framework-owned authoritative identity ─────────────
+  // Dealer-game-scoped feed observes new rounds across boundaries so the
+  // client cannot become structurally blind to a forward-advanced hand
+  // started by a peer client.
+  const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
+
+  // Monotonic forward-only round/hand identity. Parent props are advisory;
+  // authoritative identity wins whenever it is forward-of-or-equal.
+  const [currentRoundId, setCurrentRoundId] = useState<string>(propRoundId);
+  const [currentHandNumber, setCurrentHandNumber] = useState<number>(propHandNumber);
+  useEffect(() => {
+    const propHand = propHandNumber ?? -1;
+    const authHand = authIdentity?.handNumber ?? -1;
+    const useAuth = authIdentity?.roundId != null && authHand >= propHand;
+    const incomingRoundId = useAuth ? authIdentity!.roundId! : propRoundId;
+    const incomingHandNumber = Math.max(authHand, propHand, currentHandNumber);
+    if (!incomingRoundId) return;
+    setCurrentHandNumber((prev) => (incomingHandNumber > prev ? incomingHandNumber : prev));
+    setCurrentRoundId((prev) => {
+      if (!prev) return incomingRoundId;
+      if (prev === incomingRoundId) return prev;
+      const prevIdent: AuthoritativeIdentity = {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: currentHandNumber,
+        roundId: prev,
+      };
+      const nextIdent: AuthoritativeIdentity = {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: incomingHandNumber,
+        roundId: incomingRoundId,
+      };
+      if (isIdentityForward(prevIdent, nextIdent)) return incomingRoundId;
+      return prev;
+    });
+  }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber, dealerGameId]);
+
+  // Aliases — keep existing internal references pointing at the live monotonic identity.
+  const roundId = currentRoundId;
+  const handNumber = currentHandNumber;
+
+  // ── Identity-advancement reset (mirror of Cribbage Phase 2) ─────
+  // When the dealer-scoped feed detects a forward advance, drop the local
+  // ginState mirror so the felt collapses to the "Preparing next hand" shell
+  // until the new round's snapshot arrives. The sync framework separately
+  // auto-resets presentation/optimistic/freeze via `identity` config below.
+  const lastObservedIdentityRef = useRef<AuthoritativeIdentity | null>(null);
+  useEffect(() => {
+    if (!authIdentity) return;
+    const prev = lastObservedIdentityRef.current;
+    lastObservedIdentityRef.current = authIdentity;
+    if (!prev) return;
+    if (!isIdentityForward(prev, authIdentity)) return;
+    setGinState(null);
+    const payload = {
+      prevHand: prev.handNumber,
+      nextHand: authIdentity.handNumber,
+      prevRoundId: prev.roundId?.slice(0, 8) ?? null,
+      nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
+    };
+    persistSyncDebugEvent({
+      gameId, gameType: 'gin-rummy',
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition', severity: 'info',
+      eventName: 'gin-identity-advanced',
+      payload,
+    });
+    persistSyncDebugEvent({
+      gameId, gameType: 'gin-rummy',
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition', severity: 'info',
+      eventName: 'gin-presentation-reset-on-identity-advance',
+      payload,
+    });
+  }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, gameId]);
+
   // ── Shared anti-regression sync framework ──────────────────────
   const ginSync = useGameStateSync<GinRummyState | null>(null, {
     getProgress: (s) => s ? getGinRummyProgress(s) : [0, 0, 0],
     optimisticTimeoutMs: 3000,
+    gameType: 'gin-rummy',
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+    identity: authIdentity,
   });
 
   // Sync framework is now fed directly by applyState (realtime/poll handler).
