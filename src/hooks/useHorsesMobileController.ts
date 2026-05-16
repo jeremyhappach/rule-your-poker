@@ -357,10 +357,9 @@ export function useHorsesMobileController({
   useEffect(() => { interactionsAllowedRef.current = interactionsAllowed; }, [interactionsAllowed]);
   const isIdentityStaleRef = useRef(syncHandle.isIdentityStale);
   useEffect(() => { isIdentityStaleRef.current = syncHandle.isIdentityStale; }, [syncHandle.isIdentityStale]);
-  const canWriteRef = useRef(true);
-  useEffect(() => {
-    canWriteRef.current = interactionsAllowed && !syncHandle.isIdentityStale;
-  }, [interactionsAllowed, syncHandle.isIdentityStale]);
+  // NOTE: Writer gates now use syncHandle.canInteractNow() directly (synchronous,
+  // ref-backed predicate) to avoid the one-render lag that previously suppressed
+  // legitimate terminal-roll writes immediately after unfreezePresentation().
 
   const logSuppressedWrite = useCallback((tag: string, extra?: Record<string, unknown>) => {
     persistSyncDebugEvent({
@@ -993,7 +992,7 @@ export function useHorsesMobileController({
     ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('saveMyState');
         return;
       }
@@ -1026,7 +1025,7 @@ export function useHorsesMobileController({
     async (expectedCurrentPlayerId?: string | null) => {
       if (!enabled) return;
       if (!currentRoundId) return;
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('advanceToNextTurn');
         return;
       }
@@ -1334,7 +1333,7 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
 
     const t = window.setTimeout(() => {
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('stuckAdvance-forceComplete-or-advance');
         return;
       }
@@ -1493,7 +1492,7 @@ export function useHorsesMobileController({
     timeoutProcessedRef.current = timeoutKey;
 
     const handleTimeout = async () => {
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         persistSyncDebugEvent({
           gameId: gameId ?? null,
           gameType: resolvedGameType,
@@ -2318,7 +2317,7 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
     const forceComplete = async () => {
       if (!writeRoundId) return;
-      if (!canWriteRef.current) {
+      if (!syncHandle.canInteractNow()) {
         logSuppressedWrite('forceComplete-allCompleteRecovery');
         return;
       }
