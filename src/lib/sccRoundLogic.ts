@@ -186,6 +186,28 @@ export async function startSCCRound(
       console.warn('[SCC] Failed to claim rollover start (continuing):', claimError);
     }
 
+    // P0 #2 INSTRUMENTATION: persist rollover claim outcome with caller context
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'ship-captain-crew',
+      handNumber: newHandNumber,
+      roundId: null,
+      eventType: 'invariant',
+      severity: claim && claim.length > 0 ? 'info' : 'warn',
+      eventName: claim && claim.length > 0 ? 'scc-rollover-claim-won' : 'scc-rollover-claim-lost',
+      payload: {
+        callerInvocationId,
+        callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+        callerContext: callerContext ?? null,
+        newRoundNumber,
+        newHandNumber,
+        observedCurrentRound: game.current_round,
+        observedAwaitingNextRound: game.awaiting_next_round,
+        claimError: claimError?.message ?? null,
+        tsClient: Date.now(),
+      },
+    });
+
     if (!claim || claim.length === 0) {
       logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_LOST', {
         dealerGameId: game.current_game_uuid,
