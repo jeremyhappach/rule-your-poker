@@ -201,3 +201,52 @@ A violation in either path suppresses the write and emits `crib-stale-action-sup
 ### Out of scope (Phase 2)
 
 No changes to Holm / Yahtzee / Gin / Horses / SCC / 3-5-7. Cribbage proves the architecture first; per-game identity semantics will be audited individually before broader rollout.
+
+---
+
+## Phase 2.5 — P0 fix: stuck client after asymmetric jitter
+
+### Forensic root cause (proven from `debug_sync_events` repro game `b5d81d6d`)
+
+- Auth identity feed correctly observed `{hand:3, round:d55bcb45}` (captured in `crib-identity-divergence` payloads).
+- Local `currentRoundId` wedged at the old `d2ed0f5f`, because:
+  1. `defaultPickActiveRound` was **not monotonic**; a `regressive-identity` event proves auth flipped backward from hand 3 → 2 on a realtime jitter.
+  2. The Cribbage merge contained two regression vectors: an equal-hand branch that overwrote `currentRoundId` with whatever `incomingRoundId` happened to be that tick, and a fallback that defaulted `incomingRoundId` to the **stale parent prop** whenever auth was momentarily behind.
+- Once `currentRoundId` regressed, the per-round subscription (`cribbage-mobile-${currentRoundId}`, filter `id=eq.${currentRoundId}`) re-keyed backward → structurally blind to the new round → "Preparing next hand" terminal state.
+
+### Framework fixes
+
+1. **`useAuthoritativeIdentity` is now monotonic-forward-only.**
+   - A `monotonicIdentityRef` latches the highest observed identity for the current `dealerGameId`.
+   - Regressive ticks are suppressed and emit `framework-regressive-identity-suppressed` (severity warn).
+   - The latch resets only on `dealerGameId` change (no public rollback API yet; an explicit administrative rollback must clear it when introduced).
+
+2. **`useGameStateSync` identity-advance reset fires on first actionable divergence.**
+   - `presentationIdentityRef` is no longer seeded with the initial `identityProp` at mount (the previous seed could cause the auto-reset effect to early-return when its `prev` already equalled the first observation, even with stale presentation underneath).
+   - First observation is adopted silently (no stale presentation to clear). Every subsequent forward divergence invokes `reset()` and emits both `framework-identity-advanced` and the new `framework-identity-reset-fired` event.
+
+### Cribbage fixes
+
+3. **Equal-hand regression branch removed.** `setCurrentRoundId` now only accepts an incoming round id when `isIdentityForward(prevIdent, nextIdent)` is true. Equal-hand-different-roundId is permitted only via the framework-monotonic auth feed (covers the race where `hand_number` lags a freshly inserted round row).
+
+4. **Auth wins over lagging props.** The merge picks `authIdentity.roundId` whenever `authHand >= propHand` (i.e. auth is forward-of-or-equal). The prop is consulted only when auth has not yet caught up to the prop hand. Props are advisory; they may never overwrite a forward authoritative identity.
+
+### Topology
+
+5. **Per-round snapshot channel is retained**, now safe because `currentRoundId` advancement is provably monotonic and driven by the authoritative feed. Forward re-key is the only possible motion; backward re-key is impossible.
+
+### Recovery guarantee
+
+6. With monotonic identity + monotonic `currentRoundId`, the per-round channel always re-keys onto the latest authoritative round within one render of an auth advance. The existing polling fallback runs against the same `currentRoundId` so it also recovers automatically. Permanent bootstrap deadlock is structurally impossible.
+
+### Observability
+
+New deterministic events:
+- `framework-regressive-identity-suppressed` (warn, `gameType: framework`) — fires whenever `pickActiveRound` would have moved the identity backward and the monotonic latch held the prior value.
+- `framework-identity-reset-fired` (info, per game type) — fires after the framework auto-reset effect calls `reset()` in response to a forward identity divergence.
+
+### Files changed
+
+- `src/lib/gameStateSync/authoritativeIdentity.ts` — monotonic latch + suppressed-regression event.
+- `src/lib/gameStateSync/useGameStateSync.ts` — drop init seed of `presentationIdentityRef`; emit `framework-identity-reset-fired`.
+- `src/components/CribbageMobileGameTable.tsx` — strict forward-only merge using `isIdentityForward`; auth always wins over lagging props.
