@@ -385,10 +385,35 @@ export function useHorsesMobileController({
   incomingHorsesStateRef.current = horsesState;
 
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
+  const prevAuthTurnPlayerRef = useRef<string | null>(null);
   useEffect(() => {
     if (!incomingHorsesState) return;
-    syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
-  }, [incomingHorsesState, gameId, currentRoundId, isSCC]);
+    const beforeTurn = prevAuthTurnPlayerRef.current;
+    const result = syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
+    const afterTurn = incomingHorsesState.currentTurnPlayerId ?? null;
+    // Emit a deterministic event when the authoritative turn owner changes so we
+    // can verify the next client receives + presents the handoff without being
+    // gated by any local animation freeze.
+    if (beforeTurn !== afterTurn) {
+      prevAuthTurnPlayerRef.current = afterTurn;
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'transition', severity: 'info',
+        eventName: 'horses-auth-turn-handoff-received',
+        payload: {
+          beforeTurn: beforeTurn?.slice(0, 8) ?? null,
+          afterTurn: afterTurn?.slice(0, 8) ?? null,
+          accepted: result.accepted,
+          reason: result.reason,
+          wasFrozenAtWrite: result.wasFrozenAtWrite,
+          presentationAction: result.presentationAction,
+        },
+      });
+    }
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
