@@ -544,6 +544,28 @@ export const CribbageMobileGameTable = ({
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
+  // ── Action identity guard ──
+  // A user-driven mutation (discard / play / Go) may only fire when the rendered
+  // hand identity matches the authoritative actionable hand identity end-to-end:
+  //   • renderHandKey === currentHandKey  → presentation matches local authoritative
+  //   • currentRoundId === roundId        → local round matches latest prop round
+  //   • currentHandNumber === handNumber  → local hand-number matches latest prop
+  //   • renderHandKey !== ''              → there IS a hand to act on
+  // If ANY of these fail we are looking at a STALE hand (either presentation lag
+  // or a hand boundary in flight) and must suppress every action writer.
+  const interactionsAllowed = !!(
+    renderHandKey &&
+    currentHandKey &&
+    renderHandKey === currentHandKey &&
+    currentRoundId &&
+    roundId &&
+    currentRoundId === roundId &&
+    currentHandNumber === handNumber
+  );
+  const interactionsAllowedRef = useRef(interactionsAllowed);
+  useEffect(() => {
+    interactionsAllowedRef.current = interactionsAllowed;
+  }, [interactionsAllowed]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
    // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
