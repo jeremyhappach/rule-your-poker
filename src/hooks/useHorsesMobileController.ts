@@ -2807,7 +2807,7 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'warning',
+        eventType: 'transition', severity: 'warn',
         eventName: 'horses-observer-flyin-decision',
         payload: {
           decision: 'rejected-stale',
