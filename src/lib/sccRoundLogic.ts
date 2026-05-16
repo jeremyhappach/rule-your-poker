@@ -17,13 +17,18 @@ import type { HorsesRoundCallerContext } from "./horsesRoundLogic";
  * Creates a round record and sets the game to in_progress
  * Collects antes from all active players and sets the pot
  */
-export async function startSCCRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
-  
+export async function startSCCRound(
+  gameId: string,
+  isFirstHand: boolean = false,
+  callerContext?: HorsesRoundCallerContext,
+): Promise<void> {
+
+  const callerInvocationId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, is_paused')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, is_paused, ante_decision_deadline, is_first_hand')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -31,6 +36,39 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     console.error('[SCC] Failed to get game:', gameError);
     throw new Error('Failed to get game state');
   }
+
+  // P0 #2 INSTRUMENTATION: attempt event with caller context + observed pre-state
+  let callerUserIdAttempt: string | null = null;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    callerUserIdAttempt = user?.id ?? null;
+  } catch { /* */ }
+  persistSyncDebugEvent({
+    gameId,
+    gameType: 'ship-captain-crew',
+    handNumber: (game as any)?.total_hands ?? 0,
+    roundId: null,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'scc-round-create-attempt',
+    payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      isFirstHand,
+      callerContext: callerContext ?? null,
+      observedGame: {
+        status: game.status,
+        awaitingNextRound: game.awaiting_next_round,
+        currentRound: game.current_round,
+        totalHands: game.total_hands,
+        dealerGameId: (game.current_game_uuid as string | null)?.slice(0, 8) ?? null,
+        isFirstHandFlag: (game as any).is_first_hand,
+        isPaused: (game as any).is_paused,
+        anteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      },
+      tsClient: Date.now(),
+    },
+  });
 
   // CRITICAL GUARD: Block round creation if game is paused
   if ((game as any).is_paused) {
