@@ -4015,48 +4015,18 @@ export const CribbageMobileGameTable = ({
   );
   const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
 
-  // ── PROACTIVE STALE-COMPLETE RESET ──────────────────────────
-  // When the stale-complete latch fires we know the local hand is done but the
-  // boundary reset has not yet been triggered (parent prop roundId still lagging
-  // behind another client that already advanced). Drop the OLD authoritative +
-  // presentation immediately so:
-  //   1. renderHandKey/currentHandKey collapse to '' → interactionsAllowed = false
-  //   2. The cut-card surface unmounts cleanly instead of waiting for a
-  //      freeze → unfreeze bounce that can re-trigger the flip animation on remount
-  // The proper roundId-driven reset still happens when the parent prop catches up.
-  const proactiveStaleResetFiredForRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!isStaleCompleteAwaitingNext) return;
-    const key = `${currentRoundId}:${currentHandNumber}:complete`;
-    if (proactiveStaleResetFiredForRef.current === key) return;
-    proactiveStaleResetFiredForRef.current = key;
-    persistSyncDebugEvent({
-      gameId,
-      gameType: 'cribbage',
-      handNumber: currentHandNumber,
-      roundId: currentRoundId ?? null,
-      eventType: 'transition',
-      severity: 'info',
-      eventName: 'crib-stale-complete-proactive-reset',
-      payload: {
-        currentRoundId: currentRoundId?.slice(0, 8) ?? null,
-        currentHandNumber,
-        renderHandKey: renderHandKey?.slice(0, 30) ?? null,
-        currentHandKey: currentHandKey?.slice(0, 30) ?? null,
-      },
-    });
-    syncHandle.reset(null);
-    setCribbageState(null);
-    cribbageStateRef.current = null;
-  }, [
-    isStaleCompleteAwaitingNext,
-    currentRoundId,
-    currentHandNumber,
-    gameId,
-    renderHandKey,
-    currentHandKey,
-    syncHandle,
-  ]);
+  // ── PROACTIVE STALE-COMPLETE RESET (RETIRED in Phase 2) ─────
+  // The bespoke proactive reset that fired off `isStaleCompleteAwaitingNext`
+  // has been superseded by the framework's identity-advancement path:
+  //   1. `useAuthoritativeIdentity({ dealerGameId })` observes the new round
+  //      via a dealer-game-scoped channel — no blind window.
+  //   2. `useGameStateSync({ identity })` auto-resets its three layers on
+  //      forward identity advancement.
+  //   3. The local `lastObservedIdentityRef` effect (above) clears the
+  //      `cribbageState` mirror on the same signal.
+  // `isStaleCompleteAwaitingNext` remains, but only as a render-mode signal
+  // (forces bootstrap shell during the brief window between local hand
+  // completion and the framework reset settling).
 
   // Latch pegboard data whenever we have valid gameplay state
   if (isGameplayMode && viewState) {
