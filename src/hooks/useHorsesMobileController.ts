@@ -2876,6 +2876,22 @@ export function useHorsesMobileController({
         console.log(
           `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} SKIPPED (already complete, bookkeeping)`,
         );
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-observer-flyin-decision',
+          payload: {
+            decision: 'skipped-bookkeeping',
+            rollerId: currentTurnPlayerId.slice(0, 8),
+            prevRollKey: prevRollKey ?? null, newRollKey,
+            prevRollsRemaining: prevRollsRemaining ?? null,
+            rollsRemaining: state.rollsRemaining,
+            tsClient: Date.now(),
+          },
+        });
         
         // Set final display state without animation
         const finalDice = (state.dice as any[]) ?? [];
