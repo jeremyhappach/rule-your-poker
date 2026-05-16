@@ -993,6 +993,10 @@ export function useHorsesMobileController({
     ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
+      if (!canWriteRef.current) {
+        logSuppressedWrite('saveMyState');
+        return;
+      }
 
       const heldCountBeforeComplete = Array.isArray(heldMaskBeforeComplete)
         ? heldMaskBeforeComplete.filter(Boolean).length
