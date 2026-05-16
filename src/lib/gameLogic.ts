@@ -1051,6 +1051,22 @@ async function checkAllDecisionsIn(gameId: string) {
   // round actually has a decision. A stale all_decisions_in=true from a previous hand/round
   // can race with a new round creation, causing endRound to fire with zero decisions.
   if (game?.all_decisions_in) {
+    // P0-CONTAINMENT: only Holm/3-5-7 use the all_decisions_in → endRound recovery
+    // path. Other game types must never trigger endRound; doing so writes
+    // awaiting_next_round into rows whose lifecycle does not own that field.
+    const gTypeCheck = (game as any)?.game_type;
+    const isHolmOrThreeFiveSeven =
+      gTypeCheck === '3-5-7' || gTypeCheck === '3-5-7-game' || gTypeCheck === '357' ||
+      gTypeCheck === 'holm' || gTypeCheck === 'holm-game';
+    if (!isHolmOrThreeFiveSeven) {
+      console.error('[CHECK_ALL_DECISIONS] checkAllDecisions-suppressed-non-holm-357', {
+        gameId: shortGameId, gameType: gTypeCheck,
+      });
+      // Also clear the stale flag so this doesn't loop forever.
+      await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
+      return;
+    }
+
     console.warn(`[CHECK_ALL_DECISIONS] all_decisions_in already true - checking if decisions exist`, {
       gameId: shortGameId,
       status: game.status,
@@ -1396,6 +1412,26 @@ export async function endRound(gameId: string) {
     .select('*, players(*)')
     .eq('id', gameId)
     .single();
+
+  // P0-CONTAINMENT: endRound() is Holm/3-5-7 lifecycle logic. It writes the shared
+  // `awaiting_next_round` / `next_round_number` fields and must NEVER fire for other
+  // game types (cribbage, gin-rummy, yahtzee, horses, scc) — doing so corrupts
+  // mid-hand state. Re-fetch the authoritative game_type and abort with a logged
+  // suppression event if this is not a Holm/3-5-7 game.
+  const gType = (game as any)?.game_type;
+  const isHolmOrThreeFiveSeven =
+    gType === '3-5-7' || gType === '3-5-7-game' || gType === '357' ||
+    gType === 'holm' || gType === 'holm-game';
+  if (!isHolmOrThreeFiveSeven) {
+    console.error('[END_ROUND] endRound-suppressed-non-holm-357', { gameId: shortGameId, gameType: gType });
+    await logGameState({
+      gameId,
+      eventType: 'RACE_CONDITION_GUARD',
+      sourceLocation: 'gameLogic:endRound:gameTypeGuard',
+      details: { suppressed: 'endRound-suppressed-non-holm-357', gameType: gType, timestamp: endRoundTimestamp },
+    });
+    return;
+  }
 
   console.log(`[END_ROUND] Game: status=${game?.status} current_round=${game?.current_round} total_hands=${game?.total_hands} pot=${game?.pot}`);
 

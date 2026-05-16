@@ -30,7 +30,21 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   playersStoodUp: string[];
 }> {
   console.log('[PLAYER EVAL] ========== Evaluating player states for game:', gameId, '==========');
-  
+
+  // P0-CONTAINMENT: auto_fold is meaningful only for Holm/3-5-7 (turn timers drive it).
+  // For cribbage / gin-rummy / yahtzee / dice, auto_fold may be stale from a prior game
+  // and must NOT cause a forced sit-out (which then triggers a false "no active humans"
+  // session-end). Read game_type and disable the auto_fold rule for non-Holm/357 games.
+  const { data: gameRow } = await supabase
+    .from('games')
+    .select('game_type')
+    .eq('id', gameId)
+    .maybeSingle();
+  const gType = (gameRow as any)?.game_type;
+  const autoFoldRuleApplies =
+    gType === '3-5-7' || gType === '3-5-7-game' || gType === '357' ||
+    gType === 'holm' || gType === 'holm-game';
+
   // Fetch all players for this game with profile info for logging
   const { data: players, error } = await supabase
     .from('players')
@@ -146,7 +160,9 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     }
     
     // 3. auto_fold = true → sitting_out = true (player timed out and is auto-folding)
-    if (player.auto_fold) {
+    // P0-CONTAINMENT: gated by game_type; cribbage/gin/yahtzee/dice do not use auto_fold
+    // as an authoritative timeout signal here, and stale flags would force false sit-outs.
+    if (player.auto_fold && autoFoldRuleApplies) {
       console.log('[PLAYER EVAL] Player', player.position, 'has auto_fold=true - sitting out');
       
       // Log this status change for debugging
@@ -175,7 +191,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
       }
       continue; // Move to next player
     }
-    
+
     // 4. waiting = true → sitting_out = false, waiting = false (player now active)
     if (player.waiting) {
       console.log('[PLAYER EVAL] Player', player.position, 'was waiting - now active');

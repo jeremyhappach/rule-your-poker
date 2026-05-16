@@ -5542,15 +5542,57 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (activeHumanCount < 1) {
       console.log('[GAME OVER] No active human players!');
       gameOverTransitionRef.current = false;
-      
-      // Check if any hands were played in this session
-      const { data: gameData } = await supabase
+
+      // P0-CONTAINMENT (NAV-04 / false-session-end):
+      // Re-fetch authoritative state. Only auto-end the session if pending_session_end
+      // is explicitly true, OR if there are truly no humans at the table at all
+      // (i.e. the sitting_out=true counts were not the cause of activeHumanCount=0).
+      // A stale auto_fold flag from an earlier game must NEVER alone trigger session_ended.
+      const { data: freshAuth } = await supabase
         .from('games')
-        .select('total_hands')
+        .select('pending_session_end, status, total_hands')
         .eq('id', gameId)
         .single();
-      
-      const totalHands = gameData?.total_hands || 0;
+
+      const { data: humanPresence } = await supabase
+        .from('players')
+        .select('id, sitting_out, auto_fold, status')
+        .eq('game_id', gameId)
+        .eq('is_bot', false)
+        .neq('status', 'observer');
+
+      const humansAtTable = (humanPresence || []).length;
+      const trulyAbsentHumans = humansAtTable === 0;
+      const sessionEndExplicit = freshAuth?.pending_session_end === true;
+
+      if (!sessionEndExplicit && !trulyAbsentHumans) {
+        // Stale flag (auto_fold / sitting_out from prior hand) — DO NOT session-end.
+        // Revert game to waiting and clear stale flags so play can resume.
+        console.error('[GAME OVER] session-end-suppressed-stale-active-humans', {
+          humansAtTable,
+          pending_session_end: freshAuth?.pending_session_end,
+        });
+        await logSessionEvent({
+          gameId,
+          eventType: 'session_ended',
+          eventData: { reason: 'session-end-suppressed-stale-active-humans', suppressed: true, humansAtTable },
+          userId: user?.id,
+        });
+        // Clear stale auto_fold/sitting_out so the next hand can proceed.
+        await supabase
+          .from('players')
+          .update({ auto_fold: false, sitting_out: false, waiting: false })
+          .eq('game_id', gameId)
+          .eq('is_bot', false);
+        await supabase
+          .from('games')
+          .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false })
+          .eq('id', gameId);
+        return;
+      }
+
+      // Check if any hands were played in this session
+      const totalHands = freshAuth?.total_hands || 0;
       
       // Also check game_results as backup
       const { count: resultsCount } = await supabase
@@ -5563,7 +5605,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // CRITICAL: NEVER delete real_money games - archive them instead (30 day retention)
       if (game?.real_money) {
         console.log('[GAME OVER] Real money game - archiving instead of deleting');
-        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans - real money archived', hasHistory }, userId: user?.id });
+        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans - real money archived', hasHistory, pending_session_end: sessionEndExplicit }, userId: user?.id });
         
         await supabase
           .from('games')
@@ -5608,7 +5650,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         console.log('[GAME OVER] Has game history, ending session');
         
         // Log session end
-        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans' }, userId: user?.id });
+        await logSessionEvent({ gameId, eventType: 'session_ended', eventData: { reason: 'No active humans', pending_session_end: sessionEndExplicit }, userId: user?.id });
         
         await supabase
           .from('games')
