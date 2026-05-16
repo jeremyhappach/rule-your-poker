@@ -8549,6 +8549,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // Horses-specific state
                 horsesRoundId={currentRound?.id || null}
                 horsesState={horsesState}
+                horsesDealerGameId={(game as any).current_game_uuid ?? null}
+                horsesHandNumber={currentRound?.hand_number ?? null}
                 // Lifted mobile state
                 activeTab={mobileActiveTab}
                 onActiveTabChange={setMobileActiveTab}
