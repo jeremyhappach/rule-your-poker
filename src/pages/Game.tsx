@@ -7246,10 +7246,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             await startHolmRound(gameId, shouldRunHolmFirstHand);
           } else if (isHorsesGame) {
             // isHorsesGame now includes ship-captain-crew - use freshGame for type check
+            const firstHandCallerContext = {
+              caller: 'Game.tsx:ante-decision-complete',
+              reason: 'first-hand-after-ante',
+              trigger: 'all ante decisions in / proceeding to first round',
+              prevDealerGameId: (freshGame as any)?.current_game_uuid ?? null,
+              prevAwaitingNextRound: (freshGame as any)?.awaiting_next_round ?? null,
+              prevAnteDecisionDeadline: (freshGame as any)?.ante_decision_deadline ?? null,
+              extra: {
+                freshGameStatus: (freshGame as any)?.status,
+                freshIsFirstHand: (freshGame as any)?.is_first_hand,
+                activePlayerCount: activePlayersBefore.length,
+              },
+            };
             if (freshGame?.game_type === 'ship-captain-crew') {
-              await startSCCRound(gameId, true);
+              await startSCCRound(gameId, true, firstHandCallerContext);
             } else {
-              await startHorsesRound(gameId, true);
+              await startHorsesRound(gameId, true, firstHandCallerContext);
             }
           } else if (isYahtzeeGame) {
             console.log('[ANTE][YAHTZEE] Starting yahtzee round');
