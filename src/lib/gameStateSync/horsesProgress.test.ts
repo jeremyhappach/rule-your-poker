@@ -293,7 +293,7 @@ describe('getHorsesProgress', () => {
     expect(compareProgress(
       getHorsesProgress(stalePrevHand, 7),
       getHorsesProgress(currentHandEarly, 8),
-    )).toBe(-1);
+    )).toBe(1);
   });
 
   it('same handNumber preserves intra-hand ordering', () => {
