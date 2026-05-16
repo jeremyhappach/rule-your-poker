@@ -12,7 +12,36 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPl
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 // startCribbageRound is now called from Game.tsx after dealer selection completes
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
+
+// P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
+// This identifies which client/code-path creates new dealer_games mid-session
+// (suspected root cause of the runaway "isFirstHand:true" loop).
+function logDealerGameCreated(
+  gameId: string,
+  gameType: string,
+  dealerGameId: string,
+  reason: string,
+  extra?: Record<string, unknown>,
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber: 0,
+    roundId: null,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'dealer-game-row-created',
+    payload: {
+      caller: 'DealerGameSetup.tsx',
+      reason,
+      dealerGameId: dealerGameId.slice(0, 8),
+      extra: extra ?? null,
+      tsClient: Date.now(),
+    },
+  });
+}
 
 type SelectionStep = 'game' | 'config';
 
