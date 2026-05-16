@@ -20,6 +20,27 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Authoritative runtime predicate: does this ruleset treat decision-timer
+ * expiry as a legitimate participation mutation (auto_fold → sitting_out)?
+ *
+ * Only Holm and 3-5-7 variants use auto_fold as a participation signal.
+ * For other game types (cribbage, horses, SCC, yahtzee, gin) auto_fold is
+ * either unused or has unrelated semantics (e.g. horses auto-roll), and a
+ * stale auto_fold=true MUST NOT be promoted to sitting_out by the cron.
+ */
+function rulesetAllowsAutoFoldParticipation(gameType: string | null | undefined): boolean {
+  if (!gameType) return false;
+  const gt = String(gameType).toLowerCase();
+  return (
+    gt === 'holm-game' ||
+    gt === 'holm' ||
+    gt === '3-5-7' ||
+    gt === '3-5-7-game' ||
+    gt === '357'
+  );
+}
+
 // ============== CARD UTILITIES ==============
 // CANONICAL SUIT FORMAT: Always use symbols (♠♥♦♣), never text ('hearts', 'clubs')
 // This matches the client-side cardUtils.ts format exactly.
