@@ -2953,8 +2953,48 @@ export function useHorsesMobileController({
         return;
       }
 
-      // Don't animate on the first observation (no baseline)
-      if (prevRollKey === undefined) {
+      // P0 FIX: discriminate hydration catch-up from a live first roll using rollStartedAt
+      // freshness, NOT `prevRollKey === undefined`. A null prevRollKey is true on EVERY
+      // first real roll of a turn (the observer never saw a baseline for this player on
+      // this turn), so the old guard incorrectly dropped the very first intermediate roll
+      // — and combined with terminal rolls bypassing this branch, it caused "ZERO fly-in
+      // until terminal" on SCC and "missed roll 2" on Horses.
+      //
+      // Rule: if rollStartedAt exists and is within the animation window, this is a LIVE
+      // roll → animate, regardless of prevRollKey. If rollStartedAt is missing/stale, this
+      // is a hydration snapshot → snap to final without animation.
+      const rollStartedAt = (state as any)?.rollStartedAt;
+      const localDurationFull = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
+      let durationMs: number = localDurationFull;
+      let isLiveRoll = true;
+
+      if (rollStartedAt) {
+        const elapsed = Date.now() - new Date(rollStartedAt).getTime();
+        if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
+          isLiveRoll = false;
+        } else {
+          durationMs = Math.max(200, localDurationFull - elapsed);
+        }
+      } else if (prevRollKey === undefined) {
+        // No timestamp AND we've never observed this player → treat as hydration catch-up.
+        isLiveRoll = false;
+      }
+
+      if (!isLiveRoll) {
+        const finalDice = (state.dice as any[]) ?? [];
+        const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
+        lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
+        lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
+        setObserverDisplayState({
+          playerId: currentTurnPlayerId,
+          dice: finalDice as (HorsesDieType | SCCDieType)[],
+          rollsRemaining: state.rollsRemaining,
+          isRolling: false,
+          heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+          heldCountBeforeComplete: derivedHeldCount2,
+          rollKey: newRollKey,
+          preRollSig: undefined,
+        });
         persistSyncDebugEvent({
           gameId: gameId ?? null,
           gameType: resolvedGameType,
@@ -2963,129 +3003,79 @@ export function useHorsesMobileController({
           eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
-            decision: 'skipped-first-observation',
+            decision: 'hydration-snap',
             rollerId: currentTurnPlayerId.slice(0, 8),
             newRollKey,
+            hasRollStartedAt: !!rollStartedAt,
             rollsRemaining: state.rollsRemaining,
             isComplete: !!state.isComplete,
             tsClient: Date.now(),
           },
         });
+        return;
       }
-      if (prevRollKey !== undefined) {
-        // AUTHORITATIVE ANIMATION TIMING: Use rollStartedAt from DB if available,
-        // falling back to local timer duration. This ensures observers animate in sync
-        // with the roller's authoritative timeline, not just local guesses.
-        const rollStartedAt = (state as any)?.rollStartedAt;
-        const rollAnimationMinEndAt = (state as any)?.rollAnimationMinEndAt;
-        let durationMs: number;
-        
-        if (rollStartedAt) {
-          const rollStartTime = new Date(rollStartedAt).getTime();
-          const elapsed = Date.now() - rollStartTime;
-          
-          if (elapsed > HORSES_ROLL_AGAIN_ANIMATION_MS + 500) {
-            // Roll happened too long ago — snap to post-animation state, don't replay
-            const finalDice = (state.dice as any[]) ?? [];
-            const derivedHeldCount2 = finalDice.filter((d: any) => !!d?.isHeld).length;
-            lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
-            lastObservedRollsRemainingRef.current[currentTurnPlayerId] = state.rollsRemaining;
-            setObserverDisplayState({
-              playerId: currentTurnPlayerId,
-              dice: finalDice as (HorsesDieType | SCCDieType)[],
-              rollsRemaining: state.rollsRemaining,
-              isRolling: false,
-              heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
-              heldCountBeforeComplete: derivedHeldCount2,
-              rollKey: newRollKey,
-              preRollSig: undefined,
-            });
-            return;
-          }
-          
-          // Use remaining time in the animation window
-          const localDuration = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
-          durationMs = Math.max(200, localDuration - elapsed);
-        } else {
-          durationMs = state.rollsRemaining === 2 ? HORSES_FIRST_ROLL_ANIMATION_MS : HORSES_ROLL_AGAIN_ANIMATION_MS;
-        }
 
+      console.log(
+        `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} (duration=${durationMs}ms, isComplete=${state.isComplete})`,
+      );
 
-        console.log(
-          `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} (duration=${durationMs}ms)`,
-        );
+      if (observerRollingTimerRef.current) {
+        window.clearTimeout(observerRollingTimerRef.current);
+        observerRollingTimerRef.current = null;
+      }
 
-        if (observerRollingTimerRef.current) {
-          window.clearTimeout(observerRollingTimerRef.current);
-          observerRollingTimerRef.current = null;
-        }
+      const preRollDice = (state.dice as any[]) ?? [];
+      const preRollSig = preRollDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+      const displayDice = preRollDice;
+      const derivedHeldCount = preRollDice.filter((d: any) => !!d?.isHeld).length;
 
-        // Start protected observer display state.
-        // IMPORTANT: At roll start, DB often still contains the *previous* roll values.
-        // We keep held dice as-is but mark unheld dice with a special "rolling" marker.
-        // Instead of masking to value=0 (which DiceTableLayout can cache as "valid"), we
-        // preserve the old values but set isRolling=true so the fly-in animation shows them.
-        const preRollDice = (state.dice as any[]) ?? [];
-        const preRollSig = preRollDice.map((d) => `${d?.value ?? 0}:${d?.isHeld ? 1 : 0}`).join("|");
+      const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
+      const dbHoldSeq = (state as any).holdSeq ?? 0;
+      maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
 
-        // DON'T mask dice to value=0 - this gets cached and causes null dice to "land".
-        // Instead, keep the pre-roll values; the fly-in animation will overlay them anyway.
-        // DiceTableLayout only shows the animation overlay when isRolling=true.
-        const displayDice = preRollDice;
-        
-        // FIX #3: Derive heldCountBeforeComplete directly from dice (not stale metadata)
-        const derivedHeldCount = preRollDice.filter((d: any) => !!d?.isHeld).length;
-        
-        // Reset the holdSeq tracker for this new rollKey
-        const rollKeyStr = `${currentTurnPlayerId}:${newRollKey}`;
-        const dbHoldSeq = (state as any).holdSeq ?? 0;
-        maxHoldSeqPerRollKeyRef.current[rollKeyStr] = dbHoldSeq;
+      setObserverDisplayState({
+        playerId: currentTurnPlayerId,
+        dice: displayDice as (HorsesDieType | SCCDieType)[],
+        rollsRemaining: state.rollsRemaining,
+        isRolling: true,
+        heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
+        heldCountBeforeComplete: derivedHeldCount,
+        rollKey: newRollKey,
+        holdSeq: dbHoldSeq,
+        preRollSig,
+      });
 
-        setObserverDisplayState({
-          playerId: currentTurnPlayerId,
-          dice: displayDice as (HorsesDieType | SCCDieType)[],
-          rollsRemaining: state.rollsRemaining,
-          isRolling: true,
-          heldMaskBeforeComplete: (state as any).heldMaskBeforeComplete,
-          heldCountBeforeComplete: derivedHeldCount,
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'invariant', severity: 'info',
+        eventName: 'horses-observer-flyin-decision',
+        payload: {
+          decision: 'fired',
+          rollerId: currentTurnPlayerId?.slice(0, 8) ?? null,
           rollKey: newRollKey,
-          holdSeq: dbHoldSeq,
-          preRollSig,
-        });
+          prevRollKey: prevRollKey ?? null,
+          rollsRemaining: state.rollsRemaining,
+          isComplete: !!state.isComplete,
+          durationMs,
+          usedRollStartedAt: !!rollStartedAt,
+          tsClient: Date.now(),
+        },
+      });
 
-        // NOTE: presentation is NOT frozen here. observerDisplayState (scoped by
-        // playerId+rollKey) is rendered above presentation and provides the fly-in
-        // overlay; presentation continues to advance freely so authoritative
-        // turn-handoff snapshots reach the next client without delay.
-        persistSyncDebugEvent({
-          gameId: gameId ?? null,
-          gameType: resolvedGameType,
-          handNumber: monotonicHandNumber,
-          roundId: currentRoundId,
-          eventType: 'invariant', severity: 'info',
-          eventName: 'horses-observer-flyin-decision',
-          payload: {
-            decision: 'fired',
-            rollerId: currentTurnPlayerId?.slice(0, 8) ?? null,
-            rollKey: newRollKey,
-            prevRollKey: prevRollKey ?? null,
-            rollsRemaining: state.rollsRemaining,
-            durationMs,
-            usedRollStartedAt: !!(state as any)?.rollStartedAt,
-            tsClient: Date.now(),
-          },
+      observerRollingTimerRef.current = window.setTimeout(() => {
+        setObserverDisplayState((prev) => {
+          if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
+          if (prev.rollKey !== newRollKey) return prev;
+          // On terminal completion, sync to final DB dice values when animation ends so
+          // the completedTurnHold overlay layers on top of the correct final frame.
+          const finalDiceAfter = state.isComplete ? ((state.dice as any[]) ?? prev.dice) : prev.dice;
+          return { ...prev, dice: finalDiceAfter as (HorsesDieType | SCCDieType)[], isRolling: false };
         });
-
-        // End rolling state after the animation window. Do NOT clear the display state.
-        observerRollingTimerRef.current = window.setTimeout(() => {
-          setObserverDisplayState((prev) => {
-            if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
-            if (prev.rollKey !== newRollKey) return prev;
-            return { ...prev, isRolling: false };
-          });
-          observerRollingTimerRef.current = null;
-        }, durationMs);
-      }
+        observerRollingTimerRef.current = null;
+      }, durationMs);
 
       return;
     }
