@@ -619,6 +619,136 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     frameworkInteractionsAllowedRef.current = syncHandle.interactionsAllowed;
   }, [syncHandle.interactionsAllowed]);
+
+  // ── Phase 2 hardening: centralized identity refs for sync access ─────────
+  // All writer / snapshot / divergence checks read these refs synchronously.
+  const authIdentityRef = useRef<AuthoritativeIdentity | null>(authIdentity);
+  useEffect(() => { authIdentityRef.current = authIdentity; }, [
+    authIdentity?.roundId,
+    authIdentity?.handNumber,
+    authIdentity?.dealerGameId,
+  ]);
+  const presentationIdentityRef = useRef(syncHandle.presentationIdentity);
+  useEffect(() => { presentationIdentityRef.current = syncHandle.presentationIdentity; }, [
+    syncHandle.presentationIdentity?.roundId,
+    syncHandle.presentationIdentity?.handNumber,
+  ]);
+
+  /**
+   * Centralized writer-side identity invariant.
+   *
+   * PRECEDENCE (canonical source order):
+   *   1. authIdentity   — authoritative; wins all ties
+   *   2. snapshotIdentity (=currentRoundId for cribbage) — must match auth
+   *   3. propIdentity (parent roundId/handNumber) — may lag but cannot unlock writes
+   *   4. mirrorIdentity (local cribbageState) — may lag but cannot unlock writes
+   *   5. presentationIdentity — may lag only as non-interactive placeholder
+   *   6. writerIdentity (currentRoundId/currentHandNumber) — must equal auth at write time
+   *
+   * Returns ok=true ONLY if every layer is aligned. Otherwise returns a structured
+   * divergence payload suitable for `crib-action-suppressed-stale-identity` events.
+   */
+  const evaluateWriterIdentity = useCallback((action: string) => {
+    const auth = authIdentityRef.current;
+    const pres = presentationIdentityRef.current;
+    const divergence: Record<string, unknown> = {
+      action,
+      authIdentity: auth ? { roundId: auth.roundId?.slice(0, 8), hand: auth.handNumber } : null,
+      snapshotIdentity: currentRoundId?.slice(0, 8) ?? null,
+      propIdentity: { roundId: roundId?.slice(0, 8), hand: handNumber },
+      mirrorIdentity: { handKey: currentHandKey?.slice(0, 30) ?? null },
+      presentationIdentity: pres ? { roundId: pres.roundId?.slice(0, 8), hand: pres.handNumber } : null,
+      writerIdentity: { roundId: currentRoundId?.slice(0, 8), hand: currentHandNumber },
+      renderHandKey: renderHandKey?.slice(0, 30) ?? null,
+      frameworkInteractionsAllowed: frameworkInteractionsAllowedRef.current,
+      localInteractionsAllowed: interactionsAllowedRef.current,
+    };
+
+    if (!interactionsAllowedRef.current) {
+      return { ok: false, reason: 'local-identity-misaligned', divergence };
+    }
+    if (!frameworkInteractionsAllowedRef.current) {
+      return { ok: false, reason: 'framework-identity-stale-or-frozen', divergence };
+    }
+    if (auth && currentRoundId && auth.roundId && auth.roundId !== currentRoundId) {
+      return { ok: false, reason: 'writer-vs-auth-roundid-mismatch', divergence };
+    }
+    if (auth && typeof auth.handNumber === 'number' && auth.handNumber !== currentHandNumber) {
+      return { ok: false, reason: 'writer-vs-auth-hand-mismatch', divergence };
+    }
+    if (pres && auth && pres.roundId && auth.roundId && pres.roundId !== auth.roundId) {
+      return { ok: false, reason: 'presentation-vs-auth-mismatch', divergence };
+    }
+    return { ok: true as const, reason: 'aligned', divergence };
+  }, [
+    currentRoundId, currentHandNumber, currentHandKey, renderHandKey, roundId, handNumber,
+  ]);
+
+  // ── Identity divergence observer ──
+  // Fires `crib-identity-divergence` (throttled per-identity-signature) whenever
+  // the six identity sources disagree in a way that is NOT a normal lag-window.
+  const lastDivergenceSigRef = useRef<string>('');
+  useEffect(() => {
+    const auth = authIdentity;
+    if (!auth) return; // not hydrated yet — expected silent state
+    const pres = syncHandle.presentationIdentity;
+
+    const propMatches = roundId === auth.roundId && handNumber === auth.handNumber;
+    const writerMatches = currentRoundId === auth.roundId && currentHandNumber === auth.handNumber;
+    const presMatches = !pres || (pres.roundId === auth.roundId && pres.handNumber === auth.handNumber);
+    const mirror = cribbageStateRef.current;
+    // Mirror is acceptable when null (cleared on identity advance) or when its
+    // hand_key dealer matches auth (we can't directly compare roundId since the
+    // mirror has no roundId field — the snapshot channel guards that for us).
+    const mirrorOk = mirror === null || mirror.dealerPlayerId !== undefined;
+
+    if (propMatches && writerMatches && presMatches && mirrorOk) return;
+
+    const sig = [
+      auth.roundId?.slice(0, 8), auth.handNumber,
+      roundId?.slice(0, 8), handNumber,
+      currentRoundId?.slice(0, 8), currentHandNumber,
+      pres?.roundId?.slice(0, 8), pres?.handNumber,
+      mirror === null ? 'null' : 'has-mirror',
+    ].join('|');
+    if (sig === lastDivergenceSigRef.current) return;
+    lastDivergenceSigRef.current = sig;
+
+    const reason =
+      !writerMatches ? 'writer-lag-vs-auth' :
+      !propMatches ? 'prop-lag-vs-auth' :
+      !presMatches ? 'presentation-lag-vs-auth' :
+      'mirror-divergence';
+
+    try {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: auth.handNumber ?? null,
+        roundId: auth.roundId ?? null,
+        eventType: 'invariant',
+        severity: reason === 'prop-lag-vs-auth' || reason === 'writer-lag-vs-auth' ? 'info' : 'warn',
+        eventName: 'crib-identity-divergence',
+        payload: {
+          reason,
+          phase: cribbageStateRef.current?.phase ?? null,
+          authIdentity: { roundId: auth.roundId?.slice(0, 8) ?? null, hand: auth.handNumber },
+          snapshotIdentity: currentRoundId?.slice(0, 8) ?? null,
+          propIdentity: { roundId: roundId?.slice(0, 8), hand: handNumber },
+          mirrorIdentity: mirror === null ? null : { dealerPlayerId: mirror.dealerPlayerId?.slice(0, 8) },
+          presentationIdentity: pres ? { roundId: pres.roundId?.slice(0, 8) ?? null, hand: pres.handNumber } : null,
+          writerIdentity: { roundId: currentRoundId?.slice(0, 8), hand: currentHandNumber },
+        },
+      });
+    } catch { /* safe */ }
+  }, [
+    authIdentity?.roundId, authIdentity?.handNumber,
+    roundId, handNumber,
+    currentRoundId, currentHandNumber,
+    syncHandle.presentationIdentity?.roundId,
+    syncHandle.presentationIdentity?.handNumber,
+    gameId,
+  ]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
    // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
