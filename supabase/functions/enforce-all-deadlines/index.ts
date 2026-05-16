@@ -319,16 +319,13 @@ serve(async (req) => {
         }
 
         // ============= ALL-HUMANS AUTO-FOLD GUARD (prevents infinite pussy tax) =============
-        // In card games (3-5-7, Holm), if EVERY human player is in auto_fold mode, the game
-        // would loop forever with every human folding → pussy tax → next round → repeat.
-        // To prevent this, we pause the session when this condition is detected.
-        const isCardGame =
-          game.game_type === '3-5-7' ||
-          game.game_type === '3-5-7-game' ||
-          game.game_type === '357' ||
-          game.game_type === 'holm-game';
+        // For rulesets whose timeout action is auto_fold, if every seated human
+        // is in auto_fold mode the game would loop forever (fold → pussy tax →
+        // next round → repeat). Pause the session. Policy is resolved from
+        // authoritative config — no game-type whitelist.
+        const policy = await fetchTimeoutPolicy(supabase, game);
 
-        if (isCardGame && game.status === 'in_progress' && !game.is_paused) {
+        if (policy.enabled && policy.action === 'auto_fold' && game.status === 'in_progress' && !game.is_paused) {
           // Fetch all seated human players (not sitting_out)
           const { data: seatedHumans } = await supabase
             .from('players')
