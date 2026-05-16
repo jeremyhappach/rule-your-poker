@@ -486,20 +486,29 @@ export const CribbageMobileGameTable = ({
     if (!isIdentityForward(prev, authIdentity)) return;
     setCribbageState(null);
     cribbageStateRef.current = null;
+    const payload = {
+      prevHand: prev.handNumber,
+      nextHand: authIdentity.handNumber,
+      prevRoundId: prev.roundId?.slice(0, 8) ?? null,
+      nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
+    };
+    // Two events: a canonical "identity advanced" lifecycle hook plus the
+    // specific "presentation reset on identity advance" effect we just performed.
     persistSyncDebugEvent({
-      gameId,
-      gameType: 'cribbage',
+      gameId, gameType: 'cribbage',
       handNumber: authIdentity.handNumber ?? null,
       roundId: authIdentity.roundId ?? null,
-      eventType: 'transition',
-      severity: 'info',
-      eventName: 'crib-identity-advance-local-clear',
-      payload: {
-        prevHand: prev.handNumber,
-        nextHand: authIdentity.handNumber,
-        prevRoundId: prev.roundId?.slice(0, 8) ?? null,
-        nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
-      },
+      eventType: 'transition', severity: 'info',
+      eventName: 'crib-identity-advanced',
+      payload,
+    });
+    persistSyncDebugEvent({
+      gameId, gameType: 'cribbage',
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition', severity: 'info',
+      eventName: 'crib-presentation-reset-on-identity-advance',
+      payload,
     });
   }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, gameId]);
 
@@ -619,6 +628,136 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     frameworkInteractionsAllowedRef.current = syncHandle.interactionsAllowed;
   }, [syncHandle.interactionsAllowed]);
+
+  // ── Phase 2 hardening: centralized identity refs for sync access ─────────
+  // All writer / snapshot / divergence checks read these refs synchronously.
+  const authIdentityRef = useRef<AuthoritativeIdentity | null>(authIdentity);
+  useEffect(() => { authIdentityRef.current = authIdentity; }, [
+    authIdentity?.roundId,
+    authIdentity?.handNumber,
+    authIdentity?.dealerGameId,
+  ]);
+  const presentationIdentityRef = useRef(syncHandle.presentationIdentity);
+  useEffect(() => { presentationIdentityRef.current = syncHandle.presentationIdentity; }, [
+    syncHandle.presentationIdentity?.roundId,
+    syncHandle.presentationIdentity?.handNumber,
+  ]);
+
+  /**
+   * Centralized writer-side identity invariant.
+   *
+   * PRECEDENCE (canonical source order):
+   *   1. authIdentity   — authoritative; wins all ties
+   *   2. snapshotIdentity (=currentRoundId for cribbage) — must match auth
+   *   3. propIdentity (parent roundId/handNumber) — may lag but cannot unlock writes
+   *   4. mirrorIdentity (local cribbageState) — may lag but cannot unlock writes
+   *   5. presentationIdentity — may lag only as non-interactive placeholder
+   *   6. writerIdentity (currentRoundId/currentHandNumber) — must equal auth at write time
+   *
+   * Returns ok=true ONLY if every layer is aligned. Otherwise returns a structured
+   * divergence payload suitable for `crib-action-suppressed-stale-identity` events.
+   */
+  const evaluateWriterIdentity = useCallback((action: string) => {
+    const auth = authIdentityRef.current;
+    const pres = presentationIdentityRef.current;
+    const divergence: Record<string, unknown> = {
+      action,
+      authIdentity: auth ? { roundId: auth.roundId?.slice(0, 8), hand: auth.handNumber } : null,
+      snapshotIdentity: currentRoundId?.slice(0, 8) ?? null,
+      propIdentity: { roundId: roundId?.slice(0, 8), hand: handNumber },
+      mirrorIdentity: { handKey: currentHandKey?.slice(0, 30) ?? null },
+      presentationIdentity: pres ? { roundId: pres.roundId?.slice(0, 8), hand: pres.handNumber } : null,
+      writerIdentity: { roundId: currentRoundId?.slice(0, 8), hand: currentHandNumber },
+      renderHandKey: renderHandKey?.slice(0, 30) ?? null,
+      frameworkInteractionsAllowed: frameworkInteractionsAllowedRef.current,
+      localInteractionsAllowed: interactionsAllowedRef.current,
+    };
+
+    if (!interactionsAllowedRef.current) {
+      return { ok: false, reason: 'local-identity-misaligned', divergence };
+    }
+    if (!frameworkInteractionsAllowedRef.current) {
+      return { ok: false, reason: 'framework-identity-stale-or-frozen', divergence };
+    }
+    if (auth && currentRoundId && auth.roundId && auth.roundId !== currentRoundId) {
+      return { ok: false, reason: 'writer-vs-auth-roundid-mismatch', divergence };
+    }
+    if (auth && typeof auth.handNumber === 'number' && auth.handNumber !== currentHandNumber) {
+      return { ok: false, reason: 'writer-vs-auth-hand-mismatch', divergence };
+    }
+    if (pres && auth && pres.roundId && auth.roundId && pres.roundId !== auth.roundId) {
+      return { ok: false, reason: 'presentation-vs-auth-mismatch', divergence };
+    }
+    return { ok: true as const, reason: 'aligned', divergence };
+  }, [
+    currentRoundId, currentHandNumber, currentHandKey, renderHandKey, roundId, handNumber,
+  ]);
+
+  // ── Identity divergence observer ──
+  // Fires `crib-identity-divergence` (throttled per-identity-signature) whenever
+  // the six identity sources disagree in a way that is NOT a normal lag-window.
+  const lastDivergenceSigRef = useRef<string>('');
+  useEffect(() => {
+    const auth = authIdentity;
+    if (!auth) return; // not hydrated yet — expected silent state
+    const pres = syncHandle.presentationIdentity;
+
+    const propMatches = roundId === auth.roundId && handNumber === auth.handNumber;
+    const writerMatches = currentRoundId === auth.roundId && currentHandNumber === auth.handNumber;
+    const presMatches = !pres || (pres.roundId === auth.roundId && pres.handNumber === auth.handNumber);
+    const mirror = cribbageStateRef.current;
+    // Mirror is acceptable when null (cleared on identity advance) or when its
+    // hand_key dealer matches auth (we can't directly compare roundId since the
+    // mirror has no roundId field — the snapshot channel guards that for us).
+    const mirrorOk = mirror === null || mirror.dealerPlayerId !== undefined;
+
+    if (propMatches && writerMatches && presMatches && mirrorOk) return;
+
+    const sig = [
+      auth.roundId?.slice(0, 8), auth.handNumber,
+      roundId?.slice(0, 8), handNumber,
+      currentRoundId?.slice(0, 8), currentHandNumber,
+      pres?.roundId?.slice(0, 8), pres?.handNumber,
+      mirror === null ? 'null' : 'has-mirror',
+    ].join('|');
+    if (sig === lastDivergenceSigRef.current) return;
+    lastDivergenceSigRef.current = sig;
+
+    const reason =
+      !writerMatches ? 'writer-lag-vs-auth' :
+      !propMatches ? 'prop-lag-vs-auth' :
+      !presMatches ? 'presentation-lag-vs-auth' :
+      'mirror-divergence';
+
+    try {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'cribbage',
+        handNumber: auth.handNumber ?? null,
+        roundId: auth.roundId ?? null,
+        eventType: 'invariant',
+        severity: reason === 'prop-lag-vs-auth' || reason === 'writer-lag-vs-auth' ? 'info' : 'warn',
+        eventName: 'crib-identity-divergence',
+        payload: {
+          reason,
+          phase: cribbageStateRef.current?.phase ?? null,
+          authIdentity: { roundId: auth.roundId?.slice(0, 8) ?? null, hand: auth.handNumber },
+          snapshotIdentity: currentRoundId?.slice(0, 8) ?? null,
+          propIdentity: { roundId: roundId?.slice(0, 8), hand: handNumber },
+          mirrorIdentity: mirror === null ? null : { dealerPlayerId: mirror.dealerPlayerId?.slice(0, 8) },
+          presentationIdentity: pres ? { roundId: pres.roundId?.slice(0, 8) ?? null, hand: pres.handNumber } : null,
+          writerIdentity: { roundId: currentRoundId?.slice(0, 8), hand: currentHandNumber },
+        },
+      });
+    } catch { /* safe */ }
+  }, [
+    authIdentity?.roundId, authIdentity?.handNumber,
+    roundId, handNumber,
+    currentRoundId, currentHandNumber,
+    syncHandle.presentationIdentity?.roundId,
+    syncHandle.presentationIdentity?.handNumber,
+    gameId,
+  ]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
    // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
@@ -2863,7 +3002,44 @@ export const CribbageMobileGameTable = ({
         });
         return;
       }
-      
+
+      // ── Auth-vs-snapshot identity gate ──
+      // Snapshot identity is the currentRoundId this listener is scoped to.
+      // If auth has advanced past us, the snapshot is stale. If snapshot is for
+      // a round auth has not yet reached, it is a "future" snapshot from a
+      // newly-spawned per-round subscription that has not yet been re-keyed.
+      const authNow = authIdentityRef.current;
+      if (authNow && authNow.roundId && currentRoundId && authNow.roundId !== currentRoundId) {
+        const authHand = authNow.handNumber ?? -1;
+        const isStale = authHand > currentHandNumber;
+        const eventName = isStale ? 'crib-snapshot-rejected-stale' : 'crib-snapshot-rejected-future';
+        try {
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: currentHandNumber,
+            roundId: currentRoundId,
+            eventType: 'invariant',
+            severity: 'warn',
+            eventName,
+            payload: {
+              source,
+              snapshotRoundId: currentRoundId?.slice(0, 8),
+              authRoundId: authNow.roundId?.slice(0, 8),
+              authHand: authNow.handNumber,
+              currentHand: currentHandNumber,
+              phase: newCribbageState.phase,
+            },
+          });
+        } catch {}
+        logCribbageDebug(debugCtx, eventName, {
+          snapshotRoundId: currentRoundId?.slice(0, 8),
+          authRoundId: authNow.roundId?.slice(0, 8),
+          phase: newCribbageState.phase,
+        }, traceId);
+        return;
+      }
+
       // Log snapshot received
       logCribbageDebug(debugCtx, `snapshot_received:${source}`, cribbageStateSummary(newCribbageState), traceId);
       
@@ -2878,6 +3054,25 @@ export const CribbageMobileGameTable = ({
         comparison: result.comparison,
         source,
       }, traceId);
+
+      // Phase 2 production test hook — deterministic accept/reject events.
+      try {
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          roundId: currentRoundId,
+          eventType: result.accepted ? 'transition' : 'invariant',
+          severity: result.accepted ? 'info' : 'warn',
+          eventName: result.accepted ? 'crib-snapshot-accepted' : 'crib-snapshot-rejected-progress',
+          payload: {
+            source,
+            reason: result.reason,
+            phase: newCribbageState.phase,
+            snapshotRoundId: currentRoundId?.slice(0, 8),
+            authRoundId: authIdentityRef.current?.roundId?.slice(0, 8) ?? null,
+          },
+        });
+      } catch {}
       
       if (result.accepted) {
         // Update the legacy cribbageState/ref for components that still read it directly
@@ -3288,34 +3483,22 @@ export const CribbageMobileGameTable = ({
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
-    // ── Stale-action containment ──
-    // Reject mutations whose rendered hand identity no longer matches the
-    // authoritative actionable identity. Without this, a user can interact
-    // with a still-visible OLD hand during a hand transition.
-    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
-      try {
-        persistSyncDebugEvent({
-          gameId,
-          gameType: 'cribbage',
-          handNumber: currentHandNumber,
-          roundId: currentRoundId,
-          eventType: 'invariant',
-          severity: 'warn',
-          eventName: 'crib-stale-action-suppressed',
-          payload: {
-            action: 'discard',
-            cardIndices,
-            renderHandKey: renderHandKey?.slice(0, 30),
-            currentHandKey: currentHandKey?.slice(0, 30),
-            currentRoundId: currentRoundId?.slice(0, 8),
-            propRoundId: roundId?.slice(0, 8),
-            currentHandNumber,
-            propHandNumber: handNumber,
-          },
-        });
-      } catch {}
-      toast.error('Hand updating — try again');
-      return;
+    // ── Centralized stale-action containment (Phase 2) ──
+    {
+      const verdict = evaluateWriterIdentity('discard');
+      if (!verdict.ok) {
+        try {
+          persistSyncDebugEvent({
+            gameId, gameType: 'cribbage',
+            handNumber: currentHandNumber, roundId: currentRoundId,
+            eventType: 'invariant', severity: 'warn',
+            eventName: 'crib-action-suppressed-stale-identity',
+            payload: { ...verdict.divergence, suppressReason: verdict.reason, cardIndices },
+          });
+        } catch {}
+        toast.error('Hand updating — try again');
+        return;
+      }
     }
 
     const tid = newTraceId();
@@ -3382,24 +3565,26 @@ export const CribbageMobileGameTable = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx, evaluateWriterIdentity]);
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
-    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
-      try {
-        persistSyncDebugEvent({
-          gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
-          eventType: 'invariant', severity: 'warn', eventName: 'crib-stale-action-suppressed',
-          payload: { action: 'play_card', cardIndex,
-            renderHandKey: renderHandKey?.slice(0, 30), currentHandKey: currentHandKey?.slice(0, 30),
-            currentRoundId: currentRoundId?.slice(0, 8), propRoundId: roundId?.slice(0, 8),
-            currentHandNumber, propHandNumber: handNumber },
-        });
-      } catch {}
-      toast.error('Hand updating — try again');
-      return;
+    {
+      const verdict = evaluateWriterIdentity('play_card');
+      if (!verdict.ok) {
+        try {
+          persistSyncDebugEvent({
+            gameId, gameType: 'cribbage',
+            handNumber: currentHandNumber, roundId: currentRoundId,
+            eventType: 'invariant', severity: 'warn',
+            eventName: 'crib-action-suppressed-stale-identity',
+            payload: { ...verdict.divergence, suppressReason: verdict.reason, cardIndex },
+          });
+        } catch {}
+        toast.error('Hand updating — try again');
+        return;
+      }
     }
 
     const tid = newTraceId();
@@ -3456,23 +3641,25 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
-    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
-      try {
-        persistSyncDebugEvent({
-          gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
-          eventType: 'invariant', severity: 'warn', eventName: 'crib-stale-action-suppressed',
-          payload: { action: 'go',
-            renderHandKey: renderHandKey?.slice(0, 30), currentHandKey: currentHandKey?.slice(0, 30),
-            currentRoundId: currentRoundId?.slice(0, 8), propRoundId: roundId?.slice(0, 8),
-            currentHandNumber, propHandNumber: handNumber },
-        });
-      } catch {}
-      return;
+    {
+      const verdict = evaluateWriterIdentity('go');
+      if (!verdict.ok) {
+        try {
+          persistSyncDebugEvent({
+            gameId, gameType: 'cribbage',
+            handNumber: currentHandNumber, roundId: currentRoundId,
+            eventType: 'invariant', severity: 'warn',
+            eventName: 'crib-action-suppressed-stale-identity',
+            payload: { ...verdict.divergence, suppressReason: verdict.reason },
+          });
+        } catch {}
+        return;
+      }
     }
 
     const tid = newTraceId();
@@ -3532,7 +3719,7 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
   // Keep handleGoRef updated to the latest callback
   useEffect(() => {
