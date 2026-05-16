@@ -386,6 +386,7 @@ export function useHorsesMobileController({
 
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   const prevAuthTurnPlayerRef = useRef<string | null>(null);
+  const prevAuthRollKeyRef = useRef<Record<string, number>>({});
   useEffect(() => {
     if (!incomingHorsesState) return;
     const beforeTurn = prevAuthTurnPlayerRef.current;
@@ -412,6 +413,39 @@ export function useHorsesMobileController({
           presentationAction: result.presentationAction,
         },
       });
+    }
+
+    // INSTRUMENTATION (Defect 1): record every authoritative snapshot arrival
+    // for the current turn player whose rollKey changed. Lets us verify whether
+    // observers actually receive roll-1/roll-2 snapshots from realtime, or only
+    // the terminal roll-3 (coalescing hypothesis).
+    if (afterTurn) {
+      const ts = (incomingHorsesState.playerStates as any)?.[afterTurn];
+      const rollKey = typeof ts?.rollKey === 'number' ? ts.rollKey : null;
+      const prevRollKey = prevAuthRollKeyRef.current[afterTurn] ?? null;
+      if (rollKey !== null && rollKey !== prevRollKey) {
+        prevAuthRollKeyRef.current[afterTurn] = rollKey;
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-auth-snapshot-received',
+          payload: {
+            rollerId: afterTurn.slice(0, 8),
+            rollKey,
+            prevRollKey,
+            rollsRemaining: ts?.rollsRemaining ?? null,
+            isComplete: !!ts?.isComplete,
+            holdSeq: ts?.holdSeq ?? null,
+            diceValues: Array.isArray(ts?.dice) ? ts.dice.map((d: any) => d?.value ?? 0) : null,
+            acceptedByFramework: result.accepted,
+            wasFrozenAtWrite: result.wasFrozenAtWrite,
+            tsClient: Date.now(),
+          },
+        });
+      }
     }
   }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
 
@@ -1041,6 +1075,28 @@ export function useHorsesMobileController({
         } : {}),
       };
 
+      // INSTRUMENTATION (Defect 1): record every roller write so we can correlate
+      // against observer realtime receive + fly-in trigger decisions.
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'transition', severity: 'info',
+        eventName: 'horses-roller-write',
+        payload: {
+          playerId: myPlayer.id.slice(0, 8),
+          rollKey: localRollKeyRef.current,
+          rollsRemaining: hand.rollsRemaining,
+          isComplete: completed,
+          holdSeq: localHoldSeqRef.current,
+          diceValues: (hand.dice as any[]).map((d: any) => d?.value ?? 0),
+          heldMask: (hand.dice as any[]).map((d: any) => !!d?.isHeld),
+          tsClient: Date.now(),
+          hasAnimMeta: !!rollAnimationMeta,
+        },
+      });
+
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
     },
     [enabled, currentRoundId, myPlayer],
@@ -1098,18 +1154,26 @@ export function useHorsesMobileController({
     };
   }, []);
 
-  // BOUNDARY HYGIENE: Clear all presentation owners/caches on round change.
-  // This runs as an effect (not during render) because the refs are declared after the sync block.
+  // BOUNDARY HYGIENE: Hard-reset every per-round latch, overlay and cache on
+  // currentRoundId change. This is the single source of truth for round-boundary
+  // resets — any per-round ref/state added later MUST be cleared here so a stale
+  // value from the previous round cannot mask the new round's UI / suppress
+  // interaction (e.g. SCC tie-rollover stall: previous round's completedTurnHold
+  // + observerDisplayState + heldMaskAtLastRollStartRef surviving caused the new
+  // round to render with prior badges and no Roll Now button).
   const boundaryCleanupRoundRef = useRef<string | null>(null);
   useEffect(() => {
     if (currentRoundId === boundaryCleanupRoundRef.current) return;
+    const prevRoundId = boundaryCleanupRoundRef.current;
     boundaryCleanupRoundRef.current = currentRoundId;
-    
-    // Clear observer/bot display, completed turn holds, felt caches, monotonic refs
+
+    // Monotonic / per-player observer refs.
     lastObservedRollKeyRef.current = {};
     lastObservedRollsRemainingRef.current = {};
     maxSeenRollKeyRef.current = {};
     maxHoldSeqPerRollKeyRef.current = {};
+
+    // Felt + announcement / advance latches.
     lastFeltDiceRef.current = null;
     lastFeltDiceAtRef.current = 0;
     lastCompletedTurnKeyRef.current = null;
@@ -1117,18 +1181,48 @@ export function useHorsesMobileController({
     stuckAdvanceKeyRef.current = null;
     noQualifyShownForRef.current = new Set();
     midnightShownForRef.current = new Set();
-    
-    // Clear state-based display caches
+
+    // Roller-local roll bookkeeping (carrying prior held mask into a new round
+    // pollutes the first roll's heldCountBeforeComplete derivation).
+    heldMaskAtLastRollStartRef.current = null;
+    // Force local-hand reset path to re-evaluate against the new round identity.
+    lastResetTurnKeyRef.current = null;
+
+    // Display overlays — must drop together with refs above so DiceTableLayout
+    // does not re-cache the previous round's terminal frame.
     setObserverDisplayState(null);
     setBotDisplayState(null);
     setCompletedTurnHold(null);
     setBotTurnActiveId(null);
-    
-    // SAFETY: Ensure presentation is unfrozen at round boundaries to prevent stuck freeze
+
+    // Animation timers tied to the previous round.
+    if (completedTurnHoldTimerRef.current) {
+      window.clearTimeout(completedTurnHoldTimerRef.current);
+      completedTurnHoldTimerRef.current = null;
+    }
+    if (observerRollingTimerRef.current) {
+      window.clearTimeout(observerRollingTimerRef.current);
+      observerRollingTimerRef.current = null;
+    }
+
+    // SAFETY: Ensure presentation is unfrozen at round boundaries.
     if (syncHandle.isFrozen) {
       syncHandle.unfreezePresentation();
     }
-    
+
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: monotonicHandNumber,
+      roundId: currentRoundId,
+      eventType: 'transition', severity: 'info',
+      eventName: 'horses-round-boundary-reset',
+      payload: {
+        prevRoundId: prevRoundId?.slice(0, 8) ?? null,
+        nextRoundId: currentRoundId?.slice(0, 8) ?? null,
+        wasFrozen: syncHandle.isFrozen,
+      },
+    });
   }, [currentRoundId]);
 
   // TURN COMPLETION HOLD EFFECT: When a player completes their turn, capture their dice state
@@ -2708,6 +2802,22 @@ export function useHorsesMobileController({
       console.log(
         `[OBSERVER_ROLL] REJECTED stale rollKey ${newRollKey} < maxSeen ${maxSeenRollKey} for ${currentTurnPlayerId}`,
       );
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'transition', severity: 'warn',
+        eventName: 'horses-observer-flyin-decision',
+        payload: {
+          decision: 'rejected-stale',
+          rollerId: currentTurnPlayerId.slice(0, 8),
+          newRollKey, maxSeenRollKey, prevRollKey: prevRollKey ?? null,
+          rollsRemaining: state.rollsRemaining,
+          isComplete: !!state.isComplete,
+          tsClient: Date.now(),
+        },
+      });
       return;
     }
 
@@ -2766,6 +2876,22 @@ export function useHorsesMobileController({
         console.log(
           `[OBSERVER_ROLL] rollKey change for ${currentTurnPlayerId}: ${prevRollKey} -> ${newRollKey} SKIPPED (already complete, bookkeeping)`,
         );
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-observer-flyin-decision',
+          payload: {
+            decision: 'skipped-bookkeeping',
+            rollerId: currentTurnPlayerId.slice(0, 8),
+            prevRollKey: prevRollKey ?? null, newRollKey,
+            prevRollsRemaining: prevRollsRemaining ?? null,
+            rollsRemaining: state.rollsRemaining,
+            tsClient: Date.now(),
+          },
+        });
         
         // Set final display state without animation
         const finalDice = (state.dice as any[]) ?? [];
@@ -2785,6 +2911,24 @@ export function useHorsesMobileController({
       }
 
       // Don't animate on the first observation (no baseline)
+      if (prevRollKey === undefined) {
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-observer-flyin-decision',
+          payload: {
+            decision: 'skipped-first-observation',
+            rollerId: currentTurnPlayerId.slice(0, 8),
+            newRollKey,
+            rollsRemaining: state.rollsRemaining,
+            isComplete: !!state.isComplete,
+            tsClient: Date.now(),
+          },
+        });
+      }
       if (prevRollKey !== undefined) {
         // AUTHORITATIVE ANIMATION TIMING: Use rollStartedAt from DB if available,
         // falling back to local timer duration. This ensures observers animate in sync
@@ -2876,12 +3020,16 @@ export function useHorsesMobileController({
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
           eventType: 'transition', severity: 'info',
-          eventName: 'horses-observer-roll-overlay-only',
+          eventName: 'horses-observer-flyin-decision',
           payload: {
-            playerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+            decision: 'fired',
+            rollerId: currentTurnPlayerId?.slice(0, 8) ?? null,
             rollKey: newRollKey,
-            prevRollKey,
+            prevRollKey: prevRollKey ?? null,
+            rollsRemaining: state.rollsRemaining,
             durationMs,
+            usedRollStartedAt: !!(state as any)?.rollStartedAt,
+            tsClient: Date.now(),
           },
         });
 
