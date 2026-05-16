@@ -156,6 +156,18 @@ async function horsesAdvanceTurn(roundId: string, expectedCurrentPlayerId: strin
 export interface UseHorsesMobileControllerArgs {
   enabled: boolean;
   gameId?: string;
+  /**
+   * Dealer-game (session) id. Required for the framework's authoritative
+   * identity feed (`useAuthoritativeIdentity`). When omitted, the auth feed
+   * is disabled and the hook falls back to prop-driven identity (legacy).
+   */
+  dealerGameId?: string | null;
+  /**
+   * Authoritative hand number for the current round. Used as the most
+   * significant dimension of the progress vector and to drive the monotonic
+   * identity latch.
+   */
+  currentHandNumber?: number | null;
   players: HorsesPlayerForController[];
   currentUserId: string | undefined;
   pot: number;
