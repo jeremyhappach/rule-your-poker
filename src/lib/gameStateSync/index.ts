@@ -32,3 +32,10 @@ export type {
 export { logVisualContractEvent } from './visualContractEvents';
 export { reportMissingVisualContract } from './missingContractInvariant';
 export type { MissingContractReport } from './missingContractInvariant';
+export {
+  useAuthoritativeIdentity,
+  authoritativeIdentityEquals,
+  isIdentityForward,
+  identityKey,
+} from './authoritativeIdentity';
+export type { AuthoritativeIdentity, RoundRow } from './authoritativeIdentity';
