@@ -442,25 +442,6 @@ export function useGameStateSync<T>(
     };
   }, []);
 
-  return {
-    presentationState: presentation,
-    presentationRefValue: presentationRef.current,
-    authoritativeState: authoritative,
-    effectiveState: effective,
-    isFrozen: frozen,
-    isOptimistic: optimistic !== null,
-    receiveAuthoritativeUpdate,
-    applyOptimistic,
-    clearOptimistic,
-    freezePresentation,
-    unfreezePresentation,
-    commitToPresentation,
-    reset,
-    beginVisualContract,
-    completeVisualContract,
-    abortVisualContract,
-    isVisualContractActive: activeContract !== null,
-    activeVisualContract: activeContract,
   const isIdentityStale = !!(
     identityProp &&
     !identityEqualsFn(presentationIdentityRef.current, identityProp)
