@@ -2596,10 +2596,14 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
     const forceComplete = async () => {
       if (!writeRoundId) return;
-      if (!syncHandle.canInteractNow()) {
-        logSuppressedWrite('forceComplete-allCompleteRecovery');
-        return;
-      }
+      // NOTE: Intentionally NOT gated by syncHandle.canInteractNow().
+      // This is an authoritative terminal state advancement (all players
+      // complete, currentTurnPlayerId already null), not a user interaction.
+      // The presentation/identity writer gate is the wrong guard here — it
+      // can stay locked during terminal visual-contract timing and strand
+      // the hand in "playing" forever. Downstream atomicity is already
+      // protected by processWin / rollover-claim guards
+      // (.eq("awaiting_next_round", false)), preventing double advancement.
       // Fetch latest state from DB to avoid clobbering
       const { data: roundRow } = await supabase
         .from("rounds")
@@ -2610,6 +2614,12 @@ export function useHorsesMobileController({
       const latestState = (roundRow as any)?.horses_state as HorsesStateFromDB | null;
       if (!latestState) return;
 
+      // Re-verify all-complete against latest DB state before writing.
+      const latestPlayerStates = latestState.playerStates ?? {};
+      const stillAllComplete = turnOrder.every(pid => latestPlayerStates[pid]?.isComplete);
+      if (!stillAllComplete) return;
+      if (latestState.gamePhase === "complete") return;
+
       await updateHorsesState(writeRoundId, {
         ...latestState,
         currentTurnPlayerId: null,
@@ -2617,8 +2627,9 @@ export function useHorsesMobileController({
       });
     };
 
-    // Small delay to avoid racing with normal advance
-    const t = window.setTimeout(forceComplete, 2000);
+    // Tiny debounce only — no meaningful "normal advance" remains once all
+    // players are complete and currentTurnPlayerId is null.
+    const t = window.setTimeout(forceComplete, 250);
     return () => window.clearTimeout(t);
   }, [enabled, gamePhase, presentationRoundId, currentRoundId, gameId, turnOrder, horsesState?.playerStates]);
 
