@@ -613,6 +613,12 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     interactionsAllowedRef.current = interactionsAllowed;
   }, [interactionsAllowed]);
+  // Framework-level gate (independent of local identity check) — kept as a
+  // ref so writer callbacks can read it synchronously.
+  const frameworkInteractionsAllowedRef = useRef(syncHandle.interactionsAllowed);
+  useEffect(() => {
+    frameworkInteractionsAllowedRef.current = syncHandle.interactionsAllowed;
+  }, [syncHandle.interactionsAllowed]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
    // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
