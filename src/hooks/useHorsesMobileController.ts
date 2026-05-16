@@ -447,8 +447,15 @@ export function useHorsesMobileController({
       const ts = (incomingHorsesState.playerStates as any)?.[afterTurn];
       const rollKey = typeof ts?.rollKey === 'number' ? ts.rollKey : null;
       const prevRollKey = prevAuthRollKeyRef.current[afterTurn] ?? null;
+      const hasRollStartedAt = !!ts?.rollStartedAt;
+      const rollStartedAtAgeMs = ts?.rollStartedAt
+        ? Date.now() - new Date(ts.rollStartedAt).getTime()
+        : null;
+
       if (rollKey !== null && rollKey !== prevRollKey) {
+        // NEW rollKey arrival
         prevAuthRollKeyRef.current[afterTurn] = rollKey;
+        prevAuthRollStartedAtRef.current[afterTurn] = hasRollStartedAt;
         persistSyncDebugEvent({
           gameId: gameId ?? null,
           gameType: resolvedGameType,
@@ -466,9 +473,34 @@ export function useHorsesMobileController({
             diceValues: Array.isArray(ts?.dice) ? ts.dice.map((d: any) => d?.value ?? 0) : null,
             acceptedByFramework: result.accepted,
             wasFrozenAtWrite: result.wasFrozenAtWrite,
+            // P0 confirmation: did THIS arrival carry rollStartedAt?
+            hasRollStartedAt,
+            rollStartedAtAgeMs,
             tsClient: Date.now(),
           },
         });
+      } else if (rollKey !== null && rollKey === prevRollKey) {
+        // SAME rollKey re-arrival (bookkeeping / lock-in rewrite). Detect the
+        // exact moment rollStartedAt disappears from the slot.
+        const hadBefore = prevAuthRollStartedAtRef.current[afterTurn] ?? false;
+        if (hadBefore && !hasRollStartedAt) {
+          prevAuthRollStartedAtRef.current[afterTurn] = false;
+          persistSyncDebugEvent({
+            gameId: gameId ?? null,
+            gameType: resolvedGameType,
+            handNumber: monotonicHandNumber,
+            roundId: currentRoundId,
+            eventType: 'invariant', severity: 'warn',
+            eventName: 'horses-auth-rollstartedat-stripped',
+            payload: {
+              rollerId: afterTurn.slice(0, 8),
+              rollKey,
+              rollsRemaining: ts?.rollsRemaining ?? null,
+              isComplete: !!ts?.isComplete,
+              tsClient: Date.now(),
+            },
+          });
+        }
       }
     }
   }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
