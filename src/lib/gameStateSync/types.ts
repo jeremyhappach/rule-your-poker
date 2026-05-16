@@ -216,4 +216,13 @@ export interface GameStateSyncHandle<T> {
     * Game tables SHOULD use this instead of reinventing per-game gates.
     */
    interactionsAllowed: boolean;
+
+   /**
+    * Synchronous writer-gate predicate. Reads from refs only (frozen,
+    * active contract, identity equality) — bypasses React render lag.
+    * Use this inside callbacks that may fire in the same tick as
+    * unfreezePresentation() or identity advancement, where the
+    * state-derived `interactionsAllowed` flag is one render behind.
+    */
+   canInteractNow: () => boolean;
 }
