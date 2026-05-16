@@ -1245,6 +1245,24 @@ export const GinRummyGameTable = ({
   }, [ginState?.phase, ginState?.winnerPlayerId]);
 
   const updateState = async (newState: GinRummyState, traceId?: string) => {
+    // Writer-audit gate: refuse to write if the framework says we cannot interact
+    // (frozen / visual contract active / identity stale). Prevents stale local
+    // action paths from clobbering the new round after a peer advanced the hand.
+    if (isIdentityStaleRef.current || !interactionsAllowedRef.current) {
+      persistSyncDebugEvent({
+        gameId, gameType: 'gin-rummy',
+        handNumber: currentHandNumber ?? null,
+        roundId: currentRoundId ?? null,
+        eventType: 'transition', severity: 'warn',
+        eventName: 'gin-writer-suppressed-stale-identity',
+        payload: {
+          traceId,
+          isIdentityStale: isIdentityStaleRef.current,
+          interactionsAllowed: interactionsAllowedRef.current,
+        },
+      });
+      return;
+    }
     setIsProcessing(true);
     logDebugEvent({
       gameId, roundId, userId: currentUserId, clientRole: 'actor',
