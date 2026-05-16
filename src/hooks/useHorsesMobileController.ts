@@ -2314,6 +2314,10 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
     const forceComplete = async () => {
       if (!writeRoundId) return;
+      if (!canWriteRef.current) {
+        logSuppressedWrite('forceComplete-allCompleteRecovery');
+        return;
+      }
       // Fetch latest state from DB to avoid clobbering
       const { data: roundRow } = await supabase
         .from("rounds")
