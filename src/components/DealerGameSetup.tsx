@@ -747,6 +747,7 @@ export const DealerGameSetup = ({
             }
             
             const dealerGameId = dealerGame.id;
+            logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-dice', { dealerPlayerId, dealerUserId, ante: parsedAnte });
             
             const { error } = await supabase
               .from('games')
@@ -834,6 +835,7 @@ export const DealerGameSetup = ({
             }
             
             const dealerGameId = dealerGame.id;
+            logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-card', { dealerPlayerId, dealerUserId });
             
             const updateData: any = {
               game_type: previousGameType,
@@ -939,6 +941,7 @@ export const DealerGameSetup = ({
             }
             
             const dealerGameId = dealerGame.id;
+            logDealerGameCreated(gameId, gameType, dealerGameId, 'bot-dealer-defaults', { dealerPlayerId, dealerUserId });
             
             const updateData: any = {
               game_type: gameType,
@@ -1089,6 +1092,7 @@ export const DealerGameSetup = ({
     }
     
     const dealerGameId = dealerGame.id;
+    logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-dice-or-holm', { dealerPlayerId, dealerUserId });
     
     const updateData: any = {
       game_type: gameTypeToSubmit,
@@ -1382,6 +1386,7 @@ export const DealerGameSetup = ({
     }
     
     const dealerGameId = dealerGame.id;
+    logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
     
     // CRIBBAGE: Go to cribbage_dealer_selection phase for high-card animation
     // The round will be created after dealer selection completes in Game.tsx
