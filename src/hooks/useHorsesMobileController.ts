@@ -3020,12 +3020,16 @@ export function useHorsesMobileController({
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
           eventType: 'transition', severity: 'info',
-          eventName: 'horses-observer-roll-overlay-only',
+          eventName: 'horses-observer-flyin-decision',
           payload: {
-            playerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+            decision: 'fired',
+            rollerId: currentTurnPlayerId?.slice(0, 8) ?? null,
             rollKey: newRollKey,
-            prevRollKey,
+            prevRollKey: prevRollKey ?? null,
+            rollsRemaining: state.rollsRemaining,
             durationMs,
+            usedRollStartedAt: !!(state as any)?.rollStartedAt,
+            tsClient: Date.now(),
           },
         });
 
