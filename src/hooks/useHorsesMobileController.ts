@@ -2873,19 +2873,18 @@ export function useHorsesMobileController({
       maxSeenRollKeyRef.current[currentTurnPlayerId] = newRollKey;
     }
 
-    // If the turn completed, ensure we stop showing rolling state, but keep dice visible.
-    // IMPORTANT: Also update the rollKey ref to prevent the "new roll detected" branch from
-    // firing if isComplete arrives slightly AFTER the rollKey update.
-    if (state.isComplete) {
+    // P0 FIX: do NOT short-circuit terminal completion when this is also a NEW rollKey.
+    // The previous behavior (return early on state.isComplete) caused observers to bypass
+    // the fly-in for the terminal (3rd) roll entirely — animation never ran for the roll
+    // that actually produced the final dice. Only treat isComplete as a "post-completion
+    // bookkeeping bump" when the rollKey hasn't advanced since we last observed.
+    const isNewRollKeyHere = newRollKey !== prevRollKey;
+    if (state.isComplete && !isNewRollKeyHere) {
       if (observerRollingTimerRef.current) {
         window.clearTimeout(observerRollingTimerRef.current);
         observerRollingTimerRef.current = null;
       }
-      // Update rollKey BEFORE setting display state to prevent race
       lastObservedRollKeyRef.current[currentTurnPlayerId] = newRollKey;
-      
-      
-      // Use the final DB dice values (not masked) since the turn is done
       const finalDice = (state.dice as any[]) ?? [];
       setObserverDisplayState((prev) => {
         if (!prev || prev.playerId !== currentTurnPlayerId) return prev;
@@ -2893,17 +2892,14 @@ export function useHorsesMobileController({
           ...prev,
           dice: finalDice as (HorsesDieType | SCCDieType)[],
           isRolling: false,
-          // IMPORTANT: do NOT update rollKey on completion.
-          // The completion rollKey bump is a server-side bookkeeping change and will cause DiceTableLayout
-          // to re-trigger fly-in if we pass it through (especially if the component remounts during the hold window).
-          preRollSig: undefined, // Clear to allow DB dice through
+          preRollSig: undefined,
         };
       });
       return;
     }
 
-    // Detect a new roll start.
-    if (newRollKey !== prevRollKey) {
+    // Detect a new roll start (intermediate or terminal).
+    if (isNewRollKeyHere) {
       // Track what rollsRemaining was BEFORE this new rollKey, so we can distinguish:
       // - Roll 3 completing (prevRollsRemaining=1 -> rollsRemaining=0) = ANIMATE
       // - Bookkeeping bump after completion (prevRollsRemaining=0 -> rollsRemaining=0) = SKIP
