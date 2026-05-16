@@ -544,6 +544,28 @@ export const CribbageMobileGameTable = ({
   const currentHandKey = useMemo(() => getHandKey(cribbageState), [cribbageState]);
   // Render-specific hand key: derived from sync presentation state (what UI actually shows)
   const renderHandKey = useMemo(() => getHandKey(viewState), [viewState]);
+  // ── Action identity guard ──
+  // A user-driven mutation (discard / play / Go) may only fire when the rendered
+  // hand identity matches the authoritative actionable hand identity end-to-end:
+  //   • renderHandKey === currentHandKey  → presentation matches local authoritative
+  //   • currentRoundId === roundId        → local round matches latest prop round
+  //   • currentHandNumber === handNumber  → local hand-number matches latest prop
+  //   • renderHandKey !== ''              → there IS a hand to act on
+  // If ANY of these fail we are looking at a STALE hand (either presentation lag
+  // or a hand boundary in flight) and must suppress every action writer.
+  const interactionsAllowed = !!(
+    renderHandKey &&
+    currentHandKey &&
+    renderHandKey === currentHandKey &&
+    currentRoundId &&
+    roundId &&
+    currentRoundId === roundId &&
+    currentHandNumber === handNumber
+  );
+  const interactionsAllowedRef = useRef(interactionsAllowed);
+  useEffect(() => {
+    interactionsAllowedRef.current = interactionsAllowed;
+  }, [interactionsAllowed]);
   const lastHandKeyRef = useRef<string>('');
   const [isTransitioning, setIsTransitioning] = useState(false);
    // Bug B fix: instead of blanking the table during hand transitions, freeze the last-good
@@ -3213,6 +3235,36 @@ export const CribbageMobileGameTable = ({
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    // ── Stale-action containment ──
+    // Reject mutations whose rendered hand identity no longer matches the
+    // authoritative actionable identity. Without this, a user can interact
+    // with a still-visible OLD hand during a hand transition.
+    if (!interactionsAllowedRef.current) {
+      try {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          roundId: currentRoundId,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-stale-action-suppressed',
+          payload: {
+            action: 'discard',
+            cardIndices,
+            renderHandKey: renderHandKey?.slice(0, 30),
+            currentHandKey: currentHandKey?.slice(0, 30),
+            currentRoundId: currentRoundId?.slice(0, 8),
+            propRoundId: roundId?.slice(0, 8),
+            currentHandNumber,
+            propHandNumber: handNumber,
+          },
+        });
+      } catch {}
+      toast.error('Hand updating — try again');
+      return;
+    }
+
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
 
@@ -3282,6 +3334,21 @@ export const CribbageMobileGameTable = ({
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    if (!interactionsAllowedRef.current) {
+      try {
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
+          eventType: 'invariant', severity: 'warn', eventName: 'crib-stale-action-suppressed',
+          payload: { action: 'play_card', cardIndex,
+            renderHandKey: renderHandKey?.slice(0, 30), currentHandKey: currentHandKey?.slice(0, 30),
+            currentRoundId: currentRoundId?.slice(0, 8), propRoundId: roundId?.slice(0, 8),
+            currentHandNumber, propHandNumber: handNumber },
+        });
+      } catch {}
+      toast.error('Hand updating — try again');
+      return;
+    }
+
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:play_card', { cardIndex, phase: cribbageState.phase, turn: cribbageState.pegging.currentTurnPlayerId?.slice(0, 8) }, tid);
 
@@ -3340,6 +3407,20 @@ export const CribbageMobileGameTable = ({
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
+
+    if (!interactionsAllowedRef.current) {
+      try {
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
+          eventType: 'invariant', severity: 'warn', eventName: 'crib-stale-action-suppressed',
+          payload: { action: 'go',
+            renderHandKey: renderHandKey?.slice(0, 30), currentHandKey: currentHandKey?.slice(0, 30),
+            currentRoundId: currentRoundId?.slice(0, 8), propRoundId: roundId?.slice(0, 8),
+            currentHandNumber, propHandNumber: handNumber },
+        });
+      } catch {}
+      return;
+    }
 
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:go', { phase: cribbageState.phase, count: cribbageState.pegging.currentCount }, tid);
@@ -4740,7 +4821,7 @@ export const CribbageMobileGameTable = ({
             }
             return null;
           })()}
-          {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && (renderHandKey === currentHandKey) && (
+          {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && interactionsAllowed && (
             <CribbageMobileCardsTab
               key={renderHandKey}
               cribbageState={viewState}
@@ -4765,6 +4846,7 @@ export const CribbageMobileGameTable = ({
                 handNumber,
                 isGameplayMode,
                 viewStateIsCurrentRound,
+                interactionsAllowed,
               }}
             />
           )}

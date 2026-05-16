@@ -31,6 +31,8 @@ interface RenderTraceContext {
   handNumber: number;
   isGameplayMode: boolean;
   viewStateIsCurrentRound: boolean;
+  /** Authoritative gate from parent: when false, the rendered hand is NOT the actionable hand. */
+  interactionsAllowed?: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
@@ -91,7 +93,8 @@ export const CribbageMobileCardsTab = ({
     renderTrace.currentHandKey &&
     renderTrace.renderHandKey !== renderTrace.currentHandKey
   );
-  const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch);
+  const parentSuppressed = !!renderTrace && renderTrace.interactionsAllowed === false;
+  const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch || parentSuppressed);
   const renderedHand = activeHandBlocked ? [] : sourceHand;
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
