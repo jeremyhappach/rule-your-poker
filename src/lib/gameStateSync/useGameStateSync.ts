@@ -82,8 +82,15 @@ export function useGameStateSync<T>(
   // ── Identity awareness refs ──────────────────────────────────
   // presentationIdentity = identity attached to the current presentation.
   // It is updated on every accepted authoritative update and on reset().
-  const presentationIdentityRef = useRef<AuthoritativeIdentity | null>(identityProp);
-  const [presentationIdentity, setPresentationIdentity] = useState<AuthoritativeIdentity | null>(identityProp);
+  //
+  // IMPORTANT: do NOT seed with `identityProp` at mount. Seeding here causes
+  // the auto-reset effect to early-return when its `prev` already equals the
+  // first observed identity, even though presentation has not yet been
+  // hydrated for it. The effect itself adopts the first observation silently
+  // (no reset needed when there is nothing stale to clear); subsequent forward
+  // advances then trigger reset deterministically.
+  const presentationIdentityRef = useRef<AuthoritativeIdentity | null>(null);
+  const [presentationIdentity, setPresentationIdentity] = useState<AuthoritativeIdentity | null>(null);
   const identityPropRef = useRef<AuthoritativeIdentity | null>(identityProp);
   identityPropRef.current = identityProp;
 
