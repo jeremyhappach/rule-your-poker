@@ -1493,6 +1493,24 @@ export function useHorsesMobileController({
     timeoutProcessedRef.current = timeoutKey;
 
     const handleTimeout = async () => {
+      if (!canWriteRef.current) {
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'horses-timeout-mutation-suppressed',
+          payload: {
+            reason: 'interactions-blocked-or-identity-stale',
+            interactionsAllowed: interactionsAllowedRef.current,
+            isIdentityStale: isIdentityStaleRef.current,
+            turnPlayer: currentTurnPlayerId?.slice(0, 8) ?? null,
+          },
+        });
+        return;
+      }
 
       // Get current player state
       const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
