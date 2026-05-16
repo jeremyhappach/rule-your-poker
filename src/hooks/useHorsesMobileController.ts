@@ -1802,6 +1802,8 @@ export function useHorsesMobileController({
     if (gamePhase !== "playing") return;
     if (!presentationRoundId) return;
     if (!currentUserId) return;
+    // Writer-audit gate: bot loop is a mutation source; do not run on stale identity.
+    if (!interactionsAllowed || syncHandle.isIdentityStale) return;
 
     // Auto-play for bots OR human players with auto_fold (auto-roll mode)
     const shouldAutoPlay = currentTurnPlayer?.is_bot || currentTurnPlayer?.auto_fold;
