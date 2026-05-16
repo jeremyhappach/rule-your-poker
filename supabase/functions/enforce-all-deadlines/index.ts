@@ -21,24 +21,31 @@ const corsHeaders = {
 };
 
 /**
- * Authoritative runtime predicate: does this ruleset treat decision-timer
- * expiry as a legitimate participation mutation (auto_fold → sitting_out)?
- *
- * Only Holm and 3-5-7 variants use auto_fold as a participation signal.
- * For other game types (cribbage, horses, SCC, yahtzee, gin) auto_fold is
- * either unused or has unrelated semantics (e.g. horses auto-roll), and a
- * stale auto_fold=true MUST NOT be promoted to sitting_out by the cron.
+ * Config-backed timeout policy resolver. Mirrors src/lib/timeoutRules.ts.
+ * Resolution order: games override → game_defaults → safe default.
  */
-function rulesetAllowsAutoFoldParticipation(gameType: string | null | undefined): boolean {
-  if (!gameType) return false;
-  const gt = String(gameType).toLowerCase();
-  return (
-    gt === 'holm-game' ||
-    gt === 'holm' ||
-    gt === '3-5-7' ||
-    gt === '3-5-7-game' ||
-    gt === '357'
-  );
+type TimeoutAction = 'none' | 'auto_fold' | 'auto_sit_out' | 'auto_roll';
+interface TimeoutPolicy { enabled: boolean; action: TimeoutAction; source: 'game' | 'game_default' | 'safe_default'; }
+const ALLOWED_TIMEOUT_ACTIONS: ReadonlySet<TimeoutAction> = new Set(['none','auto_fold','auto_sit_out','auto_roll']);
+function resolveTimeoutPolicy(
+  game: { timeout_enforcement_enabled?: boolean | null; timeout_action?: string | null } | null | undefined,
+  gd: { timeout_enforcement_enabled?: boolean | null; timeout_action?: string | null } | null | undefined,
+): TimeoutPolicy {
+  if (game && typeof game.timeout_action === 'string' && ALLOWED_TIMEOUT_ACTIONS.has(game.timeout_action as TimeoutAction) && (game.timeout_enforcement_enabled === true || game.timeout_enforcement_enabled === false)) {
+    return { enabled: !!game.timeout_enforcement_enabled, action: game.timeout_action as TimeoutAction, source: 'game' };
+  }
+  if (gd && typeof gd.timeout_action === 'string' && ALLOWED_TIMEOUT_ACTIONS.has(gd.timeout_action as TimeoutAction) && (gd.timeout_enforcement_enabled === true || gd.timeout_enforcement_enabled === false)) {
+    return { enabled: !!gd.timeout_enforcement_enabled, action: gd.timeout_action as TimeoutAction, source: 'game_default' };
+  }
+  return { enabled: false, action: 'none', source: 'safe_default' };
+}
+async function fetchTimeoutPolicy(supabase: any, game: any): Promise<TimeoutPolicy> {
+  const { data: gd } = await supabase
+    .from('game_defaults')
+    .select('timeout_enforcement_enabled, timeout_action')
+    .eq('game_type', game?.game_type || '')
+    .maybeSingle();
+  return resolveTimeoutPolicy(game, gd);
 }
 
 // ============== CARD UTILITIES ==============
@@ -312,16 +319,13 @@ serve(async (req) => {
         }
 
         // ============= ALL-HUMANS AUTO-FOLD GUARD (prevents infinite pussy tax) =============
-        // In card games (3-5-7, Holm), if EVERY human player is in auto_fold mode, the game
-        // would loop forever with every human folding → pussy tax → next round → repeat.
-        // To prevent this, we pause the session when this condition is detected.
-        const isCardGame =
-          game.game_type === '3-5-7' ||
-          game.game_type === '3-5-7-game' ||
-          game.game_type === '357' ||
-          game.game_type === 'holm-game';
+        // For rulesets whose timeout action is auto_fold, if every seated human
+        // is in auto_fold mode the game would loop forever (fold → pussy tax →
+        // next round → repeat). Pause the session. Policy is resolved from
+        // authoritative config — no game-type whitelist.
+        const policy = await fetchTimeoutPolicy(supabase, game);
 
-        if (isCardGame && game.status === 'in_progress' && !game.is_paused) {
+        if (policy.enabled && policy.action === 'auto_fold' && game.status === 'in_progress' && !game.is_paused) {
           // Fetch all seated human players (not sitting_out)
           const { data: seatedHumans } = await supabase
             .from('players')
@@ -2481,7 +2485,7 @@ serve(async (req) => {
                   }
                   
                 if (player.auto_fold) {
-                  if (rulesetAllowsAutoFoldParticipation(game.game_type)) {
+                  if (policy.enabled && (policy.action === 'auto_fold' || policy.action === 'auto_sit_out')) {
                     await supabase
                       .from('players')
                       .update({ sitting_out: true, waiting: false })
@@ -2498,7 +2502,7 @@ serve(async (req) => {
                         event_type: 'cron-participation-suppressed-invalid-ruleset',
                         game_id: game.id,
                         client_role: 'cron',
-                        payload: { player_id: player.id, game_type: game.game_type, path: 'stuck_game_over_null_at' },
+                        payload: { player_id: player.id, game_type: game.game_type, policy_action: policy.action, policy_enabled: policy.enabled, policy_source: policy.source, path: 'stuck_game_over_null_at' },
                       });
                     } catch {}
                   }
@@ -2707,7 +2711,7 @@ serve(async (req) => {
                 }
                 
                 if (player.auto_fold) {
-                  if (rulesetAllowsAutoFoldParticipation(game.game_type)) {
+                  if (policy.enabled && (policy.action === 'auto_fold' || policy.action === 'auto_sit_out')) {
                     await supabase
                       .from('players')
                       .update({ sitting_out: true, waiting: false })
@@ -2722,7 +2726,7 @@ serve(async (req) => {
                         event_type: 'cron-participation-suppressed-invalid-ruleset',
                         game_id: game.id,
                         client_role: 'cron',
-                        payload: { player_id: player.id, game_type: game.game_type, path: 'stale_game_over' },
+                        payload: { player_id: player.id, game_type: game.game_type, policy_action: policy.action, policy_enabled: policy.enabled, policy_source: policy.source, path: 'stale_game_over' },
                       });
                     } catch {}
                   }

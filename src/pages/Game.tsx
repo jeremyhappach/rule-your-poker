@@ -4049,10 +4049,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // never mutate participation state.
         (async () => {
           try {
-            const { validateTimeoutAutoFold } = await import('@/lib/timeoutRules');
+            const { resolveTimeoutPolicy, validateTimeoutAutoFold } = await import('@/lib/timeoutRules');
             const { data: freshGame } = await supabase
               .from('games')
-              .select('id, game_type, status, is_paused, total_hands, current_round, current_game_uuid')
+              .select('id, game_type, status, is_paused, total_hands, current_round, current_game_uuid, timeout_enforcement_enabled, timeout_action')
               .eq('id', gameId!)
               .single();
 
@@ -4077,7 +4077,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               }
             }
 
+            const { data: gameDefault } = await supabase
+              .from('game_defaults')
+              .select('timeout_enforcement_enabled, timeout_action')
+              .eq('game_type', freshGame?.game_type || '')
+              .maybeSingle();
+            const policy = resolveTimeoutPolicy(freshGame as any, gameDefault as any);
+
             const suppress = validateTimeoutAutoFold({
+              policy,
               game: freshGame,
               round: freshRound,
               expectedRoundId: currentRound?.id ?? null,

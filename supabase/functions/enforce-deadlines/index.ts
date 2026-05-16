@@ -24,6 +24,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Config-backed timeout policy resolver. Mirrors src/lib/timeoutRules.ts.
+ * Resolution order: games override → game_defaults → safe default.
+ * No game-type whitelist; the only authoritative source is DB config.
+ */
+type TimeoutAction = 'none' | 'auto_fold' | 'auto_sit_out' | 'auto_roll';
+interface TimeoutPolicy { enabled: boolean; action: TimeoutAction; source: 'game' | 'game_default' | 'safe_default'; }
+const ALLOWED_TIMEOUT_ACTIONS: ReadonlySet<TimeoutAction> = new Set(['none','auto_fold','auto_sit_out','auto_roll']);
+function resolveTimeoutPolicy(
+  game: { timeout_enforcement_enabled?: boolean | null; timeout_action?: string | null } | null | undefined,
+  gd: { timeout_enforcement_enabled?: boolean | null; timeout_action?: string | null } | null | undefined,
+): TimeoutPolicy {
+  if (game && typeof game.timeout_action === 'string' && ALLOWED_TIMEOUT_ACTIONS.has(game.timeout_action as TimeoutAction) && (game.timeout_enforcement_enabled === true || game.timeout_enforcement_enabled === false)) {
+    return { enabled: !!game.timeout_enforcement_enabled, action: game.timeout_action as TimeoutAction, source: 'game' };
+  }
+  if (gd && typeof gd.timeout_action === 'string' && ALLOWED_TIMEOUT_ACTIONS.has(gd.timeout_action as TimeoutAction) && (gd.timeout_enforcement_enabled === true || gd.timeout_enforcement_enabled === false)) {
+    return { enabled: !!gd.timeout_enforcement_enabled, action: gd.timeout_action as TimeoutAction, source: 'game_default' };
+  }
+  return { enabled: false, action: 'none', source: 'safe_default' };
+}
+async function fetchTimeoutPolicy(supabase: any, game: any): Promise<TimeoutPolicy> {
+  const { data: gd } = await supabase
+    .from('game_defaults')
+    .select('timeout_enforcement_enabled, timeout_action')
+    .eq('game_type', game?.game_type || '')
+    .maybeSingle();
+  return resolveTimeoutPolicy(game, gd);
+}
+
 // Helper to log sitting_out/sit_out_next_hand changes for debugging
 async function logSittingOutChange(
   supabase: any,
@@ -722,15 +751,35 @@ serve(async (req) => {
            } else {
              actionsTaken.push('Bot timeout: Skipped (already processed)');
            }
-         } else {
-           // Human turn: lock the decision to fold AND enable persistent auto_fold.
-           // This ensures the player stays in auto-fold mode until they manually opt back in.
-           const { data: humanUpdateResult } = await supabase
-             .from('players')
-             .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
-             .eq('id', currentTurnPlayer.id)
-             .eq('decision_locked', false)
-             .select();
+          } else {
+            // Human turn: lock the decision to fold AND enable persistent auto_fold.
+            // Config-backed gate: only proceed if authoritative timeout policy
+            // for this ruleset says auto_fold is the legitimate action.
+            const policy = await fetchTimeoutPolicy(supabase, game);
+            if (!policy.enabled || policy.action !== 'auto_fold') {
+              console.log('[ENFORCE-CLIENT] holm-timeout-suppressed: policy disallows auto_fold', {
+                gameId, policy_action: policy.action, policy_enabled: policy.enabled, policy_source: policy.source,
+              });
+              try {
+                await supabase.from('debug_events').insert({
+                  event_type: 'timeout-auto-fold-suppressed-policy',
+                  game_id: gameId,
+                  round_id: currentRound.id,
+                  client_role: 'enforce-deadlines:holm',
+                  payload: { policy, game_type: game.game_type },
+                });
+              } catch {}
+              actionsTaken.push('holm-timeout-suppressed: policy disallows auto_fold');
+              return new Response(JSON.stringify({ success: true, actionsTaken, gameStatus: game.status, timestamp: nowIso, source, requestId }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+            const { data: humanUpdateResult } = await supabase
+              .from('players')
+              .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
+              .eq('id', currentTurnPlayer.id)
+              .eq('decision_locked', false)
+              .select();
 
            if (!humanUpdateResult || humanUpdateResult.length === 0) {
              console.log('[ENFORCE-CLIENT] Skipping player update - already processed by another client');
@@ -993,20 +1042,39 @@ serve(async (req) => {
 
             if (undecided.length > 0) {
               const undecidedIds = undecided.map((p: any) => p.id);
-              console.log('[ENFORCE-CLIENT] 3-5-7 auto-folding undecided players:', {
-                count: undecidedIds.length,
-                positions: undecided.map((p: any) => p.position),
-              });
 
-              // Per-player atomic claim — only update those still unlocked.
-              const { data: foldedRows } = await supabase
-                .from('players')
-                .update({ current_decision: 'fold', decision_locked: true })
-                .in('id', undecidedIds)
-                .eq('decision_locked', false)
-                .select('id');
+              // Config-backed gate: only auto-fold when authoritative policy permits it.
+              const policy357 = await fetchTimeoutPolicy(supabase, game);
+              if (!policy357.enabled || policy357.action !== 'auto_fold') {
+                console.log('[ENFORCE-CLIENT] 357-timeout-suppressed: policy disallows auto_fold', {
+                  gameId, policy_action: policy357.action, policy_enabled: policy357.enabled, policy_source: policy357.source,
+                });
+                try {
+                  await supabase.from('debug_events').insert({
+                    event_type: 'timeout-auto-fold-suppressed-policy',
+                    game_id: gameId,
+                    round_id: currentRound.id,
+                    client_role: 'enforce-deadlines:357',
+                    payload: { policy: policy357, game_type: game.game_type },
+                  });
+                } catch {}
+                actionsTaken.push('357-timeout-suppressed: policy disallows auto_fold');
+              } else {
+                console.log('[ENFORCE-CLIENT] 3-5-7 auto-folding undecided players:', {
+                  count: undecidedIds.length,
+                  positions: undecided.map((p: any) => p.position),
+                });
 
-              actionsTaken.push(`3-5-7 timeout: Auto-folded ${foldedRows?.length ?? 0}/${undecidedIds.length} undecided players`);
+                // Per-player atomic claim — only update those still unlocked.
+                const { data: foldedRows } = await supabase
+                  .from('players')
+                  .update({ current_decision: 'fold', decision_locked: true })
+                  .in('id', undecidedIds)
+                  .eq('decision_locked', false)
+                  .select('id');
+
+                actionsTaken.push(`3-5-7 timeout: Auto-folded ${foldedRows?.length ?? 0}/${undecidedIds.length} undecided players`);
+              }
             }
 
             // Re-read and, if everyone has decided, set all_decisions_in=true
