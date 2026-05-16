@@ -2485,7 +2485,7 @@ serve(async (req) => {
                   }
                   
                 if (player.auto_fold) {
-                  if (rulesetAllowsAutoFoldParticipation(game.game_type)) {
+                  if (policy.enabled && (policy.action === 'auto_fold' || policy.action === 'auto_sit_out')) {
                     await supabase
                       .from('players')
                       .update({ sitting_out: true, waiting: false })
@@ -2502,7 +2502,7 @@ serve(async (req) => {
                         event_type: 'cron-participation-suppressed-invalid-ruleset',
                         game_id: game.id,
                         client_role: 'cron',
-                        payload: { player_id: player.id, game_type: game.game_type, path: 'stuck_game_over_null_at' },
+                        payload: { player_id: player.id, game_type: game.game_type, policy_action: policy.action, policy_enabled: policy.enabled, policy_source: policy.source, path: 'stuck_game_over_null_at' },
                       });
                     } catch {}
                   }
@@ -2711,7 +2711,7 @@ serve(async (req) => {
                 }
                 
                 if (player.auto_fold) {
-                  if (rulesetAllowsAutoFoldParticipation(game.game_type)) {
+                  if (policy.enabled && (policy.action === 'auto_fold' || policy.action === 'auto_sit_out')) {
                     await supabase
                       .from('players')
                       .update({ sitting_out: true, waiting: false })
@@ -2726,7 +2726,7 @@ serve(async (req) => {
                         event_type: 'cron-participation-suppressed-invalid-ruleset',
                         game_id: game.id,
                         client_role: 'cron',
-                        payload: { player_id: player.id, game_type: game.game_type, path: 'stale_game_over' },
+                        payload: { player_id: player.id, game_type: game.game_type, policy_action: policy.action, policy_enabled: policy.enabled, policy_source: policy.source, path: 'stale_game_over' },
                       });
                     } catch {}
                   }
