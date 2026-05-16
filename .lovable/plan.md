@@ -169,3 +169,35 @@ Smallest safe change ordered for incremental rollout, starting with the games wh
 - No changes to visual contract semantics.
 - No changes to per-game animation latches (cut-card, dice, etc.).
 - No desktop-path work (deprecated).
+
+---
+
+## Phase 2 Cribbage Cutover — Shipped
+
+### Identity semantics
+
+**A. Forward-identity dimensions (Cribbage):** `(handNumber, roundId)` scoped by `dealerGameId`. Compared via `isIdentityForward` from `authoritativeIdentityPure`. `handNumber` is the dominant axis; `roundId` is a tiebreaker for distinct rounds at the same hand number (transitional states).
+
+**B. Stale snapshot after identity advance:** Rejected. The framework auto-reset effect fires on forward advance, stamping the new identity onto `presentationIdentityRef` and aborting any active visual contract with reason `reset-boundary`. The local `lastObservedIdentityRef` effect clears `cribbageState`. Any inbound snapshot whose progress vector regresses against the (just-reset) authoritative state is rejected by `compareProgress` in `receiveAuthoritativeUpdate`. No replay, no remount weirdness — animation latches (cut-card module registry) are keyed by `dealerGameId + handNumber`, not roundId, so they don't refire on the reset.
+
+**C. Reconnect / restore serving older identity:** `isIdentityForward` returns false for non-forward changes. The framework's identity-advancement effect explicitly handles the non-forward branch by silently adopting the new identity (`setPresentationIdentity`) without firing the reset cascade. The local `lastObservedIdentityRef` effect requires `isIdentityForward(prev, next)` and therefore does NOT clear `cribbageState` on a restore-to-older path. The next round-id-scoped snapshot subscription rebinds normally.
+
+**D. Identity feed = hand N+1 but snapshot feed = hand N:** During this window `syncHandle.isIdentityStale === true` and `syncHandle.interactionsAllowed === false`. Render path: `isStaleCompleteAwaitingNext` → `isBootstrapMode === true` → felt drops to "Preparing next hand…" shell. No stale gameplay surface; no interactive cards; writers short-circuit.
+
+### Defense in depth (writer guards)
+
+All three writers (`handleDiscard`, `handlePlayCard`, `handleGo`) require **both**:
+- `interactionsAllowedRef.current` — local identity-chain match (renderHandKey == currentHandKey, currentRoundId == roundId prop, currentHandNumber == handNumber prop).
+- `frameworkInteractionsAllowedRef.current` — framework gate (`!isFrozen && !isVisualContractActive && !isIdentityStale`).
+
+A violation in either path suppresses the write and emits `crib-stale-action-suppressed` to `debug_events`.
+
+### Listener lifecycle
+
+- `useAuthoritativeIdentity` subscribes to `rounds` filtered by `dealer_game_id`. Tear-down via `supabase.removeChannel` in the effect cleanup. Re-keys ONLY on `dealerGameId` change.
+- Per-round `cribbage-mobile-${currentRoundId}` subscription retained for snapshot delivery; tears down + recreates when `currentRoundId` changes (which now follows the dealer-game-scoped identity feed → no blind window).
+- No orphan subscriptions across dealer-game transitions: identity hook tears down on `dealerGameId` change; snapshot channel tears down on `currentRoundId` change. Both have explicit cleanup paths.
+
+### Out of scope (Phase 2)
+
+No changes to Holm / Yahtzee / Gin / Horses / SCC / 3-5-7. Cribbage proves the architecture first; per-game identity semantics will be audited individually before broader rollout.
