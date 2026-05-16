@@ -6,6 +6,9 @@ import { snapshotPlayerChips } from "@/lib/gameLogic";
 import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 import { getHorsesProgress } from "@/lib/gameStateSync/horsesProgress";
 import { useGameStateSync } from "@/lib/gameStateSync/useGameStateSync";
+import { useAuthoritativeIdentity } from "@/lib/gameStateSync/authoritativeIdentity";
+import { isIdentityForward, type AuthoritativeIdentity } from "@/lib/gameStateSync/authoritativeIdentityPure";
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { newTraceId } from "@/lib/debugEventLogger";
 import type { ProgressVector, GameStateSyncConfig } from "@/lib/gameStateSync/types";
 import {
@@ -153,6 +156,18 @@ async function horsesAdvanceTurn(roundId: string, expectedCurrentPlayerId: strin
 export interface UseHorsesMobileControllerArgs {
   enabled: boolean;
   gameId?: string;
+  /**
+   * Dealer-game (session) id. Required for the framework's authoritative
+   * identity feed (`useAuthoritativeIdentity`). When omitted, the auth feed
+   * is disabled and the hook falls back to prop-driven identity (legacy).
+   */
+  dealerGameId?: string | null;
+  /**
+   * Authoritative hand number for the current round. Used as the most
+   * significant dimension of the progress vector and to drive the monotonic
+   * identity latch.
+   */
+  currentHandNumber?: number | null;
   players: HorsesPlayerForController[];
   currentUserId: string | undefined;
   pot: number;
@@ -181,12 +196,14 @@ const BOT_TURN_START_DELAY_MS = 400;           // Bot start delay (was 500)
 export function useHorsesMobileController({
   enabled,
   gameId,
+  dealerGameId,
+  currentHandNumber: propHandNumber,
   players,
   currentUserId,
   pot,
   anteAmount,
   dealerPosition,
-  currentRoundId,
+  currentRoundId: propRoundId,
   horsesState,
   gameType = 'horses',
   isPaused = false,
@@ -196,11 +213,114 @@ export function useHorsesMobileController({
   const HORSES_TURN_TIMER_SECONDS = configuredTimerSeconds ?? DEFAULT_HORSES_TURN_TIMER_SECONDS;
   // Determine if this is a Ship Captain Crew game
   const isSCC = gameType === 'ship-captain-crew';
+  const resolvedGameType = isSCC ? 'ship-captain-crew' : 'horses';
+
+  // ── Phase 2: framework-owned authoritative identity ───────────
+  // Dealer-game-scoped feed observes new rounds across boundaries so the
+  // client cannot become structurally blind to a forward-advanced hand
+  // started by a peer client. Falls back to prop-only mode if no
+  // dealerGameId is provided (legacy callers / observers without context).
+  const { identity: authIdentity } = useAuthoritativeIdentity({
+    dealerGameId: dealerGameId ?? null,
+    enabled: !!dealerGameId,
+  });
+
+  // Monotonic forward-only round/hand identity latch.
+  // Parent props are advisory; authoritative identity wins whenever it is
+  // forward-of-or-equal. We never regress identity except via explicit reset
+  // (handled by framework `identity` config when dealerGameId changes).
+  const [monotonicRoundId, setMonotonicRoundId] = useState<string | null>(propRoundId);
+  const [monotonicHandNumber, setMonotonicHandNumber] = useState<number>(propHandNumber ?? 1);
+  useEffect(() => {
+    const propHand = propHandNumber ?? -1;
+    const authHand = authIdentity?.handNumber ?? -1;
+    const useAuth = authIdentity?.roundId != null && authHand >= propHand;
+    const incomingRoundId = useAuth ? authIdentity!.roundId! : propRoundId;
+    const incomingHand = Math.max(authHand, propHand, monotonicHandNumber);
+    if (!incomingRoundId) return;
+    setMonotonicHandNumber((prev) => (incomingHand > prev ? incomingHand : prev));
+    setMonotonicRoundId((prev) => {
+      if (!prev) return incomingRoundId;
+      if (prev === incomingRoundId) return prev;
+      const prevIdent: AuthoritativeIdentity = {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: monotonicHandNumber,
+        roundId: prev,
+      };
+      const nextIdent: AuthoritativeIdentity = {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: incomingHand,
+        roundId: incomingRoundId,
+      };
+      if (isIdentityForward(prevIdent, nextIdent)) return incomingRoundId;
+      // Regression — suppress and log so jitter is observable.
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: prev,
+        eventType: 'invariant',
+        severity: 'warn',
+        eventName: 'horses-regressive-identity-suppressed',
+        payload: {
+          heldRoundId: prev.slice(0, 8),
+          rejectedRoundId: incomingRoundId.slice(0, 8),
+          heldHand: monotonicHandNumber,
+          rejectedHand: incomingHand,
+        },
+      });
+      return prev;
+    });
+  }, [propRoundId, propHandNumber, authIdentity?.roundId, authIdentity?.handNumber, dealerGameId, monotonicHandNumber, gameId, resolvedGameType]);
+
+  // Aliases: keep existing internal references pointing at the live monotonic identity.
+  // eslint-disable-next-line no-param-reassign
+  const currentRoundId = monotonicRoundId;
+  const handNumber = monotonicHandNumber;
+
+  // ── Identity-advancement reset (mirror of Cribbage/Gin Phase 2) ──
+  // When the dealer-scoped feed detects a forward advance, emit deterministic
+  // debug events. The sync framework itself handles presentation/optimistic/
+  // freeze reset via the `identity` config passed below.
+  const lastObservedIdentityRef = useRef<AuthoritativeIdentity | null>(null);
+  useEffect(() => {
+    if (!authIdentity) return;
+    const prev = lastObservedIdentityRef.current;
+    lastObservedIdentityRef.current = authIdentity;
+    if (!prev) return;
+    if (!isIdentityForward(prev, authIdentity)) return;
+    const payload = {
+      prevHand: prev.handNumber,
+      nextHand: authIdentity.handNumber,
+      prevRoundId: prev.roundId?.slice(0, 8) ?? null,
+      nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
+    };
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition', severity: 'info',
+      eventName: 'horses-identity-advanced',
+      payload,
+    });
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition', severity: 'info',
+      eventName: 'horses-presentation-reset-on-identity-advance',
+      payload,
+    });
+  }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, gameId, resolvedGameType]);
 
   // ── Sync Framework: Full 3-layer model via useGameStateSync ──
   const syncConfig = useMemo<GameStateSyncConfig<HorsesStateFromDB | null>>(() => ({
-    getProgress: (state) => getHorsesProgress(state),
+    getProgress: (state) => getHorsesProgress(state, monotonicHandNumber),
     debugLabel: isSCC ? 'SCC' : 'Horses',
+    gameType: resolvedGameType,
+    identity: authIdentity,
     describeState: (state) => {
       if (!state) return { state: null };
       const ps = state.playerStates ?? {};
@@ -214,18 +334,51 @@ export function useHorsesMobileController({
     },
     optimisticTimeoutMs: 5000, // generous for dice animations
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
-  }), [isSCC]);
+  }), [isSCC, resolvedGameType, monotonicHandNumber, authIdentity]);
 
   const syncHandle = useGameStateSync<HorsesStateFromDB | null>(null, syncConfig);
 
-  // Identity latch: reset sync on round boundary changes (MUST be in effect, not render phase)
+  // Legacy round-boundary reset retained as a defensive belt for callers that
+  // do not pass dealerGameId (no auth feed → framework can't reset on its own).
   const prevRoundIdForSyncRef = useRef<string | null>(null);
   useEffect(() => {
     if (currentRoundId !== prevRoundIdForSyncRef.current) {
       prevRoundIdForSyncRef.current = currentRoundId;
-      syncHandle.reset(null);
+      if (!dealerGameId) syncHandle.reset(null);
     }
-  }, [currentRoundId]);
+  }, [currentRoundId, dealerGameId]);
+
+  // ── Writer-audit gates (Gin Rummy pattern) ──
+  // Single framework-owned predicate covering frozen / contract / identity-stale.
+  // Mutation entry points short-circuit when these are not satisfied so stale
+  // local paths cannot write through to the new round.
+  const interactionsAllowed = syncHandle.interactionsAllowed;
+  const interactionsAllowedRef = useRef(interactionsAllowed);
+  useEffect(() => { interactionsAllowedRef.current = interactionsAllowed; }, [interactionsAllowed]);
+  const isIdentityStaleRef = useRef(syncHandle.isIdentityStale);
+  useEffect(() => { isIdentityStaleRef.current = syncHandle.isIdentityStale; }, [syncHandle.isIdentityStale]);
+  const canWriteRef = useRef(true);
+  useEffect(() => {
+    canWriteRef.current = interactionsAllowed && !syncHandle.isIdentityStale;
+  }, [interactionsAllowed, syncHandle.isIdentityStale]);
+
+  const logSuppressedWrite = useCallback((tag: string, extra?: Record<string, unknown>) => {
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: monotonicHandNumber,
+      roundId: currentRoundId,
+      eventType: 'invariant',
+      severity: 'warn',
+      eventName: 'horses-stale-action-suppressed',
+      payload: {
+        tag,
+        interactionsAllowed: interactionsAllowedRef.current,
+        isIdentityStale: isIdentityStaleRef.current,
+        ...(extra ?? {}),
+      },
+    });
+  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId]);
 
   // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop
   const incomingHorsesState = horsesState;
@@ -840,6 +993,10 @@ export function useHorsesMobileController({
     ) => {
       if (!enabled) return;
       if (!currentRoundId || !myPlayer) return;
+      if (!canWriteRef.current) {
+        logSuppressedWrite('saveMyState');
+        return;
+      }
 
       const heldCountBeforeComplete = Array.isArray(heldMaskBeforeComplete)
         ? heldMaskBeforeComplete.filter(Boolean).length
@@ -869,6 +1026,10 @@ export function useHorsesMobileController({
     async (expectedCurrentPlayerId?: string | null) => {
       if (!enabled) return;
       if (!currentRoundId) return;
+      if (!canWriteRef.current) {
+        logSuppressedWrite('advanceToNextTurn');
+        return;
+      }
 
       const expected = expectedCurrentPlayerId ?? horsesState?.currentTurnPlayerId;
       if (!expected) return;
@@ -1173,6 +1334,10 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
 
     const t = window.setTimeout(() => {
+      if (!canWriteRef.current) {
+        logSuppressedWrite('stuckAdvance-forceComplete-or-advance');
+        return;
+      }
       if (allPlayersComplete) {
         void (async () => {
           if (!writeRoundId) return;
@@ -1328,6 +1493,24 @@ export function useHorsesMobileController({
     timeoutProcessedRef.current = timeoutKey;
 
     const handleTimeout = async () => {
+      if (!canWriteRef.current) {
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'horses-timeout-mutation-suppressed',
+          payload: {
+            reason: 'interactions-blocked-or-identity-stale',
+            interactionsAllowed: interactionsAllowedRef.current,
+            isIdentityStale: isIdentityStaleRef.current,
+            turnPlayer: currentTurnPlayerId?.slice(0, 8) ?? null,
+          },
+        });
+        return;
+      }
 
       // Get current player state
       const playerState = horsesState?.playerStates?.[currentTurnPlayerId];
@@ -1619,6 +1802,8 @@ export function useHorsesMobileController({
     if (gamePhase !== "playing") return;
     if (!presentationRoundId) return;
     if (!currentUserId) return;
+    // Writer-audit gate: bot loop is a mutation source; do not run on stale identity.
+    if (!interactionsAllowed || syncHandle.isIdentityStale) return;
 
     // Auto-play for bots OR human players with auto_fold (auto-roll mode)
     const shouldAutoPlay = currentTurnPlayer?.is_bot || currentTurnPlayer?.auto_fold;
@@ -1925,6 +2110,8 @@ export function useHorsesMobileController({
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
     currentTurnPlayer?.auto_fold, // Added to trigger auto-roll for human players
+    interactionsAllowed,
+    syncHandle.isIdentityStale,
     // REMOVED: horsesState?.currentTurnPlayerId - causes re-runs on every state update
     // REMOVED: horsesState?.playerStates - causes re-runs on every state update
     // REMOVED: candidateBotControllerUserId - use ref instead
@@ -2131,6 +2318,10 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
     const forceComplete = async () => {
       if (!writeRoundId) return;
+      if (!canWriteRef.current) {
+        logSuppressedWrite('forceComplete-allCompleteRecovery');
+        return;
+      }
       // Fetch latest state from DB to avoid clobbering
       const { data: roundRow } = await supabase
         .from("rounds")

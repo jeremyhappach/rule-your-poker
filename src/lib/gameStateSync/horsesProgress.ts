@@ -1,34 +1,33 @@
 /**
  * Horses / Ship Captain Crew progress vector extraction.
  *
- * Progress vector: [gamePhaseOrd, completedPlayerCount, turnIndex, rollProgress]
+ * Progress vector (Phase 2 cutover):
+ *   [handNumber, gamePhaseOrd, completedPlayerCount, turnIndex, rollProgress, holdSeq]
  *
  * Dimensions (left to right, most significant first):
  *
- *   1. gamePhaseOrd — waiting=0, playing=1, complete=2
- *      Ensures game-complete snapshots are always forward from playing.
+ *   1. handNumber — match-level monotonic counter. Hand transitions are now
+ *      explicit in the progress gate; we no longer rely solely on identity
+ *      reset for cross-hand protection. A new-hand snapshot is *always*
+ *      forward of any prior-hand snapshot even before the framework reset
+ *      lands.
  *
- *   2. completedPlayerCount — how many players have isComplete=true
- *      Monotonically increases as each player finishes their turn.
- *      Critical for tie detection: all players complete is the terminal state.
+ *   2. gamePhaseOrd — waiting=0, playing=1, complete=2.
  *
- *   3. turnIndex — index of currentTurnPlayerId within turnOrder (0-based)
- *      Increases as the turn advances left-to-right through the table.
- *      -1 if currentTurnPlayerId is null (complete phase).
- *      NOTE: For 2-player ties/rollovers, this resets to 0 in the NEW round
- *      (new roundId), so it's always forward within a single round.
+ *   3. completedPlayerCount — how many players have isComplete=true.
  *
- *   4. rollProgress — 3 - rollsRemaining for the current turn player (0-3)
- *      0 = hasn't rolled, 3 = all rolls used.
- *      Monotonically increases within a single turn.
+ *   4. turnIndex — index of currentTurnPlayerId within turnOrder (0-based,
+ *      turnOrder.length when null).
  *
- * Tie / Rollover handling:
- *   - Ties create a NEW round (new roundId), so the sync framework's
- *     reset(null) is called on roundId change, resetting the progress
- *     baseline. Within the new round, progress starts fresh at [1,0,0,0].
- *   - This means tie → rollover → new hand is handled by boundary reset,
- *     NOT by embedding handNumber in the vector (unlike Gin Rummy).
- *     This is correct because Horses creates a new DB round record per hand.
+ *   5. rollProgress — 3 - rollsRemaining for the current turn player.
+ *
+ *   6. holdSeq — monotonically increasing within a single roll for the
+ *      current turn player; resets on new roll (lower-significance dim
+ *      protects rapid hold-toggle reordering).
+ *
+ * `handNumber` is sourced from the controller's monotonic identity latch
+ * (not from horses_state, which does not persist hand_number). It is
+ * passed in by the caller via the getProgress closure.
  */
 
 import type { ProgressVector } from './types';
@@ -46,25 +45,25 @@ const PHASE_ORD: Record<string, number> = {
   complete: 2,
 };
 
-export function getHorsesProgress(state: HorsesStateForProgress | null): ProgressVector {
-  if (!state) return [0, 0, 0, 0, 0];
+export function getHorsesProgress(
+  state: HorsesStateForProgress | null,
+  handNumber: number = 0,
+): ProgressVector {
+  if (!state) return [handNumber, 0, 0, 0, 0, 0];
 
   const phaseOrd = PHASE_ORD[state.gamePhase ?? 'waiting'] ?? 0;
 
-  // Count completed players
   const playerStates = state.playerStates ?? {};
   let completedCount = 0;
   for (const ps of Object.values(playerStates)) {
     if (ps?.isComplete) completedCount++;
   }
 
-  // Turn index within turnOrder
   const turnOrder = state.turnOrder ?? [];
   const turnIdx = state.currentTurnPlayerId
     ? turnOrder.indexOf(state.currentTurnPlayerId)
-    : turnOrder.length; // null turn = past all players (complete)
+    : turnOrder.length;
 
-  // Roll progress for current turn player
   const currentPlayerState = state.currentTurnPlayerId
     ? playerStates[state.currentTurnPlayerId]
     : null;
@@ -72,8 +71,7 @@ export function getHorsesProgress(state: HorsesStateForProgress | null): Progres
     ? 3 - (currentPlayerState.rollsRemaining ?? 3)
     : 0;
 
-  // Hold sequence: monotonically increasing within a roll, resets on new roll
   const holdSeq = currentPlayerState?.holdSeq ?? 0;
 
-  return [phaseOrd, completedCount, turnIdx, rollProgress, holdSeq];
+  return [handNumber, phaseOrd, completedCount, turnIdx, rollProgress, holdSeq];
 }

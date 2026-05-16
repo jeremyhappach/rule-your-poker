@@ -230,6 +230,10 @@ interface MobileGameTableProps {
   // Horses (dice) state
   horsesRoundId?: string | null;
   horsesState?: HorsesStateFromDB | null;
+  /** Dealer-game (session) UUID for the dice game framework identity feed. */
+  horsesDealerGameId?: string | null;
+  /** Authoritative hand_number of the current round (drives progress vector). */
+  horsesHandNumber?: number | null;
   pendingDecision?: 'stay' | 'fold' | null;
   isPaused?: boolean;
   anteAmount?: number;
@@ -384,6 +388,8 @@ export const MobileGameTable = ({
   roundStatus,
   horsesRoundId,
   horsesState,
+  horsesDealerGameId,
+  horsesHandNumber,
   pendingDecision,
   isPaused,
   anteAmount = 0,
@@ -507,6 +513,8 @@ export const MobileGameTable = ({
   const horsesController = useHorsesMobileController({
     enabled: isDiceGame,
     gameId,
+    dealerGameId: horsesDealerGameId ?? null,
+    currentHandNumber: horsesHandNumber ?? null,
     players: players as any,
     currentUserId,
     pot,

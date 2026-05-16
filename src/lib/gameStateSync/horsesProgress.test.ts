@@ -4,7 +4,7 @@ import { compareProgress } from './stateProgress';
 
 describe('getHorsesProgress', () => {
   it('null state returns zero vector', () => {
-    expect(getHorsesProgress(null)).toEqual([0, 0, 0, 0, 0]);
+    expect(getHorsesProgress(null)).toEqual([0, 0, 0, 0, 0, 0]);
   });
 
   it('waiting phase is less than playing', () => {
@@ -158,7 +158,7 @@ describe('getHorsesProgress', () => {
       playerStates: { a: { isComplete: false, rollsRemaining: 3 }, b: { isComplete: false, rollsRemaining: 3 } },
     };
 
-    const resetBaseline = [0, 0, 0, 0, 0];
+    const resetBaseline = [0, 0, 0, 0, 0, 0];
     expect(compareProgress(resetBaseline, getHorsesProgress(handN1Start))).toBe(1);
 
     const handN1Complete: HorsesStateForProgress = {
@@ -178,7 +178,7 @@ describe('getHorsesProgress', () => {
       playerStates: { a: { isComplete: true, rollsRemaining: 0 }, b: { isComplete: true, rollsRemaining: 0 } },
     };
 
-    const baseline2 = [0, 0, 0, 0, 0];
+    const baseline2 = [0, 0, 0, 0, 0, 0];
     const hand2Start: HorsesStateForProgress = {
       gamePhase: 'playing',
       turnOrder: ['a', 'b'],
@@ -190,7 +190,7 @@ describe('getHorsesProgress', () => {
     const hand2Complete: HorsesStateForProgress = { ...hand1Complete };
     expect(compareProgress(getHorsesProgress(hand2Start), getHorsesProgress(hand2Complete))).toBe(1);
 
-    const baseline3 = [0, 0, 0, 0, 0];
+    const baseline3 = [0, 0, 0, 0, 0, 0];
     const hand3Start: HorsesStateForProgress = { ...hand2Start };
     expect(compareProgress(baseline3, getHorsesProgress(hand3Start))).toBe(1);
   });
@@ -223,7 +223,7 @@ describe('getHorsesProgress', () => {
   });
 
   it('observer joining mid-rollover sees valid progress from reset baseline', () => {
-    const baseline = [0, 0, 0, 0, 0];
+    const baseline = [0, 0, 0, 0, 0, 0];
     const midGame: HorsesStateForProgress = {
       gamePhase: 'playing',
       turnOrder: ['a', 'b'],
@@ -235,7 +235,7 @@ describe('getHorsesProgress', () => {
 
   it('rapid consecutive round resets produce valid progress sequences', () => {
     for (let round = 0; round < 3; round++) {
-      const baseline = [0, 0, 0, 0, 0];
+      const baseline = [0, 0, 0, 0, 0, 0];
       const start: HorsesStateForProgress = {
         gamePhase: 'playing',
         turnOrder: ['a', 'b'],
@@ -252,5 +252,59 @@ describe('getHorsesProgress', () => {
       expect(compareProgress(baseline, getHorsesProgress(start))).toBe(1);
       expect(compareProgress(getHorsesProgress(start), getHorsesProgress(complete))).toBe(1);
     }
+  });
+
+  // ── Cross-hand monotonicity (Phase 2 cutover) ────────────────
+
+  it('new-hand snapshot is forward of prior-hand terminal snapshot via handNumber', () => {
+    const prevHandComplete: HorsesStateForProgress = {
+      gamePhase: 'complete',
+      turnOrder: ['a', 'b'],
+      currentTurnPlayerId: null,
+      playerStates: { a: { isComplete: true, rollsRemaining: 0 }, b: { isComplete: true, rollsRemaining: 0 } },
+    };
+    const nextHandStart: HorsesStateForProgress = {
+      gamePhase: 'playing',
+      turnOrder: ['a', 'b'],
+      currentTurnPlayerId: 'a',
+      playerStates: { a: { isComplete: false, rollsRemaining: 3 }, b: { isComplete: false, rollsRemaining: 3 } },
+    };
+    // Without handNumber dimension, nextHandStart would compare LESS than prevHandComplete
+    // (playing<complete, 0<2 completed). handNumber prepend makes it forward regardless.
+    expect(compareProgress(
+      getHorsesProgress(prevHandComplete, 5),
+      getHorsesProgress(nextHandStart, 6),
+    )).toBe(1);
+  });
+
+  it('stale prior-hand snapshot is regressive against current-hand progress via handNumber', () => {
+    const stalePrevHand: HorsesStateForProgress = {
+      gamePhase: 'playing',
+      turnOrder: ['a', 'b'],
+      currentTurnPlayerId: 'b',
+      playerStates: { a: { isComplete: true, rollsRemaining: 0 }, b: { isComplete: false, rollsRemaining: 1 } },
+    };
+    const currentHandEarly: HorsesStateForProgress = {
+      gamePhase: 'playing',
+      turnOrder: ['a', 'b'],
+      currentTurnPlayerId: 'a',
+      playerStates: { a: { isComplete: false, rollsRemaining: 3 }, b: { isComplete: false, rollsRemaining: 3 } },
+    };
+    expect(compareProgress(
+      getHorsesProgress(stalePrevHand, 7),
+      getHorsesProgress(currentHandEarly, 8),
+    )).toBe(1);
+  });
+
+  it('same handNumber preserves intra-hand ordering', () => {
+    const turnA: HorsesStateForProgress = {
+      gamePhase: 'playing', turnOrder: ['a', 'b'], currentTurnPlayerId: 'a',
+      playerStates: { a: { isComplete: false, rollsRemaining: 3 }, b: { isComplete: false, rollsRemaining: 3 } },
+    };
+    const turnAMidRoll: HorsesStateForProgress = {
+      gamePhase: 'playing', turnOrder: ['a', 'b'], currentTurnPlayerId: 'a',
+      playerStates: { a: { isComplete: false, rollsRemaining: 1 }, b: { isComplete: false, rollsRemaining: 3 } },
+    };
+    expect(compareProgress(getHorsesProgress(turnA, 3), getHorsesProgress(turnAMidRoll, 3))).toBe(1);
   });
 });
