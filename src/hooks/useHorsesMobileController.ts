@@ -2653,12 +2653,22 @@ export function useHorsesMobileController({
   // Make observer rolls behave like bot rolls: once we detect a rollKey change, we show a protected
   // display state for the whole animation window, and we NEVER clear it on a timer (clearing causes
   // gaps where DB state is blank/out-of-order → flicker/disappearing dice).
+  //
+  // CRITICAL: read from `incomingHorsesState` (authoritative) — NOT presentationState.
+  // Presentation lags behind authoritative due to identity gating / visual-contract sequencing,
+  // which delays the observer fly-in animation. The fly-in must start the instant the authoritative
+  // snapshot arrives. Display state (observerDisplayState) is still rendered above presentation,
+  // so triggering off authoritative does not race with presentation updates.
   useEffect(() => {
-    if (!enabled || !currentTurnPlayerId) return;
-    if (isMyTurn) return; // I'm rolling, not observing
-    if (currentTurnPlayer?.is_bot) return; // Bot rolls handled by botDisplayState
+    if (!enabled) return;
+    const authState = incomingHorsesStateRef.current;
+    const currentTurnPlayerId = authState?.currentTurnPlayerId ?? null;
+    if (!currentTurnPlayerId) return;
+    if (currentTurnPlayerId === myPlayer?.id) return; // I'm rolling, not observing
+    const turnPlayer = players.find((p) => p.id === currentTurnPlayerId);
+    if (turnPlayer?.is_bot) return; // Bot rolls handled by botDisplayState
 
-    const state = horsesState?.playerStates?.[currentTurnPlayerId];
+    const state = authState?.playerStates?.[currentTurnPlayerId];
     if (!state) return;
 
     const newRollKey = (state as any).rollKey;
