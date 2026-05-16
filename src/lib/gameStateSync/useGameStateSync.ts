@@ -19,6 +19,13 @@ import {
   type VisualContractOptions,
 } from './visualContract';
 import { logVisualContractEvent } from './visualContractEvents';
+import {
+  authoritativeIdentityEquals as defaultIdentityEquals,
+  isIdentityForward,
+  identityKey,
+  type AuthoritativeIdentity,
+} from './authoritativeIdentity';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
 const DEFAULT_VISUAL_CONTRACT_TIMEOUT = 10000;
@@ -46,6 +53,8 @@ export function useGameStateSync<T>(
     debugLabel,
     describeState,
     gameType,
+    identity: identityProp = null,
+    identityEquals: identityEqualsFn = defaultIdentityEquals,
   } = config;
   const logPrefix = debugLabel ? `[GameStateSync:${debugLabel}]` : '[GameStateSync]';
   const resolvedGameType = gameType ?? debugLabel ?? 'unknown';
