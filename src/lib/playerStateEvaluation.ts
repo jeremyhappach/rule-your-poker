@@ -160,7 +160,9 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
     }
     
     // 3. auto_fold = true → sitting_out = true (player timed out and is auto-folding)
-    if (player.auto_fold) {
+    // P0-CONTAINMENT: gated by game_type; cribbage/gin/yahtzee/dice do not use auto_fold
+    // as an authoritative timeout signal here, and stale flags would force false sit-outs.
+    if (player.auto_fold && autoFoldRuleApplies) {
       console.log('[PLAYER EVAL] Player', player.position, 'has auto_fold=true - sitting out');
       
       // Log this status change for debugging
@@ -189,7 +191,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
       }
       continue; // Move to next player
     }
-    
+
     // 4. waiting = true → sitting_out = false, waiting = false (player now active)
     if (player.waiting) {
       console.log('[PLAYER EVAL] Player', player.position, 'was waiting - now active');
