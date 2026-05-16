@@ -2110,6 +2110,8 @@ export function useHorsesMobileController({
     currentTurnPlayer?.id,
     currentTurnPlayer?.is_bot,
     currentTurnPlayer?.auto_fold, // Added to trigger auto-roll for human players
+    interactionsAllowed,
+    syncHandle.isIdentityStale,
     // REMOVED: horsesState?.currentTurnPlayerId - causes re-runs on every state update
     // REMOVED: horsesState?.playerStates - causes re-runs on every state update
     // REMOVED: candidateBotControllerUserId - use ref instead
