@@ -93,7 +93,8 @@ export const CribbageMobileCardsTab = ({
     renderTrace.currentHandKey &&
     renderTrace.renderHandKey !== renderTrace.currentHandKey
   );
-  const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch);
+  const parentSuppressed = !!renderTrace && renderTrace.interactionsAllowed === false;
+  const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch || parentSuppressed);
   const renderedHand = activeHandBlocked ? [] : sourceHand;
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
