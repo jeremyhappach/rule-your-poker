@@ -154,6 +154,33 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
 
     const { data: claim, error: claimError } = await q.select('id');
 
+    // INSTRUMENTATION (P0 #2): persist EVERY rollover-claim attempt with caller
+    // identity so we can see which client(s) fire claims and whether duplicate
+    // rounds get created (proves whether the atomic guard is failing).
+    let callerUserId: string | null = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      callerUserId = user?.id ?? null;
+    } catch { /* */ }
+    persistSyncDebugEvent({
+      gameId,
+      gameType,
+      handNumber: newHandNumber,
+      roundId: null,
+      eventType: 'invariant',
+      severity: claim && claim.length > 0 ? 'info' : 'warn',
+      eventName: claim && claim.length > 0 ? 'horses-rollover-claim-won' : 'horses-rollover-claim-lost',
+      payload: {
+        callerUserId: callerUserId?.slice(0, 8) ?? null,
+        newRoundNumber,
+        newHandNumber,
+        observedCurrentRound: game.current_round,
+        observedAwaitingNextRound: game.awaiting_next_round,
+        claimError: claimError?.message ?? null,
+        tsClient: Date.now(),
+      },
+    });
+
     if (claimError) {
       console.warn('[HORSES] Failed to claim rollover start (continuing):', claimError);
     }
