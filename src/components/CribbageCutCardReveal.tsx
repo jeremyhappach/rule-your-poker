@@ -12,10 +12,42 @@ interface CribbageCutCardRevealProps {
 }
 
 /**
- * A cut card display with flip animation when revealed
- * 
- * IMPORTANT: Only animates once per card reveal. Uses a stable "revealed cards" set
- * to prevent re-flipping during phase transitions or component re-renders.
+ * Module-scoped registry of cut-card flipKeys that have already animated.
+ *
+ * ROOT-CAUSE FIX (duplicate cut-card animation):
+ * The previous implementation kept the "consumed" Set in a component-local
+ * useRef. Hand-boundary freeze → reset → freeze → snapshot → unfreeze cycles
+ * cause the gameplay surface (`isGameplayMode && viewState`) to unmount and
+ * remount this component. On remount the local ref was freshly seeded, so a
+ * subsequent null → card visibilityEdge re-ran the flip animation for a hand
+ * that had already revealed its cut card.
+ *
+ * Keying by handBoundaryKey scopes the registry to a single hand. A small
+ * FIFO cap prevents unbounded growth across long sessions.
+ */
+const cutCardConsumedRegistry = new Map<string, Set<string>>();
+const CUT_CARD_REGISTRY_MAX_BOUNDARIES = 16;
+
+function getConsumedSet(handBoundaryKey: string | undefined): Set<string> {
+  const key = handBoundaryKey ?? 'no-hand-key';
+  let set = cutCardConsumedRegistry.get(key);
+  if (!set) {
+    set = new Set<string>();
+    cutCardConsumedRegistry.set(key, set);
+    if (cutCardConsumedRegistry.size > CUT_CARD_REGISTRY_MAX_BOUNDARIES) {
+      const firstKey = cutCardConsumedRegistry.keys().next().value;
+      if (firstKey !== undefined) cutCardConsumedRegistry.delete(firstKey);
+    }
+  }
+  return set;
+}
+
+/**
+ * A cut card display with flip animation when revealed.
+ *
+ * The flip animation fires exactly once per (handBoundaryKey, cardKey). The
+ * consumed registry survives component remounts so freeze/unfreeze bounces
+ * cannot replay it.
  */
 export const CribbageCutCardReveal = ({
   card,
@@ -23,26 +55,20 @@ export const CribbageCutCardReveal = ({
   handBoundaryKey,
 }: CribbageCutCardRevealProps) => {
   const initialCardKey = card ? `${card.rank}-${card.suit}` : null;
-  const initialFlipKey = initialCardKey ? `${handBoundaryKey ?? 'no-hand-key'}:${initialCardKey}` : null;
+  const initialFlipKey = initialCardKey
+    ? `${handBoundaryKey ?? 'no-hand-key'}:${initialCardKey}`
+    : null;
+  // If we mount with a card already visible, treat the flip as already consumed —
+  // the user has been seeing this card; we must not animate it again.
+  if (initialFlipKey) {
+    getConsumedSet(handBoundaryKey).add(initialFlipKey);
+  }
+
   const [isFlipping, setIsFlipping] = useState(false);
   const [showFace, setShowFace] = useState(Boolean(card));
-  
-  // Track which cut card reveals have already been consumed for this hand boundary.
-  // Seed from the initial visible card so remounts during pegging don't fake a new reveal edge.
-  const cutCardFlipConsumedRef = useRef<Set<string>>(new Set(initialFlipKey ? [initialFlipKey] : []));
+
   const currentCardKeyRef = useRef<string | null>(initialCardKey);
   const previousVisibleCardKeyRef = useRef<string | null>(initialCardKey);
-  const lastBoundaryKeyRef = useRef<string | undefined>(handBoundaryKey);
-
-  // Reset hand-scoped refs when the hand boundary changes.
-  if (handBoundaryKey !== lastBoundaryKeyRef.current) {
-    lastBoundaryKeyRef.current = handBoundaryKey;
-    const nextCardKey = card ? `${card.rank}-${card.suit}` : null;
-    const nextFlipKey = nextCardKey ? `${handBoundaryKey ?? 'no-hand-key'}:${nextCardKey}` : null;
-    cutCardFlipConsumedRef.current = new Set(nextFlipKey ? [nextFlipKey] : []);
-    currentCardKeyRef.current = nextCardKey;
-    previousVisibleCardKeyRef.current = nextCardKey;
-  }
 
   // Log mount/remount with hand boundary key
   useEffect(() => {
@@ -54,20 +80,10 @@ export const CribbageCutCardReveal = ({
         hasCard: card !== null,
         cardKey: card ? `${card.rank}${card.suit}` : null,
         mountedWithVisibleCard: card !== null,
+        consumedSetSize: getConsumedSet(handBoundaryKey).size,
         ...buildMetaPayload(),
       },
     });
-    if (card) {
-      logDebugEvent({
-        gameId: 'cut-card-reveal',
-        eventType: 'crib-cut-flip-replay-detected',
-        payload: {
-          handBoundaryKey: handBoundaryKey ?? null,
-          cardKey: `${card.rank}-${card.suit}`,
-          reason: 'mounted_with_visible_card_guarded',
-        },
-      });
-    }
     return () => {
       logDebugEvent({
         gameId: 'cut-card-reveal',
@@ -79,47 +95,50 @@ export const CribbageCutCardReveal = ({
 
   useEffect(() => {
     const cardKey = card ? `${card.rank}-${card.suit}` : null;
-    const flipKey = cardKey ? `${handBoundaryKey ?? 'no-hand-key'}:${cardKey}` : null;
+    const flipKey = cardKey
+      ? `${handBoundaryKey ?? 'no-hand-key'}:${cardKey}`
+      : null;
     const visibilityEdge = !previousVisibleCardKeyRef.current && !!cardKey;
     previousVisibleCardKeyRef.current = cardKey;
-    
+
     if (!cardKey) {
       currentCardKeyRef.current = null;
       setShowFace(false);
       setIsFlipping(false);
       return;
     }
-    
+
     if (cardKey === currentCardKeyRef.current && !visibilityEdge) {
       return;
     }
-    
+
     currentCardKeyRef.current = cardKey;
-    
+
     if (!visibilityEdge) {
+      // OLD → NEW card swap within the same boundary (should not happen in
+      // normal play but guard anyway): show face without animating.
       setShowFace(true);
       setIsFlipping(false);
       return;
     }
 
-    if (flipKey && cutCardFlipConsumedRef.current.has(flipKey)) {
+    const consumed = getConsumedSet(handBoundaryKey);
+    if (flipKey && consumed.has(flipKey)) {
       logDebugEvent({
         gameId: 'cut-card-reveal',
-        eventType: 'crib-cut-flip-replay-detected',
+        eventType: 'crib-cut-flip-replay-suppressed',
         payload: {
           handBoundaryKey: handBoundaryKey ?? null,
           cardKey,
-          reason: 'duplicate_visibility_edge_same_hand',
+          reason: 'registry-hit-on-visibility-edge',
         },
       });
       setShowFace(true);
       setIsFlipping(false);
       return;
     }
-    
-    if (flipKey) {
-      cutCardFlipConsumedRef.current.add(flipKey);
-    }
+
+    if (flipKey) consumed.add(flipKey);
 
     setIsFlipping(true);
     setShowFace(false);
@@ -155,9 +174,9 @@ export const CribbageCutCardReveal = ({
           className="relative transition-transform duration-300 ease-out"
           style={{
             transformStyle: 'preserve-3d',
-            transform: isFlipping 
-              ? showFace 
-                ? 'rotateY(0deg) scale(1.1)' 
+            transform: isFlipping
+              ? showFace
+                ? 'rotateY(0deg) scale(1.1)'
                 : 'rotateY(90deg) scale(1.1)'
               : 'rotateY(0deg) scale(1)',
           }}
@@ -165,7 +184,7 @@ export const CribbageCutCardReveal = ({
           {showFace || !isFlipping ? (
             <CribbagePlayingCard card={card} size="sm" />
           ) : (
-            <div 
+            <div
               className="w-8 h-12 rounded-sm border border-white/20"
               style={{
                 background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,

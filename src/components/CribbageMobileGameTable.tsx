@@ -3646,7 +3646,6 @@ export const CribbageMobileGameTable = ({
       }
     }
 
-    
     persistSyncDebugEvent({
       gameId,
       gameType: 'cribbage',
@@ -3944,9 +3943,73 @@ export const CribbageMobileGameTable = ({
     currentHandKey &&
     renderHandKey === currentHandKey
   );
+  // ── STALE-COMPLETE LATCH ────────────────────────────────────
+  // Detect a hand that has finished locally but whose boundary reset has not yet
+  // fired (parent prop roundId still lagging behind the other client that advanced).
+  // In that window viewState/cribbageState are both the OLD hand and the gameplay
+  // surface would otherwise keep rendering interactable stale cards. Treat it as
+  // bootstrap so the felt drops to the "Preparing next hand..." shell immediately,
+  // independent of when the parent prop catches up.
+  const isStaleCompleteAwaitingNext = !!(
+    viewState &&
+    viewState.phase === 'complete' &&
+    winSequencePhase === 'idle' &&
+    !countingStateSnapshot &&
+    !countingDelayActive &&
+    !postCountingTransitionActive &&
+    !isTransitioning
+  );
   const isHighCardMode = effectiveShowHighCardSelection;
-  const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
+  const isBootstrapMode = !isDealerSelection && (
+    !initialLoadComplete ||
+    !renderHandKey ||
+    !currentPlayerId ||
+    isStaleCompleteAwaitingNext
+  );
   const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
+
+  // ── PROACTIVE STALE-COMPLETE RESET ──────────────────────────
+  // When the stale-complete latch fires we know the local hand is done but the
+  // boundary reset has not yet been triggered (parent prop roundId still lagging
+  // behind another client that already advanced). Drop the OLD authoritative +
+  // presentation immediately so:
+  //   1. renderHandKey/currentHandKey collapse to '' → interactionsAllowed = false
+  //   2. The cut-card surface unmounts cleanly instead of waiting for a
+  //      freeze → unfreeze bounce that can re-trigger the flip animation on remount
+  // The proper roundId-driven reset still happens when the parent prop catches up.
+  const proactiveStaleResetFiredForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isStaleCompleteAwaitingNext) return;
+    const key = `${currentRoundId}:${currentHandNumber}:complete`;
+    if (proactiveStaleResetFiredForRef.current === key) return;
+    proactiveStaleResetFiredForRef.current = key;
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: currentHandNumber,
+      roundId: currentRoundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-stale-complete-proactive-reset',
+      payload: {
+        currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+        currentHandNumber,
+        renderHandKey: renderHandKey?.slice(0, 30) ?? null,
+        currentHandKey: currentHandKey?.slice(0, 30) ?? null,
+      },
+    });
+    syncHandle.reset(null);
+    setCribbageState(null);
+    cribbageStateRef.current = null;
+  }, [
+    isStaleCompleteAwaitingNext,
+    currentRoundId,
+    currentHandNumber,
+    gameId,
+    renderHandKey,
+    currentHandKey,
+    syncHandle,
+  ]);
 
   // Latch pegboard data whenever we have valid gameplay state
   if (isGameplayMode && viewState) {
