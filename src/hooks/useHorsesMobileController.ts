@@ -6,6 +6,9 @@ import { snapshotPlayerChips } from "@/lib/gameLogic";
 import { logSitOutNextHandSet } from "@/lib/sittingOutDebugLog";
 import { getHorsesProgress } from "@/lib/gameStateSync/horsesProgress";
 import { useGameStateSync } from "@/lib/gameStateSync/useGameStateSync";
+import { useAuthoritativeIdentity } from "@/lib/gameStateSync/authoritativeIdentity";
+import { isIdentityForward, type AuthoritativeIdentity } from "@/lib/gameStateSync/authoritativeIdentityPure";
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { newTraceId } from "@/lib/debugEventLogger";
 import type { ProgressVector, GameStateSyncConfig } from "@/lib/gameStateSync/types";
 import {
