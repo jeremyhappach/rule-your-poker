@@ -31,6 +31,8 @@ interface RenderTraceContext {
   handNumber: number;
   isGameplayMode: boolean;
   viewStateIsCurrentRound: boolean;
+  /** Authoritative gate from parent: when false, the rendered hand is NOT the actionable hand. */
+  interactionsAllowed?: boolean;
 }
 
 interface CribbageMobileCardsTabProps {
