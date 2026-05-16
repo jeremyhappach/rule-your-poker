@@ -362,6 +362,15 @@ export function useHorsesMobileController({
   // legitimate terminal-roll writes immediately after unfreezePresentation().
 
   const logSuppressedWrite = useCallback((tag: string, extra?: Record<string, unknown>) => {
+    // Full forensic context: decompose every gate the suppression branch checked
+    // so we can see WHICH condition actually caused the drop (the two booleans
+    // logged previously were the same surface predicates that read "allowed").
+    const auth = incomingHorsesStateRef.current;
+    const authRoundCurrentTurn = (auth as any)?.currentTurnPlayerId ?? null;
+    let canInteract: boolean | null = null;
+    let isFrozen: boolean | null = null;
+    try { canInteract = syncHandle.canInteractNow(); } catch { /* */ }
+    try { isFrozen = syncHandle.isFrozen; } catch { /* */ }
     persistSyncDebugEvent({
       gameId: gameId ?? null,
       gameType: resolvedGameType,
@@ -372,12 +381,21 @@ export function useHorsesMobileController({
       eventName: 'horses-stale-action-suppressed',
       payload: {
         tag,
+        // Gate decomposition
         interactionsAllowed: interactionsAllowedRef.current,
         isIdentityStale: isIdentityStaleRef.current,
+        canInteractNow: canInteract,
+        isFrozen,
+        // Identity context
+        currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+        authRoundCurrentTurn: authRoundCurrentTurn?.slice(0, 8) ?? null,
+        myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
+        clientUserId: currentUserId?.slice(0, 8) ?? null,
+        tsClient: Date.now(),
         ...(extra ?? {}),
       },
     });
-  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId]);
+  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId, currentUserId, myPlayer?.id]);
 
   // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop
   const incomingHorsesState = horsesState;
