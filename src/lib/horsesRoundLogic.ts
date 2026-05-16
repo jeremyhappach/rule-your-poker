@@ -226,7 +226,9 @@ export async function startHorsesRound(
       severity: claim && claim.length > 0 ? 'info' : 'warn',
       eventName: claim && claim.length > 0 ? 'horses-rollover-claim-won' : 'horses-rollover-claim-lost',
       payload: {
+        callerInvocationId,
         callerUserId: callerUserId?.slice(0, 8) ?? null,
+        callerContext: callerContext ?? null,
         newRoundNumber,
         newHandNumber,
         observedCurrentRound: game.current_round,
