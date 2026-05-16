@@ -1281,28 +1281,40 @@ export function useHorsesMobileController({
     }).catch(() => {});
   }, [enabled, presentationRoundId, gameId, gamePhase, horsesState?.playerStates, horsesState?.turnOrder, currentTurnPlayerId, isSCC]);
 
-  // Only show the overlay to the player who rolled no qualify, not to spectators
+  // Only show the overlay to the player who rolled no qualify, not to spectators.
+  //
+  // CRITICAL: read from `incomingHorsesState` (authoritative) — NOT presentationState.
+  // Presentation can briefly show stale `isComplete + !isQualified` from the previous round
+  // after a rollover advances currentRoundId, which previously caused the overlay to re-fire
+  // (loop) once per rollover. Authoritative state is fresh as soon as the new round is created.
   useEffect(() => {
     if (!enabled || !isSCC) return;
-    if (!presentationRoundId) return;
+    if (!currentRoundId) return;
     if (!myPlayer) return;
-    
-    // Only check the current user's state
-    const myPlayerState = horsesState?.playerStates?.[myPlayer.id];
+
+    const authState = incomingHorsesStateRef.current;
+    const myPlayerState = authState?.playerStates?.[myPlayer.id];
     if (!myPlayerState?.isComplete || !myPlayerState?.result) return;
-    
+
     const result = myPlayerState.result as SCCHandResult;
     if (!result.isQualified) {
-      const noQualifyKey = `${presentationRoundId}:${myPlayer.id}`;
+      const noQualifyKey = `${currentRoundId}:${myPlayer.id}`;
       if (noQualifyShownForRef.current.has(noQualifyKey)) return;
-      
+
       noQualifyShownForRef.current.add(noQualifyKey);
-      
+
       // Show animation for the current user (no need for player name since it's them)
       setNoQualifyPlayerName(null);
       setShowNoQualifyAnimation(true);
     }
-  }, [enabled, isSCC, presentationRoundId, myPlayer, horsesState?.playerStates]);
+  }, [
+    enabled,
+    isSCC,
+    currentRoundId,
+    myPlayer,
+    incomingHorsesState?.playerStates?.[myPlayer?.id ?? ""]?.isComplete,
+    (incomingHorsesState?.playerStates?.[myPlayer?.id ?? ""] as any)?.result?.isQualified,
+  ]);
 
   // Handler to reset the no qualify animation
   const handleNoQualifyAnimationComplete = useCallback(() => {
@@ -2186,7 +2198,10 @@ export function useHorsesMobileController({
       processedWinRoundRef.current = presentationRoundId;
 
       if (winningPlayerIds.length > 1) {
-        // ATOMIC GUARD: Only one client claims the tie processing
+        // ATOMIC GUARD: Only one client claims the tie processing.
+        // Filter on awaiting_next_round=false so the claim is a TRUE one-shot at the DB level —
+        // even if local refs reset or the effect re-runs (presentation oscillation, identity reset),
+        // a second claim is rejected. This prevents the SCC no-qualify overlay/rollover loop.
         const { data: claimed, error: claimError } = await supabase
           .from("games")
           .update({
@@ -2194,10 +2209,20 @@ export function useHorsesMobileController({
             last_round_result: "One tie all tie - rollover",
           })
           .eq("id", gameId)
-          .eq("status", "in_progress") // Only succeeds if not already processed
+          .eq("status", "in_progress")
+          .eq("awaiting_next_round", false)
           .select("id, total_hands, current_game_uuid");
 
         if (claimError || !claimed || claimed.length === 0) {
+          persistSyncDebugEvent({
+            gameId: gameId ?? null,
+            gameType: resolvedGameType,
+            handNumber: monotonicHandNumber,
+            roundId: currentRoundId,
+            eventType: 'transition', severity: 'info',
+            eventName: 'horses-tie-rollover-claim-skipped',
+            payload: { reason: claimError ? 'error' : 'already-claimed' },
+          });
           return;
         }
 
@@ -2653,12 +2678,22 @@ export function useHorsesMobileController({
   // Make observer rolls behave like bot rolls: once we detect a rollKey change, we show a protected
   // display state for the whole animation window, and we NEVER clear it on a timer (clearing causes
   // gaps where DB state is blank/out-of-order → flicker/disappearing dice).
+  //
+  // CRITICAL: read from `incomingHorsesState` (authoritative) — NOT presentationState.
+  // Presentation lags behind authoritative due to identity gating / visual-contract sequencing,
+  // which delays the observer fly-in animation. The fly-in must start the instant the authoritative
+  // snapshot arrives. Display state (observerDisplayState) is still rendered above presentation,
+  // so triggering off authoritative does not race with presentation updates.
   useEffect(() => {
-    if (!enabled || !currentTurnPlayerId) return;
-    if (isMyTurn) return; // I'm rolling, not observing
-    if (currentTurnPlayer?.is_bot) return; // Bot rolls handled by botDisplayState
+    if (!enabled) return;
+    const authState = incomingHorsesStateRef.current;
+    const currentTurnPlayerId = authState?.currentTurnPlayerId ?? null;
+    if (!currentTurnPlayerId) return;
+    if (currentTurnPlayerId === myPlayer?.id) return; // I'm rolling, not observing
+    const turnPlayer = players.find((p) => p.id === currentTurnPlayerId);
+    if (turnPlayer?.is_bot) return; // Bot rolls handled by botDisplayState
 
-    const state = horsesState?.playerStates?.[currentTurnPlayerId];
+    const state = authState?.playerStates?.[currentTurnPlayerId];
     if (!state) return;
 
     const newRollKey = (state as any).rollKey;
@@ -2939,14 +2974,14 @@ export function useHorsesMobileController({
     };
   }, [
     enabled,
-    currentTurnPlayerId,
-    isMyTurn,
-    currentTurnPlayer?.is_bot,
-    // Use specific state properties instead of the entire object
-    horsesState?.playerStates?.[currentTurnPlayerId ?? ""]?.rollsRemaining,
-    (horsesState?.playerStates?.[currentTurnPlayerId ?? ""] as any)?.rollKey,
-    (horsesState?.playerStates?.[currentTurnPlayerId ?? ""] as any)?.holdSeq,
-    horsesState?.playerStates?.[currentTurnPlayerId ?? ""]?.isComplete,
+    myPlayer?.id,
+    players,
+    // Authoritative state slices (NOT presentationState) — see comment above.
+    incomingHorsesState?.currentTurnPlayerId,
+    incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""]?.rollsRemaining,
+    (incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""] as any)?.rollKey,
+    (incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""] as any)?.holdSeq,
+    incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""]?.isComplete,
   ]);
 
   const feltDice = useMemo(() => {
