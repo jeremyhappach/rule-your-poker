@@ -411,6 +411,7 @@ export function useHorsesMobileController({
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   const prevAuthTurnPlayerRef = useRef<string | null>(null);
   const prevAuthRollKeyRef = useRef<Record<string, number>>({});
+  const prevAuthRollStartedAtRef = useRef<Record<string, boolean>>({});
   useEffect(() => {
     if (!incomingHorsesState) return;
     const beforeTurn = prevAuthTurnPlayerRef.current;
