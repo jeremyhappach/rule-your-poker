@@ -389,13 +389,13 @@ export function useHorsesMobileController({
         // Identity context
         currentRoundId: currentRoundId?.slice(0, 8) ?? null,
         authRoundCurrentTurn: authRoundCurrentTurn?.slice(0, 8) ?? null,
-        myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
+        myPlayerId: null, // populated by call sites that have myPlayer in scope
         clientUserId: currentUserId?.slice(0, 8) ?? null,
         tsClient: Date.now(),
         ...(extra ?? {}),
       },
     });
-  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId, currentUserId, myPlayer?.id]);
+  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId, currentUserId]);
 
   // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop
   const incomingHorsesState = horsesState;
