@@ -300,7 +300,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: authIdentity.handNumber ?? null,
       roundId: authIdentity.roundId ?? null,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-identity-advanced',
       payload,
     });
@@ -309,7 +309,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: authIdentity.handNumber ?? null,
       roundId: authIdentity.roundId ?? null,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-presentation-reset-on-identity-advance',
       payload,
     });
@@ -1100,7 +1100,7 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'info',
+        eventType: 'invariant', severity: 'info',
         eventName: 'horses-roller-write',
         payload: {
           playerId: myPlayer.id.slice(0, 8),
@@ -1233,7 +1233,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: monotonicHandNumber,
       roundId: currentRoundId,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-round-boundary-reset',
       payload: {
         prevRoundId: prevRoundId?.slice(0, 8) ?? null,
@@ -1288,7 +1288,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: monotonicHandNumber,
       roundId: presentationRoundId,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-completed-turn-hold-overlay-only',
       payload: {
         completingPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
@@ -2331,7 +2331,7 @@ export function useHorsesMobileController({
             gameType: resolvedGameType,
             handNumber: monotonicHandNumber,
             roundId: currentRoundId,
-            eventType: 'transition', severity: 'info',
+            eventType: 'invariant', severity: 'info',
             eventName: 'horses-tie-rollover-claim-skipped',
             payload: { reason: claimError ? 'error' : 'already-claimed' },
           });
@@ -2825,7 +2825,7 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'warn',
+        eventType: 'invariant', severity: 'warn',
         eventName: 'horses-observer-flyin-decision',
         payload: {
           decision: 'rejected-stale',
@@ -2899,7 +2899,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
             decision: 'skipped-bookkeeping',
@@ -2935,7 +2935,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
             decision: 'skipped-first-observation',
@@ -3037,7 +3037,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
             decision: 'fired',
