@@ -2802,6 +2802,22 @@ export function useHorsesMobileController({
       console.log(
         `[OBSERVER_ROLL] REJECTED stale rollKey ${newRollKey} < maxSeen ${maxSeenRollKey} for ${currentTurnPlayerId}`,
       );
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'transition', severity: 'warning',
+        eventName: 'horses-observer-flyin-decision',
+        payload: {
+          decision: 'rejected-stale',
+          rollerId: currentTurnPlayerId.slice(0, 8),
+          newRollKey, maxSeenRollKey, prevRollKey: prevRollKey ?? null,
+          rollsRemaining: state.rollsRemaining,
+          isComplete: !!state.isComplete,
+          tsClient: Date.now(),
+        },
+      });
       return;
     }
 
