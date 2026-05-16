@@ -1177,18 +1177,79 @@ async function checkAllDecisionsIn(gameId: string) {
   console.log(`[CHECK_ALL_DECISIONS] ===== COMPLETE ===== game=${shortGameId}`);
 }
 
-export async function autoFoldUndecided(gameId: string) {
+export async function autoFoldUndecided(gameId: string, opts?: {
+  expectedRoundId?: string | null;
+  expectedHandNumber?: number | null;
+  expectedRoundNumber?: number | null;
+}) {
   console.log('[AUTO-FOLD] Starting autoFoldUndecided for game:', gameId);
-  
-  // Get game type first
+
+  // SAFETY: Re-fetch authoritative game + current round before mutating.
+  // A stale callback (e.g. cribbage idle timeout) must never auto-fold.
+  const { gameTypeAllowsTimeoutAction, validateTimeoutAutoFold } =
+    await import('./timeoutRules');
+
   const { data: game } = await supabase
     .from('games')
-    .select('game_type')
+    .select('id, game_type, status, is_paused, total_hands, current_round, current_game_uuid')
     .eq('id', gameId)
     .single();
-  
+
+  if (!game) {
+    console.warn('[AUTO-FOLD] suppressed: game not found');
+    return;
+  }
+
+  // Authoritative current round for this dealer game
+  let currentRound: any = null;
+  {
+    const q = supabase
+      .from('rounds')
+      .select('id, status, decision_deadline, hand_number, round_number, dealer_game_id')
+      .eq('game_id', gameId)
+      .eq('hand_number', game.total_hands ?? 1)
+      .eq('round_number', game.current_round ?? 0)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const { data } = await q;
+    currentRound = (data || [])[0] || null;
+    if (currentRound && game.current_game_uuid && currentRound.dealer_game_id && currentRound.dealer_game_id !== game.current_game_uuid) {
+      currentRound = null;
+    }
+  }
+
+  const suppress = validateTimeoutAutoFold({
+    game,
+    round: currentRound,
+    expectedRoundId: opts?.expectedRoundId ?? null,
+    expectedHandNumber: opts?.expectedHandNumber ?? null,
+    expectedRoundNumber: opts?.expectedRoundNumber ?? null,
+    roundHandNumber: currentRound?.hand_number ?? null,
+    roundRoundNumber: currentRound?.round_number ?? null,
+  });
+
+  if (suppress) {
+    console.warn('[AUTO-FOLD] suppressed:', suppress, { gameId, game_type: game.game_type });
+    try {
+      await supabase.from('debug_events').insert({
+        event_type: `timeout-auto-fold-suppressed-${suppress}`,
+        game_id: gameId,
+        round_id: currentRound?.id ?? null,
+        payload: {
+          game_type: game.game_type,
+          status: game.status,
+          is_paused: game.is_paused,
+          round_status: currentRound?.status,
+          decision_deadline: currentRound?.decision_deadline,
+          expected: opts ?? null,
+        },
+      });
+    } catch {}
+    return;
+  }
+
   const isHolmGame = game?.game_type === 'holm-game';
-  
+
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
     .from('players')
