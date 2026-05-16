@@ -3334,6 +3334,21 @@ export const CribbageMobileGameTable = ({
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    if (!interactionsAllowedRef.current) {
+      try {
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
+          eventType: 'invariant', severity: 'warn', eventName: 'crib-stale-action-suppressed',
+          payload: { action: 'play_card', cardIndex,
+            renderHandKey: renderHandKey?.slice(0, 30), currentHandKey: currentHandKey?.slice(0, 30),
+            currentRoundId: currentRoundId?.slice(0, 8), propRoundId: roundId?.slice(0, 8),
+            currentHandNumber, propHandNumber: handNumber },
+        });
+      } catch {}
+      toast.error('Hand updating — try again');
+      return;
+    }
+
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:play_card', { cardIndex, phase: cribbageState.phase, turn: cribbageState.pegging.currentTurnPlayerId?.slice(0, 8) }, tid);
 
