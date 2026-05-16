@@ -12,7 +12,36 @@ import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPl
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 // startCribbageRound is now called from Game.tsx after dealer selection completes
+import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
+
+// P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
+// This identifies which client/code-path creates new dealer_games mid-session
+// (suspected root cause of the runaway "isFirstHand:true" loop).
+function logDealerGameCreated(
+  gameId: string,
+  gameType: string,
+  dealerGameId: string,
+  reason: string,
+  extra?: Record<string, unknown>,
+): void {
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber: 0,
+    roundId: null,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'dealer-game-row-created',
+    payload: {
+      caller: 'DealerGameSetup.tsx',
+      reason,
+      dealerGameId: dealerGameId.slice(0, 8),
+      extra: extra ?? null,
+      tsClient: Date.now(),
+    },
+  });
+}
 
 type SelectionStep = 'game' | 'config';
 
@@ -718,6 +747,7 @@ export const DealerGameSetup = ({
             }
             
             const dealerGameId = dealerGame.id;
+            logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-dice', { dealerPlayerId, dealerUserId, ante: parsedAnte });
             
             const { error } = await supabase
               .from('games')
@@ -805,6 +835,7 @@ export const DealerGameSetup = ({
             }
             
             const dealerGameId = dealerGame.id;
+            logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-card', { dealerPlayerId, dealerUserId });
             
             const updateData: any = {
               game_type: previousGameType,
@@ -910,6 +941,7 @@ export const DealerGameSetup = ({
             }
             
             const dealerGameId = dealerGame.id;
+            logDealerGameCreated(gameId, gameType, dealerGameId, 'bot-dealer-defaults', { dealerPlayerId, dealerUserId });
             
             const updateData: any = {
               game_type: gameType,
@@ -1060,6 +1092,7 @@ export const DealerGameSetup = ({
     }
     
     const dealerGameId = dealerGame.id;
+    logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-dice-or-holm', { dealerPlayerId, dealerUserId });
     
     const updateData: any = {
       game_type: gameTypeToSubmit,
@@ -1353,6 +1386,7 @@ export const DealerGameSetup = ({
     }
     
     const dealerGameId = dealerGame.id;
+    logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
     
     // CRIBBAGE: Go to cribbage_dealer_selection phase for high-card animation
     // The round will be created after dealer selection completes in Game.tsx

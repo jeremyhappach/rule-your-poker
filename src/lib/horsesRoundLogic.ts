@@ -10,12 +10,32 @@ import { logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
 import { logHorsesHandStart } from "./horsesSyncDiagnostics";
 
-export async function startHorsesRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
+export interface HorsesRoundCallerContext {
+  caller: string;            // e.g. 'Game.tsx:awaiting_next_round-effect' | 'Game.tsx:ante-decision-complete'
+  reason: string;            // e.g. 'tie-rollover-re-ante' | 'first-hand-after-ante'
+  trigger?: string;          // e.g. 'realtime:games update' | 'user-click:ante-stay'
+  prevDealerGameId?: string | null;
+  prevRoundId?: string | null;
+  prevGamePhase?: string | null;
+  prevCurrentTurnPlayerId?: string | null;
+  prevAllComplete?: boolean | null;
+  prevAwaitingNextRound?: boolean | null;
+  prevAnteDecisionDeadline?: string | null;
+  extra?: Record<string, unknown>;
+}
+
+export async function startHorsesRound(
+  gameId: string,
+  isFirstHand: boolean = false,
+  callerContext?: HorsesRoundCallerContext,
+): Promise<void> {
+
+  const callerInvocationId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused, ante_decision_deadline, is_first_hand')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -25,6 +45,41 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
   }
 
   const gameType = (game as any).game_type || 'horses';
+
+  // P0 #2 INSTRUMENTATION: persist EVERY entry to startHorsesRound with caller
+  // identity + observed pre-state. This captures even calls that are rejected
+  // by downstream guards. Use eventType 'invariant' so it always persists.
+  let callerUserIdAttempt: string | null = null;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    callerUserIdAttempt = user?.id ?? null;
+  } catch { /* */ }
+  persistSyncDebugEvent({
+    gameId,
+    gameType,
+    handNumber: (game as any)?.total_hands ?? 0,
+    roundId: null,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'horses-round-create-attempt',
+    payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      isFirstHand,
+      callerContext: callerContext ?? null,
+      observedGame: {
+        status: game.status,
+        awaitingNextRound: game.awaiting_next_round,
+        currentRound: game.current_round,
+        totalHands: game.total_hands,
+        dealerGameId: (game.current_game_uuid as string | null)?.slice(0, 8) ?? null,
+        isFirstHandFlag: (game as any).is_first_hand,
+        isPaused: (game as any).is_paused,
+        anteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      },
+      tsClient: Date.now(),
+    },
+  });
 
   // CRITICAL GUARD: Block round creation if game is paused
   if ((game as any).is_paused) {
@@ -171,7 +226,9 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       severity: claim && claim.length > 0 ? 'info' : 'warn',
       eventName: claim && claim.length > 0 ? 'horses-rollover-claim-won' : 'horses-rollover-claim-lost',
       payload: {
+        callerInvocationId,
         callerUserId: callerUserId?.slice(0, 8) ?? null,
+        callerContext: callerContext ?? null,
         newRoundNumber,
         newHandNumber,
         observedCurrentRound: game.current_round,
@@ -390,6 +447,9 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
     eventType: 'invariant', severity: 'info',
     eventName: 'horses-round-created',
     payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      callerContext: callerContext ?? null,
       newRoundId: roundData.id.slice(0, 8),
       isFirstHand,
       newRoundNumber,
@@ -397,6 +457,8 @@ export async function startHorsesRound(gameId: string, isFirstHand: boolean = fa
       dealerGameId: dealerGameId?.slice(0, 8) ?? null,
       prevAwaitingNextRound: game.awaiting_next_round,
       prevStatus: game.status,
+      prevAnteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      prevIsFirstHandFlag: (game as any).is_first_hand,
       potForRound,
       activePlayerCount: activePlayers.length,
       turnOrder: turnOrder.map(p => p.slice(0, 8)),

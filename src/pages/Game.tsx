@@ -4455,7 +4455,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // The closure's `game` variable is stale from when useEffect was created
             const { data: freshGame } = await supabase
               .from('games')
-              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused, awaiting_next_round')
+              .select('game_type, last_round_result, next_round_number, pot, ante_amount, status, legs_to_win, is_paused, awaiting_next_round, current_game_uuid, ante_decision_deadline')
               .eq('id', gameId)
               .single();
             
@@ -4502,11 +4502,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // Start the appropriate round type — these functions handle their own
               // atomic guards for awaiting_next_round and multi-client deduplication
               if (freshGame?.game_type === 'ship-captain-crew') {
-                await startSCCRound(gameId);
+                await startSCCRound(gameId, false, {
+                  caller: 'Game.tsx:awaiting_next_round-effect',
+                  reason: 'tie-rollover-re-ante',
+                  trigger: 'awaiting_next_round=true observed (realtime/refresh)',
+                  prevDealerGameId: freshGame?.current_game_uuid ?? null,
+                  prevAwaitingNextRound: freshGame?.awaiting_next_round ?? null,
+                  prevAnteDecisionDeadline: freshGame?.ante_decision_deadline ?? null,
+                  extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
+                });
               } else if (freshGame?.game_type === 'yahtzee') {
                 await startYahtzeeRound(gameId);
               } else {
-                await startHorsesRound(gameId);
+                await startHorsesRound(gameId, false, {
+                  caller: 'Game.tsx:awaiting_next_round-effect',
+                  reason: 'tie-rollover-re-ante',
+                  trigger: 'awaiting_next_round=true observed (realtime/refresh)',
+                  prevDealerGameId: freshGame?.current_game_uuid ?? null,
+                  prevAwaitingNextRound: freshGame?.awaiting_next_round ?? null,
+                  prevAnteDecisionDeadline: freshGame?.ante_decision_deadline ?? null,
+                  extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
+                });
               }
 
               // Trigger ante animation for dice game re-ante
@@ -7230,10 +7246,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             await startHolmRound(gameId, shouldRunHolmFirstHand);
           } else if (isHorsesGame) {
             // isHorsesGame now includes ship-captain-crew - use freshGame for type check
+            const firstHandCallerContext = {
+              caller: 'Game.tsx:ante-decision-complete',
+              reason: 'first-hand-after-ante',
+              trigger: 'all ante decisions in / proceeding to first round',
+              prevDealerGameId: (freshGame as any)?.current_game_uuid ?? null,
+              prevAwaitingNextRound: (freshGame as any)?.awaiting_next_round ?? null,
+              prevAnteDecisionDeadline: (freshGame as any)?.ante_decision_deadline ?? null,
+              extra: {
+                freshGameStatus: (freshGame as any)?.status,
+                freshIsFirstHand: (freshGame as any)?.is_first_hand,
+                activePlayerCount: activePlayersBefore.length,
+              },
+            };
             if (freshGame?.game_type === 'ship-captain-crew') {
-              await startSCCRound(gameId, true);
+              await startSCCRound(gameId, true, firstHandCallerContext);
             } else {
-              await startHorsesRound(gameId, true);
+              await startHorsesRound(gameId, true, firstHandCallerContext);
             }
           } else if (isYahtzeeGame) {
             console.log('[ANTE][YAHTZEE] Starting yahtzee round');

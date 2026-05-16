@@ -9,20 +9,26 @@ import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard } from "./gameStateDebugLog";
 import { logSCCAnteApplied } from "./sccSyncDiagnostics";
-import { persistTransition } from "./persistSyncDebugEvent";
+import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
+import type { HorsesRoundCallerContext } from "./horsesRoundLogic";
 
 /**
  * Start a new Ship Captain Crew round
  * Creates a round record and sets the game to in_progress
  * Collects antes from all active players and sets the pot
  */
-export async function startSCCRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
-  
+export async function startSCCRound(
+  gameId: string,
+  isFirstHand: boolean = false,
+  callerContext?: HorsesRoundCallerContext,
+): Promise<void> {
+
+  const callerInvocationId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
   // Get current game state including ante_amount
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, is_paused')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, is_paused, ante_decision_deadline, is_first_hand')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -30,6 +36,39 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     console.error('[SCC] Failed to get game:', gameError);
     throw new Error('Failed to get game state');
   }
+
+  // P0 #2 INSTRUMENTATION: attempt event with caller context + observed pre-state
+  let callerUserIdAttempt: string | null = null;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    callerUserIdAttempt = user?.id ?? null;
+  } catch { /* */ }
+  persistSyncDebugEvent({
+    gameId,
+    gameType: 'ship-captain-crew',
+    handNumber: (game as any)?.total_hands ?? 0,
+    roundId: null,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'scc-round-create-attempt',
+    payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      isFirstHand,
+      callerContext: callerContext ?? null,
+      observedGame: {
+        status: game.status,
+        awaitingNextRound: game.awaiting_next_round,
+        currentRound: game.current_round,
+        totalHands: game.total_hands,
+        dealerGameId: (game.current_game_uuid as string | null)?.slice(0, 8) ?? null,
+        isFirstHandFlag: (game as any).is_first_hand,
+        isPaused: (game as any).is_paused,
+        anteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      },
+      tsClient: Date.now(),
+    },
+  });
 
   // CRITICAL GUARD: Block round creation if game is paused
   if ((game as any).is_paused) {
@@ -146,6 +185,28 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     if (claimError) {
       console.warn('[SCC] Failed to claim rollover start (continuing):', claimError);
     }
+
+    // P0 #2 INSTRUMENTATION: persist rollover claim outcome with caller context
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'ship-captain-crew',
+      handNumber: newHandNumber,
+      roundId: null,
+      eventType: 'invariant',
+      severity: claim && claim.length > 0 ? 'info' : 'warn',
+      eventName: claim && claim.length > 0 ? 'scc-rollover-claim-won' : 'scc-rollover-claim-lost',
+      payload: {
+        callerInvocationId,
+        callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+        callerContext: callerContext ?? null,
+        newRoundNumber,
+        newHandNumber,
+        observedCurrentRound: game.current_round,
+        observedAwaitingNextRound: game.awaiting_next_round,
+        claimError: claimError?.message ?? null,
+        tsClient: Date.now(),
+      },
+    });
 
     if (!claim || claim.length === 0) {
       logRaceConditionGuard(gameId, 'sccRoundLogic:startSCCRound', 'ROLLOVER_CLAIM_LOST', {
@@ -307,6 +368,36 @@ export async function startSCCRound(gameId: string, isFirstHand: boolean = false
     console.error('[SCC] Failed to create round:', roundError);
     throw new Error('Failed to create round');
   }
+
+  // P0 #2 INSTRUMENTATION: persist successful round creation with caller context
+  persistSyncDebugEvent({
+    gameId,
+    gameType: 'ship-captain-crew',
+    handNumber: newHandNumber,
+    roundId: roundData.id,
+    eventType: 'invariant',
+    severity: 'info',
+    eventName: 'scc-round-created',
+    payload: {
+      callerInvocationId,
+      callerUserId: callerUserIdAttempt?.slice(0, 8) ?? null,
+      callerContext: callerContext ?? null,
+      newRoundId: roundData.id.slice(0, 8),
+      isFirstHand,
+      newRoundNumber,
+      newHandNumber,
+      dealerGameId: (game.current_game_uuid as string | null)?.slice(0, 8) ?? null,
+      prevAwaitingNextRound: game.awaiting_next_round,
+      prevStatus: game.status,
+      prevAnteDecisionDeadline: (game as any).ante_decision_deadline ?? null,
+      prevIsFirstHandFlag: (game as any).is_first_hand,
+      potForRound,
+      activePlayerCount: activePlayers.length,
+      turnOrder: turnOrder.map(p => p.slice(0, 8)),
+      firstTurnPlayer: turnOrder[0]?.slice(0, 8) ?? null,
+      tsClient: Date.now(),
+    },
+  });
 
   logSCCAnteApplied(gameId, newHandNumber, potForRound, activePlayers.length, anteAmount, roundData.id);
 
