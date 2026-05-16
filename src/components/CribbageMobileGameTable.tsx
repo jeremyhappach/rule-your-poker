@@ -429,8 +429,16 @@ export const CribbageMobileGameTable = ({
   } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Local tracking of current round for proper hand transitions
-  // These start from props but can be updated when starting a new hand
+  // ── Phase 2: framework-owned authoritative identity ─────────────
+  // Subscribes to `rounds` filtered by `dealer_game_id`, so the client observes
+  // INSERT/UPDATE for NEW rounds without re-keying any round-id-scoped channel.
+  // This eliminates the stale-identity blind window: when a peer client advances
+  // the hand, we learn about the new round id synchronously rather than waiting
+  // for the parent prop to lag-catch up.
+  const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
+
+  // Local tracking of current round for proper hand transitions.
+  // Forward-only — never regress, even if a prop or identity feed momentarily lags.
   const [currentRoundId, setCurrentRoundId] = useState(roundId);
   const [currentHandNumber, setCurrentHandNumber] = useState(handNumber);
   const roundBoundaryGuardKey = useMemo(
@@ -438,28 +446,62 @@ export const CribbageMobileGameTable = ({
     [dealerGameId, currentRoundId, currentHandNumber],
   );
 
-  // Sync local round tracking when props change (e.g., when parent reloads game state)
-  // CRITICAL: With multiple clients, props can temporarily lag behind a locally-started next hand.
-  // Never allow a stale prop update (older handNumber) to overwrite our forward-only local tracking,
-  // otherwise the realtime subscription can snap back to the previous round and replay counting.
+  // Forward-only merge of (a) parent props and (b) authoritative-identity feed.
+  // Identity feed wins ties because it's the canonical source — props only matter
+  // when the framework subscription has not yet hydrated.
   useEffect(() => {
-    if (!roundId) return;
+    const incomingHandNumber = Math.max(
+      authIdentity?.handNumber ?? -Infinity,
+      handNumber ?? -Infinity,
+      currentHandNumber,
+    );
+    const incomingRoundId =
+      (authIdentity?.handNumber ?? -1) >= (handNumber ?? -1)
+        ? authIdentity?.roundId ?? roundId
+        : roundId;
+    if (!incomingRoundId) return;
 
-    // Forward-only sync for hand number
-    setCurrentHandNumber((prev) => {
-      if (handNumber > prev) return handNumber;
-      return prev;
-    });
-
-    // Only accept prop roundId when it is not stale relative to our local hand.
+    setCurrentHandNumber((prev) => (incomingHandNumber > prev ? incomingHandNumber : prev));
     setCurrentRoundId((prev) => {
-      if (!prev) return roundId;
-      if (handNumber > currentHandNumber) return roundId;
-      if (handNumber === currentHandNumber) return roundId;
-      // props are behind; keep our locally-advanced roundId
+      if (!prev) return incomingRoundId;
+      if (incomingHandNumber > currentHandNumber) return incomingRoundId;
+      if (incomingHandNumber === currentHandNumber) return incomingRoundId;
       return prev;
     });
-  }, [roundId, handNumber, currentHandNumber]);
+  }, [roundId, handNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber]);
+
+  // ── Identity-advancement reset ─────────────────────────────────
+  // When the dealer-game-scoped identity feed detects a forward advance (peer
+  // started next hand), clear the local cribbageState mirror so renderHandKey
+  // collapses immediately and the felt drops to the "Preparing next hand…" shell
+  // until the next snapshot for the new identity arrives.
+  // Framework `useGameStateSync` separately auto-resets its own three layers
+  // (optimistic, frozen, visual contract) via `config.identity`.
+  const lastObservedIdentityRef = useRef<AuthoritativeIdentity | null>(null);
+  useEffect(() => {
+    if (!authIdentity) return;
+    const prev = lastObservedIdentityRef.current;
+    lastObservedIdentityRef.current = authIdentity;
+    if (!prev) return; // first observation; nothing stale to clear
+    if (!isIdentityForward(prev, authIdentity)) return;
+    setCribbageState(null);
+    cribbageStateRef.current = null;
+    persistSyncDebugEvent({
+      gameId,
+      gameType: 'cribbage',
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'crib-identity-advance-local-clear',
+      payload: {
+        prevHand: prev.handNumber,
+        nextHand: authIdentity.handNumber,
+        prevRoundId: prev.roundId?.slice(0, 8) ?? null,
+        nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
+      },
+    });
+  }, [authIdentity, gameId]);
 
   useEffect(() => {
     cribbageStateRef.current = cribbageState;
@@ -467,12 +509,15 @@ export const CribbageMobileGameTable = ({
 
   // ── Sync Framework ──────────────────────────────────────────
   // Provides three-layer state management: authoritative, optimistic, presentation.
-  // Replaces the hand-rolled lastOptimisticWriteRef + getStateProgress pattern.
+  // Wiring `identity` lets the framework auto-reset on forward advancement and
+  // expose `interactionsAllowed` / `isIdentityStale` for action gating.
   const syncHandle = useGameStateSync<CribbageState | null>(null, {
     getProgress: (state) => getCribbageProgress(state, currentHandNumber),
     debugLabel: 'Cribbage',
+    gameType: 'cribbage',
     describeState: (state) => state ? cribbageStateSummary(state) : null,
     optimisticTimeoutMs: 3000,
+    identity: authIdentity,
   });
 
   // The state the UI should render — presentation state from the sync framework
