@@ -1137,6 +1137,8 @@ export const GinRummyGameTable = ({
     const timer = setTimeout(async () => {
       // Re-check: ginState may have advanced during the delay
       if (scoringAutoProgressRef.current) return;
+      // Writer-audit gate: do not let the safety net write into a stale identity.
+      if (isIdentityStaleRef.current) return;
       scoringAutoProgressRef.current = true;
 
       try {
