@@ -4502,11 +4502,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // Start the appropriate round type — these functions handle their own
               // atomic guards for awaiting_next_round and multi-client deduplication
               if (freshGame?.game_type === 'ship-captain-crew') {
-                await startSCCRound(gameId);
+                await startSCCRound(gameId, false, {
+                  caller: 'Game.tsx:awaiting_next_round-effect',
+                  reason: 'tie-rollover-re-ante',
+                  trigger: 'awaiting_next_round=true observed (realtime/refresh)',
+                  prevDealerGameId: freshGame?.current_game_uuid ?? null,
+                  prevAwaitingNextRound: freshGame?.awaiting_next_round ?? null,
+                  prevAnteDecisionDeadline: freshGame?.ante_decision_deadline ?? null,
+                  extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
+                });
               } else if (freshGame?.game_type === 'yahtzee') {
                 await startYahtzeeRound(gameId);
               } else {
-                await startHorsesRound(gameId);
+                await startHorsesRound(gameId, false, {
+                  caller: 'Game.tsx:awaiting_next_round-effect',
+                  reason: 'tie-rollover-re-ante',
+                  trigger: 'awaiting_next_round=true observed (realtime/refresh)',
+                  prevDealerGameId: freshGame?.current_game_uuid ?? null,
+                  prevAwaitingNextRound: freshGame?.awaiting_next_round ?? null,
+                  prevAnteDecisionDeadline: freshGame?.ante_decision_deadline ?? null,
+                  extra: { freshGameStatus: freshGame?.status, freshPot: freshGame?.pot },
+                });
               }
 
               // Trigger ante animation for dice game re-ante
