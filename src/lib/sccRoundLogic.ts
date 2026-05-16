@@ -9,7 +9,8 @@ import { getMakeItTakeItSetting } from "@/hooks/useMakeItTakeIt";
 import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard } from "./gameStateDebugLog";
 import { logSCCAnteApplied } from "./sccSyncDiagnostics";
-import { persistTransition } from "./persistSyncDebugEvent";
+import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
+import type { HorsesRoundCallerContext } from "./horsesRoundLogic";
 
 /**
  * Start a new Ship Captain Crew round
