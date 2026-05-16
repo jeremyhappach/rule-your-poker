@@ -2186,7 +2186,10 @@ export function useHorsesMobileController({
       processedWinRoundRef.current = presentationRoundId;
 
       if (winningPlayerIds.length > 1) {
-        // ATOMIC GUARD: Only one client claims the tie processing
+        // ATOMIC GUARD: Only one client claims the tie processing.
+        // Filter on awaiting_next_round=false so the claim is a TRUE one-shot at the DB level —
+        // even if local refs reset or the effect re-runs (presentation oscillation, identity reset),
+        // a second claim is rejected. This prevents the SCC no-qualify overlay/rollover loop.
         const { data: claimed, error: claimError } = await supabase
           .from("games")
           .update({
@@ -2194,10 +2197,20 @@ export function useHorsesMobileController({
             last_round_result: "One tie all tie - rollover",
           })
           .eq("id", gameId)
-          .eq("status", "in_progress") // Only succeeds if not already processed
+          .eq("status", "in_progress")
+          .eq("awaiting_next_round", false)
           .select("id, total_hands, current_game_uuid");
 
         if (claimError || !claimed || claimed.length === 0) {
+          persistSyncDebugEvent({
+            gameId: gameId ?? null,
+            gameType: resolvedGameType,
+            handNumber: monotonicHandNumber,
+            roundId: currentRoundId,
+            eventType: 'transition', severity: 'info',
+            eventName: 'horses-tie-rollover-claim-skipped',
+            payload: { reason: claimError ? 'error' : 'already-claimed' },
+          });
           return;
         }
 
