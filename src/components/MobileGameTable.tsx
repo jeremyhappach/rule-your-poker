@@ -513,6 +513,8 @@ export const MobileGameTable = ({
   const horsesController = useHorsesMobileController({
     enabled: isDiceGame,
     gameId,
+    dealerGameId: horsesDealerGameId ?? null,
+    currentHandNumber: horsesHandNumber ?? null,
     players: players as any,
     currentUserId,
     pot,
