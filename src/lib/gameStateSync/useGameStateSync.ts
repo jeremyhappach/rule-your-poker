@@ -480,6 +480,21 @@ export function useGameStateSync<T>(
   );
   const interactionsAllowed = !frozen && activeContract === null && !isIdentityStale;
 
+  /**
+   * Synchronous writer-gate predicate. Reads from refs only — bypasses React
+   * render lag so that callers invoking unfreezePresentation() followed
+   * immediately by a write in the same tick are not incorrectly suppressed.
+   */
+  const canInteractNow = useCallback((): boolean => {
+    if (frozenRef.current) return false;
+    if (contractRef.current !== null) return false;
+    const currentIdentity = identityPropRef.current;
+    if (currentIdentity && !identityEqualsFn(presentationIdentityRef.current, currentIdentity)) {
+      return false;
+    }
+    return true;
+  }, [identityEqualsFn]);
+
   return {
     presentationState: presentation,
     presentationRefValue: presentationRef.current,
