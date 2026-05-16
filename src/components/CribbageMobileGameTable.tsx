@@ -3235,6 +3235,36 @@ export const CribbageMobileGameTable = ({
   const handleDiscard = useCallback(async (cardIndices: number[]) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
+    // ── Stale-action containment ──
+    // Reject mutations whose rendered hand identity no longer matches the
+    // authoritative actionable identity. Without this, a user can interact
+    // with a still-visible OLD hand during a hand transition.
+    if (!interactionsAllowedRef.current) {
+      try {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          roundId: currentRoundId,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'crib-stale-action-suppressed',
+          payload: {
+            action: 'discard',
+            cardIndices,
+            renderHandKey: renderHandKey?.slice(0, 30),
+            currentHandKey: currentHandKey?.slice(0, 30),
+            currentRoundId: currentRoundId?.slice(0, 8),
+            propRoundId: roundId?.slice(0, 8),
+            currentHandNumber,
+            propHandNumber: handNumber,
+          },
+        });
+      } catch {}
+      toast.error('Hand updating — try again');
+      return;
+    }
+
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:discard', { cardIndices, phase: cribbageState.phase }, tid);
 
