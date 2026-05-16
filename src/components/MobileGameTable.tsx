@@ -388,6 +388,8 @@ export const MobileGameTable = ({
   roundStatus,
   horsesRoundId,
   horsesState,
+  horsesDealerGameId,
+  horsesHandNumber,
   pendingDecision,
   isPaused,
   anteAmount = 0,
