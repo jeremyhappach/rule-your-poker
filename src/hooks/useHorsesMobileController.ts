@@ -1104,6 +1104,8 @@ export function useHorsesMobileController({
         eventName: 'horses-roller-write',
         payload: {
           playerId: myPlayer.id.slice(0, 8),
+          clientUserId: currentUserId?.slice(0, 8) ?? null,
+          currentTurnPlayerIdAtWrite: (incomingHorsesStateRef.current as any)?.currentTurnPlayerId?.slice(0, 8) ?? null,
           rollKey: localRollKeyRef.current,
           rollsRemaining: hand.rollsRemaining,
           isComplete: completed,
@@ -2331,12 +2333,39 @@ export function useHorsesMobileController({
             gameType: resolvedGameType,
             handNumber: monotonicHandNumber,
             roundId: currentRoundId,
-            eventType: 'invariant', severity: 'info',
+            eventType: 'invariant', severity: 'warn',
             eventName: 'horses-tie-rollover-claim-skipped',
-            payload: { reason: claimError ? 'error' : 'already-claimed' },
+            payload: {
+              reason: claimError ? 'error' : 'already-claimed',
+              errorMessage: claimError?.message ?? null,
+              clientUserId: currentUserId?.slice(0, 8) ?? null,
+              myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
+              currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+              winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
+              tsClient: Date.now(),
+            },
           });
           return;
         }
+
+        // Claim WON — record who actually won the atomic rollover claim.
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'invariant', severity: 'info',
+          eventName: 'horses-tie-rollover-claim-won',
+          payload: {
+            clientUserId: currentUserId?.slice(0, 8) ?? null,
+            myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
+            currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+            claimedHandNumber: (claimed[0] as any)?.total_hands ?? null,
+            claimedDealerGameId: (claimed[0] as any)?.current_game_uuid?.slice(0, 8) ?? null,
+            winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
+            tsClient: Date.now(),
+          },
+        });
 
         // Record CHOP event for history with EMPTY chip changes
         // In dice games, pot carries over - no chips are distributed during rollover
