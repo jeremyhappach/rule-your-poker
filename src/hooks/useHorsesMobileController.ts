@@ -2949,14 +2949,14 @@ export function useHorsesMobileController({
     };
   }, [
     enabled,
-    currentTurnPlayerId,
-    isMyTurn,
-    currentTurnPlayer?.is_bot,
-    // Use specific state properties instead of the entire object
-    horsesState?.playerStates?.[currentTurnPlayerId ?? ""]?.rollsRemaining,
-    (horsesState?.playerStates?.[currentTurnPlayerId ?? ""] as any)?.rollKey,
-    (horsesState?.playerStates?.[currentTurnPlayerId ?? ""] as any)?.holdSeq,
-    horsesState?.playerStates?.[currentTurnPlayerId ?? ""]?.isComplete,
+    myPlayer?.id,
+    players,
+    // Authoritative state slices (NOT presentationState) — see comment above.
+    incomingHorsesState?.currentTurnPlayerId,
+    incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""]?.rollsRemaining,
+    (incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""] as any)?.rollKey,
+    (incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""] as any)?.holdSeq,
+    incomingHorsesState?.playerStates?.[incomingHorsesState?.currentTurnPlayerId ?? ""]?.isComplete,
   ]);
 
   const feltDice = useMemo(() => {
