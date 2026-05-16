@@ -250,3 +250,35 @@ New deterministic events:
 - `src/lib/gameStateSync/authoritativeIdentity.ts` — monotonic latch + suppressed-regression event.
 - `src/lib/gameStateSync/useGameStateSync.ts` — drop init seed of `presentationIdentityRef`; emit `framework-identity-reset-fired`.
 - `src/components/CribbageMobileGameTable.tsx` — strict forward-only merge using `isIdentityForward`; auth always wins over lagging props.
+
+---
+
+## Phase 3 — Gin Rummy framework cutover (per approved rollout)
+
+### Identity continuity
+- Wired `useAuthoritativeIdentity({ dealerGameId })` in `GinRummyGameTable.tsx`.
+- Local monotonic `currentRoundId` / `currentHandNumber`: parent props are advisory; auth wins whenever `authHand >= propHand`; `setCurrentRoundId` gated by `isIdentityForward` (no equal-hand regression).
+- Internal `roundId` / `handNumber` are now aliases for the monotonic values, so every existing reference (subscription channel name, filter, poll query, bot fetch/write, action writers, scoring safety-net, hand-completion, animations) automatically follows the live identity.
+- Forward identity advance triggers a local `setGinState(null)` mirror reset, plus emits `gin-identity-advanced` + `gin-presentation-reset-on-identity-advance` debug events.
+
+### Progress gating
+- `getGinRummyProgress` vector unchanged: `[handNumber, phaseOrdinal, actionCount]`. Validated against the rollout-approved contract.
+- `useGameStateSync` now receives `identity: authIdentity` and `gameType: 'gin-rummy'`, so the framework auto-resets presentation/optimistic/freeze on forward identity advance and emits canonical lifecycle events.
+
+### Writer audit
+- New `interactionsAllowedRef` + `isIdentityStaleRef` refs mirror the framework gate.
+- `updateState` short-circuits and emits `gin-writer-suppressed-stale-identity` when interactions are disallowed.
+- Bot loop refuses to act when identity is stale or interactions disallowed.
+- Scoring safety-net refuses to write when identity is stale (cannot clobber the new round).
+- Hand-completion writer is intentionally NOT gated (it is the writer that CAUSES the advance; runs only on `phase === 'complete'`).
+
+### Visual contract / animations
+- Existing per-round reset effect (keyed on `roundId`, now the monotonic alias) continues to clear overlay latches (`ginOverlayFiredRef`, `knockOverlayFiredRef`), opponent draw animation, lay-off selection, and invariant tracking on every identity advance.
+- Opponent draw freeze/unfreeze pair preserved; identity advance during the 1.2 s freeze is now safely handled by the framework's identity-reset effect.
+
+### Files changed
+- `src/components/GinRummyGameTable.tsx` — identity wiring, monotonic round id, writer-audit gates, presentation reset on advance.
+
+### Validation
+- All 64 framework tests green.
+- No code paths still write to a stale-prop `roundId`; every writer path resolves through the monotonic alias.
