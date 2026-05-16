@@ -1334,6 +1334,10 @@ export function useHorsesMobileController({
     const writeRoundId = currentRoundId;
 
     const t = window.setTimeout(() => {
+      if (!canWriteRef.current) {
+        logSuppressedWrite('stuckAdvance-forceComplete-or-advance');
+        return;
+      }
       if (allPlayersComplete) {
         void (async () => {
           if (!writeRoundId) return;
