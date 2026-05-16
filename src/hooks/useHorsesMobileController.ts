@@ -385,10 +385,35 @@ export function useHorsesMobileController({
   incomingHorsesStateRef.current = horsesState;
 
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
+  const prevAuthTurnPlayerRef = useRef<string | null>(null);
   useEffect(() => {
     if (!incomingHorsesState) return;
-    syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
-  }, [incomingHorsesState, gameId, currentRoundId, isSCC]);
+    const beforeTurn = prevAuthTurnPlayerRef.current;
+    const result = syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
+    const afterTurn = incomingHorsesState.currentTurnPlayerId ?? null;
+    // Emit a deterministic event when the authoritative turn owner changes so we
+    // can verify the next client receives + presents the handoff without being
+    // gated by any local animation freeze.
+    if (beforeTurn !== afterTurn) {
+      prevAuthTurnPlayerRef.current = afterTurn;
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'transition', severity: 'info',
+        eventName: 'horses-auth-turn-handoff-received',
+        payload: {
+          beforeTurn: beforeTurn?.slice(0, 8) ?? null,
+          afterTurn: afterTurn?.slice(0, 8) ?? null,
+          accepted: result.accepted,
+          reason: result.reason,
+          wasFrozenAtWrite: result.wasFrozenAtWrite,
+          presentationAction: result.presentationAction,
+        },
+      });
+    }
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
@@ -1141,8 +1166,24 @@ export function useHorsesMobileController({
 
     setCompletedTurnHold(holdPayload);
 
-    // FREEZE presentation: hold dice display stable during the 3s completed-turn visual
-    syncHandle.freezePresentation();
+    // NOTE: presentation is NOT frozen here. The completedTurnHold overlay is rendered
+    // above presentation and is scoped to (playerId, rollKey), so it masks only the
+    // completing player's dice area while authoritative turn-handoff snapshots (e.g.
+    // horses_advance_turn results) continue to propagate to presentation underneath.
+    // Freezing here previously stalled the next client's "Roll Now" handoff for 3s.
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: monotonicHandNumber,
+      roundId: presentationRoundId,
+      eventType: 'transition', severity: 'info',
+      eventName: 'horses-completed-turn-hold-overlay-only',
+      payload: {
+        completingPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+        rollKey: (currentTurnState as any).rollKey ?? null,
+        holdDurationMs: holdDuration,
+      },
+    });
 
     // Clear the hold after the duration
     if (completedTurnHoldTimerRef.current) {
@@ -1158,9 +1199,6 @@ export function useHorsesMobileController({
         return prev;
       });
       completedTurnHoldTimerRef.current = null;
-
-      // UNFREEZE presentation: completed-turn hold expired, allow latest authoritative state through
-      syncHandle.unfreezePresentation();
     }, holdDuration);
   }, [
     enabled,
@@ -2793,8 +2831,24 @@ export function useHorsesMobileController({
           preRollSig,
         });
 
-        // FREEZE presentation: prevent sync framework from pushing DB updates during observer animation
-        syncHandle.freezePresentation();
+        // NOTE: presentation is NOT frozen here. observerDisplayState (scoped by
+        // playerId+rollKey) is rendered above presentation and provides the fly-in
+        // overlay; presentation continues to advance freely so authoritative
+        // turn-handoff snapshots reach the next client without delay.
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'transition', severity: 'info',
+          eventName: 'horses-observer-roll-overlay-only',
+          payload: {
+            playerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+            rollKey: newRollKey,
+            prevRollKey,
+            durationMs,
+          },
+        });
 
         // End rolling state after the animation window. Do NOT clear the display state.
         observerRollingTimerRef.current = window.setTimeout(() => {
@@ -2804,9 +2858,6 @@ export function useHorsesMobileController({
             return { ...prev, isRolling: false };
           });
           observerRollingTimerRef.current = null;
-
-          // UNFREEZE presentation: observer animation complete
-          syncHandle.unfreezePresentation();
         }, durationMs);
       }
 
