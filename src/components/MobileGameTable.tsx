@@ -2787,7 +2787,10 @@ export const MobileGameTable = ({
   // ── 357 announcement instrumentation ──
   const prev357AnnouncementRef = useRef<string | null>(null);
   useEffect(() => {
-    if (gameType === 'holm-game' || !gameId) return;
+    // Gate to 3-5-7 only. This instrumentation was previously firing for every
+    // non-holm game (Horses/SCC/Cribbage), polluting forensic queries with
+    // game_type='3-5-7' rows for unrelated game types.
+    if (gameType !== '3-5-7' || !gameId) return;
     // The announcement renders when: lastRoundResult is present AND (awaitingNextRound OR roundStatus completed/showdown OR allDecisionsIn)
     const announcementEligible = !!lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') &&
       !(lastRoundResult.includes('won the game')) &&

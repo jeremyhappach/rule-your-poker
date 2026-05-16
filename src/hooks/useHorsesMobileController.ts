@@ -300,7 +300,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: authIdentity.handNumber ?? null,
       roundId: authIdentity.roundId ?? null,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-identity-advanced',
       payload,
     });
@@ -309,7 +309,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: authIdentity.handNumber ?? null,
       roundId: authIdentity.roundId ?? null,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-presentation-reset-on-identity-advance',
       payload,
     });
@@ -362,6 +362,15 @@ export function useHorsesMobileController({
   // legitimate terminal-roll writes immediately after unfreezePresentation().
 
   const logSuppressedWrite = useCallback((tag: string, extra?: Record<string, unknown>) => {
+    // Full forensic context: decompose every gate the suppression branch checked
+    // so we can see WHICH condition actually caused the drop (the two booleans
+    // logged previously were the same surface predicates that read "allowed").
+    const auth = incomingHorsesStateRef.current;
+    const authRoundCurrentTurn = (auth as any)?.currentTurnPlayerId ?? null;
+    let canInteract: boolean | null = null;
+    let isFrozen: boolean | null = null;
+    try { canInteract = syncHandle.canInteractNow(); } catch { /* */ }
+    try { isFrozen = syncHandle.isFrozen; } catch { /* */ }
     persistSyncDebugEvent({
       gameId: gameId ?? null,
       gameType: resolvedGameType,
@@ -372,12 +381,21 @@ export function useHorsesMobileController({
       eventName: 'horses-stale-action-suppressed',
       payload: {
         tag,
+        // Gate decomposition
         interactionsAllowed: interactionsAllowedRef.current,
         isIdentityStale: isIdentityStaleRef.current,
+        canInteractNow: canInteract,
+        isFrozen,
+        // Identity context
+        currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+        authRoundCurrentTurn: authRoundCurrentTurn?.slice(0, 8) ?? null,
+        myPlayerId: null, // populated by call sites that have myPlayer in scope
+        clientUserId: currentUserId?.slice(0, 8) ?? null,
+        tsClient: Date.now(),
         ...(extra ?? {}),
       },
     });
-  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId]);
+  }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId, currentUserId]);
 
   // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop
   const incomingHorsesState = horsesState;
@@ -402,7 +420,7 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'info',
+        eventType: 'invariant', severity: 'info',
         eventName: 'horses-auth-turn-handoff-received',
         payload: {
           beforeTurn: beforeTurn?.slice(0, 8) ?? null,
@@ -430,7 +448,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-auth-snapshot-received',
           payload: {
             rollerId: afterTurn.slice(0, 8),
@@ -1082,10 +1100,12 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'info',
+        eventType: 'invariant', severity: 'info',
         eventName: 'horses-roller-write',
         payload: {
           playerId: myPlayer.id.slice(0, 8),
+          clientUserId: currentUserId?.slice(0, 8) ?? null,
+          currentTurnPlayerIdAtWrite: (incomingHorsesStateRef.current as any)?.currentTurnPlayerId?.slice(0, 8) ?? null,
           rollKey: localRollKeyRef.current,
           rollsRemaining: hand.rollsRemaining,
           isComplete: completed,
@@ -1215,7 +1235,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: monotonicHandNumber,
       roundId: currentRoundId,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-round-boundary-reset',
       payload: {
         prevRoundId: prevRoundId?.slice(0, 8) ?? null,
@@ -1270,7 +1290,7 @@ export function useHorsesMobileController({
       gameType: resolvedGameType,
       handNumber: monotonicHandNumber,
       roundId: presentationRoundId,
-      eventType: 'transition', severity: 'info',
+      eventType: 'invariant', severity: 'info',
       eventName: 'horses-completed-turn-hold-overlay-only',
       payload: {
         completingPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
@@ -2313,12 +2333,39 @@ export function useHorsesMobileController({
             gameType: resolvedGameType,
             handNumber: monotonicHandNumber,
             roundId: currentRoundId,
-            eventType: 'transition', severity: 'info',
+            eventType: 'invariant', severity: 'warn',
             eventName: 'horses-tie-rollover-claim-skipped',
-            payload: { reason: claimError ? 'error' : 'already-claimed' },
+            payload: {
+              reason: claimError ? 'error' : 'already-claimed',
+              errorMessage: claimError?.message ?? null,
+              clientUserId: currentUserId?.slice(0, 8) ?? null,
+              myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
+              currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+              winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
+              tsClient: Date.now(),
+            },
           });
           return;
         }
+
+        // Claim WON — record who actually won the atomic rollover claim.
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber: monotonicHandNumber,
+          roundId: currentRoundId,
+          eventType: 'invariant', severity: 'info',
+          eventName: 'horses-tie-rollover-claim-won',
+          payload: {
+            clientUserId: currentUserId?.slice(0, 8) ?? null,
+            myPlayerId: myPlayer?.id?.slice(0, 8) ?? null,
+            currentRoundId: currentRoundId?.slice(0, 8) ?? null,
+            claimedHandNumber: (claimed[0] as any)?.total_hands ?? null,
+            claimedDealerGameId: (claimed[0] as any)?.current_game_uuid?.slice(0, 8) ?? null,
+            winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
+            tsClient: Date.now(),
+          },
+        });
 
         // Record CHOP event for history with EMPTY chip changes
         // In dice games, pot carries over - no chips are distributed during rollover
@@ -2807,7 +2854,7 @@ export function useHorsesMobileController({
         gameType: resolvedGameType,
         handNumber: monotonicHandNumber,
         roundId: currentRoundId,
-        eventType: 'transition', severity: 'warn',
+        eventType: 'invariant', severity: 'warn',
         eventName: 'horses-observer-flyin-decision',
         payload: {
           decision: 'rejected-stale',
@@ -2881,7 +2928,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
             decision: 'skipped-bookkeeping',
@@ -2917,7 +2964,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
             decision: 'skipped-first-observation',
@@ -3019,7 +3066,7 @@ export function useHorsesMobileController({
           gameType: resolvedGameType,
           handNumber: monotonicHandNumber,
           roundId: currentRoundId,
-          eventType: 'transition', severity: 'info',
+          eventType: 'invariant', severity: 'info',
           eventName: 'horses-observer-flyin-decision',
           payload: {
             decision: 'fired',
