@@ -3565,7 +3565,7 @@ export const CribbageMobileGameTable = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, debugCtx, evaluateWriterIdentity]);
 
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
@@ -3641,7 +3641,7 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
@@ -3719,7 +3719,7 @@ export const CribbageMobileGameTable = ({
     } catch (err) {
       toast.error((err as Error).message);
     }
-  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx]);
+  }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
   // Keep handleGoRef updated to the latest callback
   useEffect(() => {
