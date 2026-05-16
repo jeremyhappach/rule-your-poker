@@ -3054,6 +3054,25 @@ export const CribbageMobileGameTable = ({
         comparison: result.comparison,
         source,
       }, traceId);
+
+      // Phase 2 production test hook — deterministic accept/reject events.
+      try {
+        persistSyncDebugEvent({
+          gameId, gameType: 'cribbage',
+          handNumber: currentHandNumber,
+          roundId: currentRoundId,
+          eventType: result.accepted ? 'transition' : 'invariant',
+          severity: result.accepted ? 'info' : 'warn',
+          eventName: result.accepted ? 'crib-snapshot-accepted' : 'crib-snapshot-rejected-progress',
+          payload: {
+            source,
+            reason: result.reason,
+            phase: newCribbageState.phase,
+            snapshotRoundId: currentRoundId?.slice(0, 8),
+            authRoundId: authIdentityRef.current?.roundId?.slice(0, 8) ?? null,
+          },
+        });
+      } catch {}
       
       if (result.accepted) {
         // Update the legacy cribbageState/ref for components that still read it directly
