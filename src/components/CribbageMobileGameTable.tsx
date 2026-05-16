@@ -486,20 +486,29 @@ export const CribbageMobileGameTable = ({
     if (!isIdentityForward(prev, authIdentity)) return;
     setCribbageState(null);
     cribbageStateRef.current = null;
+    const payload = {
+      prevHand: prev.handNumber,
+      nextHand: authIdentity.handNumber,
+      prevRoundId: prev.roundId?.slice(0, 8) ?? null,
+      nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
+    };
+    // Two events: a canonical "identity advanced" lifecycle hook plus the
+    // specific "presentation reset on identity advance" effect we just performed.
     persistSyncDebugEvent({
-      gameId,
-      gameType: 'cribbage',
+      gameId, gameType: 'cribbage',
       handNumber: authIdentity.handNumber ?? null,
       roundId: authIdentity.roundId ?? null,
-      eventType: 'transition',
-      severity: 'info',
-      eventName: 'crib-identity-advance-local-clear',
-      payload: {
-        prevHand: prev.handNumber,
-        nextHand: authIdentity.handNumber,
-        prevRoundId: prev.roundId?.slice(0, 8) ?? null,
-        nextRoundId: authIdentity.roundId?.slice(0, 8) ?? null,
-      },
+      eventType: 'transition', severity: 'info',
+      eventName: 'crib-identity-advanced',
+      payload,
+    });
+    persistSyncDebugEvent({
+      gameId, gameType: 'cribbage',
+      handNumber: authIdentity.handNumber ?? null,
+      roundId: authIdentity.roundId ?? null,
+      eventType: 'transition', severity: 'info',
+      eventName: 'crib-presentation-reset-on-identity-advance',
+      payload,
     });
   }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, gameId]);
 
