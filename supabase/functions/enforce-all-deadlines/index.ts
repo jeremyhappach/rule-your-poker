@@ -2480,13 +2480,30 @@ serve(async (req) => {
                     continue;
                   }
                   
-                  if (player.auto_fold) {
+                if (player.auto_fold) {
+                  if (rulesetAllowsAutoFoldParticipation(game.game_type)) {
                     await supabase
                       .from('players')
                       .update({ sitting_out: true, waiting: false })
                       .eq('id', player.id);
-                    continue;
+                  } else {
+                    // Stale auto_fold artifact from an unrelated lifecycle
+                    // path. Clear it rather than promote to sitting_out.
+                    await supabase
+                      .from('players')
+                      .update({ auto_fold: false })
+                      .eq('id', player.id);
+                    try {
+                      await supabase.from('debug_events').insert({
+                        event_type: 'cron-participation-suppressed-invalid-ruleset',
+                        game_id: game.id,
+                        client_role: 'cron',
+                        payload: { player_id: player.id, game_type: game.game_type, path: 'stuck_game_over_null_at' },
+                      });
+                    } catch {}
                   }
+                  continue;
+                }
                   
                   if (player.waiting && !player.sitting_out) {
                     await supabase
@@ -2690,10 +2707,25 @@ serve(async (req) => {
                 }
                 
                 if (player.auto_fold) {
-                  await supabase
-                    .from('players')
-                    .update({ sitting_out: true, waiting: false })
-                    .eq('id', player.id);
+                  if (rulesetAllowsAutoFoldParticipation(game.game_type)) {
+                    await supabase
+                      .from('players')
+                      .update({ sitting_out: true, waiting: false })
+                      .eq('id', player.id);
+                  } else {
+                    await supabase
+                      .from('players')
+                      .update({ auto_fold: false })
+                      .eq('id', player.id);
+                    try {
+                      await supabase.from('debug_events').insert({
+                        event_type: 'cron-participation-suppressed-invalid-ruleset',
+                        game_id: game.id,
+                        client_role: 'cron',
+                        payload: { player_id: player.id, game_type: game.game_type, path: 'stale_game_over' },
+                      });
+                    } catch {}
+                  }
                   continue;
                 }
                 
