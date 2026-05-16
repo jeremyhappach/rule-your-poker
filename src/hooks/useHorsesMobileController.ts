@@ -1026,6 +1026,10 @@ export function useHorsesMobileController({
     async (expectedCurrentPlayerId?: string | null) => {
       if (!enabled) return;
       if (!currentRoundId) return;
+      if (!canWriteRef.current) {
+        logSuppressedWrite('advanceToNextTurn');
+        return;
+      }
 
       const expected = expectedCurrentPlayerId ?? horsesState?.currentTurnPlayerId;
       if (!expected) return;
