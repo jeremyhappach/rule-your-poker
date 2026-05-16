@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 export {
   authoritativeIdentityEquals,
@@ -29,7 +30,12 @@ export {
 } from './authoritativeIdentityPure';
 export type { AuthoritativeIdentity } from './authoritativeIdentityPure';
 
-import type { AuthoritativeIdentity } from './authoritativeIdentityPure';
+import {
+  authoritativeIdentityEquals,
+  isIdentityForward,
+  identityKey,
+  type AuthoritativeIdentity,
+} from './authoritativeIdentityPure';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useAuthoritativeIdentity — long-lived subscription scoped by dealer_game_id
@@ -152,14 +158,68 @@ export function useAuthoritativeIdentity(
     };
   }, [dealerGameId, enabled]);
 
-  const activeRound = pickActiveRound(rounds);
-  const identity: AuthoritativeIdentity | null = activeRound
+  // ── Monotonic forward-only identity gate ────────────────────────────────
+  //
+  // pickActiveRound is a pure function over `rounds[]`. Realtime payloads
+  // arrive out-of-order; a row UPDATE that nulls hand_number, a delayed INSERT,
+  // or a transient DELETE can flip the picked row backward for a single tick.
+  // Identity advancement is monotonic by contract: once we have observed a
+  // forward identity, we never expose a regressive one (no rollback API yet —
+  // when one is introduced it must explicitly clear `monotonicIdentityRef`).
+  //
+  // Suppressed regressions are surfaced as `framework-regressive-identity-
+  // suppressed` so jitter / out-of-order behaviour is observable.
+  const rawActive = pickActiveRound(rounds);
+  const rawIdentity: AuthoritativeIdentity | null = rawActive
     ? {
-        dealerGameId: activeRound.dealer_game_id ?? dealerGameId ?? null,
-        handNumber: activeRound.hand_number ?? null,
-        roundId: activeRound.id,
+        dealerGameId: rawActive.dealer_game_id ?? dealerGameId ?? null,
+        handNumber: rawActive.hand_number ?? null,
+        roundId: rawActive.id,
       }
     : null;
+
+  const monotonicIdentityRef = useRef<AuthoritativeIdentity | null>(null);
+
+  // Reset monotonic latch when scope changes (different dealer-game).
+  useEffect(() => {
+    monotonicIdentityRef.current = null;
+  }, [dealerGameId]);
+
+  let identity: AuthoritativeIdentity | null = monotonicIdentityRef.current;
+
+  if (rawIdentity) {
+    const prev = monotonicIdentityRef.current;
+    if (!prev || authoritativeIdentityEquals(prev, rawIdentity)) {
+      identity = rawIdentity;
+      monotonicIdentityRef.current = rawIdentity;
+    } else if (isIdentityForward(prev, rawIdentity)) {
+      identity = rawIdentity;
+      monotonicIdentityRef.current = rawIdentity;
+    } else {
+      // Regressive — suppress.
+      identity = prev;
+      try {
+        persistSyncDebugEvent({
+          gameId: dealerGameId ?? null,
+          gameType: 'framework',
+          handNumber: prev.handNumber ?? null,
+          roundId: prev.roundId ?? null,
+          eventType: 'invariant',
+          severity: 'warn',
+          eventName: 'framework-regressive-identity-suppressed',
+          payload: {
+            heldIdentity: identityKey(prev),
+            rejectedIdentity: identityKey(rawIdentity),
+            rawHand: rawIdentity.handNumber,
+            heldHand: prev.handNumber,
+            roundCount: rounds.length,
+          },
+        });
+      } catch {
+        /* logging best-effort */
+      }
+    }
+  }
 
   return { identity, rounds, loading };
 }
