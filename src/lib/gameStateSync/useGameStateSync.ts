@@ -378,6 +378,10 @@ export function useGameStateSync<T>(
     setOptimistic(null);
     setPresentation(freshPresentation);
     setFrozen(false);
+    // Adopt the latest known authoritative identity as the new presentation
+    // identity (it will be re-stamped on the next accepted update too).
+    presentationIdentityRef.current = identityPropRef.current;
+    setPresentationIdentity(identityPropRef.current);
     if (optimisticTimerRef.current) {
       clearTimeout(optimisticTimerRef.current);
       optimisticTimerRef.current = null;
@@ -385,6 +389,42 @@ export function useGameStateSync<T>(
     // Expose pre-reset presentation for diagnostics (via ref accessible to callers)
     (reset as any)._lastResetPresentationBefore = presPre;
   }, [resolvedGameType]);
+
+  // ── Identity advancement auto-reset ──────────────────────────
+  // When the caller wires `config.identity`, the framework detects forward
+  // identity changes (peer client started a new round) and resets presentation
+  // immediately — without each game having to invent its own boundary watcher.
+  useEffect(() => {
+    if (!identityProp) return;
+    const prev = presentationIdentityRef.current;
+    if (identityEqualsFn(prev, identityProp)) return;
+    if (!isIdentityForward(prev, identityProp)) {
+      // Non-forward identity change (e.g. dealerGameId churn during init) —
+      // adopt silently without triggering a reset cascade.
+      presentationIdentityRef.current = identityProp;
+      setPresentationIdentity(identityProp);
+      return;
+    }
+    persistSyncDebugEvent({
+      gameId: identityProp.dealerGameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: identityProp.handNumber ?? null,
+      roundId: identityProp.roundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'framework-identity-advanced',
+      payload: {
+        prevIdentity: prev ? identityKey(prev) : null,
+        nextIdentity: identityKey(identityProp),
+        hadActiveContract: contractRef.current !== null,
+        wasFrozen: frozenRef.current,
+      },
+    });
+    // reset() reads identityPropRef.current and stamps it onto presentationIdentity.
+    reset(authRef.current);
+  }, [identityProp, identityEqualsFn, reset, resolvedGameType]);
+
+
 
   // Cleanup timer on unmount
   useEffect(() => {
