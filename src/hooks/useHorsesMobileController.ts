@@ -357,10 +357,9 @@ export function useHorsesMobileController({
   useEffect(() => { interactionsAllowedRef.current = interactionsAllowed; }, [interactionsAllowed]);
   const isIdentityStaleRef = useRef(syncHandle.isIdentityStale);
   useEffect(() => { isIdentityStaleRef.current = syncHandle.isIdentityStale; }, [syncHandle.isIdentityStale]);
-  const canWriteRef = useRef(true);
-  useEffect(() => {
-    canWriteRef.current = interactionsAllowed && !syncHandle.isIdentityStale;
-  }, [interactionsAllowed, syncHandle.isIdentityStale]);
+  // NOTE: Writer gates now use syncHandle.canInteractNow() directly (synchronous,
+  // ref-backed predicate) to avoid the one-render lag that previously suppressed
+  // legitimate terminal-roll writes immediately after unfreezePresentation().
 
   const logSuppressedWrite = useCallback((tag: string, extra?: Record<string, unknown>) => {
     persistSyncDebugEvent({
