@@ -1041,6 +1041,28 @@ export function useHorsesMobileController({
         } : {}),
       };
 
+      // INSTRUMENTATION (Defect 1): record every roller write so we can correlate
+      // against observer realtime receive + fly-in trigger decisions.
+      persistSyncDebugEvent({
+        gameId: gameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: monotonicHandNumber,
+        roundId: currentRoundId,
+        eventType: 'transition', severity: 'info',
+        eventName: 'horses-roller-write',
+        payload: {
+          playerId: myPlayer.id.slice(0, 8),
+          rollKey: localRollKeyRef.current,
+          rollsRemaining: hand.rollsRemaining,
+          isComplete: completed,
+          holdSeq: localHoldSeqRef.current,
+          diceValues: (hand.dice as any[]).map((d: any) => d?.value ?? 0),
+          heldMask: (hand.dice as any[]).map((d: any) => !!d?.isHeld),
+          tsClient: Date.now(),
+          hasAnimMeta: !!rollAnimationMeta,
+        },
+      });
+
       await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
     },
     [enabled, currentRoundId, myPlayer],
