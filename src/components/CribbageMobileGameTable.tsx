@@ -3292,7 +3292,7 @@ export const CribbageMobileGameTable = ({
     // Reject mutations whose rendered hand identity no longer matches the
     // authoritative actionable identity. Without this, a user can interact
     // with a still-visible OLD hand during a hand transition.
-    if (!interactionsAllowedRef.current) {
+    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
       try {
         persistSyncDebugEvent({
           gameId,
@@ -3387,7 +3387,7 @@ export const CribbageMobileGameTable = ({
   const handlePlayCard = useCallback(async (cardIndex: number) => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
-    if (!interactionsAllowedRef.current) {
+    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
       try {
         persistSyncDebugEvent({
           gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
@@ -3461,7 +3461,7 @@ export const CribbageMobileGameTable = ({
   const handleGo = useCallback(async () => {
     if (!cribbageState || !currentPlayerId || !currentRoundId) return;
 
-    if (!interactionsAllowedRef.current) {
+    if (!interactionsAllowedRef.current || !frameworkInteractionsAllowedRef.current) {
       try {
         persistSyncDebugEvent({
           gameId, gameType: 'cribbage', handNumber: currentHandNumber, roundId: currentRoundId,
