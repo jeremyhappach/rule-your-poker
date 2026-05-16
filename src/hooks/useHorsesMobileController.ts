@@ -1829,15 +1829,21 @@ export function useHorsesMobileController({
     setLocalHand(newHand);
     setIsRolling(true);
 
-    // FREEZE presentation: prevent sync framework from pushing DB updates to UI during animation
-    syncHandle.freezePresentation();
-
-
     // CRITICAL: Save state IMMEDIATELY with animation metadata so observers get rollKey + rollStartedAt
     // right away and can start fly-in animation in sync.
+    //
+    // P0 FIX: This write MUST happen BEFORE freezePresentation(). saveMyState() is async, but
+    // its synchronous prelude (including the canInteractNow() writer-gate check) runs immediately
+    // up to the first await. If freezePresentation() ran first, frozenRef.current would be true
+    // and canInteractNow() would reject the write — stripping rollStartedAt from the observer's
+    // first snapshot and causing the ~3s fly-in lag (observer only fires on a later mutation).
     const rollAnimMeta = { rollStartedAt, rollAnimationMinEndAt };
     void saveMyState(newHand, false, undefined, heldMaskBeforeRoll, rollAnimMeta).then(() => {
     });
+
+    // FREEZE presentation: prevent sync framework from pushing DB updates to UI during animation.
+    // Must happen AFTER the roll-init write above so the writer gate doesn't suppress it.
+    syncHandle.freezePresentation();
 
     setTimeout(async () => {
       const animationEndTime = Date.now();
