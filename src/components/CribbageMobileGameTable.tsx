@@ -44,6 +44,8 @@ import {
   logCutCardEvent
 } from '@/lib/useCribbageEventLogging';
 import { useGameStateSync } from '@/lib/gameStateSync';
+import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
+import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
 import { getCribbageProgress } from '@/lib/gameStateSync/cribbageProgress';
 import { logCribbageDebug, cribbageStateSummary, newTraceId, type CribbageDebugContext } from '@/lib/cribbageDebugLogger';
 import { logDebugEvent } from '@/lib/debugEventLogger';
