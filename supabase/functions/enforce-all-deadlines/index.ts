@@ -21,24 +21,31 @@ const corsHeaders = {
 };
 
 /**
- * Authoritative runtime predicate: does this ruleset treat decision-timer
- * expiry as a legitimate participation mutation (auto_fold → sitting_out)?
- *
- * Only Holm and 3-5-7 variants use auto_fold as a participation signal.
- * For other game types (cribbage, horses, SCC, yahtzee, gin) auto_fold is
- * either unused or has unrelated semantics (e.g. horses auto-roll), and a
- * stale auto_fold=true MUST NOT be promoted to sitting_out by the cron.
+ * Config-backed timeout policy resolver. Mirrors src/lib/timeoutRules.ts.
+ * Resolution order: games override → game_defaults → safe default.
  */
-function rulesetAllowsAutoFoldParticipation(gameType: string | null | undefined): boolean {
-  if (!gameType) return false;
-  const gt = String(gameType).toLowerCase();
-  return (
-    gt === 'holm-game' ||
-    gt === 'holm' ||
-    gt === '3-5-7' ||
-    gt === '3-5-7-game' ||
-    gt === '357'
-  );
+type TimeoutAction = 'none' | 'auto_fold' | 'auto_sit_out' | 'auto_roll';
+interface TimeoutPolicy { enabled: boolean; action: TimeoutAction; source: 'game' | 'game_default' | 'safe_default'; }
+const ALLOWED_TIMEOUT_ACTIONS: ReadonlySet<TimeoutAction> = new Set(['none','auto_fold','auto_sit_out','auto_roll']);
+function resolveTimeoutPolicy(
+  game: { timeout_enforcement_enabled?: boolean | null; timeout_action?: string | null } | null | undefined,
+  gd: { timeout_enforcement_enabled?: boolean | null; timeout_action?: string | null } | null | undefined,
+): TimeoutPolicy {
+  if (game && typeof game.timeout_action === 'string' && ALLOWED_TIMEOUT_ACTIONS.has(game.timeout_action as TimeoutAction) && (game.timeout_enforcement_enabled === true || game.timeout_enforcement_enabled === false)) {
+    return { enabled: !!game.timeout_enforcement_enabled, action: game.timeout_action as TimeoutAction, source: 'game' };
+  }
+  if (gd && typeof gd.timeout_action === 'string' && ALLOWED_TIMEOUT_ACTIONS.has(gd.timeout_action as TimeoutAction) && (gd.timeout_enforcement_enabled === true || gd.timeout_enforcement_enabled === false)) {
+    return { enabled: !!gd.timeout_enforcement_enabled, action: gd.timeout_action as TimeoutAction, source: 'game_default' };
+  }
+  return { enabled: false, action: 'none', source: 'safe_default' };
+}
+async function fetchTimeoutPolicy(supabase: any, game: any): Promise<TimeoutPolicy> {
+  const { data: gd } = await supabase
+    .from('game_defaults')
+    .select('timeout_enforcement_enabled, timeout_action')
+    .eq('game_type', game?.game_type || '')
+    .maybeSingle();
+  return resolveTimeoutPolicy(game, gd);
 }
 
 // ============== CARD UTILITIES ==============
