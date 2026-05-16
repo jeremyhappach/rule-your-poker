@@ -425,7 +425,6 @@ export function useHorsesMobileController({
       const prevRollKey = prevAuthRollKeyRef.current[afterTurn] ?? null;
       if (rollKey !== null && rollKey !== prevRollKey) {
         prevAuthRollKeyRef.current[afterTurn] = rollKey;
-        const isObserver = !!myPlayer?.id && myPlayer.id !== afterTurn;
         persistSyncDebugEvent({
           gameId: gameId ?? null,
           gameType: resolvedGameType,
@@ -441,7 +440,6 @@ export function useHorsesMobileController({
             isComplete: !!ts?.isComplete,
             holdSeq: ts?.holdSeq ?? null,
             diceValues: Array.isArray(ts?.dice) ? ts.dice.map((d: any) => d?.value ?? 0) : null,
-            isObserver,
             acceptedByFramework: result.accepted,
             wasFrozenAtWrite: result.wasFrozenAtWrite,
             tsClient: Date.now(),
@@ -449,7 +447,7 @@ export function useHorsesMobileController({
         });
       }
     }
-  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber, myPlayer?.id]);
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
