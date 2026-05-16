@@ -889,6 +889,8 @@ export const GinRummyGameTable = ({
 
   useEffect(() => {
     if (!ginState || !currentPlayerId || isProcessing || botActionInProgress.current) return;
+    // Writer-audit gate: do not let the bot loop write into a stale identity.
+    if (isIdentityStaleRef.current || !interactionsAllowedRef.current) return;
 
     const currentTurnId = ginState.currentTurnPlayerId;
     if (!currentTurnId) return;
