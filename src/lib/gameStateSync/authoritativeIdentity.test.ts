@@ -4,7 +4,7 @@ import {
   isIdentityForward,
   identityKey,
   type AuthoritativeIdentity,
-} from './authoritativeIdentity';
+} from './authoritativeIdentityPure';
 
 const mk = (
   dealerGameId: string | null,

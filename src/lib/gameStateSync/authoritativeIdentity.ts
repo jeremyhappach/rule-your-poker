@@ -22,61 +22,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-/**
- * The canonical identity tuple a game-table is rendering / acting against.
- *
- *  - `dealerGameId`: the dealer-game (session) identity. Stable across rounds.
- *  - `handNumber`:    monotonically increasing per dealer-game. Required for
- *                     3-5-7 (round_number cycles 1/2/3) and for cribbage
- *                     hand-key identity.
- *  - `roundId`:       the actionable round row id. Changes at hand/round
- *                     boundaries.
- */
-export interface AuthoritativeIdentity {
-  dealerGameId: string | null;
-  handNumber: number | null;
-  roundId: string | null;
-}
+export {
+  authoritativeIdentityEquals,
+  isIdentityForward,
+  identityKey,
+} from './authoritativeIdentityPure';
+export type { AuthoritativeIdentity } from './authoritativeIdentityPure';
 
-export function identityKey(identity: AuthoritativeIdentity | null): string {
-  if (!identity) return '';
-  return `${identity.dealerGameId ?? ''}:${identity.handNumber ?? ''}:${identity.roundId ?? ''}`;
-}
-
-export function authoritativeIdentityEquals(
-  a: AuthoritativeIdentity | null,
-  b: AuthoritativeIdentity | null,
-): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return (
-    a.dealerGameId === b.dealerGameId &&
-    a.handNumber === b.handNumber &&
-    a.roundId === b.roundId
-  );
-}
-
-/**
- * Returns true if `next` is a forward identity advancement vs `prev`.
- * Forward = different dealerGameId, OR same dealerGameId with strictly greater
- * (handNumber, then roundId-change) tuple. Used by the framework to gate
- * auto-reset.
- */
-export function isIdentityForward(
-  prev: AuthoritativeIdentity | null,
-  next: AuthoritativeIdentity | null,
-): boolean {
-  if (!next) return false;
-  if (!prev) return true;
-  if (prev.dealerGameId !== next.dealerGameId) return true;
-  const ph = prev.handNumber ?? -1;
-  const nh = next.handNumber ?? -1;
-  if (nh > ph) return true;
-  if (nh < ph) return false;
-  // Same handNumber but different roundId still counts as boundary advance
-  // (covers degenerate cases where handNumber lags behind a fresh round row).
-  return !!next.roundId && prev.roundId !== next.roundId;
-}
+import type { AuthoritativeIdentity } from './authoritativeIdentityPure';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useAuthoritativeIdentity — long-lived subscription scoped by dealer_game_id
@@ -87,9 +40,7 @@ interface UseAuthoritativeIdentityOptions {
   dealerGameId: string | null | undefined;
   /**
    * Optional selector that picks the active round row from the rounds list.
-   * Different games have different rules (cribbage = latest hand_number;
-   * 3-5-7 = latest hand_number with matching current_round; holm = latest
-   * round_number within dealer_game). Defaults to "max hand_number, then
+   * Different games have different rules. Defaults to "max hand_number, then
    * max round_number".
    */
   pickActiveRound?: (rounds: RoundRow[]) => RoundRow | null;
@@ -144,8 +95,6 @@ export function useAuthoritativeIdentity(
 
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const dealerGameIdRef = useRef<string | null | undefined>(dealerGameId);
-  dealerGameIdRef.current = dealerGameId;
 
   useEffect(() => {
     if (!enabled || !dealerGameId) {
@@ -157,7 +106,6 @@ export function useAuthoritativeIdentity(
     let cancelled = false;
     setLoading(true);
 
-    // Initial fetch
     void supabase
       .from('rounds')
       .select('id, dealer_game_id, hand_number, round_number')
@@ -168,7 +116,6 @@ export function useAuthoritativeIdentity(
         setLoading(false);
       });
 
-    // Long-lived subscription scoped by dealer_game_id — survives round boundaries.
     const channel = supabase
       .channel(`auth-identity-${dealerGameId}`)
       .on(

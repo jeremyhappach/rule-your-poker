@@ -24,7 +24,7 @@ import {
   isIdentityForward,
   identityKey,
   type AuthoritativeIdentity,
-} from './authoritativeIdentity';
+} from './authoritativeIdentityPure';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
