@@ -1141,8 +1141,24 @@ export function useHorsesMobileController({
 
     setCompletedTurnHold(holdPayload);
 
-    // FREEZE presentation: hold dice display stable during the 3s completed-turn visual
-    syncHandle.freezePresentation();
+    // NOTE: presentation is NOT frozen here. The completedTurnHold overlay is rendered
+    // above presentation and is scoped to (playerId, rollKey), so it masks only the
+    // completing player's dice area while authoritative turn-handoff snapshots (e.g.
+    // horses_advance_turn results) continue to propagate to presentation underneath.
+    // Freezing here previously stalled the next client's "Roll Now" handoff for 3s.
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: monotonicHandNumber,
+      roundId: presentationRoundId,
+      eventType: 'transition', severity: 'info',
+      eventName: 'horses-completed-turn-hold-overlay-only',
+      payload: {
+        completingPlayerId: currentTurnPlayerId?.slice(0, 8) ?? null,
+        rollKey: (currentTurnState as any).rollKey ?? null,
+        holdDurationMs: holdDuration,
+      },
+    });
 
     // Clear the hold after the duration
     if (completedTurnHoldTimerRef.current) {
@@ -1158,9 +1174,6 @@ export function useHorsesMobileController({
         return prev;
       });
       completedTurnHoldTimerRef.current = null;
-
-      // UNFREEZE presentation: completed-turn hold expired, allow latest authoritative state through
-      syncHandle.unfreezePresentation();
     }, holdDuration);
   }, [
     enabled,
