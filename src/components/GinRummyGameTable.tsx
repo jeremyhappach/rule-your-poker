@@ -217,6 +217,16 @@ export const GinRummyGameTable = ({
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
 
+  // ── Writer-audit gate ──
+  // Single framework-owned predicate covering frozen / contract / identity-stale.
+  // Action handlers and the bot loop short-circuit when interactionsAllowed=false
+  // so stale local paths cannot write through to the new round.
+  const interactionsAllowed = ginSync.interactionsAllowed;
+  const interactionsAllowedRef = useRef(interactionsAllowed);
+  useEffect(() => { interactionsAllowedRef.current = interactionsAllowed; }, [interactionsAllowed]);
+  const isIdentityStaleRef = useRef(ginSync.isIdentityStale);
+  useEffect(() => { isIdentityStaleRef.current = ginSync.isIdentityStale; }, [ginSync.isIdentityStale]);
+
   // Lifted lay-off card selection so the felt can show meld targets
   const [layOffSelectedCardIndex, setLayOffSelectedCardIndex] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
