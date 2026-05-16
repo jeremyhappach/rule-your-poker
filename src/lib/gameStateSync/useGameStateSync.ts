@@ -79,6 +79,14 @@ export function useGameStateSync<T>(
   const contractBufferRef = useRef<T | null>(null);
   const [activeContract, setActiveContract] = useState<VisualContractIdentity | null>(null);
 
+  // ── Identity awareness refs ──────────────────────────────────
+  // presentationIdentity = identity attached to the current presentation.
+  // It is updated on every accepted authoritative update and on reset().
+  const presentationIdentityRef = useRef<AuthoritativeIdentity | null>(identityProp);
+  const [presentationIdentity, setPresentationIdentity] = useState<AuthoritativeIdentity | null>(identityProp);
+  const identityPropRef = useRef<AuthoritativeIdentity | null>(identityProp);
+  identityPropRef.current = identityProp;
+
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
   useEffect(() => { optRef.current = optimistic; }, [optimistic]);
