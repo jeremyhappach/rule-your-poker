@@ -2993,7 +2993,44 @@ export const CribbageMobileGameTable = ({
         });
         return;
       }
-      
+
+      // ── Auth-vs-snapshot identity gate ──
+      // Snapshot identity is the currentRoundId this listener is scoped to.
+      // If auth has advanced past us, the snapshot is stale. If snapshot is for
+      // a round auth has not yet reached, it is a "future" snapshot from a
+      // newly-spawned per-round subscription that has not yet been re-keyed.
+      const authNow = authIdentityRef.current;
+      if (authNow && authNow.roundId && currentRoundId && authNow.roundId !== currentRoundId) {
+        const authHand = authNow.handNumber ?? -1;
+        const isStale = authHand > currentHandNumber;
+        const eventName = isStale ? 'crib-snapshot-rejected-stale' : 'crib-snapshot-rejected-future';
+        try {
+          persistSyncDebugEvent({
+            gameId,
+            gameType: 'cribbage',
+            handNumber: currentHandNumber,
+            roundId: currentRoundId,
+            eventType: 'invariant',
+            severity: 'warn',
+            eventName,
+            payload: {
+              source,
+              snapshotRoundId: currentRoundId?.slice(0, 8),
+              authRoundId: authNow.roundId?.slice(0, 8),
+              authHand: authNow.handNumber,
+              currentHand: currentHandNumber,
+              phase: newCribbageState.phase,
+            },
+          });
+        } catch {}
+        logCribbageDebug(debugCtx, eventName, {
+          snapshotRoundId: currentRoundId?.slice(0, 8),
+          authRoundId: authNow.roundId?.slice(0, 8),
+          phase: newCribbageState.phase,
+        }, traceId);
+        return;
+      }
+
       // Log snapshot received
       logCribbageDebug(debugCtx, `snapshot_received:${source}`, cribbageStateSummary(newCribbageState), traceId);
       
