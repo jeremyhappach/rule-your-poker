@@ -401,6 +401,8 @@ export function useHorsesMobileController({
   const incomingHorsesState = horsesState;
   const incomingHorsesStateRef = useRef(horsesState);
   incomingHorsesStateRef.current = horsesState;
+  const currentRoundIdRef = useRef<string | null>(currentRoundId);
+  currentRoundIdRef.current = currentRoundId;
 
   // Feed incoming horsesState prop through the sync framework (uses original prop, not shadow)
   const prevAuthTurnPlayerRef = useRef<string | null>(null);
