@@ -37,6 +37,16 @@ export interface HorsesStateForProgress {
   currentTurnPlayerId?: string | null;
   turnOrder?: string[];
   playerStates?: Record<string, { isComplete?: boolean; rollsRemaining?: number; rollKey?: number; holdSeq?: number }>;
+  /**
+   * P0 #2 FIX: per-state hand-number stamp. Controllers MUST stamp every
+   * incoming authoritative snapshot with the hand number that snapshot
+   * actually belongs to (sourced from the round row / authoritative identity)
+   * BEFORE feeding it into `receiveAuthoritativeUpdate`. The progress
+   * comparator must see the snapshot's OWN hand number — not a closure-
+   * captured "latest" value, which would cancel out the handNumber dim
+   * across hand boundaries and let stale terminal prior-hand state dominate.
+   */
+  __syncHandNumber?: number;
 }
 
 const PHASE_ORD: Record<string, number> = {
@@ -47,8 +57,14 @@ const PHASE_ORD: Record<string, number> = {
 
 export function getHorsesProgress(
   state: HorsesStateForProgress | null,
-  handNumber: number = 0,
+  fallbackHandNumber: number = 0,
 ): ProgressVector {
+  // Prefer the state-stamped hand number (set by the controller from the
+  // round row's hand_number). Fall back to closure-captured value only when
+  // the snapshot is unstamped (e.g. legacy callers, or initial null state).
+  const stampedHand = state?.__syncHandNumber;
+  const handNumber = typeof stampedHand === 'number' ? stampedHand : fallbackHandNumber;
+
   if (!state) return [handNumber, 0, 0, 0, 0, 0];
 
   const phaseOrd = PHASE_ORD[state.gamePhase ?? 'waiting'] ?? 0;

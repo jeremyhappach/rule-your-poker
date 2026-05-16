@@ -72,6 +72,11 @@ export function useGameStateSync<T>(
   const presentationRef = useRef<T>(initialState);
   const optimisticTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingPostResetHydrationRef = useRef(false);
+  // P0 #2 FIX: capture the user-supplied initialState so identity-advance
+  // auto-reset can seed authoritative back to a TRUE clean baseline instead
+  // of the stale terminal prior-hand state (which would otherwise dominate
+  // every fresh next-hand snapshot as "regressive" on lower progress dims).
+  const initialStateRef = useRef<T>(initialState);
 
   // ── Visual contract refs ─────────────────────────────────────
   const contractRef = useRef<VisualContractIdentity | null>(null);
@@ -432,6 +437,11 @@ export function useGameStateSync<T>(
     }
 
     // Actionable forward divergence.
+    // P0 #2 FIX: capture pre/post progress vectors and identity transition for
+    // forensic validation that the boundary reset clears stale terminal state.
+    const preAuthForReset = authRef.current;
+    const preProgress = getProgress(preAuthForReset);
+    const seedProgress = getProgress(initialStateRef.current);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -445,10 +455,18 @@ export function useGameStateSync<T>(
         nextIdentity: identityKey(identityProp),
         hadActiveContract: contractRef.current !== null,
         wasFrozen: frozenRef.current,
+        preResetAuthProgress: preProgress,
+        resetSeedProgress: seedProgress,
       },
     });
-    // reset() reads identityPropRef.current and stamps it onto presentationIdentity.
-    reset(authRef.current);
+    // P0 #2 FIX: reset to the original initialState, NOT authRef.current.
+    // authRef.current may still hold the prior-hand terminal snapshot whose
+    // lower-dim progress (gamePhase=complete, completedCount=N, turnIdx=len)
+    // strictly dominates a fresh next-hand snapshot (gamePhase=playing,
+    // completedCount=0, turnIdx=0). Reseeding with the stale snapshot makes
+    // every subsequent incoming forward update look "regressive" and the UI
+    // deadlocks on a fresh hand even though the DB row is correct.
+    reset(initialStateRef.current);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -460,9 +478,11 @@ export function useGameStateSync<T>(
       payload: {
         prevIdentity: identityKey(prev),
         nextIdentity: identityKey(identityProp),
+        seededWith: 'initialState',
+        postResetAuthProgress: seedProgress,
       },
     });
-  }, [identityProp, identityEqualsFn, reset, resolvedGameType]);
+  }, [identityProp, identityEqualsFn, reset, resolvedGameType, getProgress]);
 
 
 

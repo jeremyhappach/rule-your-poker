@@ -415,7 +415,16 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (!incomingHorsesState) return;
     const beforeTurn = prevAuthTurnPlayerRef.current;
-    const result = syncHandle.receiveAuthoritativeUpdate(incomingHorsesState);
+    // P0 #2 FIX: stamp the snapshot with the hand number it actually belongs
+    // to (sourced from the authoritative identity / monotonic latch) so the
+    // sync framework's progress comparator can discriminate cross-hand
+    // updates instead of canceling the handNumber dim via a shared closure.
+    const stampedHand = (authIdentity?.handNumber ?? propHandNumber ?? monotonicHandNumber) as number;
+    const stampedState: HorsesStateFromDB & { __syncHandNumber?: number } = {
+      ...incomingHorsesState,
+      __syncHandNumber: stampedHand,
+    };
+    const result = syncHandle.receiveAuthoritativeUpdate(stampedState);
     const afterTurn = incomingHorsesState.currentTurnPlayerId ?? null;
     // Emit a deterministic event when the authoritative turn owner changes so we
     // can verify the next client receives + presents the handoff without being
@@ -436,6 +445,7 @@ export function useHorsesMobileController({
           reason: result.reason,
           wasFrozenAtWrite: result.wasFrozenAtWrite,
           presentationAction: result.presentationAction,
+          stampedHand,
         },
       });
     }
@@ -504,7 +514,7 @@ export function useHorsesMobileController({
         }
       }
     }
-  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber]);
+  }, [incomingHorsesState, gameId, currentRoundId, isSCC, resolvedGameType, monotonicHandNumber, authIdentity?.handNumber, propHandNumber]);
 
   // Terminal state unfreeze: guarantee presentation is never stuck frozen after game/round completion.
   // This overrides any active freeze from dice animations or completedTurnHold timers.
