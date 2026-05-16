@@ -3944,8 +3944,29 @@ export const CribbageMobileGameTable = ({
     currentHandKey &&
     renderHandKey === currentHandKey
   );
+  // ── STALE-COMPLETE LATCH ────────────────────────────────────
+  // Detect a hand that has finished locally but whose boundary reset has not yet
+  // fired (parent prop roundId still lagging behind the other client that advanced).
+  // In that window viewState/cribbageState are both the OLD hand and the gameplay
+  // surface would otherwise keep rendering interactable stale cards. Treat it as
+  // bootstrap so the felt drops to the "Preparing next hand..." shell immediately,
+  // independent of when the parent prop catches up.
+  const isStaleCompleteAwaitingNext = !!(
+    viewState &&
+    viewState.phase === 'complete' &&
+    winSequencePhase === 'idle' &&
+    !countingStateSnapshot &&
+    !countingDelayActive &&
+    !postCountingTransitionActive &&
+    !isTransitioning
+  );
   const isHighCardMode = effectiveShowHighCardSelection;
-  const isBootstrapMode = !isDealerSelection && (!initialLoadComplete || !renderHandKey || !currentPlayerId);
+  const isBootstrapMode = !isDealerSelection && (
+    !initialLoadComplete ||
+    !renderHandKey ||
+    !currentPlayerId ||
+    isStaleCompleteAwaitingNext
+  );
   const isGameplayMode = !isHighCardMode && !isBootstrapMode && viewStateIsCurrentRound;
 
   // Latch pegboard data whenever we have valid gameplay state
