@@ -4043,28 +4043,87 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           }
         })();
       } else {
-        // For 3-5-7 games, also check pause state from database
+        // Config/rules-based routing: re-fetch authoritative state and
+        // validate that timeout auto-fold is a legal action for this ruleset.
+        // A stale callback on a non-timeout-fold game (e.g. cribbage) must
+        // never mutate participation state.
         (async () => {
-          const { data: freshGame } = await supabase
-            .from('games')
-            .select('is_paused')
-            .eq('id', gameId!)
-            .single();
-          
-          if (freshGame?.is_paused) {
-            console.log('[TIMER EXPIRED 3-5-7] *** GAME IS PAUSED - SKIPPING AUTO-FOLD ***');
-            autoFoldingRef.current = false;
-            fetchGameData();
-            return;
-          }
+          try {
+            const { validateTimeoutAutoFold } = await import('@/lib/timeoutRules');
+            const { data: freshGame } = await supabase
+              .from('games')
+              .select('id, game_type, status, is_paused, total_hands, current_round, current_game_uuid')
+              .eq('id', gameId!)
+              .single();
 
-          await autoFoldUndecided(gameId!);
-          fetchGameData();
-          autoFoldingRef.current = false;
-        })().catch(err => {
-          console.error('[TIMER EXPIRED] Error auto-folding:', err);
-          autoFoldingRef.current = false;
-        });
+            let freshRound: any = null;
+            if (freshGame) {
+              const { data: rows } = await supabase
+                .from('rounds')
+                .select('id, status, decision_deadline, hand_number, round_number, dealer_game_id')
+                .eq('game_id', gameId!)
+                .eq('hand_number', freshGame.total_hands ?? 1)
+                .eq('round_number', freshGame.current_round ?? 0)
+                .order('created_at', { ascending: false })
+                .limit(1);
+              freshRound = (rows || [])[0] || null;
+              if (
+                freshRound &&
+                freshGame.current_game_uuid &&
+                freshRound.dealer_game_id &&
+                freshRound.dealer_game_id !== freshGame.current_game_uuid
+              ) {
+                freshRound = null;
+              }
+            }
+
+            const suppress = validateTimeoutAutoFold({
+              game: freshGame,
+              round: freshRound,
+              expectedRoundId: currentRound?.id ?? null,
+              expectedHandNumber: currentRound?.hand_number ?? null,
+              expectedRoundNumber: currentRound?.round_number ?? null,
+              roundHandNumber: freshRound?.hand_number ?? null,
+              roundRoundNumber: freshRound?.round_number ?? null,
+            });
+
+            if (suppress) {
+              console.warn('[TIMER EXPIRED] suppressed timeout auto-fold:', suppress, {
+                gameId,
+                gameType: freshGame?.game_type,
+              });
+              try {
+                await supabase.from('debug_events').insert({
+                  event_type: `timeout-auto-fold-suppressed-${suppress}`,
+                  game_id: gameId!,
+                  round_id: freshRound?.id ?? currentRound?.id ?? null,
+                  client_role: 'client-timer',
+                  payload: {
+                    game_type: freshGame?.game_type,
+                    status: freshGame?.status,
+                    is_paused: freshGame?.is_paused,
+                    round_status: freshRound?.status,
+                    decision_deadline: freshRound?.decision_deadline,
+                  },
+                });
+              } catch {}
+              autoFoldingRef.current = false;
+              fetchGameData();
+              return;
+            }
+
+            await autoFoldUndecided(gameId!, {
+              expectedRoundId: freshRound?.id ?? null,
+              expectedHandNumber: freshRound?.hand_number ?? null,
+              expectedRoundNumber: freshRound?.round_number ?? null,
+            });
+            fetchGameData();
+          } catch (err) {
+            console.error('[TIMER EXPIRED] Error auto-folding:', err);
+          } finally {
+            autoFoldingRef.current = false;
+          }
+        })();
       }
     }
   }, [timeLeft, game?.status, game?.all_decisions_in, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
