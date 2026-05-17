@@ -33,6 +33,18 @@ export interface HolmAuthoritativeSnapshot {
   handNumber: number;
   dealerGameId: string;
 
+  /**
+   * Defensive stamp mirroring the Horses P0 #2 fix.
+   *
+   * The handNumber field above is already sourced authoritatively from the
+   * round row (not a closure-captured "latest"), so getHolmProgress is safe
+   * by construction. We still allow callers to stamp `__syncHandNumber`
+   * onto every incoming snapshot so cross-hand transitions are provably
+   * dominant on the most-significant progress dim even if a future code
+   * path starts feeding partially-derived snapshots.
+   */
+  __syncHandNumber?: number;
+
   // Phase
   roundStatus: 'betting' | 'processing' | 'showdown' | 'completed';
 
@@ -69,7 +81,11 @@ const PHASE_ORDINAL: Record<string, number> = {
 // ── Progress vector extraction ─────────────────────────────────
 
 export function getHolmProgress(state: HolmAuthoritativeSnapshot): ProgressVector {
-  const handNumber = state.handNumber;
+  // Prefer the explicit stamp when present (defensive: state.handNumber
+  // is already authoritative-sourced today, but the stamp guarantees that
+  // any future divergence between snapshot.handNumber and the round's
+  // authoritative hand_number cannot cancel the most-significant dim).
+  const handNumber = state.__syncHandNumber ?? state.handNumber;
   const phaseOrdinal = PHASE_ORDINAL[state.roundStatus] ?? 0;
   const decidedCount = state.players.filter(p => p.decisionLocked === true).length;
   const communityCardsRevealed = state.communityCardsRevealed ?? 0;
