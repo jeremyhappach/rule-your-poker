@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Timer, Plus, Minus, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting } from "@/lib/playerStateEvaluation";
+// playerStateEvaluation helpers no longer needed here — config timeout uses
+// the shared handle_config_deadline_timeout RPC for atomic state transitions.
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
 import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 // startCribbageRound is now called from Game.tsx after dealer selection completes
@@ -336,58 +337,73 @@ export const DealerGameSetup = ({
     hasSubmittedRef.current = true;
 
     try {
-      console.log('[DEALER SETUP] Dealer timed out, marking as sitting out');
-      
-      // Log config timeout event
+      console.log('[DEALER SETUP] Dealer timed out — delegating to shared handler');
+
+      // Log config timeout event (observability only)
       await logSessionEvent({
         gameId,
         eventType: 'config_timeout',
         eventData: { dealer_position: dealerPosition, dealer_username: dealerUsername, is_bot: isBot },
       });
 
-      // Log this status change for debugging (before the update)
-      // Need to fetch the current player's user_id and username for logging
-      const { data: dealerPlayerData } = await supabase
-        .from('players')
-        .select('user_id, sitting_out, is_bot, profiles(username)')
-        .eq('id', dealerPlayerId)
-        .single();
+      if (!isBot) {
+        const { data: dealerPlayerData } = await supabase
+          .from('players')
+          .select('user_id, sitting_out, is_bot, profiles(username)')
+          .eq('id', dealerPlayerId)
+          .single();
 
-      if (dealerPlayerData && !dealerPlayerData.is_bot) {
-        await logSittingOutSet(
-          dealerPlayerId,
-          dealerPlayerData.user_id,
-          gameId,
-          dealerPlayerData.profiles?.username,
-          dealerPlayerData.is_bot,
-          dealerPlayerData.sitting_out,
-          'Dealer timed out during game setup/configuration',
-          'DealerGameSetup.tsx:handleDealerTimeout',
-          { dealer_position: dealerPosition, dealer_username: dealerUsername }
-        );
+        if (dealerPlayerData && !dealerPlayerData.is_bot) {
+          await logSittingOutSet(
+            dealerPlayerId,
+            dealerPlayerData.user_id,
+            gameId,
+            dealerPlayerData.profiles?.username,
+            dealerPlayerData.is_bot,
+            dealerPlayerData.sitting_out,
+            'Dealer timed out during game setup/configuration',
+            'DealerGameSetup.tsx:handleDealerTimeout',
+            { dealer_position: dealerPosition, dealer_username: dealerUsername }
+          );
+        }
       }
 
-      // Mark dealer as sitting out
-      const { error: sitOutError } = await supabase
-        .from('players')
-        .update({ sitting_out: true, waiting: false })
-        .eq('id', dealerPlayerId);
-
-      if (sitOutError) throw sitOutError;
-
-      // Evaluate all player states
-      const { activePlayerCount, activeHumanCount, eligibleDealerCount } =
-        await evaluatePlayerStatesEndOfGame(gameId);
-
-      console.log(
-        '[DEALER SETUP] After timeout evaluation - active:',
-        activePlayerCount,
-        'active humans:',
-        activeHumanCount,
-        'eligible dealers:',
-        eligibleDealerCount
+      // SHARED AUTHORITATIVE HANDLER — single source of truth for next-game
+      // config timeout. Handles sit-out, eligibility, atomic rotation with
+      // fresh deadline, real-money archive, history-based session end, OR
+      // revert to 'waiting' with sit-out soft-removal.
+      const { data: outcomeData, error: rpcError } = await supabase.rpc(
+        'handle_config_deadline_timeout' as any,
+        { _game_id: gameId } as any
       );
 
+      if (rpcError) throw rpcError;
+
+      const outcome = (outcomeData as any)?.outcome as string | undefined;
+      console.log('[DEALER SETUP] Shared handler outcome:', outcomeData);
+
+      if (outcome === 'rotated') {
+        // Rotation completed atomically server-side; let realtime re-render.
+        onConfigComplete();
+        return;
+      }
+
+      if (outcome === 'suppressed') {
+        // Game already advanced — nothing to do.
+        return;
+      }
+
+      if (outcome === 'session_ended') {
+        onSessionEnd();
+        return;
+      }
+
+      if (outcome === 'waiting') {
+        // Server already wrote status='waiting' and soft-removed sit-outs.
+        return;
+      }
+
+      // outcome === 'empty_no_humans' → caller shows 5s countdown then deletes.
       const deleteEmptySession = async () => {
         console.log('[DEALER SETUP] Deleting empty session (no hands played)');
 
@@ -428,150 +444,33 @@ export const DealerGameSetup = ({
         }
       };
 
-      // Priority 1: If no active human players, END SESSION or DELETE if empty
-      if (activeHumanCount < 1) {
-        console.log('[DEALER SETUP] No active human players');
+      // Empty session with no humans: keep client-side 5s UI countdown then cascade delete.
+      await logSessionDeleted(gameId, undefined, 'Config timeout with no active humans and no history', false);
 
-        const { data: gameData, error: gameError } = await supabase
-          .from('games')
-          .select('total_hands, real_money')
-          .eq('id', gameId)
-          .maybeSingle();
+      setShowDeletingEmptySession(true);
+      setDeleteCountdown(5);
 
-        if (gameError) throw gameError;
+      const interval = setInterval(() => {
+        setDeleteCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
-        const totalHands = gameData?.total_hands || 0;
-        const isRealMoney = gameData?.real_money === true;
-
-        // Also check game_results as backup - if any results exist, session has history
-        const { count: resultsCount, error: resultsError } = await supabase
-          .from('game_results')
-          .select('id', { count: 'exact', head: true })
-          .eq('game_id', gameId);
-
-        if (resultsError) throw resultsError;
-
-        const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
-
-        console.log('[DEALER SETUP] Session history check:', { totalHands, resultsCount, hasHistory });
-
-        // CRITICAL: NEVER delete real_money games - archive them instead (30 day retention)
-        if (isRealMoney) {
-          console.log('[DEALER SETUP] Real money game - archiving instead of deleting');
-          const { error: archiveError } = await supabase
-            .from('games')
-            .update({
-              status: 'session_ended',
-              pending_session_end: false,
-              session_ended_at: new Date().toISOString(),
-              game_over_at: new Date().toISOString(),
-              config_deadline: null,
-              ante_decision_deadline: null,
-              awaiting_next_round: false,
-            })
-            .eq('id', gameId);
-          
-          if (archiveError) throw archiveError;
+      setTimeout(async () => {
+        try {
+          await deleteEmptySession();
           onSessionEnd();
-          return;
+        } catch (err) {
+          console.error('[DEALER SETUP] Failed to delete empty session:', err);
+          toast.error('Failed to delete empty session');
+          hasSubmittedRef.current = false;
         }
-        
-        if (!hasHistory) {
-          // No hands played - show 5s message then delete
-          // Log session deletion before deleting
-          await logSessionDeleted(gameId, undefined, 'Config timeout with no active humans and no history', false);
-          
-          setShowDeletingEmptySession(true);
-          setDeleteCountdown(5);
+      }, 5000);
 
-          const interval = setInterval(() => {
-            setDeleteCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(interval);
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
-
-          // Give UI time to show message before deletion
-          setTimeout(async () => {
-            try {
-              await deleteEmptySession();
-              onSessionEnd();
-            } catch (err) {
-              console.error('[DEALER SETUP] Failed to delete empty session:', err);
-              toast.error('Failed to delete empty session');
-              hasSubmittedRef.current = false;
-            }
-          }, 5000);
-
-          return;
-        }
-
-        // Has game history - end session normally
-        console.log('[DEALER SETUP] Has game history, ending session');
-        const { error: endError } = await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            pending_session_end: false,
-            session_ended_at: new Date().toISOString(),
-            game_over_at: new Date().toISOString(),
-            // Clear any old countdowns so rejoin doesn't show a stale 0s timer
-            config_deadline: null,
-            ante_decision_deadline: null,
-            awaiting_next_round: false,
-            config_complete: false,
-          })
-          .eq('id', gameId);
-
-        if (endError) throw endError;
-
-        onSessionEnd();
-        return;
-      }
-
-      // Priority 2: Check if we can continue (need 1+ eligible dealer AND 2+ active players)
-      if (activePlayerCount < 2 || eligibleDealerCount < 1) {
-        console.log('[DEALER SETUP] Not enough players, reverting to waiting');
-        
-        // Remove sitting out players - they need to re-select seats
-        await removeSittingOutPlayersOnWaiting(gameId);
-        
-        // Revert to waiting status
-        const { error: waitError } = await supabase
-          .from('games')
-          .update({
-            status: 'waiting',
-            awaiting_next_round: false,
-            last_round_result: null,
-          })
-          .eq('id', gameId);
-
-        if (waitError) throw waitError;
-
-        return;
-      }
-
-      // Rotate dealer to next eligible player
-      const newDealerPosition = await rotateDealerPosition(gameId, dealerPosition);
-
-      console.log('[DEALER SETUP] Rotating dealer from', dealerPosition, 'to', newDealerPosition);
-
-      // Update game with new dealer and reset config_complete to trigger new dealer setup
-      const { error: rotateError } = await supabase
-        .from('games')
-        .update({
-          dealer_position: newDealerPosition,
-          config_complete: false,
-        })
-        .eq('id', gameId);
-
-      if (rotateError) throw rotateError;
-
-      // The game state change will trigger re-render with new dealer
-      onConfigComplete();
     } catch (err) {
       console.error('[DEALER SETUP] Timeout handling failed:', err);
       toast.error('Dealer timeout failed — retrying…');

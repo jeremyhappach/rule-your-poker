@@ -400,165 +400,27 @@ serve(async (req) => {
           continue;
         }
 
-        // ============= CONFIG DEADLINE ENFORCEMENT (game_selection/configuring/dealer_selection) =============
-        // CRITICAL: Backup enforcement when no clients are connected during dealer setup phase.
+        // ============= CONFIG DEADLINE ENFORCEMENT (shared authoritative handler) =============
         if ((game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
           const configDeadline = new Date(game.config_deadline);
           const msUntilDeadline = configDeadline.getTime() - now.getTime();
-          
+
           if (msUntilDeadline <= 0) {
-            console.log('[CRON-ENFORCE] Config deadline EXPIRED for game', game.id, 'status:', game.status);
-            
-            const { data: players } = await supabase
-              .from('players')
-              .select('*')
-              .eq('game_id', game.id)
-              .neq('status', 'left');
+            console.log('[CRON-ENFORCE] Config deadline EXPIRED for game', game.id, '— invoking shared RPC');
 
-            const dealerPlayer = players?.find((p: any) => p.position === game.dealer_position);
+            const { data: outcomeData, error: rpcErr } = await supabase.rpc(
+              'handle_config_deadline_timeout',
+              { _game_id: game.id }
+            );
 
-            if (dealerPlayer) {
-              // Mark dealer as sitting out
-              await supabase
-                .from('players')
-                .update({ sitting_out: true, waiting: false })
-                .eq('id', dealerPlayer.id);
-
-              actionsTaken.push(`Config timeout: Dealer at position ${dealerPlayer.position} sat out`);
-
-              // Fetch game defaults to check allow_bot_dealers
-              const { data: gameDefaults } = await supabase
-                .from('game_defaults')
-                .select('allow_bot_dealers')
-                .eq('game_type', game.game_type || 'holm')
-                .maybeSingle();
-              
-              const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
-
-              // Re-fetch players to get updated list
-              const { data: freshPlayers } = await supabase
-                .from('players')
-                .select('*')
-                .eq('game_id', game.id)
-                .neq('status', 'left');
-
-              // Count remaining eligible dealers
-              const eligibleDealers = (freshPlayers || []).filter((p: any) =>
-                !p.sitting_out &&
-                p.id !== dealerPlayer.id &&
-                (allowBotDealers || !p.is_bot)
-              );
-
-              if (eligibleDealers.length >= 1) {
-                // Rotate dealer to next eligible player
-                const sortedEligible = eligibleDealers.sort((a: any, b: any) => a.position - b.position);
-                const currentDealerIdx = sortedEligible.findIndex((p: any) => p.position > game.dealer_position);
-                const nextDealer = currentDealerIdx >= 0
-                  ? sortedEligible[currentDealerIdx]
-                  : sortedEligible[0];
-
-                const setupSeconds = typeof game.game_setup_timer_seconds === 'number'
-                  ? Math.max(1, game.game_setup_timer_seconds)
-                  : 30;
-                const newConfigDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
-
-                await supabase
-                  .from('games')
-                  .update({
-                    dealer_position: nextDealer.position,
-                    config_deadline: newConfigDeadline,
-                  })
-                  .eq('id', game.id);
-
-                actionsTaken.push(`Config timeout: Rotated dealer to position ${nextDealer.position}`);
-              } else {
-                // Not enough eligible dealers - check for history
-                const totalHands = game.total_hands || 0;
-                const { count: resultsCount } = await supabase
-                  .from('game_results')
-                  .select('id', { count: 'exact', head: true })
-                  .eq('game_id', game.id);
-                
-                const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
-
-                // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
-                const isRealMoney = game.real_money === true;
-                
-                if (isRealMoney) {
-                  console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
-                  await supabase
-                    .from('games')
-                    .update({
-                      status: 'session_ended',
-                      pending_session_end: false,
-                      session_ended_at: nowIso,
-                      game_over_at: nowIso,
-                      config_deadline: null,
-                      config_complete: false,
-                    })
-                    .eq('id', game.id);
-                  actionsTaken.push('Config timeout: Real money game archived (never deleted)');
-                } else if (!hasHistory) {
-                  // Delete empty session
-                  const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
-                  const roundIds = (roundRows ?? []).map((r: any) => r.id);
-                  if (roundIds.length > 0) {
-                    await supabase.from('player_cards').delete().in('round_id', roundIds);
-                    await supabase.from('player_actions').delete().in('round_id', roundIds);
-                  }
-                  await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
-                  await supabase.from('chat_messages').delete().eq('game_id', game.id);
-                  await supabase.from('rounds').delete().eq('game_id', game.id);
-                  await supabase.from('players').delete().eq('game_id', game.id);
-                  await supabase.from('games').delete().eq('id', game.id);
-                  
-                  actionsTaken.push('Config timeout: No eligible dealers, no history - deleted empty session');
-                } else {
-                  // Has history - end session instead of deleting
-                  await supabase
-                    .from('games')
-                    .update({
-                      status: 'session_ended',
-                      pending_session_end: false,
-                      session_ended_at: nowIso,
-                      game_over_at: nowIso,
-                      config_deadline: null,
-                      config_complete: false,
-                    })
-                    .eq('id', game.id);
-
-                  actionsTaken.push('Config timeout: No eligible dealers, session ended');
-                }
-              }
+            if (rpcErr) {
+              console.error('[CRON-ENFORCE] handle_config_deadline_timeout RPC failed:', rpcErr);
+              actionsTaken.push(`Config timeout: RPC error ${rpcErr.message}`);
             } else {
-              // No dealer found - clean up based on history
-              const totalHands = game.total_hands || 0;
-              const { count: resultsCount } = await supabase
-                .from('game_results')
-                .select('id', { count: 'exact', head: true })
-                .eq('game_id', game.id);
-              
-              const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
+              const outcome = (outcomeData as any)?.outcome;
+              actionsTaken.push(`Config timeout: ${outcome ?? 'unknown'}`);
 
-              // CRITICAL: NEVER delete real_money games - archive instead (30 day retention)
-              const isRealMoney = game.real_money === true;
-              
-              if (isRealMoney) {
-                console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
-                await supabase
-                  .from('games')
-                  .update({
-                    status: 'session_ended',
-                    pending_session_end: false,
-                    session_ended_at: nowIso,
-                    game_over_at: nowIso,
-                    config_deadline: null,
-                    config_complete: false,
-                  })
-                  .eq('id', game.id);
-                actionsTaken.push('Config timeout: Real money game archived (never deleted)');
-              } else if (!hasHistory) {
-                // Delete empty session
+              if (outcome === 'empty_no_humans') {
                 const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
                 const roundIds = (roundRows ?? []).map((r: any) => r.id);
                 if (roundIds.length > 0) {
@@ -570,127 +432,8 @@ serve(async (req) => {
                 await supabase.from('rounds').delete().eq('game_id', game.id);
                 await supabase.from('players').delete().eq('game_id', game.id);
                 await supabase.from('games').delete().eq('id', game.id);
-                
-                actionsTaken.push('Config timeout: No dealer found, no history - deleted empty session');
-              } else {
-                await supabase
-                  .from('games')
-                  .update({
-                    status: 'session_ended',
-                    pending_session_end: false,
-                    session_ended_at: nowIso,
-                    game_over_at: nowIso,
-                    config_deadline: null,
-                    config_complete: false,
-                  })
-                  .eq('id', game.id);
-
-                actionsTaken.push('Config timeout: No dealer found, session ended');
+                actionsTaken.push('Config timeout: cascade-deleted empty session');
               }
-            }
-            
-            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
-            continue;
-          }
-        }
-
-        // ============= BOT-ONLY GAME CHECK =============
-        if (game.status === 'in_progress' || game.status === 'betting' || game.status === 'ante_decision') {
-          const { data: allPlayers } = await supabase
-            .from('players')
-            .select('id, user_id, is_bot, sitting_out, status, auto_fold, chips')
-            .eq('game_id', game.id)
-            .neq('status', 'left');
-          
-          const presentHumans = (allPlayers || []).filter((p: any) => !p.is_bot && !p.sitting_out);
-          const presentBots = (allPlayers || []).filter((p: any) => p.is_bot && !p.sitting_out);
-          const activePlayers = (allPlayers || []).filter((p: any) => !p.sitting_out);
-          
-          if (presentHumans.length === 0 && presentBots.length > 0) {
-            console.log('[CRON-ENFORCE] ⚠️ BOT-ONLY GAME DETECTED, ending session:', game.id);
-            
-            await supabase
-              .from('games')
-              .update({
-                status: 'session_ended',
-                pending_session_end: false,
-                session_ended_at: nowIso,
-                game_over_at: nowIso,
-                config_deadline: null,
-                ante_decision_deadline: null,
-                awaiting_next_round: false,
-              })
-              .eq('id', game.id);
-            
-            actionsTaken.push('Bot-only game: All humans sitting_out, session ended');
-            results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
-            continue;
-          }
-          
-          // ============= ALL AUTO-FOLD CHECK =============
-          // Check if all active players are in auto_fold mode - this would cause infinite pussy tax
-          if (activePlayers.length >= 2) {
-            const allInAutoFold = activePlayers.every((p: any) => p.auto_fold === true);
-            
-            if (allInAutoFold) {
-              console.log('[CRON-ENFORCE] ⚠️ ALL PLAYERS IN AUTO-FOLD DETECTED:', game.id);
-              
-              const isRealMoney = game.real_money === true;
-              
-              if (isRealMoney) {
-                // Real money game: Pause the session
-                console.log('[CRON-ENFORCE] Real money game - PAUSING session');
-                
-                await supabase
-                  .from('games')
-                  .update({
-                    is_paused: true,
-                    config_deadline: null,
-                    ante_decision_deadline: null,
-                  })
-                  .eq('id', game.id);
-                
-                actionsTaken.push('All players in auto-fold: Real money game paused');
-              } else {
-                // Non-real money game: Split pot evenly and end session
-                console.log('[CRON-ENFORCE] Play money game - Splitting pot and ending session');
-                
-                const currentPot = game.pot || 0;
-                
-                if (currentPot > 0 && activePlayers.length > 0) {
-                  // Calculate split amount (integer division, remainder stays in void)
-                  const splitAmount = Math.floor(currentPot / activePlayers.length);
-                  
-                  // Update each player's chips using atomic increment
-                  for (const player of activePlayers) {
-                    await supabase.rpc('increment_player_chips', {
-                      p_player_id: player.id,
-                      p_amount: splitAmount,
-                    });
-                  }
-                  
-                  actionsTaken.push(`Pot of $${currentPot} split evenly: $${splitAmount} to each of ${activePlayers.length} players`);
-                }
-                
-                await supabase
-                  .from('games')
-                  .update({
-                    status: 'session_ended',
-                    pending_session_end: false,
-                    session_ended_at: nowIso,
-                    game_over_at: nowIso,
-                    pot: 0,
-                    config_deadline: null,
-                    ante_decision_deadline: null,
-                    awaiting_next_round: false,
-                  })
-                  .eq('id', game.id);
-                
-                actionsTaken.push('All players in auto-fold: Play money game - pot split and session ended');
-              }
-              
-              results.push({ gameId: game.id, status: game.status, result: actionsTaken.join('; ') });
-              continue;
             }
           }
         }
