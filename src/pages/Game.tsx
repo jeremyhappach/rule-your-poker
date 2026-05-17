@@ -13,6 +13,7 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily } from "@/lib/canonicalShell/shellRouting";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
@@ -7950,6 +7951,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const enableOuterShell =
     isPokerVariantFamily(game.game_type) &&
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
+
+  // Phase 6: passive PlayfieldSlot identity tracker. Observe-only —
+  // fires telemetry and runs INV-shell-2 / INV-shell-3 checks. Does
+  // not gate, render, or mutate. Gated by the same Phase 5 boundary.
+  useSlotIdentityTracker(
+    enableOuterShell
+      ? {
+          gameId: gameId ?? null,
+          gameType: game.game_type ?? null,
+          dealerGameId: game.current_game_uuid ?? null,
+        }
+      : { gameId: null, gameType: null, dealerGameId: null },
+  );
 
   // NOTE: do NOT define ShellWrap as an inline component here — its
   // type identity would change every render and remount the entire
