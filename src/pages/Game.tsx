@@ -3694,7 +3694,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
       all_decisions_in: isAllDecisionsInFor(game, currentRound?.id),
-      raw_all_decisions_in: game?.all_decisions_in,
+      // (raw_all_decisions_in removed — flag is identity-scoped via all_decisions_in_round_id)
       all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
       game_type: game?.game_type,
       current_turn: currentRound?.current_turn_position,
@@ -4003,7 +4003,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       timeLeft, 
       status: game?.status, 
       all_decisions_in: isAllDecisionsInFor(game, currentRound?.id),
-      raw_all_decisions_in: game?.all_decisions_in,
+      // (raw_all_decisions_in removed — flag is identity-scoped via all_decisions_in_round_id)
       all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
       is_paused: game?.is_paused,
       timerTurnPosition,

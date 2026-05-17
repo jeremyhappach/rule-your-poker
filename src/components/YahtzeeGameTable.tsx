@@ -39,8 +39,7 @@ import {
 import {
   getDebugStraightHoldDecision, getDebugStraightCategoryChoice, shouldDebugStraightStopRolling,
 } from "@/lib/yahtzeeBotDebugStraight";
-// NOTE: isYahtzeeBotPauseEnabled removed (closed incident; investigation complete).
-import { isYahtzeeStraightDebugEnabled, isYahtzeeBotPauseEnabled } from "@/lib/debugFlags";
+import { isYahtzeeStraightDebugEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
@@ -1181,19 +1180,7 @@ export function YahtzeeGameTable({
             });
             await new Promise(r => setTimeout(r, 900));
 
-            // TEMP DEBUG PAUSE FOR HELD-ROW ORDERING INVESTIGATION
-            // MUST REMOVE AFTER CAPTURE / FIX IS COMPLETE
-            // Pause AFTER holds are visually applied so we can screenshot the held-row state
-            if (isYahtzeeBotPauseEnabled()) {
-              console.log('[BOT DEBUG PAUSE AFTER HOLDS]', {
-                roll,
-                turnIdentity,
-                dice: describeBotDiceState(ps.dice),
-                pauseMs: 5000,
-              });
-              await new Promise(r => setTimeout(r, 5000));
-              console.log('[BOT DEBUG PAUSE AFTER HOLDS END]', { roll, turnIdentity });
-            }
+
             const cancelledAfterHoldWait = isCancelled(`after-hold-wait:roll-${roll}`);
             console.log('[BOT AFTER HOLD WAIT]', {
               roundId: currentRoundId,
@@ -1353,19 +1340,7 @@ export function YahtzeeGameTable({
           console.log('[BOT POST-ROLL WAIT START]', { roll, turnIdentity });
           await new Promise(r => setTimeout(r, 1800));
 
-          // TEMP DEBUG PAUSE FOR HELD-ROW ORDERING INVESTIGATION
-          // MUST REMOVE AFTER CAPTURE / FIX IS COMPLETE
-          if (isYahtzeeBotPauseEnabled()) {
-            console.log('[BOT DEBUG PAUSE START]', {
-              roll,
-              turnIdentity,
-              rollKey: botRollKey,
-              dice: describeBotDiceState(ps.dice),
-              pauseMs: 5000,
-            });
-            await new Promise(r => setTimeout(r, 5000));
-            console.log('[BOT DEBUG PAUSE END]', { roll, turnIdentity });
-          }
+
 
           const cancelledAfterRollWait = isCancelled(`after-roll-wait:roll-${roll}`);
           console.log('[BOT POST-ROLL WAIT END]', { roll, turnIdentity, cancelled: cancelledAfterRollWait });
