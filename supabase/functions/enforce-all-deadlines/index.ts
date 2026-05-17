@@ -925,7 +925,7 @@ serve(async (req) => {
               // Fix by setting all_decisions_in = true (triggers client-side showdown)
               await supabase
                 .from('games')
-                .update({ all_decisions_in: true })
+                .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
                 .eq('id', game.id);
               
               // Clear stale deadline/turn position
