@@ -1287,10 +1287,12 @@ serve(async (req) => {
                     username: (currentPlayer.profiles as any)?.username,
                   });
 
-                  // Set auto_fold on the player so client-side bot logic takes over
+                  // TIMEOUT CONTRACT (dice): set auto_fold (drives client auto-roll loop for
+                  // remaining hands in this dealer game) AND sit_out_next_hand=true (converted
+                  // to sitting_out only at the next dealer-game boundary).
                   await supabase
                     .from('players')
-                    .update({ auto_fold: true })
+                    .update({ auto_fold: true, sit_out_next_hand: true })
                     .eq('id', currentPlayerId);
 
                   // Extend the deadline to give client bot logic time to animate (15 seconds)
