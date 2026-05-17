@@ -5729,9 +5729,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount, 'stood up:', playersStoodUp.length);
 
     // STEP 1b (SESSION HYGIENE): sanitize per-decision / timeout automation for ALL
-    // players in the session, regardless of which branch we take next. Must happen
-    // AFTER participation reconciliation and BEFORE branching to waiting / next dealer game.
+    // players in the session, then clear dealer-game-scoped transient session state
+    // from the games row. Both must happen AFTER participation reconciliation and
+    // BEFORE branching to waiting / next dealer game, so no prior-dealer-game state
+    // can leak forward (e.g. stale current_round triggering ROUND_ALREADY_IN_PROGRESS).
     await sanitizePlayerAutomationStateForSession(gameId);
+    await clearDealerGameTransientSessionState(gameId);
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
