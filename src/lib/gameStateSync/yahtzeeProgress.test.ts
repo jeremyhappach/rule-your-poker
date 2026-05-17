@@ -102,7 +102,7 @@ describe('getYahtzeeProgress', () => {
     expect(compareProgress(before, after)).toBe(1);
   });
 
-  it('vector has exactly 4 dimensions (no turnOwnerIndex)', () => {
+  it('vector has exactly 5 dimensions: [roundOrd, phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed]', () => {
     const state: YahtzeeState = {
       gamePhase: 'playing',
       currentTurnPlayerId: 'p1',
@@ -113,6 +113,52 @@ describe('getYahtzeeProgress', () => {
         p2: buildPlayerState(0, 3, false),
       },
     };
-    expect(getYahtzeeProgress(state)).toHaveLength(4);
+    expect(getYahtzeeProgress(state)).toHaveLength(5);
+  });
+
+  it('stamped __syncRound dominates lower dims across match boundary', () => {
+    // Prior match terminal snapshot: 26 categories filled, complete phase.
+    const priorMatchTerminal = {
+      gamePhase: 'complete' as const,
+      currentTurnPlayerId: null,
+      turnOrder: ['p1', 'p2'],
+      currentRound: 13,
+      playerStates: {
+        p1: buildPlayerState(13, 3, true),
+        p2: buildPlayerState(13, 3, true),
+      },
+      __syncRound: 1,
+    };
+
+    // Fresh next-match first snapshot: 0 categories, waiting phase, but
+    // __syncRound=2. Without the roundOrd dim this would be regressive on
+    // every lower dim. With the stamp, it MUST be forward.
+    const nextMatchFirst = {
+      gamePhase: 'waiting' as const,
+      currentTurnPlayerId: null,
+      turnOrder: ['p1', 'p2'],
+      currentRound: 1,
+      playerStates: {
+        p1: buildPlayerState(0, 3, false),
+        p2: buildPlayerState(0, 3, false),
+      },
+      __syncRound: 2,
+    };
+
+    expect(compareProgress(getYahtzeeProgress(priorMatchTerminal), getYahtzeeProgress(nextMatchFirst))).toBe(1);
+  });
+
+  it('unstamped snapshot falls back to roundOrd=0 (legacy behavior preserved)', () => {
+    const state: YahtzeeState = {
+      gamePhase: 'playing',
+      currentTurnPlayerId: 'p1',
+      turnOrder: ['p1', 'p2'],
+      currentRound: 1,
+      playerStates: {
+        p1: buildPlayerState(0, 3, false),
+        p2: buildPlayerState(0, 3, false),
+      },
+    };
+    expect(getYahtzeeProgress(state)[0]).toBe(0);
   });
 });
