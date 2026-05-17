@@ -3452,6 +3452,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
+  // F5.1/F4.2: identity-scoped all_decisions_in. Raw `game.all_decisions_in` can
+  // persist across hand/round transitions and is the systemic source of the
+  // stale-progression-flag bug class. Always consume this scoped value for
+  // render and effect logic. A null scoping round id falls back to the raw
+  // flag (legacy rows / writers that haven't been migrated yet).
+  const allDecisionsInScoped: boolean =
+    (game?.all_decisions_in === true) &&
+    (!(game as any)?.all_decisions_in_round_id ||
+      (game as any)?.all_decisions_in_round_id === currentRound?.id);
+
 
   // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
 
