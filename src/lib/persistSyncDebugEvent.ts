@@ -20,7 +20,14 @@ const GLOBAL_DEBUG_DEFAULT = false;
 let _enabled: boolean | null = null;
 
 function checkEnabled(): boolean {
-  // Explicit opt-out overrides
+  // Master channel switch (?ptp_debug=sync or ptp_debug=sync,...)
+  try {
+    // Lazy import to avoid circular dep risk; debugChannels has no deps.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { isDebugChannel } = require('./debugChannels') as typeof import('./debugChannels');
+    if (isDebugChannel('sync')) return true;
+  } catch { /* */ }
+  // Legacy per-flag (kept for backwards compat)
   try {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('debug_sync_events');
