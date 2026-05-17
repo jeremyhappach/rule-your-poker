@@ -3678,17 +3678,10 @@ export const MobileGameTable = ({
   // Map absolute positions to visual slot indices for consistent behavior:
   // Pos 1 -> slot 2 (top-left), Pos 2 -> slot 1 (middle-left), Pos 3 -> slot 0 (bottom-left)
   // Pos 4 -> slot -1 (home/bottom-center), Pos 5 -> slot 5 (bottom-right), Pos 6 -> slot 4 (middle-right), Pos 7 -> slot 3 (top-right)
+  // Delegated to canonical contract (matches the established slot map exactly).
   const getObserverSlotFromPosition = (position: number): number => {
-    const posToSlot: Record<number, number> = {
-      1: 2,   // Top-left
-      2: 1,   // Middle-left
-      3: 0,   // Bottom-left
-      4: -1,  // Bottom center (home position)
-      5: 5,   // Bottom-right
-      6: 4,   // Middle-right
-      7: 3,   // Top-right
-    };
-    return posToSlot[position] ?? 0;
+    const slot = canonicalObserverSlot(position);
+    return slot ?? 0;
   };
   
   // Calculate animation origin for dice fly-in based on current turn player's position
