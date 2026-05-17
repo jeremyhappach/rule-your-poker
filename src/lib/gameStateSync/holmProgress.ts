@@ -81,7 +81,11 @@ const PHASE_ORDINAL: Record<string, number> = {
 // ── Progress vector extraction ─────────────────────────────────
 
 export function getHolmProgress(state: HolmAuthoritativeSnapshot): ProgressVector {
-  const handNumber = state.handNumber;
+  // Prefer the explicit stamp when present (defensive: state.handNumber
+  // is already authoritative-sourced today, but the stamp guarantees that
+  // any future divergence between snapshot.handNumber and the round's
+  // authoritative hand_number cannot cancel the most-significant dim).
+  const handNumber = state.__syncHandNumber ?? state.handNumber;
   const phaseOrdinal = PHASE_ORDINAL[state.roundStatus] ?? 0;
   const decidedCount = state.players.filter(p => p.decisionLocked === true).length;
   const communityCardsRevealed = state.communityCardsRevealed ?? 0;
