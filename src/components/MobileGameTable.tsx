@@ -28,6 +28,12 @@ import { MidnightAnimation } from "./MidnightAnimation";
 import { LegEarnedAnimation } from "./LegEarnedAnimation";
 import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
+import {
+  clockwiseDistance as canonicalClockwiseDistance,
+  observerSlotForPosition as canonicalObserverSlot,
+  resolveSingleAnchor as canonicalResolveSingleAnchor,
+  isInherentlyTwoPlayerGameType,
+} from "@/lib/canonicalShell/seatAnchors";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
