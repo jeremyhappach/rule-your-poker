@@ -7951,6 +7951,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isPokerVariantFamily(game.game_type) &&
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
 
+  // Phase 6: passive PlayfieldSlot identity tracker. Observe-only —
+  // fires telemetry and runs INV-shell-2 / INV-shell-3 checks. Does
+  // not gate, render, or mutate. Gated by the same Phase 5 boundary.
+  useSlotIdentityTracker(
+    enableOuterShell
+      ? {
+          gameId: gameId ?? null,
+          gameType: game.game_type ?? null,
+          dealerGameId: game.current_game_uuid ?? null,
+        }
+      : { gameId: null, gameType: null, dealerGameId: null },
+  );
+
   // NOTE: do NOT define ShellWrap as an inline component here — its
   // type identity would change every render and remount the entire
   // subtree (and the PersistentTableShell itself), violating INV-shell-1
