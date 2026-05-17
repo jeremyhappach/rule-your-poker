@@ -567,19 +567,24 @@ export function YahtzeeGameTable({
     console.log('[YAHTZEE] Turn seeded from DB', { turnKey, rollsRemaining: ps.rollsRemaining });
   }, [isMyTurn, myPlayer?.id, stableYahtzeeState?.playerStates, currentTurnPlayerId, currentRoundId]);
 
-  // Clear optimistic score once DB has caught up
+  // Clear optimistic score once presentation has caught up.
+  // Framework cutover: drive from viewState so the override clears in lockstep
+  // with what the user actually sees, not raw authoritative.
   useEffect(() => {
-    if (!optimisticScore || !yahtzeeState) return;
-    const ps = yahtzeeState.playerStates[optimisticScore.playerId];
+    if (!optimisticScore || !viewState) return;
+    const ps = viewState.playerStates[optimisticScore.playerId];
     if (ps?.scorecard.scores[optimisticScore.category] !== undefined) {
       setOptimisticScore(null);
     }
-  }, [yahtzeeState?.playerStates, optimisticScore]);
+  }, [viewState?.playerStates, optimisticScore]);
 
-  /* ---- Detect Yahtzee rolls & upper bonus from DB state changes ---- */
+  /* ---- Detect Yahtzee rolls & upper bonus from presentation state changes ---- */
+  // Framework cutover: side-effects that drive UI overlays MUST follow the
+  // presentation layer — driving them from raw authoritative would fire
+  // bonus/yahtzee overlays before the presentation has visibly advanced.
   useEffect(() => {
-    if (!yahtzeeState) return;
-    for (const [pid, ps] of Object.entries(yahtzeeState.playerStates)) {
+    if (!viewState) return;
+    for (const [pid, ps] of Object.entries(viewState.playerStates)) {
       const player = players.find(p => p.id === pid);
       if (!player) continue;
       const name = getPlayerUsername(player);
@@ -600,12 +605,12 @@ export function YahtzeeGameTable({
       }
       prevYahtzeeBonusRef.current[pid] = nowBonusCount;
     }
-  }, [yahtzeeState?.playerStates]);
+  }, [viewState?.playerStates]);
 
   /* ---- Track opponent's last non-zero dice for caching during scoring ---- */
   useEffect(() => {
-    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
-    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!viewState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = viewState.playerStates[currentTurnPlayerId];
     if (!ps) return;
     const hasNonZero = ps.dice.some(d => d.value !== 0);
     if (hasNonZero) {
@@ -615,12 +620,12 @@ export function YahtzeeGameTable({
         playerId: currentTurnPlayerId,
       };
     }
-  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+  }, [viewState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
 
   /* ---- Detect remote opponent scoring (new category appears in their scorecard) ---- */
   useEffect(() => {
-    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
-    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!viewState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = viewState.playerStates[currentTurnPlayerId];
     if (!ps) return;
 
     const prevScores = prevOpponentScorecardRef.current[currentTurnPlayerId] || {};
@@ -645,10 +650,6 @@ export function YahtzeeGameTable({
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
 
-      // Use cached non-zero dice so they stay visible on felt during scoring transition.
-      // NOTE: We do NOT freeze the whole presentationState — that would block turn banner,
-      // rolls badge, and status text from updating. The cachedOpponentDice packet handles
-      // dice-only visual stability during this window.
       if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
         setCachedOpponentDice(lastNonZeroDiceRef.current);
       }
@@ -662,7 +663,7 @@ export function YahtzeeGameTable({
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+  }, [viewState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
 
   /* ---- Clear opponent scoring highlight when turn changes ---- */
   useEffect(() => {
