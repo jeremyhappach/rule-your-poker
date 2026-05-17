@@ -763,6 +763,7 @@ export type Database = {
       games: {
         Row: {
           all_decisions_in: boolean | null
+          all_decisions_in_round_id: string | null
           ante_amount: number
           ante_decision_deadline: string | null
           ante_decision_timer_seconds: number
@@ -814,6 +815,7 @@ export type Database = {
         }
         Insert: {
           all_decisions_in?: boolean | null
+          all_decisions_in_round_id?: string | null
           ante_amount?: number
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number
@@ -865,6 +867,7 @@ export type Database = {
         }
         Update: {
           all_decisions_in?: boolean | null
+          all_decisions_in_round_id?: string | null
           ante_amount?: number
           ante_decision_deadline?: string | null
           ante_decision_timer_seconds?: number

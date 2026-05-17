@@ -101,6 +101,34 @@ interface Player {
   };
 }
 
+/**
+ * F5.1/F4.2: Read the `all_decisions_in` flag identity-scoped to a specific
+ * round id. The raw `games.all_decisions_in` boolean can persist across hand/
+ * round transitions (the systemic stale progression-flag bug class). Every
+ * render-driving and side-effect-driving read MUST go through this helper so
+ * a flag set against a prior round can never satisfy a check made for a fresh
+ * round.
+ *
+ * - Returns false when the game has no flag set.
+ * - Returns false when the flag has a scoping round id that differs from
+ *   `roundId`.
+ * - Returns true when the flag is set and either (a) no scoping round id is
+ *   recorded (legacy unscoped writers — backwards compatibility) or (b) the
+ *   scoping round id matches `roundId`.
+ */
+function isAllDecisionsInFor(
+  game:
+    | { all_decisions_in?: boolean | null; all_decisions_in_round_id?: string | null }
+    | null
+    | undefined,
+  roundId: string | null | undefined,
+): boolean {
+  if (!game || game.all_decisions_in !== true) return false;
+  const scopeId = game.all_decisions_in_round_id;
+  if (!scopeId) return true; // legacy / unmigrated writer
+  return !!roundId && scopeId === roundId;
+}
+
 interface GameData {
   id: string;
   name?: string;
@@ -109,6 +137,7 @@ interface GameData {
   pot: number | null;
   current_round: number | null;
   all_decisions_in: boolean | null;
+  all_decisions_in_round_id?: string | null;
   dealer_position: number | null;
   awaiting_next_round?: boolean | null;
   next_round_number?: number | null;
@@ -319,7 +348,10 @@ function buildHolmSnapshot(
   // During processing phase, the game logic explicitly writes community_cards_revealed=4
   // AFTER all decisions are in (all_decisions_in=true), so we must allow that through.
   // Clamping processing unconditionally blocks cards 3-4 from appearing before Chucky.
-  const allDecisionsIn = gameData.all_decisions_in ?? false;
+  // F5.1: only honor all_decisions_in when scoped to the current round id.
+  const allDecisionsIn =
+    (gameData.all_decisions_in ?? false) &&
+    (!gameData.all_decisions_in_round_id || gameData.all_decisions_in_round_id === currentRound.id);
   const clampedRevealed = (roundStatus === 'betting' || (roundStatus === 'processing' && !allDecisionsIn))
     ? Math.min(rawRevealed, 2)
     : rawRevealed;
@@ -2361,7 +2393,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
     // Don't start timer if no deadline or game conditions prevent it
-    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
+    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || isAllDecisionsInFor(game, currentRound?.id)) {
       console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
         decisionDeadline, 
         awaiting: game?.awaiting_next_round, 
@@ -2619,7 +2651,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const holmAllDecidedButBettingStuck =
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
-      game?.all_decisions_in === true &&
+      isAllDecisionsInFor(game, latestRound?.id ?? null) &&
       latestRound?.status === 'betting' &&
       holmPlayersWithDecision.length > 0 &&
       currentPlayer;
@@ -3406,7 +3438,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // cross-game contamination (e.g., Holm 4-card community cards leaking into 3-5-7)
     if (liveRound && (
       game?.status === 'game_over' || 
-      game?.all_decisions_in || 
+      isAllDecisionsInFor(game, liveRound?.id) || 
       liveRound.chucky_active ||
       liveRound.status === 'completed' ||
       liveRound.status === 'showdown'
@@ -3447,6 +3479,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  // F5.1/F4.2: identity-scoped all_decisions_in. Raw `game.all_decisions_in` can
+  // persist across hand/round transitions and is the systemic source of the
+  // stale-progression-flag bug class. Always consume this scoped value for
+  // render and effect logic. A null scoping round id falls back to the raw
+  // flag (legacy rows / writers that haven't been migrated yet).
+  const allDecisionsInScoped: boolean =
+    (game?.all_decisions_in === true) &&
+    (!(game as any)?.all_decisions_in_round_id ||
+      (game as any)?.all_decisions_in_round_id === currentRound?.id);
 
 
   // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
@@ -3524,7 +3566,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     : (
         game?.status === 'game_over' ||
         game?.status === 'session_ended' ||
-        game?.all_decisions_in ||
+        isAllDecisionsInFor(game, currentRound?.id) ||
         currentRound?.status === 'completed' ||
         game?.awaiting_next_round
       );
@@ -3546,7 +3588,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     : playerCards;
   const allDecisionsInForPresentation = game?.game_type === 'holm-game' && holmView
     ? holmView.players.filter(p => !p.sittingOut).every(p => p.decisionLocked)
-    : (game?.all_decisions_in || false);
+    : (isAllDecisionsInFor(game, currentRound?.id) || false);
   const chuckyCardsForPresentation = game?.game_type === 'holm-game' && holmView
     ? (holmView.chuckyCards as CardType[] | undefined)
     : (currentRound?.chucky_cards as CardType[] | undefined);
@@ -3673,7 +3715,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    if (game?.status === 'in_progress' && !game.all_decisions_in) {
+    if (game?.status === 'in_progress' && !isAllDecisionsInFor(game, currentRound?.id)) {
       // For Holm games, only trigger if there's a valid turn position
       // For other games, trigger on any undecided bot
       if (isHolmGame && !currentRound?.current_turn_position) {
@@ -3747,9 +3789,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== "in_progress") return;
     if (game?.is_paused) return;
     if (game?.awaiting_next_round) return;
-    if (!game?.all_decisions_in) return;
-    if (!gameId) return;
     if (!currentRound || currentRound.status !== "betting") return;
+    if (!gameId) return;
+    if (!isAllDecisionsInFor(game, currentRound.id)) return;
 
     // CRITICAL: Verify at least one player has a decision for THIS round.
     // If no decisions exist, all_decisions_in is stale from a prior round — reset it.
@@ -3769,7 +3811,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset the stale flag so this effect doesn't loop
       void supabase
         .from("games")
-        .update({ all_decisions_in: false })
+        .update({ all_decisions_in: false, all_decisions_in_round_id: null })
         .eq("id", gameId);
       return;
     }
@@ -3813,7 +3855,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'in_progress') return;
     if (!currentRound || currentRound.status !== 'betting') return;
     if (game?.is_paused) return;
-    if (game?.all_decisions_in) return; // Already done
+    if (isAllDecisionsInFor(game, currentRound?.id)) return; // Already done
     
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
@@ -3858,7 +3900,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
     if (!currentRound || currentRound.status !== "betting") return;
     if (game?.is_paused) return;
-    if (game?.all_decisions_in) return;
+    if (isAllDecisionsInFor(game, currentRound?.id)) return;
 
     const myUserId = user?.id;
 
@@ -3992,7 +4034,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       timerTurnPosition,
       currentTurnPosition: currentRound?.current_turn_position,
       isHolmGame,
-      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !game?.is_paused
+      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !isAllDecisionsInFor(game, currentRound?.id) && !game?.is_paused
     });
     
     // Don't auto-fold if timer is null or negative (means fresh round)
@@ -4153,7 +4195,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
     const roundCompleted = currentRound?.status === 'completed';
-    const allDecisionsIn = game?.all_decisions_in === true;
+    const allDecisionsIn = isAllDecisionsInFor(game, currentRound?.id);
     const alreadyAwaiting = game?.awaiting_next_round === true;
     const gameInProgress = game?.status === 'in_progress';
     
@@ -5739,7 +5781,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('is_bot', false);
         await supabase
           .from('games')
-          .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false })
+          .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false, all_decisions_in_round_id: null })
           .eq('id', gameId);
         return;
       }
@@ -5906,6 +5948,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           next_round_number: null,
           pot: 0,
           all_decisions_in: false,
+          all_decisions_in_round_id: null,
           game_over_at: null,
           buck_position: null,
           total_hands: 0
@@ -5970,6 +6013,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         next_round_number: null,
         pot: 0,
         all_decisions_in: false,
+        all_decisions_in_round_id: null,
         game_over_at: null,
         buck_position: null,
         total_hands: 0,
@@ -6900,7 +6944,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.game_type === 'holm-game' || !gameId) {
       return;
     }
-
 
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);

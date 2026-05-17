@@ -425,6 +425,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const gameUpdate: Record<string, unknown> = {
     current_round: insertedRound.round_number, // Use inserted row, not local variable
     all_decisions_in: false,
+    all_decisions_in_round_id: null, // F5.1: clear scoping when starting a new round
     pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
     config_deadline: null,
@@ -449,6 +450,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Game state updated:', {
     current_round: insertedRound.round_number,
     all_decisions_in: false,
+    all_decisions_in_round_id: null,
     pot: currentPot + initialPot,
     total_hands: insertedRound.round_number === 1 ? insertedRound.hand_number : currentHandNumber,
   });
@@ -1063,7 +1065,7 @@ async function checkAllDecisionsIn(gameId: string) {
         gameId: shortGameId, gameType: gTypeCheck,
       });
       // Also clear the stale flag so this doesn't loop forever.
-      await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
+      await supabase.from('games').update({ all_decisions_in: false, all_decisions_in_round_id: null }).eq('id', gameId);
       return;
     }
 
@@ -1092,7 +1094,7 @@ async function checkAllDecisionsIn(gameId: string) {
         console.error(`[CHECK_ALL_DECISIONS] ❌ STALE all_decisions_in - ${(currentPlayers || []).length} active players but ZERO decisions. Resetting flag.`);
         await supabase
           .from('games')
-          .update({ all_decisions_in: false })
+          .update({ all_decisions_in: false, all_decisions_in_round_id: null })
           .eq('id', gameId);
         return;
       }
@@ -1138,16 +1140,37 @@ async function checkAllDecisionsIn(gameId: string) {
 
   if (allDecided) {
     console.log(`[CHECK_ALL_DECISIONS] ✅ ALL DECIDED - attempting to set all_decisions_in flag`);
-    
-    // Try to atomically set all_decisions_in flag
+
+    // F5.1: Identity-scope the flag by stamping it with the current round_id.
+    // Fetch the active round so the flag is rejectable by readers if a fresher
+    // round overtakes it. Scope to current_game_uuid (dealer game) to avoid
+    // picking up rows from prior dealer games with the same hand/round numbers.
+    let activeRoundId: string | null = null;
+    try {
+      let roundQuery = supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId)
+        .order('hand_number', { ascending: false, nullsFirst: false })
+        .order('round_number', { ascending: false, nullsFirst: false })
+        .limit(1);
+      const dgId = (game as any)?.current_game_uuid as string | null | undefined;
+      if (dgId) roundQuery = roundQuery.eq('dealer_game_id', dgId);
+      const { data: activeRound } = await roundQuery.maybeSingle();
+      activeRoundId = activeRound?.id ?? null;
+    } catch (e) {
+      console.warn('[CHECK_ALL_DECISIONS] could not resolve active round id for scoping:', e);
+    }
+
+    // Try to atomically set all_decisions_in flag together with the scoping round id
     const { data: updateResult, error } = await supabase
       .from('games')
-      .update({ all_decisions_in: true })
+      .update({ all_decisions_in: true, all_decisions_in_round_id: activeRoundId })
       .eq('id', gameId)
       .eq('all_decisions_in', false) // Only update if not already set
       .select();
 
-    console.log(`[CHECK_ALL_DECISIONS] all_decisions_in UPDATE result: affected_rows=${updateResult?.length ?? 0} error=${error?.message ?? 'none'}`);
+    console.log(`[CHECK_ALL_DECISIONS] all_decisions_in UPDATE result: affected_rows=${updateResult?.length ?? 0} round_id=${activeRoundId?.slice(0,8) ?? 'null'} error=${error?.message ?? 'none'}`);
 
     // Log to persistent debug table
     await logAllDecisionsIn(gameId, null, true, 'gameLogic:checkAllDecisionsIn', {
@@ -1450,6 +1473,7 @@ async function handleGameOver(
       current_round: null,
       awaiting_next_round: false,
       all_decisions_in: false,
+      all_decisions_in_round_id: null,
       last_round_result: gameWinMessage,
       game_over_at: null,  // NULL - frontend animation will set this after completing
       pot: 0,  // Critical: always reset pot
@@ -1665,7 +1689,7 @@ export async function endRound(gameId: string) {
     // Also reset all_decisions_in since it was stale
     await supabase
       .from('games')
-      .update({ all_decisions_in: false })
+      .update({ all_decisions_in: false, all_decisions_in_round_id: null })
       .eq('id', gameId);
     return;
   }

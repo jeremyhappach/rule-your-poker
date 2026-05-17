@@ -925,7 +925,7 @@ serve(async (req) => {
               // Fix by setting all_decisions_in = true (triggers client-side showdown)
               await supabase
                 .from('games')
-                .update({ all_decisions_in: true })
+                .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
                 .eq('id', game.id);
               
               // Clear stale deadline/turn position
@@ -1599,6 +1599,7 @@ serve(async (req) => {
                        total_hands: newHandNumber,
                        awaiting_next_round: false,
                        all_decisions_in: false,
+                       all_decisions_in_round_id: null,
                      })
                      .eq('id', game.id);
                   
@@ -1706,6 +1707,7 @@ serve(async (req) => {
                       next_round_number: null,
                       last_round_result: null,
                       all_decisions_in: false,
+                      all_decisions_in_round_id: null,
                       status: 'in_progress',
                     };
                     if (newRoundNumber === 1) {
@@ -2099,6 +2101,7 @@ serve(async (req) => {
                 .update({ 
                   awaiting_next_round: true, 
                   all_decisions_in: false,
+                  all_decisions_in_round_id: null,
                   last_round_result: game.last_round_result || 'Showdown completed - advancing'
                 })
                 .eq('id', game.id);
@@ -2179,6 +2182,7 @@ serve(async (req) => {
                   last_round_result: totalTaxCollected > 0 ? 'Pussy Tax' : 'Everyone folded!',
                   awaiting_next_round: true,
                   all_decisions_in: false,
+                  all_decisions_in_round_id: null,
                    // CRITICAL (Holm): Keep total_hands aligned to the active round's hand_number.
                    // Never increment here; no new round was inserted.
                    total_hands: holmHandNumber,
@@ -2278,6 +2282,7 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
+                      all_decisions_in_round_id: null,
                        // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
                        total_hands: holmHandNumber,
                       last_round_result: `Player beat Chucky!`,
@@ -2307,6 +2312,7 @@ serve(async (req) => {
                       last_round_result: `Chucky wins with ${chuckyEval.rank}!`,
                       awaiting_next_round: true,
                       all_decisions_in: false,
+                      all_decisions_in_round_id: null,
                        // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
                        total_hands: holmHandNumber,
                     })
@@ -2379,6 +2385,7 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
+                      all_decisions_in_round_id: null,
                        // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
                        total_hands: holmHandNumber,
                       last_round_result: `${winnerName} won with ${winner.eval.rank}|||WINNER:${winner.player.id}|||POT:${roundPot}`,
@@ -2426,6 +2433,7 @@ serve(async (req) => {
                       pot: 0,
                       awaiting_next_round: false,
                       all_decisions_in: false,
+                      all_decisions_in_round_id: null,
                        // CRITICAL (Holm): Do not increment total_hands in watchdog; keep aligned to rounds.
                        total_hands: holmHandNumber,
                       last_round_result: `Chopped: ${winners.length}-way split`,

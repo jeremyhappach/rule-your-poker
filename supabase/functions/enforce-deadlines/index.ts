@@ -603,7 +603,7 @@ serve(async (req) => {
           if (undecidedPlayersNow.length === 0) {
             const { data: lockResult } = await supabase
               .from('games')
-              .update({ all_decisions_in: true })
+              .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
               .eq('id', gameId)
               .eq('all_decisions_in', false)
               .select();
@@ -854,7 +854,7 @@ serve(async (req) => {
         } else {
           const { data: lockResult } = await supabase
             .from('games')
-            .update({ all_decisions_in: true })
+            .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
             .eq('id', gameId)
             .eq('all_decisions_in', false)
             .select();
@@ -927,6 +927,7 @@ serve(async (req) => {
                   awaiting_next_round: true,
                   last_round_result: 'Showdown recovered - advancing to next hand',
                   all_decisions_in: false,
+                  all_decisions_in_round_id: null,
                 })
                 .eq('id', gameId);
 
@@ -1091,7 +1092,7 @@ serve(async (req) => {
             if (allDecided) {
               const { data: lockResult } = await supabase
                 .from('games')
-                .update({ all_decisions_in: true })
+                .update({ all_decisions_in: true, all_decisions_in_round_id: currentRound.id })
                 .eq('id', gameId)
                 .eq('all_decisions_in', false)
                 .select();

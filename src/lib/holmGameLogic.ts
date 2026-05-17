@@ -95,7 +95,7 @@ export async function checkHolmRoundComplete(gameId: string, decidingPlayerPosit
       // Atomic guard to avoid thrashing writes; if we lose, we'll still proceed to endHolmRound safely.
       const { error: updateError } = await supabase
         .from('games')
-        .update({ all_decisions_in: true })
+        .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
         .eq('id', gameId)
         .eq('all_decisions_in', false);
 
@@ -232,7 +232,7 @@ async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
     // to end the round. endHolmRound has its own atomic (betting -> processing) lock.
     const { error: allDecisionsError } = await supabase
       .from('games')
-      .update({ all_decisions_in: true })
+      .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
       .eq('id', gameId)
       .eq('all_decisions_in', false);
 
@@ -1181,7 +1181,7 @@ export async function endHolmRound(gameId: string) {
     console.log('[HOLM END] Step 1: Exposing player cards...');
     await supabase
       .from('games')
-      .update({ all_decisions_in: true })
+      .update({ all_decisions_in: true, all_decisions_in_round_id: round.id })
       .eq('id', gameId);
     
     // Step 2: Wait 2 seconds for player to see their exposed cards
