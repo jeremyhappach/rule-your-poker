@@ -32,7 +32,8 @@ import {
   clockwiseDistance as canonicalClockwiseDistance,
   observerSlotForPosition as canonicalObserverSlot,
 } from "@/lib/canonicalShell/seatAnchors";
-import { MobilePlayerTimer } from "./MobilePlayerTimer";
+import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
+
 import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
@@ -4220,9 +4221,17 @@ export const MobileGameTable = ({
         <div className="relative transition-opacity duration-150">
           {!hideChipForShowdown && !hideChipForHorses && (
             <div data-seat-chip-position={player.position} className="relative">
-              <MobilePlayerTimer timeLeft={timeLeft} maxTime={maxTime} isActive={isTheirTurn && roundStatus === 'betting'} size={52}>
+              <ActivePlayerHUD
+                timeLeft={timeLeft}
+                maxTime={maxTime}
+                isActive={isTheirTurn && roundStatus === 'betting'}
+                size={52}
+                seatPosition={player.position}
+                gameId={gameId}
+                gameType={gameType}
+              >
                 {chipElement}
-              </MobilePlayerTimer>
+              </ActivePlayerHUD>
             </div>
           )}
           {/* Show dice result in place of chip stack */}
