@@ -12,6 +12,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
+import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { isPokerVariantFamily } from "@/lib/canonicalShell/shellRouting";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
@@ -7939,6 +7941,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
+  // Phase 5: Outer canonical shell wraps the poker-variant render tree
+  // so the shell instance survives game.status transitions. For non
+  // poker-variant games (Cribbage / Gin Rummy / Yahtzee / Trivia) the
+  // existing unified persistent tables remain authoritative. The inner
+  // MobileGameTable shell (Phase 4) has been removed; this outer shell
+  // is the single canonical ownership boundary.
+  const enableOuterShell =
+    isPokerVariantFamily(game.game_type) &&
+    import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
+
+  const ShellWrap: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+    enableOuterShell ? (
+      <PersistentTableShell gameId={gameId ?? undefined} gameType={game.game_type}>
+        {children}
+      </PersistentTableShell>
+    ) : (<>{children}</>);
+
   return (
     <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync 
@@ -7946,6 +7965,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         playerDeckColorMode={currentPlayer?.deck_color_mode}
         onModeChange={() => {}}
       />
+    <ShellWrap>
     <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
@@ -9034,6 +9054,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     <DebugLogToggle />
     </div>
+    </ShellWrap>
     </VisualPreferencesProvider>
   );
 };
