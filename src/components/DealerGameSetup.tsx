@@ -306,21 +306,41 @@ export const DealerGameSetup = ({
     try {
       const { data: guardData, error: guardErr } = await supabase
         .from('games')
-        .select('status, current_game_uuid, config_complete')
+        .select('status, current_game_uuid, config_complete, config_deadline')
         .eq('id', gameId)
         .maybeSingle();
 
       const allowedStatuses = new Set(['dealer_selection', 'configuring', 'game_selection']);
       const statusOk = guardData && allowedStatuses.has(guardData.status);
       const configOk = guardData && guardData.config_complete === false;
-      const noActiveGame = !guardData?.current_game_uuid;
 
-      if (guardErr || !guardData || !statusOk || !configOk || !noActiveGame) {
+      // Resolve whether current_game_uuid points to a TRULY active dealer game.
+      // A stale completed prior dealer_game must not block config-phase timeout.
+      let blockerStatus: string | null = null;
+      let blockerActive = false;
+      if (guardData?.current_game_uuid) {
+        const { data: blockerRow } = await supabase
+          .from('games')
+          .select('status')
+          .eq('id', guardData.current_game_uuid)
+          .maybeSingle();
+        blockerStatus = blockerRow?.status ?? null;
+        const inactiveStatuses = new Set([
+          'completed', 'session_ended', 'waiting',
+          'dealer_selection', 'game_selection', 'configuring',
+        ]);
+        blockerActive = !!blockerStatus && !inactiveStatuses.has(blockerStatus);
+      }
+
+      if (guardErr || !guardData || !statusOk || !configOk || blockerActive) {
         console.warn('[DEALER SETUP] dealer-timeout-suppressed', {
           gameId,
           status: guardData?.status,
           config_complete: guardData?.config_complete,
           current_game_uuid: guardData?.current_game_uuid,
+          blocker_status: blockerStatus,
+          blocker_active: blockerActive,
+          config_deadline: guardData?.config_deadline,
           error: guardErr?.message,
         });
         if (configTimeoutRef.current) {
