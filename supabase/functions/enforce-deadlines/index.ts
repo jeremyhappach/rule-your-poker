@@ -391,6 +391,7 @@ serve(async (req) => {
           console.log('[ENFORCE-CLIENT] After ante timeout: anted_up=', antedUpPlayers.length);
           
           if (antedUpPlayers.length >= 2) {
+            // Enough players anted — let normal gameplay progression start the hand.
             await supabase
               .from('games')
               .update({ ante_decision_deadline: null })
@@ -398,54 +399,25 @@ serve(async (req) => {
             
             actionsTaken.push(`Ante timeout: ${antedUpPlayers.length} players anted up, ready to start`);
           } else {
-            // Not enough players
-            const currentDealer = finalPlayers?.find((p: any) => p.position === game.dealer_position);
-            const dealerIsActive = currentDealer && !currentDealer.sitting_out;
+            // Unified abandonment contract (mirrors config-timeout handler):
+            // Not enough anted players → transition session to 'waiting'.
+            // NEVER session_ended; preserve session for normal waiting cleanup.
+            // Do NOT rotate dealer here or route into a new configuring deadline —
+            // waiting-table UI handles next-game intent explicitly.
+            await supabase
+              .from('games')
+              .update({
+                status: 'waiting',
+                ante_decision_deadline: null,
+                config_deadline: null,
+                config_complete: false,
+                awaiting_next_round: false,
+                last_round_result: null,
+                current_game_uuid: null,
+              })
+              .eq('id', gameId);
             
-            if (!dealerIsActive) {
-              const eligibleDealers = finalPlayers?.filter((p: any) => 
-                !p.is_bot && !p.sitting_out
-              ).sort((a: any, b: any) => a.position - b.position) || [];
-              
-              if (eligibleDealers.length >= 1) {
-                const currentPos = game.dealer_position || 1;
-                const higherPositions = eligibleDealers.filter((p: any) => p.position > currentPos);
-                const nextDealer = higherPositions.length > 0 
-                  ? higherPositions[0] 
-                  : eligibleDealers[0];
-                
-                await supabase
-                  .from('games')
-                  .update({
-                    status: 'waiting_for_players',
-                    ante_decision_deadline: null,
-                    dealer_position: nextDealer.position,
-                  })
-                  .eq('id', gameId);
-                
-                actionsTaken.push(`Ante timeout: Dealer sat out, rotated to position ${nextDealer.position}`);
-              } else {
-                await supabase
-                  .from('games')
-                  .update({
-                    status: 'waiting_for_players',
-                    ante_decision_deadline: null,
-                  })
-                  .eq('id', gameId);
-                
-                actionsTaken.push('Ante timeout: No active players, returning to waiting_for_players');
-              }
-            } else {
-              await supabase
-                .from('games')
-                .update({
-                  status: 'waiting_for_players',
-                  ante_decision_deadline: null,
-                })
-                .eq('id', gameId);
-              
-              actionsTaken.push(`Ante timeout: Only ${antedUpPlayers.length} player(s) anted up, returning to waiting_for_players`);
-            }
+            actionsTaken.push(`Ante timeout: ${antedUpPlayers.length} anted, transitioning to waiting (abandonment contract)`);
           }
           } // end TIMER-02 ante guard else
         }
