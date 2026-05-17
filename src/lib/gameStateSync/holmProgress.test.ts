@@ -191,4 +191,50 @@ describe('getHolmProgress', () => {
     const cmp = compareProgress(getHolmProgress(current), getHolmProgress(stale));
     expect(cmp).toBe(-1);
   });
+
+  it('__syncHandNumber stamp overrides snapshot.handNumber for progress', () => {
+    // Defensive: even if a snapshot is somehow built with a stale handNumber,
+    // an explicit __syncHandNumber stamp must dominate the most-significant dim.
+    const snap = makeSnapshot({ handNumber: 1, __syncHandNumber: 5 });
+    expect(getHolmProgress(snap)).toEqual([5, 0, 0, 0]);
+  });
+
+  it('stale all_decisions_in snapshot cannot regress a fresh next-hand betting snapshot', () => {
+    // Simulates the "premature end-round from stale all_decisions_in" defect class:
+    // a late-arriving prior-hand terminal snapshot must NOT dominate the new hand.
+    const stalePriorTerminal = makeSnapshot({
+      handNumber: 4,
+      roundStatus: 'completed',
+      players: [
+        makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+        makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+        makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+        makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+      ],
+      communityCardsRevealed: 4,
+    });
+    const freshNextBetting = makeSnapshot({
+      roundId: 'r-next',
+      handNumber: 5,
+      roundStatus: 'betting',
+      communityCardsRevealed: 0,
+    });
+    const cmp = compareProgress(getHolmProgress(stalePriorTerminal), getHolmProgress(freshNextBetting));
+    expect(cmp).toBe(1); // next > prior (forward)
+  });
+
+  it('showdown reveal progression is monotonic 0→1→2→3→4', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    let prev = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 0 });
+    for (let n = 1; n <= 4; n++) {
+      const next = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: n });
+      expectForward(prev, next);
+      prev = next;
+    }
+  });
 });
