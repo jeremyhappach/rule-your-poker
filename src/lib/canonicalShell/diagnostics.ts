@@ -20,7 +20,6 @@
  */
 
 import { checkInvariant } from '@/lib/debugSyncInvariants';
-import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 const PREFIX = '[canonical-shell]';
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
@@ -75,20 +74,27 @@ export function recordShellEvent(
     });
   }
 
-  void persistSyncDebugEvent({
-    gameId: gameId || NIL_UUID,
-    gameType: gameType || 'canonical-shell',
-    handNumber: typeof handNumber === 'number' ? handNumber : 0,
-    eventType: 'transition',
-    severity: 'info',
-    eventName: `canonical-shell-${eventName}`,
-    payload: {
-      sessionId: sessionId ?? null,
-      dealerGameId: dealerGameId ?? null,
-      ts: Date.now(),
-      ...detail,
-    },
-  });
+  // Lazy-load persistence to keep this module importable from pure
+  // Node test environments (persistSyncDebugEvent pulls in the
+  // supabase client which touches localStorage at module init).
+  if (typeof window !== 'undefined') {
+    void import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+      void persistSyncDebugEvent({
+        gameId: gameId || NIL_UUID,
+        gameType: gameType || 'canonical-shell',
+        handNumber: typeof handNumber === 'number' ? handNumber : 0,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: `canonical-shell-${eventName}`,
+        payload: {
+          sessionId: sessionId ?? null,
+          dealerGameId: dealerGameId ?? null,
+          ts: Date.now(),
+          ...detail,
+        },
+      });
+    });
+  }
 }
 
 // ── Invariant checks ──────────────────────────────────────────
