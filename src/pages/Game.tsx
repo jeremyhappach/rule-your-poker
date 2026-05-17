@@ -7230,9 +7230,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (latestPlayers) {
           // Evaluate player states and determine if session should end or continue
           const { activePlayerCount, activeHumanCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
-          
+
           console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount);
-          
+
+          // SESSION HYGIENE: sanitize automation state for ALL players before branching.
+          await sanitizePlayerAutomationStateForSession(gameId);
+
           // Priority 1: If no active human players, END SESSION completely
           if (activeHumanCount < 1) {
             console.log('[ANTE] No active human players! Ending session.');
@@ -7268,12 +7271,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               })
               .eq('id', gameId);
           } else {
-            // Revert to waiting status
+            // Revert to waiting status; passive sit-outs remain seated (no status='left').
             console.log('[ANTE] Not enough players - reverting to waiting');
-            
-            // Remove sitting out players - they need to re-select seats
-            await removeSittingOutPlayersOnWaiting(gameId);
-            
+
             await supabase
               .from('games')
               .update({ 
