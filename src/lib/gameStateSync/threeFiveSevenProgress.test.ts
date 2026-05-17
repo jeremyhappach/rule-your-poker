@@ -64,20 +64,22 @@ describe('getThreeFiveSevenProgress', () => {
     const post = mkSnap({ roundStatus: 'completed', lastRoundResult: 'PlayerA won' });
     expect(getThreeFiveSevenProgress(pre)[4]).toBe(0);
     expect(getThreeFiveSevenProgress(post)[4]).toBe(1);
-    expect(compareProgress(getThreeFiveSevenProgress(pre), getThreeFiveSevenProgress(post))).toBe(-1);
+    // next=post is forward of current=pre
+    expect(compareProgress(getThreeFiveSevenProgress(pre), getThreeFiveSevenProgress(post))).toBe(1);
   });
 
   it('awaiting-next-round dim flips when awaitingNextRound true', () => {
     const pre = mkSnap({ roundStatus: 'completed', lastRoundResult: 'X', awaitingNextRound: false });
     const post = mkSnap({ roundStatus: 'completed', lastRoundResult: 'X', awaitingNextRound: true });
     expect(getThreeFiveSevenProgress(post)[5]).toBe(1);
-    expect(compareProgress(getThreeFiveSevenProgress(pre), getThreeFiveSevenProgress(post))).toBe(-1);
+    expect(compareProgress(getThreeFiveSevenProgress(pre), getThreeFiveSevenProgress(post))).toBe(1);
   });
 
   it('regressive result-revealed snapshot rejected vs forward', () => {
     const forward = getThreeFiveSevenProgress(mkSnap({ roundStatus: 'completed', lastRoundResult: 'X' }));
     const backward = getThreeFiveSevenProgress(mkSnap({ roundStatus: 'completed', lastRoundResult: null }));
-    expect(compareProgress(forward, backward)).toBe(1);
+    // current=forward, next=backward is behind → -1
+    expect(compareProgress(forward, backward)).toBe(-1);
   });
 
   it('__syncHandNumber stamp dominates raw handNumber', () => {
@@ -95,8 +97,9 @@ describe('getThreeFiveSevenProgress', () => {
       handNumber: 2, roundNumber: 1, roundStatus: 'betting',
       lastRoundResult: null, awaitingNextRound: false,
     }));
-    expect(compareProgress(hand1Terminal, hand2Fresh)).toBe(-1);
-    expect(compareProgress(hand2Fresh, hand1Terminal)).toBe(1);
+    // hand2Fresh is forward of hand1Terminal despite lower dims 2-5
+    expect(compareProgress(hand1Terminal, hand2Fresh)).toBe(1);
+    expect(compareProgress(hand2Fresh, hand1Terminal)).toBe(-1);
   });
 
   it('round boundary within hand dominates dims 2-5', () => {
@@ -108,6 +111,6 @@ describe('getThreeFiveSevenProgress', () => {
       handNumber: 1, roundNumber: 2, roundStatus: 'betting',
       lastRoundResult: null, awaitingNextRound: false,
     }));
-    expect(compareProgress(r2Fresh, r1Done)).toBe(1);
+    expect(compareProgress(r1Done, r2Fresh)).toBe(1);
   });
 });
