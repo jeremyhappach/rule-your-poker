@@ -1,29 +1,48 @@
-# Canonical Persistent Table — Phase 0 + Phase 1 (APPROVED, IN PROGRESS)
+# Phase 4 — PersistentTableShell scaffolding (scope proposal)
 
-## Status
+This is the first phase that begins ownership/lifecycle architecture work. To stay disciplined, Phase 4 is intentionally split: **scaffolding only**, no lifecycle restructuring of `Game.tsx`, no overlay consolidation, no visual change.
 
-- **Phase 0 (telemetry + invariants)** — landed.
-- **Phase 1 (SeatAnchorLayer extraction)** — pure module + React provider + tests landed. NOT yet wired into `MobileGameTable.tsx`. That wiring is a follow-up patch (still Phase 1) gated on visual-regression review.
+## Objective
 
-## Approved corrections folded in
+Introduce a `PersistentTableShell` component that establishes the canonical shell ownership boundary (seat anchors + geometry tokens + diagnostics root), and mount it inside `MobileGameTable` as a transparent wrapper around the existing playfield. The shell does **not yet** persist across lifecycle phases — `Game.tsx` branching remains untouched. This phase only validates that the shell wrapper introduces zero regression while giving later phases a single anchor to lift above `Game.tsx` branches.
 
-- 2-player active gameplay face-to-face canonicalization is **part of the canonical contract from day one**, not gated/deferred. Observer mode remains literal absolute.
-- NeutralInterstitial must never feel like a dead blank table — continuity of visual ownership is maintained through overlay sequencing (Celebration → Settlement → Neutral overlay → Config overlay), with the prior body unmounting only after its own resolution completes.
+## In scope
 
-## Files added (Phase 0 + 1)
+1. **New module**: `src/lib/canonicalShell/PersistentTableShell.tsx`
+   - Composes `SeatAnchorLayer` (already exists) over its children.
+   - Reads `useGeometryTokensOptional()` to stamp a `data-shell-device` attribute on its root for diagnostics. Does NOT introduce a new provider; relies on the app-root `ResponsiveGeometryProvider` from Phase 3.
+   - Renders `<div data-canonical-shell-root>` as a transparent container (no styling, no positioning) wrapping `children`.
+   - Emits one `recordShellEvent('shell-mount', …)` on mount and `'shell-unmount'` on unmount with `{ gameId, gameType, viewerPosition }` for telemetry.
+   - Props: `{ projectionMode, viewerPosition, seats, gameId, gameType, children }` — same inputs that `SeatAnchorLayer` already consumes in MobileGameTable.
 
-- `src/lib/canonicalShell/diagnostics.ts` — `recordShellEvent`, `checkSlotTransition`, `checkProjectionMode`. Persistence is lazy-loaded so the module is safe in pure Node test environments.
-- `src/lib/canonicalShell/seatAnchors.ts` — pure resolver. Projection modes: `observer-absolute`, `active-canonical`. Slot vocabulary: `HOME=-1`, `FACE_TO_FACE=-2`, perimeter `0..5`. 2P canonicalization built into `resolveSeatAnchors`.
-- `src/lib/canonicalShell/SeatAnchorLayer.tsx` — React provider + `useSeatAnchors` / `useSeatAnchorsOptional` hooks. Memoized on a stable seat-key string.
-- `src/lib/canonicalShell/seatAnchors.test.ts` — 9 tests covering observer mapping, active rotation, clockwise distance, 2P canonicalization (positive + negative cases), hidden seats.
+2. **Wire into `MobileGameTable.tsx`**
+   - The existing inline `<SeatAnchorLayer>` usage (Phase 1) is replaced by `<PersistentTableShell>` with the same props. SeatAnchorLayer remains the internal composition, so `useSeatAnchors()` consumers are unaffected.
+   - No DOM hierarchy change beyond an additional transparent wrapper `div`. No className, no positioning, no z-index.
+   - No change to overlay mounting, chip transport, sync framework, or lifecycle.
 
-## Verified
+3. **Tests**: `src/lib/canonicalShell/PersistentTableShell.test.tsx`
+   - Mounts shell, asserts `useSeatAnchors()` resolves through it (composition with SeatAnchorLayer works).
+   - Asserts `data-canonical-shell-root` attribute present.
+   - Asserts mount/unmount telemetry events fired.
 
-- `bunx vitest run src/lib/canonicalShell/seatAnchors.test.ts` → 9/9 passing.
-- No changes to `MobileGameTable.tsx`, `Game.tsx`, sync framework, server enforcement, or any game body. Zero visual regression risk.
+## Explicitly OUT of scope (deferred to Phase 5+)
 
-## Next slice (Phase 1 wiring — pending approval)
+- Lifting the shell **above** `Game.tsx`'s lifecycle branches (persistent across config/active/settlement phases). This is the high-risk slice and gets its own approval.
+- Consolidating overlays (Celebration, Settlement, Neutral, Config) under the shell.
+- Playfield slot abstraction / neutral interstitial.
+- Chip transport changes.
+- Transition choreography.
+- Any sync framework changes.
+- Visual redesign or styling.
 
-Adopt `SeatAnchorLayer` inside `MobileGameTable.tsx` by replacing `getObserverSlotFromPosition` and the inline active-mode `getClockwiseDistance` calls with `useSeatAnchors()`. Initial wiring keeps existing per-seat rendering byte-identical except for 2P active-mode where the new FACE_TO_FACE slot will need a renderer anchor (top-center). That renderer anchor is a small, contained MobileGameTable edit.
+## Risk
 
-After that, Phase 2 (ActivePlayerHUD + ChatBubbleOverlay extraction).
+Very low. Adds one transparent `<div>` wrapper and an internal re-export of existing Phase 1 logic. No behavioral surface area changes. If approved, Phase 5 (the actual lift above Game.tsx branches) will be proposed separately with its own dedicated scope and gating.
+
+## Acceptance
+
+- Build clean, canonical-shell tests pass (existing 17 + new PersistentTableShell tests).
+- Live: phone + tablet, observer + active, 2-player canonical + multiplayer-capable — all visually identical to Phase 3.
+- Telemetry: one `shell-mount` event per table mount visible in dev sync debug stream.
+
+Awaiting approval before implementation.
