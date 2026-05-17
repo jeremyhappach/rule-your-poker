@@ -59,7 +59,7 @@ function expectEqual(prev: HolmAuthoritativeSnapshot, next: HolmAuthoritativeSna
 describe('getHolmProgress', () => {
   it('returns correct vector for new hand start', () => {
     const snap = makeSnapshot({ handNumber: 3 });
-    expect(getHolmProgress(snap)).toEqual([3, 0, 0, 0]);
+    expect(getHolmProgress(snap)).toEqual([3, 0, 0, 0, 0, 0]);
   });
 
   it('player click not yet locked — vector unchanged', () => {
@@ -87,7 +87,7 @@ describe('getHolmProgress', () => {
       currentTurnPosition: 1,
     });
     expectForward(before, after);
-    expect(getHolmProgress(after)).toEqual([1, 0, 1, 0]);
+    expect(getHolmProgress(after)).toEqual([1, 0, 1, 0, 0, 0]);
   });
 
   it('timeout/auto-fold increments decidedCount', () => {
@@ -108,7 +108,7 @@ describe('getHolmProgress', () => {
       ],
     });
     expectForward(before, after);
-    expect(getHolmProgress(after)).toEqual([1, 0, 2, 0]);
+    expect(getHolmProgress(after)).toEqual([1, 0, 2, 0, 0, 0]);
   });
 
   it('betting → processing is forward', () => {
@@ -121,7 +121,7 @@ describe('getHolmProgress', () => {
     const before = makeSnapshot({ roundStatus: 'betting', players: allLocked });
     const after = makeSnapshot({ roundStatus: 'processing', players: allLocked });
     expectForward(before, after);
-    expect(getHolmProgress(after)).toEqual([1, 1, 4, 0]);
+    expect(getHolmProgress(after)).toEqual([1, 1, 4, 0, 0, 0]);
   });
 
   it('processing → showdown is forward', () => {
@@ -146,7 +146,7 @@ describe('getHolmProgress', () => {
     const before = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 1 });
     const after = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 2 });
     expectForward(before, after);
-    expect(getHolmProgress(after)).toEqual([1, 2, 4, 2]);
+    expect(getHolmProgress(after)).toEqual([1, 2, 4, 2, 0, 0]);
   });
 
   it('showdown → completed is forward', () => {
@@ -159,7 +159,7 @@ describe('getHolmProgress', () => {
     const before = makeSnapshot({ roundStatus: 'showdown', players: allLocked, communityCardsRevealed: 4 });
     const after = makeSnapshot({ roundStatus: 'completed', players: allLocked, communityCardsRevealed: 4 });
     expectForward(before, after);
-    expect(getHolmProgress(after)).toEqual([1, 3, 4, 4]);
+    expect(getHolmProgress(after)).toEqual([1, 3, 4, 4, 0, 0]);
   });
 
   it('new hand is forward even though decidedCount resets to 0', () => {
@@ -182,7 +182,7 @@ describe('getHolmProgress', () => {
       communityCardsRevealed: 0,
     });
     expectForward(completed, newHand);
-    expect(getHolmProgress(newHand)).toEqual([3, 0, 0, 0]);
+    expect(getHolmProgress(newHand)).toEqual([3, 0, 0, 0, 0, 0]);
   });
 
   it('stale snapshot from previous hand is rejected as regressive', () => {
@@ -196,7 +196,7 @@ describe('getHolmProgress', () => {
     // Defensive: even if a snapshot is somehow built with a stale handNumber,
     // an explicit __syncHandNumber stamp must dominate the most-significant dim.
     const snap = makeSnapshot({ handNumber: 1, __syncHandNumber: 5 });
-    expect(getHolmProgress(snap)).toEqual([5, 0, 0, 0]);
+    expect(getHolmProgress(snap)).toEqual([5, 0, 0, 0, 0, 0]);
   });
 
   it('stale all_decisions_in snapshot cannot regress a fresh next-hand betting snapshot', () => {
@@ -236,5 +236,102 @@ describe('getHolmProgress', () => {
       expectForward(prev, next);
       prev = next;
     }
+  });
+
+  // ── Chucky progression-significant dims ─────────────────────
+
+  it('chuckyActive false→true is forward (after community reveal complete)', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const base = { roundStatus: 'showdown' as const, players: allLocked, communityCardsRevealed: 4 };
+    const before = makeSnapshot({ ...base, chuckyActive: false, chuckyCardsRevealed: 0 });
+    const after = makeSnapshot({ ...base, chuckyActive: true, chuckyCardsRevealed: 0 });
+    expectForward(before, after);
+    expect(getHolmProgress(after)).toEqual([1, 2, 4, 4, 1, 0]);
+  });
+
+  it('chuckyCardsRevealed stepping is forward and monotonic', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const base = {
+      roundStatus: 'showdown' as const,
+      players: allLocked,
+      communityCardsRevealed: 4,
+      chuckyActive: true,
+    };
+    let prev = makeSnapshot({ ...base, chuckyCardsRevealed: 0 });
+    for (let n = 1; n <= 4; n++) {
+      const next = makeSnapshot({ ...base, chuckyCardsRevealed: n });
+      expectForward(prev, next);
+      prev = next;
+    }
+  });
+
+  it('stale snapshot with lower chuckyCardsRevealed is rejected as regressive within same hand', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const base = {
+      roundStatus: 'showdown' as const,
+      players: allLocked,
+      communityCardsRevealed: 4,
+      chuckyActive: true,
+    };
+    const current = makeSnapshot({ ...base, chuckyCardsRevealed: 3 });
+    const stale = makeSnapshot({ ...base, chuckyCardsRevealed: 1 });
+    const cmp = compareProgress(getHolmProgress(current), getHolmProgress(stale));
+    expect(cmp).toBe(-1);
+  });
+
+  it('stale snapshot with chuckyActive=false is rejected once chucky has activated', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const base = { roundStatus: 'showdown' as const, players: allLocked, communityCardsRevealed: 4 };
+    const current = makeSnapshot({ ...base, chuckyActive: true, chuckyCardsRevealed: 2 });
+    const stale = makeSnapshot({ ...base, chuckyActive: false, chuckyCardsRevealed: 0 });
+    const cmp = compareProgress(getHolmProgress(current), getHolmProgress(stale));
+    expect(cmp).toBe(-1);
+  });
+
+  it('new hand resets chucky dims but hand dim still dominates (forward)', () => {
+    const allLocked = [
+      makePlayer({ playerId: 'p1', position: 0, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p2', position: 1, decision: 'fold', decisionLocked: true }),
+      makePlayer({ playerId: 'p3', position: 2, decision: 'stay', decisionLocked: true }),
+      makePlayer({ playerId: 'p4', position: 3, decision: 'fold', decisionLocked: true }),
+    ];
+    const priorTerminal = makeSnapshot({
+      handNumber: 4,
+      roundStatus: 'completed',
+      players: allLocked,
+      communityCardsRevealed: 4,
+      chuckyActive: true,
+      chuckyCardsRevealed: 4,
+    });
+    const nextHand = makeSnapshot({
+      roundId: 'r-next',
+      handNumber: 5,
+      roundStatus: 'betting',
+      communityCardsRevealed: 0,
+      chuckyActive: false,
+      chuckyCardsRevealed: 0,
+    });
+    expectForward(priorTerminal, nextHand);
+    expect(getHolmProgress(nextHand)).toEqual([5, 0, 0, 0, 0, 0]);
   });
 });

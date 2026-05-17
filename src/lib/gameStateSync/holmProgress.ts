@@ -1,16 +1,30 @@
 /**
  * Holm Progress Vector
  *
- * Vector: [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed]
+ * Vector: [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed,
+ *          chuckyActiveOrd, chuckyCardsRevealed]
  *
  * - handNumber:              rounds.hand_number — increments per deal
  * - phaseOrdinal:            derived from rounds.status (betting=0, processing=1, showdown=2, completed=3)
  * - decidedCount:            count of players where decisionLocked === true
  * - communityCardsRevealed:  rounds.community_cards_revealed (0–4 during showdown)
+ * - chuckyActiveOrd:         0 when chucky_active is false, 1 when true. Chucky activates
+ *                            strictly after community reveal completes and never deactivates
+ *                            within a hand (cleared only on next-hand creation), so it is
+ *                            monotonic within an identity.
+ * - chuckyCardsRevealed:     rounds.chucky_cards_revealed (0–N stepped reveal). Authoritative
+ *                            DB writes step this 0→N monotonically within a hand.
  *
  * decidedCount uses decision_locked (not current_decision) because it is
  * set atomically by the turn-advance logic and is never unset within a hand,
  * making it truly irreversible and safe for monotonic progress.
+ *
+ * chucky_* are progression-significant (not cosmetic): two snapshots with
+ * identical hand/phase/decidedCount/communityCardsRevealed but different
+ * chucky reveal state represent meaningfully different authoritative states.
+ * Without these dims, late-arriving stale snapshots that have not yet
+ * observed a chucky reveal would compare equal-progress and could shadow
+ * a fresher snapshot via equal-tie semantics.
  */
 
 import type { ProgressVector } from './types';
@@ -89,6 +103,8 @@ export function getHolmProgress(state: HolmAuthoritativeSnapshot): ProgressVecto
   const phaseOrdinal = PHASE_ORDINAL[state.roundStatus] ?? 0;
   const decidedCount = state.players.filter(p => p.decisionLocked === true).length;
   const communityCardsRevealed = state.communityCardsRevealed ?? 0;
+  const chuckyActiveOrd = state.chuckyActive ? 1 : 0;
+  const chuckyCardsRevealed = state.chuckyCardsRevealed ?? 0;
 
-  return [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed];
+  return [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed, chuckyActiveOrd, chuckyCardsRevealed];
 }
