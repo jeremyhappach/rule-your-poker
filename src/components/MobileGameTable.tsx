@@ -3611,26 +3611,21 @@ export const MobileGameTable = ({
     }, 300);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357]);
 
-  // Map other players to visual slots based on clockwise position from current player
-  // Visual slots layout (clockwise from current player at bottom center):
-  // Slot 0: 1 seat clockwise (bottom-left in visual layout)
-  // Slot 1: 2 seats clockwise (middle-left)  
-  // Slot 2: 3 seats clockwise (top-left)
-  // Slot 3: 4 seats clockwise (top-right)
-  // Slot 4: 5 seats clockwise (middle-right)
-  // Slot 5: 6 seats clockwise (bottom-right)
+  // ── Canonical seat contract (Phase 1 wiring) ──────────────────────
+  // Local seat/projection math now delegates to the canonical contract
+  // in @/lib/canonicalShell/seatAnchors. Behavior is preserved exactly
+  // for the games rendered by MobileGameTable (Holm, 3-5-7, Horses,
+  // SCC — all multiplayer-capable), which always use relative seating
+  // semantics regardless of current player count. Inherently-2P games
+  // (Cribbage/Gin/Yahtzee) use their own dedicated tables and will be
+  // wired in later phases; passing gameType here keeps the contract
+  // honest in case routing ever changes.
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
-  
-  // Calculate clockwise distance from current player (1-6 seats away)
-  const getClockwiseDistance = (playerPos: number): number => {
-    let distance = playerPos - currentPos;
-    if (distance <= 0) distance += 7; // Wrap around for positions before current
-    return distance;
-  };
-  
-  // Map clockwise distance to visual slot (distance 1 = slot 0, distance 2 = slot 1, etc.)
-  // This ensures players appear at their actual relative position, not sequentially
+
+  const getClockwiseDistance = (playerPos: number): number =>
+    canonicalClockwiseDistance(currentPos, playerPos);
+
   const getPlayerAtSlot = (slotIndex: number): Player | undefined => {
     const targetDistance = slotIndex + 1; // slot 0 = 1 seat away, slot 1 = 2 seats away, etc.
     return otherPlayersRaw.find(p => getClockwiseDistance(p.position) === targetDistance);
