@@ -4,6 +4,7 @@ import {
   observerSlotForPosition,
   clockwiseDistance,
   activeSlotForDistance,
+  isInherentlyTwoPlayerGameType,
   SLOT,
 } from './seatAnchors';
 
@@ -18,10 +19,11 @@ describe('seatAnchors — observer-absolute', () => {
     expect(observerSlotForPosition(7)).toBe(3);
   });
 
-  it('ignores 2P canonicalization for observers', () => {
+  it('ignores 2P canonicalization for observers even on 2P game types', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'observer-absolute',
       viewerPosition: null,
+      gameType: 'cribbage',
       seats: [
         { position: 1, occupied: true },
         { position: 5, occupied: true },
@@ -38,6 +40,7 @@ describe('seatAnchors — active-canonical', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'active-canonical',
       viewerPosition: 4,
+      gameType: 'holm',
       seats: [
         { position: 4, occupied: true },
         { position: 5, occupied: true },
@@ -46,11 +49,8 @@ describe('seatAnchors — active-canonical', () => {
       ],
     });
     expect(anchors.find(a => a.position === 4)?.slot).toBe(SLOT.HOME);
-    // distance(4,5)=1 → slot 5 (bottom-right)
     expect(anchors.find(a => a.position === 5)?.slot).toBe(5);
-    // distance(4,6)=2 → slot 4
     expect(anchors.find(a => a.position === 6)?.slot).toBe(4);
-    // distance(4,3)=6 → slot 0 (bottom-left)
     expect(anchors.find(a => a.position === 3)?.slot).toBe(0);
   });
 
@@ -69,11 +69,28 @@ describe('seatAnchors — active-canonical', () => {
   });
 });
 
-describe('seatAnchors — 2-player face-to-face canonicalization', () => {
-  it('forces opponent to FACE_TO_FACE when exactly two active seats and viewer is one of them', () => {
+describe('seatAnchors — game-type-driven 2P face-to-face', () => {
+  it('classifies inherently-2P game types', () => {
+    expect(isInherentlyTwoPlayerGameType('cribbage')).toBe(true);
+    expect(isInherentlyTwoPlayerGameType('gin_rummy')).toBe(true);
+    expect(isInherentlyTwoPlayerGameType('gin-rummy')).toBe(true);
+    expect(isInherentlyTwoPlayerGameType('yahtzee')).toBe(true);
+    expect(isInherentlyTwoPlayerGameType('CRIBBAGE')).toBe(true);
+  });
+
+  it('classifies multiplayer-capable game types as NOT inherently 2P', () => {
+    expect(isInherentlyTwoPlayerGameType('holm')).toBe(false);
+    expect(isInherentlyTwoPlayerGameType('three_five_seven')).toBe(false);
+    expect(isInherentlyTwoPlayerGameType('horses')).toBe(false);
+    expect(isInherentlyTwoPlayerGameType('scc')).toBe(false);
+    expect(isInherentlyTwoPlayerGameType(undefined)).toBe(false);
+  });
+
+  it('canonicalizes opponent to FACE_TO_FACE for inherently-2P game types', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'active-canonical',
       viewerPosition: 2,
+      gameType: 'cribbage',
       seats: [
         { position: 2, occupied: true },
         { position: 5, occupied: true },
@@ -85,25 +102,43 @@ describe('seatAnchors — 2-player face-to-face canonicalization', () => {
     expect(opp?.canonicalized2p).toBe(true);
   });
 
-  it('does NOT canonicalize when 3+ seats are occupied', () => {
+  it('does NOT canonicalize multiplayer-capable games even with exactly 2 seated', () => {
+    for (const gameType of ['holm', 'three_five_seven', 'horses', 'scc']) {
+      const anchors = resolveSeatAnchors({
+        projectionMode: 'active-canonical',
+        viewerPosition: 2,
+        gameType,
+        seats: [
+          { position: 2, occupied: true },
+          { position: 5, occupied: true },
+        ],
+      });
+      expect(anchors.every(a => !a.canonicalized2p), `gameType=${gameType}`).toBe(true);
+      // Opponent should occupy a normal perimeter slot via clockwise distance.
+      expect(anchors.find(a => a.position === 5)?.slot).not.toBe(SLOT.FACE_TO_FACE);
+    }
+  });
+
+  it('does NOT canonicalize when gameType is missing', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'active-canonical',
-      viewerPosition: 1,
+      viewerPosition: 2,
       seats: [
-        { position: 1, occupied: true },
-        { position: 3, occupied: true },
+        { position: 2, occupied: true },
         { position: 5, occupied: true },
       ],
     });
     expect(anchors.every(a => !a.canonicalized2p)).toBe(true);
   });
 
-  it('does NOT canonicalize in observer-absolute mode even with 2 seats', () => {
+  it('does NOT canonicalize 2P game type when 3+ seats are occupied (defensive)', () => {
     const anchors = resolveSeatAnchors({
-      projectionMode: 'observer-absolute',
-      viewerPosition: null,
+      projectionMode: 'active-canonical',
+      viewerPosition: 1,
+      gameType: 'cribbage',
       seats: [
         { position: 1, occupied: true },
+        { position: 3, occupied: true },
         { position: 5, occupied: true },
       ],
     });
@@ -123,7 +158,6 @@ describe('seatAnchors — hidden seats', () => {
       ],
     });
     expect(anchors.find(a => a.position === 2)?.slot).toBeNull();
-    // Other anchors retain their absolute slot.
     expect(anchors.find(a => a.position === 1)?.slot).toBe(2);
     expect(anchors.find(a => a.position === 5)?.slot).toBe(5);
   });
