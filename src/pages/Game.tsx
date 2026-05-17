@@ -1886,23 +1886,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // CRITICAL: Also clear community cards cache to prevent old cards showing in new game
                 communityCardsCacheRef.current = { cards: null, round: null, show: false };
                 setCommunityCacheEpoch((e) => e + 1);
-                // Clear dealer selection state when transitioning away from dealer_selection
-                // or when entering cribbage_dealer_selection (to prevent stale session-level cards)
-                // Bug A fix: also clear on in_progress to ensure no stale session-level cards
-                // survive into dealer-game scope
-                if (newStatus !== 'dealer_selection' && newStatus !== 'cribbage_dealer_selection') {
-                  setDealerSelectionCards([]);
-                  setDealerSelectionAnnouncement(null);
-                  setDealerSelectionComplete(false);
-                  setDealerSelectionWinnerPosition(null);
-                  // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
-                  emitCribbageHandoffTrace({
-                    gameId: gameId!,
-                    eventType: 'parent_ds_cleared',
-                    userId: user?.id ?? null,
-                    context: { trigger: 'realtime_status_change', newStatus },
-                  });
-                }
+                // Always clear local dealer-selection presentation state on any status
+                // boundary into a new setup phase. Entering dealer_selection or
+                // cribbage_dealer_selection is a FRESH draw — stale cards from a prior
+                // selection (e.g. session fall-back-to-waiting → restart) must not survive.
+                // The realtime status branch only fires on actual status change, so clearing
+                // here cannot wipe an in-progress draw.
+                setDealerSelectionCards([]);
+                setDealerSelectionAnnouncement(null);
+                setDealerSelectionComplete(false);
+                setDealerSelectionWinnerPosition(null);
+                // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
+                emitCribbageHandoffTrace({
+                  gameId: gameId!,
+                  eventType: 'parent_ds_cleared',
+                  userId: user?.id ?? null,
+                  context: { trigger: 'realtime_status_change', newStatus },
+                });
               }
               
                // (Bug A fix moved to handleCribbageDealerSelectionComplete callback)
