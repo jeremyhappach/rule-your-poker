@@ -1735,11 +1735,13 @@ export function useHorsesMobileController({
         return;
       }
 
-      // Set auto_fold on the player so the bot auto-play loop takes over
-      // This triggers animated rolls instead of instant force-completion
+      // TIMEOUT CONTRACT (dice): set auto_fold (drives bot auto-roll loop for the
+      // remaining hands in this dealer game) AND sit_out_next_hand=true so the
+      // pending sit-out is reconciled at the next dealer-game boundary (not the
+      // next hand boundary).
       await supabase
         .from("players")
-        .update({ auto_fold: true })
+        .update({ auto_fold: true, sit_out_next_hand: true })
         .eq("id", currentTurnPlayerId);
 
       // Extend the deadline to give the bot loop time to animate (15 seconds)
