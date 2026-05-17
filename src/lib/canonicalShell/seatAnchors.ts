@@ -15,11 +15,14 @@
  *   - 'active-canonical'  — seated players see themselves at HOME and
  *                            other seats rotated relative to them.
  *
- * 2-player active gameplay canonicalization (product requirement, not
- * deferred): when exactly two players are active and the viewer is one
- * of them, the opponent is placed at the dedicated FACE_TO_FACE slot
- * regardless of which absolute seats were originally chosen. Observer
- * mode for 2-player tables remains literal absolute.
+ * 2-player face-to-face canonicalization (product requirement):
+ * This is GAME-TYPE driven, NOT player-count driven. Only games that
+ * are *inherently* 2-player (Cribbage, Gin Rummy, Yahtzee) canonicalize
+ * the opponent to the FACE_TO_FACE slot. Multiplayer-capable games
+ * (Holm, 3-5-7, Horses, SCC) ALWAYS preserve relative seating semantics
+ * even when only two humans happen to be seated — additional players
+ * may join and the seating model must remain semantically consistent.
+ * Observer mode never canonicalizes.
  *
  * Hidden seats never reflow others: an unoccupied or hidden position
  * simply yields a null anchor — the perimeter geometry is fixed.
@@ -38,7 +41,8 @@ export type ProjectionMode = 'observer-absolute' | 'active-canonical';
  * Canonical visual slot identifiers.
  *
  *   HOME (-1)         — bottom-center; the viewing seated player
- *   FACE_TO_FACE (-2) — top-center; only valid in 2P active-canonical
+ *   FACE_TO_FACE (-2) — top-center; only valid in inherently-2P
+ *                       active-canonical games
  *   0..5              — perimeter, clockwise starting from bottom-left:
  *                       0 bottom-left   1 middle-left   2 top-left
  *                       3 top-right     4 middle-right  5 bottom-right
@@ -49,6 +53,23 @@ export const SLOT = {
 } as const;
 
 export type CanonicalSlot = -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * Inherently 2-player game types. Canonicalization is driven by game
+ * design, not by current seat occupancy. Keep this list narrow.
+ */
+const INHERENTLY_TWO_PLAYER_GAME_TYPES: ReadonlySet<string> = new Set([
+  'cribbage',
+  'gin_rummy',
+  'ginrummy',
+  'gin-rummy',
+  'yahtzee',
+]);
+
+export function isInherentlyTwoPlayerGameType(gameType: string | null | undefined): boolean {
+  if (!gameType) return false;
+  return INHERENTLY_TWO_PLAYER_GAME_TYPES.has(gameType.toLowerCase());
+}
 
 export interface SeatAnchorInput {
   /** Authoritative seat position (1..7). */
@@ -67,6 +88,12 @@ export interface SeatAnchorResolutionContext {
   seats: SeatAnchorInput[];
   /** Optional diagnostic identifiers. */
   gameId?: string;
+  /**
+   * Game type — REQUIRED to opt into 2P face-to-face canonicalization.
+   * Only inherently-2P game types (see INHERENTLY_TWO_PLAYER_GAME_TYPES)
+   * canonicalize; multiplayer-capable games always use relative seating
+   * regardless of current player count.
+   */
   gameType?: string;
 }
 
@@ -79,19 +106,14 @@ export interface ResolvedSeatAnchor {
 
 // ── Pure resolution helpers ───────────────────────────────────
 
-/**
- * Observer mapping: literal absolute position → fixed perimeter slot.
- * Mirrors today's MobileGameTable observer mapping so Phase 1 is byte
- * compatible when consumed in observer mode.
- */
 const OBSERVER_POS_TO_SLOT: Record<number, CanonicalSlot> = {
-  1: 2,   // top-left
-  2: 1,   // middle-left
-  3: 0,   // bottom-left
-  4: -1,  // bottom-center (visually the home anchor for observers too)
-  5: 5,   // bottom-right
-  6: 4,   // middle-right
-  7: 3,   // top-right
+  1: 2,
+  2: 1,
+  3: 0,
+  4: -1,
+  5: 5,
+  6: 4,
+  7: 3,
 };
 
 export function observerSlotForPosition(position: number): CanonicalSlot | null {
@@ -99,21 +121,11 @@ export function observerSlotForPosition(position: number): CanonicalSlot | null 
   return s ?? null;
 }
 
-/**
- * Clockwise distance from viewer to other position around the 7-seat ring.
- * Distance 0 = self (HOME), 1..6 = other seats in clockwise order.
- */
 export function clockwiseDistance(viewerPosition: number, otherPosition: number): number {
   const ring = 7;
   return ((otherPosition - viewerPosition) + ring) % ring;
 }
 
-/**
- * Active-canonical mapping for a seated viewer.
- * Distance 0 → HOME; distances 1..6 map to perimeter slots in
- * clockwise order (5, 4, 3, 2, 1, 0) so the seat immediately
- * clockwise of the viewer renders at bottom-right.
- */
 const ACTIVE_DISTANCE_TO_SLOT: Record<number, CanonicalSlot> = {
   1: 5,
   2: 4,
@@ -130,28 +142,21 @@ export function activeSlotForDistance(distance: number): CanonicalSlot | null {
 
 // ── Resolver ──────────────────────────────────────────────────
 
-/**
- * Resolve every input seat to its canonical anchor slot under the
- * given projection mode. Returns a stable array (same order as input).
- *
- * Contractual behavior:
- *   - Hidden seats → slot: null (never reflow others).
- *   - Unoccupied seats are still anchored (open seats render at their
- *     anchor); callers may suppress rendering separately.
- *   - 2-player active-canonical with viewer present → opponent is
- *     forced to FACE_TO_FACE regardless of absolute position.
- */
 export function resolveSeatAnchors(
   ctx: SeatAnchorResolutionContext,
 ): ResolvedSeatAnchor[] {
   checkProjectionMode(ctx.projectionMode, ctx.gameId);
 
-  const { projectionMode, viewerPosition, seats } = ctx;
+  const { projectionMode, viewerPosition, seats, gameType } = ctx;
 
-  // 2P face-to-face check (active-canonical only).
+  // 2P face-to-face is gated on GAME TYPE, not player count.
+  // Multiplayer-capable games preserve relative seating even when only
+  // two humans are currently seated.
+  const isTwoPlayerGameType = isInherentlyTwoPlayerGameType(gameType);
   const activeOccupied = seats.filter(s => s.occupied && !s.hidden);
-  const is2pCanonical =
+  const canCanonicalize2p =
     projectionMode === 'active-canonical' &&
+    isTwoPlayerGameType &&
     viewerPosition !== null &&
     activeOccupied.length === 2 &&
     activeOccupied.some(s => s.position === viewerPosition);
@@ -170,7 +175,7 @@ export function resolveSeatAnchors(
     }
 
     // active-canonical
-    if (is2pCanonical && seat.position !== viewerPosition && seat.occupied) {
+    if (canCanonicalize2p && seat.position !== viewerPosition && seat.occupied) {
       if (import.meta.env.DEV) {
         recordShellEvent('seat-anchor-canonicalized-2p', {
           gameId: ctx.gameId ?? null,
@@ -178,6 +183,7 @@ export function resolveSeatAnchors(
           detail: {
             viewerPosition,
             opponentPosition: seat.position,
+            reason: 'inherently-2p-game-type',
           },
         });
       }
@@ -197,11 +203,6 @@ export function resolveSeatAnchors(
   });
 }
 
-/**
- * Convenience: lookup the canonical slot for a single position.
- * Prefer resolveSeatAnchors for whole-table renders so 2P
- * canonicalization is applied consistently.
- */
 export function resolveSingleAnchor(
   position: number,
   ctx: Omit<SeatAnchorResolutionContext, 'seats'> & { seats?: SeatAnchorInput[] },
