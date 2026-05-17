@@ -9045,7 +9045,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     <DebugLogToggle />
     </div>
-    </ShellWrap>
+  );
+
+  return (
+    <VisualPreferencesProvider userId={user?.id}>
+      <GameDeckColorModeSync
+        playerId={currentPlayer?.id}
+        playerDeckColorMode={currentPlayer?.deck_color_mode}
+        onModeChange={() => {}}
+      />
+      {enableOuterShell ? (
+        <PersistentTableShell gameId={gameId ?? undefined} gameType={game.game_type}>
+          {innerTree}
+        </PersistentTableShell>
+      ) : innerTree}
     </VisualPreferencesProvider>
   );
 };
