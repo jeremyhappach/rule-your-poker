@@ -5906,6 +5906,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           next_round_number: null,
           pot: 0,
           all_decisions_in: false,
+          all_decisions_in_round_id: null,
           game_over_at: null,
           buck_position: null,
           total_hands: 0
@@ -5970,6 +5971,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         next_round_number: null,
         pot: 0,
         all_decisions_in: false,
+        all_decisions_in_round_id: null,
         game_over_at: null,
         buck_position: null,
         total_hands: 0,

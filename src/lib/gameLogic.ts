@@ -450,6 +450,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] Game state updated:', {
     current_round: insertedRound.round_number,
     all_decisions_in: false,
+    all_decisions_in_round_id: null,
     pot: currentPot + initialPot,
     total_hands: insertedRound.round_number === 1 ? insertedRound.hand_number : currentHandNumber,
   });
@@ -1472,6 +1473,7 @@ async function handleGameOver(
       current_round: null,
       awaiting_next_round: false,
       all_decisions_in: false,
+      all_decisions_in_round_id: null,
       last_round_result: gameWinMessage,
       game_over_at: null,  // NULL - frontend animation will set this after completing
       pot: 0,  // Critical: always reset pot
