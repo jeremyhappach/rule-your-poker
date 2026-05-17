@@ -428,59 +428,13 @@ export function YahtzeeGameTable({
     };
   }, [gameId]);
 
-  /* ---- Fallback polling for opponent dice (guards against missed realtime events) ---- */
-  const pollActiveRef = useRef(false);
-  useEffect(() => {
-    const phase = yahtzeeState?.gamePhase || 'waiting';
-    const turnPlayerId = yahtzeeState?.currentTurnPlayerId;
-    const myTurn = players.find(p => p.id === turnPlayerId)?.user_id === currentUserId && phase === 'playing';
-
-    if (!currentRoundId || phase !== 'playing' || myTurn) {
-      pollActiveRef.current = false;
-      return;
-    }
-
-    pollActiveRef.current = true;
-    let active = true;
-    let pollInterval = 2500;
-    let lastKnownJson: string | null = null;
-
-    const poll = async () => {
-      if (!active) return;
-      try {
-        const { data } = await supabase
-          .from('rounds')
-          .select('yahtzee_state')
-          .eq('id', currentRoundId)
-          .maybeSingle();
-
-        if (!active || !data?.yahtzee_state) {
-          pollInterval = Math.min(pollInterval * 1.5, 10000);
-          if (active) timeoutId = setTimeout(poll, pollInterval);
-          return;
-        }
-
-        const json = JSON.stringify(data.yahtzee_state);
-        if (json !== lastKnownJson) {
-          lastKnownJson = json;
-          pollInterval = 2500;
-          onRefetch();
-        } else {
-          pollInterval = Math.min(pollInterval * 1.5, 10000);
-        }
-      } catch {
-        pollInterval = Math.min(pollInterval * 1.5, 10000);
-      }
-      if (active) timeoutId = setTimeout(poll, pollInterval);
-    };
-
-    let timeoutId = setTimeout(poll, pollInterval);
-
-    return () => {
-      active = false;
-      clearTimeout(timeoutId);
-    };
-  }, [currentRoundId, yahtzeeState?.gamePhase, yahtzeeState?.currentTurnPlayerId, currentUserId, onRefetch]);
+  // NOTE: Fallback polling for opponent dice was REMOVED as part of the
+  // Yahtzee no-blind-spot framework cutover. It violated the core project
+  // rule against polling-based safety nets and could mask realtime delivery
+  // bugs. Realtime subscription in Game.tsx (postgres_changes on rounds)
+  // is the single source of authoritative updates; if a snapshot is missed
+  // there, the framework's progress-vector gate and identity reset are the
+  // recovery surface — not a hidden poll loop.
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
