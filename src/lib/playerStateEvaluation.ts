@@ -453,18 +453,26 @@ async function findEligibleHumanDealer(gameId: string): Promise<number | 'select
  * Handle rejoin request from a sitting-out player
  */
 export async function handlePlayerRejoin(playerId: string): Promise<boolean> {
-  console.log('[PLAYER REJOIN] Setting waiting=true for player:', playerId);
-  
+  console.log('[PLAYER REJOIN] Setting waiting=true and clearing pending sit-out intent for player:', playerId);
+
+  // Rejoin/opt-in explicitly cancels any pending sit-out intent. Without this,
+  // a player who timed out (sit_out_next_hand=true), then rejoined and played
+  // the next dealer game, would still be converted back to sitting_out at the
+  // dealer-game boundary by evaluatePlayerStatesEndOfGame.
   const { error } = await supabase
     .from('players')
-    .update({ waiting: true })
+    .update({
+      waiting: true,
+      sit_out_next_hand: false,
+      stand_up_next_hand: false,
+    })
     .eq('id', playerId);
-  
+
   if (error) {
     console.error('[PLAYER REJOIN] Error:', error);
     return false;
   }
-  
+
   return true;
 }
 
