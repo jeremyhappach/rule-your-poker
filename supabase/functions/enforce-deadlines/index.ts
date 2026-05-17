@@ -666,9 +666,12 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               });
             }
+            // TIMEOUT CONTRACT: set auto_fold (persistent for remainder of this dealer game)
+            // AND sit_out_next_hand=true (converted to sitting_out at the next dealer-game
+            // boundary by evaluatePlayerStatesEndOfGame, NOT at each hand boundary).
             const { data: humanUpdateResult } = await supabase
               .from('players')
-              .update({ current_decision: 'fold', decision_locked: true, auto_fold: true })
+              .update({ current_decision: 'fold', decision_locked: true, auto_fold: true, sit_out_next_hand: true })
               .eq('id', currentTurnPlayer.id)
               .eq('decision_locked', false)
               .select();
