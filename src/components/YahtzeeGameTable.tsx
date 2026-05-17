@@ -39,6 +39,7 @@ import {
 import {
   getDebugStraightHoldDecision, getDebugStraightCategoryChoice, shouldDebugStraightStopRolling,
 } from "@/lib/yahtzeeBotDebugStraight";
+// NOTE: isYahtzeeBotPauseEnabled removed (closed incident; investigation complete).
 import { isYahtzeeStraightDebugEnabled, isYahtzeeBotPauseEnabled } from "@/lib/debugFlags";
 import { supabase } from "@/integrations/supabase/client";
 import { getBotAlias } from "@/lib/botAlias";

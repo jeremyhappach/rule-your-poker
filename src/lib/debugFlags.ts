@@ -76,14 +76,3 @@ export function isYahtzeeStraightDebugEnabled(): boolean {
   return hasQueryFlag('debug_yahtzee_straight') || hasLocalFlag('ptp_debug_yahtzee_straight');
 }
 
-/**
- * TEMP DEBUG PAUSE FOR HELD-ROW ORDERING INVESTIGATION
- * MUST REMOVE AFTER CAPTURE / FIX IS COMPLETE
- *
- * Adds a 5-second pause after each Yahtzee bot roll settles,
- * before the bot proceeds to hold decisions or category selection.
- * Enable via ?debug_yahtzee_pause=1 or localStorage ptp_debug_yahtzee_pause = "1"
- */
-export function isYahtzeeBotPauseEnabled(): boolean {
-  return hasQueryFlag('debug_yahtzee_pause') || hasLocalFlag('ptp_debug_yahtzee_pause');
-}
