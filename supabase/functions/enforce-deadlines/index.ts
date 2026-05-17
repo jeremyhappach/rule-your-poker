@@ -243,132 +243,43 @@ serve(async (req) => {
       });
     }
 
-    // ============= 1. ENFORCE CONFIG DEADLINE =============
+    // ============= 1. ENFORCE CONFIG DEADLINE (shared authoritative handler) =============
     if ((game.status === 'dealer_selection' || game.status === 'configuring' || game.status === 'game_selection') && game.config_deadline) {
       const configDeadline = new Date(game.config_deadline);
       const msUntilDeadline = configDeadline.getTime() - now.getTime();
-      
+
       if (msUntilDeadline <= 0) {
-        console.log('[ENFORCE-CLIENT] Config deadline EXPIRED for game', gameId);
+        console.log('[ENFORCE-CLIENT] Config deadline EXPIRED for game', gameId, '— invoking shared RPC');
 
-        // P0 GUARD (TIMER-01): re-fetch authoritative state and suppress
-        // if the game has already advanced past the configuration phase.
-        const { data: freshGame } = await supabase
-          .from('games')
-          .select('status, config_complete, current_game_uuid, config_deadline')
-          .eq('id', gameId)
-          .maybeSingle();
+        const { data: outcomeData, error: rpcErr } = await supabase.rpc(
+          'handle_config_deadline_timeout',
+          { _game_id: gameId }
+        );
 
-        const allowedStatuses = ['dealer_selection', 'configuring', 'game_selection'];
-        if (
-          !freshGame ||
-          !allowedStatuses.includes(freshGame.status) ||
-          freshGame.config_complete === true ||
-          freshGame.current_game_uuid != null ||
-          !freshGame.config_deadline ||
-          new Date(freshGame.config_deadline).getTime() > now.getTime()
-        ) {
-          console.log('[ENFORCE-CLIENT] config-timeout-suppressed (game advanced)', {
-            gameId,
-            status: freshGame?.status,
-            config_complete: freshGame?.config_complete,
-            current_game_uuid: freshGame?.current_game_uuid,
-            config_deadline: freshGame?.config_deadline,
-          });
-          actionsTaken.push('config-timeout-suppressed: game already advanced');
-          // Skip the rest of the config branch.
+        if (rpcErr) {
+          console.error('[ENFORCE-CLIENT] handle_config_deadline_timeout RPC failed:', rpcErr);
+          actionsTaken.push(`Config timeout: RPC error ${rpcErr.message}`);
         } else {
+          const outcome = (outcomeData as any)?.outcome;
+          actionsTaken.push(`Config timeout: ${outcome ?? 'unknown'}`);
 
-        const { data: players } = await supabase
-          .from('players')
-          .select('*')
-          .eq('game_id', gameId);
-
-        const dealerPlayer = players?.find((p: any) => p.position === game.dealer_position);
-
-        if (dealerPlayer) {
-          await logSittingOutChange(
-            supabase,
-            dealerPlayer.id,
-            dealerPlayer.user_id,
-            gameId,
-            null,
-            dealerPlayer.is_bot,
-            'sitting_out',
-            dealerPlayer.sitting_out,
-            true,
-            'Dealer timed out during config phase',
-            'enforce-deadlines/client:config_deadline',
-            { dealer_position: game.dealer_position, config_deadline: game.config_deadline }
-          );
-
-          // Mark dealer as sitting out
-          await supabase
-            .from('players')
-            .update({ sitting_out: true, waiting: false })
-            .eq('id', dealerPlayer.id);
-
-          actionsTaken.push(`Config timeout: Dealer at position ${dealerPlayer.position} sat out`);
-
-          // Fetch game defaults to check allow_bot_dealers
-          const { data: gameDefaults } = await supabase
-            .from('game_defaults')
-            .select('allow_bot_dealers')
-            .eq('game_type', 'holm')
-            .maybeSingle();
-          
-          const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
-
-          // Re-fetch players to get updated list
-          const { data: freshPlayers } = await supabase
-            .from('players')
-            .select('*')
-            .eq('game_id', gameId);
-
-          // Count remaining eligible dealers
-          const eligibleDealers = freshPlayers?.filter((p: any) =>
-            !p.sitting_out &&
-            p.id !== dealerPlayer.id &&
-            (allowBotDealers || !p.is_bot)
-          ) || [];
-
-          if (eligibleDealers.length >= 1) {
-            // Rotate dealer to next eligible player
-            const sortedEligible = eligibleDealers.sort((a: any, b: any) => a.position - b.position);
-            const currentDealerIdx = sortedEligible.findIndex((p: any) => p.position > game.dealer_position);
-            const nextDealer = currentDealerIdx >= 0
-              ? sortedEligible[currentDealerIdx]
-              : sortedEligible[0];
-
-            const setupSeconds = typeof game.game_setup_timer_seconds === 'number'
-              ? Math.max(1, game.game_setup_timer_seconds)
-              : 30;
-            const newConfigDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
-
-            await supabase
-              .from('games')
-              .update({
-                dealer_position: nextDealer.position,
-                config_deadline: newConfigDeadline,
-              })
-              .eq('id', gameId);
-
-            actionsTaken.push(`Config timeout: Rotated dealer to position ${nextDealer.position}`);
-          } else {
-            // Not enough eligible dealers
-            await supabase
-              .from('games')
-              .update({
-                status: 'waiting_for_players',
-                config_deadline: null,
-                config_complete: false,
-              })
-              .eq('id', gameId);
-
-            actionsTaken.push('Config timeout: No eligible dealers, returning to waiting_for_players');
+          // For empty_no_humans, the RPC leaves the row intact so the caller can
+          // cascade-delete. In edge-function context there is no UI countdown.
+          if (outcome === 'empty_no_humans') {
+            const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', gameId);
+            const roundIds = (roundRows ?? []).map((r: any) => r.id);
+            if (roundIds.length > 0) {
+              await supabase.from('player_cards').delete().in('round_id', roundIds);
+              await supabase.from('player_actions').delete().in('round_id', roundIds);
+            }
+            await supabase.from('chip_stack_emoticons').delete().eq('game_id', gameId);
+            await supabase.from('chat_messages').delete().eq('game_id', gameId);
+            await supabase.from('rounds').delete().eq('game_id', gameId);
+            await supabase.from('players').delete().eq('game_id', gameId);
+            await supabase.from('games').delete().eq('id', gameId);
+            actionsTaken.push('Config timeout: cascade-deleted empty session');
           }
         }
-        } // end TIMER-01 guard else
       }
     }
 
