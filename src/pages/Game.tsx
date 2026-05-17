@@ -7255,8 +7255,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount);
 
-          // SESSION HYGIENE: sanitize automation state for ALL players before branching.
+          // SESSION HYGIENE: sanitize automation + clear dealer-game transient
+          // session state for ALL players before branching.
           await sanitizePlayerAutomationStateForSession(gameId);
+          await clearDealerGameTransientSessionState(gameId);
 
           // Priority 1: If no active human players, END SESSION completely
           if (activeHumanCount < 1) {
