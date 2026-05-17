@@ -8,9 +8,10 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('./diagnostics', () => ({
-  recordShellEvent: vi.fn(),
-}));
+vi.mock('./diagnostics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./diagnostics')>();
+  return { ...actual, recordShellEvent: vi.fn() };
+});
 
 import { PersistentTableShell } from './PersistentTableShell';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
