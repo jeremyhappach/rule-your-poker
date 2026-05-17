@@ -13,7 +13,9 @@
 
 export const POKER_VARIANT_FAMILY = new Set<string>([
   'holm-game',
-  'three-five-seven',
+  '3-5-7',
+  '3-5-7-game',
+  '357',
   'horses',
   'ship-captain-crew',
 ]);
