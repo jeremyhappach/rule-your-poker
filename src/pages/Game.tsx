@@ -5479,7 +5479,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const { error } = await supabase
       .from('games')
       .update({ 
-        status: 'dealer_selection'
+        status: 'dealer_selection',
+        // Clear any stale dealer_selection_state from a prior selection so observers
+        // and the host do not render the previous draw's cards/winner.
+        dealer_selection_state: null,
       })
       .eq('id', gameId);
 
