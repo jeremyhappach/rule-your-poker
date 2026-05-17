@@ -395,6 +395,10 @@ function buildThreeFiveSevenSnapshot(
     buckPosition: gameData.buck_position ?? 0,
     dealerPosition: gameData.dealer_position ?? 0,
     cardsDealt: currentRound.cards_dealt,
+    // Defensive monotonicity stamp — see threeFiveSevenProgress.ts.
+    // Pinned at snapshot-build time so a stale closure-captured snapshot
+    // cannot regress the hand dim of the progress vector at a hand boundary.
+    __syncHandNumber: currentRound.hand_number ?? 1,
   };
 }
 
@@ -701,7 +705,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
   const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
-    getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
+    getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0, 0, 0],
     debugLabel: '357',
     describeState: (s) => s ? {
       hand: s.handNumber,
@@ -5160,7 +5164,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             newHandNumber: snapshot.handNumber,
             wasFrozen: threeFiveSevenSync.isFrozen,
           }, snapshot.roundId);
-          threeFiveSevenSync.reset(snapshot);
+          // Clean-baseline reset: clear stale terminal authoritative snapshot
+          // from the prior round so the new round's fresh state is never
+          // rejected as "regressive" by the progress-vector gate.
+          // (Mirrors Horses P0 #2 and Holm framework cutover.)
+          threeFiveSevenSync.reset(null);
+          const boundaryResult = threeFiveSevenSync.receiveAuthoritativeUpdate(snapshot);
 
           // ── 357-presentation-cleared-by-reset: trace what reset did ──
           persist357Investigation(gameData.id, snapshot.handNumber, '357-presentation-cleared-by-reset', {
@@ -5171,8 +5180,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             resetCalledWithRoundId: snapshot.roundId.slice(0, 8),
             resetCalledWithHandNumber: snapshot.handNumber,
             resetCalledWithRoundNumber: snapshot.roundNumber,
-            // After reset, presentationState is still the React state from current render (stale read).
-            // The REAL proof is whether presentation updates on the NEXT render.
+            postResetAccepted: boundaryResult.accepted,
+            postResetReason: boundaryResult.reason,
             postResetPresentationRoundId: threeFiveSevenSync.presentationState?.roundId?.slice(0, 8) ?? null,
             isFrozenAfterReset: threeFiveSevenSync.isFrozen,
           }, snapshot.roundId);
