@@ -1,15 +1,12 @@
+// @vitest-environment jsdom
+
 /**
  * PersistentTableShell — Phase 4 scaffolding tests.
- *
- * Verifies the shell mounts as a transparent wrapper, stamps the
- * expected data attributes, optionally composes SeatAnchorLayer when
- * seat inputs are provided, and emits mount/unmount telemetry once
- * per shell instance.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import React from 'react';
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./diagnostics', () => ({
   recordShellEvent: vi.fn(),
@@ -19,71 +16,96 @@ import { PersistentTableShell } from './PersistentTableShell';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { recordShellEvent } from './diagnostics';
 
+let container: HTMLDivElement;
+let root: Root;
+
 beforeEach(() => {
   (recordShellEvent as unknown as ReturnType<typeof vi.fn>).mockClear();
-  cleanup();
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+});
+
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
 });
 
 describe('PersistentTableShell', () => {
   it('renders a transparent canonical-shell root wrapper', () => {
-    render(
-      <PersistentTableShell gameId="g1" gameType="cribbage">
-        <span data-testid="child">hello</span>
-      </PersistentTableShell>,
-    );
-    const child = screen.getByTestId('child');
-    const root = child.parentElement!;
-    expect(root.getAttribute('data-canonical-shell-root')).toBe('');
-    expect(root.getAttribute('data-shell-game-type')).toBe('cribbage');
+    act(() => {
+      root.render(
+        <PersistentTableShell gameId="g1" gameType="cribbage">
+          <span data-testid="child">hello</span>
+        </PersistentTableShell>,
+      );
+    });
+    const child = container.querySelector('[data-testid="child"]') as HTMLElement;
+    expect(child).toBeTruthy();
+    const wrapper = child.parentElement!;
+    expect(wrapper.getAttribute('data-canonical-shell-root')).toBe('');
+    expect(wrapper.getAttribute('data-shell-game-type')).toBe('cribbage');
   });
 
   it('does not mount SeatAnchorLayer when seats are not provided', () => {
+    let saw: unknown = 'init';
     function Probe() {
-      const ctx = useSeatAnchorsOptional();
-      return <span data-testid="probe">{ctx ? 'yes' : 'no'}</span>;
+      saw = useSeatAnchorsOptional();
+      return null;
     }
-    render(
-      <PersistentTableShell gameId="g1" gameType="cribbage">
-        <Probe />
-      </PersistentTableShell>,
-    );
-    expect(screen.getByTestId('probe').textContent).toBe('no');
+    act(() => {
+      root.render(
+        <PersistentTableShell gameId="g1" gameType="cribbage">
+          <Probe />
+        </PersistentTableShell>,
+      );
+    });
+    expect(saw).toBeNull();
   });
 
   it('mounts SeatAnchorLayer when projectionMode + seats provided', () => {
+    let count = -1;
     function Probe() {
       const ctx = useSeatAnchorsOptional();
-      return <span data-testid="probe">{ctx ? `n=${ctx.anchors.length}` : 'no'}</span>;
+      count = ctx ? ctx.anchors.length : -1;
+      return null;
     }
-    render(
-      <PersistentTableShell
-        gameId="g1"
-        gameType="horses"
-        projectionMode="observer-absolute"
-        viewerPosition={null}
-        seats={[
-          { position: 1, occupied: true },
-          { position: 2, occupied: true },
-        ]}
-      >
-        <Probe />
-      </PersistentTableShell>,
-    );
-    expect(screen.getByTestId('probe').textContent).toBe('n=2');
+    act(() => {
+      root.render(
+        <PersistentTableShell
+          gameId="g1"
+          gameType="horses"
+          projectionMode="observer-absolute"
+          viewerPosition={null}
+          seats={[
+            { position: 1, occupied: true },
+            { position: 2, occupied: true },
+          ]}
+        >
+          <Probe />
+        </PersistentTableShell>,
+      );
+    });
+    expect(count).toBe(2);
   });
 
-  it('emits shell-mounted on mount and shell-unmounted on unmount, once each', () => {
-    const { unmount } = render(
-      <PersistentTableShell gameId="g1" gameType="cribbage">
-        <span />
-      </PersistentTableShell>,
-    );
-    const calls = (recordShellEvent as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.filter(c => c[0] === 'shell-mounted')).toHaveLength(1);
-    expect(calls.filter(c => c[0] === 'shell-unmounted')).toHaveLength(0);
-    unmount();
-    const after = (recordShellEvent as unknown as ReturnType<typeof vi.fn>).mock.calls;
-    expect(after.filter(c => c[0] === 'shell-mounted')).toHaveLength(1);
-    expect(after.filter(c => c[0] === 'shell-unmounted')).toHaveLength(1);
+  it('emits shell-mounted once on mount and shell-unmounted once on unmount', () => {
+    const localContainer = document.createElement('div');
+    document.body.appendChild(localContainer);
+    const localRoot = createRoot(localContainer);
+    act(() => {
+      localRoot.render(
+        <PersistentTableShell gameId="g1" gameType="cribbage">
+          <span />
+        </PersistentTableShell>,
+      );
+    });
+    const mock = recordShellEvent as unknown as ReturnType<typeof vi.fn>;
+    expect(mock.mock.calls.filter(c => c[0] === 'shell-mounted')).toHaveLength(1);
+    expect(mock.mock.calls.filter(c => c[0] === 'shell-unmounted')).toHaveLength(0);
+    act(() => localRoot.unmount());
+    expect(mock.mock.calls.filter(c => c[0] === 'shell-mounted')).toHaveLength(1);
+    expect(mock.mock.calls.filter(c => c[0] === 'shell-unmounted')).toHaveLength(1);
+    localContainer.remove();
   });
 });
