@@ -7939,6 +7939,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
+  // Phase 5: Outer canonical shell wraps the poker-variant render tree
+  // so the shell instance survives game.status transitions. For non
+  // poker-variant games (Cribbage / Gin Rummy / Yahtzee / Trivia) the
+  // existing unified persistent tables remain authoritative and no
+  // outer shell wraps them. The inner MobileGameTable shell (Phase 4)
+  // has been removed; this outer shell is the single ownership boundary.
+  const enableOuterShell =
+    isPokerVariantFamily(game.game_type) &&
+    import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
+
+  const innerContent = (
+    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
+      <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>__INNER_BODY__</div></div>);
+
   return (
     <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync 
@@ -7946,6 +7960,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         playerDeckColorMode={currentPlayer?.deck_color_mode}
         onModeChange={() => {}}
       />
+    {enableOuterShell ? (
+      <PersistentTableShell gameId={gameId ?? undefined} gameType={game.game_type}>
+        <OuterShellBody />
+      </PersistentTableShell>
+    ) : (
+      <OuterShellBody />
+    )}
+    </VisualPreferencesProvider>
+  );
+
+  function OuterShellBody() { return (<>
     <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
