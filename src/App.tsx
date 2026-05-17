@@ -16,6 +16,7 @@ import DicePreview from "./pages/DicePreview";
 import DeadlineDebug from "./pages/DeadlineDebug";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { AppNetworkSim } from "@/components/AppNetworkSim";
+import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
 
 const queryClient = new QueryClient();
 
@@ -49,30 +50,32 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppNetworkSim>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route
-                path="/game/:gameId"
-                element={
-                  <RouteErrorBoundary title="Game screen crashed">
-                    <Game />
-                  </RouteErrorBoundary>
-                }
-              />
-              <Route path="/test-hands" element={<HandEvalTest />} />
-              <Route path="/debug-hands" element={<HandEvalDebug />} />
-              <Route path="/dice-preview" element={<DicePreview />} />
-              <Route path="/debug-deadlines" element={<DeadlineDebug />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AppNetworkSim>
-        </BrowserRouter>
+        <ResponsiveGeometryProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppNetworkSim>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route
+                  path="/game/:gameId"
+                  element={
+                    <RouteErrorBoundary title="Game screen crashed">
+                      <Game />
+                    </RouteErrorBoundary>
+                  }
+                />
+                <Route path="/test-hands" element={<HandEvalTest />} />
+                <Route path="/debug-hands" element={<HandEvalDebug />} />
+                <Route path="/dice-preview" element={<DicePreview />} />
+                <Route path="/debug-deadlines" element={<DeadlineDebug />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppNetworkSim>
+          </BrowserRouter>
+        </ResponsiveGeometryProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
