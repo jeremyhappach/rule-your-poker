@@ -101,7 +101,34 @@ interface Player {
   };
 }
 
-interface GameData {
+/**
+ * F5.1/F4.2: Read the `all_decisions_in` flag identity-scoped to a specific
+ * round id. The raw `games.all_decisions_in` boolean can persist across hand/
+ * round transitions (the systemic stale progression-flag bug class). Every
+ * render-driving and side-effect-driving read MUST go through this helper so
+ * a flag set against a prior round can never satisfy a check made for a fresh
+ * round.
+ *
+ * - Returns false when the game has no flag set.
+ * - Returns false when the flag has a scoping round id that differs from
+ *   `roundId`.
+ * - Returns true when the flag is set and either (a) no scoping round id is
+ *   recorded (legacy unscoped writers — backwards compatibility) or (b) the
+ *   scoping round id matches `roundId`.
+ */
+function isAllDecisionsInFor(
+  game:
+    | { all_decisions_in?: boolean | null; all_decisions_in_round_id?: string | null }
+    | null
+    | undefined,
+  roundId: string | null | undefined,
+): boolean {
+  if (!game || game.all_decisions_in !== true) return false;
+  const scopeId = game.all_decisions_in_round_id;
+  if (!scopeId) return true; // legacy / unmigrated writer
+  return !!roundId && scopeId === roundId;
+}
+
   id: string;
   name?: string;
   status: string;
