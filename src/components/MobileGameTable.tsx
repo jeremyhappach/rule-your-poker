@@ -6894,5 +6894,5 @@ export const MobileGameTable = ({
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
-    </div>;
+    </div></PersistentTableShell>;
 };
