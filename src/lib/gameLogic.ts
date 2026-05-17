@@ -1138,16 +1138,37 @@ async function checkAllDecisionsIn(gameId: string) {
 
   if (allDecided) {
     console.log(`[CHECK_ALL_DECISIONS] ✅ ALL DECIDED - attempting to set all_decisions_in flag`);
-    
-    // Try to atomically set all_decisions_in flag
+
+    // F5.1: Identity-scope the flag by stamping it with the current round_id.
+    // Fetch the active round so the flag is rejectable by readers if a fresher
+    // round overtakes it. Scope to current_game_uuid (dealer game) to avoid
+    // picking up rows from prior dealer games with the same hand/round numbers.
+    let activeRoundId: string | null = null;
+    try {
+      let roundQuery = supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', gameId)
+        .order('hand_number', { ascending: false, nullsFirst: false })
+        .order('round_number', { ascending: false, nullsFirst: false })
+        .limit(1);
+      const dgId = (game as any)?.current_game_uuid as string | null | undefined;
+      if (dgId) roundQuery = roundQuery.eq('dealer_game_id', dgId);
+      const { data: activeRound } = await roundQuery.maybeSingle();
+      activeRoundId = activeRound?.id ?? null;
+    } catch (e) {
+      console.warn('[CHECK_ALL_DECISIONS] could not resolve active round id for scoping:', e);
+    }
+
+    // Try to atomically set all_decisions_in flag together with the scoping round id
     const { data: updateResult, error } = await supabase
       .from('games')
-      .update({ all_decisions_in: true })
+      .update({ all_decisions_in: true, all_decisions_in_round_id: activeRoundId })
       .eq('id', gameId)
       .eq('all_decisions_in', false) // Only update if not already set
       .select();
 
-    console.log(`[CHECK_ALL_DECISIONS] all_decisions_in UPDATE result: affected_rows=${updateResult?.length ?? 0} error=${error?.message ?? 'none'}`);
+    console.log(`[CHECK_ALL_DECISIONS] all_decisions_in UPDATE result: affected_rows=${updateResult?.length ?? 0} round_id=${activeRoundId?.slice(0,8) ?? 'null'} error=${error?.message ?? 'none'}`);
 
     // Log to persistent debug table
     await logAllDecisionsIn(gameId, null, true, 'gameLogic:checkAllDecisionsIn', {
