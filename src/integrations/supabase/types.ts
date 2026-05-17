@@ -1715,6 +1715,10 @@ export type Database = {
         Args: { amount: number; player_ids: string[] }
         Returns: undefined
       }
+      handle_config_deadline_timeout: {
+        Args: { _game_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
