@@ -8774,7 +8774,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={isInProgress ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
-              maxTime={isInProgress ? decisionTimerSeconds : undefined}
+              maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
               lastRoundResult={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
