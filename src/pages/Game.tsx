@@ -8290,8 +8290,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       if (eligibleDealerCount < 1 || activePlayerCount < 2) {
                         console.log('[SIT OUT] Not enough players to continue - reverting to waiting');
                         
-                        // Remove sitting out players - they need to re-select seats
-                        await removeSittingOutPlayersOnWaiting(gameId);
+                        // Session hygiene + keep passive sit-outs seated (no status='left').
+                        await sanitizePlayerAutomationStateForSession(gameId);
                         
                         // Revert to waiting status
                         await supabase
