@@ -8266,20 +8266,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSelectionAnnouncement={dealerSelectionAnnouncement}
                     dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
                   />
-                {/* High Card Dealer Selection */}
-                <HighCardDealerSelection 
+                {/* PHASE 4: HighCardDealerSelection mount lifted to single shell-owned site above. */}
+                <MountChurnLogger
                   gameId={gameId!}
-                  players={players}
-                  onComplete={selectDealer}
-                  isHost={isCreator}
-                  allowBotDealers={allowBotDealers}
-                  syncedState={(game as any).dealer_selection_state ?? null}
-                  onCardsUpdate={setDealerSelectionCards}
-                  onAnnouncementUpdate={(msg, complete) => {
-                    setDealerSelectionAnnouncement(msg);
-                    setDealerSelectionComplete(complete);
-                  }}
-                  onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  label="MobileGameTable:dealer-selection-bg"
+                  context={{ status: game.status, gameType: game.game_type }}
                 />
               </>
             )}
