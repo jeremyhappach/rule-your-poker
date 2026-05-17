@@ -3774,9 +3774,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // stuck in "betting", a previous client likely set the flag but crashed/refreshed before
   // calling endRound(). This must be idempotent and race-safe.
   //
-  // CRITICAL GUARD: Verify that players in this round actually have decisions before firing.
-  // A stale all_decisions_in=true from a previous hand can race with a new round's creation,
-  // causing endRound to fire with zero decisions (which treats it as "everyone folded" → pussy tax).
+  // P0 follow-up: identity-scoping via isAllDecisionsInFor() guarantees the flag was set against
+  // THIS round, so the prior "stale flag from a previous hand → reset it" branch is no longer
+  // reachable and has been removed.
   useEffect(() => {
     const is357Game =
       game?.game_type === "3-5-7" || game?.game_type === "3-5-7-game" || game?.game_type === "357";
@@ -3788,29 +3788,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
     if (!isAllDecisionsInFor(game, currentRound.id)) return;
 
-    // CRITICAL: Verify at least one player has a decision for THIS round.
-    // If no decisions exist, all_decisions_in is stale from a prior round — reset it.
-    const activePlayers = (players || []).filter(
-      (p: any) => p.status === "active" && !p.sitting_out
-    );
-    const withDecision = activePlayers.filter(
-      (p: any) => p.current_decision === "stay" || p.current_decision === "fold"
-    );
-
-    if (withDecision.length === 0 && activePlayers.length > 0) {
-      console.error("[357 RECOVERY] ❌ STALE all_decisions_in - no player decisions exist. Resetting flag.", {
-        gameId,
-        roundId: currentRound.id,
-        activeCount: activePlayers.length,
-      });
-      // Reset the stale flag so this effect doesn't loop
-      void supabase
-        .from("games")
-        .update({ all_decisions_in: false, all_decisions_in_round_id: null })
-        .eq("id", gameId);
-      return;
-    }
-
     const key = `${currentRound.id}:recoverEndRound`;
     if (recover357EndRoundKeyRef.current === key) return;
     recover357EndRoundKeyRef.current = key;
@@ -3820,7 +3797,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       roundId: currentRound.id,
       handNumber: game?.total_hands,
       roundNumber: game?.current_round,
-      decidedPlayers: withDecision.length,
     });
 
     void endRound(gameId).catch((err) => {
@@ -3832,11 +3808,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.is_paused,
     game?.awaiting_next_round,
     game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     currentRound?.id,
     currentRound?.status,
     game?.total_hands,
     game?.current_round,
-    players,
     gameId,
   ]);
   
@@ -3879,6 +3855,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.status,
     game?.is_paused,
     game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     currentRound?.id,
     currentRound?.status,
     players,
@@ -3932,6 +3909,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.status,
     game?.is_paused,
     game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     currentRound?.id,
     currentRound?.status,
     players,
@@ -4024,7 +4002,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[TIMER CHECK]', { 
       timeLeft, 
       status: game?.status, 
-      all_decisions_in: game?.all_decisions_in, 
+      all_decisions_in: isAllDecisionsInFor(game, currentRound?.id),
+      raw_all_decisions_in: game?.all_decisions_in,
+      all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
       is_paused: game?.is_paused,
       timerTurnPosition,
       currentTurnPosition: currentRound?.current_turn_position,
@@ -4038,7 +4018,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // For 3-5-7 games: Auto-fold when timer reaches 0 (no turn position to check)
     const shouldAutoFold = timeLeft === 0 && 
         game?.status === 'in_progress' && 
-        !game.all_decisions_in && 
+        !isAllDecisionsInFor(game, currentRound?.id) && 
         !game?.is_paused &&
         !autoFoldingRef.current &&
         (isHolmGame 
@@ -4179,7 +4159,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })();
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, currentRound?.id, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   const awaitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -4241,7 +4221,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         awaitingPollRef.current = null;
       }
     };
-  }, [gameId, game?.game_type, currentRound?.status, game?.all_decisions_in, game?.awaiting_next_round, game?.status]);
+  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status]);
   
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
@@ -5383,7 +5363,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         lastTurnPosition,
         timerTurnPosition,
         awaiting_next_round: gameData.awaiting_next_round,
-        all_decisions_in: gameData.all_decisions_in
+        all_decisions_in: gameData.all_decisions_in,
+        all_decisions_in_round_id: gameData.all_decisions_in_round_id ?? null,
+        all_decisions_in_scoped: isAllDecisionsInFor(gameData, currentRound?.id)
       });
       
       // For Holm, use presentation-layer deadline only (no raw fallback to avoid identity drift).
