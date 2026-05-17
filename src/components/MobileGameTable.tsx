@@ -33,6 +33,7 @@ import {
   observerSlotForPosition as canonicalObserverSlot,
 } from "@/lib/canonicalShell/seatAnchors";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
+import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 
 import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
@@ -4255,7 +4256,7 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
-  return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+  return <PersistentTableShell gameId={gameId} gameType={gameType}><div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
@@ -6893,5 +6894,5 @@ export const MobileGameTable = ({
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
-    </div>;
+    </div></PersistentTableShell>;
 };
