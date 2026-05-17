@@ -493,6 +493,11 @@ const Game = () => {
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
+  // Per-deadline maxTime: captured from the first frame of a new deadline identity so
+  // visuals always start full and scale to the actual configured timeout window,
+  // independent of any stale game_defaults cache (memory or localStorage).
+  const [decisionMaxTime, setDecisionMaxTime] = useState<number | null>(null);
+  const decisionMaxTimeDeadlineRef = useRef<string | null>(null);
   const [cachedRoundData, setCachedRoundData] = useState<Round | null>(null); // Cache round data during game_over to preserve community cards
   const cachedRoundRef = useRef<Round | null>(null); // Ref for immediate cache access (survives re-renders)
   const gameTypeSwitchingRef = useRef<boolean>(false); // Guard against realtime overwrites during game type switches
@@ -2400,6 +2405,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         rawAllDecisionsIn: game?.all_decisions_in,
         allDecisionsInRoundId: game?.all_decisions_in_round_id ?? null,
       });
+      decisionMaxTimeDeadlineRef.current = null;
+      setDecisionMaxTime(null);
       return;
     }
 
@@ -2434,6 +2441,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const rawRemaining = calculateRemaining();
       const seed = rawRemaining > 0 ? rawRemaining : 1;
       setTimeLeft(seed);
+      // Capture maxTime from the actual deadline window on first frame of a new
+      // deadline identity. Guarantees the visual bar/ring starts full (timeLeft/maxTime = 1)
+      // and scales to the configured timeout — not to a stale cached default (e.g. 30s).
+      if (decisionMaxTimeDeadlineRef.current !== decisionDeadline) {
+        decisionMaxTimeDeadlineRef.current = decisionDeadline;
+        // Use raw remaining (not seed) so a tiny clock skew doesn't lock maxTime to 1.
+        // Fall back to configured timer if deadline already passed on first frame.
+        const captured = rawRemaining > 0 ? rawRemaining : (decisionTimerRef.current || 30);
+        setDecisionMaxTime(captured);
+      }
 
       // ── Targeted turn-transition timer instrumentation (issue #2) ──
       // One row per new decision_deadline identity. Captures server vs client
@@ -8640,7 +8657,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 allDecisionsIn={false}
                 playerCards={[]}
                 timeLeft={timeLeft}
-                maxTime={decisionTimerSeconds}
+                maxTime={decisionMaxTime ?? decisionTimerSeconds}
                 lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
                 dealerPosition={game.dealer_position}
                 legValue={game.leg_value ?? 0}
@@ -8757,7 +8774,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={isInProgress ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
-              maxTime={isInProgress ? decisionTimerSeconds : undefined}
+              maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
               lastRoundResult={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
