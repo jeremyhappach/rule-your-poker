@@ -4258,7 +4258,7 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
-  return <PersistentTableShell gameId={gameId} gameType={gameType}><div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+  return <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
