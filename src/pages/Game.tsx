@@ -5970,7 +5970,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           all_decisions_in_round_id: null,
           game_over_at: null,
           buck_position: null,
-          total_hands: 0
+          total_hands: 0,
+          // Clear any stale dealer_selection_state from a prior selection.
+          dealer_selection_state: null,
           // Don't set dealer_position - DealerSelection will handle it
         })
         .eq('id', gameId)
