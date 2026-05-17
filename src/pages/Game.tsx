@@ -129,6 +129,7 @@ function isAllDecisionsInFor(
   return !!roundId && scopeId === roundId;
 }
 
+interface GameData {
   id: string;
   name?: string;
   status: string;
