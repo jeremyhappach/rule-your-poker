@@ -496,9 +496,39 @@ export async function sanitizePlayerAutomationStateForSession(gameId: string): P
       pre_stay: false,
       ante_decision: null,
     })
-    .eq('game_id', gameId);
+     .eq('game_id', gameId);
   if (error) {
     console.error('[SESSION HYGIENE] Error sanitizing automation state:', error);
+  }
+}
+
+/**
+ * SESSION HYGIENE: Clear dealer-game-scoped transient state from the
+ * session/games row at every dealer-game terminal boundary. The invariant
+ * is: once a dealer game ends, no dealer-game-specific transient state
+ * should remain on the session row to leak into the next dealer game.
+ *
+ * Must be called AFTER participation reconciliation + automation sanitation
+ * and BEFORE branching to waiting / next-game selection / config.
+ */
+export async function clearDealerGameTransientSessionState(gameId: string): Promise<void> {
+  console.log('[SESSION HYGIENE] Clearing dealer-game transient session state for game:', gameId);
+  const { error } = await supabase
+    .from('games')
+    .update({
+      current_round: 0,
+      next_round_number: null,
+      awaiting_next_round: false,
+      last_round_result: null,
+      all_decisions_in: false,
+      all_decisions_in_round_id: null,
+      buck_position: null,
+      is_first_hand: false,
+      current_game_uuid: null,
+    })
+    .eq('id', gameId);
+  if (error) {
+    console.error('[SESSION HYGIENE] Error clearing transient session state:', error);
   }
 }
 

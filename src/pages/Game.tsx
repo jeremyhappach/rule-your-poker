@@ -39,7 +39,7 @@ import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession } from "@/lib/playerStateEvaluation";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
@@ -5729,9 +5729,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount, 'stood up:', playersStoodUp.length);
 
     // STEP 1b (SESSION HYGIENE): sanitize per-decision / timeout automation for ALL
-    // players in the session, regardless of which branch we take next. Must happen
-    // AFTER participation reconciliation and BEFORE branching to waiting / next dealer game.
+    // players in the session, then clear dealer-game-scoped transient session state
+    // from the games row. Both must happen AFTER participation reconciliation and
+    // BEFORE branching to waiting / next dealer game, so no prior-dealer-game state
+    // can leak forward (e.g. stale current_round triggering ROUND_ALREADY_IN_PROGRESS).
     await sanitizePlayerAutomationStateForSession(gameId);
+    await clearDealerGameTransientSessionState(gameId);
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
@@ -7252,8 +7255,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount);
 
-          // SESSION HYGIENE: sanitize automation state for ALL players before branching.
+          // SESSION HYGIENE: sanitize automation + clear dealer-game transient
+          // session state for ALL players before branching.
           await sanitizePlayerAutomationStateForSession(gameId);
+          await clearDealerGameTransientSessionState(gameId);
 
           // Priority 1: If no active human players, END SESSION completely
           if (activeHumanCount < 1) {
@@ -8311,6 +8316,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         
                         // Session hygiene + keep passive sit-outs seated (no status='left').
                         await sanitizePlayerAutomationStateForSession(gameId);
+                        await clearDealerGameTransientSessionState(gameId);
                         
                         // Revert to waiting status
                         await supabase
