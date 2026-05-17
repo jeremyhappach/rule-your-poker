@@ -336,58 +336,73 @@ export const DealerGameSetup = ({
     hasSubmittedRef.current = true;
 
     try {
-      console.log('[DEALER SETUP] Dealer timed out, marking as sitting out');
-      
-      // Log config timeout event
+      console.log('[DEALER SETUP] Dealer timed out — delegating to shared handler');
+
+      // Log config timeout event (observability only)
       await logSessionEvent({
         gameId,
         eventType: 'config_timeout',
         eventData: { dealer_position: dealerPosition, dealer_username: dealerUsername, is_bot: isBot },
       });
 
-      // Log this status change for debugging (before the update)
-      // Need to fetch the current player's user_id and username for logging
-      const { data: dealerPlayerData } = await supabase
-        .from('players')
-        .select('user_id, sitting_out, is_bot, profiles(username)')
-        .eq('id', dealerPlayerId)
-        .single();
+      if (!isBot) {
+        const { data: dealerPlayerData } = await supabase
+          .from('players')
+          .select('user_id, sitting_out, is_bot, profiles(username)')
+          .eq('id', dealerPlayerId)
+          .single();
 
-      if (dealerPlayerData && !dealerPlayerData.is_bot) {
-        await logSittingOutSet(
-          dealerPlayerId,
-          dealerPlayerData.user_id,
-          gameId,
-          dealerPlayerData.profiles?.username,
-          dealerPlayerData.is_bot,
-          dealerPlayerData.sitting_out,
-          'Dealer timed out during game setup/configuration',
-          'DealerGameSetup.tsx:handleDealerTimeout',
-          { dealer_position: dealerPosition, dealer_username: dealerUsername }
-        );
+        if (dealerPlayerData && !dealerPlayerData.is_bot) {
+          await logSittingOutSet(
+            dealerPlayerId,
+            dealerPlayerData.user_id,
+            gameId,
+            dealerPlayerData.profiles?.username,
+            dealerPlayerData.is_bot,
+            dealerPlayerData.sitting_out,
+            'Dealer timed out during game setup/configuration',
+            'DealerGameSetup.tsx:handleDealerTimeout',
+            { dealer_position: dealerPosition, dealer_username: dealerUsername }
+          );
+        }
       }
 
-      // Mark dealer as sitting out
-      const { error: sitOutError } = await supabase
-        .from('players')
-        .update({ sitting_out: true, waiting: false })
-        .eq('id', dealerPlayerId);
-
-      if (sitOutError) throw sitOutError;
-
-      // Evaluate all player states
-      const { activePlayerCount, activeHumanCount, eligibleDealerCount } =
-        await evaluatePlayerStatesEndOfGame(gameId);
-
-      console.log(
-        '[DEALER SETUP] After timeout evaluation - active:',
-        activePlayerCount,
-        'active humans:',
-        activeHumanCount,
-        'eligible dealers:',
-        eligibleDealerCount
+      // SHARED AUTHORITATIVE HANDLER — single source of truth for next-game
+      // config timeout. Handles sit-out, eligibility, atomic rotation with
+      // fresh deadline, real-money archive, history-based session end, OR
+      // revert to 'waiting' with sit-out soft-removal.
+      const { data: outcomeData, error: rpcError } = await supabase.rpc(
+        'handle_config_deadline_timeout' as any,
+        { _game_id: gameId } as any
       );
 
+      if (rpcError) throw rpcError;
+
+      const outcome = (outcomeData as any)?.outcome as string | undefined;
+      console.log('[DEALER SETUP] Shared handler outcome:', outcomeData);
+
+      if (outcome === 'rotated') {
+        // Rotation completed atomically server-side; let realtime re-render.
+        onConfigComplete();
+        return;
+      }
+
+      if (outcome === 'suppressed') {
+        // Game already advanced — nothing to do.
+        return;
+      }
+
+      if (outcome === 'session_ended') {
+        onSessionEnd();
+        return;
+      }
+
+      if (outcome === 'waiting') {
+        // Server already wrote status='waiting' and soft-removed sit-outs.
+        return;
+      }
+
+      // outcome === 'empty_no_humans' → caller shows 5s countdown then deletes.
       const deleteEmptySession = async () => {
         console.log('[DEALER SETUP] Deleting empty session (no hands played)');
 
