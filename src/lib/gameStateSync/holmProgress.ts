@@ -33,6 +33,18 @@ export interface HolmAuthoritativeSnapshot {
   handNumber: number;
   dealerGameId: string;
 
+  /**
+   * Defensive stamp mirroring the Horses P0 #2 fix.
+   *
+   * The handNumber field above is already sourced authoritatively from the
+   * round row (not a closure-captured "latest"), so getHolmProgress is safe
+   * by construction. We still allow callers to stamp `__syncHandNumber`
+   * onto every incoming snapshot so cross-hand transitions are provably
+   * dominant on the most-significant progress dim even if a future code
+   * path starts feeding partially-derived snapshots.
+   */
+  __syncHandNumber?: number;
+
   // Phase
   roundStatus: 'betting' | 'processing' | 'showdown' | 'completed';
 
