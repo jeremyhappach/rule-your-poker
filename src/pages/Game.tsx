@@ -22,8 +22,6 @@ import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
-import { MountChurnLogger } from "@/components/MountChurnLogger";
-import { isKillStatusKeyEnabled } from "@/lib/unifiedShellFlags";
 
 
 import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighCardDealerSelection";
@@ -8145,57 +8143,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </div>
         )}
 
-        {/* PHASE 4 (Unified Game Table) — single shell-owned dealer-selection mount.
-            Replaces three legacy mounts that lived inside: non-gin dealer_selection
-            branch, cribbage IIFE branch, and gin-rummy IIFE branch. HighCardDealerSelection
-            itself renders null; cards/announcement flow to the active table via parent
-            state setters, so location does not affect visuals — only lifecycle. */}
-        {(game.status === 'dealer_selection' || game.status === 'cribbage_dealer_selection') && (() => {
-          const isCribbage = game.status === 'cribbage_dealer_selection';
-          return (
-            <>
-              <MountChurnLogger
-                gameId={gameId!}
-                label="HighCardDealerSelection:unified"
-                context={{ status: game.status, gameType: game.game_type }}
-              />
-              <HighCardDealerSelection
-                gameId={gameId!}
-                players={players}
-                onComplete={isCribbage ? handleCribbageDealerSelectionComplete : selectDealer}
-                isHost={isCreator}
-                allowBotDealers={isCribbage ? true : allowBotDealers}
-                selectionVariant={isCribbage ? 'cribbage' : 'default'}
-                syncedState={(game as any).dealer_selection_state ?? null}
-                onCardsUpdate={setDealerSelectionCards}
-                onAnnouncementUpdate={(msg, complete) => {
-                  setDealerSelectionAnnouncement(msg);
-                  setDealerSelectionComplete(complete);
-                  if (isCribbage) {
-                    emitCribbageHandoffTrace({
-                      gameId: gameId!,
-                      eventType: 'parent_ds_announcement_update',
-                      userId: user?.id ?? null,
-                      context: { msg: msg?.slice(0, 60), complete },
-                    });
-                  }
-                }}
-                onWinnerPositionUpdate={(pos) => {
-                  setDealerSelectionWinnerPosition(pos);
-                  if (isCribbage) {
-                    emitCribbageHandoffTrace({
-                      gameId: gameId!,
-                      eventType: 'parent_ds_winner_position_update',
-                      userId: user?.id ?? null,
-                      context: { winnerPosition: pos },
-                    });
-                  }
-                }}
-              />
-            </>
-          );
-        })()}
-
         {/* waiting status - show empty table with seat selection */}
         {game.status === 'waiting' && (
           <WaitingForPlayersTable
@@ -8266,11 +8213,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSelectionAnnouncement={dealerSelectionAnnouncement}
                     dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
                   />
-                {/* PHASE 4: HighCardDealerSelection mount lifted to single shell-owned site above. */}
-                <MountChurnLogger
+                {/* High Card Dealer Selection */}
+                <HighCardDealerSelection 
                   gameId={gameId!}
-                  label="MobileGameTable:dealer-selection-bg"
-                  context={{ status: game.status, gameType: game.game_type }}
+                  players={players}
+                  onComplete={selectDealer}
+                  isHost={isCreator}
+                  allowBotDealers={allowBotDealers}
+                  syncedState={(game as any).dealer_selection_state ?? null}
+                  onCardsUpdate={setDealerSelectionCards}
+                  onAnnouncementUpdate={(msg, complete) => {
+                    setDealerSelectionAnnouncement(msg);
+                    setDealerSelectionComplete(complete);
+                  }}
+                  onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                 />
               </>
             )}
@@ -8280,14 +8236,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                <MountChurnLogger
-                  gameId={gameId!}
-                  label="MobileGameTable:status-keyed"
-                  context={{ status: game.status, gameType: game.game_type, killStatusKey: isKillStatusKeyEnabled() }}
-                />
-                {/* PHASE 1: when killStatusKey flag is ON, drop the ${status} segment so this
-                    branch stops physically remounting on every game_selection/configuring/game_over flip. */}
-                <MobileGameTable key={isKillStatusKeyEnabled() ? (gameId ?? 'unknown-game') : `${gameId ?? 'unknown-game'}-${game.status}`}
+                <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     instanceLabel="status-keyed"
                     gameId={gameId}
                     players={players}
