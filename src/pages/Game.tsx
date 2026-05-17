@@ -5034,13 +5034,46 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       const snapshot = buildHolmSnapshot(gameData, (playersData || []) as Player[], holmRound);
       if (snapshot) {
-        if (holmSyncLastRoundIdRef.current && holmSyncLastRoundIdRef.current !== snapshot.roundId) {
+        const prevRoundId = holmSyncLastRoundIdRef.current;
+        const isBoundary = !!prevRoundId && prevRoundId !== snapshot.roundId;
+
+        if (isBoundary) {
           console.log('[GameStateSync:Holm] 🔄 Hard reset — roundId changed', {
-            prev: holmSyncLastRoundIdRef.current,
+            prev: prevRoundId,
             next: snapshot.roundId,
           });
           resetRegressiveRevealTracking(`${snapshot.roundId}:${snapshot.handNumber}`);
-          holmSync.reset(snapshot);
+
+          // ── P0 (Holm cutover): reset to CLEAN baseline, not the new snapshot. ──
+          // Mirrors the Horses P0 #2 framework fix: seeding the framework with the
+          // incoming snapshot makes its progress vector the new authoritative floor,
+          // which can dominate subsequent legitimate forward updates as "regressive"
+          // if any dim of the new snapshot temporarily reads lower than a stale
+          // prior-hand terminal snapshot still buffered upstream. Seeding with null
+          // forces the framework into pendingPostResetHydration, and the very next
+          // receiveAuthoritativeUpdate (immediately below) hydrates presentation
+          // from a clean floor.
+          holmSync.reset(null);
+
+          // Forensic event mirroring the Horses/Yahtzee cutover diagnostics.
+          import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+            persistSyncDebugEvent({
+              gameId: snapshot.dealerGameId || null,
+              gameType: 'holm-game',
+              handNumber: snapshot.handNumber,
+              roundId: snapshot.roundId,
+              eventType: 'transition',
+              severity: 'info',
+              eventName: 'holm-framework-identity-reset-fired',
+              payload: {
+                prevRoundId,
+                nextRoundId: snapshot.roundId,
+                nextHandNumber: snapshot.handNumber,
+                nextPhase: snapshot.roundStatus,
+                seededWith: 'null-baseline',
+              },
+            });
+          });
 
           // ── P0-1 + P0-3 FIX: Clear lifted caches on hand boundary (roundId change) ──
           // These refs live outside the sync framework and previously only cleared on
@@ -5052,9 +5085,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           maxRevealedRef.current = snapshot.communityCardsRevealed;
           cardIdentityRef.current = '';
           setCommunityCacheEpoch((e) => e + 1);
-        } else {
-          const result = holmSync.receiveAuthoritativeUpdate(snapshot);
         }
+
+        const result = holmSync.receiveAuthoritativeUpdate(snapshot);
+
+        // Forensic event: every accepted/rejected authoritative arrival.
+        import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+          persistSyncDebugEvent({
+            gameId: snapshot.dealerGameId || null,
+            gameType: 'holm-game',
+            handNumber: snapshot.handNumber,
+            roundId: snapshot.roundId,
+            eventType: 'transition',
+            severity: result.accepted ? 'info' : 'warn',
+            eventName: 'holm-auth-turn-handoff-received',
+            payload: {
+              accepted: result.accepted,
+              reason: result.reason,
+              comparison: result.comparison,
+              stampedHand: snapshot.__syncHandNumber ?? snapshot.handNumber,
+              phase: snapshot.roundStatus,
+              decided: snapshot.players.filter(p => p.decisionLocked).length,
+              revealed: snapshot.communityCardsRevealed,
+              isBoundary,
+            },
+          });
+        });
+
         holmSyncLastRoundIdRef.current = snapshot.roundId;
       }
     }
