@@ -19,8 +19,14 @@ const GLOBAL_DEBUG_DEFAULT = false;
 
 let _enabled: boolean | null = null;
 
+import { isDebugChannel } from './debugChannels';
+
 function checkEnabled(): boolean {
-  // Explicit opt-out overrides
+  // Master channel switch (?ptp_debug=sync or ptp_debug=sync,...)
+  try {
+    if (isDebugChannel('sync')) return true;
+  } catch { /* */ }
+  // Legacy per-flag (kept for backwards compat)
   try {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('debug_sync_events');

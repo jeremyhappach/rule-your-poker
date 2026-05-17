@@ -24,6 +24,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Verbose info logging is OFF by default in production.
+// Set env ENFORCE_VERBOSE_LOG=1 to re-enable per-tick info chatter.
+// console.warn / console.error are NEVER gated — they always emit.
+const ENFORCE_VERBOSE = (() => {
+  const v = (Deno.env.get('ENFORCE_VERBOSE_LOG') ?? '').toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+})();
+const vlog = (...args: unknown[]) => { if (ENFORCE_VERBOSE) console.log(...args); };
+
 /**
  * Config-backed timeout policy resolver. Mirrors src/lib/timeoutRules.ts.
  * Resolution order: games override → game_defaults → safe default.
