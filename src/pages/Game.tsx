@@ -349,9 +349,7 @@ function buildHolmSnapshot(
   // AFTER all decisions are in (all_decisions_in=true), so we must allow that through.
   // Clamping processing unconditionally blocks cards 3-4 from appearing before Chucky.
   // F5.1: only honor all_decisions_in when scoped to the current round id.
-  const allDecisionsIn =
-    (gameData.all_decisions_in ?? false) &&
-    (!gameData.all_decisions_in_round_id || gameData.all_decisions_in_round_id === currentRound.id);
+  const allDecisionsIn = isAllDecisionsInFor(gameData, currentRound.id);
   const clampedRevealed = (roundStatus === 'betting' || (roundStatus === 'processing' && !allDecisionsIn))
     ? Math.min(rawRevealed, 2)
     : rawRevealed;
@@ -2398,7 +2396,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         decisionDeadline, 
         awaiting: game?.awaiting_next_round, 
         result: game?.last_round_result, 
-        allDecisionsIn: game?.all_decisions_in 
+        allDecisionsIn: isAllDecisionsInFor(game, currentRound?.id),
+        rawAllDecisionsIn: game?.all_decisions_in,
+        allDecisionsInRoundId: game?.all_decisions_in_round_id ?? null,
       });
       return;
     }
@@ -2518,7 +2518,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         timerIntervalRef.current = null;
       }
     };
-  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.game_type, players, user?.id]);
+  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id]);
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
@@ -2640,20 +2640,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       (latestRound?.community_cards_revealed ?? 0) < 4 &&
       currentPlayer;
 
-    // CRITICAL: Detect Holm stuck state where all_decisions_in is already true (often set by backend timeout
+    // Detect Holm stuck state where all_decisions_in is already true (often set by backend timeout
     // enforcement) but the round is still 'betting'. In this state, the UI can appear stuck (spotlight/turn
     // confusion) unless a client calls endHolmRound.
-    // GUARD: Verify at least one player has a decision — a stale all_decisions_in from a prior hand
-    // can race with new round creation and cause endHolmRound to fire with zero decisions.
-    const holmPlayersWithDecision = (players || []).filter(
-      (p: any) => p.status === 'active' && !p.sitting_out && (p.current_decision === 'stay' || p.current_decision === 'fold')
-    );
+    // P0 follow-up: identity-scoping via isAllDecisionsInFor() guarantees the flag matches THIS
+    // round, so the prior "at least one decision exists" anti-stale guard is no longer required.
     const holmAllDecidedButBettingStuck =
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
       isAllDecisionsInFor(game, latestRound?.id ?? null) &&
       latestRound?.status === 'betting' &&
-      holmPlayersWithDecision.length > 0 &&
       currentPlayer;
     
     // Also detect when Holm game started but no round was created
@@ -2735,7 +2731,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.log('[CRITICAL POLL] Stopping polling');
       clearInterval(intervalId);
     };
-   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
+   }, [game?.status, game?.dealer_position, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.game_type, game?.rounds, game?.current_round, players, user?.id, gameId, playerCards.length, showAnteDialog]);
   
   // CRITICAL: 3-5-7 specific round sync polling (fallback for realtime issues)
   // More aggressive polling to prevent round desync between clients
@@ -3465,7 +3461,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         });
       }
     }
-  }, [liveRound, game?.status, game?.all_decisions_in, cachedRoundData?.community_cards_revealed, game?.game_type, game?.current_game_uuid]);
+  }, [liveRound, game?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, cachedRoundData?.community_cards_revealed, game?.game_type, game?.current_game_uuid]);
   
   // Use cached round ONLY when we intentionally need to preserve visuals across transitions
   // (e.g., showdown/game_over animations). For fresh play/setup, never fall back to old cached rounds.
@@ -3483,12 +3479,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // F5.1/F4.2: identity-scoped all_decisions_in. Raw `game.all_decisions_in` can
   // persist across hand/round transitions and is the systemic source of the
   // stale-progression-flag bug class. Always consume this scoped value for
-  // render and effect logic. A null scoping round id falls back to the raw
-  // flag (legacy rows / writers that haven't been migrated yet).
-  const allDecisionsInScoped: boolean =
-    (game?.all_decisions_in === true) &&
-    (!(game as any)?.all_decisions_in_round_id ||
-      (game as any)?.all_decisions_in_round_id === currentRound?.id);
+  // render and effect logic.
+  const allDecisionsInScoped: boolean = isAllDecisionsInFor(game, currentRound?.id);
 
 
   // useBotDecisionEnforcer was removed entirely - it was a band-aid that caused race conditions
@@ -3608,7 +3600,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       effectiveRevealed: effectiveCommunityCardsRevealed,
       handNumber: holmView!.handNumber,
       handKey,
-      allDecisionsIn: game?.all_decisions_in ?? false,
+      allDecisionsIn: isAllDecisionsInFor(game, holmView!.roundId),
       chuckyActive: holmView!.chuckyActive ?? false,
     });
 
@@ -3701,7 +3693,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
-      all_decisions_in: game?.all_decisions_in,
+      all_decisions_in: isAllDecisionsInFor(game, currentRound?.id),
+      raw_all_decisions_in: game?.all_decisions_in,
+      all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
       game_type: game?.game_type,
       current_turn: currentRound?.current_turn_position,
       round_id: currentRound?.id,
@@ -3756,7 +3750,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [
     game?.status, 
-    game?.all_decisions_in, 
+    game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     game?.is_paused,
     // Watch turn position for Holm games (turn-based)
     // Watch round id to catch new rounds (since current_round isn't updated for Holm)
@@ -3779,9 +3774,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // stuck in "betting", a previous client likely set the flag but crashed/refreshed before
   // calling endRound(). This must be idempotent and race-safe.
   //
-  // CRITICAL GUARD: Verify that players in this round actually have decisions before firing.
-  // A stale all_decisions_in=true from a previous hand can race with a new round's creation,
-  // causing endRound to fire with zero decisions (which treats it as "everyone folded" → pussy tax).
+  // P0 follow-up: identity-scoping via isAllDecisionsInFor() guarantees the flag was set against
+  // THIS round, so the prior "stale flag from a previous hand → reset it" branch is no longer
+  // reachable and has been removed.
   useEffect(() => {
     const is357Game =
       game?.game_type === "3-5-7" || game?.game_type === "3-5-7-game" || game?.game_type === "357";
@@ -3793,29 +3788,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
     if (!isAllDecisionsInFor(game, currentRound.id)) return;
 
-    // CRITICAL: Verify at least one player has a decision for THIS round.
-    // If no decisions exist, all_decisions_in is stale from a prior round — reset it.
-    const activePlayers = (players || []).filter(
-      (p: any) => p.status === "active" && !p.sitting_out
-    );
-    const withDecision = activePlayers.filter(
-      (p: any) => p.current_decision === "stay" || p.current_decision === "fold"
-    );
-
-    if (withDecision.length === 0 && activePlayers.length > 0) {
-      console.error("[357 RECOVERY] ❌ STALE all_decisions_in - no player decisions exist. Resetting flag.", {
-        gameId,
-        roundId: currentRound.id,
-        activeCount: activePlayers.length,
-      });
-      // Reset the stale flag so this effect doesn't loop
-      void supabase
-        .from("games")
-        .update({ all_decisions_in: false, all_decisions_in_round_id: null })
-        .eq("id", gameId);
-      return;
-    }
-
     const key = `${currentRound.id}:recoverEndRound`;
     if (recover357EndRoundKeyRef.current === key) return;
     recover357EndRoundKeyRef.current = key;
@@ -3825,7 +3797,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       roundId: currentRound.id,
       handNumber: game?.total_hands,
       roundNumber: game?.current_round,
-      decidedPlayers: withDecision.length,
     });
 
     void endRound(gameId).catch((err) => {
@@ -3837,11 +3808,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.is_paused,
     game?.awaiting_next_round,
     game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     currentRound?.id,
     currentRound?.status,
     game?.total_hands,
     game?.current_round,
-    players,
     gameId,
   ]);
   
@@ -3884,6 +3855,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.status,
     game?.is_paused,
     game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     currentRound?.id,
     currentRound?.status,
     players,
@@ -3937,6 +3909,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game?.status,
     game?.is_paused,
     game?.all_decisions_in,
+    game?.all_decisions_in_round_id,
     currentRound?.id,
     currentRound?.status,
     players,
@@ -4029,7 +4002,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[TIMER CHECK]', { 
       timeLeft, 
       status: game?.status, 
-      all_decisions_in: game?.all_decisions_in, 
+      all_decisions_in: isAllDecisionsInFor(game, currentRound?.id),
+      raw_all_decisions_in: game?.all_decisions_in,
+      all_decisions_in_round_id: game?.all_decisions_in_round_id ?? null,
       is_paused: game?.is_paused,
       timerTurnPosition,
       currentTurnPosition: currentRound?.current_turn_position,
@@ -4043,7 +4018,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // For 3-5-7 games: Auto-fold when timer reaches 0 (no turn position to check)
     const shouldAutoFold = timeLeft === 0 && 
         game?.status === 'in_progress' && 
-        !game.all_decisions_in && 
+        !isAllDecisionsInFor(game, currentRound?.id) && 
         !game?.is_paused &&
         !autoFoldingRef.current &&
         (isHolmGame 
@@ -4184,7 +4159,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })();
       }
     }
-  }, [timeLeft, game?.status, game?.all_decisions_in, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
+  }, [timeLeft, game?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, currentRound?.id, gameId, game?.is_paused, game?.game_type, timerTurnPosition, currentRound?.current_turn_position]);
 
   // Auto-proceed to next round when awaiting (with 4-second delay to show results)
   const awaitingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -4246,7 +4221,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         awaitingPollRef.current = null;
       }
     };
-  }, [gameId, game?.game_type, currentRound?.status, game?.all_decisions_in, game?.awaiting_next_round, game?.status]);
+  }, [gameId, game?.game_type, currentRound?.id, currentRound?.status, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.awaiting_next_round, game?.status]);
   
   useEffect(() => {
     const currentAwaiting = game?.awaiting_next_round || false;
@@ -5388,7 +5363,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         lastTurnPosition,
         timerTurnPosition,
         awaiting_next_round: gameData.awaiting_next_round,
-        all_decisions_in: gameData.all_decisions_in
+        all_decisions_in: gameData.all_decisions_in,
+        all_decisions_in_round_id: gameData.all_decisions_in_round_id ?? null,
+        all_decisions_in_scoped: isAllDecisionsInFor(gameData, currentRound?.id)
       });
       
       // For Holm, use presentation-layer deadline only (no raw fallback to avoid identity drift).
