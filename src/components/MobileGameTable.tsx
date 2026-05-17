@@ -32,6 +32,7 @@ import {
   clockwiseDistance as canonicalClockwiseDistance,
   observerSlotForPosition as canonicalObserverSlot,
 } from "@/lib/canonicalShell/seatAnchors";
+import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { MobilePlayerTimer } from "./MobilePlayerTimer";
 import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
