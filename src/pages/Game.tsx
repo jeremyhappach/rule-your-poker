@@ -8316,6 +8316,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                         
                         // Session hygiene + keep passive sit-outs seated (no status='left').
                         await sanitizePlayerAutomationStateForSession(gameId);
+                        await clearDealerGameTransientSessionState(gameId);
                         
                         // Revert to waiting status
                         await supabase
