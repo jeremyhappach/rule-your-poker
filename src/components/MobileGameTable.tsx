@@ -33,7 +33,9 @@ import {
   observerSlotForPosition as canonicalObserverSlot,
 } from "@/lib/canonicalShell/seatAnchors";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
-import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+// PersistentTableShell ownership lifted to Game.tsx in Phase 5;
+// MobileGameTable no longer mounts an inner shell to avoid duplicate
+// shell ownership (single authoritative outer instance per session).
 
 import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
