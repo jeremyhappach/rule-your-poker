@@ -8280,7 +8280,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                <MountChurnLogger
+                  gameId={gameId!}
+                  label="MobileGameTable:status-keyed"
+                  context={{ status: game.status, gameType: game.game_type, killStatusKey: isKillStatusKeyEnabled() }}
+                />
+                {/* PHASE 1: when killStatusKey flag is ON, drop the ${status} segment so this
+                    branch stops physically remounting on every game_selection/configuring/game_over flip. */}
+                <MobileGameTable key={isKillStatusKeyEnabled() ? (gameId ?? 'unknown-game') : `${gameId ?? 'unknown-game'}-${game.status}`}
                     instanceLabel="status-keyed"
                     gameId={gameId}
                     players={players}
