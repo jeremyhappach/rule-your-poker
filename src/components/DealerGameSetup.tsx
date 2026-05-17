@@ -443,150 +443,33 @@ export const DealerGameSetup = ({
         }
       };
 
-      // Priority 1: If no active human players, END SESSION or DELETE if empty
-      if (activeHumanCount < 1) {
-        console.log('[DEALER SETUP] No active human players');
+      // Empty session with no humans: keep client-side 5s UI countdown then cascade delete.
+      await logSessionDeleted(gameId, undefined, 'Config timeout with no active humans and no history', false);
 
-        const { data: gameData, error: gameError } = await supabase
-          .from('games')
-          .select('total_hands, real_money')
-          .eq('id', gameId)
-          .maybeSingle();
+      setShowDeletingEmptySession(true);
+      setDeleteCountdown(5);
 
-        if (gameError) throw gameError;
+      const interval = setInterval(() => {
+        setDeleteCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
-        const totalHands = gameData?.total_hands || 0;
-        const isRealMoney = gameData?.real_money === true;
-
-        // Also check game_results as backup - if any results exist, session has history
-        const { count: resultsCount, error: resultsError } = await supabase
-          .from('game_results')
-          .select('id', { count: 'exact', head: true })
-          .eq('game_id', gameId);
-
-        if (resultsError) throw resultsError;
-
-        const hasHistory = totalHands > 0 || (resultsCount ?? 0) > 0;
-
-        console.log('[DEALER SETUP] Session history check:', { totalHands, resultsCount, hasHistory });
-
-        // CRITICAL: NEVER delete real_money games - archive them instead (30 day retention)
-        if (isRealMoney) {
-          console.log('[DEALER SETUP] Real money game - archiving instead of deleting');
-          const { error: archiveError } = await supabase
-            .from('games')
-            .update({
-              status: 'session_ended',
-              pending_session_end: false,
-              session_ended_at: new Date().toISOString(),
-              game_over_at: new Date().toISOString(),
-              config_deadline: null,
-              ante_decision_deadline: null,
-              awaiting_next_round: false,
-            })
-            .eq('id', gameId);
-          
-          if (archiveError) throw archiveError;
+      setTimeout(async () => {
+        try {
+          await deleteEmptySession();
           onSessionEnd();
-          return;
+        } catch (err) {
+          console.error('[DEALER SETUP] Failed to delete empty session:', err);
+          toast.error('Failed to delete empty session');
+          hasSubmittedRef.current = false;
         }
-        
-        if (!hasHistory) {
-          // No hands played - show 5s message then delete
-          // Log session deletion before deleting
-          await logSessionDeleted(gameId, undefined, 'Config timeout with no active humans and no history', false);
-          
-          setShowDeletingEmptySession(true);
-          setDeleteCountdown(5);
+      }, 5000);
 
-          const interval = setInterval(() => {
-            setDeleteCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(interval);
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
-
-          // Give UI time to show message before deletion
-          setTimeout(async () => {
-            try {
-              await deleteEmptySession();
-              onSessionEnd();
-            } catch (err) {
-              console.error('[DEALER SETUP] Failed to delete empty session:', err);
-              toast.error('Failed to delete empty session');
-              hasSubmittedRef.current = false;
-            }
-          }, 5000);
-
-          return;
-        }
-
-        // Has game history - end session normally
-        console.log('[DEALER SETUP] Has game history, ending session');
-        const { error: endError } = await supabase
-          .from('games')
-          .update({
-            status: 'session_ended',
-            pending_session_end: false,
-            session_ended_at: new Date().toISOString(),
-            game_over_at: new Date().toISOString(),
-            // Clear any old countdowns so rejoin doesn't show a stale 0s timer
-            config_deadline: null,
-            ante_decision_deadline: null,
-            awaiting_next_round: false,
-            config_complete: false,
-          })
-          .eq('id', gameId);
-
-        if (endError) throw endError;
-
-        onSessionEnd();
-        return;
-      }
-
-      // Priority 2: Check if we can continue (need 1+ eligible dealer AND 2+ active players)
-      if (activePlayerCount < 2 || eligibleDealerCount < 1) {
-        console.log('[DEALER SETUP] Not enough players, reverting to waiting');
-        
-        // Remove sitting out players - they need to re-select seats
-        await removeSittingOutPlayersOnWaiting(gameId);
-        
-        // Revert to waiting status
-        const { error: waitError } = await supabase
-          .from('games')
-          .update({
-            status: 'waiting',
-            awaiting_next_round: false,
-            last_round_result: null,
-          })
-          .eq('id', gameId);
-
-        if (waitError) throw waitError;
-
-        return;
-      }
-
-      // Rotate dealer to next eligible player
-      const newDealerPosition = await rotateDealerPosition(gameId, dealerPosition);
-
-      console.log('[DEALER SETUP] Rotating dealer from', dealerPosition, 'to', newDealerPosition);
-
-      // Update game with new dealer and reset config_complete to trigger new dealer setup
-      const { error: rotateError } = await supabase
-        .from('games')
-        .update({
-          dealer_position: newDealerPosition,
-          config_complete: false,
-        })
-        .eq('id', gameId);
-
-      if (rotateError) throw rotateError;
-
-      // The game state change will trigger re-render with new dealer
-      onConfigComplete();
     } catch (err) {
       console.error('[DEALER SETUP] Timeout handling failed:', err);
       toast.error('Dealer timeout failed — retrying…');
