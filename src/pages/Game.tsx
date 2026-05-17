@@ -3769,7 +3769,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset the stale flag so this effect doesn't loop
       void supabase
         .from("games")
-        .update({ all_decisions_in: false })
+        .update({ all_decisions_in: false, all_decisions_in_round_id: null })
         .eq("id", gameId);
       return;
     }
@@ -5739,7 +5739,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .eq('is_bot', false);
         await supabase
           .from('games')
-          .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false })
+          .update({ status: 'waiting', awaiting_next_round: false, all_decisions_in: false, all_decisions_in_round_id: null })
           .eq('id', gameId);
         return;
       }

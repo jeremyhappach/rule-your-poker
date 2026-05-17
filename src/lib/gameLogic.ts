@@ -1065,7 +1065,7 @@ async function checkAllDecisionsIn(gameId: string) {
         gameId: shortGameId, gameType: gTypeCheck,
       });
       // Also clear the stale flag so this doesn't loop forever.
-      await supabase.from('games').update({ all_decisions_in: false }).eq('id', gameId);
+      await supabase.from('games').update({ all_decisions_in: false, all_decisions_in_round_id: null }).eq('id', gameId);
       return;
     }
 
@@ -1094,7 +1094,7 @@ async function checkAllDecisionsIn(gameId: string) {
         console.error(`[CHECK_ALL_DECISIONS] ❌ STALE all_decisions_in - ${(currentPlayers || []).length} active players but ZERO decisions. Resetting flag.`);
         await supabase
           .from('games')
-          .update({ all_decisions_in: false })
+          .update({ all_decisions_in: false, all_decisions_in_round_id: null })
           .eq('id', gameId);
         return;
       }
@@ -1689,7 +1689,7 @@ export async function endRound(gameId: string) {
     // Also reset all_decisions_in since it was stale
     await supabase
       .from('games')
-      .update({ all_decisions_in: false })
+      .update({ all_decisions_in: false, all_decisions_in_round_id: null })
       .eq('id', gameId);
     return;
   }
