@@ -1,9 +1,16 @@
 /**
  * Yahtzee progress vector extractor for the anti-regression framework.
  *
- * Vector: [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed]
+ * Vector: [roundOrd, phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed]
  *
  * CRITICAL ORDERING:
+ * - roundOrd (most significant) — discriminates cross-Yahtzee-game boundaries.
+ *   Sourced from the per-state `__syncRound` stamp set by the controller from
+ *   the round row's id/createdAt (NOT from `currentRound`, which is the
+ *   scorecard line 1-13 and resets within a game). This prevents a stale
+ *   final-state snapshot from a previous match from dominating fresh
+ *   first-roll snapshots of a new match — same defect class as the Horses
+ *   handNumber bug. Unstamped snapshots fall back to 0.
  * - totalCategoriesFilled MUST come before handoffPhase / rollsUsed because
  *   scoring resets rollsRemaining to 3 while still moving the game forward.
  * - handoffPhase MUST come before rollsUsed because score→turn-advance is a
@@ -13,26 +20,39 @@
  * `turnIdx` alone is NOT safe here because it wraps (e.g. player 2 → player 1),
  * which caused valid turn-advance snapshots to look regressive on observers.
  *
- * NOTE: turnOwnerIndex was previously included as a 5th dimension to prevent
- * stale-owner snapshots from being treated as equal-progress. However, the sync
- * gate accepts equal-progress snapshots (`isProgressForwardOrEqual`), so the
- * discriminator is unnecessary. Worse, it caused legitimate turn handoffs where
- * the turnOrder index wraps from a higher index back to 0 (e.g. human at
- * index 1 → bot at index 0) to be falsely rejected as regressive when all
- * other dimensions were tied (equal-parity category counts). The handoffPhase
- * dimension already correctly distinguishes scored-before-handoff (0) from
- * live-turn-after-handoff (1), making turnOwnerIndex redundant.
+ * NOTE: turnOwnerIndex was previously included to prevent stale-owner equal-
+ * progress snapshots; the handoffPhase dim already discriminates that case
+ * and including turnOwnerIndex broke legitimate higher→lower index wraps.
  *
+ * - roundOrd:            stamped monotonic round ord (new Yahtzee match > old)
  * - phaseOrd:            waiting=0, playing=1, complete=2
- * - totalCategoriesFilled: total categories scored across ALL players (strictly monotonic)
+ * - totalCategoriesFilled: total categories scored across ALL players (monotonic within a match)
  * - handoffPhase:        0 = scored snapshot before turn handoff, 1 = live turn snapshot
  * - rollsUsed:           3 - rollsRemaining (higher = more advanced within a turn)
  */
 
 import type { YahtzeeState } from '@/lib/yahtzeeTypes';
-import type { GetProgressFn } from './types';
+import type { ProgressVector } from './types';
 
-export const getYahtzeeProgress: GetProgressFn<YahtzeeState> = (state) => {
+/**
+ * Per-state hand/round-number stamp.
+ *
+ * The controller MUST stamp every incoming authoritative snapshot with the
+ * round ord (e.g. a monotonic counter derived from the round row's createdAt
+ * or id sequence) BEFORE feeding it into `receiveAuthoritativeUpdate`. The
+ * progress comparator must see the snapshot's OWN round ord — not a closure-
+ * captured "latest" value — otherwise the dim cancels across match
+ * boundaries and a stale prior-match terminal snapshot can dominate fresh
+ * next-match state on the lower dims.
+ */
+export interface YahtzeeStateForProgress extends YahtzeeState {
+  __syncRound?: number;
+}
+
+export function getYahtzeeProgress(state: YahtzeeStateForProgress): ProgressVector {
+  // roundOrd: prefer state-stamped value. Unstamped legacy snapshots = 0.
+  const roundOrd = typeof state.__syncRound === 'number' ? state.__syncRound : 0;
+
   // Phase ordinal: waiting=0, playing=1, complete=2
   const phaseOrd = state.gamePhase === 'waiting' ? 0 : state.gamePhase === 'complete' ? 2 : 1;
 
@@ -57,20 +77,8 @@ export const getYahtzeeProgress: GetProgressFn<YahtzeeState> = (state) => {
     ? Object.keys(currentTurnPlayerState.scorecard.scores).length
     : null;
 
-  // IMPORTANT:
-  // We cannot derive handoff from totalCategoriesFilled % turnOrder.length because
-  // completed players are skipped during advanceYahtzeeTurn(). In the final-turn
-  // edge case (one player already complete, one player still active), modulo-based
-  // math can mark the sole remaining player's live turn as "pre-handoff", causing
-  // valid post-handoff / post-roll snapshots to compare incorrectly.
-  //
-  // Instead, use scorecard parity among INCOMPLETE players:
-  // - scored snapshot before handoff: current player has one more filled category
-  //   than at least one other incomplete player → handoffPhase = 0
-  // - live turn snapshot after handoff: current player is one of the players with
-  //   the minimum filled-count among incomplete players → handoffPhase = 1
-  // - when only one incomplete player remains (final-turn case), that player is
-  //   always the live turn holder, so handoffPhase stays 1 and rolls can progress.
+  // See the original Yahtzee handoff note: scorecard parity (not modulo math)
+  // is required because completed players are skipped by advanceYahtzeeTurn().
   const handoffPhase = (
     minFilledAmongIncomplete !== null
     && currentTurnFilled !== null
@@ -80,5 +88,5 @@ export const getYahtzeeProgress: GetProgressFn<YahtzeeState> = (state) => {
   // Rolls used: 0 = hasn't rolled, 3 = all rolls used
   const rollsUsed = currentTurnPlayerState ? (3 - currentTurnPlayerState.rollsRemaining) : 0;
 
-  return [phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed];
-};
+  return [roundOrd, phaseOrd, totalCategoriesFilled, handoffPhase, rollsUsed];
+}
