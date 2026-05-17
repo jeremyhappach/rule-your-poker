@@ -79,7 +79,7 @@ export function recordShellEvent(
     gameId: gameId || NIL_UUID,
     gameType: gameType || 'canonical-shell',
     handNumber: typeof handNumber === 'number' ? handNumber : 0,
-    eventType: 'lifecycle',
+    eventType: 'transition',
     severity: 'info',
     eventName: `canonical-shell-${eventName}`,
     payload: {
