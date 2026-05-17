@@ -48,7 +48,7 @@ export function PersistentTableShell({
   const geometry = useGeometryTokensOptional();
 
   useEffect(() => {
-    recordShellEvent('shell-mount', {
+    recordShellEvent('shell-mounted', {
       gameId: gameId ?? null,
       gameType: gameType ?? null,
       detail: {
@@ -57,7 +57,7 @@ export function PersistentTableShell({
       },
     });
     return () => {
-      recordShellEvent('shell-unmount', {
+      recordShellEvent('shell-unmounted', {
         gameId: gameId ?? null,
         gameType: gameType ?? null,
         detail: { viewerPosition },
