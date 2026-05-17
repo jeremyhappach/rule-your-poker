@@ -103,6 +103,8 @@ export function getHolmProgress(state: HolmAuthoritativeSnapshot): ProgressVecto
   const phaseOrdinal = PHASE_ORDINAL[state.roundStatus] ?? 0;
   const decidedCount = state.players.filter(p => p.decisionLocked === true).length;
   const communityCardsRevealed = state.communityCardsRevealed ?? 0;
+  const chuckyActiveOrd = state.chuckyActive ? 1 : 0;
+  const chuckyCardsRevealed = state.chuckyCardsRevealed ?? 0;
 
-  return [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed];
+  return [handNumber, phaseOrdinal, decidedCount, communityCardsRevealed, chuckyActiveOrd, chuckyCardsRevealed];
 }
