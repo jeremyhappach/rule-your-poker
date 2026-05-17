@@ -7541,9 +7541,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
+    // Opt-back-in (auto_fold=false) is an explicit rejoin gesture and must
+    // cancel any pending sit-out / stand-up intent set by a prior timeout.
+    // Without this, a player who timed out (sit_out_next_hand=true), then
+    // opts back in and plays the rest of the dealer game, will still be
+    // converted to sitting_out at the dealer-game boundary by
+    // evaluatePlayerStatesEndOfGame.
+    const autoFoldUpdate: Record<string, any> = { auto_fold: autoFold };
+    if (!autoFold) {
+      autoFoldUpdate.sit_out_next_hand = false;
+      autoFoldUpdate.stand_up_next_hand = false;
+    }
     const { error } = await supabase
       .from('players')
-      .update({ auto_fold: autoFold })
+      .update(autoFoldUpdate)
       .eq('id', playerId);
     
     if (error) {
