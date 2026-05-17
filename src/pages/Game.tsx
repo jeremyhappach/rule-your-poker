@@ -5368,12 +5368,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         all_decisions_in_scoped: isAllDecisionsInFor(gameData, currentRound?.id)
       });
       
-      // For Holm, use presentation-layer deadline only (no raw fallback to avoid identity drift).
-      // For non-Holm games, presentation deadline is not provided, so raw is the only/correct source.
+      // For Holm, prefer presentation-layer deadline; fall back to the raw round
+      // deadline if presentation has not yet hydrated it (e.g. during visual
+      // contract / freeze window). This closes the regression where the timer
+      // meter and observer ring disappeared even though enforcement worked.
       const isHolmDeadline = gameData.game_type === 'holm-game';
       const holmPresentationDeadline = isHolmDeadline ? holmSync.presentationState?.decisionDeadline : null;
       const effectiveDeadline = isHolmDeadline
-        ? (holmPresentationDeadline ?? null)
+        ? (holmPresentationDeadline ?? currentRound?.decision_deadline ?? null)
         : (currentRound?.decision_deadline ?? null);
       
       if (effectiveDeadline) {
