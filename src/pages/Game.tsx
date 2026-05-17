@@ -109,6 +109,7 @@ interface GameData {
   pot: number | null;
   current_round: number | null;
   all_decisions_in: boolean | null;
+  all_decisions_in_round_id?: string | null;
   dealer_position: number | null;
   awaiting_next_round?: boolean | null;
   next_round_number?: number | null;
@@ -319,7 +320,10 @@ function buildHolmSnapshot(
   // During processing phase, the game logic explicitly writes community_cards_revealed=4
   // AFTER all decisions are in (all_decisions_in=true), so we must allow that through.
   // Clamping processing unconditionally blocks cards 3-4 from appearing before Chucky.
-  const allDecisionsIn = gameData.all_decisions_in ?? false;
+  // F5.1: only honor all_decisions_in when scoped to the current round id.
+  const allDecisionsIn =
+    (gameData.all_decisions_in ?? false) &&
+    (!gameData.all_decisions_in_round_id || gameData.all_decisions_in_round_id === currentRound.id);
   const clampedRevealed = (roundStatus === 'betting' || (roundStatus === 'processing' && !allDecisionsIn))
     ? Math.min(rawRevealed, 2)
     : rawRevealed;
