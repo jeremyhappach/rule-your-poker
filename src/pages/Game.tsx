@@ -5849,10 +5849,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (eligibleDealerCount < 1 || activePlayerCount < 2) {
       console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount, '- reverting to waiting');
       gameOverTransitionRef.current = false;
-      
-      // Remove sitting out players - they need to re-select seats
-      await removeSittingOutPlayersOnWaiting(gameId);
-      
+
+      // CONTRACT: passive timeout sit-outs remain seated and visible (red).
+      // Do NOT call removeSittingOutPlayersOnWaiting here — that would set
+      // status='left' and hide the seat, which conflates passive sit-outs
+      // with intentional departures. Sit-outs can opt back in for next game.
+
       // Revert to waiting status
       await supabase
         .from('games')
