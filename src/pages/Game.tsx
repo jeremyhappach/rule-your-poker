@@ -5706,8 +5706,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // STEP 1: Evaluate player states BEFORE dealer rotation
     console.log('[GAME OVER] Evaluating player states end-of-game');
     const { activePlayerCount, activeHumanCount, eligibleDealerCount, playersStoodUp } = await evaluatePlayerStatesEndOfGame(gameId);
-    
+
     console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount, 'stood up:', playersStoodUp.length);
+
+    // STEP 1b (SESSION HYGIENE): sanitize per-decision / timeout automation for ALL
+    // players in the session, regardless of which branch we take next. Must happen
+    // AFTER participation reconciliation and BEFORE branching to waiting / next dealer game.
+    await sanitizePlayerAutomationStateForSession(gameId);
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
