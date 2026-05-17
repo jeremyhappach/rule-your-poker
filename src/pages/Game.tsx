@@ -2393,7 +2393,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
     // Don't start timer if no deadline or game conditions prevent it
-    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || game?.all_decisions_in) {
+    if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || isAllDecisionsInFor(game, currentRound?.id)) {
       console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
         decisionDeadline, 
         awaiting: game?.awaiting_next_round, 
@@ -2651,7 +2651,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const holmAllDecidedButBettingStuck =
       game?.game_type === 'holm-game' &&
       game?.status === 'in_progress' &&
-      game?.all_decisions_in === true &&
+      isAllDecisionsInFor(game, latestRound?.id ?? null) &&
       latestRound?.status === 'betting' &&
       holmPlayersWithDecision.length > 0 &&
       currentPlayer;
@@ -3438,7 +3438,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // cross-game contamination (e.g., Holm 4-card community cards leaking into 3-5-7)
     if (liveRound && (
       game?.status === 'game_over' || 
-      game?.all_decisions_in || 
+      isAllDecisionsInFor(game, liveRound?.id) || 
       liveRound.chucky_active ||
       liveRound.status === 'completed' ||
       liveRound.status === 'showdown'
@@ -3566,7 +3566,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     : (
         game?.status === 'game_over' ||
         game?.status === 'session_ended' ||
-        game?.all_decisions_in ||
+        isAllDecisionsInFor(game, currentRound?.id) ||
         currentRound?.status === 'completed' ||
         game?.awaiting_next_round
       );
@@ -3588,7 +3588,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     : playerCards;
   const allDecisionsInForPresentation = game?.game_type === 'holm-game' && holmView
     ? holmView.players.filter(p => !p.sittingOut).every(p => p.decisionLocked)
-    : (game?.all_decisions_in || false);
+    : (isAllDecisionsInFor(game, currentRound?.id) || false);
   const chuckyCardsForPresentation = game?.game_type === 'holm-game' && holmView
     ? (holmView.chuckyCards as CardType[] | undefined)
     : (currentRound?.chucky_cards as CardType[] | undefined);
@@ -3715,7 +3715,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     
-    if (game?.status === 'in_progress' && !game.all_decisions_in) {
+    if (game?.status === 'in_progress' && !isAllDecisionsInFor(game, currentRound?.id)) {
       // For Holm games, only trigger if there's a valid turn position
       // For other games, trigger on any undecided bot
       if (isHolmGame && !currentRound?.current_turn_position) {
@@ -3789,9 +3789,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== "in_progress") return;
     if (game?.is_paused) return;
     if (game?.awaiting_next_round) return;
-    if (!game?.all_decisions_in) return;
-    if (!gameId) return;
     if (!currentRound || currentRound.status !== "betting") return;
+    if (!gameId) return;
+    if (!isAllDecisionsInFor(game, currentRound.id)) return;
 
     // CRITICAL: Verify at least one player has a decision for THIS round.
     // If no decisions exist, all_decisions_in is stale from a prior round — reset it.
@@ -3855,7 +3855,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'in_progress') return;
     if (!currentRound || currentRound.status !== 'betting') return;
     if (game?.is_paused) return;
-    if (game?.all_decisions_in) return; // Already done
+    if (isAllDecisionsInFor(game, currentRound?.id)) return; // Already done
     
     const currentPlayer = players.find(p => p.user_id === user?.id);
     if (!currentPlayer) return;
@@ -3900,7 +3900,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
     if (!currentRound || currentRound.status !== "betting") return;
     if (game?.is_paused) return;
-    if (game?.all_decisions_in) return;
+    if (isAllDecisionsInFor(game, currentRound?.id)) return;
 
     const myUserId = user?.id;
 
@@ -4034,7 +4034,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       timerTurnPosition,
       currentTurnPosition: currentRound?.current_turn_position,
       isHolmGame,
-      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !game.all_decisions_in && !game?.is_paused
+      shouldAutoFold: timeLeft === 0 && game?.status === 'in_progress' && !isAllDecisionsInFor(game, currentRound?.id) && !game?.is_paused
     });
     
     // Don't auto-fold if timer is null or negative (means fresh round)
@@ -4195,7 +4195,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   useEffect(() => {
     const isHolmGame = game?.game_type === 'holm-game';
     const roundCompleted = currentRound?.status === 'completed';
-    const allDecisionsIn = game?.all_decisions_in === true;
+    const allDecisionsIn = isAllDecisionsInFor(game, currentRound?.id);
     const alreadyAwaiting = game?.awaiting_next_round === true;
     const gameInProgress = game?.status === 'in_progress';
     
