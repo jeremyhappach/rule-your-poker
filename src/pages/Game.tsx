@@ -2439,6 +2439,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const rawRemaining = calculateRemaining();
       const seed = rawRemaining > 0 ? rawRemaining : 1;
       setTimeLeft(seed);
+      // Capture maxTime from the actual deadline window on first frame of a new
+      // deadline identity. Guarantees the visual bar/ring starts full (timeLeft/maxTime = 1)
+      // and scales to the configured timeout — not to a stale cached default (e.g. 30s).
+      if (decisionMaxTimeDeadlineRef.current !== decisionDeadline) {
+        decisionMaxTimeDeadlineRef.current = decisionDeadline;
+        // Use raw remaining (not seed) so a tiny clock skew doesn't lock maxTime to 1.
+        // Fall back to configured timer if deadline already passed on first frame.
+        const captured = rawRemaining > 0 ? rawRemaining : (decisionTimerRef.current || 30);
+        setDecisionMaxTime(captured);
+      }
 
       // ── Targeted turn-transition timer instrumentation (issue #2) ──
       // One row per new decision_deadline identity. Captures server vs client
