@@ -395,6 +395,10 @@ function buildThreeFiveSevenSnapshot(
     buckPosition: gameData.buck_position ?? 0,
     dealerPosition: gameData.dealer_position ?? 0,
     cardsDealt: currentRound.cards_dealt,
+    // Defensive monotonicity stamp — see threeFiveSevenProgress.ts.
+    // Pinned at snapshot-build time so a stale closure-captured snapshot
+    // cannot regress the hand dim of the progress vector at a hand boundary.
+    __syncHandNumber: currentRound.hand_number ?? 1,
   };
 }
 
@@ -701,7 +705,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // ── 3-5-7 Sync (Phase 3 — presentation cutover) ──
   const threeFiveSevenSyncLastRoundIdRef = useRef<string | null>(null);
   const threeFiveSevenSync = useGameStateSync<ThreeFiveSevenAuthoritativeSnapshot | null>(null, {
-    getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0],
+    getProgress: (s) => s ? getThreeFiveSevenProgress(s) : [0, 0, 0, 0, 0, 0],
     debugLabel: '357',
     describeState: (s) => s ? {
       hand: s.handNumber,
