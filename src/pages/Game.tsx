@@ -5777,10 +5777,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           eventData: { reason: 'session-end-suppressed-stale-active-humans', suppressed: true, humansAtTable },
           userId: user?.id,
         });
-        // Clear stale auto_fold/sitting_out so the next hand can proceed.
+        // Clear ONLY stale per-decision automation artifacts.
+        // Participation intent (sitting_out / waiting / sit_out_next_hand /
+        // stand_up_next_hand) is owned by evaluatePlayerStatesEndOfGame and
+        // the seat/opt-in/rejoin flows — never mutate it here.
         await supabase
           .from('players')
-          .update({ auto_fold: false, sitting_out: false, waiting: false })
+          .update({
+            auto_fold: false,
+            current_decision: null,
+            decision_locked: false,
+            pre_fold: false,
+            pre_stay: false,
+            ante_decision: null,
+          })
           .eq('game_id', gameId)
           .eq('is_bot', false);
         await supabase
