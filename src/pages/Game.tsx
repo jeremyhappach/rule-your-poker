@@ -9052,6 +9052,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     <DebugLogToggle />
     </div>
+    </ShellWrap>
     </VisualPreferencesProvider>
   );
 };
