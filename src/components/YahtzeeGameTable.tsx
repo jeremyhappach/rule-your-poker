@@ -170,6 +170,23 @@ export function YahtzeeGameTable({
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
 
+  // ── Identity wiring (framework cutover) ────────────────────────
+  // Yahtzee plays one round per match, so `currentRoundId` is the natural
+  // identity discriminator across matches. A monotonic round-ord counter
+  // is used to stamp incoming snapshots so the progress comparator can
+  // strictly dominate stale prior-match terminal snapshots on the leftmost
+  // dim — same defect-class mitigation as the Horses handNumber stamp.
+  const roundOrdMapRef = useRef<Map<string, number>>(new Map());
+  const roundOrdCounterRef = useRef(0);
+  const getRoundOrd = useCallback((roundId: string | null | undefined): number => {
+    if (!roundId) return 0;
+    const existing = roundOrdMapRef.current.get(roundId);
+    if (existing !== undefined) return existing;
+    roundOrdCounterRef.current += 1;
+    roundOrdMapRef.current.set(roundId, roundOrdCounterRef.current);
+    return roundOrdCounterRef.current;
+  }, []);
+
   // ── Shared anti-regression sync framework ──────────────────────
   const yahtzeeSync = useGameStateSync<YahtzeeState>(
     yahtzeeState ?? ({
@@ -184,14 +201,52 @@ export function YahtzeeGameTable({
       optimisticTimeoutMs: 3000,
       debugLabel: 'yahtzee',
       describeState: describeYahtzeeSnapshot,
+      // Identity advances on dealerGame/round transitions; the framework
+      // will hard-reset authRef back to initialState so a fresh next-match
+      // snapshot does not collide with stale prior-match progress.
+      identity: {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: getRoundOrd(currentRoundId),
+        roundId: currentRoundId ?? null,
+      },
     },
   );
 
-  // Feed incoming prop updates through the anti-regression gate
+  // Feed incoming prop updates through the anti-regression gate.
+  // Stamp __syncRound from the monotonic round ord so cross-match transitions
+  // cannot be canceled by closure-captured "latest" values.
   useEffect(() => {
     if (yahtzeeState) {
+      const stamped = {
+        ...yahtzeeState,
+        __syncRound: getRoundOrd(currentRoundId),
+      } as YahtzeeState & { __syncRound: number };
+
       console.log('[YAHTZEE_SYNC] Incoming authoritative snapshot', describeYahtzeeSnapshot(yahtzeeState));
-      yahtzeeSync.receiveAuthoritativeUpdate(yahtzeeState);
+      const result = yahtzeeSync.receiveAuthoritativeUpdate(stamped);
+
+      // Framework diagnostic — mirrors horses-auth-turn-handoff-received
+      import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'yahtzee',
+          handNumber: yahtzeeState.currentRound ?? 0,
+          roundId: currentRoundId ?? null,
+          eventType: 'sync-gate',
+          severity: result.accepted ? 'info' : 'warn',
+          eventName: 'yahtzee-auth-turn-handoff-received',
+          payload: {
+            accepted: result.accepted,
+            reason: result.reason,
+            comparison: result.comparison,
+            stampedRound: stamped.__syncRound,
+            beforeTurn: (result.presentationBefore as YahtzeeState | null)?.currentTurnPlayerId ?? null,
+            afterTurn: yahtzeeState.currentTurnPlayerId ?? null,
+            beforeProgress: result.previousProgress,
+            incomingProgress: result.incomingProgress,
+          },
+        });
+      }).catch(() => { /* safe */ });
 
       // ── HELD-DIE TRACE: Authoritative update accepted ──
       if (yahtzeeState.currentTurnPlayerId) {
@@ -217,7 +272,8 @@ export function YahtzeeGameTable({
         }
       }
     }
-  }, [yahtzeeState]);
+  }, [yahtzeeState, currentRoundId, dealerGameId, gameId, getRoundOrd, yahtzeeSync]);
+
 
   // The state the UI should render — frozen during animations, anti-regressed
   const stableYahtzeeState = yahtzeeSync.presentationState;
