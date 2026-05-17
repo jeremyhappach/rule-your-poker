@@ -39,7 +39,7 @@ import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
-import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer } from "@/lib/playerStateEvaluation";
+import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession } from "@/lib/playerStateEvaluation";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
@@ -5368,12 +5368,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         all_decisions_in_scoped: isAllDecisionsInFor(gameData, currentRound?.id)
       });
       
-      // For Holm, use presentation-layer deadline only (no raw fallback to avoid identity drift).
-      // For non-Holm games, presentation deadline is not provided, so raw is the only/correct source.
+      // For Holm, prefer presentation-layer deadline; fall back to the raw round
+      // deadline if presentation has not yet hydrated it (e.g. during visual
+      // contract / freeze window). This closes the regression where the timer
+      // meter and observer ring disappeared even though enforcement worked.
       const isHolmDeadline = gameData.game_type === 'holm-game';
       const holmPresentationDeadline = isHolmDeadline ? holmSync.presentationState?.decisionDeadline : null;
       const effectiveDeadline = isHolmDeadline
-        ? (holmPresentationDeadline ?? null)
+        ? (holmPresentationDeadline ?? currentRound?.decision_deadline ?? null)
         : (currentRound?.decision_deadline ?? null);
       
       if (effectiveDeadline) {
@@ -5706,8 +5708,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // STEP 1: Evaluate player states BEFORE dealer rotation
     console.log('[GAME OVER] Evaluating player states end-of-game');
     const { activePlayerCount, activeHumanCount, eligibleDealerCount, playersStoodUp } = await evaluatePlayerStatesEndOfGame(gameId);
-    
+
     console.log('[GAME OVER] After evaluation - active players:', activePlayerCount, 'active humans:', activeHumanCount, 'eligible dealers:', eligibleDealerCount, 'stood up:', playersStoodUp.length);
+
+    // STEP 1b (SESSION HYGIENE): sanitize per-decision / timeout automation for ALL
+    // players in the session, regardless of which branch we take next. Must happen
+    // AFTER participation reconciliation and BEFORE branching to waiting / next dealer game.
+    await sanitizePlayerAutomationStateForSession(gameId);
 
     // STEP 2: Check if we have enough players to continue
     // Priority 1: If no active human players, END SESSION or DELETE if empty
@@ -5844,10 +5851,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (eligibleDealerCount < 1 || activePlayerCount < 2) {
       console.log('[GAME OVER] Not enough players to continue! Eligible dealers:', eligibleDealerCount, 'Active players:', activePlayerCount, '- reverting to waiting');
       gameOverTransitionRef.current = false;
-      
-      // Remove sitting out players - they need to re-select seats
-      await removeSittingOutPlayersOnWaiting(gameId);
-      
+
+      // CONTRACT: passive timeout sit-outs remain seated and visible (red).
+      // Do NOT call removeSittingOutPlayersOnWaiting here — that would set
+      // status='left' and hide the seat, which conflates passive sit-outs
+      // with intentional departures. Sit-outs can opt back in for next game.
+
       // Revert to waiting status
       await supabase
         .from('games')
@@ -7223,9 +7232,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         if (latestPlayers) {
           // Evaluate player states and determine if session should end or continue
           const { activePlayerCount, activeHumanCount, eligibleDealerCount } = await evaluatePlayerStatesEndOfGame(gameId);
-          
+
           console.log('[ANTE] After evaluation - Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount);
-          
+
+          // SESSION HYGIENE: sanitize automation state for ALL players before branching.
+          await sanitizePlayerAutomationStateForSession(gameId);
+
           // Priority 1: If no active human players, END SESSION completely
           if (activeHumanCount < 1) {
             console.log('[ANTE] No active human players! Ending session.');
@@ -7261,12 +7273,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               })
               .eq('id', gameId);
           } else {
-            // Revert to waiting status
+            // Revert to waiting status; passive sit-outs remain seated (no status='left').
             console.log('[ANTE] Not enough players - reverting to waiting');
-            
-            // Remove sitting out players - they need to re-select seats
-            await removeSittingOutPlayersOnWaiting(gameId);
-            
+
             await supabase
               .from('games')
               .update({ 
@@ -8283,8 +8292,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       if (eligibleDealerCount < 1 || activePlayerCount < 2) {
                         console.log('[SIT OUT] Not enough players to continue - reverting to waiting');
                         
-                        // Remove sitting out players - they need to re-select seats
-                        await removeSittingOutPlayersOnWaiting(gameId);
+                        // Session hygiene + keep passive sit-outs seated (no status='left').
+                        await sanitizePlayerAutomationStateForSession(gameId);
                         
                         // Revert to waiting status
                         await supabase

@@ -469,6 +469,40 @@ export async function handlePlayerRejoin(playerId: string): Promise<boolean> {
 }
 
 /**
+ * Session participation hygiene: AFTER participation reconciliation
+ * (sit_out_next_hand → sitting_out and waiting → active), sanitize stale
+ * per-decision / timeout-automation state for EVERY player in the session.
+ *
+ * Must run BEFORE branching to either a new dealer game or back to waiting
+ * so that:
+ *  - passive timeout sit-outs remain seated and visible (no status='left'),
+ *  - their auto_fold / current_decision / decision_locked do not leak into
+ *    the next dealer game (or block opt-in eligibility recompute),
+ *  - opt-ins start clean.
+ *
+ * Intentionally does NOT touch: sitting_out, waiting, status, position,
+ * chips, sit_out_next_hand, stand_up_next_hand — those are owned by
+ * evaluatePlayerStatesEndOfGame and the seat/opt-in flows.
+ */
+export async function sanitizePlayerAutomationStateForSession(gameId: string): Promise<void> {
+  console.log('[SESSION HYGIENE] Sanitizing per-decision / automation state for game:', gameId);
+  const { error } = await supabase
+    .from('players')
+    .update({
+      auto_fold: false,
+      current_decision: null,
+      decision_locked: false,
+      pre_fold: false,
+      pre_stay: false,
+      ante_decision: null,
+    })
+    .eq('game_id', gameId);
+  if (error) {
+    console.error('[SESSION HYGIENE] Error sanitizing automation state:', error);
+  }
+}
+
+/**
  * Soft-remove all sitting out players when game transitions back to waiting.
  * Sets status='left' so they must re-select seats to rejoin.
  * Player records are preserved for hand history FK integrity.

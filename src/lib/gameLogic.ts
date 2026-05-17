@@ -224,15 +224,31 @@ export async function startRound(gameId: string, roundNumber: number) {
     return;
   }
 
-  // Prevent starting if already in progress with this round
-  if (gameConfig?.status === 'in_progress' && gameConfig?.current_round === roundNumber) {
-    logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_ALREADY_IN_PROGRESS', {
-      roundNumber,
-      currentRound: gameConfig?.current_round,
-    });
-    console.log('[START_ROUND] Round', roundNumber, 'already in progress, skipping');
-    return;
+  // Scope the "already in progress" guard to the CURRENT dealer_game_id.
+  // Session-level games.status / games.current_round can be stale from a prior
+  // dealer game (e.g. previous Holm hand also had current_round=1), which would
+  // wrongly block round 1 creation for a freshly-started 3-5-7 dealer game.
+  // The unique-INSERT lock below remains the authoritative race guard.
+  const currentGameUuidForGuard = (gameConfig as any)?.current_game_uuid ?? null;
+  if (currentGameUuidForGuard) {
+    const { data: existingForDealerGame } = await supabase
+      .from('rounds')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('dealer_game_id', currentGameUuidForGuard)
+      .eq('round_number', roundNumber)
+      .limit(1);
+    if (existingForDealerGame && existingForDealerGame.length > 0) {
+      logRaceConditionGuard(gameId, 'gameLogic:startRound', 'ROUND_ALREADY_IN_PROGRESS', {
+        roundNumber,
+        dealerGameId: currentGameUuidForGuard,
+        scope: 'dealer_game_scoped',
+      });
+      console.log('[START_ROUND] Round', roundNumber, 'already exists for dealer_game', currentGameUuidForGuard, '- skipping');
+      return;
+    }
   }
+
   
   const anteAmount = gameConfig?.ante_amount || 1;
   const legValue = gameConfig?.leg_value || 1;
