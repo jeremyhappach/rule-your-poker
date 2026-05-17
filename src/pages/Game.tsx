@@ -7951,21 +7951,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isPokerVariantFamily(game.game_type) &&
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
 
-  const ShellWrap: React.FC<{ children: React.ReactNode }> = ({ children }) =>
-    enableOuterShell ? (
-      <PersistentTableShell gameId={gameId ?? undefined} gameType={game.game_type}>
-        {children}
-      </PersistentTableShell>
-    ) : (<>{children}</>);
+  // NOTE: do NOT define ShellWrap as an inline component here — its
+  // type identity would change every render and remount the entire
+  // subtree (and the PersistentTableShell itself), violating INV-shell-1
+  // and breaking lobby interactions. Inline the conditional instead.
 
-  return (
-    <VisualPreferencesProvider userId={user?.id}>
-      <GameDeckColorModeSync 
-        playerId={currentPlayer?.id} 
-        playerDeckColorMode={currentPlayer?.deck_color_mode}
-        onModeChange={() => {}}
-      />
-    <ShellWrap>
+  const innerTree = (
     <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
