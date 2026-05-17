@@ -48,11 +48,17 @@ function resolveTimeoutPolicy(
   }
   return { enabled: false, action: 'none', source: 'safe_default' };
 }
+// Normalize games.game_type → game_defaults.game_type key.
+// Only mismatch: games row stores 'holm-game' while game_defaults stores 'holm'.
+function normalizeDefaultsKey(gameType: string | null | undefined): string {
+  if (gameType === 'holm-game') return 'holm';
+  return gameType || '';
+}
 async function fetchTimeoutPolicy(supabase: any, game: any): Promise<TimeoutPolicy> {
   const { data: gd } = await supabase
     .from('game_defaults')
     .select('timeout_enforcement_enabled, timeout_action')
-    .eq('game_type', game?.game_type || '')
+    .eq('game_type', normalizeDefaultsKey(game?.game_type))
     .maybeSingle();
   return resolveTimeoutPolicy(game, gd);
 }
