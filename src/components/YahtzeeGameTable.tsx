@@ -170,6 +170,23 @@ export function YahtzeeGameTable({
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
 
+  // ── Identity wiring (framework cutover) ────────────────────────
+  // Yahtzee plays one round per match, so `currentRoundId` is the natural
+  // identity discriminator across matches. A monotonic round-ord counter
+  // is used to stamp incoming snapshots so the progress comparator can
+  // strictly dominate stale prior-match terminal snapshots on the leftmost
+  // dim — same defect-class mitigation as the Horses handNumber stamp.
+  const roundOrdMapRef = useRef<Map<string, number>>(new Map());
+  const roundOrdCounterRef = useRef(0);
+  const getRoundOrd = useCallback((roundId: string | null | undefined): number => {
+    if (!roundId) return 0;
+    const existing = roundOrdMapRef.current.get(roundId);
+    if (existing !== undefined) return existing;
+    roundOrdCounterRef.current += 1;
+    roundOrdMapRef.current.set(roundId, roundOrdCounterRef.current);
+    return roundOrdCounterRef.current;
+  }, []);
+
   // ── Shared anti-regression sync framework ──────────────────────
   const yahtzeeSync = useGameStateSync<YahtzeeState>(
     yahtzeeState ?? ({
@@ -184,14 +201,52 @@ export function YahtzeeGameTable({
       optimisticTimeoutMs: 3000,
       debugLabel: 'yahtzee',
       describeState: describeYahtzeeSnapshot,
+      // Identity advances on dealerGame/round transitions; the framework
+      // will hard-reset authRef back to initialState so a fresh next-match
+      // snapshot does not collide with stale prior-match progress.
+      identity: {
+        dealerGameId: dealerGameId ?? null,
+        handNumber: getRoundOrd(currentRoundId),
+        roundId: currentRoundId ?? null,
+      },
     },
   );
 
-  // Feed incoming prop updates through the anti-regression gate
+  // Feed incoming prop updates through the anti-regression gate.
+  // Stamp __syncRound from the monotonic round ord so cross-match transitions
+  // cannot be canceled by closure-captured "latest" values.
   useEffect(() => {
     if (yahtzeeState) {
+      const stamped = {
+        ...yahtzeeState,
+        __syncRound: getRoundOrd(currentRoundId),
+      } as YahtzeeState & { __syncRound: number };
+
       console.log('[YAHTZEE_SYNC] Incoming authoritative snapshot', describeYahtzeeSnapshot(yahtzeeState));
-      yahtzeeSync.receiveAuthoritativeUpdate(yahtzeeState);
+      const result = yahtzeeSync.receiveAuthoritativeUpdate(stamped);
+
+      // Framework diagnostic — mirrors horses-auth-turn-handoff-received
+      import('@/lib/persistSyncDebugEvent').then(({ persistSyncDebugEvent }) => {
+        persistSyncDebugEvent({
+          gameId,
+          gameType: 'yahtzee',
+          handNumber: yahtzeeState.currentRound ?? 0,
+          roundId: currentRoundId ?? null,
+          eventType: 'sync-gate',
+          severity: result.accepted ? 'info' : 'warn',
+          eventName: 'yahtzee-auth-turn-handoff-received',
+          payload: {
+            accepted: result.accepted,
+            reason: result.reason,
+            comparison: result.comparison,
+            stampedRound: stamped.__syncRound,
+            beforeTurn: (result.presentationBefore as YahtzeeState | null)?.currentTurnPlayerId ?? null,
+            afterTurn: yahtzeeState.currentTurnPlayerId ?? null,
+            beforeProgress: result.previousProgress,
+            incomingProgress: result.incomingProgress,
+          },
+        });
+      }).catch(() => { /* safe */ });
 
       // ── HELD-DIE TRACE: Authoritative update accepted ──
       if (yahtzeeState.currentTurnPlayerId) {
@@ -217,7 +272,8 @@ export function YahtzeeGameTable({
         }
       }
     }
-  }, [yahtzeeState]);
+  }, [yahtzeeState, currentRoundId, dealerGameId, gameId, getRoundOrd, yahtzeeSync]);
+
 
   // The state the UI should render — frozen during animations, anti-regressed
   const stableYahtzeeState = yahtzeeSync.presentationState;
@@ -372,59 +428,13 @@ export function YahtzeeGameTable({
     };
   }, [gameId]);
 
-  /* ---- Fallback polling for opponent dice (guards against missed realtime events) ---- */
-  const pollActiveRef = useRef(false);
-  useEffect(() => {
-    const phase = yahtzeeState?.gamePhase || 'waiting';
-    const turnPlayerId = yahtzeeState?.currentTurnPlayerId;
-    const myTurn = players.find(p => p.id === turnPlayerId)?.user_id === currentUserId && phase === 'playing';
-
-    if (!currentRoundId || phase !== 'playing' || myTurn) {
-      pollActiveRef.current = false;
-      return;
-    }
-
-    pollActiveRef.current = true;
-    let active = true;
-    let pollInterval = 2500;
-    let lastKnownJson: string | null = null;
-
-    const poll = async () => {
-      if (!active) return;
-      try {
-        const { data } = await supabase
-          .from('rounds')
-          .select('yahtzee_state')
-          .eq('id', currentRoundId)
-          .maybeSingle();
-
-        if (!active || !data?.yahtzee_state) {
-          pollInterval = Math.min(pollInterval * 1.5, 10000);
-          if (active) timeoutId = setTimeout(poll, pollInterval);
-          return;
-        }
-
-        const json = JSON.stringify(data.yahtzee_state);
-        if (json !== lastKnownJson) {
-          lastKnownJson = json;
-          pollInterval = 2500;
-          onRefetch();
-        } else {
-          pollInterval = Math.min(pollInterval * 1.5, 10000);
-        }
-      } catch {
-        pollInterval = Math.min(pollInterval * 1.5, 10000);
-      }
-      if (active) timeoutId = setTimeout(poll, pollInterval);
-    };
-
-    let timeoutId = setTimeout(poll, pollInterval);
-
-    return () => {
-      active = false;
-      clearTimeout(timeoutId);
-    };
-  }, [currentRoundId, yahtzeeState?.gamePhase, yahtzeeState?.currentTurnPlayerId, currentUserId, onRefetch]);
+  // NOTE: Fallback polling for opponent dice was REMOVED as part of the
+  // Yahtzee no-blind-spot framework cutover. It violated the core project
+  // rule against polling-based safety nets and could mask realtime delivery
+  // bugs. Realtime subscription in Game.tsx (postgres_changes on rounds)
+  // is the single source of authoritative updates; if a snapshot is missed
+  // there, the framework's progress-vector gate and identity reset are the
+  // recovery surface — not a hidden poll loop.
 
   // Track upper bonus per player to detect when earned
   const prevUpperBonusRef = useRef<Record<string, boolean>>({});
@@ -557,19 +567,24 @@ export function YahtzeeGameTable({
     console.log('[YAHTZEE] Turn seeded from DB', { turnKey, rollsRemaining: ps.rollsRemaining });
   }, [isMyTurn, myPlayer?.id, stableYahtzeeState?.playerStates, currentTurnPlayerId, currentRoundId]);
 
-  // Clear optimistic score once DB has caught up
+  // Clear optimistic score once presentation has caught up.
+  // Framework cutover: drive from viewState so the override clears in lockstep
+  // with what the user actually sees, not raw authoritative.
   useEffect(() => {
-    if (!optimisticScore || !yahtzeeState) return;
-    const ps = yahtzeeState.playerStates[optimisticScore.playerId];
+    if (!optimisticScore || !viewState) return;
+    const ps = viewState.playerStates[optimisticScore.playerId];
     if (ps?.scorecard.scores[optimisticScore.category] !== undefined) {
       setOptimisticScore(null);
     }
-  }, [yahtzeeState?.playerStates, optimisticScore]);
+  }, [viewState?.playerStates, optimisticScore]);
 
-  /* ---- Detect Yahtzee rolls & upper bonus from DB state changes ---- */
+  /* ---- Detect Yahtzee rolls & upper bonus from presentation state changes ---- */
+  // Framework cutover: side-effects that drive UI overlays MUST follow the
+  // presentation layer — driving them from raw authoritative would fire
+  // bonus/yahtzee overlays before the presentation has visibly advanced.
   useEffect(() => {
-    if (!yahtzeeState) return;
-    for (const [pid, ps] of Object.entries(yahtzeeState.playerStates)) {
+    if (!viewState) return;
+    for (const [pid, ps] of Object.entries(viewState.playerStates)) {
       const player = players.find(p => p.id === pid);
       if (!player) continue;
       const name = getPlayerUsername(player);
@@ -590,12 +605,12 @@ export function YahtzeeGameTable({
       }
       prevYahtzeeBonusRef.current[pid] = nowBonusCount;
     }
-  }, [yahtzeeState?.playerStates]);
+  }, [viewState?.playerStates]);
 
   /* ---- Track opponent's last non-zero dice for caching during scoring ---- */
   useEffect(() => {
-    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
-    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!viewState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = viewState.playerStates[currentTurnPlayerId];
     if (!ps) return;
     const hasNonZero = ps.dice.some(d => d.value !== 0);
     if (hasNonZero) {
@@ -605,12 +620,12 @@ export function YahtzeeGameTable({
         playerId: currentTurnPlayerId,
       };
     }
-  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+  }, [viewState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
 
   /* ---- Detect remote opponent scoring (new category appears in their scorecard) ---- */
   useEffect(() => {
-    if (!yahtzeeState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
-    const ps = yahtzeeState.playerStates[currentTurnPlayerId];
+    if (!viewState || !currentTurnPlayerId || currentTurnPlayerId === myPlayer?.id) return;
+    const ps = viewState.playerStates[currentTurnPlayerId];
     if (!ps) return;
 
     const prevScores = prevOpponentScorecardRef.current[currentTurnPlayerId] || {};
@@ -635,10 +650,6 @@ export function YahtzeeGameTable({
       setLastScoredValue(currentScores[newCat]!);
       setScoringInProgress(true);
 
-      // Use cached non-zero dice so they stay visible on felt during scoring transition.
-      // NOTE: We do NOT freeze the whole presentationState — that would block turn banner,
-      // rolls badge, and status text from updating. The cachedOpponentDice packet handles
-      // dice-only visual stability during this window.
       if (lastNonZeroDiceRef.current && lastNonZeroDiceRef.current.playerId === currentTurnPlayerId) {
         setCachedOpponentDice(lastNonZeroDiceRef.current);
       }
@@ -652,7 +663,7 @@ export function YahtzeeGameTable({
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [yahtzeeState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
+  }, [viewState?.playerStates, currentTurnPlayerId, myPlayer?.id]);
 
   /* ---- Clear opponent scoring highlight when turn changes ---- */
   useEffect(() => {
