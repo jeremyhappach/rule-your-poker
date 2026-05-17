@@ -601,7 +601,11 @@ export const DealerGameSetup = ({
     };
   }, [isBot, loadingDefaults, syncWithServerDeadline]);
 
-  // Countdown timer - display only (timeout enforcement is scheduled off the server deadline)
+  // PRIMARY enforcement: the visible countdown reaching zero immediately fires
+  // the timeout action on the active client. The setTimeout in scheduleConfigTimeout
+  // is a SECONDARY backup (in case display ticking is paused by the OS). Server
+  // edge/cron enforcement is TERTIARY. An active client visibly seeing the deadline
+  // expire must never depend on background polling.
   useEffect(() => {
     if (isBot || loadingDefaults) return;
     if (timeLeft === null) return; // Wait for initial sync
@@ -610,6 +614,11 @@ export const DealerGameSetup = ({
       setTimeLeft((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(timer);
+          // PRIMARY trigger: display countdown reached zero on this active client.
+          if (!hasSubmittedRef.current) {
+            console.log('[DEALER SETUP] Display countdown reached 0 — firing timeout (primary)');
+            handleDealerTimeoutRef.current();
+          }
           return 0;
         }
         return prev - 1;
