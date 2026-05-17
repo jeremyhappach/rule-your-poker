@@ -2405,6 +2405,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         rawAllDecisionsIn: game?.all_decisions_in,
         allDecisionsInRoundId: game?.all_decisions_in_round_id ?? null,
       });
+      decisionMaxTimeDeadlineRef.current = null;
+      setDecisionMaxTime(null);
       return;
     }
 
