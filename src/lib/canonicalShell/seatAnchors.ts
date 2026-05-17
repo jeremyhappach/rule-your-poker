@@ -126,13 +126,27 @@ export function clockwiseDistance(viewerPosition: number, otherPosition: number)
   return ((otherPosition - viewerPosition) + ring) % ring;
 }
 
+/**
+ * Active-canonical mapping for a seated viewer.
+ *
+ * Established convention (matches existing MobileGameTable rendering):
+ *   distance 1 → slot 0 (bottom-left)
+ *   distance 2 → slot 1 (middle-left)
+ *   distance 3 → slot 2 (top-left)
+ *   distance 4 → slot 3 (top-right)
+ *   distance 5 → slot 4 (middle-right)
+ *   distance 6 → slot 5 (bottom-right)
+ *
+ * Note: "clockwise distance" here is a positional label
+ * (playerPos - viewerPos mod 7), not a literal visual direction.
+ */
 const ACTIVE_DISTANCE_TO_SLOT: Record<number, CanonicalSlot> = {
-  1: 5,
-  2: 4,
-  3: 3,
-  4: 2,
-  5: 1,
-  6: 0,
+  1: 0,
+  2: 1,
+  3: 2,
+  4: 3,
+  5: 4,
+  6: 5,
 };
 
 export function activeSlotForDistance(distance: number): CanonicalSlot | null {

@@ -36,7 +36,7 @@ describe('seatAnchors — observer-absolute', () => {
 });
 
 describe('seatAnchors — active-canonical', () => {
-  it('places viewer at HOME and rotates others clockwise', () => {
+  it('places viewer at HOME and rotates others by established convention', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'active-canonical',
       viewerPosition: 4,
@@ -49,9 +49,12 @@ describe('seatAnchors — active-canonical', () => {
       ],
     });
     expect(anchors.find(a => a.position === 4)?.slot).toBe(SLOT.HOME);
-    expect(anchors.find(a => a.position === 5)?.slot).toBe(5);
-    expect(anchors.find(a => a.position === 6)?.slot).toBe(4);
-    expect(anchors.find(a => a.position === 3)?.slot).toBe(0);
+    // distance(4,5)=1 → slot 0 (BL)
+    expect(anchors.find(a => a.position === 5)?.slot).toBe(0);
+    // distance(4,6)=2 → slot 1 (ML)
+    expect(anchors.find(a => a.position === 6)?.slot).toBe(1);
+    // distance(4,3)=6 → slot 5 (BR)
+    expect(anchors.find(a => a.position === 3)?.slot).toBe(5);
   });
 
   it('clockwise distance wraps around the 7-seat ring', () => {
