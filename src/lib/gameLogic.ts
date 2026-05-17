@@ -425,6 +425,7 @@ export async function startRound(gameId: string, roundNumber: number) {
   const gameUpdate: Record<string, unknown> = {
     current_round: insertedRound.round_number, // Use inserted row, not local variable
     all_decisions_in: false,
+    all_decisions_in_round_id: null, // F5.1: clear scoping when starting a new round
     pot: currentPot + initialPot,  // Add antes to existing pot (0 for rounds 2-3)
     // CRITICAL: Clear stale deadlines from config/ante phases so cron doesn't enforce them mid-game
     config_deadline: null,
