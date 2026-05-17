@@ -6943,9 +6943,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleThreeFiveSevenWinAnimationComplete = useCallback(async () => {
     if (game?.game_type === 'holm-game' || !gameId) {
       return;
-}
-
-interface GameData {
+    }
 
     // Always clear the active flag so countdowns / resets don't unmount animations mid-flight.
     setIs357WinAnimationActive(false);
