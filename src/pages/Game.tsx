@@ -327,6 +327,10 @@ function buildHolmSnapshot(
   return {
     roundId: currentRound.id,
     handNumber: currentRound.hand_number ?? 1,
+    // Defensive stamp: mirrors the Horses P0 #2 framework cutover so the
+    // most-significant progress dim cannot be canceled by any future
+    // closure-captured handNumber drift.
+    __syncHandNumber: currentRound.hand_number ?? 1,
     dealerGameId: gameData.current_game_uuid ?? '',
     roundStatus,
     players: playersData.map(p => ({
