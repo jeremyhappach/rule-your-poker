@@ -516,106 +516,27 @@ serve(async (req) => {
                   .eq('id', game.id);
                 actionsTaken.push(`Ante complete: ${activePlayers.length} players ready, transitioning to in_progress`);
               } else {
-                // Not enough players - return to waiting or rotate to config
-                console.log('[CRON-ENFORCE] Not enough players after ante timeout, need at least 2, have', activePlayers.length);
-                
-                const currentDealer = (finalPlayers || []).find((p: any) => p.position === game.dealer_position);
-                const dealerIsActive = currentDealer && !currentDealer.sitting_out;
-                
-                // Find next eligible dealer
-                const eligibleDealers = (finalPlayers || []).filter((p: any) => 
-                  !p.is_bot && !p.sitting_out
-                ).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-                
-                if (eligibleDealers.length >= 2) {
-                  // We have enough humans for a game, just missing ante responses
-                  // Rotate to configuring with new dealer
-                  const currentPos = game.dealer_position || 1;
-                  const higherPositions = eligibleDealers.filter((p: any) => p.position > currentPos);
-                  const nextDealer = higherPositions.length > 0 
-                    ? higherPositions[0] 
-                    : eligibleDealers[0];
-                  
-                  const configDeadline = new Date(Date.now() + 30 * 1000).toISOString();
-                  
-                  await supabase
-                    .from('games')
-                    .update({
-                      status: 'configuring',
-                      ante_decision_deadline: null,
-                      config_deadline: configDeadline,
-                      dealer_position: dealerIsActive ? game.dealer_position : nextDealer.position,
-                      last_round_result: null,
-                    })
-                    .eq('id', game.id);
-                  
-                  // Reset ante decisions for next attempt
-                  await supabase
-                    .from('players')
-                    .update({
-                      ante_decision: null,
-                      current_decision: null,
-                    })
-                    .eq('game_id', game.id)
-                    .eq('sitting_out', false);
-                  
-                  actionsTaken.push(`Ante timeout: Not enough players (${activePlayers.length}), rotating to configuring`);
-                } else if (eligibleDealers.length === 1) {
-                  // Only one human left
-                  await supabase
-                    .from('games')
-                    .update({
-                      status: 'waiting_for_players',
-                      ante_decision_deadline: null,
-                    })
-                    .eq('id', game.id);
-                  actionsTaken.push('Ante timeout: Only 1 active player, returning to waiting_for_players');
-                } else {
-                  // No eligible dealers - end session
-                  const hasHistory = (game.total_hands || 0) > 0;
-                  
-                  if (hasHistory) {
-                    await supabase
-                      .from('games')
-                      .update({
-                        status: 'session_ended',
-                        pending_session_end: false,
-                        session_ended_at: nowIso,
-                        game_over_at: nowIso,
-                        ante_decision_deadline: null,
-                      })
-                      .eq('id', game.id);
-                    actionsTaken.push('Ante timeout: No active players, session ended');
-                  } else if (game.real_money === true) {
-                    // CRITICAL: NEVER delete real_money games - archive instead
-                    console.log('[CRON-ENFORCE] Real money game - archiving instead of deleting');
-                    await supabase
-                      .from('games')
-                      .update({
-                        status: 'session_ended',
-                        pending_session_end: false,
-                        session_ended_at: nowIso,
-                        game_over_at: nowIso,
-                        ante_decision_deadline: null,
-                      })
-                      .eq('id', game.id);
-                    actionsTaken.push('Ante timeout: Real money game archived (never deleted)');
-                  } else {
-                    // Delete empty session
-                    const { data: roundRows } = await supabase.from('rounds').select('id').eq('game_id', game.id);
-                    const roundIds = (roundRows ?? []).map((r: any) => r.id);
-                    if (roundIds.length > 0) {
-                      await supabase.from('player_cards').delete().in('round_id', roundIds);
-                      await supabase.from('player_actions').delete().in('round_id', roundIds);
-                    }
-                    await supabase.from('chip_stack_emoticons').delete().eq('game_id', game.id);
-                    await supabase.from('chat_messages').delete().eq('game_id', game.id);
-                    await supabase.from('rounds').delete().eq('game_id', game.id);
-                    await supabase.from('players').delete().eq('game_id', game.id);
-                    await supabase.from('games').delete().eq('id', game.id);
-                    actionsTaken.push('Ante timeout: No active players, no history - deleted empty session');
-                  }
-                }
+                // Unified abandonment contract (mirrors config-timeout handler):
+                // Not enough anted players → transition session to 'waiting'.
+                // NEVER session_ended on timeout. NEVER delete real-money sessions.
+                // Real-money empty-no-humans archival is the cron cleanup path's job,
+                // not the ante-timeout handler's. Empty non-real-money with no humans
+                // at all → still go to 'waiting'; the empty-session deletion cron
+                // sweep handles cleanup after threshold.
+                console.log('[CRON-ENFORCE] Ante timeout abandonment → waiting (anted=', activePlayers.length, ')');
+                await supabase
+                  .from('games')
+                  .update({
+                    status: 'waiting',
+                    ante_decision_deadline: null,
+                    config_deadline: null,
+                    config_complete: false,
+                    awaiting_next_round: false,
+                    last_round_result: null,
+                    current_game_uuid: null,
+                  })
+                  .eq('id', game.id);
+                actionsTaken.push(`Ante timeout: ${activePlayers.length} anted, transitioning to waiting (abandonment contract)`);
               }
               
               if (actionsTaken.length > 0) {
