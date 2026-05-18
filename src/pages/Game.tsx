@@ -2844,7 +2844,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // This prevents race conditions where the dialog check runs before realtime updates propagate
         const { data: freshPlayers, error: freshPlayersError } = await supabase
           .from('players')
-          .select('id, user_id, position, ante_decision, auto_ante, auto_ante_runback, sitting_out, is_bot')
+          .select('id, user_id, position, ante_decision, auto_ante, auto_ante_runback, sitting_out, is_bot, status')
           .eq('game_id', gameId);
         
         if (freshPlayersError || !freshPlayers) {
