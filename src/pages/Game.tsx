@@ -2978,7 +2978,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const latchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
         const isLatched = anteConfirmedLatchRef.current === latchKey;
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && !isLatched) {
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && (freshCurrentPlayer as any).status !== 'observer' && !isLatched) {
           logDebugEvent({
             gameId: gameId!,
             userId: user.id,
