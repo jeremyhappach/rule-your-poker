@@ -2947,7 +2947,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const autoLatchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
         const isAutoLatched = anteConfirmedLatchRef.current === autoLatchKey;
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && (freshCurrentPlayer as any).status !== 'observer' && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && (freshCurrentPlayer as any).status !== 'observer' && (freshCurrentPlayer as any).status !== 'left' && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
           console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
