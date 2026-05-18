@@ -8788,7 +8788,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // DICE GAMES (Horses and Ship Captain Crew)
           // All users (mobile + desktop) route through MobileGameTable + useHorsesMobileController
           // for unified sync-gated gameplay. Desktop differences are handled by responsive sizing.
-          if (isInProgress && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+          if ((isInProgress || isAnteDecision) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
 
             return (
