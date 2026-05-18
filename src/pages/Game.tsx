@@ -7920,6 +7920,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return players.find(p => p.position === nextPosition) || dealerPlayer;
   }, [game?.status, game?.dealer_position, players, dealerPlayer]);
 
+  // Phase 6: passive PlayfieldSlot identity tracker. MUST be called
+  // unconditionally in stable hook order BEFORE any early returns to
+  // satisfy rules-of-hooks. The `enabled` flag makes it a runtime
+  // no-op when the game isn't loaded or isn't a poker-variant family.
+  const phase6Enabled =
+    !loading &&
+    !!game &&
+    isPokerVariantFamily(game?.game_type) &&
+    import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
+  useSlotIdentityTracker({
+    enabled: phase6Enabled,
+    gameId: gameId ?? null,
+    gameType: game?.game_type ?? null,
+    dealerGameId: (game as any)?.current_game_uuid ?? null,
+  });
+
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -7943,27 +7959,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
   // Phase 5: Outer canonical shell wraps the poker-variant render tree
-  // so the shell instance survives game.status transitions. For non
-  // poker-variant games (Cribbage / Gin Rummy / Yahtzee / Trivia) the
-  // existing unified persistent tables remain authoritative. The inner
-  // MobileGameTable shell (Phase 4) has been removed; this outer shell
-  // is the single canonical ownership boundary.
-  const enableOuterShell =
-    isPokerVariantFamily(game.game_type) &&
-    import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
-
-  // Phase 6: passive PlayfieldSlot identity tracker. Observe-only —
-  // fires telemetry and runs INV-shell-2 / INV-shell-3 checks. Does
-  // not gate, render, or mutate. Gated by the same Phase 5 boundary.
-  useSlotIdentityTracker(
-    enableOuterShell
-      ? {
-          gameId: gameId ?? null,
-          gameType: game.game_type ?? null,
-          dealerGameId: game.current_game_uuid ?? null,
-        }
-      : { gameId: null, gameType: null, dealerGameId: null },
-  );
+  // so the shell instance survives game.status transitions.
+  const enableOuterShell = phase6Enabled;
 
   // NOTE: do NOT define ShellWrap as an inline component here — its
   // type identity would change every render and remount the entire
