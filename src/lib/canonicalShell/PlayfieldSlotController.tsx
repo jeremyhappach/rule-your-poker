@@ -11,16 +11,17 @@
  *   active(A) ── desiredIdentity → null ──▶ neutral (held until non-null)
  *   null      ── desiredIdentity → A ──▶ active(A)  (direct cold mount)
  *
- * Phase 7 contract notes:
- *   - Teardown is synchronous (SLOT_CHOREOGRAPHY.teardownGraceMs === 0).
- *     Upstream guarantees end-of-game closure has completed before
- *     `desiredIdentity` changes; closure overlays live outside the slot.
- *   - Children re-mount on identity change because the controller
- *     keys its rendered child by the active identity descriptor.
- *   - Telemetry: this controller owns the single
- *     `slot-identity-changed` source (via useSlotIdentityTracker).
- *     The Game.tsx-level tracker is disabled when this controller is
- *     mounted to avoid duplicate events.
+ * Readiness gate (Phase 7 polish):
+ *   The dwell is a minimum visible hold, not a sufficient mount signal.
+ *   When `readyToMount` is false, the controller stays in neutral past
+ *   the dwell expiry until readiness flips true — at which point it
+ *   mounts the latest desired identity. Cold-start mount also respects
+ *   readiness. This eliminates the white-flash class of bugs where the
+ *   slot flips to active faster than the gameplay subtree can paint.
+ *
+ *   Predicate scope (per approved Phase 7 guardrail): readiness MUST
+ *   only answer "is the intended game surface ready enough to mount
+ *   without flashing?" — not a generic lifecycle framework.
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -39,6 +40,13 @@ export interface PlayfieldSlotControllerProps {
   interstitialDwellMs?: number;
   /** Optional gameId for telemetry payload correlation. */
   gameId?: string | null;
+  /**
+   * Readiness gate. When false, the controller holds neutral past the
+   * dwell expiry until this flips true. Defaults to true (backwards
+   * compatible). Narrow scope: only answers "is the intended game
+   * surface ready to paint a stable first frame?".
+   */
+  readyToMount?: boolean;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
@@ -49,20 +57,35 @@ export function PlayfieldSlotController({
   desiredIdentity,
   interstitialDwellMs = SLOT_CHOREOGRAPHY.interstitialDwellMs,
   gameId,
+  readyToMount = true,
   children,
 }: PlayfieldSlotControllerProps) {
-  // mountedIdentity is what's currently rendered. desiredIdentity is
-  // the goal. They diverge during the neutral dwell.
   const [mountedIdentity, setMountedIdentity] =
-    useState<PlayfieldSlotIdentity>(desiredIdentity);
+    useState<PlayfieldSlotIdentity>(
+      // Cold start: only mount immediately if also ready. Otherwise
+      // start in neutral and wait for readiness.
+      desiredIdentity !== null && readyToMount ? desiredIdentity : null,
+    );
   const [phase, setPhase] = useState<SlotPhase>(
-    desiredIdentity === null ? 'cold' : 'active',
+    desiredIdentity === null || !readyToMount ? 'cold' : 'active',
   );
-  const [neutralReason, setNeutralReason] = useState<string>('pre-session');
+  const [neutralReason, setNeutralReason] = useState<string>(
+    desiredIdentity === null
+      ? 'pre-session'
+      : (!readyToMount ? 'awaiting-surface-ready' : 'pre-session'),
+  );
 
+  // Dwell-elapsed latch: once the visible dwell minimum has passed
+  // for the current neutral interval, we are free to mount as soon as
+  // readiness allows. Reset whenever we leave neutral.
+  const dwellElapsedRef = useRef<boolean>(false);
   const dwellTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Drive single-source identity telemetry from the controller.
+  // Latest desired non-null identity awaiting mount (used when
+  // readiness flips true after the dwell has already elapsed, or when
+  // the user changes targets mid-dwell).
+  const pendingIdentityRef = useRef<PlayfieldSlotIdentity>(null);
+
   useSlotIdentityTracker({
     enabled: true,
     gameId: gameId ?? null,
@@ -70,34 +93,64 @@ export function PlayfieldSlotController({
     dealerGameId: mountedIdentity?.dealerGameId ?? null,
   });
 
+  // Helper: attempt to promote neutral → active iff dwell elapsed AND
+  // readiness is satisfied AND we have a non-null target.
+  const tryPromote = (target: PlayfieldSlotIdentity, ready: boolean) => {
+    if (target === null) return;
+    if (!dwellElapsedRef.current) return;
+    if (!ready) return;
+    setMountedIdentity(target);
+    setPhase('active');
+    dwellElapsedRef.current = false;
+    pendingIdentityRef.current = null;
+  };
+
   useEffect(() => {
-    // No change → no-op.
-    if (slotIdentityEquals(mountedIdentity, desiredIdentity) && phase !== 'neutral') {
+    // Same identity, same phase → no-op.
+    if (
+      slotIdentityEquals(mountedIdentity, desiredIdentity) &&
+      phase !== 'neutral'
+    ) {
       return;
     }
 
-    // Cold start: null → identity, direct mount, no neutral.
-    if (mountedIdentity === null && desiredIdentity !== null && phase !== 'neutral') {
-      setMountedIdentity(desiredIdentity);
-      setPhase('active');
+    // Cold start: null/cold → identity. Direct mount IFF ready;
+    // otherwise hold neutral with readiness gate.
+    if (
+      mountedIdentity === null &&
+      desiredIdentity !== null &&
+      phase !== 'neutral'
+    ) {
+      if (readyToMount) {
+        setMountedIdentity(desiredIdentity);
+        setPhase('active');
+      } else {
+        // Treat as cold-start neutral; no dwell required, just wait
+        // on readiness.
+        dwellElapsedRef.current = true;
+        pendingIdentityRef.current = desiredIdentity;
+        setNeutralReason('awaiting-surface-ready');
+        setPhase('neutral');
+      }
       return;
     }
 
-    // Active → null: hold neutral indefinitely (session end / pre-next).
+    // Active → null: hold neutral indefinitely.
     if (mountedIdentity !== null && desiredIdentity === null) {
-      // Clear any pending dwell — we're not going anywhere.
       if (dwellTimerRef.current) {
         clearTimeout(dwellTimerRef.current);
         dwellTimerRef.current = null;
       }
+      dwellElapsedRef.current = false;
+      pendingIdentityRef.current = null;
       setMountedIdentity(null);
       setNeutralReason('session-end');
       setPhase('neutral');
       return;
     }
 
-    // Active(A) → desired(B), different non-null identity: enter neutral,
-    // dwell, then mount B.
+    // Active(A) → desired(B), different non-null identity: enter
+    // neutral, run dwell, then (subject to readiness) mount B.
     if (
       mountedIdentity !== null &&
       desiredIdentity !== null &&
@@ -107,31 +160,48 @@ export function PlayfieldSlotController({
       setMountedIdentity(null);
       setNeutralReason('dealer-game-rollover');
       setPhase('neutral');
+      dwellElapsedRef.current = false;
+      pendingIdentityRef.current = desiredIdentity;
 
       if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
-      const targetIdentity = desiredIdentity;
       dwellTimerRef.current = setTimeout(() => {
         dwellTimerRef.current = null;
-        setMountedIdentity(targetIdentity);
-        setPhase('active');
+        dwellElapsedRef.current = true;
+        tryPromote(pendingIdentityRef.current, readyToMount);
       }, interstitialDwellMs);
       return;
     }
 
-    // We are in neutral and desired has resolved to a non-null identity.
-    // The dwell timer (if still pending) will mount it; if the user
-    // changed targets mid-dwell, restart the timer to the latest target.
+    // In neutral with a non-null desired: refresh pending target. If
+    // dwell already elapsed and ready, mount immediately; otherwise
+    // ensure a dwell timer is in flight.
     if (phase === 'neutral' && desiredIdentity !== null) {
-      // Only reschedule if the pending target differs.
-      if (dwellTimerRef.current) clearTimeout(dwellTimerRef.current);
-      const targetIdentity = desiredIdentity;
-      dwellTimerRef.current = setTimeout(() => {
-        dwellTimerRef.current = null;
-        setMountedIdentity(targetIdentity);
-        setPhase('active');
-      }, interstitialDwellMs);
+      pendingIdentityRef.current = desiredIdentity;
+      if (dwellElapsedRef.current) {
+        tryPromote(desiredIdentity, readyToMount);
+      } else if (!dwellTimerRef.current) {
+        dwellTimerRef.current = setTimeout(() => {
+          dwellTimerRef.current = null;
+          dwellElapsedRef.current = true;
+          tryPromote(pendingIdentityRef.current, readyToMount);
+        }, interstitialDwellMs);
+      }
     }
-  }, [desiredIdentity, mountedIdentity, phase, interstitialDwellMs]);
+  }, [desiredIdentity, mountedIdentity, phase, interstitialDwellMs, readyToMount]);
+
+  // Readiness flipped true while we're holding neutral past the dwell:
+  // promote immediately.
+  useEffect(() => {
+    if (
+      phase === 'neutral' &&
+      readyToMount &&
+      dwellElapsedRef.current &&
+      pendingIdentityRef.current !== null
+    ) {
+      tryPromote(pendingIdentityRef.current, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readyToMount, phase]);
 
   useEffect(() => {
     return () => {
@@ -147,10 +217,16 @@ export function PlayfieldSlotController({
 
   // Re-key children by identity so the gameplay subtree gets a fresh
   // lifecycle for each dealer game.
+  //
+  // bg-background (Phase 7 safety net): if children take a frame to
+  // paint after promotion, the slot wrapper itself matches the shell
+  // background token so page-white never bleeds through. Pure
+  // presentation; no logic effect.
   return (
     <div
       data-canonical-shell-slot=""
       data-slot-identity={describeSlotIdentity(mountedIdentity)}
+      className="w-full h-full min-h-0 bg-background"
       key={describeSlotIdentity(mountedIdentity)}
     >
       {children}
