@@ -190,7 +190,13 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       
       // Create animations for each winner
       const newAnimations = positions.map((pos) => {
-        const winnerCoords = getPositionCoords(pos, rect);
+        // P8.2b: prefer canonical seat endpoint; legacy DOM/cache/% path is fallback.
+        const canonicalSeat = resolveChipEndpoint({
+          ref: { kind: 'seat', position: pos },
+          container,
+          debugLabel: 'holm-win-seat',
+        });
+        const winnerCoords = canonicalSeat ?? getPositionCoords(pos, rect);
         return {
           position: pos,
           fromX: potCoords.x,
