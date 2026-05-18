@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { formatChipValue } from '@/lib/utils';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 
 interface HolmWinPotAnimationProps {
   triggerId: string | null;
