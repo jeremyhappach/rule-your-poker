@@ -234,10 +234,10 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   
   // Count active players (not sitting_out AND not observer) - includes bots
   // NOTE: Players who had waiting=true are now sitting_out=false after evaluation above
-  const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer').length;
+  const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left').length;
   
-  // Count active human players (not sitting_out, not observer, not bot)
-  const activeHumanCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && !p.is_bot).length;
+  // Count active human players (not sitting_out, not observer, not left, not bot)
+  const activeHumanCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && !p.is_bot).length;
   
   // Fetch allow_bot_dealers setting
   const { data: gameDefaults } = await supabase
