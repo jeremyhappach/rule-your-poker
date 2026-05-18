@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => ({
   define: {
     __BUILD_HASH__: JSON.stringify(getGitHash()),
     __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString()),
+    // Phase 7: enable canonical neutral interstitial between dealer games.
+    // Phase 5 shell-lift flag (VITE_CANONICAL_SHELL_LIFT) is intentionally
+    // NOT set here so its existing rollback behavior remains intact.
+    "import.meta.env.VITE_CANONICAL_SLOT_NEUTRAL": JSON.stringify("on"),
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
