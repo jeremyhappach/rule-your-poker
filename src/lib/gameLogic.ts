@@ -327,6 +327,9 @@ export async function startRound(gameId: string, roundNumber: number) {
   console.log('[START_ROUND] ✅ WON round creation race for round', roundNumber, 'id:', insertedRound.id);
 
   // Reset all players to active for the new round (winner only)
+  // SCOPED: must NOT revive status='left' (stood-up players are terminal until they
+  // explicitly sit again) or 'observer'. sitting_out players keep their flag; only
+  // their per-decision state is cleared.
   const { error: resetError } = await supabase
     .from('players')
     .update({
@@ -334,7 +337,9 @@ export async function startRound(gameId: string, roundNumber: number) {
       decision_locked: false,
       status: 'active',
     })
-    .eq('game_id', gameId);
+    .eq('game_id', gameId)
+    .neq('status', 'left')
+    .neq('status', 'observer');
 
   if (resetError) {
     console.error('[START_ROUND] Failed to reset players:', resetError);
@@ -2224,13 +2229,16 @@ export async function endRound(gameId: string) {
     
     if (pussyTaxEnabled) {
       // Reset player statuses so chip animations are visible
+      // SCOPED: do not revive stood-up ('left') or observer rows back to active.
       await supabase
         .from('players')
         .update({ 
           status: 'active',
           current_decision: null
         })
-        .eq('game_id', gameId);
+        .eq('game_id', gameId)
+        .neq('status', 'left')
+        .neq('status', 'observer');
       
       // Only charge active (non-sitting-out) players
       const activePlayersForTax = allPlayers.filter(p => !p.sitting_out);

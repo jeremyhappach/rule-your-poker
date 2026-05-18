@@ -1621,6 +1621,8 @@ async function handleChuckyShowdown(
     // Reset all players for new game (keep chips, clear ante decisions)
     // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
     console.log('[HOLM SHOWDOWN] Resetting player states for new game');
+    // SCOPED: do not revive stood-up ('left') or observer rows. Standing up must
+    // remain terminal for dealer-game eligibility across dealer-game boundaries.
     await supabase
       .from('players')
       .update({ 
@@ -1629,7 +1631,9 @@ async function handleChuckyShowdown(
         decision_locked: false,
         ante_decision: null
       })
-      .eq('game_id', gameId);
+      .eq('game_id', gameId)
+      .neq('status', 'left')
+      .neq('status', 'observer');
 
     // In Holm game, beating Chucky ends the game - show result announcement first
     console.log('[HOLM SHOWDOWN] *** PLAYER BEAT CHUCKY! Showing announcement. ***');
@@ -2437,6 +2441,8 @@ async function handleMultiPlayerShowdown(
       
       // Reset all players for new game
       console.log('[HOLM TIE] Resetting player states for new game');
+      // SCOPED: do not revive stood-up ('left') or observer rows. Standing up must
+      // remain terminal for dealer-game eligibility across dealer-game boundaries.
       await supabase
         .from('players')
         .update({ 
@@ -2445,7 +2451,9 @@ async function handleMultiPlayerShowdown(
           decision_locked: false,
           ante_decision: null
         })
-        .eq('game_id', gameId);
+        .eq('game_id', gameId)
+        .neq('status', 'left')
+        .neq('status', 'observer');
       
       // First show the result announcement (round stays completed, game stays in_progress)
       console.log('[HOLM TIE] *** PLAYERS BEAT CHUCKY! Showing announcement. ***');
