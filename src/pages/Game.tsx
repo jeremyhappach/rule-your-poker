@@ -5936,20 +5936,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.warn('[GAME OVER] Skipping rounds-completed bulk write: no current_game_uuid');
     }
 
-    // Reset all players for new game (keep chips, clear ante decisions)
-    // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
-    console.log('[GAME OVER] Resetting player states for new game');
+    // Reset per-game ephemeral state for eligible players only.
+    // CRITICAL: Do NOT promote observers to status='active' here, and do not
+    // touch sitting_out (owned by evaluatePlayerStatesEndOfGame). We do clear
+    // the now-consumed sit_out_next_hand / stand_up_next_hand flags, but only
+    // for non-observers (observers should not carry those flags anyway).
+    console.log('[GAME OVER] Resetting per-game state for eligible (non-observer) players');
     await supabase
       .from('players')
-      .update({ 
-        status: 'active',
+      .update({
         current_decision: null,
         decision_locked: false,
         ante_decision: null,
         sit_out_next_hand: false,
         stand_up_next_hand: false
       })
-      .eq('game_id', gameId);
+      .eq('game_id', gameId)
+      .neq('status', 'observer');
 
     // Handle make it take it result - can be a position, 'selection', or null
     if (makeItTakeItResult === 'selection') {
