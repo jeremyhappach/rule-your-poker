@@ -7958,8 +7958,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     !!game &&
     isPokerVariantFamily(game?.game_type) &&
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
+  // Phase 7: when the slot controller is on, it owns identity telemetry.
+  // Disable this tracker to prevent duplicate slot-identity-changed events.
+  const phase7SlotNeutralOn =
+    import.meta.env.VITE_CANONICAL_SLOT_NEUTRAL === 'on';
   useSlotIdentityTracker({
-    enabled: phase6Enabled,
+    enabled: phase6Enabled && !phase7SlotNeutralOn,
     gameId: gameId ?? null,
     gameType: game?.game_type ?? null,
     dealerGameId: (game as any)?.current_game_uuid ?? null,
@@ -9095,7 +9099,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         onModeChange={() => {}}
       />
       {enableOuterShell ? (
-        <PersistentTableShell gameId={gameId ?? undefined} gameType={game.game_type}>
+        <PersistentTableShell
+          gameId={gameId ?? undefined}
+          gameType={game.game_type}
+          slotIdentity={
+            game.game_type && (game as any).current_game_uuid
+              ? { gameType: game.game_type, dealerGameId: (game as any).current_game_uuid }
+              : null
+          }
+        >
           {innerTree}
         </PersistentTableShell>
       ) : innerTree}
