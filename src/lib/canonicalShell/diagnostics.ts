@@ -33,6 +33,9 @@ export type ShellLifecycleEvent =
   | 'overlay-enter'
   | 'overlay-exit'
   | 'transfer-intent-received'
+  | 'chip-transport-dispatched'
+  | 'chip-transport-settled'
+  | 'chip-transport-dropped'
   | 'seat-anchor-projection-changed'
   | 'seat-anchor-canonicalized-2p';
 
