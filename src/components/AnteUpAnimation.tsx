@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { formatChipValue } from '@/lib/utils';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 
 interface ChipAnimation {
   id: string;
