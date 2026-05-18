@@ -99,6 +99,7 @@ export function ResponsiveGeometryProvider({ children }: ResponsiveGeometryProvi
       screenWidth,
       scale,
       classes,
+      centerSize: 'standard',
       resolveCardSize: (base = 'md') => getCardSizeForDevice(deviceType, base),
     };
   }, [deviceType, isPhone, isTablet, isDesktop, screenWidth]);
