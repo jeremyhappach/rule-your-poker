@@ -234,10 +234,10 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   
   // Count active players (not sitting_out AND not observer) - includes bots
   // NOTE: Players who had waiting=true are now sitting_out=false after evaluation above
-  const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer').length;
+  const activePlayerCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left').length;
   
-  // Count active human players (not sitting_out, not observer, not bot)
-  const activeHumanCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && !p.is_bot).length;
+  // Count active human players (not sitting_out, not observer, not left, not bot)
+  const activeHumanCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && !p.is_bot).length;
   
   // Fetch allow_bot_dealers setting
   const { data: gameDefaults } = await supabase
@@ -251,7 +251,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   // Count eligible dealers (non-sitting-out, non-observer, AND non-bot humans unless bots are allowed as dealers)
   // NOTE: After evaluation, waiting players are now eligible (sitting_out=false, waiting=false)
   const eligibleDealerCount = remainingPlayers.filter(p => 
-    !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot)
+    !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && (allowBotDealers || !p.is_bot)
   ).length;
   
   console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount, 'Stood up:', playersStoodUp.length, 'allowBotDealers:', allowBotDealers);
@@ -410,8 +410,8 @@ export async function getMakeItTakeItDealer(
     return await findEligibleHumanDealer(gameId);
   }
   
-  // Check if winner is eligible to deal (not sitting out, not observer)
-  const isEligible = !winnerPlayer.sitting_out && winnerPlayer.status !== 'observer' && winnerPlayer.position !== null;
+  // Check if winner is eligible to deal (not sitting out, not observer, not left)
+  const isEligible = !winnerPlayer.sitting_out && winnerPlayer.status !== 'observer' && winnerPlayer.status !== 'left' && winnerPlayer.position !== null;
   console.log('[MAKE IT TAKE IT] Winner eligible:', isEligible, 'position:', winnerPlayer.position);
   
   if (isEligible) {

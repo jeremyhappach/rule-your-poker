@@ -311,7 +311,7 @@ export async function startHorsesRound(
   // Get active players for ante collection
   const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('id, user_id, position, is_bot, chips, sitting_out, sit_out_next_hand')
+    .select('id, user_id, position, is_bot, chips, sitting_out, sit_out_next_hand, status')
     .eq('game_id', gameId);
 
   if (playersError) {
@@ -323,8 +323,11 @@ export async function startHorsesRound(
   // A rollover is a continuation of the SAME hand, so sit_out_next_hand should NOT apply
   // (it means "sit out the next GAME", not "sit out the rollover")
   // Also clear sitting_out for anyone who got marked sitting_out during the round
+  // CRITICAL: do NOT reactivate observer/left players — they are not participants.
   if (!isFirstHand) {
-    const playersToReactivate = (players || []).filter((p) => p.sitting_out);
+    const playersToReactivate = (players || []).filter(
+      (p) => p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
+    );
     if (playersToReactivate.length > 0) {
       const reactivateIds = playersToReactivate.map((p) => p.id);
       await supabase
@@ -337,10 +340,13 @@ export async function startHorsesRound(
   // Re-fetch to get updated sitting_out status
   const { data: freshPlayers } = await supabase
     .from('players')
-    .select('id, user_id, position, is_bot, chips, sitting_out')
+    .select('id, user_id, position, is_bot, chips, sitting_out, status')
     .eq('game_id', gameId);
 
-  const activePlayers = (freshPlayers || []).filter((p) => !p.sitting_out);
+  // Exclude observer/left from active participants — they have no turn, no ante, no roll.
+  const activePlayers = (freshPlayers || []).filter(
+    (p) => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
+  );
   const anteAmount = game.ante_amount || 1;
 
   // Read configurable turn timer from game_defaults

@@ -3275,7 +3275,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // CRITICAL FIX: Only check decisions from players who are NOT sitting_out
       // Players who are already sitting_out should not block the ante phase
-      const activePlayers = freshPlayers.filter(p => !p.sitting_out);
+      const activePlayers = freshPlayers.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
       const decidedCount = activePlayers.filter(p => p.ante_decision).length;
       const allDecided = activePlayers.every(p => p.ante_decision);
       console.log('[ANTE CHECK] Fresh players:', freshPlayers.length, 'Active (not sitting out):', activePlayers.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', activePlayers.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
@@ -4336,7 +4336,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const isPussyTax = lastResult.toLowerCase().includes('pussy tax');
       if (isPussyTax && !is357WinAnimationActiveRef.current) {
         // Trigger ante animation for pussy tax using pussy_tax_value
-        const activePlayers = players.filter(p => !p.sitting_out);
+        const activePlayers = players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
         const pussyTaxTotal = (game?.pussy_tax_value || 1) * activePlayers.length;
         const perPlayerAmount = game?.pussy_tax_value || 1;
         console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, perPlayerAmount, activePlayers: activePlayers.length });
@@ -4549,10 +4549,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // Capture pre-ante chips BEFORE startRound deducts them
               const { data: playersBeforeAnte } = await supabase
                 .from('players')
-                .select('id, chips, sitting_out')
+                .select('id, chips, sitting_out, status')
                 .eq('game_id', gameId);
 
-              const activePlayersForAnte = (playersBeforeAnte || []).filter(p => !p.sitting_out);
+              const activePlayersForAnte = (playersBeforeAnte || []).filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
               const perPlayerAmount = freshGame?.ante_amount || 0;
               const activeCount = activePlayersForAnte.length;
 
@@ -4687,10 +4687,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               
               const { data: freshPlayersAfterAnte } = await supabase
                 .from('players')
-                .select('id, chips, sitting_out')
+                .select('id, chips, sitting_out, status')
                 .eq('game_id', gameId);
 
-              const activePlayers = (freshPlayersAfterAnte || []).filter(p => !p.sitting_out);
+              const activePlayers = (freshPlayersAfterAnte || []).filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
               const activeCount = activePlayers.length;
               const perPlayerAmount = typeof freshGameAfterProceed?.ante_amount === 'number' ? freshGameAfterProceed.ante_amount : 0;
 
@@ -7375,7 +7375,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isCribbageGame = freshGame?.game_type === 'cribbage';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
-          const activePlayersBefore = players.filter(p => !p.sitting_out);
+          const activePlayersBefore = players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
           const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
 
           // Skip ante animation for cribbage and yahtzee - they don't use the chip animation pattern
@@ -8343,8 +8343,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isFirstHand={!hasSessionHistory && !previousGameConfig}
                     gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
-                    activePlayerCount={players.filter(p => !p.sitting_out).length}
-                    activeHumanCount={players.filter(p => !p.sitting_out && !p.is_bot).length}
+                    activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
+                    activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
                     isSuperuser={isSuperuser}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
