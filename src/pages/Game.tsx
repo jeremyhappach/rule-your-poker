@@ -8997,7 +8997,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               reAnteMessage={reAnteMessage}
             />
           );
-        })()}
+            })()}
+          </PlayfieldSlotController>
+        )}
 
         {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
           logDebugEvent({
