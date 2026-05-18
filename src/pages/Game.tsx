@@ -4336,7 +4336,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const isPussyTax = lastResult.toLowerCase().includes('pussy tax');
       if (isPussyTax && !is357WinAnimationActiveRef.current) {
         // Trigger ante animation for pussy tax using pussy_tax_value
-        const activePlayers = players.filter(p => !p.sitting_out);
+        const activePlayers = players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
         const pussyTaxTotal = (game?.pussy_tax_value || 1) * activePlayers.length;
         const perPlayerAmount = game?.pussy_tax_value || 1;
         console.log('[PUSSY_TAX_ANIMATION] Triggering animation', { pussyTaxTotal, perPlayerAmount, activePlayers: activePlayers.length });
