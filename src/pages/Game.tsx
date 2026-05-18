@@ -13,6 +13,7 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily } from "@/lib/canonicalShell/shellRouting";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
