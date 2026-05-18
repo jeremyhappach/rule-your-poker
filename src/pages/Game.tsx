@@ -13,6 +13,7 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily } from "@/lib/canonicalShell/shellRouting";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -8576,7 +8577,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (
+          // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
+          // surface. Lifecycle UI (lobby, waiting, dealer config/setup,
+          // ante dialog, observer affordances) lives as siblings outside
+          // this slot. Identity is keyed on (game_type, current_game_uuid)
+          // so neutral interstitial only gates dealer-game rollovers
+          // within a continuously-mounted gameplay phase.
+          <PlayfieldSlotController
+            desiredIdentity={
+              game.game_type && (game as any).current_game_uuid
+                ? { gameType: game.game_type, dealerGameId: (game as any).current_game_uuid }
+                : null
+            }
+            gameId={gameId ?? null}
+          >
+            {(() => {
           const isInProgress = game.status === 'in_progress';
           const isYahtzeeGameOver = game.status === 'game_over' && game.game_type === 'yahtzee';
           const isAnteDecision = game.status === 'ante_decision';
@@ -8981,7 +8997,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               reAnteMessage={reAnteMessage}
             />
           );
-        })()}
+            })()}
+          </PlayfieldSlotController>
+        )}
 
         {game.status === 'ante_decision' && showAnteDialog && user && game.ante_amount !== undefined && isRunningItBack !== null && (() => {
           logDebugEvent({
@@ -9102,11 +9120,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <PersistentTableShell
           gameId={gameId ?? undefined}
           gameType={game.game_type}
-          slotIdentity={
-            game.game_type && (game as any).current_game_uuid
-              ? { gameType: game.game_type, dealerGameId: (game as any).current_game_uuid }
-              : null
-          }
         >
           {innerTree}
         </PersistentTableShell>
