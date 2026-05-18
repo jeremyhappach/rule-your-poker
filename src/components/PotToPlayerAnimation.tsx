@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
@@ -223,43 +224,60 @@ export const PotToPlayerAnimation: React.FC<PotToPlayerAnimationProps> = ({
 
       // Compute positions using refs (won't cause re-runs)
       const rect = freshContainer.getBoundingClientRect();
+
+      // P8.2b: prefer canonical pot endpoint (game-owned data-pot-anchor).
+      // Falls back to legacy hardcoded % math only if marker is missing.
+      const canonicalPot = resolveChipEndpoint({
+        ref: { kind: 'pot' },
+        container: freshContainer,
+        debugLabel: `pot-to-player:${gameTypeRef.current ?? 'unknown'}`,
+      });
       const yPercent = gameTypeRef.current === 'holm-game' ? 0.38 : 0.5;
-      const potCoords = { x: rect.width * 0.5, y: rect.height * yPercent };
+      const potCoords = canonicalPot ?? { x: rect.width * 0.5, y: rect.height * yPercent };
 
       // Winner target
       let winnerCoords: { x: number; y: number };
 
-      // Try live DOM first (best), then cached DOM %, then finally the % slot mapping fallback.
-      const domWinner = getChipCenterFromDom(winnerPositionRef.current);
-      if (domWinner) {
-        winnerCoords = domWinner;
+      // P8.2b: prefer canonical seat endpoint, then existing DOM/cache/% fallback chain.
+      const canonicalWinner = resolveChipEndpoint({
+        ref: { kind: 'seat', position: winnerPositionRef.current },
+        container: freshContainer,
+        debugLabel: `pot-to-player-winner:${gameTypeRef.current ?? 'unknown'}`,
+      });
+      if (canonicalWinner) {
+        winnerCoords = canonicalWinner;
       } else {
-        const cachedWinner = getCachedChipCenter(winnerPositionRef.current, rect);
-        if (cachedWinner) {
-          winnerCoords = cachedWinner;
+        const domWinner = getChipCenterFromDom(winnerPositionRef.current);
+        if (domWinner) {
+          winnerCoords = domWinner;
         } else {
-          const isObserver = currentPlayerPositionRef.current === null;
-          let slot: { top: number; left: number };
-          if (isObserver) {
-            const positions: Record<number, { top: number; left: number }> = {
-              1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
-              4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
-            };
-            slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+          const cachedWinner = getCachedChipCenter(winnerPositionRef.current, rect);
+          if (cachedWinner) {
+            winnerCoords = cachedWinner;
           } else {
-            const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
-            const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
-            if (slotIndex === -1) {
-              slot = { top: 92, left: 50 };
-            } else {
-              const slots: Record<number, { top: number; left: number }> = {
-                0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
-                3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+            const isObserver = currentPlayerPositionRef.current === null;
+            let slot: { top: number; left: number };
+            if (isObserver) {
+              const positions: Record<number, { top: number; left: number }> = {
+                1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
+                4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
               };
-              slot = slots[slotIndex] || { top: 50, left: 50 };
+              slot = positions[winnerPositionRef.current] || { top: 50, left: 50 };
+            } else {
+              const isCurrentPlayer = currentPlayerPositionRef.current === winnerPositionRef.current;
+              const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistanceRef.current(winnerPositionRef.current) - 1;
+              if (slotIndex === -1) {
+                slot = { top: 92, left: 50 };
+              } else {
+                const slots: Record<number, { top: number; left: number }> = {
+                  0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
+                  3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
+                };
+                slot = slots[slotIndex] || { top: 50, left: 50 };
+              }
             }
+            winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
           }
-          winnerCoords = { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
         }
       }
 

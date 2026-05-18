@@ -4,6 +4,7 @@
 // as-is until its consumer migrates in a later wave.
 import React, { useEffect, useState, useRef } from 'react';
 import { formatChipValue } from '@/lib/utils';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 
 interface ChipAnimation {
   id: string;
@@ -158,21 +159,30 @@ export const ChipTransferAnimation: React.FC<ChipTransferAnimationProps> = ({
   };
 
   const getPositionCoords = (position: number, rect: DOMRect): { x: number; y: number } => {
-    // Prefer DOM-based targeting for accuracy
+    // P8.2b: prefer canonical seat endpoint (data-chip-center marker via shell resolver).
+    // The canonical resolver itself does DOM-first lookup, but routing through it gives
+    // us unified diagnostics and a single source of truth for seat targeting.
+    const container = containerRef.current;
+    if (container) {
+      const canonical = resolveChipEndpoint({
+        ref: { kind: 'seat', position },
+        container,
+        debugLabel: '357-chip-transfer-seat',
+      });
+      if (canonical) return canonical;
+    }
+
+    // Fallback chain: legacy DOM, cached %, then % slot mapping.
     const domCoords = getChipCenterFromDom(position);
     if (domCoords) return domCoords;
 
-    // Use last-known DOM center if chip is temporarily not in DOM (e.g. showdown layout)
     const cached = getCachedChipCenter(position, rect);
     if (cached) return cached;
 
     const isObserver = currentPlayerPosition === null;
-
     if (isObserver) {
-      // Observer: use absolute positions
       return getAbsolutePositionCoords(position, rect);
     } else {
-      // Seated player: use relative slot positions
       const isCurrentPlayer = currentPlayerPosition === position;
       const slotIndex = isCurrentPlayer ? -1 : getClockwiseDistance(position) - 1;
       return getSlotCenterCoords(slotIndex, rect);
