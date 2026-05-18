@@ -7375,7 +7375,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isCribbageGame = freshGame?.game_type === 'cribbage';
 
           // Capture PRE-ante chips and trigger animation IMMEDIATELY (before DB ops).
-          const activePlayersBefore = players.filter(p => !p.sitting_out);
+          const activePlayersBefore = players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
           const perPlayerAmount = typeof freshGame?.ante_amount === 'number' ? freshGame.ante_amount : 0;
 
           // Skip ante animation for cribbage and yahtzee - they don't use the chip animation pattern
