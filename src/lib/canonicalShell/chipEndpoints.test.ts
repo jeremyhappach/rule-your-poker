@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { resolveChipEndpoint, describeEndpoint } from './chipEndpoints';
 
 function makeContainer(width: number, height: number): HTMLElement {
@@ -56,7 +56,22 @@ describe('chipEndpoints', () => {
     expect(r).toEqual({ x: 120, y: 70 });
   });
 
-  it('resolves pot endpoint via canonical shell pot anchor', () => {
+  it('resolves pot endpoint via game-owned data-pot-anchor (primary)', () => {
+    const container = makeContainer(400, 300);
+    addMarker(container, 'data-pot-anchor=', {
+      left: 180,
+      top: 90,
+      width: 40,
+      height: 20,
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const r = resolveChipEndpoint({ ref: { kind: 'pot' }, container });
+    expect(r).toEqual({ x: 200, y: 100 });
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('falls back to shell-center pot anchor and warns loudly', () => {
     const container = makeContainer(400, 300);
     addMarker(container, 'data-canonical-shell-pot-anchor=', {
       left: 200,
@@ -64,8 +79,16 @@ describe('chipEndpoints', () => {
       width: 0,
       height: 0,
     });
-    const r = resolveChipEndpoint({ ref: { kind: 'pot' }, container });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const r = resolveChipEndpoint({
+      ref: { kind: 'pot' },
+      container,
+      debugLabel: 'test-caller',
+    });
     expect(r).toEqual({ x: 200, y: 150 });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toMatch(/fallback selector/);
+    warn.mockRestore();
   });
 
   it('returns null when endpoint missing and no cache', () => {

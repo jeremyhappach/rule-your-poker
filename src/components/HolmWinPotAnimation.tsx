@@ -5,6 +5,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { formatChipValue } from '@/lib/utils';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 
 interface HolmWinPotAnimationProps {
   triggerId: string | null;
@@ -173,7 +174,14 @@ export const HolmWinPotAnimation: React.FC<HolmWinPotAnimationProps> = ({
       if (!container) return;
 
       const rect = container.getBoundingClientRect();
-      const potCoords = getPotCenter(rect);
+      // P8.2b: prefer canonical pot endpoint (game-owned data-pot-anchor).
+      // Falls back to legacy fixed geometry only if resolver returns null.
+      const resolved = resolveChipEndpoint({
+        ref: { kind: 'pot' },
+        container,
+        debugLabel: 'holm-win-pot',
+      });
+      const potCoords = resolved ?? getPotCenter(rect);
       
       // Use winnerPositions if provided, otherwise fall back to single winnerPosition
       const positions = winnerPositions.length > 0 ? winnerPositions : [winnerPosition];

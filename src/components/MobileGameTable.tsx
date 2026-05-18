@@ -5036,7 +5036,9 @@ export const MobileGameTable = ({
                 pointerEvents: shouldHidePot ? 'none' : 'auto'
               }}
             >
-              <div className={cn(
+              <div
+                data-pot-anchor=""
+                className={cn(
                 "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
                 gameType === 'holm-game' || isDiceGame 
                   ? (isTablet ? 'px-10 py-4' : isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
