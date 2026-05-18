@@ -7970,6 +7970,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     dealerGameId: (game as any)?.current_game_uuid ?? null,
   });
 
+  // Phase 7: sticky dealer identity across the transient
+  // current_game_uuid=null gap during dealer-game rollover. Without
+  // this, the slot controller interprets the null as session-end and
+  // forces a neutral detour with the wrong semantic. Scope is strictly
+  // the poker-variant family + the known continuous rollover statuses
+  // — legitimate teardown / exit flows are NOT suppressed.
+  const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
+
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
