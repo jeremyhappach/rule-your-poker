@@ -8343,8 +8343,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     isFirstHand={!hasSessionHistory && !previousGameConfig}
                     gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
                     anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
-                    activePlayerCount={players.filter(p => !p.sitting_out).length}
-                    activeHumanCount={players.filter(p => !p.sitting_out && !p.is_bot).length}
+                    activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
+                    activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
                     isSuperuser={isSuperuser}
                     onConfigComplete={handleConfigComplete}
                     onSessionEnd={() => setShowEndSessionDialog(true)}
