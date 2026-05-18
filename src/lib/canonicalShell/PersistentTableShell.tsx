@@ -1,52 +1,48 @@
 /**
- * PersistentTableShell — canonical shell ownership boundary (Phase 4).
+ * PersistentTableShell — canonical shell ownership boundary.
  *
- * Scaffolding only. Mounts as a transparent wrapper inside the game
- * surface and establishes a single anchor point for later phases that
- * will lift table-shell concerns above Game.tsx lifecycle branches.
+ * P8.1 additions (infrastructure only — no behavior change for existing
+ * gameplay surfaces):
+ *   - Mounts `ChipTransportProvider` so any descendant can dispatch
+ *     canonical chip transport intents via `useChipTransport()`. No
+ *     existing animator is migrated yet; the provider sits dormant
+ *     until Wave B opts in.
+ *   - Renders a shell-owned overlay root (`data-canonical-shell-overlay-root`)
+ *     that hosts `ChipTransportRuntime`. NOT a document.body portal —
+ *     overlay ownership stays inside the shell so z-index, modal
+ *     interaction, and viewport behavior remain shell-controlled.
+ *   - Renders an invisible pot anchor marker
+ *     (`data-canonical-shell-pot-anchor`) that the chip endpoint resolver
+ *     uses as the canonical pot target. Zero size, zero layout impact;
+ *     positioning is owned by gameplay surfaces in P8.1 (the marker
+ *     piggybacks on the shell-root box centroid — adequate for the
+ *     runtime smoke surface, will move when overlay migration lands).
  *
- * Phase 4 scope:
- *   - Transparent wrapper <div data-canonical-shell-root> — no styling,
- *     no positioning, no z-index, no className.
- *   - Optional SeatAnchorLayer composition when seat/projection inputs
- *     are provided (kept optional so MobileGameTable wiring does not
- *     need to thread seat data in this phase — current consumers use
- *     the pure resolver directly).
- *   - Reads useGeometryTokensOptional() to stamp a data-shell-device
- *     attribute for diagnostics. Does NOT introduce a new provider.
- *   - Emits shell-mount / shell-unmount telemetry once per mount.
- *
- * Explicitly NOT in scope: lifecycle restructuring of Game.tsx,
- * overlay consolidation, chip transport, transition choreography,
- * sync framework behavior, visual changes.
+ * Unchanged from prior phases:
+ *   - Transparent shell-root wrapper with diagnostic data attributes.
+ *   - Optional SeatAnchorLayer composition.
+ *   - shell-mounted / shell-unmounted telemetry once per mount.
+ *   - Phase 7 wiring note: PlayfieldSlotController is NOT mounted here
+ *     (gameplay surfaces wrap their own render site).
  */
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { SeatAnchorLayer } from './SeatAnchorLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
+import { ChipTransportProvider } from './ChipTransportProvider';
+import { ChipTransportRuntime } from './ChipTransportRuntime';
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
 export interface PersistentTableShellProps {
   gameId?: string;
   gameType?: string;
-  /** Optional. When provided alongside seats, mounts SeatAnchorLayer. */
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   seats?: SeatAnchorInput[];
   children: ReactNode;
 }
 
-/**
- * Phase 7 wiring note: the gameplay-slot controller
- * (PlayfieldSlotController) is intentionally NOT mounted here. The
- * shell owns lifecycle UI (lobby, waiting table, dealer config/setup,
- * ante decision, observer affordances, overlays, seat anchors). The
- * gameplay slot is a narrower boundary owned by gameplay surfaces
- * themselves — they wrap their own render site in
- * PlayfieldSlotController so neutral interstitials only gate the
- * actual game surface, never the lifecycle chrome around it.
- */
 export function PersistentTableShell({
   gameId,
   gameType,
@@ -56,6 +52,8 @@ export function PersistentTableShell({
   children,
 }: PersistentTableShellProps) {
   const geometry = useGeometryTokensOptional();
+  const shellRootRef = useRef<HTMLDivElement>(null);
+  const overlayRootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     recordShellEvent('shell-mounted', {
@@ -73,19 +71,56 @@ export function PersistentTableShell({
         detail: { viewerPosition },
       });
     };
-    // Intentionally mount/unmount once per shell instance — telemetry
-    // should not fire on incidental prop churn.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const body = (
     <div
+      ref={shellRootRef}
       data-canonical-shell-root=""
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
+      style={{ position: 'relative' }}
     >
       {children}
+      {/* Shell-owned pot anchor — zero size, centered in shell-root.
+          Invisible to users. Consumed by chipEndpoints resolver. */}
+      <div
+        data-canonical-shell-pot-anchor=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          width: 0,
+          height: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Shell-owned overlay root — hosts ChipTransportRuntime portals.
+          Pointer-events disabled; per-chip nodes opt in if needed. */}
+      <div
+        ref={overlayRootRef}
+        data-canonical-shell-overlay-root=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 80,
+        }}
+      />
+      <ChipTransportRuntime
+        containerRef={shellRootRef}
+        overlayRootRef={overlayRootRef}
+      />
     </div>
+  );
+
+  const wrapped = (
+    <ChipTransportProvider gameId={gameId ?? null} gameType={gameType ?? null}>
+      {body}
+    </ChipTransportProvider>
   );
 
   if (projectionMode && seats) {
@@ -97,10 +132,10 @@ export function PersistentTableShell({
         gameId={gameId}
         gameType={gameType}
       >
-        {body}
+        {wrapped}
       </SeatAnchorLayer>
     );
   }
 
-  return body;
+  return wrapped;
 }
