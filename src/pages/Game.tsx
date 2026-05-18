@@ -8613,6 +8613,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 : null
             }
             gameId={gameId ?? null}
+            readyToMount={(() => {
+              // Phase 7 readiness gate (narrow scope): only answer
+              // "is the intended gameplay surface ready to paint a
+              // stable first frame?". Default true for statuses where
+              // the surface mounts pre-round (ante_decision, dealer
+              // selection, configuring, game_selection, game_over for
+              // non-round-bound branches). For in_progress / round-
+              // bound game_over we require currentRound to be scoped
+              // to the current dealer game — otherwise the surface
+              // would mount with stale or empty round state.
+              const dgid = (game as any).current_game_uuid ?? null;
+              if (!dgid) return true;
+              const status = game.status;
+              if (status === 'in_progress') {
+                return Boolean(
+                  currentRound?.id &&
+                  (currentRound as any).dealer_game_id === dgid
+                );
+              }
+              return true;
+            })()}
           >
             {(() => {
           const isInProgress = game.status === 'in_progress';
@@ -8767,7 +8788,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // DICE GAMES (Horses and Ship Captain Crew)
           // All users (mobile + desktop) route through MobileGameTable + useHorsesMobileController
           // for unified sync-gated gameplay. Desktop differences are handled by responsive sizing.
-          if (isInProgress && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+          if ((isInProgress || isAnteDecision) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
 
             return (
@@ -8781,8 +8802,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 currentRound={game.current_round ?? 0}
                 allDecisionsIn={false}
                 playerCards={[]}
-                timeLeft={timeLeft}
-                maxTime={decisionMaxTime ?? decisionTimerSeconds}
+                timeLeft={isInProgress ? timeLeft : anteTimeLeft}
+                maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
                 lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
                 dealerPosition={game.dealer_position}
                 legValue={game.leg_value ?? 0}
