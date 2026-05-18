@@ -25,6 +25,8 @@ import { useEffect, type ReactNode } from 'react';
 import { SeatAnchorLayer } from './SeatAnchorLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
+import { PlayfieldSlotController } from './PlayfieldSlotController';
+import type { PlayfieldSlotIdentity } from './PlayfieldSlot';
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
 export interface PersistentTableShellProps {
@@ -34,6 +36,14 @@ export interface PersistentTableShellProps {
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   seats?: SeatAnchorInput[];
+  /**
+   * Phase 7: when provided AND VITE_CANONICAL_SLOT_NEUTRAL === 'on',
+   * the gameplay slot is wrapped in PlayfieldSlotController which
+   * drives explicit transitions through NeutralInterstitial between
+   * dealer games. When absent or flag off, children render directly
+   * (Phase 6 behavior).
+   */
+  slotIdentity?: PlayfieldSlotIdentity;
   children: ReactNode;
 }
 
@@ -43,6 +53,7 @@ export function PersistentTableShell({
   projectionMode,
   viewerPosition = null,
   seats,
+  slotIdentity,
   children,
 }: PersistentTableShellProps) {
   const geometry = useGeometryTokensOptional();
@@ -68,13 +79,31 @@ export function PersistentTableShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Phase 7 flag gate: only wrap in PlayfieldSlotController when
+  // slotIdentity prop is supplied AND the runtime flag is on. When off,
+  // the prop is inert and Phase 6 behavior is preserved exactly.
+  const phase7Enabled =
+    slotIdentity !== undefined &&
+    import.meta.env.VITE_CANONICAL_SLOT_NEUTRAL === 'on';
+
+  const slotBody = phase7Enabled ? (
+    <PlayfieldSlotController
+      desiredIdentity={slotIdentity ?? null}
+      gameId={gameId ?? null}
+    >
+      {children}
+    </PlayfieldSlotController>
+  ) : (
+    children
+  );
+
   const body = (
     <div
       data-canonical-shell-root=""
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
     >
-      {children}
+      {slotBody}
     </div>
   );
 

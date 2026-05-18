@@ -1,133 +1,195 @@
-# Phase 6 — PlayfieldSlot identity & NeutralInterstitial scaffolding
+# Phase 7 — Neutral interstitial + null slot between dealer games
 
-Phase 5 established the **outer** `PersistentTableShell` as a stable ownership boundary above `Game.tsx`'s lifecycle branches for poker-variant families. Phase 6 introduces the **slot identity contract** that runs *inside* that shell, without yet rewriting any lifecycle branches.
+Phase 6 shipped the slot identity contract (`PlayfieldSlotIdentity`, `useSlotIdentityTracker`, `NeutralInterstitial`) in observe-only mode. The tracker logs an INV-shell-3 warning today on every dealer-game rollover because the current flow swaps `identity → identity` directly. Phase 7 is the first phase that *acts* on slot identity: it makes the rollover explicitly pass through `null`, and it mounts `NeutralInterstitial` as the canonical "between games" surface owned by the shell.
 
-This is intentionally narrow: one architectural concern, one ownership boundary, one new component, and a passive identity-tracking hook. No lifecycle refactor, no overlay consolidation, no chip transport, no sync changes.
+This is the first visibly behavioral shell phase, so it ships behind a runtime flag and preserves a one-line revert.
 
 ## 1. Architectural objective
 
-Establish the formal **PlayfieldSlot identity contract** that future phases will use to swap game surfaces inside the persistent shell:
+- Persistent `PersistentTableShell` continues to own DOM identity across dealer-game boundaries (INV-shell-1 unchanged).
+- The **gameplay slot** *inside* the shell becomes a first-class controlled mount point that explicitly enters identity `null` between two non-null identities.
+- `NeutralInterstitial` is the canonical render of the null slot. It is owned by the shell (not by `Game.tsx` lifecycle branches, not by any overlay, not by `MobileGameTable`).
+- The two existing non-null states (active gameplay surface vs. neutral) are mutually exclusive. The shell decides which is mounted from a single source — the `PlayfieldSlotController` (new, internal to shell).
+- INV-shell-3 stops firing as a warning and becomes an enforced contract in dev (still observe-only in prod).
 
-- A slot has identity `(gameType, dealerGameId)` or `null` (neutral).
-- Identity transitions must be observable, validated by `checkSlotTransition` (already exists in `diagnostics.ts`, INV-shell-2 / INV-shell-3), and must pass through `null` between two non-null identities.
-- A `NeutralInterstitial` component exists as the canonical "between hands / between dealer games" placeholder. In Phase 6 it is **mounted nowhere by default** — it ships as a tested module ready for Phase 7 wiring.
+The point of Phase 7: make "between games" a real, owned, single-source UI state instead of a coincidental gap between lifecycle branches.
 
-The point: make slot identity a first-class, observable thing **before** any code tries to swap slots in place.
+## 2. Files / ownership boundaries
 
-## 2. Exact files / ownership boundaries being changed
+**New files (additive):**
 
-**New files (additive only):**
+1. `src/lib/canonicalShell/PlayfieldSlotController.tsx`
+   - React component owned by `PersistentTableShell`.
+   - Props: `{ desiredIdentity: PlayfieldSlotIdentity, interstitialDwellMs: number, children: ReactNode }` where `children` is the active gameplay slot (`<MobileGameTable …/>` tree as composed by `Game.tsx`).
+   - Internal state machine with four states: `active(identity)`, `tearing-down`, `neutral`, `mounting(nextIdentity)`. Drives:
+     - On `desiredIdentity` change to a different non-null identity: unmount `children` immediately, enter `neutral` and mount `<NeutralInterstitial reason="dealer-game-rollover" />`, hold for `interstitialDwellMs`, then mount the new `children` (whose key is bound to the new identity by the caller).
+     - On `desiredIdentity → null` (session end, pre-start, reload-in-flight): enter `neutral` indefinitely.
+     - On `null → identity`: mount `children` directly (no neutral needed on cold entry; that case is already null at start).
+   - Uses `useSlotIdentityTracker` internally so all telemetry continues to come from one source.
 
-1. `src/lib/canonicalShell/PlayfieldSlot.ts`
-   - Pure types: `PlayfieldSlotIdentity = { gameType: string; dealerGameId: string } | null`.
-   - Pure helper: `slotIdentityEquals(a, b)`.
-   - Pure helper: `describeSlotIdentity(id)` for telemetry/debug strings.
-   - No React, no DOM.
+2. `src/lib/canonicalShell/slotChoreography.ts`
+   - Pure timing constants + helper. Single export:
+     ```ts
+     export const SLOT_CHOREOGRAPHY = {
+       interstitialDwellMs: 450,    // visible neutral hold
+       teardownGraceMs: 0,          // synchronous unmount in Phase 7 — see §4 precondition
+       mountStaggerMs: 0,           // synchronous mount in Phase 7
+     } as const;
+     ```
+   - Centralizes the numbers so Phase 8 (transition choreography) can tune without touching the controller.
 
-2. `src/lib/canonicalShell/useSlotIdentityTracker.ts`
-   - React hook. Inputs: `{ gameId, gameType, dealerGameId }` (any may be null).
-   - Tracks previous identity via `useRef`, fires `recordShellEvent('slot-identity-changed', …)` on change, and runs `checkSlotTransition(prev, next, gameId)` to enforce INV-shell-2 / INV-shell-3.
-   - **Passive**: returns the current identity; does not gate, suspend, or alter rendering.
-   - Safe to mount in observer mode (no-ops cleanly when dealerGameId is null).
+3. Tests:
+   - `PlayfieldSlotController.test.tsx` — verifies identity→identity rolls through neutral with correct dwell; null→identity is direct; identity→null holds neutral; children key change is honored; INV-shell-3 no longer fires.
+   - `slotChoreography.test.ts` — sanity guard that constants are exported and within sane bounds (>0, <2000 ms).
 
-3. `src/lib/canonicalShell/NeutralInterstitial.tsx`
-   - Minimal presentational component. Renders a transparent placeholder div with `data-canonical-shell-neutral=""`.
-   - No styling beyond a single neutral background token from `index.css` (no new tokens introduced).
-   - Fires `recordShellEvent('slot-entered-neutral')` on mount and `'slot-left-neutral'` on unmount.
-   - **Not mounted by Game.tsx in this phase.** Shipped as a ready, tested module for Phase 7.
+**Modified files (two, narrow):**
 
-4. Tests:
-   - `src/lib/canonicalShell/PlayfieldSlot.test.ts` — identity equality + describe.
-   - `src/lib/canonicalShell/useSlotIdentityTracker.test.tsx` — verifies telemetry fires once per real transition; verifies illegal in-place identity swap triggers `checkSlotTransition` invariant; verifies null↔identity transitions are clean.
-   - `src/lib/canonicalShell/NeutralInterstitial.test.tsx` — DOM attribute + mount/unmount telemetry.
-
-**Modified files (one, minimal):**
+4. `src/lib/canonicalShell/PersistentTableShell.tsx`
+   - Add optional `slotIdentity?: PlayfieldSlotIdentity` prop.
+   - When provided **and** the Phase 7 runtime flag is on, wrap `children` in `<PlayfieldSlotController desiredIdentity={slotIdentity} interstitialDwellMs={SLOT_CHOREOGRAPHY.interstitialDwellMs}>{children}</PlayfieldSlotController>`.
+   - When not provided or flag off: render `children` exactly as today (Phase 6 behavior). No telemetry change in that branch.
 
 5. `src/pages/Game.tsx`
-   - Inside the same `enableOuterShell` branch added in Phase 5 (and only there), call `useSlotIdentityTracker({ gameId, gameType: game?.game_type, dealerGameId: game?.dealer_game_id ?? null })` at the same level as the existing outer shell mount.
-   - **Single hook call.** No JSX changes. No branch restructuring. No new conditionals. No neutral mount.
-   - Guarded by the same `VITE_CANONICAL_SHELL_LIFT !== 'off'` escape hatch as Phase 5 — when disabled, the hook is not called at all.
+   - **Single new prop** at the existing Phase 5 outer-shell mount: `slotIdentity={game?.game_type && game?.current_game_uuid ? { gameType: game.game_type, dealerGameId: game.current_game_uuid } : null}`.
+   - **No restructuring** of lifecycle branches. `MobileGameTable` continues to mount inside the same children expression, so the controller's `children` is the gameplay slot.
+   - The existing `useSlotIdentityTracker` call from Phase 6 stays, but its `enabled` flag flips to **false when Phase 7 is on**, because the controller now owns identity tracking. (Single source of telemetry.)
 
-That is the full surface change in production code: **one hook invocation inside the already-approved Phase 5 boundary.**
+That is the full surface change.
 
-## 3. Explicitly UNTOUCHED
+## 3. Runtime flag
 
-- `Game.tsx` lifecycle branch structure (status routing, render trees, prop wiring).
-- `MobileGameTable.tsx` (no edits at all).
-- Any overlay (Celebration, Settlement, Config, Ante, DealerSelection).
-- Sync framework (`useGameStateSync`, progress vectors, identity wiring).
-- Chip transport, transition choreography, dealer config flow.
-- `PersistentTableShell.tsx` internals (no edits — already authoritative from Phase 5).
-- All non-poker-variant families (Cribbage, Gin Rummy, Yahtzee) — `useSlotIdentityTracker` is only invoked behind the same `isPokerVariantFamily` + escape hatch gate as Phase 5.
-- Visual design, styling, tokens.
-- `NeutralInterstitial` is **not rendered anywhere** by production code in this phase.
+New flag: `VITE_CANONICAL_SLOT_NEUTRAL` (`'on' | 'off'`, default `'off'` in Phase 7 ship; flipped to `'on'` after live verification).
 
-## 4. Lifecycle invariants preserved
+- `'off'` → controller is not introduced; `PersistentTableShell` renders children directly (current Phase 6 behavior, INV-shell-3 still logs as warning).
+- `'on'` → controller drives slot mount/unmount; INV-shell-3 stops firing because transitions pass through `null`.
 
-- **INV-shell-1** (shell never unmounts within a session): unchanged — no edits to shell mount tree.
-- **INV-shell-2 / INV-shell-3** (slot identity monotonicity & neutral-passthrough): newly *enforced* by the tracker hook; existing `checkSlotTransition` becomes a live runtime guard for the first time, but in observe-only mode (it logs; it does not mutate state).
-- **INV-shell-4** (overlay ordering): untouched (no overlay code changes).
-- **INV-shell-5** (projection mode stability): untouched.
+The Phase 5 `VITE_CANONICAL_SHELL_LIFT='off'` escape hatch still short-circuits everything above (including Phase 7), giving two-layer revert.
 
-The tracker is **passive**: an invariant violation produces a telemetry/console signal but does not throw, gate rendering, or alter game flow. This is deliberate — Phase 6 is about *observing* identity behavior in production before any phase tries to act on it.
+## 4. Transition choreography (Phase 7 contract)
 
-## 5. Rollback strategy
+```text
+desiredIdentity:    A           A           B           B
+                    │           │           │           │
+                    ▼           ▼           ▼           ▼
+controller state: active(A) → tearing-down → neutral(dwell 450ms) → mounting(B) → active(B)
+slot DOM:         <Game A/>     (unmounted)   <NeutralInterstitial/>   (unmounted)   <Game B/>
+shell DOM:        ─── stable across the entire sequence ───────────────────────────────
+overlays:         ─── Celebration / Settlement / Config remain mounted independently ──
+```
 
-Three independent layers of revert:
+- **Prior game teardown timing:** synchronous unmount of `<Game A>` at the moment `desiredIdentity` changes. No fade.
+- **Interstitial dwell:** fixed 450 ms (`SLOT_CHOREOGRAPHY.interstitialDwellMs`). Long enough to be visually intentional, short enough to feel like a transition, not a loading state. Adjustable in Phase 8.
+- **Next game mount timing:** synchronous after dwell. The new game subtree mounts with a `key` derived from the new identity, guaranteeing fresh lifecycle.
+- **Cold start (null → identity):** no dwell, no neutral mount. The first identity arrival is a direct mount. Rationale: shell is already "neutral" visually before any game exists.
+- **Session end (identity → null):** controller stays in `neutral` indefinitely; existing session-end overlays continue to render above the shell as today (no overlay restructure in this phase).
 
-1. **Runtime escape hatch:** the existing `VITE_CANONICAL_SHELL_LIFT='off'` flag from Phase 5 already short-circuits the entire branch where the new hook is called. Setting it disables Phase 6 entirely with no code change.
-2. **Single-call removal:** if the hook itself misbehaves, deleting one line in `Game.tsx` (the `useSlotIdentityTracker(...)` invocation) fully removes Phase 6 from the runtime. The new modules become dead code, harmless.
-3. **Module deletion:** the four new files are additive and isolated under `src/lib/canonicalShell/`. Removing them has zero impact on anything outside that directory once the hook call is removed.
+### Teardown timing precondition (no snap-cut of end-of-game closure)
 
-No DB migrations, no schema changes, no edge function changes — nothing to roll back server-side.
+By construction, `desiredIdentity` is derived from `game.current_game_uuid`, which only flips when a new `dealer_games` row is created by `DealerGameSetup`. That creation only runs **after** the prior dealer game has reached `game_over` and the session has progressed through dealer selection / config — i.e. after all end-of-game closure on the prior game (Holm payouts, 3-5-7 leg collection, SCC settlement, winner reveal) has completed.
 
-## 6. Acceptance criteria
+End-of-game closure surfaces (Celebration, Settlement, payout animations) are **overlays**, not contents of the gameplay slot. Phase 7 does not move them. They survive the slot transition independently and are not affected by the synchronous teardown.
 
-- All existing canonical-shell tests pass; new Phase 6 tests pass.
+Therefore the synchronous slot teardown in Phase 7 is, by upstream invariant, never a snap-cut of an in-progress closure animation.
+
+**Future-phase rule:** if any later phase moves a closure animation **into** the gameplay slot, that phase must also raise `SLOT_CHOREOGRAPHY.teardownGraceMs` above 0 and gate the controller's `active → tearing-down` transition on completion of that animation. Phase 7 leaves the constant at 0 because nothing in the slot today needs grace.
+
+## 5. Overlay ownership boundaries (unchanged in Phase 7)
+
+Overlays remain owned where they are today (Celebration, Settlement, Config, Ante, DealerSelection, sit-out, etc.). Phase 7 makes only the **gameplay slot** owned by the shell. Overlay consolidation is explicitly deferred to a later phase.
+
+INV-shell-4 (overlay ordering) is unchanged — no overlay z-index or lifecycle wiring is touched.
+
+## 6. Device responsiveness
+
+- `NeutralInterstitial` already uses a semantic `bg-background` token and fills its parent. It inherits the shell's responsive geometry — no new tokens, no breakpoints, no media queries added.
+- Dwell timing is fixed across viewports for Phase 7. If reduced-motion users surface a complaint, Phase 8 can read `prefers-reduced-motion` and drop dwell to 0 ms. Out of scope here.
+- Manual regression on phone (475×673), tablet, and desktop viewports must show identical structural behavior; only the mount swap timing should be observably different.
+
+## 7. Observer behavior during interstitial
+
+- Observers see `NeutralInterstitial` mount for the same dwell as seated players. The shell is unchanged, so seat anchor layers and chat overlay continue rendering above the slot (slot is just a mount point inside the shell, not the whole shell).
+- The observer's own viewState gating already filters them out of gameplay actions, so there is no eligibility change.
+- INV-no-observer-acknowledgment is preserved: progression does not wait on the observer to "finish" the interstitial; dwell is local-only timing, not a sync barrier.
+
+## 8. Join/rejoin affordance interaction rules
+
+- The (out-of-scope) observer mid-game rejoin affordance, when it ships, will live in the seat anchor layer (a shell-owned surface that is **outside** the gameplay slot). Therefore:
+  - During the neutral window, the seat map is still mounted, so a future + affordance would remain clickable.
+  - Phase 7 must not put any opaque full-bleed surface over the seat anchor layer. `NeutralInterstitial` already renders inside the gameplay-slot region, not as a viewport-wide overlay, so this requirement is met by construction. The test plan verifies this with a DOM containment assertion.
+
+No code is added in Phase 7 for the rejoin affordance itself.
+
+## 9. Telemetry & invariants
+
+- Single source of `slot-identity-changed`: `PlayfieldSlotController` (it owns the `useSlotIdentityTracker` invocation when the flag is on). The `Game.tsx`-level tracker is disabled in that mode to avoid duplicate events.
+- `slot-entered-neutral` / `slot-left-neutral` now fire from production code for the first time. Payload `reason` distinguishes:
+  - `"dealer-game-rollover"`
+  - `"session-end"`
+  - `"pre-session"` (only if we end up holding neutral before the first identity; in Phase 7 we expect this not to fire because cold start is a direct mount)
+- INV-shell-3: must stop reporting warnings during normal rollovers when the flag is on. Test asserts zero `checkInvariant(..., 'slot-transition-without-neutral', false, …)` calls across a simulated A→B rollover.
+- No new event names beyond those already in `ShellLifecycleEvent`. No new persisted columns.
+
+## 10. Acceptance criteria
+
+- All Phase 6 tests still pass.
+- New Phase 7 tests pass: controller drives correct mount sequence, dwell respected, key-on-identity works, INV-shell-3 quiet under flag-on.
 - Build clean, no new TypeScript errors.
-- Live regression on phone + tablet:
-  - Poker-variant session: lobby → start → dealer selection → active hand → next hand → end. **No visible difference** vs. Phase 5.
-  - Non-poker-variant session (Cribbage or Gin Rummy): unchanged behavior, hook never invoked.
-- Telemetry in dev sync debug stream:
-  - Exactly one `slot-identity-changed` event when the first `dealerGameId` is assigned.
-  - One `slot-identity-changed` event per dealer-game rollover, with `prev` and `next` payloads showing a `null` step between non-null identities (when the underlying flow already passes through null) — or, if the current flow does *not* pass through null, an invariant warning surfaces (this is **expected diagnostic value**, not a regression).
-- Zero new console errors or runtime exceptions.
+- Live regression on phone + tablet, poker-variant session:
+  - Flag **off**: identical to Phase 6 — INV-shell-3 warning still appears on rollover (as it does today).
+  - Flag **on**: visible brief neutral interstitial between dealer games; no INV-shell-3 warning; chip/score state of the *new* game is correct on mount; reconnect mid-rollover lands cleanly in either neutral or the new game (not the old one); no snap-cut of end-of-game payout/settlement animations.
+- Non-poker-variant session (Cribbage / Gin Rummy) routed through the same shell path: behaves identically to Phase 6 with flag on or off — Phase 7 does not change those families because the controller is only invoked when `slotIdentity` is provided, and we gate that prop on the existing `isPokerVariantFamily` check (same gate as Phase 5/6).
+- Zero new console errors.
 
-## 7. Targeted regression plan
+## 11. Regression plan
 
-Manual live, in this exact order, on phone viewport (475×673) first then tablet:
+Manual, phone viewport first:
 
-1. Cold load → lobby → add bot → **Start Game** (the exact Phase 5 regression repro). Must work identically to Phase 5 post-fix.
-2. Play one full hand to completion. Confirm chips, scoring, turn handoff visually identical.
-3. Roll into a second hand. Confirm `slot-identity-changed` fires with the new `dealerGameId`.
-4. Trigger a dealer-game change (next game in session). Confirm telemetry shows the identity transition; confirm UI continuity (shell DOM node stable per Phase 5 contract).
-5. Reload mid-hand. Confirm reconnect path unchanged.
-6. Repeat (1)–(2) for one non-poker-variant game (e.g. Cribbage) to confirm the hook is *not* invoked there and behavior is bit-identical.
-7. Set `VITE_CANONICAL_SHELL_LIFT='off'` and re-run (1)–(2) on a poker-variant. Confirm Phase 5 + Phase 6 both fully bypassed.
+1. Cold load → lobby → start game. Confirm direct mount (no neutral flash).
+2. Play one hand, roll into hand 2 of the same dealer game. Confirm **no** neutral interstitial (this is a hand boundary, not a dealer-game boundary; identity unchanged).
+3. Trigger next dealer game in session. Confirm end-of-game closure (winner / payout / settlement) plays to completion **before** the neutral interstitial appears; then neutral appears for ~450 ms; then new game mounts with fresh state.
+4. Reload during step 3's neutral window. Confirm app lands in the new game (or back into neutral if rollover not yet committed server-side), never in the old game.
+5. End session. Confirm neutral remains until session-end overlays take over.
+6. Toggle `VITE_CANONICAL_SLOT_NEUTRAL='off'`, repeat steps 1–5: must match current Phase 6 behavior including the INV-shell-3 warning at step 3.
+7. Toggle `VITE_CANONICAL_SHELL_LIFT='off'`: full bypass, behavior identical to pre-Phase-5.
+8. Repeat steps 1–3 on Cribbage and Gin Rummy: no neutral interstitial, no behavior change.
 
 Automated:
-- Vitest run of all `src/lib/canonicalShell/**` tests.
-- Existing sync-framework tests must remain green (nothing in this phase touches them, but we verify).
+- `bunx vitest run src/lib/canonicalShell/` — all green.
+- Existing sync-framework, eligibility, and bulk-write-scoping tests untouched and green.
 
-## 8. Telemetry additions
+## 12. Test strategy
 
-All events go through the existing `recordShellEvent` funnel (already persisted to `debug_sync_events` and console in dev). No new event names beyond those already declared in `ShellLifecycleEvent`:
+- **Unit:** `PlayfieldSlotController.test.tsx` — fake timers, drive identity prop changes, assert mount/unmount sequence and telemetry order. Assert children remount with new key on identity B.
+- **Invariant:** assert `checkSlotTransition` returns `true` for every transition the controller produces (no warning leaks).
+- **Containment:** mount `<PersistentTableShell>` with a fake seat anchor layer + slot identity, assert `NeutralInterstitial` DOM node does **not** contain the seat anchor nodes (i.e. the seat map remains a sibling, not a descendant, so future rejoin affordances stay clickable).
+- **Cold-start guard:** assert null→identity does not mount `NeutralInterstitial` (no false "between games" event before the first game starts).
+- **Flag-off regression:** assert with flag off, the controller is not introduced and identity tracking still works via the existing `useSlotIdentityTracker` call.
 
-- `slot-identity-changed` — payload: `{ prev: PlayfieldSlotIdentity, next: PlayfieldSlotIdentity, gameId, gameType, dealerGameId }`.
-- `slot-entered-neutral` / `slot-left-neutral` — only emitted if Phase 7 mounts `NeutralInterstitial`; in Phase 6, never emitted by production code (only by tests).
+## 13. Out of scope (explicit, per request)
 
-Invariant violations from `checkSlotTransition` already flow through `checkInvariant` → existing debug stream. No new infrastructure.
+- Observer rejoin affordance implementation
+- Chip transport redesign
+- Celebration / Settlement redesign
+- Gameplay visual restyling
+- Participant eligibility authority refactor (highest-priority post-shell item, still backlog)
+- Overlay consolidation / lift
+- Hand-boundary (intra-dealer-game) transitions
+- Variable dwell, fade choreography, motion preferences (deferred to Phase 8)
 
-## 9. Expected user-visible behavior changes
+## 14. Rollback strategy
 
-**None.**
+Three independent layers:
 
-Phase 6 is observe-only. The hook does not render, does not gate, does not delay, does not animate. If a user notices any visible difference between Phase 5 and Phase 6, that is a bug.
+1. `VITE_CANONICAL_SLOT_NEUTRAL='off'` — disables Phase 7 only.
+2. `VITE_CANONICAL_SHELL_LIFT='off'` — disables Phase 5/6/7 together.
+3. Code revert: remove the one new prop in `Game.tsx` and the controller wrap in `PersistentTableShell.tsx`. The two new modules become dead code, harmless.
 
----
+No DB migrations, no edge-function changes, no schema changes.
 
-## Risk assessment
+## 15. Risk assessment
 
-**Low-to-moderate.** The production surface area is one hook call inside an already-validated branch. The largest realistic risk is that `checkSlotTransition` surfaces a pre-existing latent invariant violation in the current dealer-game-rollover flow — which is *diagnostically valuable* but could be noisy. Mitigation: the check logs/warns but does not throw, and the escape hatch fully disables the hook.
+**Moderate** — first phase where the shell mutates what the user sees, not just where it sits in the tree. Primary risks:
 
-Awaiting approval before implementation.
+- **Premature unmount:** if `desiredIdentity` thrashes (briefly null between two valid identities), we could enter neutral spuriously. Mitigation: the controller treats a transient null between two valid identities (within one render tick) as a continuation of the active state; only a sustained null or a different non-null identity triggers the transition. Encoded as a controller test.
+- **Reconnect during neutral window:** mid-rollover reload could put a user in neutral with no game to mount. Mitigation: `desiredIdentity` is derived directly from server state, so reconnect re-derives correctly; the controller has no persisted local state.
+- **Pre-existing INV-shell-3 noise pre-flag is real, not synthetic.** Flipping the flag silences the warning by *fixing* the underlying flow, not by suppressing the check.
