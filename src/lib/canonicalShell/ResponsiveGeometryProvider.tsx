@@ -51,6 +51,14 @@ export interface GeometryClassTokens {
   containerPadding: string;
 }
 
+/**
+ * P8.0 (Visual Unification): provisional center-content size hint.
+ * Cribbage-dense and Yahtzee-dense are expected to diverge in tuning;
+ * this token graduates to named sub-modes only if real reuse emerges.
+ * Default is 'standard'; no consumer reads this in P8.0.
+ */
+export type CenterSize = 'compact' | 'standard' | 'dense';
+
 export interface GeometryTokens {
   deviceType: DeviceType;
   isPhone: boolean;
@@ -59,6 +67,12 @@ export interface GeometryTokens {
   screenWidth: number;
   scale: GeometryScale;
   classes: GeometryClassTokens;
+  /**
+   * P8.0 provisional: declared by gameplay slot children to hint at
+   * required center real estate. No production consumer in P8.0.
+   * Defaults to 'standard' at the provider level.
+   */
+  centerSize: CenterSize;
   /** Resolve a base card size symbol to its device-appropriate size. */
   resolveCardSize: (base?: 'sm' | 'md' | 'lg' | 'xl') => 'sm' | 'md' | 'lg' | 'xl';
 }
