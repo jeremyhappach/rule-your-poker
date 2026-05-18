@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { resolveChipEndpoint, describeEndpoint } from './chipEndpoints';
 
 function makeContainer(width: number, height: number): HTMLElement {
