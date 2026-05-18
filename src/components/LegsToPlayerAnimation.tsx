@@ -1,9 +1,10 @@
-// FROZEN: chip transport (P8.1). Do NOT add new bespoke chip/pot animators.
-// New chip transport must dispatch via useChipTransport() — see
-// src/lib/canonicalShell/ChipTransportProvider.tsx. This file is preserved
-// as-is until its consumer migrates in a later wave.
+// P8.2b: Migrated to canonical chip endpoint resolution for both
+// active-relative and observer-absolute projections. Leg-target
+// coordinates now resolve through the shared seat-anchor markers
+// (data-chip-center) — no internal slot math.
 import React, { useEffect, useState, useRef } from 'react';
 import { SweepTheLegsAnimation } from './SweepTheLegsAnimation';
+import { resolveChipEndpoint, type EndpointCache } from '@/lib/canonicalShell/chipEndpoints';
 
 interface LegChipAnimation {
   id: string;
