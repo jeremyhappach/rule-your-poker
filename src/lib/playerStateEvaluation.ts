@@ -112,9 +112,14 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
         const { error: updateError } = await supabase
           .from('players')
           .update({
+            status: 'left',
             sitting_out: true,
             stand_up_next_hand: false,
-            waiting: false
+            waiting: false,
+            ante_decision: null,
+            auto_ante: false,
+            auto_ante_runback: false,
+            auto_fold: false,
           })
           .eq('id', player.id);
         
