@@ -245,6 +245,7 @@ export const DealerConfig = ({
       .eq('game_id', gameId)
       .neq('id', dealerPlayerId)
       .neq('status', 'observer')
+      .neq('status', 'left')
       .select();
 
     console.log('[DEALER CONFIG] Reset ante_decision result:', { resetError, resetResult });
