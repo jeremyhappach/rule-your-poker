@@ -361,8 +361,8 @@ export async function startRound(gameId: string, roundNumber: number) {
     throw new Error('No players found in game');
   }
 
-  // Deal to all non-sitting-out players.
-  const activePlayers = players.filter((p) => !p.sitting_out);
+  // Deal to all non-sitting-out, non-observer, non-left players.
+  const activePlayers = players.filter((p) => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
   console.log('[START_ROUND] Players eligible for dealing:', {
     roundNumber,
     totalPlayers: players.length,
