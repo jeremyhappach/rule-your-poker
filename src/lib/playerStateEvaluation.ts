@@ -251,7 +251,7 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   // Count eligible dealers (non-sitting-out, non-observer, AND non-bot humans unless bots are allowed as dealers)
   // NOTE: After evaluation, waiting players are now eligible (sitting_out=false, waiting=false)
   const eligibleDealerCount = remainingPlayers.filter(p => 
-    !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot)
+    !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && (allowBotDealers || !p.is_bot)
   ).length;
   
   console.log('[PLAYER EVAL] Evaluation complete. Active players:', activePlayerCount, 'Active humans:', activeHumanCount, 'Eligible dealers:', eligibleDealerCount, 'Stood up:', playersStoodUp.length, 'allowBotDealers:', allowBotDealers);
