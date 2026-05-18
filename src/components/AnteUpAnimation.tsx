@@ -56,6 +56,8 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
   const lastTriggerIdRef = useRef<string | null>(null);
   // CRITICAL: Use a ref to track animation in progress - state updates are async and can miss rapid re-triggers
   const animationInProgressRef = useRef(false);
+  // P8.2b: per-animator endpoint cache shared across pot + seat resolution
+  const endpointCacheRef = useRef<Record<string, { xPct: number; yPct: number }>>({});
 
   // Animation timing
   const ANTE_TRAVEL_MS = 1000;
