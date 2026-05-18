@@ -3275,7 +3275,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       // CRITICAL FIX: Only check decisions from players who are NOT sitting_out
       // Players who are already sitting_out should not block the ante phase
-      const activePlayers = freshPlayers.filter(p => !p.sitting_out);
+      const activePlayers = freshPlayers.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
       const decidedCount = activePlayers.filter(p => p.ante_decision).length;
       const allDecided = activePlayers.every(p => p.ante_decision);
       console.log('[ANTE CHECK] Fresh players:', freshPlayers.length, 'Active (not sitting out):', activePlayers.length, 'Decided:', decidedCount, 'All decided:', allDecided, 'Player ante statuses:', activePlayers.map(p => ({ pos: p.position, ante: p.ante_decision, bot: p.is_bot })));
