@@ -8613,6 +8613,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 : null
             }
             gameId={gameId ?? null}
+            readyToMount={(() => {
+              // Phase 7 readiness gate (narrow scope): only answer
+              // "is the intended gameplay surface ready to paint a
+              // stable first frame?". Default true for statuses where
+              // the surface mounts pre-round (ante_decision, dealer
+              // selection, configuring, game_selection, game_over for
+              // non-round-bound branches). For in_progress / round-
+              // bound game_over we require currentRound to be scoped
+              // to the current dealer game — otherwise the surface
+              // would mount with stale or empty round state.
+              const dgid = (game as any).current_game_uuid ?? null;
+              if (!dgid) return true;
+              const status = game.status;
+              if (status === 'in_progress') {
+                return Boolean(
+                  currentRound?.id &&
+                  (currentRound as any).dealer_game_id === dgid
+                );
+              }
+              return true;
+            })()}
           >
             {(() => {
           const isInProgress = game.status === 'in_progress';
