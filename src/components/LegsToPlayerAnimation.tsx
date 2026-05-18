@@ -43,6 +43,7 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
   const lastTriggerIdRef = useRef<string | null>(null);
   const completedRef = useRef(false); // Guard against double completion
   const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const endpointCacheRef = useRef<EndpointCache>({});
 
   // IMPORTANT: Store callback in ref to prevent effect re-runs when parent re-renders
   const onCompleteRef = useRef<(() => void) | undefined>(onAnimationComplete);
