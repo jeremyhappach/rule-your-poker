@@ -1206,10 +1206,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
-    // Stand up = soft-delete player record (preserve for hand history FK integrity)
+    // Stand up = soft-delete player record (preserve for hand history FK integrity).
+    // Also clear all participation-eligibility flags so the row cannot be revived
+    // by any downstream code that filters only by status.
     const { error } = await supabase
       .from('players')
-      .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, sit_out_next_hand: false })
+      .update({
+        status: 'left',
+        sitting_out: true,
+        stand_up_next_hand: false,
+        sit_out_next_hand: false,
+        ante_decision: null,
+        auto_ante: false,
+        auto_ante_runback: false,
+        auto_fold: false,
+        waiting: false,
+      })
       .eq('id', currentPlayer.id);
     
     if (error) {
@@ -1271,10 +1283,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
-    // Soft-delete the player record (preserve for hand history FK integrity)
+    // Soft-delete the player record (preserve for hand history FK integrity).
+    // Clear participation-eligibility flags to match handleStandUpNow.
     const { error } = await supabase
       .from('players')
-      .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, sit_out_next_hand: false })
+      .update({
+        status: 'left',
+        sitting_out: true,
+        stand_up_next_hand: false,
+        sit_out_next_hand: false,
+        ante_decision: null,
+        auto_ante: false,
+        auto_ante_runback: false,
+        auto_fold: false,
+        waiting: false,
+      })
       .eq('id', currentPlayer.id);
     
     if (error) {
@@ -2844,7 +2867,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // This prevents race conditions where the dialog check runs before realtime updates propagate
         const { data: freshPlayers, error: freshPlayersError } = await supabase
           .from('players')
-          .select('id, user_id, position, ante_decision, auto_ante, auto_ante_runback, sitting_out, is_bot')
+          .select('id, user_id, position, ante_decision, auto_ante, auto_ante_runback, sitting_out, is_bot, status')
           .eq('game_id', gameId);
         
         if (freshPlayersError || !freshPlayers) {
@@ -2947,7 +2970,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const autoLatchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
         const isAutoLatched = anteConfirmedLatchRef.current === autoLatchKey;
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && (freshCurrentPlayer as any).status !== 'observer' && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && (freshCurrentPlayer as any).status !== 'observer' && (freshCurrentPlayer as any).status !== 'left' && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
           console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
@@ -2978,7 +3001,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const latchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
         const isLatched = anteConfirmedLatchRef.current === latchKey;
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && (freshCurrentPlayer as any).status !== 'observer' && !isLatched) {
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && (freshCurrentPlayer as any).status !== 'observer' && (freshCurrentPlayer as any).status !== 'left' && !isLatched) {
           logDebugEvent({
             gameId: gameId!,
             userId: user.id,
@@ -5573,12 +5596,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       awaiting_next_round: false
     } : null);
 
-    // Reset ante_decision for all seated eligible players (exclude observers)
+    // Reset ante_decision for all seated eligible players (exclude observers and stood-up/left players)
     const { error: resetError } = await supabase
       .from('players')
       .update({ ante_decision: null })
       .eq('game_id', gameId)
-      .neq('status', 'observer');
+      .neq('status', 'observer')
+      .neq('status', 'left');
 
     if (resetError) {
       console.error('[GAME SELECTION] Failed to reset ante decisions:', resetError);
@@ -5953,7 +5977,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         stand_up_next_hand: false
       })
       .eq('game_id', gameId)
-      .neq('status', 'observer');
+      .neq('status', 'observer')
+      .neq('status', 'left');
 
     // Handle make it take it result - can be a position, 'selection', or null
     if (makeItTakeItResult === 'selection') {

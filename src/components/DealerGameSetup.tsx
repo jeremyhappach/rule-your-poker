@@ -704,7 +704,7 @@ export const DealerGameSetup = ({
               .update({ ante_decision: null })
               .eq('game_id', gameId)
               .neq('id', dealerPlayerId)
-              .neq('status', 'observer');
+              .neq('status', 'observer').neq('status', 'left');
             
             // Auto ante up the dealer
             await supabase
@@ -806,7 +806,7 @@ export const DealerGameSetup = ({
               .update({ ante_decision: null })
               .eq('game_id', gameId)
               .neq('id', dealerPlayerId)
-              .neq('status', 'observer');
+              .neq('status', 'observer').neq('status', 'left');
             
             // Auto ante up the dealer
             await supabase
@@ -909,7 +909,7 @@ export const DealerGameSetup = ({
               .update({ ante_decision: null })
               .eq('game_id', gameId)
               .neq('id', dealerPlayerId)
-              .neq('status', 'observer');
+              .neq('status', 'observer').neq('status', 'left');
             
             await supabase
               .from('players')
@@ -1070,7 +1070,7 @@ export const DealerGameSetup = ({
       .update({ ante_decision: null })
       .eq('game_id', gameId)
       .neq('id', dealerPlayerId)
-      .neq('status', 'observer');
+      .neq('status', 'observer').neq('status', 'left');
 
     // Auto ante up the dealer
     await supabase
@@ -1379,7 +1379,7 @@ export const DealerGameSetup = ({
         .update({ ante_decision: null })
         .eq('game_id', gameId)
         .neq('id', dealerPlayerId)
-        .neq('status', 'observer');
+        .neq('status', 'observer').neq('status', 'left');
       
       // Auto ante up the dealer
       await supabase
@@ -1435,7 +1435,7 @@ export const DealerGameSetup = ({
       .update({ ante_decision: null })
       .eq('game_id', gameId)
       .neq('id', dealerPlayerId)
-      .neq('status', 'observer');
+      .neq('status', 'observer').neq('status', 'left');
     
     // Auto ante up the dealer
     await supabase
