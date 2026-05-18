@@ -2947,7 +2947,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const autoLatchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
         const isAutoLatched = anteConfirmedLatchRef.current === autoLatchKey;
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && (freshCurrentPlayer as any).status !== 'observer' && shouldAutoAnte && !showAnteDialog && !isAutoLatched) {
           console.log('[ANTE DIALOG] ✅ AUTO-ANTE enabled - automatically accepting ante for player:', freshCurrentPlayer.id, {
             auto_ante: freshCurrentPlayer.auto_ante,
             auto_ante_runback: freshCurrentPlayer.auto_ante_runback,
@@ -2978,7 +2978,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         const latchKey = `${gameId}|${game?.current_game_uuid ?? ''}|${freshCurrentPlayer?.id ?? ''}`;
         const isLatched = anteConfirmedLatchRef.current === latchKey;
         
-        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && !isLatched) {
+        if (freshCurrentPlayer && freshCurrentPlayer.ante_decision === null && !isDealer && !freshCurrentPlayer.sitting_out && (freshCurrentPlayer as any).status !== 'observer' && !isLatched) {
           logDebugEvent({
             gameId: gameId!,
             userId: user.id,
@@ -5573,11 +5573,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       awaiting_next_round: false
     } : null);
 
-    // Reset ante_decision for ALL seated players so they all get the ante popup
+    // Reset ante_decision for all seated eligible players (exclude observers)
     const { error: resetError } = await supabase
       .from('players')
       .update({ ante_decision: null })
-      .eq('game_id', gameId);
+      .eq('game_id', gameId)
+      .neq('status', 'observer');
 
     if (resetError) {
       console.error('[GAME SELECTION] Failed to reset ante decisions:', resetError);
@@ -5936,20 +5937,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.warn('[GAME OVER] Skipping rounds-completed bulk write: no current_game_uuid');
     }
 
-    // Reset all players for new game (keep chips, clear ante decisions)
-    // Do NOT reset sitting_out - players who joined mid-game stay sitting_out until they ante up
-    console.log('[GAME OVER] Resetting player states for new game');
+    // Reset per-game ephemeral state for eligible players only.
+    // CRITICAL: Do NOT promote observers to status='active' here, and do not
+    // touch sitting_out (owned by evaluatePlayerStatesEndOfGame). We do clear
+    // the now-consumed sit_out_next_hand / stand_up_next_hand flags, but only
+    // for non-observers (observers should not carry those flags anyway).
+    console.log('[GAME OVER] Resetting per-game state for eligible (non-observer) players');
     await supabase
       .from('players')
-      .update({ 
-        status: 'active',
+      .update({
         current_decision: null,
         decision_locked: false,
         ante_decision: null,
         sit_out_next_hand: false,
         stand_up_next_hand: false
       })
-      .eq('game_id', gameId);
+      .eq('game_id', gameId)
+      .neq('status', 'observer');
 
     // Handle make it take it result - can be a position, 'selection', or null
     if (makeItTakeItResult === 'selection') {

@@ -1415,18 +1415,26 @@ async function handleGameOver(
   
   const gameWinMessage = `🏆 ${winnerUsername} won the game!`;
   
-  // Reset all players' legs for new game and keep chips
+  // Reset per-game ephemeral fields for ALL players (legs/decision state).
+  // CRITICAL: Do NOT bulk-write `status` or `sitting_out` here — that would
+  // promote observers to active and reactivate intentionally sitting-out
+  // players. Participation intent is owned by evaluatePlayerStatesEndOfGame
+  // and the seat/opt-in/rejoin flows.
   await supabase
     .from('players')
-    .update({ 
+    .update({
       legs: 0,
-      status: 'active',
       current_decision: null,
       decision_locked: false,
-      sitting_out: false,
-      ante_decision: null
     })
     .eq('game_id', gameId);
+
+  // Scope ante_decision reset to eligible participants only (exclude observers).
+  await supabase
+    .from('players')
+    .update({ ante_decision: null })
+    .eq('game_id', gameId)
+    .neq('status', 'observer');
   
   // NOTE: Dealer rotation is NOT done here anymore - it's done in handleGameOverComplete
   // after evaluating player states (sit_out_next_hand, stand_up_next_hand, etc.)
