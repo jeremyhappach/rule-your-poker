@@ -5954,7 +5954,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         stand_up_next_hand: false
       })
       .eq('game_id', gameId)
-      .neq('status', 'observer');
+      .neq('status', 'observer')
+      .neq('status', 'left');
 
     // Handle make it take it result - can be a position, 'selection', or null
     if (makeItTakeItResult === 'selection') {
