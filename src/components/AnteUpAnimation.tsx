@@ -196,7 +196,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
         slot = getSlotPercent(slotIndexForTarget);
       }
 
-      const target = getPotBoxTarget(slotIndexForTarget, rect, gameType);
+      const target = canonicalPot ?? getPotBoxTarget(slotIndexForTarget, rect, gameType);
 
       return {
         id: `chip-${animIdRef.current++}`,
