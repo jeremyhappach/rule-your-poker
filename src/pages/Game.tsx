@@ -4549,10 +4549,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // Capture pre-ante chips BEFORE startRound deducts them
               const { data: playersBeforeAnte } = await supabase
                 .from('players')
-                .select('id, chips, sitting_out')
+                .select('id, chips, sitting_out, status')
                 .eq('game_id', gameId);
 
-              const activePlayersForAnte = (playersBeforeAnte || []).filter(p => !p.sitting_out);
+              const activePlayersForAnte = (playersBeforeAnte || []).filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
               const perPlayerAmount = freshGame?.ante_amount || 0;
               const activeCount = activePlayersForAnte.length;
 
