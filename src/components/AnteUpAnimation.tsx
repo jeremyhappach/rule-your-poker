@@ -160,6 +160,14 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
 
     const rect = containerRef.current.getBoundingClientRect();
 
+    // P8.2b: prefer canonical pot endpoint (game-owned data-pot-anchor).
+    // Falls back to legacy per-game pot geometry only if not present.
+    const canonicalPot = resolveChipEndpoint({
+      ref: { kind: 'pot' },
+      container: containerRef.current,
+      debugLabel: '357-ante',
+    });
+
     // Filter to specific players if provided, otherwise all active players
     const playersToAnimate = specificPlayerIds
       ? activePlayers.filter((p) => p.id && specificPlayerIds.includes(p.id))
