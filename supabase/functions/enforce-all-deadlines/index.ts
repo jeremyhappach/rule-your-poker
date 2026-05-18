@@ -2434,7 +2434,7 @@ serve(async (req) => {
                 .select('id, sitting_out, is_bot, status, position')
                 .eq('game_id', game.id);
               
-              const activeHumans = (freshPlayers || []).filter((p: any) => !p.sitting_out && p.status !== 'observer' && !p.is_bot);
+              const activeHumans = (freshPlayers || []).filter((p: any) => !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && !p.is_bot);
               
               const { data: gameDefaults } = await supabase
                 .from('game_defaults')
@@ -2445,7 +2445,7 @@ serve(async (req) => {
               const allowBotDealers = (gameDefaults as any)?.allow_bot_dealers ?? false;
               
               const eligibleDealers = (freshPlayers || []).filter((p: any) =>
-                !p.sitting_out && p.status !== 'observer' && (allowBotDealers || !p.is_bot) && p.position !== null
+                !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && (allowBotDealers || !p.is_bot) && p.position !== null
               );
               
               if (activeHumans.length === 0) {
