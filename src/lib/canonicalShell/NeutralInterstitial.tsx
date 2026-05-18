@@ -36,7 +36,11 @@ export function NeutralInterstitial({ gameId, reason }: NeutralInterstitialProps
     <div
       data-canonical-shell-neutral=""
       aria-hidden="true"
-      className="bg-background"
+      // Intrinsic size: the slot region must not collapse to 0px during
+      // the dwell, otherwise overlays/backdrops show through as a
+      // full-screen black/blank flash. The neutral surface fills its
+      // slot container and matches the shell background token.
+      className="w-full h-full min-h-0 flex-1 bg-background"
     />
   );
 }

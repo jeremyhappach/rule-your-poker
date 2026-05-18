@@ -8577,7 +8577,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (
+        {(
+          game.status === 'ante_decision' ||
+          game.status === 'in_progress' ||
+          game.status === 'cribbage_dealer_selection' ||
+          (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') ||
+          (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee')) ||
+          // Phase 7 fix (inter-game continuity): keep the slot controller
+          // continuously mounted across the inter-game lifecycle window
+          // for the poker-variant family so the NeutralInterstitial
+          // actually bridges dealer-game rollovers (game_over →
+          // game_selection → configuring → ante_decision → in_progress)
+          // instead of the controller being physically unmounted between
+          // dealer games — which is what caused the full-screen black
+          // flash regression. Explicitly EXCLUDES pre-session statuses
+          // ('waiting' lobby, pre-seat observer flows): those lifecycle
+          // surfaces remain siblings outside the slot per the approved
+          // Phase 7 ownership contract.
+          (isPokerVariantFamily(game.game_type) && (
+            game.status === 'game_selection' ||
+            game.status === 'configuring' ||
+            game.status === 'game_over'
+          ))
+        ) && (
           // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
           // surface. Lifecycle UI (lobby, waiting, dealer config/setup,
           // ante dialog, observer affordances) lives as siblings outside
