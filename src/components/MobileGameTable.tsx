@@ -33,6 +33,7 @@ import {
   observerSlotForPosition as canonicalObserverSlot,
 } from "@/lib/canonicalShell/seatAnchors";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
+import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 // PersistentTableShell ownership lifted to Game.tsx in Phase 5;
 // MobileGameTable no longer mounts an inner shell to avoid duplicate
 // shell ownership (single authoritative outer instance per session).
@@ -4851,36 +4852,24 @@ export const MobileGameTable = ({
           playerName={legEarnedPlayerName}
           legValue={legValue}
           targetPosition={(() => {
-            // Calculate target based on leg-earning player's position
-            // Target should be where the NEXT leg indicator will appear (inside toward table center)
+            // Canonical endpoint resolution (P8.2b leg-award patch).
+            // Active and observer projections both resolve through the
+            // same seat anchor markers — no relative-slot math here.
             if (!legEarnedPlayerPosition) return undefined;
-            
-            // If current player earned the leg, animate to bottom center-right (where their leg indicator actually renders)
-            if (currentPlayer?.position === legEarnedPlayerPosition) {
-              // Legs appear at left: 55%, bottom: 8px on the felt (see line ~879)
-              return { top: '92%', left: '55%' };
-            }
-            
-            // Otherwise, calculate slot position for other player
-            const currentPos = currentPlayer?.position ?? 1;
-            let distance = legEarnedPlayerPosition - currentPos;
-            if (distance <= 0) distance += 7;
-            const slotIndex = distance - 1;
-            
-            // Determine if right side slot (legs appear on left of chip)
-            const isRightSideSlot = slotIndex >= 3;
-            
-            // Map slot to approximate screen coordinates (matching slotPositions layout)
-            // With offset toward table center where legs actually render
-            const slotCoords: Record<number, { top: string; left: string }> = {
-              0: { top: '85%', left: '22%' },  // Bottom-left - legs on right side (toward center)
-              1: { top: '50%', left: '12%' },  // Left - legs on right side (toward center)
-              2: { top: '15%', left: '22%' },  // Top-left - legs on right side (toward center)
-              3: { top: '15%', left: '78%' },  // Top-right - legs on left side (toward center)
-              4: { top: '50%', left: '88%' },  // Right - legs on left side (toward center)
-              5: { top: '85%', left: '78%' },  // Bottom-right - legs on left side (toward center)
+            const container = tableContainerRef.current;
+            if (!container) return undefined;
+            const resolved = resolveChipEndpoint({
+              ref: { kind: 'seat', position: legEarnedPlayerPosition },
+              container,
+              debugLabel: '357-leg-earned',
+            });
+            if (!resolved) return undefined;
+            const rect = container.getBoundingClientRect();
+            if (!rect.width || !rect.height) return undefined;
+            return {
+              top: `${(resolved.y / rect.height) * 100}%`,
+              left: `${(resolved.x / rect.width) * 100}%`,
             };
-            return slotCoords[slotIndex] || { top: '85%', left: '40%' };
           })()}
           isWinningLeg={isWinningLegAnimation}
           suppressWinnerOverlay={gameType !== 'holm-game'} // Suppress for 3-5-7 - has its own win animation
