@@ -1206,10 +1206,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
     }
     
-    // Stand up = soft-delete player record (preserve for hand history FK integrity)
+    // Stand up = soft-delete player record (preserve for hand history FK integrity).
+    // Also clear all participation-eligibility flags so the row cannot be revived
+    // by any downstream code that filters only by status.
     const { error } = await supabase
       .from('players')
-      .update({ status: 'left', sitting_out: true, stand_up_next_hand: false, sit_out_next_hand: false })
+      .update({
+        status: 'left',
+        sitting_out: true,
+        stand_up_next_hand: false,
+        sit_out_next_hand: false,
+        ante_decision: null,
+        auto_ante: false,
+        auto_ante_runback: false,
+        auto_fold: false,
+        waiting: false,
+      })
       .eq('id', currentPlayer.id);
     
     if (error) {
