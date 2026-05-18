@@ -410,8 +410,8 @@ export async function getMakeItTakeItDealer(
     return await findEligibleHumanDealer(gameId);
   }
   
-  // Check if winner is eligible to deal (not sitting out, not observer)
-  const isEligible = !winnerPlayer.sitting_out && winnerPlayer.status !== 'observer' && winnerPlayer.position !== null;
+  // Check if winner is eligible to deal (not sitting out, not observer, not left)
+  const isEligible = !winnerPlayer.sitting_out && winnerPlayer.status !== 'observer' && winnerPlayer.status !== 'left' && winnerPlayer.position !== null;
   console.log('[MAKE IT TAKE IT] Winner eligible:', isEligible, 'position:', winnerPlayer.position);
   
   if (isEligible) {
