@@ -9102,11 +9102,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <PersistentTableShell
           gameId={gameId ?? undefined}
           gameType={game.game_type}
-          slotIdentity={
-            game.game_type && (game as any).current_game_uuid
-              ? { gameType: game.game_type, dealerGameId: (game as any).current_game_uuid }
-              : null
-          }
         >
           {innerTree}
         </PersistentTableShell>
