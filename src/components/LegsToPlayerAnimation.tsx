@@ -107,48 +107,27 @@ export const LegsToPlayerAnimation: React.FC<LegsToPlayerAnimationProps> = ({
     const currentPos = currentPlayerPositionRef.current;
     const getDistance = getClockwiseDistanceRef.current;
 
-    // Inline position calculation using refs
-    const getSlot = (slotIndex: number): { top: number; left: number } => {
-      if (slotIndex === -1) return { top: 92, left: 50 };
-      const slots: Record<number, { top: number; left: number }> = {
-        0: { top: 92, left: 10 }, 1: { top: 50, left: 2 }, 2: { top: 2, left: 10 },
-        3: { top: 2, left: 90 }, 4: { top: 50, left: 98 }, 5: { top: 92, left: 90 },
-      };
-      return slots[slotIndex] || { top: 50, left: 50 };
-    };
-
-    const getAbsPos = (position: number): { top: number; left: number } => {
-      const positions: Record<number, { top: number; left: number }> = {
-        1: { top: 2, left: 10 }, 2: { top: 50, left: 2 }, 3: { top: 92, left: 10 },
-        4: { top: 92, left: 50 }, 5: { top: 92, left: 90 }, 6: { top: 50, left: 98 }, 7: { top: 2, left: 90 },
-      };
-      return positions[position] || { top: 50, left: 50 };
-    };
-
+    // Canonical seat resolver — works identically for active (relative)
+    // and observer (absolute) projections because both project through
+    // the same data-chip-center anchors.
+    const endpointCache: EndpointCache = endpointCacheRef.current;
     const getChipCoords = (position: number): { x: number; y: number } => {
-      const isObserver = currentPos === null;
-      let slot: { top: number; left: number };
-      if (isObserver) {
-        slot = getAbsPos(position);
-      } else {
-        const isCurrentPlayer = currentPos === position;
-        const slotIndex = isCurrentPlayer ? -1 : getDistance(position) - 1;
-        slot = getSlot(slotIndex);
-      }
-      return { x: (slot.left / 100) * rect.width, y: (slot.top / 100) * rect.height };
+      const resolved = resolveChipEndpoint({
+        ref: { kind: 'seat', position },
+        container,
+        cache: endpointCache,
+        debugLabel: '357-legs-to-player',
+      });
+      if (resolved) return resolved;
+      // Last-resort fallback (should be rare — anchors are mounted by
+      // SeatAnchorLayer for every seated player + observer projection).
+      return { x: rect.width / 2, y: rect.height / 2 };
     };
 
     const getLegCoords = (position: number): { x: number; y: number } => {
       const chipCoords = getChipCoords(position);
-      const isObserver = currentPos === null;
-      let isRightSide: boolean;
-      if (isObserver) {
-        isRightSide = position >= 5;
-      } else {
-        const isCurrentPlayer = currentPos === position;
-        const slotIndex = isCurrentPlayer ? -1 : getDistance(position) - 1;
-        isRightSide = slotIndex >= 3;
-      }
+      // Side derived from canonical chip x — legs render inboard of chip.
+      const isRightSide = chipCoords.x > rect.width / 2;
       const offsetX = isRightSide ? -30 : 30;
       return { x: chipCoords.x + offsetX, y: chipCoords.y };
     };
