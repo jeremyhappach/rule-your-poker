@@ -7970,6 +7970,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     dealerGameId: (game as any)?.current_game_uuid ?? null,
   });
 
+  // Phase 7: sticky dealer identity across the transient
+  // current_game_uuid=null gap during dealer-game rollover. Without
+  // this, the slot controller interprets the null as session-end and
+  // forces a neutral detour with the wrong semantic. Scope is strictly
+  // the poker-variant family + the known continuous rollover statuses
+  // — legitimate teardown / exit flows are NOT suppressed.
+  const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
+
   if (loading || !game) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -8607,11 +8615,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // so neutral interstitial only gates dealer-game rollovers
           // within a continuously-mounted gameplay phase.
           <PlayfieldSlotController
-            desiredIdentity={
-              game.game_type && (game as any).current_game_uuid
-                ? { gameType: game.game_type, dealerGameId: (game as any).current_game_uuid }
-                : null
-            }
+            desiredIdentity={(() => {
+              const dgid = (game as any).current_game_uuid ?? null;
+              const gtype = game.game_type ?? null;
+              // Refresh sticky cache whenever we have a real identity.
+              if (dgid && gtype) {
+                stickyDealerIdentityRef.current = { gameType: gtype, dealerGameId: dgid };
+                return { gameType: gtype, dealerGameId: dgid };
+              }
+              // Phase 7 sticky-identity guardrail: ONLY suppress the
+              // transient null during known continuous dealer-game
+              // rollover statuses in the poker-variant family. All
+              // other null cases (true session-end, teardown, exit)
+              // fall through to null so the controller can hold its
+              // neutral / session-end semantics correctly.
+              const rolloverStatus =
+                game.status === 'game_over' ||
+                game.status === 'game_selection' ||
+                game.status === 'configuring' ||
+                game.status === 'ante_decision';
+              if (
+                isPokerVariantFamily(game.game_type) &&
+                rolloverStatus &&
+                stickyDealerIdentityRef.current
+              ) {
+                return stickyDealerIdentityRef.current;
+              }
+              return null;
+            })()}
             gameId={gameId ?? null}
             readyToMount={(() => {
               // Phase 7 readiness gate (narrow scope): only answer
