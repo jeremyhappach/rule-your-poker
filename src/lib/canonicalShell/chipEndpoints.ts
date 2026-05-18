@@ -34,18 +34,34 @@ export interface ResolveEndpointArgs {
   ref: ChipEndpointRef;
   container: HTMLElement;
   cache?: EndpointCache;
+  /**
+   * Caller context label used in diagnostics when fallback fires
+   * (e.g. 'holm-win-pot', '357-ante'). Optional but recommended.
+   */
+  debugLabel?: string;
 }
 
 function cacheKeyFor(ref: ChipEndpointRef): string {
   return ref.kind === 'pot' ? 'pot' : `seat:${ref.position}`;
 }
 
-function selectorFor(ref: ChipEndpointRef): string {
-  if (ref.kind === 'pot') return '[data-canonical-shell-pot-anchor]';
+/**
+ * Selector chain — first match wins. For the pot endpoint the canonical
+ * truth is the gameplay-surface-owned `[data-pot-anchor]` element (the
+ * actual visible pot zone). The shell-root marker
+ * `[data-canonical-shell-pot-anchor]` is a SAFETY/DEBUG fallback only —
+ * if it ever resolves we emit a loud warning because chip transport
+ * silently targeting a generic shell-center is exactly the failure
+ * mode P8.2a is meant to eliminate.
+ */
+function selectorsFor(ref: ChipEndpointRef): string[] {
+  if (ref.kind === 'pot') {
+    return ['[data-pot-anchor]', '[data-canonical-shell-pot-anchor]'];
+  }
   // Match the existing seat-chip marker contract used by
   // ChipTransferAnimation (`data-chip-center`) so the new runtime
   // targets the same DOM nodes without any seat-component changes.
-  return `[data-chip-center="${ref.position}"]`;
+  return [`[data-chip-center="${ref.position}"]`];
 }
 
 /**
@@ -56,12 +72,28 @@ function selectorFor(ref: ChipEndpointRef): string {
 export function resolveChipEndpoint(
   args: ResolveEndpointArgs,
 ): ResolvedEndpoint | null {
-  const { ref, container, cache } = args;
+  const { ref, container, cache, debugLabel } = args;
   const containerRect = container.getBoundingClientRect();
   if (containerRect.width <= 0 || containerRect.height <= 0) return null;
 
-  const el = container.querySelector(selectorFor(ref)) as HTMLElement | null;
-  if (el) {
+  const selectors = selectorsFor(ref);
+  for (let i = 0; i < selectors.length; i++) {
+    const sel = selectors[i];
+    const el = container.querySelector(sel) as HTMLElement | null;
+    if (!el) continue;
+
+    // Loudly flag when we had to use a non-primary selector. For the pot
+    // endpoint this means the gameplay surface forgot to mark its visible
+    // pot zone and we are about to chip-transport to shell-center.
+    if (i > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[chipEndpoints] fallback selector "${sel}" used for ${describeEndpoint(ref)}` +
+          (debugLabel ? ` (caller: ${debugLabel})` : '') +
+          ' — gameplay surface should mark its visible pot zone with data-pot-anchor.',
+      );
+    }
+
     const r = el.getBoundingClientRect();
     const x = r.left - containerRect.left + r.width / 2;
     const y = r.top - containerRect.top + r.height / 2;
