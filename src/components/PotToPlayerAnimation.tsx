@@ -1,3 +1,7 @@
+// FROZEN: chip transport (P8.1). Do NOT add new bespoke chip/pot animators.
+// New chip transport must dispatch via useChipTransport() — see
+// src/lib/canonicalShell/ChipTransportProvider.tsx. This file is preserved
+// as-is until its consumer migrates in a later wave.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
