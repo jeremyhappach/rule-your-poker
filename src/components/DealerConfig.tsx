@@ -151,7 +151,7 @@ export const DealerConfig = ({
             .update({ ante_decision: null })
             .eq('game_id', gameId)
             .neq('id', dealerPlayerId)
-            .neq('status', 'observer');
+            .neq('status', 'observer').neq('status', 'left');
 
           // Automatically ante up the dealer (bot)
           await supabase
