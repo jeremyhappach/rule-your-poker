@@ -8577,7 +8577,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (() => {
+        {(game.status === 'ante_decision' || game.status === 'in_progress' || game.status === 'cribbage_dealer_selection' || (game.status === 'dealer_selection' && game.game_type === 'gin-rummy') || (game.status === 'game_over' && (game.game_type === 'cribbage' || game.game_type === 'gin-rummy' || game.game_type === 'yahtzee'))) && (
+          // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
+          // surface. Lifecycle UI (lobby, waiting, dealer config/setup,
+          // ante dialog, observer affordances) lives as siblings outside
+          // this slot. Identity is keyed on (game_type, current_game_uuid)
+          // so neutral interstitial only gates dealer-game rollovers
+          // within a continuously-mounted gameplay phase.
+          <PlayfieldSlotController
+            desiredIdentity={
+              game.game_type && (game as any).current_game_uuid
+                ? { gameType: game.game_type, dealerGameId: (game as any).current_game_uuid }
+                : null
+            }
+            gameId={gameId ?? null}
+          >
+            {(() => {
           const isInProgress = game.status === 'in_progress';
           const isYahtzeeGameOver = game.status === 'game_over' && game.game_type === 'yahtzee';
           const isAnteDecision = game.status === 'ante_decision';
