@@ -5573,12 +5573,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       awaiting_next_round: false
     } : null);
 
-    // Reset ante_decision for all seated eligible players (exclude observers)
+    // Reset ante_decision for all seated eligible players (exclude observers and stood-up/left players)
     const { error: resetError } = await supabase
       .from('players')
       .update({ ante_decision: null })
       .eq('game_id', gameId)
-      .neq('status', 'observer');
+      .neq('status', 'observer')
+      .neq('status', 'left');
 
     if (resetError) {
       console.error('[GAME SELECTION] Failed to reset ante decisions:', resetError);
