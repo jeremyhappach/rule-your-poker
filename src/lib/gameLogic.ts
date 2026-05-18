@@ -2241,7 +2241,7 @@ export async function endRound(gameId: string) {
         .neq('status', 'observer');
       
       // Only charge active (non-sitting-out) players
-      const activePlayersForTax = allPlayers.filter(p => !p.sitting_out);
+      const activePlayersForTax = allPlayers.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
       const playerIds = activePlayersForTax.map(p => p.id);
       
       console.log('[endRound] Charging pussy tax to', playerIds.length, 'active players, amount:', pussyTaxValue);
