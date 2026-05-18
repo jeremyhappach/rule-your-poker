@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatChipValue } from '@/lib/utils';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 
 interface PotToPlayerAnimationProps {
   triggerId: string | null;
