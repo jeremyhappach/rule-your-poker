@@ -167,6 +167,7 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     const canonicalPot = resolveChipEndpoint({
       ref: { kind: 'pot' },
       container: containerRef.current,
+      cache: endpointCacheRef.current,
       debugLabel: '357-ante',
     });
 
@@ -180,30 +181,39 @@ export const AnteUpAnimation: React.FC<AnteUpAnimationProps> = ({
     const isObserver = currentPlayerPosition === null;
 
     const newAnims: ChipAnimation[] = playersToAnimate.map((player) => {
+      // P8.2b: prefer canonical seat endpoint (data-chip-center marker).
+      // Legacy % math remains as final fallback when the marker is missing
+      // (e.g. showdown reflow where the seat element is temporarily gone).
+      const canonicalSeat = resolveChipEndpoint({
+        ref: { kind: 'seat', position: player.position },
+        container: containerRef.current!,
+        cache: endpointCacheRef.current,
+        debugLabel: '357-ante-seat',
+      });
+
       let slot: { top: number; left: number };
       let slotIndexForTarget: number;
 
       if (isObserver) {
-        // Observer mode: use absolute position directly
         slot = getAbsolutePositionPercent(player.position);
-        // For pot target, map absolute position to equivalent slot index
-        // Position 1=top-left(slot2), 2=mid-left(slot1), 3=bot-left(slot0), 4=bot-center(-1)
-        // 5=bot-right(slot5), 6=mid-right(slot4), 7=top-right(slot3)
         const absToSlot: Record<number, number> = { 1: 2, 2: 1, 3: 0, 4: -1, 5: 5, 6: 4, 7: 3 };
         slotIndexForTarget = absToSlot[player.position] ?? 0;
       } else {
-        // Seated player mode: use relative slots
         const isCurrentPlayer = currentPlayerPosition === player.position;
         slotIndexForTarget = isCurrentPlayer ? -1 : getClockwiseDistance(player.position) - 1;
         slot = getSlotPercent(slotIndexForTarget);
       }
 
       const target = canonicalPot ?? getPotBoxTarget(slotIndexForTarget, rect, gameType);
+      const origin = canonicalSeat ?? {
+        x: (slot.left / 100) * rect.width,
+        y: (slot.top / 100) * rect.height,
+      };
 
       return {
         id: `chip-${animIdRef.current++}`,
-        fromX: (slot.left / 100) * rect.width,
-        fromY: (slot.top / 100) * rect.height,
+        fromX: origin.x,
+        fromY: origin.y,
         toX: target.x,
         toY: target.y,
       };
