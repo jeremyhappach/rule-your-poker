@@ -703,7 +703,8 @@ export const DealerGameSetup = ({
               .from('players')
               .update({ ante_decision: null })
               .eq('game_id', gameId)
-              .neq('id', dealerPlayerId);
+              .neq('id', dealerPlayerId)
+              .neq('status', 'observer');
             
             // Auto ante up the dealer
             await supabase
@@ -804,7 +805,8 @@ export const DealerGameSetup = ({
               .from('players')
               .update({ ante_decision: null })
               .eq('game_id', gameId)
-              .neq('id', dealerPlayerId);
+              .neq('id', dealerPlayerId)
+              .neq('status', 'observer');
             
             // Auto ante up the dealer
             await supabase
@@ -906,7 +908,8 @@ export const DealerGameSetup = ({
               .from('players')
               .update({ ante_decision: null })
               .eq('game_id', gameId)
-              .neq('id', dealerPlayerId);
+              .neq('id', dealerPlayerId)
+              .neq('status', 'observer');
             
             await supabase
               .from('players')
@@ -1066,7 +1069,8 @@ export const DealerGameSetup = ({
       .from('players')
       .update({ ante_decision: null })
       .eq('game_id', gameId)
-      .neq('id', dealerPlayerId);
+      .neq('id', dealerPlayerId)
+      .neq('status', 'observer');
 
     // Auto ante up the dealer
     await supabase
@@ -1374,7 +1378,8 @@ export const DealerGameSetup = ({
         .from('players')
         .update({ ante_decision: null })
         .eq('game_id', gameId)
-        .neq('id', dealerPlayerId);
+        .neq('id', dealerPlayerId)
+        .neq('status', 'observer');
       
       // Auto ante up the dealer
       await supabase
@@ -1429,7 +1434,8 @@ export const DealerGameSetup = ({
       .from('players')
       .update({ ante_decision: null })
       .eq('game_id', gameId)
-      .neq('id', dealerPlayerId);
+      .neq('id', dealerPlayerId)
+      .neq('status', 'observer');
     
     // Auto ante up the dealer
     await supabase
