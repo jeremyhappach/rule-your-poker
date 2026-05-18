@@ -129,7 +129,7 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
   // Get active players
   const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('id, user_id, position, is_bot, chips, sitting_out')
+    .select('id, user_id, position, is_bot, chips, sitting_out, status')
     .eq('game_id', gameId);
 
   if (playersError) {
@@ -137,7 +137,8 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     throw new Error('Failed to get players');
   }
 
-  const activePlayers = (players || []).filter(p => !p.sitting_out);
+  // Exclude observer/left from active participants — they have no turn, no ante.
+  const activePlayers = (players || []).filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left');
   const anteAmount = game.ante_amount || 1;
 
   // Build turn order: left of dealer
