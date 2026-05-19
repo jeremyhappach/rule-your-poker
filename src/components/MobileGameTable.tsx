@@ -70,6 +70,20 @@ import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
+import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
+import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
+
+// P9.1 — First visible canonical shell visual cutover.
+// Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
+const CANONICAL_SHELL_VISUAL_ENABLED =
+  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
+
+function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGameKind | null {
+  if (!CANONICAL_SHELL_VISUAL_ENABLED) return null;
+  if (gameType === 'holm-game') return 'holm-game';
+  if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') return 'three-five-seven';
+  return null;
+}
 import { classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import {
   logRevealRenderFrame,
