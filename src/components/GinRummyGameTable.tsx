@@ -1546,14 +1546,11 @@ export const GinRummyGameTable = ({
             />
           )}
 
-          {/* Canonical lifecycle announcement — yellow plate, matches Holm/357 pattern */}
-          <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
-            <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded p-2 border-2 border-poker-gold shadow-xl animate-scale-in">
-              <p className="text-sm font-bold text-poker-gold text-center px-2">
-                {statusText}
-              </p>
-            </div>
-          </div>
+          {/* Shared lifecycle announcement plate. NOTE: this is per-game
+              mounted today; the canonical shell-owned announcement overlay
+              (ShellOverlayMounts `announcement` slot + visual-contract
+              lifecycle intent) is queued as a dedicated follow-on wave. */}
+          <LifecycleAnnouncement title={statusText} overlay />
 
           {/* Seated-self chip badge — observers hide this so we don't fake
               a "You $0" attribution as the user flagged. */}
