@@ -1479,61 +1479,95 @@ export const GinRummyGameTable = ({
   };
 
   if (!viewState || !currentPlayerId || !currentPlayer) {
-    // During ante_decision (no roundId), show the table felt with "Awaiting ante" banner
-    // instead of a generic "Loading..." that confuses users for 7-10 seconds
+    // P9.4 fix: pre-render / observer / hydration / pre-first-draw branch.
+    // Previously this rendered a bespoke legacy peoria-bridge disk +
+    // "Loading..." text — observers (who have no seated currentPlayer)
+    // were stuck on it indefinitely and never reached the canonical
+    // shell migration. We now render the same outer container shape
+    // as the main render and delegate felt chrome to CanonicalFeltSurface
+    // (waiting-phase variant suppresses the game-name plate to match the
+    // shared waiting visual contract). Player chip rows are hidden when
+    // the viewer is not a seated participant (observer path).
     const isAwaitingAnte = !roundId;
+    const seatedPlayer = currentPlayer ?? players.find(p => p.user_id === currentUserId);
+    const isObserver = !seatedPlayer;
     const opponentPlayer = players.find(p => p.user_id !== currentUserId);
+    const statusText = isAwaitingAnte
+      ? 'Awaiting ante decisions...'
+      : isObserver
+        ? 'Observing — waiting for hand to start...'
+        : 'Preparing hand...';
     return (
       <div className="h-full flex flex-col">
         <div
+          ref={tableContainerRef}
           className="relative flex items-start justify-center pt-1"
           style={{
-            flex: '1 1 auto',
-            minHeight: 0,
-            backgroundImage: `url(${peoriaBridgeMobile})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
+            height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
+            minHeight: '300px',
           }}
         >
-          <div className="flex flex-col items-center w-full">
-            {/* Opponent chip area */}
-            <div className="flex items-center gap-2 mb-1 mt-1">
-              <span className="text-xs text-amber-200/80 font-medium">
-                {opponentPlayer ? getDisplayName(players, opponentPlayer, opponentPlayer.profiles?.username || 'Opponent') : 'Opponent'}
+          <div className="absolute inset-0 bg-slate-200 z-0" />
+
+          {/* Opponent chip badge — render when known */}
+          {opponentPlayer && (
+            <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+              <span className="text-xs text-amber-200/90 font-medium drop-shadow">
+                {getDisplayName(players, opponentPlayer, opponentPlayer.profiles?.username || 'Opponent')}
               </span>
-              <span className="text-xs text-amber-100/70">
-                ${formatChipValue(opponentPlayer?.chips ?? 0)}
+              <span className="text-xs text-amber-100/80 drop-shadow">
+                ${formatChipValue(opponentPlayer.chips ?? 0)}
               </span>
             </div>
-            {/* Circular table */}
-            <div
-              className="rounded-full border-4 border-amber-900/80 shadow-lg flex items-center justify-center"
-              style={{
-                width: 220,
-                height: 220,
-                background: `radial-gradient(ellipse at center, ${tableColors.color}, ${tableColors.darkColor})`,
-              }}
-            >
-              <p className="text-sm font-bold text-poker-gold animate-pulse">
-                {isAwaitingAnte ? 'Awaiting ante decisions...' : 'Loading...'}
-              </p>
-            </div>
-            {/* Current player chip area */}
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-amber-200/80 font-medium">
-                {currentPlayer?.profiles?.username || players.find(p => p.user_id === currentUserId)?.profiles?.username || 'You'}
-              </span>
-              <span className="text-xs text-amber-100/70">
-                ${formatChipValue(currentPlayer?.chips ?? players.find(p => p.user_id === currentUserId)?.chips ?? 0)}
-              </span>
+          )}
+
+          <div
+            className="relative z-10"
+            style={{
+              width: 'min(90vw, calc(55vh - 32px))',
+              height: 'min(90vw, calc(55vh - 32px))',
+            }}
+          >
+            <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
+              {CANONICAL_SHELL_VISUAL_ENABLED ? (
+                <CanonicalFeltSurface
+                  gameKind="gin-rummy"
+                  anteAmount={anteAmount}
+                  pointsToWin={viewState?.pointsToWin}
+                  isWaitingPhase
+                />
+              ) : (
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                    filter: 'brightness(0.7)',
+                  }}
+                />
+              )}
+              <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                <p className="text-sm font-bold text-poker-gold animate-pulse text-center px-4 drop-shadow-lg">
+                  {statusText}
+                </p>
+              </div>
             </div>
           </div>
+
+          {/* Seated-self chip badge — observers hide this so we don't fake
+              a "You $0" attribution as the user flagged. */}
+          {seatedPlayer && (
+            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+              <span className="text-xs text-amber-200/90 font-medium drop-shadow">
+                {seatedPlayer.profiles?.username || 'You'}
+              </span>
+              <span className="text-xs text-amber-100/80 drop-shadow">
+                ${formatChipValue(seatedPlayer.chips ?? 0)}
+              </span>
+            </div>
+          )}
         </div>
-        {/* Bottom tab area placeholder */}
         <div className="bg-slate-900 border-t border-amber-900/30 px-2 py-3 text-center">
-          <p className="text-sm font-bold text-poker-gold">
-            {isAwaitingAnte ? 'Awaiting ante decisions...' : 'Preparing game...'}
-          </p>
+          <p className="text-sm font-bold text-poker-gold">{statusText}</p>
         </div>
       </div>
     );
