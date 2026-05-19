@@ -1547,24 +1547,21 @@ export const GinRummyGameTable = ({
     const opponentPlayer = seatedPlayer
       ? activeSeatPlayers.find(p => p.id !== seatedPlayer.id)
       : activeSeatPlayers[0];
-    const statusText = isAwaitingAnte
-      ? 'Awaiting ante decisions...'
-      : isObserver
-        ? 'Observing — waiting for hand to start...'
-        : 'Preparing hand...';
     return (
-      <div className="h-full flex flex-col bg-background">
+      <div className="h-full flex flex-col bg-shell-neutral">
         <div
           ref={tableContainerRef}
-          className="relative flex items-start justify-center pt-1 bg-background"
+          className="relative flex items-start justify-center pt-1 bg-shell-neutral"
           style={{
             height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
             minHeight: '300px',
           }}
         >
           {/* Opponent chip badge — render when known */}
-          {opponentPlayer && (
-            <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+          {opponentPlayer && (() => {
+            const placement = getCanonicalSlotPlacement(playerSlotById.get(opponentPlayer.id));
+            return (
+            <div className={cn("absolute z-30 flex items-center gap-2", placement.className)}>
               <span className="text-xs text-amber-200/90 font-medium drop-shadow">
                 {getDisplayName(players, opponentPlayer, opponentPlayer.profiles?.username || 'Opponent')}
               </span>
@@ -1572,7 +1569,8 @@ export const GinRummyGameTable = ({
                 ${formatChipValue(opponentPlayer.chips ?? 0)}
               </span>
             </div>
-          )}
+            );
+          })()}
 
           {CANONICAL_SHELL_VISUAL_ENABLED ? (
             <CanonicalFeltSurface
@@ -1590,12 +1588,6 @@ export const GinRummyGameTable = ({
               }}
             />
           )}
-
-          {/* Shared lifecycle announcement plate. NOTE: this is per-game
-              mounted today; the canonical shell-owned announcement overlay
-              (ShellOverlayMounts `announcement` slot + visual-contract
-              lifecycle intent) is queued as a dedicated follow-on wave. */}
-          <LifecycleAnnouncement title={statusText} overlay />
 
           {/* Seated-self chip badge — observers hide this so we don't fake
               a "You $0" attribution as the user flagged. */}
@@ -1617,11 +1609,11 @@ export const GinRummyGameTable = ({
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-shell-neutral">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="flex-1 relative overflow-hidden min-h-0 bg-background"
+        className="flex-1 relative overflow-hidden min-h-0 bg-shell-neutral"
         style={{
           maxHeight: '55vh',
         }}
@@ -1817,7 +1809,7 @@ export const GinRummyGameTable = ({
       </div>
 
       {/* Bottom Section - Tabs and Content */}
-      <div className="flex-1 flex flex-col bg-background min-h-0">
+      <div className="flex-1 flex flex-col bg-shell-neutral min-h-0">
         {/* Dealer Announcements Area */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
