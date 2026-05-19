@@ -414,6 +414,13 @@ export const GinRummyGameTable = ({
       : viewState.dealerPlayerId)
     : '';
   const opponent = players.find(p => p.id === opponentId);
+  const observerSeatIds = viewState ? [viewState.dealerPlayerId, viewState.nonDealerPlayerId] : [];
+  const spotlightPlayerId = currentPlayerId ?? viewState?.nonDealerPlayerId ?? '';
+  const spotlightOpponentIds = currentPlayerId
+    ? [opponentId]
+    : viewState
+      ? [viewState.dealerPlayerId].filter(id => id !== spotlightPlayerId)
+      : [];
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
@@ -526,34 +533,30 @@ export const GinRummyGameTable = ({
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
 
-  // Detect opponent draw actions and trigger animation + freeze presentation
+  // Detect visible draw actions and trigger an overlay animation.
+  // Do not freeze presentation here: observers must continue receiving turn/pile updates underneath.
   useEffect(() => {
-    if (!ginState || !currentPlayerId) return;
-    const action = ginState.lastAction;
+    if (!viewState) return;
+    const action = viewState.lastAction;
     if (!action) return;
     const actionKey = `${action.type}-${action.playerId}-${action.timestamp}`;
     if (actionKey === prevLastActionRef.current) return;
     prevLastActionRef.current = actionKey;
 
-    // Only animate opponent draws (not our own)
-    if (action.playerId === currentPlayerId) return;
+    // Seated players see opponent draws; observers see both players' draws.
+    if (currentPlayerId && action.playerId === currentPlayerId) return;
     if (action.type === 'draw_stock') {
       setOpponentDrawSource('stock');
       setOpponentDrawCard(null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
-      // Freeze presentation during opponent draw animation to prevent hand-count flicker
-      ginSync.freezePresentation();
-      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     } else if (action.type === 'draw_discard') {
       setOpponentDrawSource('discard');
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
-      ginSync.freezePresentation();
-      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     }
-  }, [ginState?.lastAction, currentPlayerId]);
+  }, [viewState?.lastAction, currentPlayerId]);
 
   // Load state from DB
   useEffect(() => {
