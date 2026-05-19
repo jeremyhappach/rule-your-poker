@@ -414,21 +414,24 @@ export const GinRummyGameTable = ({
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   const isObserver = !currentPlayerId;
+  // P9.4 (re-scoped, Option A): consume shell-owned SeatAnchorLayer.
+  // Gin no longer recomputes seat projection locally. The shell mounts
+  // SeatAnchorLayer at the PersistentTableShell boundary using the same
+  // resolver, fed by Game.tsx — one source of truth for every
+  // canonical-shell game. If the layer is somehow absent (test harness,
+  // flag-off), the map degrades to all-nulls rather than reintroducing
+  // a per-game projection clone.
+  const shellAnchors = useSeatAnchorsOptional();
   const playerSlotById = useMemo(() => {
-    const anchors = resolveSeatAnchors({
-      projectionMode: isObserver ? 'observer-absolute' : 'active-canonical',
-      viewerPosition: currentPlayer?.position ?? null,
-      gameType: 'gin-rummy',
-      gameId,
-      seats: activeSeatPlayers.map(player => ({
-        position: player.position,
-        occupied: true,
-        hidden: false,
-      })),
-    });
-    const slotByPosition = new Map(anchors.map(anchor => [anchor.position, anchor.slot]));
-    return new Map(activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]));
-  }, [activeSeatPlayers, currentPlayer?.position, gameId, isObserver]);
+    const slotByPosition = shellAnchors
+      ? new Map<number, CanonicalSlot | null>(
+          shellAnchors.anchors.map(a => [a.position, a.slot]),
+        )
+      : new Map<number, CanonicalSlot | null>();
+    return new Map<string, CanonicalSlot | null>(
+      activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]),
+    );
+  }, [activeSeatPlayers, shellAnchors]);
 
   // Derive opponent
   // Derive opponent from viewState (render-stable)
