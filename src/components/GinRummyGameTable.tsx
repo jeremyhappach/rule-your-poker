@@ -73,6 +73,8 @@ interface Player {
   position: number;
   chips: number;
   is_bot?: boolean;
+  status?: string;
+  sitting_out?: boolean;
   profiles?: { username: string };
 }
 
@@ -392,14 +394,23 @@ export const GinRummyGameTable = ({
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
-  const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const isSeatedGamePlayer = useCallback((player: Player) => {
+    if (player.status === 'observer' || player.status === 'left') return false;
+    if (player.sitting_out) return false;
+    return true;
+  }, []);
+  const activeSeatPlayers = players.filter(isSeatedGamePlayer);
+  const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
+  const isObserver = !currentPlayerId;
 
   // Derive opponent
   // Derive opponent from viewState (render-stable)
   const opponentId = viewState
-    ? (currentPlayerId === viewState.dealerPlayerId
-      ? viewState.nonDealerPlayerId
+    ? (currentPlayerId
+      ? (currentPlayerId === viewState.dealerPlayerId
+        ? viewState.nonDealerPlayerId
+        : viewState.dealerPlayerId)
       : viewState.dealerPlayerId)
     : '';
   const opponent = players.find(p => p.id === opponentId);
