@@ -16,7 +16,9 @@ import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 
 export type CanonicalFeltGameKind =
   | "holm-game"
-  | "three-five-seven";
+  | "three-five-seven"
+  | "horses"
+  | "ship-captain-crew";
 
 export interface CanonicalFeltSurfaceProps {
   gameKind: CanonicalFeltGameKind;
@@ -32,7 +34,15 @@ export interface CanonicalFeltSurfaceProps {
 const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "holm-game": "Holm",
   "three-five-seven": "3-5-7",
+  "horses": "HORSES",
+  "ship-captain-crew": "SHIP",
 };
+
+// Dice-family games use a compact single-line plate (legacy parity).
+const DICE_PLATE_KINDS: ReadonlySet<CanonicalFeltGameKind> = new Set([
+  "horses",
+  "ship-captain-crew",
+]);
 
 export function CanonicalFeltSurface({
   gameKind,
@@ -46,6 +56,7 @@ export function CanonicalFeltSurface({
 }: CanonicalFeltSurfaceProps) {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
+  const isDicePlate = DICE_PLATE_KINDS.has(gameKind);
 
   return (
     <>
@@ -81,18 +92,27 @@ export function CanonicalFeltSurface({
       {!isWaitingPhase && (
         <div
           data-canonical-felt-plate=""
+          data-canonical-felt-plate-variant={isDicePlate ? "dice" : "card"}
           className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center pointer-events-none"
         >
-          <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-            {GAME_NAME_LABEL[gameKind]}
-          </span>
-          <span className="text-white/40 text-xs font-medium">
-            {potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
-          </span>
-          {gameKind === "three-five-seven" && legsToWin !== undefined && (
-            <span className="text-white/40 text-xs font-medium">
-              {legsToWin} legs to win
+          {isDicePlate ? (
+            <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+              ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>
+          ) : (
+            <>
+              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                {GAME_NAME_LABEL[gameKind]}
+              </span>
+              <span className="text-white/40 text-xs font-medium">
+                {potMaxEnabled ? `$${potMaxValue} max` : "No Limit"}
+              </span>
+              {gameKind === "three-five-seven" && legsToWin !== undefined && (
+                <span className="text-white/40 text-xs font-medium">
+                  {legsToWin} legs to win
+                </span>
+              )}
+            </>
           )}
         </div>
       )}
