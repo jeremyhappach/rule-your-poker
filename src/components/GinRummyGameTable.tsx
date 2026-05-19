@@ -1542,7 +1542,6 @@ export const GinRummyGameTable = ({
     // currentPlayer must still render the live table once viewState exists;
     // gating this branch on currentPlayer caused observer cold-starts to
     // stay permanently on the waiting shell.
-    const isAwaitingAnte = !roundId;
     const seatedPlayer = currentPlayer;
     const opponentPlayer = seatedPlayer
       ? activeSeatPlayers.find(p => p.id !== seatedPlayer.id)
