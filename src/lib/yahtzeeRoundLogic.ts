@@ -10,6 +10,8 @@ import { createInitialYahtzeeDice } from "./yahtzeeGameLogic";
 import { createEmptyScorecard } from "./yahtzeeScoring";
 import { YahtzeeState } from "./yahtzeeTypes";
 import { logYahtzeeHandStart } from "./yahtzeeSyncDiagnostics";
+import { getYahtzeeSeedScenario } from "./debugFlags";
+import { applyYahtzeeSeedScenario } from "./yahtzeeSeedScenarios";
 
 export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[YAHTZEE] 🎲 Starting round', { gameId, isFirstHand });
