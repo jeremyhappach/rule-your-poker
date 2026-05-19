@@ -9193,6 +9193,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     </div>
   );
 
+  // P9.4 (re-scoped, Option A): shell owns SeatAnchorLayer for the
+  // canonical-shell family. Feed it the seated-player roster so every
+  // canonical-shell game (poker variants AND gin-rummy) consumes the
+  // same resolver via useSeatAnchors(), with no per-game projection
+  // recomputation. Roster filter is game-agnostic (seated, not
+  // sitting-out, not waiting, not observer/left) — the resolver
+  // canonicalizes 2P face-to-face / observer-upper-left semantics.
+  const shellEligibleSeats = enableOuterShell
+    ? players
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
+        .map(p => ({ position: p.position, occupied: true, hidden: false }))
+    : [];
+  const shellViewerPosition = currentPlayer?.position ?? null;
+  const shellProjectionMode: 'active-canonical' | 'observer-absolute' = currentPlayer
+    ? 'active-canonical'
+    : 'observer-absolute';
+
   return (
     <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync
@@ -9204,6 +9221,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <PersistentTableShell
           gameId={gameId ?? undefined}
           gameType={game.game_type}
+          projectionMode={shellProjectionMode}
+          viewerPosition={shellViewerPosition}
+          seats={shellEligibleSeats}
         >
           {innerTree}
         </PersistentTableShell>
