@@ -1508,10 +1508,10 @@ export const GinRummyGameTable = ({
         ? 'Observing — waiting for hand to start...'
         : 'Preparing hand...';
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-background">
         <div
           ref={tableContainerRef}
-          className="relative flex items-start justify-center pt-1"
+          className="relative flex items-start justify-center pt-1 bg-background"
           style={{
             height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
             minHeight: '300px',
@@ -1546,10 +1546,13 @@ export const GinRummyGameTable = ({
             />
           )}
 
-          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-            <p className="text-sm font-bold text-poker-gold animate-pulse text-center px-4 drop-shadow-lg">
-              {statusText}
-            </p>
+          {/* Canonical lifecycle announcement — yellow plate, matches Holm/357 pattern */}
+          <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+            <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded p-2 border-2 border-poker-gold shadow-xl animate-scale-in">
+              <p className="text-sm font-bold text-poker-gold text-center px-2">
+                {statusText}
+              </p>
+            </div>
           </div>
 
           {/* Seated-self chip badge — observers hide this so we don't fake
