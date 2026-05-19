@@ -61,6 +61,7 @@ import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from '@/assets/peoria-bridge-mobile.jpg';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
+import { resolveSeatAnchors, type CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
 // P9.4: shared visual flag with MobileGameTable / Yahtzee. Default ON;
 // flip VITE_CANONICAL_SHELL_VISUAL='off' to revert Gin Rummy felt/plate to legacy.
@@ -404,6 +405,21 @@ export const GinRummyGameTable = ({
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   const isObserver = !currentPlayerId;
+  const playerSlotById = useMemo(() => {
+    const anchors = resolveSeatAnchors({
+      projectionMode: isObserver ? 'observer-absolute' : 'active-canonical',
+      viewerPosition: currentPlayer?.position ?? null,
+      gameType: 'gin-rummy',
+      gameId,
+      seats: activeSeatPlayers.map(player => ({
+        position: player.position,
+        occupied: true,
+        hidden: false,
+      })),
+    });
+    const slotByPosition = new Map(anchors.map(anchor => [anchor.position, anchor.slot]));
+    return new Map(activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]));
+  }, [activeSeatPlayers, currentPlayer?.position, gameId, isObserver]);
 
   // Derive opponent
   // Derive opponent from viewState (render-stable)
@@ -416,12 +432,31 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
   const observerSeatIds = viewState ? [viewState.dealerPlayerId, viewState.nonDealerPlayerId] : [];
-  const spotlightPlayerId = currentPlayerId ?? viewState?.nonDealerPlayerId ?? '';
-  const spotlightOpponentIds = currentPlayerId
-    ? [opponentId]
-    : viewState
-      ? [viewState.dealerPlayerId].filter(id => id !== spotlightPlayerId)
-      : [];
+  const currentTurnSlot = viewState?.currentTurnPlayerId
+    ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
+    : null;
+  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => {
+    switch (slot) {
+      case -2:
+        return { className: 'top-14 left-1/2 -translate-x-1/2 items-center', alignEnd: false };
+      case -1:
+        return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center', alignEnd: false };
+      case 0:
+        return { className: 'bottom-14 left-6 items-start', alignEnd: false };
+      case 1:
+        return { className: 'top-1/2 left-6 -translate-y-1/2 items-start', alignEnd: false };
+      case 2:
+        return { className: 'top-14 left-6 items-start', alignEnd: false };
+      case 3:
+        return { className: 'top-14 right-6 items-end', alignEnd: true };
+      case 4:
+        return { className: 'top-1/2 right-6 -translate-y-1/2 items-end', alignEnd: true };
+      case 5:
+        return { className: 'bottom-14 right-6 items-end', alignEnd: true };
+      default:
+        return { className: 'top-14 left-6 items-start', alignEnd: false };
+    }
+  };
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
