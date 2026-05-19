@@ -84,6 +84,7 @@ function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGa
   if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') return 'three-five-seven';
   if (gameType === 'horses') return 'horses';
   if (gameType === 'ship-captain-crew') return 'ship-captain-crew';
+  if (gameType === 'yahtzee') return 'yahtzee';
   return null;
 }
 import { classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
