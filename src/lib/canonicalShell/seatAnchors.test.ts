@@ -19,11 +19,27 @@ describe('seatAnchors — observer-absolute', () => {
     expect(observerSlotForPosition(7)).toBe(3);
   });
 
-  it('ignores 2P canonicalization for observers even on 2P game types', () => {
+  it('canonicalizes inherently-2P observer view to HOME + upper-left for ergonomics', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'observer-absolute',
       viewerPosition: null,
       gameType: 'cribbage',
+      seats: [
+        { position: 1, occupied: true },
+        { position: 5, occupied: true },
+      ],
+    });
+    // Lower position → HOME (bottom-center), higher → slot 2 (upper-left).
+    expect(anchors.find(a => a.position === 1)?.slot).toBe(SLOT.HOME);
+    expect(anchors.find(a => a.position === 5)?.slot).toBe(2);
+    expect(anchors.every(a => a.canonicalized2p)).toBe(true);
+  });
+
+  it('preserves literal absolute mapping for multiplayer-capable observer views', () => {
+    const anchors = resolveSeatAnchors({
+      projectionMode: 'observer-absolute',
+      viewerPosition: null,
+      gameType: 'holm',
       seats: [
         { position: 1, occupied: true },
         { position: 5, occupied: true },

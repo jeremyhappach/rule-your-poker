@@ -163,17 +163,35 @@ export function resolveSeatAnchors(
 
   const { projectionMode, viewerPosition, seats, gameType } = ctx;
 
-  // 2P face-to-face is gated on GAME TYPE, not player count.
-  // Multiplayer-capable games preserve relative seating even when only
-  // two humans are currently seated.
+  // 2P canonicalization is gated on GAME TYPE, not player count.
+  // Multiplayer-capable games preserve relative/absolute seating even
+  // when only two humans are currently seated.
   const isTwoPlayerGameType = isInherentlyTwoPlayerGameType(gameType);
   const activeOccupied = seats.filter(s => s.occupied && !s.hidden);
-  const canCanonicalize2p =
+
+  const canCanonicalize2pActive =
     projectionMode === 'active-canonical' &&
     isTwoPlayerGameType &&
     viewerPosition !== null &&
     activeOccupied.length === 2 &&
     activeOccupied.some(s => s.position === viewerPosition);
+
+  // Observer canonicalization for inherently-2P games:
+  // Top-center collides with shell chrome (title plate, score rails,
+  // chip bubble stack). For observer utility (primarily joining the
+  // next hand), readability beats literal absolute seating. Project
+  // the lower-positioned seat to HOME (bottom-center) and the higher
+  // to slot 2 (upper-left), matching legacy Gin/Cribbage layout.
+  const canCanonicalize2pObserver =
+    projectionMode === 'observer-absolute' &&
+    isTwoPlayerGameType &&
+    activeOccupied.length === 2;
+
+  const sorted2pPositions = canCanonicalize2pObserver
+    ? [...activeOccupied].map(s => s.position).sort((a, b) => a - b)
+    : null;
+  const observer2pHomePos = sorted2pPositions?.[0] ?? null;
+  const observer2pOpponentPos = sorted2pPositions?.[1] ?? null;
 
   return seats.map((seat) => {
     if (seat.hidden) {
@@ -181,6 +199,38 @@ export function resolveSeatAnchors(
     }
 
     if (projectionMode === 'observer-absolute' || viewerPosition === null) {
+      if (canCanonicalize2pObserver && seat.occupied) {
+        if (seat.position === observer2pHomePos) {
+          if (import.meta.env.DEV) {
+            recordShellEvent('seat-anchor-canonicalized-2p', {
+              gameId: ctx.gameId ?? null,
+              gameType: ctx.gameType ?? null,
+              detail: {
+                mode: 'observer',
+                position: seat.position,
+                projectedSlot: SLOT.HOME,
+                reason: 'observer-2p-ergonomic-layout',
+              },
+            });
+          }
+          return { position: seat.position, slot: SLOT.HOME, canonicalized2p: true };
+        }
+        if (seat.position === observer2pOpponentPos) {
+          if (import.meta.env.DEV) {
+            recordShellEvent('seat-anchor-canonicalized-2p', {
+              gameId: ctx.gameId ?? null,
+              gameType: ctx.gameType ?? null,
+              detail: {
+                mode: 'observer',
+                position: seat.position,
+                projectedSlot: 2,
+                reason: 'observer-2p-ergonomic-layout',
+              },
+            });
+          }
+          return { position: seat.position, slot: 2, canonicalized2p: true };
+        }
+      }
       return {
         position: seat.position,
         slot: observerSlotForPosition(seat.position),
@@ -189,12 +239,13 @@ export function resolveSeatAnchors(
     }
 
     // active-canonical
-    if (canCanonicalize2p && seat.position !== viewerPosition && seat.occupied) {
+    if (canCanonicalize2pActive && seat.position !== viewerPosition && seat.occupied) {
       if (import.meta.env.DEV) {
         recordShellEvent('seat-anchor-canonicalized-2p', {
           gameId: ctx.gameId ?? null,
           gameType: ctx.gameType ?? null,
           detail: {
+            mode: 'active',
             viewerPosition,
             opponentPosition: seat.position,
             reason: 'inherently-2p-game-type',
