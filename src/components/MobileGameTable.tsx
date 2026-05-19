@@ -5054,38 +5054,71 @@ export const MobileGameTable = ({
                 pointerEvents: shouldHidePot ? 'none' : 'auto'
               }}
             >
-              <div
-                data-pot-anchor=""
-                className={cn(
-                "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
-                gameType === 'holm-game' || isDiceGame 
-                  ? (isTablet ? 'px-10 py-4' : isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
-                  : is357MultiPlayerShowdown 
-                    ? (isTablet ? 'px-5 py-2' : 'px-3 py-1')
-                    : (isTablet ? 'px-10 py-4' : 'px-8 py-3')
-              )}>
-                <span className={cn(
-                  "text-poker-gold font-bold",
-                  gameType === 'holm-game' || isDiceGame 
-                    ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
-                    : is357MultiPlayerShowdown 
-                      ? (isTablet ? 'text-xl' : 'text-base')
-                      : (isTablet ? 'text-4xl' : 'text-3xl')
-                )}>${formatChipValue(Math.round(
-                  // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
+              {(() => {
+                const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
+                const potValueText = `$${formatChipValue(Math.round(
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
-                    ? threeFiveSevenWinPotAmount 
+                    ? threeFiveSevenWinPotAmount
                     : isInitialAntePending
                       ? 0
                       : displayedPot
-                ))}</span>
-                <ValueChangeFlash 
-                  value={pot}
-                  position="top-right" 
-                  disabled={shouldHidePot}
-                  manualTrigger={anteFlashTrigger}
-                />
-              </div>
+                ))}`;
+                if (canonicalFeltKind) {
+                  // P9.1: shell-defined pot pill for Holm + 3-5-7.
+                  const potSize: 'compact' | 'regular' | 'prominent' =
+                    canonicalFeltKind === 'holm-game'
+                      ? 'prominent'
+                      : is357MultiPlayerShowdown
+                        ? 'compact'
+                        : 'regular';
+                  const valueClass =
+                    canonicalFeltKind === 'holm-game'
+                      ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
+                      : is357MultiPlayerShowdown
+                        ? (isTablet ? 'text-xl' : 'text-base')
+                        : (isTablet ? 'text-4xl' : 'text-3xl');
+                  return (
+                    <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}>
+                      <span className={cn('text-poker-gold font-bold', valueClass)}>{potValueText}</span>
+                      <ValueChangeFlash
+                        value={pot}
+                        position="top-right"
+                        disabled={shouldHidePot}
+                        manualTrigger={anteFlashTrigger}
+                      />
+                    </CanonicalPotZone>
+                  );
+                }
+                // Legacy pot pill (other games / flag off).
+                return (
+                  <div
+                    data-pot-anchor=""
+                    className={cn(
+                      "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
+                      gameType === 'holm-game' || isDiceGame
+                        ? (isTablet ? 'px-10 py-4' : isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
+                        : is357MultiPlayerShowdown
+                          ? (isTablet ? 'px-5 py-2' : 'px-3 py-1')
+                          : (isTablet ? 'px-10 py-4' : 'px-8 py-3')
+                    )}
+                  >
+                    <span className={cn(
+                      "text-poker-gold font-bold",
+                      gameType === 'holm-game' || isDiceGame
+                        ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
+                        : is357MultiPlayerShowdown
+                          ? (isTablet ? 'text-xl' : 'text-base')
+                          : (isTablet ? 'text-4xl' : 'text-3xl')
+                    )}>{potValueText}</span>
+                    <ValueChangeFlash
+                      value={pot}
+                      position="top-right"
+                      disabled={shouldHidePot}
+                      manualTrigger={anteFlashTrigger}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
