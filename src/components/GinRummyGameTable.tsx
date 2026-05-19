@@ -2,7 +2,6 @@
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { LifecycleAnnouncement } from '@/components/LifecycleAnnouncement';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
@@ -77,6 +76,7 @@ interface Player {
   is_bot?: boolean;
   status?: string;
   sitting_out?: boolean;
+  waiting?: boolean;
   profiles?: { username: string };
 }
 
@@ -400,9 +400,16 @@ export const GinRummyGameTable = ({
   const isSeatedGamePlayer = useCallback((player: Player) => {
     if (player.status === 'observer' || player.status === 'left') return false;
     if (player.sitting_out) return false;
+    if (player.waiting) return false;
     return true;
   }, []);
-  const activeSeatPlayers = players.filter(isSeatedGamePlayer);
+  const eligibleSeatPlayers = players.filter(isSeatedGamePlayer);
+  const viewStateParticipantIds = viewState
+    ? new Set([viewState.dealerPlayerId, viewState.nonDealerPlayerId])
+    : null;
+  const activeSeatPlayers = viewStateParticipantIds
+    ? players.filter(player => viewStateParticipantIds.has(player.id))
+    : eligibleSeatPlayers;
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   const isObserver = !currentPlayerId;
