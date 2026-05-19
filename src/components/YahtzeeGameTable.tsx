@@ -51,6 +51,12 @@ import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+
+// P9.3b: shared visual flag with MobileGameTable. Default ON; flip
+// VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
+const CANONICAL_SHELL_VISUAL_ENABLED =
+  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
