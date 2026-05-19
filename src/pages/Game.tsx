@@ -8611,7 +8611,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // ('waiting' lobby, pre-seat observer flows): those lifecycle
           // surfaces remain siblings outside the slot per the approved
           // Phase 7 ownership contract.
-          (isPokerVariantFamily(game.game_type) && (
+          (isCanonicalShellFamily(game.game_type) && (
             game.status === 'game_selection' ||
             game.status === 'configuring' ||
             game.status === 'game_over'
