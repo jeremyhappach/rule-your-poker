@@ -59,6 +59,12 @@ import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from '@/assets/peoria-bridge-mobile.jpg';
+import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
+
+// P9.4: shared visual flag with MobileGameTable / Yahtzee. Default ON;
+// flip VITE_CANONICAL_SHELL_VISUAL='off' to revert Gin Rummy felt/plate to legacy.
+const CANONICAL_SHELL_VISUAL_ENABLED =
+  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
 import { MessageSquare, User, Clock } from 'lucide-react';
 
 interface Player {
