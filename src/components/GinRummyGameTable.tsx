@@ -1761,11 +1761,11 @@ export const GinRummyGameTable = ({
               const seatPlayer = players.find(p => p.id === seatId);
               const seatState = viewState.playerStates[seatId];
               if (!seatPlayer || !seatState) return null;
-              const isBottomObserverSeat = isObserver && index === 1;
+              const placement = getCanonicalSlotPlacement(playerSlotById.get(seatId));
               return (
               <div key={seatId} className={cn(
                 "absolute flex flex-col items-start",
-                isBottomObserverSeat ? "bottom-14 right-6 items-end" : "top-14 left-6"
+                placement.className
               )}>
                 {/* Opponent name above chip stack */}
                 <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1 mb-0.5">
@@ -1790,8 +1790,10 @@ export const GinRummyGameTable = ({
             })}
 
                 {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
-                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (
-                  <div className="absolute top-14 left-6 mt-[58px] flex -space-x-3">
+                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (() => {
+                  const placement = getCanonicalSlotPlacement(playerSlotById.get(opponentId));
+                  return (
+                  <div className={cn("absolute mt-[58px] flex -space-x-3", placement.className)}>
                     {opponentState.hand.map((_, i) => (
                       <div
                         key={i}
@@ -1802,7 +1804,8 @@ export const GinRummyGameTable = ({
                       />
                     ))}
                   </div>
-                )}
+                  );
+                })()}
           </div>
       </div>
 
