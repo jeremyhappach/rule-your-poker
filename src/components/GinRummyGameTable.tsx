@@ -393,6 +393,7 @@ export const GinRummyGameTable = ({
   const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
   const [opponentDrawSource, setOpponentDrawSource] = useState<'stock' | 'discard'>('stock');
   const [opponentDrawCard, setOpponentDrawCard] = useState<GinRummyCard | null>(null);
+  const [opponentDrawTargetSlot, setOpponentDrawTargetSlot] = useState<CanonicalSlot | null>(null);
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
@@ -581,6 +582,7 @@ export const GinRummyGameTable = ({
 
     // Seated players see opponent draws; observers see both players' draws.
     if (currentPlayerId && action.playerId === currentPlayerId) return;
+    setOpponentDrawTargetSlot(playerSlotById.get(action.playerId) ?? null);
     if (action.type === 'draw_stock') {
       setOpponentDrawSource('stock');
       setOpponentDrawCard(null);
@@ -592,7 +594,7 @@ export const GinRummyGameTable = ({
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
     }
-  }, [viewState?.lastAction, currentPlayerId]);
+  }, [viewState?.lastAction, currentPlayerId, playerSlotById]);
 
   // Load state from DB
   useEffect(() => {
