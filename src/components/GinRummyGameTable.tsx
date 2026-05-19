@@ -1757,7 +1757,7 @@ export const GinRummyGameTable = ({
 
             {/* Opponent overlay */}
           <div className="absolute inset-0 z-50 pointer-events-none">
-            {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId, index) => {
+            {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId) => {
               const seatPlayer = players.find(p => p.id === seatId);
               const seatState = viewState.playerStates[seatId];
               if (!seatPlayer || !seatState) return null;
