@@ -1892,6 +1892,15 @@ export const GinRummyGameTable = ({
             />
           )}
 
+          {/* Observer fallback for cards tab — canonical observer HUD message */}
+          {activeTab === 'cards' && !currentPlayer && (
+            <div className="px-4 py-6 flex-1">
+              <p className="text-muted-foreground text-sm text-center">
+                You are observing this game
+              </p>
+            </div>
+          )}
+
           {activeTab === 'chat' && (
             <div className="h-full p-2">
               <MobileChatPanel
