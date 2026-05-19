@@ -61,6 +61,7 @@ import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from '@/assets/peoria-bridge-mobile.jpg';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
+import { resolveSeatAnchors, type CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
 // P9.4: shared visual flag with MobileGameTable / Yahtzee. Default ON;
 // flip VITE_CANONICAL_SHELL_VISUAL='off' to revert Gin Rummy felt/plate to legacy.
@@ -392,6 +393,7 @@ export const GinRummyGameTable = ({
   const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
   const [opponentDrawSource, setOpponentDrawSource] = useState<'stock' | 'discard'>('stock');
   const [opponentDrawCard, setOpponentDrawCard] = useState<GinRummyCard | null>(null);
+  const [opponentDrawTargetSlot, setOpponentDrawTargetSlot] = useState<CanonicalSlot | null>(null);
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
@@ -404,6 +406,21 @@ export const GinRummyGameTable = ({
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   const isObserver = !currentPlayerId;
+  const playerSlotById = useMemo(() => {
+    const anchors = resolveSeatAnchors({
+      projectionMode: isObserver ? 'observer-absolute' : 'active-canonical',
+      viewerPosition: currentPlayer?.position ?? null,
+      gameType: 'gin-rummy',
+      gameId,
+      seats: activeSeatPlayers.map(player => ({
+        position: player.position,
+        occupied: true,
+        hidden: false,
+      })),
+    });
+    const slotByPosition = new Map(anchors.map(anchor => [anchor.position, anchor.slot]));
+    return new Map(activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]));
+  }, [activeSeatPlayers, currentPlayer?.position, gameId, isObserver]);
 
   // Derive opponent
   // Derive opponent from viewState (render-stable)
@@ -416,12 +433,31 @@ export const GinRummyGameTable = ({
     : '';
   const opponent = players.find(p => p.id === opponentId);
   const observerSeatIds = viewState ? [viewState.dealerPlayerId, viewState.nonDealerPlayerId] : [];
-  const spotlightPlayerId = currentPlayerId ?? viewState?.nonDealerPlayerId ?? '';
-  const spotlightOpponentIds = currentPlayerId
-    ? [opponentId]
-    : viewState
-      ? [viewState.dealerPlayerId].filter(id => id !== spotlightPlayerId)
-      : [];
+  const currentTurnSlot = viewState?.currentTurnPlayerId
+    ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
+    : null;
+  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => {
+    switch (slot) {
+      case -2:
+        return { className: 'top-14 left-1/2 -translate-x-1/2 items-center', alignEnd: false };
+      case -1:
+        return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center', alignEnd: false };
+      case 0:
+        return { className: 'bottom-14 left-6 items-start', alignEnd: false };
+      case 1:
+        return { className: 'top-1/2 left-6 -translate-y-1/2 items-start', alignEnd: false };
+      case 2:
+        return { className: 'top-14 left-6 items-start', alignEnd: false };
+      case 3:
+        return { className: 'top-14 right-6 items-end', alignEnd: true };
+      case 4:
+        return { className: 'top-1/2 right-6 -translate-y-1/2 items-end', alignEnd: true };
+      case 5:
+        return { className: 'bottom-14 right-6 items-end', alignEnd: true };
+      default:
+        return { className: 'top-14 left-6 items-start', alignEnd: false };
+    }
+  };
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
@@ -546,6 +582,7 @@ export const GinRummyGameTable = ({
 
     // Seated players see opponent draws; observers see both players' draws.
     if (currentPlayerId && action.playerId === currentPlayerId) return;
+    setOpponentDrawTargetSlot(playerSlotById.get(action.playerId) ?? null);
     if (action.type === 'draw_stock') {
       setOpponentDrawSource('stock');
       setOpponentDrawCard(null);
@@ -557,7 +594,7 @@ export const GinRummyGameTable = ({
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
     }
-  }, [viewState?.lastAction, currentPlayerId]);
+  }, [viewState?.lastAction, currentPlayerId, playerSlotById]);
 
   // Load state from DB
   useEffect(() => {
@@ -1626,8 +1663,7 @@ export const GinRummyGameTable = ({
               ginState={viewState}
               currentPlayerId={currentPlayerId}
               opponentId={opponentId}
-              spotlightPlayerId={spotlightPlayerId}
-              spotlightOpponentIds={spotlightOpponentIds}
+              currentTurnSlot={currentTurnSlot}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               onDrawStock={handleDrawStock}
@@ -1642,6 +1678,7 @@ export const GinRummyGameTable = ({
               drawSource={opponentDrawSource}
               card={opponentDrawCard}
               cardBackColors={cardBackColors}
+              targetSlot={opponentDrawTargetSlot}
             />
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
@@ -1720,15 +1757,15 @@ export const GinRummyGameTable = ({
 
             {/* Opponent overlay */}
           <div className="absolute inset-0 z-50 pointer-events-none">
-            {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId, index) => {
+            {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId) => {
               const seatPlayer = players.find(p => p.id === seatId);
               const seatState = viewState.playerStates[seatId];
               if (!seatPlayer || !seatState) return null;
-              const isBottomObserverSeat = isObserver && index === 1;
+              const placement = getCanonicalSlotPlacement(playerSlotById.get(seatId));
               return (
               <div key={seatId} className={cn(
                 "absolute flex flex-col items-start",
-                isBottomObserverSeat ? "bottom-14 right-6 items-end" : "top-14 left-6"
+                placement.className
               )}>
                 {/* Opponent name above chip stack */}
                 <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1 mb-0.5">
@@ -1753,8 +1790,10 @@ export const GinRummyGameTable = ({
             })}
 
                 {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
-                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (
-                  <div className="absolute top-14 left-6 mt-[58px] flex -space-x-3">
+                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (() => {
+                  const placement = getCanonicalSlotPlacement(playerSlotById.get(opponentId));
+                  return (
+                  <div className={cn("absolute mt-[58px] flex -space-x-3", placement.className)}>
                     {opponentState.hand.map((_, i) => (
                       <div
                         key={i}
@@ -1765,7 +1804,8 @@ export const GinRummyGameTable = ({
                       />
                     ))}
                   </div>
-                )}
+                  );
+                })()}
           </div>
       </div>
 

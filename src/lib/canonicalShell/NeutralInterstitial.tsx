@@ -40,9 +40,10 @@ export function NeutralInterstitial({ gameId, reason }: NeutralInterstitialProps
       // the dwell, otherwise overlays/backdrops show through as a
       // full-screen black/blank flash. The neutral surface fills its
       // slot container and renders as an idle felt table — NOT a page
-      // background flash. Phase 7: bg-poker-felt-dark reads as
-      // "empty canonical table" rather than "white page flash".
-      className="w-full h-full min-h-0 flex-1 bg-poker-felt-dark"
+      // background flash. Keep this neutral chrome, not felt: the actual
+      // gameplay surface owns table felt so transition dwell cannot paint
+      // a full-screen green field above the slot.
+      className="w-full h-full min-h-0 flex-1 bg-background"
     />
   );
 }

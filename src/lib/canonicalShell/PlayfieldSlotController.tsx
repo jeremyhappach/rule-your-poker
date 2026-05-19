@@ -218,15 +218,14 @@ export function PlayfieldSlotController({
   // Re-key children by identity so the gameplay subtree gets a fresh
   // lifecycle for each dealer game.
   //
-  // bg-poker-felt-dark (Phase 7 safety net): if children take a frame
-  // to paint after promotion, the slot wrapper itself reads as idle
-  // felt — matching NeutralInterstitial — so neither page-white nor a
-  // background-token flash can bleed through. Pure presentation.
+  // bg-background safety net: if children take a frame to paint after
+  // promotion, the slot wrapper reads as neutral chrome. Felt must be
+  // painted only by the gameplay surface inside the canonical slot.
   return (
     <div
       data-canonical-shell-slot=""
       data-slot-identity={describeSlotIdentity(mountedIdentity)}
-      className="w-full h-full min-h-0 bg-poker-felt-dark"
+      className="w-full h-full min-h-0 bg-background"
       key={describeSlotIdentity(mountedIdentity)}
     >
       {children}
