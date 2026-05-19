@@ -2,6 +2,7 @@
 // Circular felt, opponent chip, tabs (cards, chat, lobby, history)
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { LifecycleAnnouncement } from '@/components/LifecycleAnnouncement';
 import { useGameStateSync, getGinRummyProgress } from '@/lib/gameStateSync';
 import { useAuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentity';
 import { isIdentityForward, type AuthoritativeIdentity } from '@/lib/gameStateSync/authoritativeIdentityPure';
