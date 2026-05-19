@@ -134,24 +134,18 @@ export function isDebugTestingUnlocked(): boolean {
 export type YahtzeeSeedScenario = 'clear_winner' | 'tie' | 'close_game';
 
 export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
-  // TEMPORARY: short-game Yahtzee debug mode is forced ON globally for active
-  // endgame/shell validation. Remove this override (and restore the unlock-gated
-  // reads below) once validation is complete.
-  return 'clear_winner';
-
-  // --- Disabled while temporary override is active ---
-  // if (!isDebugTestingUnlocked()) return null;
-  // const valid = (v: string | null): YahtzeeSeedScenario | null =>
-  //   v === 'clear_winner' || v === 'tie' || v === 'close_game' ? v : null;
-  // try {
-  //   const fromUrl = valid(new URLSearchParams(window.location.search).get('debug_yahtzee_seed'));
-  //   if (fromUrl) return fromUrl;
-  // } catch {}
-  // try {
-  //   const fromLocal = valid(window.localStorage.getItem('ptp_debug_yahtzee_seed'));
-  //   if (fromLocal) return fromLocal;
-  // } catch {}
-  // return null;
+  if (!isDebugTestingUnlocked()) return null;
+  const valid = (v: string | null): YahtzeeSeedScenario | null =>
+    v === 'clear_winner' || v === 'tie' || v === 'close_game' ? v : null;
+  try {
+    const fromUrl = valid(new URLSearchParams(window.location.search).get('debug_yahtzee_seed'));
+    if (fromUrl) return fromUrl;
+  } catch {}
+  try {
+    const fromLocal = valid(window.localStorage.getItem('ptp_debug_yahtzee_seed'));
+    if (fromLocal) return fromLocal;
+  } catch {}
+  return null;
 }
 
 
