@@ -70,6 +70,20 @@ import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
+import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
+import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
+
+// P9.1 — First visible canonical shell visual cutover.
+// Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
+const CANONICAL_SHELL_VISUAL_ENABLED =
+  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
+
+function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGameKind | null {
+  if (!CANONICAL_SHELL_VISUAL_ENABLED) return null;
+  if (gameType === 'holm-game') return 'holm-game';
+  if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') return 'three-five-seven';
+  return null;
+}
 import { classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import {
   logRevealRenderFrame,
@@ -4267,61 +4281,76 @@ export const MobileGameTable = ({
       maxHeight: '55vh'
     }}>
 
-        {/* Table felt background - wide horizontal ellipse */}
-        <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden" style={{
-        background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-        boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
-      }}>
-          {/* Bridge overlay on felt - shown when bridge felt is selected */}
-          {tableColors.showBridge && (
-            <img
-              src={peoriaBridgeMobile}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-              style={{
-                // Use <img> + object-fit instead of CSS background-image to avoid tablet-specific
-                // background sizing/positioning quirks that can make the bridge appear missing.
-                objectPosition: (isTablet || isDesktop) ? 'center 60%' : 'center 38%',
-                opacity: isWaitingPhase ? 0.45 : (isTablet || isDesktop ? 0.36 : 0.28),
-              }}
-            />
-          )}
-        </div>
-
-
-
-        
-        {/* Game name on felt - single line for dice games - hide during waiting phase */}
-        {!isWaitingPhase && (
-          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-            {isDiceGame || gameType === 'yahtzee' ? (
-              // Single line format: "$200 SHIP" or "$5 HORSES" or "$5 YAHTZEE"
-              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : gameType === 'yahtzee' ? 'YAHTZEE' : 'HORSES'}
-              </span>
-            ) : (
-              <>
-                <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                  {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
-                </span>
-                {/* Only show No Limit/Max and legs for 3-5-7 games */}
-                {gameType !== 'cribbage' && gameType !== 'gin-rummy' && (
-                  <>
-                    <span className="text-white/40 text-xs font-medium">
-                      {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
-                    </span>
-                    {gameType !== 'holm-game' && (
-                      <span className="text-white/40 text-xs font-medium">
-                        {legsToWin} legs to win
-                      </span>
-                    )}
-                  </>
+        {(() => {
+          const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
+          if (canonicalFeltKind) {
+            // P9.1: Shell-owned canonical felt + game-name plate for Holm + 3-5-7.
+            return (
+              <CanonicalFeltSurface
+                gameKind={canonicalFeltKind}
+                anteAmount={anteAmount}
+                potMaxEnabled={potMaxEnabled}
+                potMaxValue={potMaxValue}
+                legsToWin={legsToWin}
+                isWaitingPhase={isWaitingPhase}
+                isTablet={isTablet}
+                isDesktop={isDesktop}
+              />
+            );
+          }
+          return (
+            <>
+              {/* Table felt background - wide horizontal ellipse (legacy path) */}
+              <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden" style={{
+                background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
+              }}>
+                {/* Bridge overlay on felt - shown when bridge felt is selected */}
+                {tableColors.showBridge && (
+                  <img
+                    src={peoriaBridgeMobile}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 pointer-events-none w-full h-full object-cover"
+                    style={{
+                      objectPosition: (isTablet || isDesktop) ? 'center 60%' : 'center 38%',
+                      opacity: isWaitingPhase ? 0.45 : (isTablet || isDesktop ? 0.36 : 0.28),
+                    }}
+                  />
                 )}
-              </>
-            )}
-          </div>
-        )}
+              </div>
+
+              {/* Game name on felt - legacy path (non-Holm/357 games or flag-off) */}
+              {!isWaitingPhase && (
+                <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
+                  {isDiceGame || gameType === 'yahtzee' ? (
+                    <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                      ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : gameType === 'yahtzee' ? 'YAHTZEE' : 'HORSES'}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                        {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
+                      </span>
+                      {gameType !== 'cribbage' && gameType !== 'gin-rummy' && (
+                        <>
+                          <span className="text-white/40 text-xs font-medium">
+                            {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+                          </span>
+                          {gameType !== 'holm-game' && (
+                            <span className="text-white/40 text-xs font-medium">
+                              {legsToWin} legs to win
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
@@ -5025,38 +5054,71 @@ export const MobileGameTable = ({
                 pointerEvents: shouldHidePot ? 'none' : 'auto'
               }}
             >
-              <div
-                data-pot-anchor=""
-                className={cn(
-                "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
-                gameType === 'holm-game' || isDiceGame 
-                  ? (isTablet ? 'px-10 py-4' : isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
-                  : is357MultiPlayerShowdown 
-                    ? (isTablet ? 'px-5 py-2' : 'px-3 py-1')
-                    : (isTablet ? 'px-10 py-4' : 'px-8 py-3')
-              )}>
-                <span className={cn(
-                  "text-poker-gold font-bold",
-                  gameType === 'holm-game' || isDiceGame 
-                    ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
-                    : is357MultiPlayerShowdown 
-                      ? (isTablet ? 'text-xl' : 'text-base')
-                      : (isTablet ? 'text-4xl' : 'text-3xl')
-                )}>${formatChipValue(Math.round(
-                  // Use cached pot during 3-5-7 win animation sequence (any non-idle phase)
+              {(() => {
+                const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
+                const potValueText = `$${formatChipValue(Math.round(
                   gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle' && threeFiveSevenWinPotAmount > 0
-                    ? threeFiveSevenWinPotAmount 
+                    ? threeFiveSevenWinPotAmount
                     : isInitialAntePending
                       ? 0
                       : displayedPot
-                ))}</span>
-                <ValueChangeFlash 
-                  value={pot}
-                  position="top-right" 
-                  disabled={shouldHidePot}
-                  manualTrigger={anteFlashTrigger}
-                />
-              </div>
+                ))}`;
+                if (canonicalFeltKind) {
+                  // P9.1: shell-defined pot pill for Holm + 3-5-7.
+                  const potSize: 'compact' | 'regular' | 'prominent' =
+                    canonicalFeltKind === 'holm-game'
+                      ? 'prominent'
+                      : is357MultiPlayerShowdown
+                        ? 'compact'
+                        : 'regular';
+                  const valueClass =
+                    canonicalFeltKind === 'holm-game'
+                      ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
+                      : is357MultiPlayerShowdown
+                        ? (isTablet ? 'text-xl' : 'text-base')
+                        : (isTablet ? 'text-4xl' : 'text-3xl');
+                  return (
+                    <CanonicalPotZone size={potSize} isTablet={isTablet} isDesktop={isDesktop}>
+                      <span className={cn('text-poker-gold font-bold', valueClass)}>{potValueText}</span>
+                      <ValueChangeFlash
+                        value={pot}
+                        position="top-right"
+                        disabled={shouldHidePot}
+                        manualTrigger={anteFlashTrigger}
+                      />
+                    </CanonicalPotZone>
+                  );
+                }
+                // Legacy pot pill (other games / flag off).
+                return (
+                  <div
+                    data-pot-anchor=""
+                    className={cn(
+                      "relative bg-black/70 backdrop-blur-sm rounded-full border border-poker-gold/60",
+                      gameType === 'holm-game' || isDiceGame
+                        ? (isTablet ? 'px-10 py-4' : isDesktop ? 'px-8 py-3' : 'px-5 py-1.5')
+                        : is357MultiPlayerShowdown
+                          ? (isTablet ? 'px-5 py-2' : 'px-3 py-1')
+                          : (isTablet ? 'px-10 py-4' : 'px-8 py-3')
+                    )}
+                  >
+                    <span className={cn(
+                      "text-poker-gold font-bold",
+                      gameType === 'holm-game' || isDiceGame
+                        ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
+                        : is357MultiPlayerShowdown
+                          ? (isTablet ? 'text-xl' : 'text-base')
+                          : (isTablet ? 'text-4xl' : 'text-3xl')
+                    )}>{potValueText}</span>
+                    <ValueChangeFlash
+                      value={pot}
+                      position="top-right"
+                      disabled={shouldHidePot}
+                      manualTrigger={anteFlashTrigger}
+                    />
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
