@@ -19,7 +19,8 @@ export type CanonicalFeltGameKind =
   | "three-five-seven"
   | "horses"
   | "ship-captain-crew"
-  | "yahtzee";
+  | "yahtzee"
+  | "gin-rummy";
 
 export interface CanonicalFeltSurfaceProps {
   gameKind: CanonicalFeltGameKind;
@@ -27,6 +28,8 @@ export interface CanonicalFeltSurfaceProps {
   potMaxEnabled?: boolean;
   potMaxValue?: number | string;
   legsToWin?: number;
+  /** Additive: points-to-win subtitle for points-based games (Gin Rummy). */
+  pointsToWin?: number;
   isWaitingPhase?: boolean;
   isTablet?: boolean;
   isDesktop?: boolean;
@@ -38,6 +41,7 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "horses": "HORSES",
   "ship-captain-crew": "SHIP",
   "yahtzee": "YAHTZEE",
+  "gin-rummy": "GIN RUMMY",
 };
 
 // Dice-family games use a compact single-line plate (legacy parity).
