@@ -7979,7 +7979,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
   if (loading || !game) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-shell-neutral text-foreground">Loading...</div>;
   }
 
   const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
