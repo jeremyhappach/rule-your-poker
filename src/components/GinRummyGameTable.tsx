@@ -1565,33 +1565,44 @@ export const GinRummyGameTable = ({
         >
           {/* Inner circle */}
           <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-            {/* Felt background */}
-            {tableColors.showBridge ? (
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${peoriaBridgeMobile})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  filter: 'brightness(0.5)',
-                }}
+            {/* P9.4: canonical shell owns felt + game-name plate (flag-gated). */}
+            {CANONICAL_SHELL_VISUAL_ENABLED ? (
+              <CanonicalFeltSurface
+                gameKind="gin-rummy"
+                anteAmount={anteAmount}
+                pointsToWin={viewState.pointsToWin}
+                isWaitingPhase={false}
               />
             ) : (
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                  filter: 'brightness(0.7)',
-                }}
-              />
+              <>
+                {/* Legacy felt path (flag-off rollback). */}
+                {tableColors.showBridge ? (
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundImage: `url(${peoriaBridgeMobile})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      filter: 'brightness(0.5)',
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                      filter: 'brightness(0.7)',
+                    }}
+                  />
+                )}
+                <div className="absolute top-3 left-0 right-0 z-20 flex items-center justify-center">
+                  <h2 className="text-sm font-bold text-white drop-shadow-lg">
+                    ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({viewState.pointsToWin})</span>
+                  </h2>
+                </div>
+              </>
             )}
 
-            {/* Game Title */}
-            <div className="absolute top-3 left-0 right-0 z-20 flex items-center justify-center">
-              <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({viewState.pointsToWin})</span>
-              </h2>
-            </div>
 
             {/* Felt Content */}
             <GinRummyFeltContent
