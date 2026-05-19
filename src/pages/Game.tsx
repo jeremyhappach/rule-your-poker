@@ -7954,10 +7954,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // unconditionally in stable hook order BEFORE any early returns to
   // satisfy rules-of-hooks. The `enabled` flag makes it a runtime
   // no-op when the game isn't loaded or isn't a poker-variant family.
+  // Phase 6: passive PlayfieldSlot identity tracker. P9.4 (re-scoped):
+  // widen from poker-variant-only to the canonical-shell family so
+  // gin-rummy participates in the shell ownership boundary instead of
+  // patching seat/lifecycle locally. `isPokerVariantFamily` is untouched
+  // because bot/scoring code still depends on it.
   const phase6Enabled =
     !loading &&
     !!game &&
-    isPokerVariantFamily(game?.game_type) &&
+    isCanonicalShellFamily(game?.game_type) &&
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
   // Phase 7: when the slot controller is on, it owns identity telemetry.
   // Disable this tracker to prevent duplicate slot-identity-changed events.
