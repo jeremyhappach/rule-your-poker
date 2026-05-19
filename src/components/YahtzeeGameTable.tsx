@@ -365,11 +365,15 @@ export function YahtzeeGameTable({
   const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
   const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
 
-  // Guard: prevent double-execution of handleGameComplete
-  const gameCompleteProcessedRef = useRef(false);
-  // Reset guard when a new round starts — keyed on presentation-derived round identity
-  // to avoid clearing caches before the presentation layer transitions to the new round.
-  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [viewState?.currentRound]);
+  // Guard: prevent double-execution of end-of-game completion effect.
+  // Keyed on currentRoundId — single-fire per round, on every client.
+  const completionLatchRoundIdRef = useRef<string | null>(null);
+  // Reset latches when a new round starts.
+  useEffect(() => {
+    completionLatchRoundIdRef.current = null;
+    prevTurnRef.current = null;
+    prevOpponentScorecardRef.current = {};
+  }, [currentRoundId]);
 
   // Debounce ref for stale-turn-render: only fire after 2+ consecutive mismatches
   // to allow for expected one-frame lag during sync gate acceptance
