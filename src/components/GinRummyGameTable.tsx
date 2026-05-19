@@ -73,6 +73,8 @@ interface Player {
   position: number;
   chips: number;
   is_bot?: boolean;
+  status?: string;
+  sitting_out?: boolean;
   profiles?: { username: string };
 }
 
@@ -392,17 +394,33 @@ export const GinRummyGameTable = ({
   const [opponentDrawKey, setOpponentDrawKey] = useState(0);
   const prevLastActionRef = useRef<string | null>(null);
 
-  const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const isSeatedGamePlayer = useCallback((player: Player) => {
+    if (player.status === 'observer' || player.status === 'left') return false;
+    if (player.sitting_out) return false;
+    return true;
+  }, []);
+  const activeSeatPlayers = players.filter(isSeatedGamePlayer);
+  const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
+  const isObserver = !currentPlayerId;
 
   // Derive opponent
   // Derive opponent from viewState (render-stable)
   const opponentId = viewState
-    ? (currentPlayerId === viewState.dealerPlayerId
-      ? viewState.nonDealerPlayerId
+    ? (currentPlayerId
+      ? (currentPlayerId === viewState.dealerPlayerId
+        ? viewState.nonDealerPlayerId
+        : viewState.dealerPlayerId)
       : viewState.dealerPlayerId)
     : '';
   const opponent = players.find(p => p.id === opponentId);
+  const observerSeatIds = viewState ? [viewState.dealerPlayerId, viewState.nonDealerPlayerId] : [];
+  const spotlightPlayerId = currentPlayerId ?? viewState?.nonDealerPlayerId ?? '';
+  const spotlightOpponentIds = currentPlayerId
+    ? [opponentId]
+    : viewState
+      ? [viewState.dealerPlayerId].filter(id => id !== spotlightPlayerId)
+      : [];
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
@@ -515,34 +533,30 @@ export const GinRummyGameTable = ({
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
 
-  // Detect opponent draw actions and trigger animation + freeze presentation
+  // Detect visible draw actions and trigger an overlay animation.
+  // Do not freeze presentation here: observers must continue receiving turn/pile updates underneath.
   useEffect(() => {
-    if (!ginState || !currentPlayerId) return;
-    const action = ginState.lastAction;
+    if (!viewState) return;
+    const action = viewState.lastAction;
     if (!action) return;
     const actionKey = `${action.type}-${action.playerId}-${action.timestamp}`;
     if (actionKey === prevLastActionRef.current) return;
     prevLastActionRef.current = actionKey;
 
-    // Only animate opponent draws (not our own)
-    if (action.playerId === currentPlayerId) return;
+    // Seated players see opponent draws; observers see both players' draws.
+    if (currentPlayerId && action.playerId === currentPlayerId) return;
     if (action.type === 'draw_stock') {
       setOpponentDrawSource('stock');
       setOpponentDrawCard(null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
-      // Freeze presentation during opponent draw animation to prevent hand-count flicker
-      ginSync.freezePresentation();
-      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     } else if (action.type === 'draw_discard') {
       setOpponentDrawSource('discard');
       setOpponentDrawCard(action.card ?? null);
       setOpponentDrawTriggerId(`draw-${actionKey}`);
       setOpponentDrawKey(k => k + 1);
-      ginSync.freezePresentation();
-      setTimeout(() => ginSync.unfreezePresentation(), 1200);
     }
-  }, [ginState?.lastAction, currentPlayerId]);
+  }, [viewState?.lastAction, currentPlayerId]);
 
   // Load state from DB
   useEffect(() => {
@@ -1484,9 +1498,10 @@ export const GinRummyGameTable = ({
     // gating this branch on currentPlayer caused observer cold-starts to
     // stay permanently on the waiting shell.
     const isAwaitingAnte = !roundId;
-    const seatedPlayer = currentPlayer ?? players.find(p => p.user_id === currentUserId);
-    const isObserver = !seatedPlayer;
-    const opponentPlayer = players.find(p => p.user_id !== currentUserId);
+    const seatedPlayer = currentPlayer;
+    const opponentPlayer = seatedPlayer
+      ? activeSeatPlayers.find(p => p.id !== seatedPlayer.id)
+      : activeSeatPlayers[0];
     const statusText = isAwaitingAnte
       ? 'Awaiting ante decisions...'
       : isObserver
@@ -1610,6 +1625,8 @@ export const GinRummyGameTable = ({
               ginState={viewState}
               currentPlayerId={currentPlayerId}
               opponentId={opponentId}
+              spotlightPlayerId={spotlightPlayerId}
+              spotlightOpponentIds={spotlightOpponentIds}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               onDrawStock={handleDrawStock}
@@ -1702,28 +1719,37 @@ export const GinRummyGameTable = ({
 
             {/* Opponent overlay */}
           <div className="absolute inset-0 z-50 pointer-events-none">
-            {opponent && opponentState && (
-              <div className="absolute top-14 left-6 flex flex-col items-start">
+            {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId, index) => {
+              const seatPlayer = players.find(p => p.id === seatId);
+              const seatState = viewState.playerStates[seatId];
+              if (!seatPlayer || !seatState) return null;
+              const isBottomObserverSeat = isObserver && index === 1;
+              return (
+              <div key={seatId} className={cn(
+                "absolute flex flex-col items-start",
+                isBottomObserverSeat ? "bottom-14 right-6 items-end" : "top-14 left-6"
+              )}>
                 {/* Opponent name above chip stack */}
                 <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1 mb-0.5">
-                  {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
+                  {getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
                 </span>
 
                 {/* Chip circle */}
                 <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
                   <span className="text-[10px] font-bold text-slate-900">
-                    ${formatChipValue(opponent.chips)}
+                    ${formatChipValue(seatPlayer.chips)}
                   </span>
                 </div>
 
                 {/* Dealer button below chip stack */}
-                {isCribDealer(opponentId) && (
+                {isCribDealer(seatId) && (
                   <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center mt-0.5">
                     <span className="text-white font-bold text-[7px]">D</span>
                   </div>
                 )}
               </div>
-            )}
+              );
+            })}
 
                 {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
                 {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (

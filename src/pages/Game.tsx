@@ -8675,6 +8675,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
+          const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
           // CRIBBAGE — unified single instance across ALL session phases
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
@@ -8779,7 +8780,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // GIN RUMMY — unified single instance across dealer_selection, ante_decision, in_progress, game_over
           // One persistent GinRummyGameTable prevents table surface changes across phases
-          if (game.game_type === 'gin-rummy' && (isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
+          if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
             return (
               <>
                 <GinRummyGameTable
