@@ -1541,72 +1541,14 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
+  // P9.4 (re-scoped): pre-viewState scaffold deleted. Gin renders
+  // nothing until viewState arrives — shell's NeutralInterstitial owns
+  // the visual gap. The previous local felt + floating labels +
+  // "Awaiting ante / Preparing hand" copy lived here; per the approved
+  // guardrail, no new Gin-local lifecycle messaging is reintroduced
+  // while the shell announcement wave is deferred.
   if (!viewState) {
-    // Pre-render / hydration branch only. Observers without a seated
-    // currentPlayer must still render the live table once viewState exists;
-    // gating this branch on currentPlayer caused observer cold-starts to
-    // stay permanently on the waiting shell.
-    const seatedPlayer = currentPlayer;
-    const opponentPlayer = seatedPlayer
-      ? activeSeatPlayers.find(p => p.id !== seatedPlayer.id)
-      : activeSeatPlayers[0];
-    return (
-      <div className="h-full flex flex-col bg-shell-neutral">
-        <div
-          ref={tableContainerRef}
-          className="relative flex items-start justify-center pt-1 bg-shell-neutral"
-          style={{
-            height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
-            minHeight: '300px',
-          }}
-        >
-          {/* Opponent chip badge — render when known */}
-          {opponentPlayer && (() => {
-            const placement = getCanonicalSlotPlacement(playerSlotById.get(opponentPlayer.id));
-            return (
-            <div className={cn("absolute z-30 flex items-center gap-2", placement.className)}>
-              <span className="text-xs text-amber-200/90 font-medium drop-shadow">
-                {getDisplayName(players, opponentPlayer, opponentPlayer.profiles?.username || 'Opponent')}
-              </span>
-              <span className="text-xs text-amber-100/80 drop-shadow">
-                ${formatChipValue(opponentPlayer.chips ?? 0)}
-              </span>
-            </div>
-            );
-          })()}
-
-          {CANONICAL_SHELL_VISUAL_ENABLED ? (
-            <CanonicalFeltSurface
-              gameKind="gin-rummy"
-              anteAmount={anteAmount}
-              pointsToWin={undefined}
-              isWaitingPhase
-            />
-          ) : (
-            <div
-              className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-              }}
-            />
-          )}
-
-          {/* Seated-self chip badge — observers hide this so we don't fake
-              a "You $0" attribution as the user flagged. */}
-          {seatedPlayer && (
-            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-              <span className="text-xs text-amber-200/90 font-medium drop-shadow">
-                {seatedPlayer.profiles?.username || 'You'}
-              </span>
-              <span className="text-xs text-amber-100/80 drop-shadow">
-                ${formatChipValue(seatedPlayer.chips ?? 0)}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const opponentState = viewState.playerStates[opponentId];
