@@ -4166,7 +4166,13 @@ export const MobileGameTable = ({
     // For SCC: show cargo dice with themed background or "NQ"; for Horses: show the result display
     const horsesResultElement = isDiceGame && effectiveHorsesResult && (() => {
       if (gameType === 'ship-captain-crew') {
-        // Check if player qualified (has isQualified on result)
+        // GUARD: Only render SCC result UI when this is genuinely an SCC result.
+        // During Horses→SCC dealer-game transitions, stale Horses playerStates may briefly
+        // leak through horsesState before the new SCC round's state hydrates. Horses results
+        // lack the `isQualified` field, which would otherwise be coerced to falsy and render
+        // a phantom "NQ" badge on the felt.
+        const hasSccShape = typeof (effectiveHorsesResult as any).isQualified === 'boolean';
+        if (!hasSccShape) return null;
         const isQualified = (effectiveHorsesResult as any).isQualified;
         
         if (!isQualified) {
@@ -4180,6 +4186,7 @@ export const MobileGameTable = ({
             </div>
           );
         }
+        
         
         // For qualified players, get cargo dice (dice without sccType)
         if (horsesStatePlayerData?.dice) {
