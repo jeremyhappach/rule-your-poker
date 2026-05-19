@@ -1460,7 +1460,9 @@ export function YahtzeeGameTable({
         });
         yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
-        if (state.gamePhase === 'complete') await handleGameComplete(state);
+        // P9.3b: completion is driven by the authoritative effect — no direct
+        // handleGameComplete call here. Effect fires on every client when
+        // viewState.gamePhase transitions to 'complete'.
       } catch (e) {
         console.error('[YAHTZEE] Bot error:', {
           error: e,
