@@ -1478,16 +1478,11 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
-  if (!viewState || !currentPlayerId || !currentPlayer) {
-    // P9.4 fix: pre-render / observer / hydration / pre-first-draw branch.
-    // Previously this rendered a bespoke legacy peoria-bridge disk +
-    // "Loading..." text — observers (who have no seated currentPlayer)
-    // were stuck on it indefinitely and never reached the canonical
-    // shell migration. We now render the same outer container shape
-    // as the main render and delegate felt chrome to CanonicalFeltSurface
-    // (waiting-phase variant suppresses the game-name plate to match the
-    // shared waiting visual contract). Player chip rows are hidden when
-    // the viewer is not a seated participant (observer path).
+  if (!viewState) {
+    // Pre-render / hydration branch only. Observers without a seated
+    // currentPlayer must still render the live table once viewState exists;
+    // gating this branch on currentPlayer caused observer cold-starts to
+    // stay permanently on the waiting shell.
     const isAwaitingAnte = !roundId;
     const seatedPlayer = currentPlayer ?? players.find(p => p.user_id === currentUserId);
     const isObserver = !seatedPlayer;
@@ -1507,8 +1502,6 @@ export const GinRummyGameTable = ({
             minHeight: '300px',
           }}
         >
-          <div className="absolute inset-0 bg-slate-200 z-0" />
-
           {/* Opponent chip badge — render when known */}
           {opponentPlayer && (
             <div className="absolute top-1 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
@@ -1521,36 +1514,27 @@ export const GinRummyGameTable = ({
             </div>
           )}
 
-          <div
-            className="relative z-10"
-            style={{
-              width: 'min(90vw, calc(55vh - 32px))',
-              height: 'min(90vw, calc(55vh - 32px))',
-            }}
-          >
-            <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-              {CANONICAL_SHELL_VISUAL_ENABLED ? (
-                <CanonicalFeltSurface
-                  gameKind="gin-rummy"
-                  anteAmount={anteAmount}
-                  pointsToWin={viewState?.pointsToWin}
-                  isWaitingPhase
-                />
-              ) : (
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                    filter: 'brightness(0.7)',
-                  }}
-                />
-              )}
-              <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                <p className="text-sm font-bold text-poker-gold animate-pulse text-center px-4 drop-shadow-lg">
-                  {statusText}
-                </p>
-              </div>
-            </div>
+          {CANONICAL_SHELL_VISUAL_ENABLED ? (
+            <CanonicalFeltSurface
+              gameKind="gin-rummy"
+              anteAmount={anteAmount}
+              pointsToWin={undefined}
+              isWaitingPhase
+            />
+          ) : (
+            <div
+              className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
+              }}
+            />
+          )}
+
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+            <p className="text-sm font-bold text-poker-gold animate-pulse text-center px-4 drop-shadow-lg">
+              {statusText}
+            </p>
           </div>
 
           {/* Seated-self chip badge — observers hide this so we don't fake
@@ -1566,9 +1550,6 @@ export const GinRummyGameTable = ({
             </div>
           )}
         </div>
-        <div className="bg-slate-900 border-t border-amber-900/30 px-2 py-3 text-center">
-          <p className="text-sm font-bold text-poker-gold">{statusText}</p>
-        </div>
       </div>
     );
   }
@@ -1577,28 +1558,14 @@ export const GinRummyGameTable = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Felt Area - Upper Section with circular table */}
+      {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="relative flex items-start justify-center pt-1"
+        className="flex-1 relative overflow-hidden min-h-0"
         style={{
-          height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
-          minHeight: '300px',
+          maxHeight: '55vh',
         }}
       >
-        {/* Light background behind the circle */}
-        <div className="absolute inset-0 bg-slate-200 z-0" />
-
-        {/* Circular table */}
-        <div
-          className="relative z-10"
-          style={{
-            width: 'min(90vw, calc(55vh - 32px))',
-            height: 'min(90vw, calc(55vh - 32px))',
-          }}
-        >
-          {/* Inner circle */}
-          <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
             {/* P9.4: canonical shell owns felt + game-name plate (flag-gated). */}
             {CANONICAL_SHELL_VISUAL_ENABLED ? (
               <CanonicalFeltSurface
@@ -1612,7 +1579,7 @@ export const GinRummyGameTable = ({
                 {/* Legacy felt path (flag-off rollback). */}
                 {tableColors.showBridge ? (
                   <div
-                    className="absolute inset-0"
+                    className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
                     style={{
                       backgroundImage: `url(${peoriaBridgeMobile})`,
                       backgroundSize: 'cover',
@@ -1622,10 +1589,10 @@ export const GinRummyGameTable = ({
                   />
                 ) : (
                   <div
-                    className="absolute inset-0"
+                    className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
                     style={{
-                      background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                      filter: 'brightness(0.7)',
+                      background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                      boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
                     }}
                   />
                 )}
@@ -1732,7 +1699,6 @@ export const GinRummyGameTable = ({
                 </div>
               </div>
             )}
-          </div>
 
             {/* Opponent overlay */}
           <div className="absolute inset-0 z-50 pointer-events-none">
@@ -1774,7 +1740,6 @@ export const GinRummyGameTable = ({
                   </div>
                 )}
           </div>
-        </div>
       </div>
 
       {/* Bottom Section - Tabs and Content */}
