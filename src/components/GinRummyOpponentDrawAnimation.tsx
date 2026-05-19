@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import type { GinRummyCard } from '@/lib/ginRummyTypes';
+import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
 const SYMBOL_TO_WORD: Record<string, string> = {
   '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs',
@@ -14,6 +15,7 @@ interface GinRummyOpponentDrawAnimationProps {
   drawSource: 'stock' | 'discard';
   card: GinRummyCard | null;
   cardBackColors: { color: string; darkColor: string };
+  targetSlot?: CanonicalSlot | null;
 }
 
 export const GinRummyOpponentDrawAnimation = ({
@@ -21,6 +23,7 @@ export const GinRummyOpponentDrawAnimation = ({
   drawSource,
   card,
   cardBackColors,
+  targetSlot,
 }: GinRummyOpponentDrawAnimationProps) => {
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(!!triggerId);
@@ -53,9 +56,23 @@ export const GinRummyOpponentDrawAnimation = ({
   const startX = drawSource === 'stock' ? 'calc(50% - 44px)' : 'calc(50% + 12px)';
   const startY = '46%';
 
-  // End position: opponent's card area (top-left of felt)
-  const endX = '24px';
-  const endY = '72px';
+  // End position: canonical seat anchor destination. Observers use
+  // observer-absolute slots; seated players use active-canonical slots.
+  const slotEndpoints: Record<CanonicalSlot, { x: string; y: string }> = {
+    [-2]: { x: '50%', y: '18%' },
+    [-1]: { x: '50%', y: '82%' },
+    0: { x: '22%', y: '78%' },
+    1: { x: '16%', y: '50%' },
+    2: { x: '22%', y: '22%' },
+    3: { x: '78%', y: '22%' },
+    4: { x: '84%', y: '50%' },
+    5: { x: '78%', y: '78%' },
+  };
+  const endpoint = targetSlot !== null && targetSlot !== undefined
+    ? slotEndpoints[targetSlot]
+    : slotEndpoints[-2];
+  const endX = endpoint.x;
+  const endY = endpoint.y;
 
   const isFaceUp = drawSource === 'discard' && card;
 
