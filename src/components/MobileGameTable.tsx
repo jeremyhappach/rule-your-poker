@@ -5066,15 +5066,17 @@ export const MobileGameTable = ({
                       : displayedPot
                 ))}`;
                 if (canonicalFeltKind) {
-                  // P9.1: shell-defined pot pill for Holm + 3-5-7.
+                  // P9.1/P9.2: shell-defined pot pill for Holm + 3-5-7 + Horses + SCC.
+                  const isDiceKind = canonicalFeltKind === 'horses' || canonicalFeltKind === 'ship-captain-crew';
+                  const prominentKind = canonicalFeltKind === 'holm-game' || isDiceKind;
                   const potSize: 'compact' | 'regular' | 'prominent' =
-                    canonicalFeltKind === 'holm-game'
+                    prominentKind
                       ? 'prominent'
                       : is357MultiPlayerShowdown
                         ? 'compact'
                         : 'regular';
                   const valueClass =
-                    canonicalFeltKind === 'holm-game'
+                    prominentKind
                       ? (isTablet ? 'text-4xl' : isDesktop ? 'text-3xl' : 'text-xl')
                       : is357MultiPlayerShowdown
                         ? (isTablet ? 'text-xl' : 'text-base')
