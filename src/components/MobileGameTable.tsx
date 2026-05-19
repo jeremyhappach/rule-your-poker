@@ -4281,61 +4281,76 @@ export const MobileGameTable = ({
       maxHeight: '55vh'
     }}>
 
-        {/* Table felt background - wide horizontal ellipse */}
-        <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden" style={{
-        background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-        boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
-      }}>
-          {/* Bridge overlay on felt - shown when bridge felt is selected */}
-          {tableColors.showBridge && (
-            <img
-              src={peoriaBridgeMobile}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-              style={{
-                // Use <img> + object-fit instead of CSS background-image to avoid tablet-specific
-                // background sizing/positioning quirks that can make the bridge appear missing.
-                objectPosition: (isTablet || isDesktop) ? 'center 60%' : 'center 38%',
-                opacity: isWaitingPhase ? 0.45 : (isTablet || isDesktop ? 0.36 : 0.28),
-              }}
-            />
-          )}
-        </div>
-
-
-
-        
-        {/* Game name on felt - single line for dice games - hide during waiting phase */}
-        {!isWaitingPhase && (
-          <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-            {isDiceGame || gameType === 'yahtzee' ? (
-              // Single line format: "$200 SHIP" or "$5 HORSES" or "$5 YAHTZEE"
-              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : gameType === 'yahtzee' ? 'YAHTZEE' : 'HORSES'}
-              </span>
-            ) : (
-              <>
-                <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                  {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
-                </span>
-                {/* Only show No Limit/Max and legs for 3-5-7 games */}
-                {gameType !== 'cribbage' && gameType !== 'gin-rummy' && (
-                  <>
-                    <span className="text-white/40 text-xs font-medium">
-                      {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
-                    </span>
-                    {gameType !== 'holm-game' && (
-                      <span className="text-white/40 text-xs font-medium">
-                        {legsToWin} legs to win
-                      </span>
-                    )}
-                  </>
+        {(() => {
+          const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
+          if (canonicalFeltKind) {
+            // P9.1: Shell-owned canonical felt + game-name plate for Holm + 3-5-7.
+            return (
+              <CanonicalFeltSurface
+                gameKind={canonicalFeltKind}
+                anteAmount={anteAmount}
+                potMaxEnabled={potMaxEnabled}
+                potMaxValue={potMaxValue}
+                legsToWin={legsToWin}
+                isWaitingPhase={isWaitingPhase}
+                isTablet={isTablet}
+                isDesktop={isDesktop}
+              />
+            );
+          }
+          return (
+            <>
+              {/* Table felt background - wide horizontal ellipse (legacy path) */}
+              <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden" style={{
+                background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
+              }}>
+                {/* Bridge overlay on felt - shown when bridge felt is selected */}
+                {tableColors.showBridge && (
+                  <img
+                    src={peoriaBridgeMobile}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 pointer-events-none w-full h-full object-cover"
+                    style={{
+                      objectPosition: (isTablet || isDesktop) ? 'center 60%' : 'center 38%',
+                      opacity: isWaitingPhase ? 0.45 : (isTablet || isDesktop ? 0.36 : 0.28),
+                    }}
+                  />
                 )}
-              </>
-            )}
-          </div>
-        )}
+              </div>
+
+              {/* Game name on felt - legacy path (non-Holm/357 games or flag-off) */}
+              {!isWaitingPhase && (
+                <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
+                  {isDiceGame || gameType === 'yahtzee' ? (
+                    <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                      ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : gameType === 'yahtzee' ? 'YAHTZEE' : 'HORSES'}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                        {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
+                      </span>
+                      {gameType !== 'cribbage' && gameType !== 'gin-rummy' && (
+                        <>
+                          <span className="text-white/40 text-xs font-medium">
+                            {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
+                          </span>
+                          {gameType !== 'holm-game' && (
+                            <span className="text-white/40 text-xs font-medium">
+                              {legsToWin} legs to win
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          );
+        })()}
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
