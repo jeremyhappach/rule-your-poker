@@ -176,6 +176,12 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     botControllerUserId: controllerUserId,
   };
 
+  // DEV-only: seed near-end scorecards for end-of-game regression testing.
+  const seedScenario = getYahtzeeSeedScenario();
+  if (seedScenario && isFirstHand) {
+    applyYahtzeeSeedScenario(initialState, seedScenario);
+  }
+
   // Yahtzee doesn't collect antes — chips transfer at end based on score difference
   const potForRound = 0;
 
