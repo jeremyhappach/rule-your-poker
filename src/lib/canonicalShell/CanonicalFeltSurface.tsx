@@ -58,6 +58,7 @@ export function CanonicalFeltSurface({
   potMaxEnabled,
   potMaxValue,
   legsToWin,
+  pointsToWin,
   isWaitingPhase = false,
   isTablet = false,
   isDesktop = false,
