@@ -76,3 +76,33 @@ export function isYahtzeeStraightDebugEnabled(): boolean {
   return hasQueryFlag('debug_yahtzee_straight') || hasLocalFlag('ptp_debug_yahtzee_straight');
 }
 
+/**
+ * DEV-ONLY Yahtzee near-end seed scenarios — accelerates end-of-game regression testing.
+ *
+ * Each scenario pre-fills 12 of 13 categories per player (leaving `chance` open), so
+ * one real turn per player triggers the genuine end-of-game lifecycle: real roll flow,
+ * real scoring, real winner-overlay, real chip transfer, real settlement.
+ *
+ * Enable via:
+ *  - URL: ?debug_yahtzee_seed=clear_winner | tie | close_game
+ *  - localStorage: ptp_debug_yahtzee_seed = "clear_winner" | "tie" | "close_game"
+ *
+ * Gated to import.meta.env.DEV — no-op in production builds.
+ */
+export type YahtzeeSeedScenario = 'clear_winner' | 'tie' | 'close_game';
+
+export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
+  if (!import.meta.env.DEV) return null;
+  const valid = (v: string | null): YahtzeeSeedScenario | null =>
+    v === 'clear_winner' || v === 'tie' || v === 'close_game' ? v : null;
+  try {
+    const fromUrl = valid(new URLSearchParams(window.location.search).get('debug_yahtzee_seed'));
+    if (fromUrl) return fromUrl;
+  } catch {}
+  try {
+    const fromLocal = valid(window.localStorage.getItem('ptp_debug_yahtzee_seed'));
+    if (fromLocal) return fromLocal;
+  } catch {}
+  return null;
+}
+
