@@ -43,7 +43,7 @@ export function NeutralInterstitial({ gameId, reason }: NeutralInterstitialProps
       // background flash. Keep this neutral chrome, not felt: the actual
       // gameplay surface owns table felt so transition dwell cannot paint
       // a full-screen green field above the slot.
-      className="w-full h-full min-h-0 flex-1 bg-background"
+      className="w-full h-full min-h-0 flex-1 bg-shell-neutral"
     />
   );
 }
