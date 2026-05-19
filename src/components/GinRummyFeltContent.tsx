@@ -1,19 +1,19 @@
 // Gin Rummy Felt Content - Center area of the circular table
 // Shows stock pile, discard pile, match scores, and phase indicators
 
+import { useEffect, useState } from 'react';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
+import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
   currentPlayerId: string | undefined;
   opponentId: string;
-  spotlightPlayerId?: string;
-  spotlightOpponentIds?: string[];
+  currentTurnSlot?: CanonicalSlot | null;
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
   onDrawStock?: () => void;
@@ -31,12 +31,80 @@ const toDisplayCard = (card: GinRummyCard) => ({
   value: card.value,
 });
 
+const SLOT_TO_SPOTLIGHT_ANGLE: Record<CanonicalSlot, number> = {
+  [-2]: 0,
+  [-1]: 180,
+  0: -135,
+  1: -90,
+  2: -45,
+  3: 45,
+  4: 90,
+  5: 135,
+};
+
+const GinCanonicalTurnSpotlight = ({
+  currentTurnSlot,
+  isVisible,
+}: {
+  currentTurnSlot: CanonicalSlot | null | undefined;
+  isVisible: boolean;
+}) => {
+  const [opacity, setOpacity] = useState(0);
+  const [rotation, setRotation] = useState(0);
+
+  useEffect(() => {
+    if (!isVisible || currentTurnSlot === null || currentTurnSlot === undefined) {
+      setOpacity(0);
+      return;
+    }
+
+    setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot]);
+    setOpacity(1);
+  }, [currentTurnSlot, isVisible]);
+
+  if (!isVisible || currentTurnSlot === null || currentTurnSlot === undefined) return null;
+
+  const beamHalfAngle = 30;
+
+  return (
+    <>
+      <div
+        className="absolute inset-0 pointer-events-none z-[5]"
+        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath: 'ellipse(50% 50% at 50% 50%)' }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'hsla(45, 70%, 50%, 0.15)',
+            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`,
+            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, white 0deg, white ${beamHalfAngle * 2}deg, transparent ${beamHalfAngle * 2}deg, transparent 360deg)`,
+            transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      </div>
+      <div
+        className="absolute inset-0 pointer-events-none z-[5]"
+        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath: 'ellipse(50% 50% at 50% 50%)' }}
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'rgba(0, 0, 0, 0.35)',
+            maskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
+            WebkitMaskImage: `conic-gradient(from ${rotation - beamHalfAngle}deg at 50% 50%, transparent 0deg, transparent ${beamHalfAngle * 2}deg, black ${beamHalfAngle * 2}deg, black 360deg)`,
+            transition: 'mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1), -webkit-mask-image 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+      </div>
+    </>
+  );
+};
+
 export const GinRummyFeltContent = ({
   ginState,
   currentPlayerId,
   opponentId,
-  spotlightPlayerId,
-  spotlightOpponentIds,
+  currentTurnSlot,
   getPlayerUsername,
   cardBackColors,
   onDrawStock,
@@ -51,8 +119,6 @@ export const GinRummyFeltContent = ({
   const canTakeFirstDraw = ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && !isProcessing;
   const discardClickable = canDraw || canTakeFirstDraw;
   const stockClickable = canDraw;
-  const spotlightSelfId = spotlightPlayerId ?? currentPlayerId ?? '';
-  const spotlightOpponents = spotlightOpponentIds ?? [opponentId];
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
   const hidePiles = ['knocking', 'laying_off', 'scoring', 'complete'].includes(ginState.phase);
@@ -60,12 +126,9 @@ export const GinRummyFeltContent = ({
   return (
     <>
       {/* Turn Spotlight */}
-      <CribbageTurnSpotlight
-        currentTurnPlayerId={ginState.currentTurnPlayerId}
-        currentPlayerId={spotlightSelfId}
+      <GinCanonicalTurnSpotlight
+        currentTurnSlot={currentTurnSlot}
         isVisible={ginState.phase === 'playing' || ginState.phase === 'first_draw'}
-        totalPlayers={2}
-        opponentIds={spotlightOpponents}
       />
 
       {/* Match Score Pegboard - Top center */}
