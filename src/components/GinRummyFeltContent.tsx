@@ -12,6 +12,8 @@ interface GinRummyFeltContentProps {
   ginState: GinRummyState;
   currentPlayerId: string | undefined;
   opponentId: string;
+  spotlightPlayerId?: string;
+  spotlightOpponentIds?: string[];
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
   onDrawStock?: () => void;
@@ -33,6 +35,8 @@ export const GinRummyFeltContent = ({
   ginState,
   currentPlayerId,
   opponentId,
+  spotlightPlayerId,
+  spotlightOpponentIds,
   getPlayerUsername,
   cardBackColors,
   onDrawStock,
@@ -47,6 +51,8 @@ export const GinRummyFeltContent = ({
   const canTakeFirstDraw = ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && !isProcessing;
   const discardClickable = canDraw || canTakeFirstDraw;
   const stockClickable = canDraw;
+  const spotlightSelfId = spotlightPlayerId ?? currentPlayerId ?? '';
+  const spotlightOpponents = spotlightOpponentIds ?? [opponentId];
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
   const hidePiles = ['knocking', 'laying_off', 'scoring', 'complete'].includes(ginState.phase);
@@ -56,10 +62,10 @@ export const GinRummyFeltContent = ({
       {/* Turn Spotlight */}
       <CribbageTurnSpotlight
         currentTurnPlayerId={ginState.currentTurnPlayerId}
-        currentPlayerId={currentPlayerId ?? ''}
+        currentPlayerId={spotlightSelfId}
         isVisible={ginState.phase === 'playing' || ginState.phase === 'first_draw'}
         totalPlayers={2}
-        opponentIds={[opponentId]}
+        opponentIds={spotlightOpponents}
       />
 
       {/* Match Score Pegboard - Top center */}
