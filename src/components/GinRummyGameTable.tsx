@@ -1508,10 +1508,10 @@ export const GinRummyGameTable = ({
         ? 'Observing — waiting for hand to start...'
         : 'Preparing hand...';
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-background">
         <div
           ref={tableContainerRef}
-          className="relative flex items-start justify-center pt-1"
+          className="relative flex items-start justify-center pt-1 bg-background"
           style={{
             height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
             minHeight: '300px',
@@ -1546,10 +1546,13 @@ export const GinRummyGameTable = ({
             />
           )}
 
-          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-            <p className="text-sm font-bold text-poker-gold animate-pulse text-center px-4 drop-shadow-lg">
-              {statusText}
-            </p>
+          {/* Canonical lifecycle announcement — yellow plate, matches Holm/357 pattern */}
+          <div className="absolute inset-0 flex items-center justify-center z-40 pointer-events-none">
+            <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded p-2 border-2 border-poker-gold shadow-xl animate-scale-in">
+              <p className="text-sm font-bold text-poker-gold text-center px-2">
+                {statusText}
+              </p>
+            </div>
           </div>
 
           {/* Seated-self chip badge — observers hide this so we don't fake
@@ -1572,11 +1575,11 @@ export const GinRummyGameTable = ({
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="flex-1 relative overflow-hidden min-h-0"
+        className="flex-1 relative overflow-hidden min-h-0 bg-background"
         style={{
           maxHeight: '55vh',
         }}
@@ -1887,6 +1890,15 @@ export const GinRummyGameTable = ({
               currentPlayer={currentPlayer}
               gameId={gameId}
             />
+          )}
+
+          {/* Observer fallback for cards tab — canonical observer HUD message */}
+          {activeTab === 'cards' && !currentPlayer && (
+            <div className="px-4 py-6 flex-1">
+              <p className="text-muted-foreground text-sm text-center">
+                You are observing this game
+              </p>
+            </div>
           )}
 
           {activeTab === 'chat' && (
