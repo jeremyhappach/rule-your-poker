@@ -8644,7 +8644,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 game.status === 'configuring' ||
                 game.status === 'ante_decision';
               if (
-                isPokerVariantFamily(game.game_type) &&
+                isCanonicalShellFamily(game.game_type) &&
                 rolloverStatus &&
                 stickyDealerIdentityRef.current
               ) {
