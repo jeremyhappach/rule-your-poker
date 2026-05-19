@@ -1554,11 +1554,11 @@ export const GinRummyGameTable = ({
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col bg-shell-neutral">
+    <div className="h-full flex flex-col">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="flex-1 relative overflow-hidden min-h-0 bg-shell-neutral"
+        className="flex-1 relative overflow-hidden min-h-0"
         style={{
           maxHeight: '55vh',
         }}
