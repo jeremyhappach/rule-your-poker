@@ -107,6 +107,17 @@ export function CanonicalFeltSurface({
             <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
               ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>
+          ) : gameKind === "gin-rummy" ? (
+            <>
+              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+                ${anteAmount} {GAME_NAME_LABEL[gameKind]}
+              </span>
+              {pointsToWin !== undefined && (
+                <span className="text-white/40 text-xs font-medium">
+                  {pointsToWin} pts to win
+                </span>
+              )}
+            </>
           ) : (
             <>
               <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
