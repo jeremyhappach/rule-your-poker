@@ -18,7 +18,8 @@ export type CanonicalFeltGameKind =
   | "holm-game"
   | "three-five-seven"
   | "horses"
-  | "ship-captain-crew";
+  | "ship-captain-crew"
+  | "yahtzee";
 
 export interface CanonicalFeltSurfaceProps {
   gameKind: CanonicalFeltGameKind;
@@ -36,13 +37,16 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "three-five-seven": "3-5-7",
   "horses": "HORSES",
   "ship-captain-crew": "SHIP",
+  "yahtzee": "YAHTZEE",
 };
 
 // Dice-family games use a compact single-line plate (legacy parity).
 const DICE_PLATE_KINDS: ReadonlySet<CanonicalFeltGameKind> = new Set([
   "horses",
   "ship-captain-crew",
+  "yahtzee",
 ]);
+
 
 export function CanonicalFeltSurface({
   gameKind,

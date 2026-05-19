@@ -84,6 +84,7 @@ function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGa
   if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') return 'three-five-seven';
   if (gameType === 'horses') return 'horses';
   if (gameType === 'ship-captain-crew') return 'ship-captain-crew';
+  if (gameType === 'yahtzee') return 'yahtzee';
   return null;
 }
 import { classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
@@ -5073,8 +5074,8 @@ export const MobileGameTable = ({
                       : displayedPot
                 ))}`;
                 if (canonicalFeltKind) {
-                  // P9.1/P9.2: shell-defined pot pill for Holm + 3-5-7 + Horses + SCC.
-                  const isDiceKind = canonicalFeltKind === 'horses' || canonicalFeltKind === 'ship-captain-crew';
+                  // P9.1/P9.2/P9.3: shell-defined pot pill for Holm + 3-5-7 + Horses + SCC + Yahtzee.
+                  const isDiceKind = canonicalFeltKind === 'horses' || canonicalFeltKind === 'ship-captain-crew' || canonicalFeltKind === 'yahtzee';
                   const prominentKind = canonicalFeltKind === 'holm-game' || isDiceKind;
                   const potSize: 'compact' | 'regular' | 'prominent' =
                     prominentKind
