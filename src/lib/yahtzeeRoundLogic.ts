@@ -10,6 +10,8 @@ import { createInitialYahtzeeDice } from "./yahtzeeGameLogic";
 import { createEmptyScorecard } from "./yahtzeeScoring";
 import { YahtzeeState } from "./yahtzeeTypes";
 import { logYahtzeeHandStart } from "./yahtzeeSyncDiagnostics";
+import { getYahtzeeSeedScenario } from "./debugFlags";
+import { applyYahtzeeSeedScenario } from "./yahtzeeSeedScenarios";
 
 export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[YAHTZEE] 🎲 Starting round', { gameId, isFirstHand });
@@ -173,6 +175,12 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
     currentRound: 1,
     botControllerUserId: controllerUserId,
   };
+
+  // DEV-only: seed near-end scorecards for end-of-game regression testing.
+  const seedScenario = getYahtzeeSeedScenario();
+  if (seedScenario && isFirstHand) {
+    applyYahtzeeSeedScenario(initialState, seedScenario);
+  }
 
   // Yahtzee doesn't collect antes — chips transfer at end based on score difference
   const potForRound = 0;

@@ -51,6 +51,12 @@ import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+
+// P9.3b: shared visual flag with MobileGameTable. Default ON; flip
+// VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
+const CANONICAL_SHELL_VISUAL_ENABLED =
+  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -359,11 +365,15 @@ export function YahtzeeGameTable({
   const [chipTransferLoserPositions, setChipTransferLoserPositions] = useState<number[]>([]);
   const [chipTransferLoserIds, setChipTransferLoserIds] = useState<string[]>([]);
 
-  // Guard: prevent double-execution of handleGameComplete
-  const gameCompleteProcessedRef = useRef(false);
-  // Reset guard when a new round starts — keyed on presentation-derived round identity
-  // to avoid clearing caches before the presentation layer transitions to the new round.
-  useEffect(() => { gameCompleteProcessedRef.current = false; prevTurnRef.current = null; prevOpponentScorecardRef.current = {}; }, [viewState?.currentRound]);
+  // Guard: prevent double-execution of end-of-game completion effect.
+  // Keyed on currentRoundId — single-fire per round, on every client.
+  const completionLatchRoundIdRef = useRef<string | null>(null);
+  // Reset latches when a new round starts.
+  useEffect(() => {
+    completionLatchRoundIdRef.current = null;
+    prevTurnRef.current = null;
+    prevOpponentScorecardRef.current = {};
+  }, [currentRoundId]);
 
   // Debounce ref for stale-turn-render: only fire after 2+ consecutive mismatches
   // to allow for expected one-frame lag during sync gate acceptance
@@ -875,86 +885,112 @@ export function YahtzeeGameTable({
     setCachedOpponentDice(null);
 
     await updateYahtzeeState(currentRoundId, advancedState);
-
-    if (advancedState.gamePhase === 'complete') handleGameComplete(advancedState);
+    // P9.3b: NO direct handleGameComplete call here — completion is now driven
+    // by the authoritative effect below (fires once per currentRoundId on every
+    // client; only the elected botControllerUserId performs DB writes).
   }, [currentRoundId, authoritativeYahtzeeState, myPlayer]);
 
-  /* ---- Game complete ---- */
-  const handleGameComplete = async (finalState: YahtzeeState) => {
-    // Guard: prevent double-execution (bot controller + human can both see gamePhase=complete)
-    if (gameCompleteProcessedRef.current) {
-      console.log('[YAHTZEE] handleGameComplete already processed, skipping');
-      return;
-    }
-    gameCompleteProcessedRef.current = true;
-    console.log('[YAHTZEE] 🏆 handleGameComplete starting');
+  /* ---- P9.3b: authoritative end-of-game effect ----
+   * Fires on EVERY client (active scorer, non-scoring active, observer) when
+   * viewState.gamePhase === 'complete'. Latched per currentRoundId.
+   *
+   *  - Presentation (overlay + chip-transfer trigger): all clients.
+   *  - Authoritative writes (RPCs, recordGameResult, snapshot, endYahtzeeRound):
+   *    only the single elected writer = authoritativeYahtzeeState.botControllerUserId.
+   *    Same single-writer gate the bot-turn path uses verbatim — no new
+   *    election mechanism. If controllerUserId is null (bot-only game),
+   *    every client attempts (matches bot-turn path semantics for that edge).
+   */
+  useEffect(() => {
+    if (!viewState || viewState.gamePhase !== 'complete') return;
+    if (!currentRoundId) return;
+    if (completionLatchRoundIdRef.current === currentRoundId) return;
+    completionLatchRoundIdRef.current = currentRoundId;
 
-    const results = Object.entries(finalState.playerStates)
+    console.log('[YAHTZEE] 🏆 completion effect firing', { currentRoundId, currentUserId });
+
+    const results = Object.entries(viewState.playerStates)
       .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
       .sort((a, b) => b.total - a.total);
+    if (results.length === 0) return;
     const maxScore = results[0].total;
     const winners = results.filter(r => r.total === maxScore);
-
     const scoreSummary = results.map(r => r.total).join('-');
     const scoreDetails = results.map(r => {
       const p = players.find(pl => pl.id === r.pid);
       return { name: p ? getPlayerUsername(p) : '?', total: r.total };
     });
 
-    if (winners.length > 1) {
-      console.log('[YAHTZEE] Tie detected, ending round as tie');
-      await endYahtzeeRound(gameId, null, `Tie ${scoreSummary}`, true);
-    } else {
+    // ── Presentation (all clients) ──
+    if (winners.length === 1) {
       const winnerId = winners[0].pid;
       const winnerPlayer = players.find(p => p.id === winnerId);
-      const winnerName = winnerPlayer ? getPlayerUsername(winnerPlayer) : 'Unknown';
-      const isWinnerMe = winnerPlayer?.user_id === currentUserId;
-
-      // Show winner overlay with confetti
-      setWinnerOverlay({ winnerName, scores: scoreDetails, isWinnerMe });
-
-      // Chip transfer: each loser pays ante to winner
-      const losers = activePlayers.filter(p => p.id !== winnerId);
-      const winAmount = losers.length * anteAmount;
-
       if (winnerPlayer) {
-        // Small delay so DOM has rendered chip positions before animation starts
-        setTimeout(() => {
-          setChipTransferWinnerPos(winnerPlayer.position);
-          setChipTransferLoserPositions(losers.map(p => p.position));
-          setChipTransferLoserIds(losers.map(p => p.id));
-          setChipTransferTriggerId(`yahtzee-win-${Date.now()}`);
-        }, 300);
+        const winnerName = getPlayerUsername(winnerPlayer);
+        const isWinnerMe = winnerPlayer.user_id === currentUserId;
+        const losers = activePlayers.filter(p => p.id !== winnerId);
+
+        setWinnerOverlay({ winnerName, scores: scoreDetails, isWinnerMe });
+        setChipTransferWinnerPos(winnerPlayer.position);
+        setChipTransferLoserPositions(losers.map(p => p.position));
+        setChipTransferLoserIds(losers.map(p => p.id));
+        // Stable trigger id keyed off currentRoundId — prevents double-fire if
+        // viewState refs change while the effect is still latched.
+        setChipTransferTriggerId(`yahtzee-win-${currentRoundId}`);
       }
-
-      // Award winner and deduct from losers
-      console.log('[YAHTZEE] Awarding chips:', { winnerId, winAmount, loserCount: losers.length });
-      await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: winAmount });
-      if (losers.length > 0) {
-        await supabase.rpc('decrement_player_chips', {
-          player_ids: losers.map(p => p.id),
-          amount: anteAmount,
-        });
-      }
-      const chipChanges: Record<string, number> = { [winnerId]: winAmount };
-      losers.forEach(l => { chipChanges[l.id] = -anteAmount; });
-      // Fire-and-forget result recording
-      recordGameResult(gameId, yahtzeeState?.currentRound || 1, winnerId,
-        `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', dealerGameId);
-
-      // Snapshot chips after payout for accurate session results
-      snapshotPlayerChips(gameId, yahtzeeState?.currentRound || 1).catch(err =>
-        console.error('[YAHTZEE] Failed to snapshot chips:', err));
-
-      // Delay endYahtzeeRound so winner overlay + chip animation play fully before
-      // Game.tsx's game_over handler fires and potentially unmounts YahtzeeGameTable
-      console.log('[YAHTZEE] Waiting 2.5s before ending round...');
-      await new Promise(r => setTimeout(r, 2500));
-      console.log('[YAHTZEE] Calling endYahtzeeRound now');
-      await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
-      console.log('[YAHTZEE] endYahtzeeRound completed, Game.tsx should handle transition');
     }
-  };
+
+    // ── Authoritative writes (single writer) ──
+    const controllerUserId = authoritativeYahtzeeState?.botControllerUserId;
+    const isAuthoritativeWriter =
+      !controllerUserId || controllerUserId === currentUserId;
+    if (!isAuthoritativeWriter) {
+      console.log('[YAHTZEE] completion effect — not authoritative writer, presentation only', {
+        controllerUserId,
+        currentUserId,
+      });
+      return;
+    }
+
+    (async () => {
+      try {
+        if (winners.length > 1) {
+          console.log('[YAHTZEE] Tie detected, ending round as tie');
+          await endYahtzeeRound(gameId, null, `Tie ${scoreSummary}`, true);
+          return;
+        }
+        const winnerId = winners[0].pid;
+        const winnerPlayer = players.find(p => p.id === winnerId);
+        if (!winnerPlayer) return;
+        const winnerName = getPlayerUsername(winnerPlayer);
+        const losers = activePlayers.filter(p => p.id !== winnerId);
+        const winAmount = losers.length * anteAmount;
+
+        console.log('[YAHTZEE] Awarding chips (writer):', { winnerId, winAmount, loserCount: losers.length });
+        await supabase.rpc('increment_player_chips', { p_player_id: winnerId, p_amount: winAmount });
+        if (losers.length > 0) {
+          await supabase.rpc('decrement_player_chips', {
+            player_ids: losers.map(p => p.id),
+            amount: anteAmount,
+          });
+        }
+        const chipChanges: Record<string, number> = { [winnerId]: winAmount };
+        losers.forEach(l => { chipChanges[l.id] = -anteAmount; });
+        recordGameResult(gameId, viewState.currentRound || 1, winnerId,
+          `${winnerName} wins`, `Score: ${scoreSummary}`, winAmount, chipChanges, false, 'yahtzee', dealerGameId);
+        snapshotPlayerChips(gameId, viewState.currentRound || 1).catch(err =>
+          console.error('[YAHTZEE] Failed to snapshot chips:', err));
+
+        // Hold long enough for winner overlay + chip animation to complete before
+        // Game.tsx's game_over handler can swap surfaces.
+        await new Promise(r => setTimeout(r, 2500));
+        await endYahtzeeRound(gameId, winnerId, `${winnerName} wins ${scoreSummary}!`);
+        console.log('[YAHTZEE] endYahtzeeRound completed');
+      } catch (e) {
+        console.error('[YAHTZEE] completion-effect writer error:', e);
+      }
+    })();
+  }, [viewState?.gamePhase, currentRoundId]);
 
   /* ---- Bot logic ---- */
   // Drive bot control ENTIRELY from authoritative state — never presentation/viewState.
@@ -1424,7 +1460,9 @@ export function YahtzeeGameTable({
         });
         yahtzeeSync.applyOptimistic(state);
         await updateYahtzeeState(currentRoundId, state);
-        if (state.gamePhase === 'complete') await handleGameComplete(state);
+        // P9.3b: completion is driven by the authoritative effect — no direct
+        // handleGameComplete call here. Effect fires on every client when
+        // viewState.gamePhase transitions to 'complete'.
       } catch (e) {
         console.error('[YAHTZEE] Bot error:', {
           error: e,
@@ -1814,46 +1852,57 @@ export function YahtzeeGameTable({
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
 
-        {/* Oval felt background with bridge image */}
-        <div
-          className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
-            boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-          }}
-        >
-          <img
-            src={peoriaBridgeMobile}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-            style={{ objectPosition: 'center 38%', opacity: 0.28 }}
+        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated). */}
+        {CANONICAL_SHELL_VISUAL_ENABLED ? (
+          <CanonicalFeltSurface
+            gameKind="yahtzee"
+            anteAmount={anteAmount}
+            isWaitingPhase={false}
           />
-        </div>
-
-        {/* Game name + player scores on felt */}
-        <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
-          <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
-            ${anteAmount} YAHTZEE
-          </span>
-          {gamePhase === 'playing' && (
-            <div className="flex gap-4 mt-0.5">
-              {activePlayers.map(p => {
-                const ps = viewState?.playerStates?.[p.id];
-                const total = ps ? getTotalScore(ps.scorecard) : 0;
-                const isTurn = p.id === currentTurnPlayerId;
-                return (
-                  <span key={p.id} className={cn(
-                    "text-base font-extrabold tabular-nums",
-                    isTurn ? "text-poker-gold" : "text-white/60"
-                  )}>
-                    {getPlayerUsername(p)}: {total}
-                  </span>
-                );
-              })}
+        ) : (
+          <>
+            {/* Legacy felt path (flag-off rollback). */}
+            <div
+              className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
+                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
+              }}
+            >
+              <img
+                src={peoriaBridgeMobile}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 pointer-events-none w-full h-full object-cover"
+                style={{ objectPosition: 'center 38%', opacity: 0.28 }}
+              />
             </div>
-          )}
-        </div>
+            <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
+              <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
+                ${anteAmount} YAHTZEE
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Live per-player score line — sits just under canonical (or legacy) plate. */}
+        {gamePhase === 'playing' && (
+          <div className="absolute top-[34px] left-1/2 transform -translate-x-1/2 z-[120] flex gap-4 leading-tight">
+            {activePlayers.map(p => {
+              const ps = viewState?.playerStates?.[p.id];
+              const total = ps ? getTotalScore(ps.scorecard) : 0;
+              const isTurn = p.id === currentTurnPlayerId;
+              return (
+                <span key={p.id} className={cn(
+                  "text-base font-extrabold tabular-nums",
+                  isTurn ? "text-poker-gold" : "text-white/60"
+                )}>
+                  {getPlayerUsername(p)}: {total}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
         {gamePhase === 'playing' && currentPlayer && (() => {
