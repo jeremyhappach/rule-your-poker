@@ -15,7 +15,7 @@ import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
-import { isPokerVariantFamily } from "@/lib/canonicalShell/shellRouting";
+import { isPokerVariantFamily, isCanonicalShellFamily } from "@/lib/canonicalShell/shellRouting";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
@@ -7954,10 +7954,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // unconditionally in stable hook order BEFORE any early returns to
   // satisfy rules-of-hooks. The `enabled` flag makes it a runtime
   // no-op when the game isn't loaded or isn't a poker-variant family.
+  // Phase 6: passive PlayfieldSlot identity tracker. P9.4 (re-scoped):
+  // widen from poker-variant-only to the canonical-shell family so
+  // gin-rummy participates in the shell ownership boundary instead of
+  // patching seat/lifecycle locally. `isPokerVariantFamily` is untouched
+  // because bot/scoring code still depends on it.
   const phase6Enabled =
     !loading &&
     !!game &&
-    isPokerVariantFamily(game?.game_type) &&
+    isCanonicalShellFamily(game?.game_type) &&
     import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
   // Phase 7: when the slot controller is on, it owns identity telemetry.
   // Disable this tracker to prevent duplicate slot-identity-changed events.
@@ -8009,8 +8014,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // subtree (and the PersistentTableShell itself), violating INV-shell-1
   // and breaking lobby interactions. Inline the conditional instead.
 
+  // P9.4 (re-scoped): for canonical-shell families, page chrome belongs
+  // to the shell — use neutral semantic chrome instead of the legacy
+  // slate gradient that leaked gameplay-flavored color into the page
+  // wrapper. Non-canonical families keep their prior background.
   const innerTree = (
-    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900`}>
+    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${enableOuterShell ? 'bg-shell-neutral' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
         {!isMobile && (
@@ -8602,7 +8611,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // ('waiting' lobby, pre-seat observer flows): those lifecycle
           // surfaces remain siblings outside the slot per the approved
           // Phase 7 ownership contract.
-          (isPokerVariantFamily(game.game_type) && (
+          (isCanonicalShellFamily(game.game_type) && (
             game.status === 'game_selection' ||
             game.status === 'configuring' ||
             game.status === 'game_over'
@@ -8635,7 +8644,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 game.status === 'configuring' ||
                 game.status === 'ante_decision';
               if (
-                isPokerVariantFamily(game.game_type) &&
+                isCanonicalShellFamily(game.game_type) &&
                 rolloverStatus &&
                 stickyDealerIdentityRef.current
               ) {
@@ -9184,6 +9193,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     </div>
   );
 
+  // P9.4 (re-scoped, Option A): shell owns SeatAnchorLayer for the
+  // canonical-shell family. Feed it the seated-player roster so every
+  // canonical-shell game (poker variants AND gin-rummy) consumes the
+  // same resolver via useSeatAnchors(), with no per-game projection
+  // recomputation. Roster filter is game-agnostic (seated, not
+  // sitting-out, not waiting, not observer/left) — the resolver
+  // canonicalizes 2P face-to-face / observer-upper-left semantics.
+  const shellEligibleSeats = enableOuterShell
+    ? players
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
+        .map(p => ({ position: p.position, occupied: true, hidden: false }))
+    : [];
+  const shellViewerPosition = currentPlayer?.position ?? null;
+  const shellProjectionMode: 'active-canonical' | 'observer-absolute' = currentPlayer
+    ? 'active-canonical'
+    : 'observer-absolute';
+
   return (
     <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync
@@ -9195,6 +9221,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <PersistentTableShell
           gameId={gameId ?? undefined}
           gameType={game.game_type}
+          projectionMode={shellProjectionMode}
+          viewerPosition={shellViewerPosition}
+          seats={shellEligibleSeats}
         >
           {innerTree}
         </PersistentTableShell>

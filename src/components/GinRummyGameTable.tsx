@@ -60,7 +60,8 @@ import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
 import peoriaBridgeMobile from '@/assets/peoria-bridge-mobile.jpg';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
-import { resolveSeatAnchors, type CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
+import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
+import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
 
 // P9.4: shared visual flag with MobileGameTable / Yahtzee. Default ON;
 // flip VITE_CANONICAL_SHELL_VISUAL='off' to revert Gin Rummy felt/plate to legacy.
@@ -413,21 +414,24 @@ export const GinRummyGameTable = ({
   const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   const isObserver = !currentPlayerId;
+  // P9.4 (re-scoped, Option A): consume shell-owned SeatAnchorLayer.
+  // Gin no longer recomputes seat projection locally. The shell mounts
+  // SeatAnchorLayer at the PersistentTableShell boundary using the same
+  // resolver, fed by Game.tsx — one source of truth for every
+  // canonical-shell game. If the layer is somehow absent (test harness,
+  // flag-off), the map degrades to all-nulls rather than reintroducing
+  // a per-game projection clone.
+  const shellAnchors = useSeatAnchorsOptional();
   const playerSlotById = useMemo(() => {
-    const anchors = resolveSeatAnchors({
-      projectionMode: isObserver ? 'observer-absolute' : 'active-canonical',
-      viewerPosition: currentPlayer?.position ?? null,
-      gameType: 'gin-rummy',
-      gameId,
-      seats: activeSeatPlayers.map(player => ({
-        position: player.position,
-        occupied: true,
-        hidden: false,
-      })),
-    });
-    const slotByPosition = new Map(anchors.map(anchor => [anchor.position, anchor.slot]));
-    return new Map(activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]));
-  }, [activeSeatPlayers, currentPlayer?.position, gameId, isObserver]);
+    const slotByPosition = shellAnchors
+      ? new Map<number, CanonicalSlot | null>(
+          shellAnchors.anchors.map(a => [a.position, a.slot]),
+        )
+      : new Map<number, CanonicalSlot | null>();
+    return new Map<string, CanonicalSlot | null>(
+      activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]),
+    );
+  }, [activeSeatPlayers, shellAnchors]);
 
   // Derive opponent
   // Derive opponent from viewState (render-stable)
@@ -1537,82 +1541,24 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
+  // P9.4 (re-scoped): pre-viewState scaffold deleted. Gin renders
+  // nothing until viewState arrives — shell's NeutralInterstitial owns
+  // the visual gap. The previous local felt + floating labels +
+  // "Awaiting ante / Preparing hand" copy lived here; per the approved
+  // guardrail, no new Gin-local lifecycle messaging is reintroduced
+  // while the shell announcement wave is deferred.
   if (!viewState) {
-    // Pre-render / hydration branch only. Observers without a seated
-    // currentPlayer must still render the live table once viewState exists;
-    // gating this branch on currentPlayer caused observer cold-starts to
-    // stay permanently on the waiting shell.
-    const seatedPlayer = currentPlayer;
-    const opponentPlayer = seatedPlayer
-      ? activeSeatPlayers.find(p => p.id !== seatedPlayer.id)
-      : activeSeatPlayers[0];
-    return (
-      <div className="h-full flex flex-col bg-shell-neutral">
-        <div
-          ref={tableContainerRef}
-          className="relative flex items-start justify-center pt-1 bg-shell-neutral"
-          style={{
-            height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
-            minHeight: '300px',
-          }}
-        >
-          {/* Opponent chip badge — render when known */}
-          {opponentPlayer && (() => {
-            const placement = getCanonicalSlotPlacement(playerSlotById.get(opponentPlayer.id));
-            return (
-            <div className={cn("absolute z-30 flex items-center gap-2", placement.className)}>
-              <span className="text-xs text-amber-200/90 font-medium drop-shadow">
-                {getDisplayName(players, opponentPlayer, opponentPlayer.profiles?.username || 'Opponent')}
-              </span>
-              <span className="text-xs text-amber-100/80 drop-shadow">
-                ${formatChipValue(opponentPlayer.chips ?? 0)}
-              </span>
-            </div>
-            );
-          })()}
-
-          {CANONICAL_SHELL_VISUAL_ENABLED ? (
-            <CanonicalFeltSurface
-              gameKind="gin-rummy"
-              anteAmount={anteAmount}
-              pointsToWin={undefined}
-              isWaitingPhase
-            />
-          ) : (
-            <div
-              className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-              }}
-            />
-          )}
-
-          {/* Seated-self chip badge — observers hide this so we don't fake
-              a "You $0" attribution as the user flagged. */}
-          {seatedPlayer && (
-            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
-              <span className="text-xs text-amber-200/90 font-medium drop-shadow">
-                {seatedPlayer.profiles?.username || 'You'}
-              </span>
-              <span className="text-xs text-amber-100/80 drop-shadow">
-                ${formatChipValue(seatedPlayer.chips ?? 0)}
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col bg-shell-neutral">
+    <div className="h-full flex flex-col">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="flex-1 relative overflow-hidden min-h-0 bg-shell-neutral"
+        className="flex-1 relative overflow-hidden min-h-0"
         style={{
           maxHeight: '55vh',
         }}
@@ -1808,7 +1754,7 @@ export const GinRummyGameTable = ({
       </div>
 
       {/* Bottom Section - Tabs and Content */}
-      <div className="flex-1 flex flex-col bg-shell-neutral min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Dealer Announcements Area */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
