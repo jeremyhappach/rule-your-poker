@@ -77,22 +77,64 @@ export function isYahtzeeStraightDebugEnabled(): boolean {
 }
 
 /**
- * DEV-ONLY Yahtzee near-end seed scenarios — accelerates end-of-game regression testing.
+ * Debug testing unlock — tester-friendly activation for hosted environments.
+ *
+ * Activation (one-time per device, normal browser navigation only):
+ *   - Enable:  append ?enable_debug_testing=1  to any app URL
+ *   - Disable: append ?enable_debug_testing=0  to any app URL
+ *
+ * Once enabled, persists in localStorage (`ptp_debug_testing_unlock = "1"`)
+ * across navigation and reloads until explicitly disabled. Normal users will
+ * never accidentally set this — it requires the explicit URL param.
+ *
+ * Gating mechanism for all opt-in tester harnesses (e.g. Yahtzee seed scenarios).
+ */
+const DEBUG_UNLOCK_KEY = 'ptp_debug_testing_unlock';
+
+function syncDebugUnlockFromUrl(): void {
+  try {
+    const v = new URLSearchParams(window.location.search).get('enable_debug_testing');
+    if (v === null) return;
+    if (v === '0' || v.toLowerCase() === 'false') {
+      window.localStorage.removeItem(DEBUG_UNLOCK_KEY);
+      console.warn('[DEBUG_TESTING] Disabled — tester harnesses are now off.');
+    } else {
+      window.localStorage.setItem(DEBUG_UNLOCK_KEY, '1');
+      console.warn('[DEBUG_TESTING] Enabled — tester harnesses (e.g. ?debug_yahtzee_seed=...) are now active on this device.');
+    }
+  } catch {}
+}
+
+// Run once at module load so the URL param takes effect on first navigation.
+if (typeof window !== 'undefined') {
+  syncDebugUnlockFromUrl();
+}
+
+export function isDebugTestingUnlocked(): boolean {
+  try {
+    return window.localStorage.getItem(DEBUG_UNLOCK_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Yahtzee near-end seed scenarios — accelerates end-of-game regression testing.
  *
  * Each scenario pre-fills 12 of 13 categories per player (leaving `chance` open), so
  * one real turn per player triggers the genuine end-of-game lifecycle: real roll flow,
  * real scoring, real winner-overlay, real chip transfer, real settlement.
  *
- * Enable via:
- *  - URL: ?debug_yahtzee_seed=clear_winner | tie | close_game
- *  - localStorage: ptp_debug_yahtzee_seed = "clear_winner" | "tie" | "close_game"
- *
- * Gated to import.meta.env.DEV — no-op in production builds.
+ * Requires the debug-testing unlock (see `isDebugTestingUnlocked`). Activate once via
+ *   ?enable_debug_testing=1
+ * then use:
+ *   ?debug_yahtzee_seed=clear_winner | tie | close_game
+ * or persist via localStorage `ptp_debug_yahtzee_seed`.
  */
 export type YahtzeeSeedScenario = 'clear_winner' | 'tie' | 'close_game';
 
 export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
-  if (!import.meta.env.DEV) return null;
+  if (!isDebugTestingUnlocked()) return null;
   const valid = (v: string | null): YahtzeeSeedScenario | null =>
     v === 'clear_winner' || v === 'tie' || v === 'close_game' ? v : null;
   try {
@@ -105,4 +147,5 @@ export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
   } catch {}
   return null;
 }
+
 
