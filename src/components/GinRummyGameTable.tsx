@@ -1754,7 +1754,7 @@ export const GinRummyGameTable = ({
       </div>
 
       {/* Bottom Section - Tabs and Content */}
-      <div className="flex-1 flex flex-col bg-shell-neutral min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Dealer Announcements Area */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
