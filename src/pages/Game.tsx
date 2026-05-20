@@ -482,7 +482,7 @@ const Game = () => {
   const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [optimisticGinBootstrapState, setOptimisticGinBootstrapState] = useState<GinRummyState | null>(null);
+  const [optimisticGinBootstrap, setOptimisticGinBootstrap] = useState<{ roundId: string; state: GinRummyState } | null>(null);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   
