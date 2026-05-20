@@ -1617,6 +1617,7 @@ export const GinRummyGameTable = ({
               currentPlayerId={currentPlayerId}
               opponentId={opponentId}
               currentTurnSlot={currentTurnSlot}
+              currentTurnPoint={currentTurnPoint}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               onDrawStock={handleDrawStock}
@@ -1632,6 +1633,7 @@ export const GinRummyGameTable = ({
               card={opponentDrawCard}
               cardBackColors={cardBackColors}
               targetSlot={opponentDrawTargetSlot}
+              targetPoint={opponentDrawTargetSlot !== null ? getCanonicalSlotGeometry(opponentDrawTargetSlot).point : null}
             />
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
