@@ -32,7 +32,9 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
-import { ShellPreHandSurface, type PreHandIntent } from './ShellPreHandSurface';
+// P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
+// own their single authoritative felt geometry; the shell no longer
+// renders a second pre-hand felt floor underneath.
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
 export interface PersistentTableShellProps {
@@ -41,17 +43,10 @@ export interface PersistentTableShellProps {
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   seats?: SeatAnchorInput[];
-  /**
-   * P9.5 — typed lifecycle intent for the shell-owned pre-hand surface.
-   * When provided, the shell renders a persistent felt floor BELOW the
-   * gameplay slot so the viewport is never blank pre-viewState.
-   *
-   * Typed intent (not render-prop) by design: shell owns lifecycle UI;
-   * Game.tsx hands the shell *what to show*, not *how to show it*.
-   */
-  preHandIntent?: PreHandIntent | null;
   children: ReactNode;
 }
+
+// (preHandIntent removed in P9.6 — gameplay surfaces own felt geometry.)
 
 export function PersistentTableShell({
   gameId,
@@ -59,7 +54,6 @@ export function PersistentTableShell({
   projectionMode,
   viewerPosition = null,
   seats,
-  preHandIntent = null,
   children,
 }: PersistentTableShellProps) {
 
@@ -95,11 +89,9 @@ export function PersistentTableShell({
       className="min-h-screen bg-background"
       style={{ position: 'relative' }}
     >
-      {/* P9.5: shell-owned pre-hand felt floor. Persists while a
-          gameplay slot is mounted so the viewport is never blank
-          between mount and first authoritative viewState. Sits BELOW
-          gameplay content in z-order. */}
-      {preHandIntent ? <ShellPreHandSurface intent={preHandIntent} /> : null}
+      {/* P9.6: shell-owned pre-hand felt removed. Gameplay surfaces
+          (e.g. GinRummyGameTable) render the single authoritative
+          CanonicalFeltSurface inside their own table region. */}
       <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
 
       {/* Shell-owned pot anchor — zero size, centered in shell-root.
