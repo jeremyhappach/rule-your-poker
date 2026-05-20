@@ -8043,7 +8043,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // slate gradient that leaked gameplay-flavored color into the page
   // wrapper. Non-canonical families keep their prior background.
   const innerTree = (
-    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${enableOuterShell ? 'bg-shell-neutral' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
+    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${enableOuterShell ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
         {!isMobile && (
