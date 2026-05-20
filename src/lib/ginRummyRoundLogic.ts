@@ -23,7 +23,7 @@ import { logGinHandStart } from './ginRummySyncDiagnostics';
  */
 export async function startGinRummyRound(
   gameId: string
-): Promise<{ success: boolean; roundId?: string; handNumber?: number; state?: GinRummyState; error?: string }> {
+): Promise<{ success: boolean; roundId?: string; handNumber?: number; error?: string }> {
   console.log('[GIN-RUMMY] Starting gin rummy round', { gameId });
 
   try {
