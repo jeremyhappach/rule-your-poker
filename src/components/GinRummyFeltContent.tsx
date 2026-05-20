@@ -65,7 +65,10 @@ const GinCanonicalTurnSpotlight = ({
       const x = Number.parseFloat(currentTurnPoint.x);
       const y = Number.parseFloat(currentTurnPoint.y);
       if (Number.isFinite(x) && Number.isFinite(y)) {
-        setRotation((Math.atan2(y - 50, x - 50) * 180) / Math.PI);
+        const dx = x - 50;
+        const dy = y - 50;
+        // CSS conic-gradient uses 0deg at the top, clockwise positive.
+        setRotation((Math.atan2(dx, -dy) * 180) / Math.PI);
       } else if (currentTurnSlot !== null && currentTurnSlot !== undefined) {
         setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot]);
       }
