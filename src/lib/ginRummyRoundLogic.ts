@@ -23,7 +23,7 @@ import { logGinHandStart } from './ginRummySyncDiagnostics';
  */
 export async function startGinRummyRound(
   gameId: string
-): Promise<{ success: boolean; roundId?: string; handNumber?: number; error?: string }> {
+): Promise<{ success: boolean; roundId?: string; handNumber?: number; state?: GinRummyState; error?: string }> {
   console.log('[GIN-RUMMY] Starting gin rummy round', { gameId });
 
   try {
@@ -110,7 +110,7 @@ export async function startGinRummyRound(
       // Atomic guard: unique constraint violation means another client already created it
       if (roundError?.code === '23505') {
         console.log('[GIN-RUMMY] Round already exists (atomic guard)');
-        return { success: true };
+      return { success: true };
       }
       throw new Error(`Failed to create round: ${roundError?.message}`);
     }
@@ -152,7 +152,7 @@ export async function startGinRummyRound(
     }
 
     console.log('[GIN-RUMMY] Round started', { roundId: round.id, handNumber: insertedHandNumber });
-    return { success: true, roundId: round.id, handNumber: insertedHandNumber };
+    return { success: true, roundId: round.id, handNumber: insertedHandNumber, state: ginState };
 
   } catch (error: any) {
     console.error('[GIN-RUMMY] Error starting round:', error);

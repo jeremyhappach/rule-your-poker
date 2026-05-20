@@ -41,6 +41,7 @@ import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
+import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
@@ -200,6 +201,7 @@ interface Round {
   current_turn_position?: number | null;
   created_at?: string;
   horses_state?: any; // Horses dice game state
+  gin_rummy_state?: any; // Gin Rummy JSONB state
 }
 
 function toDealerSelectionCardIds(cards: DealerSelectionCard[] | null | undefined): string[] {
@@ -480,6 +482,7 @@ const Game = () => {
   const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [optimisticGinBootstrap, setOptimisticGinBootstrap] = useState<{ roundId: string; state: GinRummyState } | null>(null);
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   
@@ -7511,6 +7514,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             const ginStartResult = await startGinRummyRound(gameId!);
             if (ginStartResult.success && ginStartResult.roundId) {
+              setOptimisticGinBootstrap(
+                ginStartResult.state
+                  ? { roundId: ginStartResult.roundId, state: ginStartResult.state }
+                  : null,
+              );
               setGame(prev => prev ? {
                 ...prev,
                 status: 'in_progress',
@@ -7530,6 +7538,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     pot: 0,
                     status: 'betting',
                     decision_deadline: null,
+                    gin_rummy_state: ginStartResult.state ?? null,
                   },
                 ],
               } : prev);
@@ -7543,9 +7552,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               success: ginStartResult.success,
               error: ginStartResult.error ?? null,
             });
-            // Immediately fetch so currentRound is populated before GinRummyGameTable mounts,
-            // eliminating the "Loading Gin Rummy" delay from polling gaps.
-            await fetchGameData();
+            // Background reconcile only — the optimistic inserted round/state above
+            // must be allowed to paint immediately for human-vs-bot cold starts.
+            void fetchGameData();
           } else {
             await supabase
               .from('games')
@@ -8728,6 +8737,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
+            neutralGameKind={game.game_type === 'gin-rummy' ? 'gin-rummy' : null}
+            neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
               // Phase 7 readiness gate (narrow scope): only answer
               // "is the intended gameplay surface ready to paint a
@@ -8879,6 +8890,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
                   isHost={isCreator}
                   onGameComplete={handleGameOverComplete}
+                  bootstrapState={
+                    ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined)
+                    ?? (optimisticGinBootstrap?.roundId === currentRound?.id ? optimisticGinBootstrap.state : null)
+                  }
                 />
                 {/* Dealer selection overlay on the gin table */}
                 {isGinRummyDealerSelection && (

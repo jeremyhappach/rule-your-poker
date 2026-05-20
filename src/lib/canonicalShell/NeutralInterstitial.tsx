@@ -9,14 +9,17 @@
 
 import { useEffect } from 'react';
 import { recordShellEvent } from './diagnostics';
+import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFeltSurface';
 
 export interface NeutralInterstitialProps {
   gameId?: string | null;
   /** Optional label visible only in dev for diagnostics. */
   reason?: string;
+  gameKind?: CanonicalFeltGameKind | null;
+  anteAmount?: number | string;
 }
 
-export function NeutralInterstitial({ gameId, reason }: NeutralInterstitialProps) {
+export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
   useEffect(() => {
     recordShellEvent('slot-entered-neutral', {
       gameId: gameId ?? null,
@@ -36,14 +39,17 @@ export function NeutralInterstitial({ gameId, reason }: NeutralInterstitialProps
     <div
       data-canonical-shell-neutral=""
       aria-hidden="true"
-      // Intrinsic size: the slot region must not collapse to 0px during
-      // the dwell, otherwise overlays/backdrops show through as a
-      // full-screen black/blank flash. The neutral surface fills its
-      // slot container and renders as an idle felt table — NOT a page
-      // background flash. Keep this neutral chrome, not felt: the actual
-      // gameplay surface owns table felt so transition dwell cannot paint
-      // a full-screen green field above the slot.
-      className="w-full h-full min-h-0 flex-1 bg-shell-neutral"
-    />
+      className="w-full h-full min-h-0 flex flex-col bg-shell-neutral"
+    >
+      {gameKind ? (
+        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+          <CanonicalFeltSurface
+            gameKind={gameKind}
+            anteAmount={anteAmount}
+            isWaitingPhase={false}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }

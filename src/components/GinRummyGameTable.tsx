@@ -61,6 +61,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
+import { getCanonicalSlotGeometry } from '@/lib/canonicalShell/slotGeometry';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -104,6 +105,7 @@ interface GinRummyGameTableProps {
   pot: number;
   isHost: boolean;
   onGameComplete: () => void;
+  bootstrapState?: GinRummyState | null;
 }
 
 export const GinRummyGameTable = ({
@@ -118,6 +120,7 @@ export const GinRummyGameTable = ({
   pot,
   isHost,
   onGameComplete,
+  bootstrapState = null,
 }: GinRummyGameTableProps) => {
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
@@ -208,7 +211,7 @@ export const GinRummyGameTable = ({
   }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId, gameId]);
 
   // ── Shared anti-regression sync framework ──────────────────────
-  const ginSync = useGameStateSync<GinRummyState | null>(null, {
+  const ginSync = useGameStateSync<GinRummyState | null>(bootstrapState ?? null, {
     getProgress: (s) => s ? getGinRummyProgress(s) : [0, 0, 0],
     optimisticTimeoutMs: 3000,
     gameType: 'gin-rummy',
@@ -221,6 +224,12 @@ export const GinRummyGameTable = ({
 
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
+
+  useEffect(() => {
+    if (!bootstrapState || !roundId) return;
+    const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
+    if (result.accepted) setGinState(bootstrapState);
+  }, [bootstrapState, roundId]);
 
   // ── Writer-audit gate ──
   // Single framework-owned predicate covering frozen / contract / identity-stale.
@@ -441,28 +450,6 @@ export const GinRummyGameTable = ({
   const currentTurnSlot = viewState?.currentTurnPlayerId
     ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
     : null;
-  const getCanonicalSlotGeometry = (slot: CanonicalSlot | null | undefined) => {
-    switch (slot) {
-      case -2:
-        return { className: 'top-14 left-1/2 -translate-x-1/2 items-center', point: { x: '50%', y: '18%' }, alignEnd: false };
-      case -1:
-        return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center', point: { x: '50%', y: '82%' }, alignEnd: false };
-      case 0:
-        return { className: 'bottom-14 left-6 items-start', point: { x: '14%', y: '82%' }, alignEnd: false };
-      case 1:
-        return { className: 'top-1/2 left-6 -translate-y-1/2 items-start', point: { x: '10%', y: '50%' }, alignEnd: false };
-      case 2:
-        return { className: 'top-14 left-6 items-start', point: { x: '14%', y: '18%' }, alignEnd: false };
-      case 3:
-        return { className: 'top-14 right-6 items-end', point: { x: '86%', y: '18%' }, alignEnd: true };
-      case 4:
-        return { className: 'top-1/2 right-6 -translate-y-1/2 items-end', point: { x: '90%', y: '50%' }, alignEnd: true };
-      case 5:
-        return { className: 'bottom-14 right-6 items-end', point: { x: '86%', y: '82%' }, alignEnd: true };
-      default:
-        return { className: 'top-14 left-6 items-start', point: { x: '14%', y: '18%' }, alignEnd: false };
-    }
-  };
   const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => getCanonicalSlotGeometry(slot);
   const currentTurnPoint = currentTurnSlot !== null && currentTurnSlot !== undefined
     ? getCanonicalSlotGeometry(currentTurnSlot).point
