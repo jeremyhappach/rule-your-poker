@@ -16,7 +16,6 @@ interface GinRummyOpponentDrawAnimationProps {
   card: GinRummyCard | null;
   cardBackColors: { color: string; darkColor: string };
   targetSlot?: CanonicalSlot | null;
-  targetPoint?: { x: string; y: string } | null;
 }
 
 export const GinRummyOpponentDrawAnimation = ({
@@ -25,7 +24,6 @@ export const GinRummyOpponentDrawAnimation = ({
   card,
   cardBackColors,
   targetSlot,
-  targetPoint,
 }: GinRummyOpponentDrawAnimationProps) => {
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(!!triggerId);
@@ -35,14 +33,12 @@ export const GinRummyOpponentDrawAnimation = ({
     setVisible(true);
     setAnimating(false);
 
-    // Start animation on next frame
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setAnimating(true);
       });
     });
 
-    // Hide after animation completes
     const timer = setTimeout(() => {
       setVisible(false);
     }, 700);
@@ -52,14 +48,12 @@ export const GinRummyOpponentDrawAnimation = ({
 
   if (!visible) return null;
 
-  // Start position: stock is left, discard is right (matching felt layout)
-  // These are relative to the circular felt container
-  // Stock: roughly left-center, Discard: roughly right-center
+  // Start position relative to the circular felt container.
   const startX = drawSource === 'stock' ? 'calc(50% - 44px)' : 'calc(50% + 12px)';
   const startY = '46%';
 
-  // End position: canonical seat anchor destination. Observers use
-  // observer-absolute slots; seated players use active-canonical slots.
+  // End position keyed off the canonical slot identity supplied by the
+  // shell's SeatAnchorLayer. No parallel coordinate registry.
   const slotEndpoints: Record<CanonicalSlot, { x: string; y: string }> = {
     [-2]: { x: '50%', y: '18%' },
     [-1]: { x: '50%', y: '82%' },
@@ -70,11 +64,8 @@ export const GinRummyOpponentDrawAnimation = ({
     4: { x: '84%', y: '50%' },
     5: { x: '78%', y: '78%' },
   };
-  const endpoint = targetPoint ?? (
-    targetSlot !== null && targetSlot !== undefined
-      ? slotEndpoints[targetSlot]
-      : null
-  );
+  if (targetSlot === null || targetSlot === undefined) return null;
+  const endpoint = slotEndpoints[targetSlot];
   if (!endpoint) return null;
   const endX = endpoint.x;
   const endY = endpoint.y;
