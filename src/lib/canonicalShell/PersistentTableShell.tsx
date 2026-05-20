@@ -47,9 +47,6 @@ export interface PersistentTableShellProps {
 }
 
 // (preHandIntent removed in P9.6 — gameplay surfaces own felt geometry.)
-declare const __PERSISTENT_TABLE_SHELL_P96_MARKER__: never;
-  children: ReactNode;
-}
 
 export function PersistentTableShell({
   gameId,
@@ -57,7 +54,6 @@ export function PersistentTableShell({
   projectionMode,
   viewerPosition = null,
   seats,
-  preHandIntent = null,
   children,
 }: PersistentTableShellProps) {
 
