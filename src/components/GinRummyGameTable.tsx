@@ -1604,11 +1604,7 @@ export const GinRummyGameTable = ({
           maxHeight: '55vh',
         }}
       >
-            {/* P9.4: canonical shell owns felt + game-name plate (flag-gated). */}
-            {/* P9.6: single authoritative canonical felt surface. The
-                legacy flag-off branch was removed — Gin owns exactly
-                one table geometry, rendered by the canonical shell
-                component. */}
+            {/* P9.6: single authoritative canonical felt surface.
             <CanonicalFeltSurface
               gameKind="gin-rummy"
               anteAmount={anteAmount}
