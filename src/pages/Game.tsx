@@ -8333,7 +8333,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                {!isCanonicalShellFamily(game.game_type) && (
+                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     instanceLabel="status-keyed"
                     gameId={gameId}
                     players={players}
@@ -8376,6 +8377,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     dealerSetupMessage={!isDealer && dealerPlayer && !(dealerPlayer.is_bot && allowBotDealers) ? `${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Player')} is configuring the next game` : undefined}
                     isWaitingPhase={true}
                   />
+                )}
                 {(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
                     gameId={gameId!}
