@@ -43,9 +43,11 @@ describe('PersistentTableShell', () => {
     });
     const child = container.querySelector('[data-testid="child"]') as HTMLElement;
     expect(child).toBeTruthy();
-    const wrapper = child.parentElement!;
-    expect(wrapper.getAttribute('data-canonical-shell-root')).toBe('');
-    expect(wrapper.getAttribute('data-shell-game-type')).toBe('cribbage');
+    const wrapper = child.closest('[data-canonical-shell-root]') as HTMLElement | null;
+    expect(wrapper).toBeTruthy();
+    expect(wrapper!.getAttribute('data-canonical-shell-root')).toBe('');
+    expect(wrapper!.getAttribute('data-shell-game-type')).toBe('cribbage');
+
   });
 
   it('does not mount SeatAnchorLayer when seats are not provided', () => {
