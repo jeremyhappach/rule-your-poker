@@ -41,6 +41,7 @@ import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
+import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
@@ -200,6 +201,7 @@ interface Round {
   current_turn_position?: number | null;
   created_at?: string;
   horses_state?: any; // Horses dice game state
+  gin_rummy_state?: GinRummyState | null;
 }
 
 function toDealerSelectionCardIds(cards: DealerSelectionCard[] | null | undefined): string[] {
