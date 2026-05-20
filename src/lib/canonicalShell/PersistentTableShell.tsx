@@ -32,6 +32,7 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import { ShellPreHandSurface, type PreHandIntent } from './ShellPreHandSurface';
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
 export interface PersistentTableShellProps {
@@ -40,6 +41,15 @@ export interface PersistentTableShellProps {
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   seats?: SeatAnchorInput[];
+  /**
+   * P9.5 — typed lifecycle intent for the shell-owned pre-hand surface.
+   * When provided, the shell renders a persistent felt floor BELOW the
+   * gameplay slot so the viewport is never blank pre-viewState.
+   *
+   * Typed intent (not render-prop) by design: shell owns lifecycle UI;
+   * Game.tsx hands the shell *what to show*, not *how to show it*.
+   */
+  preHandIntent?: PreHandIntent | null;
   children: ReactNode;
 }
 
@@ -49,8 +59,10 @@ export function PersistentTableShell({
   projectionMode,
   viewerPosition = null,
   seats,
+  preHandIntent = null,
   children,
 }: PersistentTableShellProps) {
+
   const geometry = useGeometryTokensOptional();
   const shellRootRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
