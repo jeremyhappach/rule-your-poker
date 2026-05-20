@@ -16,6 +16,7 @@ interface GinRummyOpponentDrawAnimationProps {
   card: GinRummyCard | null;
   cardBackColors: { color: string; darkColor: string };
   targetSlot?: CanonicalSlot | null;
+  targetPoint?: { x: string; y: string } | null;
 }
 
 export const GinRummyOpponentDrawAnimation = ({
@@ -24,6 +25,7 @@ export const GinRummyOpponentDrawAnimation = ({
   card,
   cardBackColors,
   targetSlot,
+  targetPoint,
 }: GinRummyOpponentDrawAnimationProps) => {
   const [animating, setAnimating] = useState(false);
   const [visible, setVisible] = useState(!!triggerId);
@@ -68,9 +70,12 @@ export const GinRummyOpponentDrawAnimation = ({
     4: { x: '84%', y: '50%' },
     5: { x: '78%', y: '78%' },
   };
-  const endpoint = targetSlot !== null && targetSlot !== undefined
-    ? slotEndpoints[targetSlot]
-    : slotEndpoints[-2];
+  const endpoint = targetPoint ?? (
+    targetSlot !== null && targetSlot !== undefined
+      ? slotEndpoints[targetSlot]
+      : null
+  );
+  if (!endpoint) return null;
   const endX = endpoint.x;
   const endY = endpoint.y;
 

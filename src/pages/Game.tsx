@@ -7247,7 +7247,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // React state can be stale, causing both clients to attempt ante processing or use wrong game type
     const { data: freshGame, error: gameError } = await supabase
       .from('games')
-      .select('status, game_type, ante_amount, is_first_hand, pot')
+      .select('status, game_type, ante_amount, is_first_hand, pot, current_game_uuid, total_hands')
       .eq('id', gameId)
       .single();
     
@@ -7510,6 +7510,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               dealerGameId: game?.current_game_uuid ?? null,
             });
             const ginStartResult = await startGinRummyRound(gameId!);
+            if (ginStartResult.success && ginStartResult.roundId) {
+              setGame(prev => prev ? {
+                ...prev,
+                status: 'in_progress',
+                current_round: 1,
+                total_hands: ginStartResult.handNumber ?? prev.total_hands ?? 1,
+                pot: 0,
+                is_first_hand: (ginStartResult.handNumber ?? 1) === 1,
+                rounds: [
+                  ...((prev.rounds ?? []).filter(r => r.id !== ginStartResult.roundId)),
+                  {
+                    id: ginStartResult.roundId!,
+                    game_id: gameId!,
+                    dealer_game_id: freshGame.current_game_uuid ?? game?.current_game_uuid ?? null,
+                    round_number: 1,
+                    hand_number: ginStartResult.handNumber ?? 1,
+                    cards_dealt: 10,
+                    pot: 0,
+                    status: 'betting',
+                    decision_deadline: null,
+                  },
+                ],
+              } : prev);
+            }
             console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:complete', {
               t: Date.now(),
               gameId,

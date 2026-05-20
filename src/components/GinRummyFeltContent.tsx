@@ -14,6 +14,7 @@ interface GinRummyFeltContentProps {
   currentPlayerId: string | undefined;
   opponentId: string;
   currentTurnSlot?: CanonicalSlot | null;
+  currentTurnPoint?: { x: string; y: string } | null;
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
   onDrawStock?: () => void;
@@ -44,25 +45,40 @@ const SLOT_TO_SPOTLIGHT_ANGLE: Record<CanonicalSlot, number> = {
 
 const GinCanonicalTurnSpotlight = ({
   currentTurnSlot,
+  currentTurnPoint,
   isVisible,
 }: {
   currentTurnSlot: CanonicalSlot | null | undefined;
+  currentTurnPoint?: { x: string; y: string } | null;
   isVisible: boolean;
 }) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
-    if (!isVisible || currentTurnSlot === null || currentTurnSlot === undefined) {
+    if (!isVisible || (!currentTurnPoint && (currentTurnSlot === null || currentTurnSlot === undefined))) {
       setOpacity(0);
       return;
     }
 
-    setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot]);
+    if (currentTurnPoint) {
+      const x = Number.parseFloat(currentTurnPoint.x);
+      const y = Number.parseFloat(currentTurnPoint.y);
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        const dx = x - 50;
+        const dy = y - 50;
+        // CSS conic-gradient uses 0deg at the top, clockwise positive.
+        setRotation((Math.atan2(dx, -dy) * 180) / Math.PI);
+      } else if (currentTurnSlot !== null && currentTurnSlot !== undefined) {
+        setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot]);
+      }
+    } else if (currentTurnSlot !== null && currentTurnSlot !== undefined) {
+      setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot]);
+    }
     setOpacity(1);
-  }, [currentTurnSlot, isVisible]);
+  }, [currentTurnSlot, currentTurnPoint, isVisible]);
 
-  if (!isVisible || currentTurnSlot === null || currentTurnSlot === undefined) return null;
+  if (!isVisible || (!currentTurnPoint && (currentTurnSlot === null || currentTurnSlot === undefined))) return null;
 
   const beamHalfAngle = 30;
 
@@ -105,6 +121,7 @@ export const GinRummyFeltContent = ({
   currentPlayerId,
   opponentId,
   currentTurnSlot,
+  currentTurnPoint,
   getPlayerUsername,
   cardBackColors,
   onDrawStock,
@@ -128,6 +145,7 @@ export const GinRummyFeltContent = ({
       {/* Turn Spotlight */}
       <GinCanonicalTurnSpotlight
         currentTurnSlot={currentTurnSlot}
+        currentTurnPoint={currentTurnPoint}
         isVisible={ginState.phase === 'playing' || ginState.phase === 'first_draw'}
       />
 
