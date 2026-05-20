@@ -1296,6 +1296,12 @@ export const DealerGameSetup = ({
       dealerGameConfig.per_point_value = ginRummyPerPointValue;
       dealerGameConfig.gin_bonus = ginRummyGinBonus;
       dealerGameConfig.undercut_bonus = ginRummyUndercutBonus;
+      console.log('[GIN_RUNTIME_TIMELINE] game selection submit:start', {
+        t: Date.now(),
+        gameId,
+        gameType: gameTypeToSubmit,
+        dealerPlayerId,
+      });
     }
     
     // Insert into dealer_games table first
@@ -1319,6 +1325,14 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
+    if (isGinRummy) {
+      console.log('[GIN_RUNTIME_TIMELINE] dealer game creation:inserted', {
+        t: Date.now(),
+        gameId,
+        dealerGameId,
+        gameType: gameTypeToSubmit,
+      });
+    }
     
     // CRIBBAGE: Go to cribbage_dealer_selection phase for high-card animation
     // The round will be created after dealer selection completes in Game.tsx
@@ -1427,6 +1441,15 @@ export const DealerGameSetup = ({
       hasSubmittedRef.current = false;
       setIsSubmitting(false);
       return;
+    }
+    if (isGinRummy) {
+      console.log('[GIN_RUNTIME_TIMELINE] game selection submit:game-updated-ante-decision', {
+        t: Date.now(),
+        gameId,
+        dealerGameId,
+        status: 'ante_decision',
+        anteDeadline,
+      });
     }
     
     // Reset ante_decision for all non-dealer players
