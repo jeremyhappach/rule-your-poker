@@ -61,7 +61,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
-import { getCanonicalSlotGeometry } from '@/lib/canonicalShell/slotGeometry';
+import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -450,10 +450,30 @@ export const GinRummyGameTable = ({
   const currentTurnSlot = viewState?.currentTurnPlayerId
     ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
     : null;
-  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => getCanonicalSlotGeometry(slot);
-  const currentTurnPoint = currentTurnSlot !== null && currentTurnSlot !== undefined
-    ? getCanonicalSlotGeometry(currentTurnSlot).point
-    : null;
+
+  // Canonical table-surface max-height token (single configurable contract).
+  const geometryTokens = useGeometryTokensOptional();
+  const tableSurfaceMaxHeight = geometryTokens?.tableSurfaceMaxHeight ?? '55vh';
+
+  // Local Tailwind placement per canonical slot identity. The slot
+  // identity itself comes from the shell's SeatAnchorLayer (single
+  // seat-coordinate source of truth); this only maps slot → CSS
+  // positioning for opponent chrome rendered inside Gin's felt.
+  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined): { className: string } => {
+    switch (slot) {
+      case -2: return { className: 'top-14 left-1/2 -translate-x-1/2 items-center' };
+      case -1: return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center' };
+      case 0:  return { className: 'bottom-14 left-6 items-start' };
+      case 1:  return { className: 'top-1/2 left-6 -translate-y-1/2 items-start' };
+      case 2:  return { className: 'top-14 left-6 items-start' };
+      case 3:  return { className: 'top-14 right-6 items-end' };
+      case 4:  return { className: 'top-1/2 right-6 -translate-y-1/2 items-end' };
+      case 5:  return { className: 'bottom-14 right-6 items-end' };
+      default: return { className: 'top-14 left-6 items-start' };
+    }
+  };
+
+
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
@@ -1564,7 +1584,7 @@ export const GinRummyGameTable = ({
         <div
           ref={tableContainerRef}
           className="flex-1 relative overflow-hidden min-h-0"
-          style={{ maxHeight: '55vh' }}
+          style={{ maxHeight: tableSurfaceMaxHeight }}
         >
           <CanonicalFeltSurface
             gameKind="gin-rummy"
@@ -1585,10 +1605,9 @@ export const GinRummyGameTable = ({
       <div
         ref={tableContainerRef}
         className="flex-1 relative overflow-hidden min-h-0"
-        style={{
-          maxHeight: '55vh',
-        }}
+        style={{ maxHeight: tableSurfaceMaxHeight }}
       >
+
             {/* P9.6: single authoritative canonical felt surface. */}
             <CanonicalFeltSurface
               gameKind="gin-rummy"
@@ -1604,7 +1623,6 @@ export const GinRummyGameTable = ({
               currentPlayerId={currentPlayerId}
               opponentId={opponentId}
               currentTurnSlot={currentTurnSlot}
-              currentTurnPoint={currentTurnPoint}
               getPlayerUsername={getPlayerUsername}
               cardBackColors={cardBackColors}
               onDrawStock={handleDrawStock}
@@ -1620,8 +1638,8 @@ export const GinRummyGameTable = ({
               card={opponentDrawCard}
               cardBackColors={cardBackColors}
               targetSlot={opponentDrawTargetSlot}
-              targetPoint={opponentDrawTargetSlot !== null ? getCanonicalSlotGeometry(opponentDrawTargetSlot).point : null}
             />
+
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
             {(viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (

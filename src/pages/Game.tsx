@@ -482,7 +482,9 @@ const Game = () => {
   const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [optimisticGinBootstrap, setOptimisticGinBootstrap] = useState<{ roundId: string; state: GinRummyState } | null>(null);
+  // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
+  // state flows through useGameStateSync via currentRound.gin_rummy_state.
+
   const [anteTimeLeft, setAnteTimeLeft] = useState<number | null>(null);
   const [showAnteDialog, setShowAnteDialog] = useState(false);
   
@@ -7513,36 +7515,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               dealerGameId: game?.current_game_uuid ?? null,
             });
             const ginStartResult = await startGinRummyRound(gameId!);
-            if (ginStartResult.success && ginStartResult.roundId) {
-              setOptimisticGinBootstrap(
-                ginStartResult.state
-                  ? { roundId: ginStartResult.roundId, state: ginStartResult.state }
-                  : null,
-              );
-              setGame(prev => prev ? {
-                ...prev,
-                status: 'in_progress',
-                current_round: 1,
-                total_hands: ginStartResult.handNumber ?? prev.total_hands ?? 1,
-                pot: 0,
-                is_first_hand: (ginStartResult.handNumber ?? 1) === 1,
-                rounds: [
-                  ...((prev.rounds ?? []).filter(r => r.id !== ginStartResult.roundId)),
-                  {
-                    id: ginStartResult.roundId!,
-                    game_id: gameId!,
-                    dealer_game_id: freshGame.current_game_uuid ?? game?.current_game_uuid ?? null,
-                    round_number: 1,
-                    hand_number: ginStartResult.handNumber ?? 1,
-                    cards_dealt: 10,
-                    pot: 0,
-                    status: 'betting',
-                    decision_deadline: null,
-                    gin_rummy_state: ginStartResult.state ?? null,
-                  },
-                ],
-              } : prev);
-            }
             console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:complete', {
               t: Date.now(),
               gameId,
@@ -7552,9 +7524,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               success: ginStartResult.success,
               error: ginStartResult.error ?? null,
             });
-            // Background reconcile only — the optimistic inserted round/state above
-            // must be allowed to paint immediately for human-vs-bot cold starts.
-            void fetchGameData();
+            // Canonical sync: surface waits for fetchGameData → currentRound
+            // hydration → bootstrapState (round.gin_rummy_state) to flow
+            // through useGameStateSync. PlayfieldSlotController's neutral
+            // interstitial covers this window via readyToMount.
+            await fetchGameData();
           } else {
             await supabase
               .from('games')
@@ -8891,8 +8865,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   isHost={isCreator}
                   onGameComplete={handleGameOverComplete}
                   bootstrapState={
-                    ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined)
-                    ?? (optimisticGinBootstrap?.roundId === currentRound?.id ? optimisticGinBootstrap.state : null)
+                    ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null
                   }
                 />
                 {/* Dealer selection overlay on the gin table */}
