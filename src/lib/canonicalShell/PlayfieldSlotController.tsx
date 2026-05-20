@@ -33,6 +33,7 @@ import {
 } from './PlayfieldSlot';
 import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
+import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -47,6 +48,8 @@ export interface PlayfieldSlotControllerProps {
    * surface ready to paint a stable first frame?".
    */
   readyToMount?: boolean;
+  neutralGameKind?: CanonicalFeltGameKind | null;
+  neutralAnteAmount?: number | string;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
@@ -58,6 +61,8 @@ export function PlayfieldSlotController({
   interstitialDwellMs = SLOT_CHOREOGRAPHY.interstitialDwellMs,
   gameId,
   readyToMount = true,
+  neutralGameKind = null,
+  neutralAnteAmount = 0,
   children,
 }: PlayfieldSlotControllerProps) {
   const [mountedIdentity, setMountedIdentity] =
@@ -223,7 +228,12 @@ export function PlayfieldSlotController({
 
   if (mountedIdentity === null) {
     return (
-      <NeutralInterstitial gameId={gameId ?? null} reason={neutralReason} />
+      <NeutralInterstitial
+        gameId={gameId ?? null}
+        reason={neutralReason}
+        gameKind={neutralGameKind}
+        anteAmount={neutralAnteAmount}
+      />
     );
   }
 
