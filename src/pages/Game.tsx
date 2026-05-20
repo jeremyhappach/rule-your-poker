@@ -2590,7 +2590,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
     if (game?.status === 'ante_decision') {
-      console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions IMMEDIATELY');
+      console.log('[GIN_RUNTIME_TIMELINE] ante phase observed:bot-bootstrap-start', {
+        t: Date.now(),
+        gameId,
+        dealerGameId: game?.current_game_uuid ?? null,
+        status: game?.status,
+      });
       // Call immediately - no delay needed for bots. Then re-check ante
       // completion directly; otherwise human-vs-bot waits for the 3s
       // ante polling fallback before Gin can bootstrap.
@@ -2603,7 +2608,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
         );
         const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
-        console.log('[GIN_RUNTIME_TIMELINE] bot-ante immediate completion check', {
+        console.log('[GIN_RUNTIME_TIMELINE] bot ante completion check:after-write', {
+          t: Date.now(),
           gameId,
           dealerGameId: game?.current_game_uuid ?? null,
           activePlayers: activePlayers.length,
@@ -7258,7 +7264,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    console.log('[ANTE] Starting handleAllAnteDecisionsIn');
+    console.log('[GIN_RUNTIME_TIMELINE] ante completion handler:start', {
+      t: Date.now(),
+      gameId,
+      dealerGameId: game?.current_game_uuid ?? null,
+      freshStatus: freshGame.status,
+      freshGameType: freshGame.game_type,
+    });
 
     // CRITICAL: Fetch fresh player data directly from database - don't use stale React state!
     const { data: freshPlayers, error: playersError } = await supabase
@@ -7492,8 +7504,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .eq('id', gameId);
           } else if (freshGame?.game_type === 'gin-rummy') {
             // Gin Rummy: go straight to in_progress and start the round
-            console.log('[ANTE][GIN-RUMMY] Starting gin rummy round');
-            await startGinRummyRound(gameId!);
+            console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:start', {
+              t: Date.now(),
+              gameId,
+              dealerGameId: game?.current_game_uuid ?? null,
+            });
+            const ginStartResult = await startGinRummyRound(gameId!);
+            console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:complete', {
+              t: Date.now(),
+              gameId,
+              dealerGameId: game?.current_game_uuid ?? null,
+              roundId: ginStartResult.roundId?.slice(0, 8) ?? null,
+              handNumber: ginStartResult.handNumber ?? null,
+              success: ginStartResult.success,
+              error: ginStartResult.error ?? null,
+            });
             // Immediately fetch so currentRound is populated before GinRummyGameTable mounts,
             // eliminating the "Loading Gin Rummy" delay from polling gaps.
             await fetchGameData();
