@@ -43,15 +43,11 @@ export interface PersistentTableShellProps {
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   seats?: SeatAnchorInput[];
-  /**
-   * P9.5 — typed lifecycle intent for the shell-owned pre-hand surface.
-   * When provided, the shell renders a persistent felt floor BELOW the
-   * gameplay slot so the viewport is never blank pre-viewState.
-   *
-   * Typed intent (not render-prop) by design: shell owns lifecycle UI;
-   * Game.tsx hands the shell *what to show*, not *how to show it*.
-   */
-  preHandIntent?: PreHandIntent | null;
+  children: ReactNode;
+}
+
+// (preHandIntent removed in P9.6 — gameplay surfaces own felt geometry.)
+declare const __PERSISTENT_TABLE_SHELL_P96_MARKER__: never;
   children: ReactNode;
 }
 
