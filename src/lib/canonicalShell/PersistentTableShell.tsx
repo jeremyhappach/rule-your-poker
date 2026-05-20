@@ -89,11 +89,9 @@ export function PersistentTableShell({
       className="min-h-screen bg-background"
       style={{ position: 'relative' }}
     >
-      {/* P9.5: shell-owned pre-hand felt floor. Persists while a
-          gameplay slot is mounted so the viewport is never blank
-          between mount and first authoritative viewState. Sits BELOW
-          gameplay content in z-order. */}
-      {preHandIntent ? <ShellPreHandSurface intent={preHandIntent} /> : null}
+      {/* P9.6: shell-owned pre-hand felt removed. Gameplay surfaces
+          (e.g. GinRummyGameTable) render the single authoritative
+          CanonicalFeltSurface inside their own table region. */}
       <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
 
       {/* Shell-owned pot anchor — zero size, centered in shell-root.
