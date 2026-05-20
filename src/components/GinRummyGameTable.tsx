@@ -1566,15 +1566,29 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
-  // P9.4 (re-scoped): pre-viewState scaffold deleted. Gin renders
-  // P9.4 / P9.5: pre-viewState rendering is owned by the canonical
-  // shell. While viewState is absent we return null and the shell's
-  // `ShellPreHandSurface` (driven by `preHandIntent` in Game.tsx)
-  // paints the persistent felt floor underneath this slot. Do NOT
-  // reintroduce a local pre-viewState scaffold or lifecycle messaging
-  // here — that ownership belongs to the shell.
+  // P9.6: pre-viewState rendering — Gin owns the single authoritative
+  // table geometry. Render the same layout shell (felt only, no
+  // gameplay content) so there is exactly one canonical felt surface
+  // mounted continuously from slot mount through first viewState. Do
+  // NOT reintroduce lifecycle messaging or a separate pre-hand UI
+  // surface; gameplay children are simply gated off until viewState
+  // arrives.
   if (!viewState) {
-    return null;
+    return (
+      <div className="h-full flex flex-col">
+        <div
+          ref={tableContainerRef}
+          className="flex-1 relative overflow-hidden min-h-0"
+          style={{ maxHeight: '55vh' }}
+        >
+          <CanonicalFeltSurface
+            gameKind="gin-rummy"
+            anteAmount={anteAmount}
+            isWaitingPhase={false}
+          />
+        </div>
+      </div>
+    );
   }
 
 
