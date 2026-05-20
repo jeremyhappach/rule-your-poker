@@ -1605,42 +1605,16 @@ export const GinRummyGameTable = ({
         }}
       >
             {/* P9.4: canonical shell owns felt + game-name plate (flag-gated). */}
-            {CANONICAL_SHELL_VISUAL_ENABLED ? (
-              <CanonicalFeltSurface
-                gameKind="gin-rummy"
-                anteAmount={anteAmount}
-                pointsToWin={viewState.pointsToWin}
-                isWaitingPhase={false}
-              />
-            ) : (
-              <>
-                {/* Legacy felt path (flag-off rollback). */}
-                {tableColors.showBridge ? (
-                  <div
-                    className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-                    style={{
-                      backgroundImage: `url(${peoriaBridgeMobile})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      filter: 'brightness(0.5)',
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-                    style={{
-                      background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                      boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-                    }}
-                  />
-                )}
-                <div className="absolute top-3 left-0 right-0 z-20 flex items-center justify-center">
-                  <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                    ${anteAmount} GIN RUMMY <span className="font-normal text-white/70">({viewState.pointsToWin})</span>
-                  </h2>
-                </div>
-              </>
-            )}
+            {/* P9.6: single authoritative canonical felt surface. The
+                legacy flag-off branch was removed — Gin owns exactly
+                one table geometry, rendered by the canonical shell
+                component. */}
+            <CanonicalFeltSurface
+              gameKind="gin-rummy"
+              anteAmount={anteAmount}
+              pointsToWin={viewState.pointsToWin}
+              isWaitingPhase={false}
+            />
 
 
             {/* Felt Content */}
