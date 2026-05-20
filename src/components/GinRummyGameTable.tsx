@@ -1567,14 +1567,16 @@ export const GinRummyGameTable = ({
   };
 
   // P9.4 (re-scoped): pre-viewState scaffold deleted. Gin renders
-  // nothing until viewState arrives — shell's NeutralInterstitial owns
-  // the visual gap. The previous local felt + floating labels +
-  // "Awaiting ante / Preparing hand" copy lived here; per the approved
-  // guardrail, no new Gin-local lifecycle messaging is reintroduced
-  // while the shell announcement wave is deferred.
+  // P9.4 / P9.5: pre-viewState rendering is owned by the canonical
+  // shell. While viewState is absent we return null and the shell's
+  // `ShellPreHandSurface` (driven by `preHandIntent` in Game.tsx)
+  // paints the persistent felt floor underneath this slot. Do NOT
+  // reintroduce a local pre-viewState scaffold or lifecycle messaging
+  // here — that ownership belongs to the shell.
   if (!viewState) {
     return null;
   }
+
 
   const opponentState = viewState.playerStates[opponentId];
 

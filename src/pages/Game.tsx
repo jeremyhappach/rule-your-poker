@@ -9261,6 +9261,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? 'active-canonical'
     : 'observer-absolute';
 
+  // P9.5: shell-owned pre-hand felt floor. Driven by typed intent so the
+  // shell renders the persistent felt while a canonical-shell game has
+  // mounted its slot but has not yet produced an authoritative viewState
+  // (e.g. Gin Rummy during ante_decision before startGinRummyRound writes
+  // the first round). Gameplay paints on top once viewState lands.
+  //
+  // Game-kind mapping is narrow on purpose: only games whose body returns
+  // null pre-viewState benefit from a shell-owned felt floor. Other
+  // canonical-shell families (poker variants) keep their existing
+  // MobileGameTable pre-hand path and pass null here.
+  const shellPreHandIntent =
+    enableOuterShell && game.game_type === 'gin-rummy'
+      ? {
+          gameKind: 'gin-rummy' as const,
+          anteAmount: game.ante_amount ?? 1,
+          pointsToWin: game.points_to_win ?? undefined,
+        }
+      : null;
+
   return (
     <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync
@@ -9275,10 +9294,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           projectionMode={shellProjectionMode}
           viewerPosition={shellViewerPosition}
           seats={shellEligibleSeats}
+          preHandIntent={shellPreHandIntent}
         >
           {innerTree}
         </PersistentTableShell>
       ) : innerTree}
+
     </VisualPreferencesProvider>
   );
 };
