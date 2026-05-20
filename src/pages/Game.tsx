@@ -7514,6 +7514,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             const ginStartResult = await startGinRummyRound(gameId!);
             if (ginStartResult.success && ginStartResult.roundId) {
+              setOptimisticGinBootstrapState(ginStartResult.state ?? null);
               setGame(prev => prev ? {
                 ...prev,
                 status: 'in_progress',
@@ -7533,6 +7534,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     pot: 0,
                     status: 'betting',
                     decision_deadline: null,
+                    gin_rummy_state: ginStartResult.state ?? null,
                   },
                 ],
               } : prev);
@@ -7546,9 +7548,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               success: ginStartResult.success,
               error: ginStartResult.error ?? null,
             });
-            // Immediately fetch so currentRound is populated before GinRummyGameTable mounts,
-            // eliminating the "Loading Gin Rummy" delay from polling gaps.
-            await fetchGameData();
+            // Background reconcile only — the optimistic inserted round/state above
+            // must be allowed to paint immediately for human-vs-bot cold starts.
+            void fetchGameData();
           } else {
             await supabase
               .from('games')
