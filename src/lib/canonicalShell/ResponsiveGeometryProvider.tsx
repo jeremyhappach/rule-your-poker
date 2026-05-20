@@ -73,6 +73,18 @@ export interface GeometryTokens {
    * Defaults to 'standard' at the provider level.
    */
   centerSize: CenterSize;
+  /**
+   * Canonical max height of the active table-surface region (felt + game
+   * content). Promoted from the inline `55vh` previously hardcoded across
+   * gameplay surfaces (Cribbage, Yahtzee, Mobile, Gin) and the neutral
+   * interstitial. Consumers read this so neutral→active transitions are
+   * geometrically continuous without per-game magic constants.
+   *
+   * Future: graduate to per-`surfaceProfile` overrides (card-standard,
+   * dice-standard, ergonomic-2p) via a declared profile prop. Today a
+   * single value covers every active surface.
+   */
+  tableSurfaceMaxHeight: string;
   /** Resolve a base card size symbol to its device-appropriate size. */
   resolveCardSize: (base?: 'sm' | 'md' | 'lg' | 'xl') => 'sm' | 'md' | 'lg' | 'xl';
 }
@@ -100,6 +112,7 @@ export function ResponsiveGeometryProvider({ children }: ResponsiveGeometryProvi
       scale,
       classes,
       centerSize: 'standard',
+      tableSurfaceMaxHeight: '55vh',
       resolveCardSize: (base = 'md') => getCardSizeForDevice(deviceType, base),
     };
   }, [deviceType, isPhone, isTablet, isDesktop, screenWidth]);

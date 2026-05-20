@@ -1584,7 +1584,7 @@ export const GinRummyGameTable = ({
         <div
           ref={tableContainerRef}
           className="flex-1 relative overflow-hidden min-h-0"
-          style={{ maxHeight: '55vh' }}
+          style={{ maxHeight: tableSurfaceMaxHeight }}
         >
           <CanonicalFeltSurface
             gameKind="gin-rummy"
@@ -1605,10 +1605,9 @@ export const GinRummyGameTable = ({
       <div
         ref={tableContainerRef}
         className="flex-1 relative overflow-hidden min-h-0"
-        style={{
-          maxHeight: '55vh',
-        }}
+        style={{ maxHeight: tableSurfaceMaxHeight }}
       >
+
             {/* P9.6: single authoritative canonical felt surface. */}
             <CanonicalFeltSurface
               gameKind="gin-rummy"

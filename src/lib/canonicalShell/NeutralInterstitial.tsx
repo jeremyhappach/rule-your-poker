@@ -10,6 +10,7 @@
 import { useEffect } from 'react';
 import { recordShellEvent } from './diagnostics';
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFeltSurface';
+import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 
 export interface NeutralInterstitialProps {
   gameId?: string | null;
@@ -20,6 +21,9 @@ export interface NeutralInterstitialProps {
 }
 
 export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
+  const geometry = useGeometryTokensOptional();
+  const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
+
   useEffect(() => {
     recordShellEvent('slot-entered-neutral', {
       gameId: gameId ?? null,
@@ -42,7 +46,7 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
       className="w-full h-full min-h-0 flex flex-col bg-shell-neutral"
     >
       {gameKind ? (
-        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
           <CanonicalFeltSurface
             gameKind={gameKind}
             anteAmount={anteAmount}
