@@ -441,28 +441,32 @@ export const GinRummyGameTable = ({
   const currentTurnSlot = viewState?.currentTurnPlayerId
     ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
     : null;
-  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => {
+  const getCanonicalSlotGeometry = (slot: CanonicalSlot | null | undefined) => {
     switch (slot) {
       case -2:
-        return { className: 'top-14 left-1/2 -translate-x-1/2 items-center', alignEnd: false };
+        return { className: 'top-14 left-1/2 -translate-x-1/2 items-center', point: { x: '50%', y: '18%' }, alignEnd: false };
       case -1:
-        return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center', alignEnd: false };
+        return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center', point: { x: '50%', y: '82%' }, alignEnd: false };
       case 0:
-        return { className: 'bottom-14 left-6 items-start', alignEnd: false };
+        return { className: 'bottom-14 left-6 items-start', point: { x: '14%', y: '82%' }, alignEnd: false };
       case 1:
-        return { className: 'top-1/2 left-6 -translate-y-1/2 items-start', alignEnd: false };
+        return { className: 'top-1/2 left-6 -translate-y-1/2 items-start', point: { x: '10%', y: '50%' }, alignEnd: false };
       case 2:
-        return { className: 'top-14 left-6 items-start', alignEnd: false };
+        return { className: 'top-14 left-6 items-start', point: { x: '14%', y: '18%' }, alignEnd: false };
       case 3:
-        return { className: 'top-14 right-6 items-end', alignEnd: true };
+        return { className: 'top-14 right-6 items-end', point: { x: '86%', y: '18%' }, alignEnd: true };
       case 4:
-        return { className: 'top-1/2 right-6 -translate-y-1/2 items-end', alignEnd: true };
+        return { className: 'top-1/2 right-6 -translate-y-1/2 items-end', point: { x: '90%', y: '50%' }, alignEnd: true };
       case 5:
-        return { className: 'bottom-14 right-6 items-end', alignEnd: true };
+        return { className: 'bottom-14 right-6 items-end', point: { x: '86%', y: '82%' }, alignEnd: true };
       default:
-        return { className: 'top-14 left-6 items-start', alignEnd: false };
+        return { className: 'top-14 left-6 items-start', point: { x: '14%', y: '18%' }, alignEnd: false };
     }
   };
+  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => getCanonicalSlotGeometry(slot);
+  const currentTurnPoint = currentTurnSlot !== null && currentTurnSlot !== undefined
+    ? getCanonicalSlotGeometry(currentTurnSlot).point
+    : null;
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
