@@ -8733,6 +8733,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
+            neutralGameKind={game.game_type === 'gin-rummy' ? 'gin-rummy' : null}
+            neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
               // Phase 7 readiness gate (narrow scope): only answer
               // "is the intended gameplay surface ready to paint a
@@ -8884,6 +8886,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
                   isHost={isCreator}
                   onGameComplete={handleGameOverComplete}
+                  bootstrapState={optimisticGinBootstrapState ?? ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null}
                 />
                 {/* Dealer selection overlay on the gin table */}
                 {isGinRummyDealerSelection && (
