@@ -7514,7 +7514,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             const ginStartResult = await startGinRummyRound(gameId!);
             if (ginStartResult.success && ginStartResult.roundId) {
-              setOptimisticGinBootstrapState(ginStartResult.state ?? null);
+              setOptimisticGinBootstrap(
+                ginStartResult.state
+                  ? { roundId: ginStartResult.roundId, state: ginStartResult.state }
+                  : null,
+              );
               setGame(prev => prev ? {
                 ...prev,
                 status: 'in_progress',
@@ -8886,7 +8890,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   pot={(isInProgress || isGinRummyGameOver) ? potForDisplay : 0}
                   isHost={isCreator}
                   onGameComplete={handleGameOverComplete}
-                  bootstrapState={optimisticGinBootstrapState ?? ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined) ?? null}
+                  bootstrapState={
+                    ((currentRound as any)?.gin_rummy_state as GinRummyState | null | undefined)
+                    ?? (optimisticGinBootstrap?.roundId === currentRound?.id ? optimisticGinBootstrap.state : null)
+                  }
                 />
                 {/* Dealer selection overlay on the gin table */}
                 {isGinRummyDealerSelection && (
