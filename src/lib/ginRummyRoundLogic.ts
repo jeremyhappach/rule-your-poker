@@ -152,7 +152,7 @@ export async function startGinRummyRound(
     }
 
     console.log('[GIN-RUMMY] Round started', { roundId: round.id, handNumber: insertedHandNumber });
-    return { success: true, roundId: round.id, handNumber: insertedHandNumber, state: ginState };
+    return { success: true, roundId: round.id, handNumber: insertedHandNumber };
 
   } catch (error: any) {
     console.error('[GIN-RUMMY] Error starting round:', error);
