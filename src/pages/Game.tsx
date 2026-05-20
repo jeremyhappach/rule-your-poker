@@ -2591,8 +2591,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
     if (game?.status === 'ante_decision') {
       console.log('[ANTE PHASE] Game entered ante_decision status, triggering bot decisions IMMEDIATELY');
-      // Call immediately - no delay needed for bots
-      makeBotAnteDecisions(gameId!);
+      // Call immediately - no delay needed for bots. Then re-check ante
+      // completion directly; otherwise human-vs-bot waits for the 3s
+      // ante polling fallback before Gin can bootstrap.
+      makeBotAnteDecisions(gameId!).then(async () => {
+        const { data: freshPlayers } = await supabase
+          .from('players')
+          .select('id, ante_decision, sitting_out, status')
+          .eq('game_id', gameId);
+        const activePlayers = (freshPlayers ?? []).filter(
+          p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
+        );
+        const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
+        console.log('[GIN_RUNTIME_TIMELINE] bot-ante immediate completion check', {
+          gameId,
+          dealerGameId: game?.current_game_uuid ?? null,
+          activePlayers: activePlayers.length,
+          allDecided,
+          decisions: activePlayers.map(p => p.ante_decision),
+        });
+        if (allDecided && !anteProcessingRef.current) {
+          anteProcessingRef.current = true;
+          handleAllAnteDecisionsIn();
+        } else {
+          fetchGameData();
+        }
+      });
     }
   }, [game?.status, game?.is_paused, gameId, game?.current_game_uuid]);
 

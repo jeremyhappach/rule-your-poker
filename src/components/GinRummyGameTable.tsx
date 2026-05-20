@@ -611,6 +611,13 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     if (!roundId) return;
     const load = async () => {
+      const startedAt = performance.now();
+      console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:start', {
+        gameId,
+        roundId: roundId?.slice(0, 8),
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        handNumber,
+      });
       const { data, error } = await supabase
         .from('rounds')
         .select('gin_rummy_state')
@@ -618,7 +625,25 @@ export const GinRummyGameTable = ({
         .single();
 
       if (!error && data?.gin_rummy_state) {
-        setGinState(data.gin_rummy_state as unknown as GinRummyState);
+        const state = data.gin_rummy_state as unknown as GinRummyState;
+        const result = ginSync.receiveAuthoritativeUpdate(state);
+        setGinState(state);
+        console.log('[GIN_RUNTIME_TIMELINE] viewState hydration load:applied', {
+          gameId,
+          roundId: roundId?.slice(0, 8),
+          elapsedMs: Math.round(performance.now() - startedAt),
+          accepted: result.accepted,
+          reason: result.reason,
+          phase: state.phase,
+          handNumber: state.handNumber ?? null,
+        });
+      } else {
+        console.warn('[GIN_RUNTIME_TIMELINE] viewState hydration load:empty', {
+          gameId,
+          roundId: roundId?.slice(0, 8),
+          elapsedMs: Math.round(performance.now() - startedAt),
+          error: error?.message ?? null,
+        });
       }
     };
     load();
