@@ -71,6 +71,12 @@ export function isInherentlyTwoPlayerGameType(gameType: string | null | undefine
   return INHERENTLY_TWO_PLAYER_GAME_TYPES.has(gameType.toLowerCase());
 }
 
+function isGinRummyGameType(gameType: string | null | undefined): boolean {
+  if (!gameType) return false;
+  const normalized = gameType.toLowerCase();
+  return normalized === 'gin-rummy' || normalized === 'gin_rummy' || normalized === 'ginrummy';
+}
+
 export interface SeatAnchorInput {
   /** Authoritative seat position (1..7). */
   position: number;
@@ -240,6 +246,7 @@ export function resolveSeatAnchors(
 
     // active-canonical
     if (canCanonicalize2pActive && seat.position !== viewerPosition && seat.occupied) {
+      const projectedSlot = isGinRummyGameType(gameType) ? 2 : SLOT.FACE_TO_FACE;
       if (import.meta.env.DEV) {
         recordShellEvent('seat-anchor-canonicalized-2p', {
           gameId: ctx.gameId ?? null,
@@ -254,7 +261,7 @@ export function resolveSeatAnchors(
       }
       return {
         position: seat.position,
-        slot: SLOT.FACE_TO_FACE,
+        slot: projectedSlot,
         canonicalized2p: true,
       };
     }

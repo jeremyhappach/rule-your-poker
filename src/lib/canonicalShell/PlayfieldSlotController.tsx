@@ -93,6 +93,18 @@ export function PlayfieldSlotController({
     dealerGameId: mountedIdentity?.dealerGameId ?? null,
   });
 
+  useEffect(() => {
+    console.log('[GIN_RUNTIME_TIMELINE] slot controller state', {
+      gameId: gameId ?? null,
+      phase,
+      desiredIdentity: describeSlotIdentity(desiredIdentity),
+      mountedIdentity: describeSlotIdentity(mountedIdentity),
+      readyToMount,
+      dwellElapsed: dwellElapsedRef.current,
+      pendingIdentity: describeSlotIdentity(pendingIdentityRef.current),
+    });
+  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount]);
+
   // Helper: attempt to promote neutral → active iff dwell elapsed AND
   // readiness is satisfied AND we have a non-null target.
   const tryPromote = (target: PlayfieldSlotIdentity, ready: boolean) => {
