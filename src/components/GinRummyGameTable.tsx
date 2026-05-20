@@ -1604,7 +1604,7 @@ export const GinRummyGameTable = ({
           maxHeight: '55vh',
         }}
       >
-            {/* P9.6: single authoritative canonical felt surface.
+            {/* P9.6: single authoritative canonical felt surface. */}
             <CanonicalFeltSurface
               gameKind="gin-rummy"
               anteAmount={anteAmount}
