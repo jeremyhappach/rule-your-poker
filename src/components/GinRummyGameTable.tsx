@@ -61,7 +61,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
-import { getCanonicalSlotGeometry } from '@/lib/canonicalShell/slotGeometry';
+import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -450,10 +450,11 @@ export const GinRummyGameTable = ({
   const currentTurnSlot = viewState?.currentTurnPlayerId
     ? playerSlotById.get(viewState.currentTurnPlayerId) ?? null
     : null;
-  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined) => getCanonicalSlotGeometry(slot);
-  const currentTurnPoint = currentTurnSlot !== null && currentTurnSlot !== undefined
-    ? getCanonicalSlotGeometry(currentTurnSlot).point
-    : null;
+
+  // Canonical table surface max-height token (single configurable contract).
+  const geometryTokens = useGeometryTokensOptional();
+  const tableSurfaceMaxHeight = geometryTokens?.tableSurfaceMaxHeight ?? '55vh';
+
 
   // Identity latch: tracks the CURRENT expected roundId for incoming snapshots.
   const roundIdLatchRef = useRef<string>(roundId);
