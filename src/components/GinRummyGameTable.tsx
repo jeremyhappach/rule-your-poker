@@ -119,8 +119,7 @@ export const GinRummyGameTable = ({
   isHost,
   onGameComplete,
 }: GinRummyGameTableProps) => {
-  const { getTableColors, getCardBackColors } = useVisualPreferences();
-  const tableColors = getTableColors();
+  const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
   const { playKnock } = useKnockSound();
   
