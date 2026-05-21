@@ -1787,6 +1787,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
+          ginTrace('realtime.games payload received', {
+            status: newData?.status ?? null,
+            current_game_uuid: newData?.current_game_uuid?.slice(0, 8) ?? null,
+            current_round: newData?.current_round ?? null,
+            total_hands: newData?.total_hands ?? null,
+          });
           
           console.log('[REALTIME] 🔔 Games table UPDATE:', {
             eventType: payload.eventType,
