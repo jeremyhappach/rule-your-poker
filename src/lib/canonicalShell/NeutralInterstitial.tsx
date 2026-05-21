@@ -11,6 +11,8 @@ import { useEffect } from 'react';
 import { recordShellEvent } from './diagnostics';
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFeltSurface';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
+import { useLifecycleMount } from './lifecycleDebug';
+
 
 export interface NeutralInterstitialProps {
   gameId?: string | null;

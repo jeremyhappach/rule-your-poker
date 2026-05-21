@@ -62,6 +62,9 @@ export function PersistentTableShell({
   const geometry = useGeometryTokensOptional();
   const shellRootRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
+  useLifecycleMount('PersistentTableShell', { gameType });
+  setLifecycleFact('Shell.bgClass', 'min-h-screen bg-shell-neutral');
+
 
   useEffect(() => {
     recordShellEvent('shell-mounted', {
