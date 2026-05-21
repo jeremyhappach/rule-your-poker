@@ -25,6 +25,8 @@ export interface NeutralInterstitialProps {
 export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
   const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
+  useLifecycleMount('NeutralInterstitial', { reason, gameKind });
+
 
   useEffect(() => {
     recordShellEvent('slot-entered-neutral', {
