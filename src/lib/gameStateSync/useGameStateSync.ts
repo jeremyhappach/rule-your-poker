@@ -54,6 +54,7 @@ export function useGameStateSync<T>(
     describeState,
     gameType,
     identity: identityProp = null,
+    identityResetState,
     identityEquals: identityEqualsFn = defaultIdentityEquals,
   } = config;
   const logPrefix = debugLabel ? `[GameStateSync:${debugLabel}]` : '[GameStateSync]';
@@ -77,6 +78,8 @@ export function useGameStateSync<T>(
   // of the stale terminal prior-hand state (which would otherwise dominate
   // every fresh next-hand snapshot as "regressive" on lower progress dims).
   const initialStateRef = useRef<T>(initialState);
+  const identityResetStateRef = useRef<GameStateSyncConfig<T>['identityResetState']>(identityResetState);
+  identityResetStateRef.current = identityResetState;
 
   // ── Visual contract refs ─────────────────────────────────────
   const contractRef = useRef<VisualContractIdentity | null>(null);
@@ -98,6 +101,13 @@ export function useGameStateSync<T>(
   const [presentationIdentity, setPresentationIdentity] = useState<AuthoritativeIdentity | null>(null);
   const identityPropRef = useRef<AuthoritativeIdentity | null>(identityProp);
   identityPropRef.current = identityProp;
+
+  const getIdentityResetSeed = useCallback((): T => {
+    const resetState = identityResetStateRef.current;
+    return typeof resetState === 'function'
+      ? (resetState as () => T)()
+      : resetState ?? initialStateRef.current;
+  }, []);
 
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
