@@ -55,7 +55,7 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
     <div
       data-canonical-shell-neutral=""
       aria-hidden="true"
-      className="flex-1 min-h-0 flex flex-col"
+      className="flex-1 min-h-0 flex flex-col bg-background"
     >
       {gameKind ? (
         <>
