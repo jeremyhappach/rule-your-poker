@@ -136,8 +136,20 @@ export function PlayfieldSlotController({
   // readiness is satisfied AND we have a non-null target.
   const tryPromote = (target: PlayfieldSlotIdentity, ready: boolean) => {
     if (target === null) return;
-    if (!dwellElapsedRef.current) return;
-    if (!ready) return;
+    if (!dwellElapsedRef.current) {
+      ginTrace('slot.tryPromote blocked (dwell not elapsed)', {
+        target: describeSlotIdentity(target),
+        ready,
+      });
+      return;
+    }
+    if (!ready) {
+      ginTrace('slot.tryPromote blocked (not ready)', {
+        target: describeSlotIdentity(target),
+      });
+      return;
+    }
+    ginTrace('slot.MOUNT active', { target: describeSlotIdentity(target) });
     setMountedIdentity(target);
     setPhase('active');
     dwellElapsedRef.current = false;
