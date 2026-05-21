@@ -427,8 +427,39 @@ export function useGameStateSync<T>(
   // has advanced past us yet. Every subsequent forward divergence triggers
   // reset() and emits `framework-identity-reset-fired`.
   useEffect(() => {
-    if (!identityProp) return;
     const prev = presentationIdentityRef.current;
+
+    if (!identityProp) {
+      if (!prev) return;
+
+      const preAuthForReset = authRef.current;
+      const preProgress = getProgress(preAuthForReset);
+      const seed = getIdentityResetSeed();
+      const seedProgress = getProgress(seed);
+
+      persistSyncDebugEvent({
+        gameId: prev.dealerGameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: prev.handNumber ?? null,
+        roundId: prev.roundId ?? null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'framework-identity-null-boundary',
+        payload: {
+          prevIdentity: identityKey(prev),
+          hadActiveContract: contractRef.current !== null,
+          wasFrozen: frozenRef.current,
+          preResetAuthProgress: preProgress,
+          resetSeedProgress: seedProgress,
+        },
+      });
+      reset(seed);
+      presentationIdentityRef.current = null;
+      setPresentationIdentity(null);
+      pendingPostResetHydrationRef.current = false;
+      return;
+    }
+
     if (identityEqualsFn(prev, identityProp)) return;
 
     if (!prev) {
@@ -476,7 +507,8 @@ export function useGameStateSync<T>(
     // completedCount=0, turnIdx=0). Reseeding with the stale snapshot makes
     // every subsequent incoming forward update look "regressive" and the UI
     // deadlocks on a fresh hand even though the DB row is correct.
-    reset(initialStateRef.current);
+    const seed = getIdentityResetSeed();
+    reset(seed);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -488,11 +520,11 @@ export function useGameStateSync<T>(
       payload: {
         prevIdentity: identityKey(prev),
         nextIdentity: identityKey(identityProp),
-        seededWith: 'initialState',
-        postResetAuthProgress: seedProgress,
+        seededWith: 'identityResetState',
+        postResetAuthProgress: getProgress(seed),
       },
     });
-  }, [identityProp, identityEqualsFn, reset, resolvedGameType, getProgress]);
+  }, [identityProp, identityEqualsFn, reset, resolvedGameType, getProgress, getIdentityResetSeed]);
 
 
 
