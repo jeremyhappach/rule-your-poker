@@ -1787,6 +1787,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
+          ginTrace('realtime.games payload received', {
+            status: newData?.status ?? null,
+            current_game_uuid: newData?.current_game_uuid?.slice(0, 8) ?? null,
+            current_round: newData?.current_round ?? null,
+            total_hands: newData?.total_hands ?? null,
+          });
           
           console.log('[REALTIME] 🔔 Games table UPDATE:', {
             eventType: payload.eventType,
@@ -2076,6 +2082,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         },
         simulateRealtime('rounds', (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
+          ginTrace('realtime.rounds payload received', {
+            eventType: payload.eventType,
+            roundId: (payload.new as any)?.id?.slice(0, 8) ?? null,
+            dealer_game_id: (payload.new as any)?.dealer_game_id?.slice(0, 8) ?? null,
+            hand_number: (payload.new as any)?.hand_number ?? null,
+            hasGinState: !!(payload.new as any)?.gin_rummy_state,
+          });
 
           // If horses_state or yahtzee_state changed, patch it into local state immediately so
           // dice animations / scorecard updates can start as soon as the realtime event arrives
@@ -5132,6 +5145,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     setGame(gameData);
+    ginTrace('reducer.setGame applied (fetchGameData)', {
+      current_game_uuid: gameData?.current_game_uuid?.slice(0, 8) ?? null,
+      status: gameData?.status ?? null,
+      roundsCount: Array.isArray((gameData as any)?.rounds) ? (gameData as any).rounds.length : null,
+    });
 
     // ── Holm shadow sync feed (Phase 2: read-only) ──
     if (gameData.game_type === 'holm-game') {

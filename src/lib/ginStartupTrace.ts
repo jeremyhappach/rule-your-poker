@@ -74,6 +74,9 @@ function _matchMilestone(event: string, data?: Record<string, unknown>): string 
   if (event === 'startGinRummyRound:entered') return 'startGinRummyRound entered';
   if (event === 'rounds.insert returned') return 'round persisted';
   if (event === 'off-critical writes dispatched (games + player_cards)') return 'games update dispatched';
+  if (event === 'realtime.games payload received') return 'realtime games received';
+  if (event === 'realtime.rounds payload received') return 'realtime rounds received';
+  if (event === 'reducer.setGame applied (fetchGameData)') return 'reducer setGame applied';
   if (event === 'readiness probe: reporting ready=true') return 'probe ready=true';
   if (event === 'currentRound.id changed' && data && (data as any).next) return 'currentRound present';
   if (event === 'game.current_game_uuid changed' && data && (data as any).next) return 'current_game_uuid present';
@@ -85,6 +88,11 @@ function _matchMilestone(event: string, data?: Record<string, unknown>): string 
   if (event === 'gin.hydration load:empty') return 'gin.hydration load:empty';
   if (event === 'gin.viewState ready (first non-null)') return 'gin.viewState ready';
   return null;
+}
+
+export function getGinTimelineText(): string {
+  if (_milestones.length === 0) return '(no T0 yet)';
+  return _milestones.map((m) => `${m.label} +${m.dtMs}ms`).join('\n');
 }
 
 export function markGinSubmit(gameId: string | null | undefined): void {
