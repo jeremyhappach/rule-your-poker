@@ -5145,6 +5145,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     setGame(gameData);
+    ginTrace('reducer.setGame applied (fetchGameData)', {
+      current_game_uuid: gameData?.current_game_uuid?.slice(0, 8) ?? null,
+      status: gameData?.status ?? null,
+      roundsCount: Array.isArray((gameData as any)?.rounds) ? (gameData as any).rounds.length : null,
+    });
 
     // ── Holm shadow sync feed (Phase 2: read-only) ──
     if (gameData.game_type === 'holm-game') {
