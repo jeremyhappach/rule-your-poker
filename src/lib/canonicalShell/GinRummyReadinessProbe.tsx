@@ -39,6 +39,14 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
 
   useReportSurfaceReady(identity, hasFrame);
 
+  useEffect(() => {
+    if (hasFrame) {
+      ginTrace('readiness probe: reporting ready=true', {
+        roundId: roundId?.slice(0, 8) ?? null,
+      });
+    }
+  }, [hasFrame, roundId]);
+
   // Reset readiness when identity changes.
   useEffect(() => {
     setHasFrame(false);
