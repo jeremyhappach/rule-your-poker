@@ -453,7 +453,16 @@ const Game = () => {
   const isMobile = useIsMobile();
   const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
-  const [game, setGame] = useState<GameData | null>(null);
+  const [_game, setGame] = useState<GameData | null>(null);
+  // Post-hydration continuity: once the session has loaded a real game,
+  // we never re-enter the empty bootstrap branch even if `_game` flips
+  // null transiently (stale fetch, realtime resubscribe, etc.). The
+  // bootstrap shell is reserved for true first route entry only.
+  const lastGameRef = useRef<GameData | null>(null);
+  if (_game) lastGameRef.current = _game;
+  const hasHydratedRef = useRef(false);
+  if (_game) hasHydratedRef.current = true;
+  const game: GameData | null = _game ?? (hasHydratedRef.current ? lastGameRef.current : null);
 
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
@@ -8090,7 +8099,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // — legitimate teardown / exit flows are NOT suppressed.
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
-  if (loading || !game) {
+  if ((loading || !game) && !hasHydratedRef.current) {
     setLifecycleFact('Game.branch', 'bootstrap');
     setLifecycleFact('Game.loading', loading);
     setLifecycleFact('Game.game', !!game);
@@ -8110,6 +8119,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         </PersistentTableShell>
       </SurfaceReadinessProvider>
     );
+  }
+
+  // After hydration, `game` is guaranteed non-null via the
+  // lastGameRef fallback. Narrow the type for downstream code that
+  // assumes `game` is non-null past this point.
+  if (!game) {
+    return null;
   }
 
 
