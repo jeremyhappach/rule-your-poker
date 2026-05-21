@@ -129,6 +129,11 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     ginTrace('GinRummyGameTable mounted');
   }, []);
+  const firstRenderRef = useRef(false);
+  if (!firstRenderRef.current) {
+    firstRenderRef.current = true;
+    ginTrace('gin.first-render', { hasBootstrap: !!bootstrapState });
+  }
   const { getCardBackColors } = useVisualPreferences();
 
   const cardBackColors = getCardBackColors();
