@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { useGameStateSync } from './useGameStateSync';
 import type { GameStateSyncHandle } from './types';
+import type { AuthoritativeIdentity } from './authoritativeIdentityPure';
 
 type TestState = {
   roundId: string | null;
@@ -36,12 +37,24 @@ const getProgress = (state: TestState | null) => {
   return [state.handNumber, state.roundNumber, state.status === 'waiting_for_action' ? 1 : 0];
 };
 
-let latestHandle: GameStateSyncHandle<TestState> | null = null;
+let latestHandle: GameStateSyncHandle<TestState | null> | null = null;
 let latestPresentation: TestState | null = null;
 let presentationRenderCount = 0;
 
-function HookHarness({ initialState }: { initialState: TestState }) {
-  const handle = useGameStateSync(initialState, { getProgress });
+function HookHarness({
+  initialState,
+  identity = null,
+  identityResetState,
+}: {
+  initialState: TestState | null;
+  identity?: AuthoritativeIdentity | null;
+  identityResetState?: TestState | null;
+}) {
+  const handle = useGameStateSync<TestState | null>(initialState, {
+    getProgress,
+    identity,
+    identityResetState,
+  });
 
   useLayoutEffect(() => {
     latestHandle = handle;
