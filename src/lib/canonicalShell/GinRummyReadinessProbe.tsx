@@ -24,6 +24,7 @@ import {
   useReportSurfaceReady,
   type SurfaceReadinessIdentity,
 } from './SurfaceReadinessContract';
+import { ginTrace } from '@/lib/ginStartupTrace';
 
 interface Props {
   dealerGameId: string | null;
