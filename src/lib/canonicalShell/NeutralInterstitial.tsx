@@ -81,13 +81,16 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
       className="h-full flex flex-col bg-background relative"
     >
       <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
-        {gameKind ? (
-          <CanonicalFeltSurface
-            gameKind={gameKind}
-            anteAmount={anteAmount}
-            isWaitingPhase={false}
-          />
-        ) : null}
+        {/* Configuring/cold neutral: render felt unconditionally so the
+            canonical waiting table sits beneath the dealer setup modal
+            from first frame. Pass `isWaitingPhase` so no game-name plate
+            is shown when the family is a fallback default — preventing
+            an incorrect label during pre-submit configuring. */}
+        <CanonicalFeltSurface
+          gameKind={gameKind ?? 'holm-game'}
+          anteAmount={anteAmount}
+          isWaitingPhase={true}
+        />
       </div>
       {/* Geometry-parity bottom-panel reservation: mirrors the
           active gameplay layout (felt + bottom panel) so the felt
