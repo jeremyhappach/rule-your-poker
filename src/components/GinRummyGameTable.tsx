@@ -129,6 +129,11 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     ginTrace('GinRummyGameTable mounted');
   }, []);
+  const firstRenderRef = useRef(false);
+  if (!firstRenderRef.current) {
+    firstRenderRef.current = true;
+    ginTrace('gin.first-render', { hasBootstrap: !!bootstrapState });
+  }
   const { getCardBackColors } = useVisualPreferences();
 
   const cardBackColors = getCardBackColors();
@@ -237,7 +242,21 @@ export const GinRummyGameTable = ({
     if (!bootstrapState || !roundId) return;
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
     if (result.accepted) setGinState(bootstrapState);
+    ginTrace('gin.bootstrapState applied', { accepted: result.accepted, phase: bootstrapState.phase });
   }, [bootstrapState, roundId]);
+
+  // First non-null viewState (presentation ready) — the gate that
+  // unblocks the playable subtree render path at line ~1589.
+  const viewStateReadyRef = useRef(false);
+  useEffect(() => {
+    if (viewStateReadyRef.current) return;
+    if (!ginSync.presentationState) return;
+    viewStateReadyRef.current = true;
+    ginTrace('gin.viewState ready (first non-null)', {
+      phase: (ginSync.presentationState as any)?.phase ?? null,
+      handNumber: (ginSync.presentationState as any)?.handNumber ?? null,
+    });
+  }, [ginSync.presentationState]);
 
   // ── Writer-audit gate ──
   // Single framework-owned predicate covering frozen / contract / identity-stale.
@@ -631,6 +650,7 @@ export const GinRummyGameTable = ({
         dealerGameId: dealerGameId?.slice(0, 8) ?? null,
         handNumber,
       });
+      ginTrace('gin.hydration load:start', { roundId: roundId?.slice(0, 8) });
       const { data, error } = await supabase
         .from('rounds')
         .select('gin_rummy_state')
@@ -650,12 +670,20 @@ export const GinRummyGameTable = ({
           phase: state.phase,
           handNumber: state.handNumber ?? null,
         });
+        ginTrace('gin.hydration load:applied', {
+          elapsedMs: Math.round(performance.now() - startedAt),
+          accepted: result.accepted,
+          phase: state.phase,
+        });
       } else {
         console.warn('[GIN_RUNTIME_TIMELINE] viewState hydration load:empty', {
           gameId,
           roundId: roundId?.slice(0, 8),
           elapsedMs: Math.round(performance.now() - startedAt),
           error: error?.message ?? null,
+        });
+        ginTrace('gin.hydration load:empty', {
+          elapsedMs: Math.round(performance.now() - startedAt),
         });
       }
     };
