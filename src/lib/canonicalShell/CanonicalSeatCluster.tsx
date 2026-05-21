@@ -48,8 +48,11 @@ export interface CanonicalSeatClusterProps {
   isDealer?: boolean;
   /** Pre-formatted chip value (caller controls formatting / currency). */
   chipValue: string;
-  /** Optional game-owned seat content (e.g. card backs) rendered below
-   *  the chip bubble as part of the same anchored cluster. */
+  /** Optional game-owned seat content rendered below the chip bubble as
+   *  part of the same anchored cluster. Fully arbitrary per game — the
+   *  shell does not assume card backs, hand layout, or any specific
+   *  shape. Omit entirely (e.g. Yahtzee) and the cluster collapses to
+   *  identity + chip with no reserved space. */
   children?: ReactNode;
   /** Optional override for the cluster wrapper. */
   className?: string;
