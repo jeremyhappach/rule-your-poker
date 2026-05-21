@@ -104,13 +104,14 @@ export function ginTrace(event: string, data?: Record<string, unknown>): void {
     _recordMilestone('dwell elapsed', dt);
   }
   if (event === 'slot.MOUNT active') {
-    _recordMilestone('slot mounted', dt);
+    _recordMilestone('slot promoted', dt);
   }
   if (event === 'slot.cold-start direct mount (ready)') {
     _recordMilestone('dwell armed', dt);
     _recordMilestone('dwell elapsed', dt);
-    _recordMilestone('slot mounted', dt);
+    _recordMilestone('slot promoted', dt);
   }
+
 }
 
 export function getGinT0(): number | null {
