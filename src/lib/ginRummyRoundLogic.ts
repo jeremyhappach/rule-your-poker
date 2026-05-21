@@ -61,7 +61,7 @@ export async function startGinRummyRound(
     const nonDealerPlayer = sortedPlayers.find((p: any) => p.id !== dealerPlayer.id)!;
 
     const anteAmount = game.ante_amount || 1;
-    const pointsToWin = game.points_to_win ?? 100;
+    const pointsToWin = isGinTwoActionHarnessEnabled() ? 50 : (game.points_to_win ?? 100);
 
     // Initialize and deal (handNumber set after DB query below)
     let ginState = createInitialGinRummyState(
