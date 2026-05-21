@@ -121,16 +121,20 @@ export function PlayfieldSlotController({
   });
 
   useEffect(() => {
-    console.log('[GIN_RUNTIME_TIMELINE] slot controller state', {
+    const snapshot = {
       gameId: gameId ?? null,
       phase,
       desiredIdentity: describeSlotIdentity(desiredIdentity),
       mountedIdentity: describeSlotIdentity(mountedIdentity),
       readyToMount,
+      surfaceReady,
+      readyToMountProp,
       dwellElapsed: dwellElapsedRef.current,
       pendingIdentity: describeSlotIdentity(pendingIdentityRef.current),
-    });
-  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount]);
+    };
+    console.log('[GIN_RUNTIME_TIMELINE] slot controller state', snapshot);
+    ginTrace('slot.state', snapshot);
+  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp]);
 
   // Helper: attempt to promote neutral → active iff dwell elapsed AND
   // readiness is satisfied AND we have a non-null target.
