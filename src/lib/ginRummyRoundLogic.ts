@@ -123,7 +123,7 @@ export async function startGinRummyRound(
     // (already persisted by the insert above). Run the games-status update and
     // player_cards upserts in parallel, off the awaited critical path, so the
     // caller can return as soon as the authoritative frame is queryable.
-    const offCriticalWrites: Promise<unknown>[] = [
+    const offCriticalWrites: PromiseLike<unknown>[] = [
       supabase
         .from('games')
         .update({
@@ -154,7 +154,7 @@ export async function startGinRummyRound(
       );
     }
     // Fire-and-forget: do NOT await — readiness probe does not depend on these.
-    void Promise.all(offCriticalWrites);
+    void Promise.all(offCriticalWrites.map((p) => Promise.resolve(p)));
 
     console.log('[GIN-RUMMY] Round started', { roundId: round.id, handNumber: insertedHandNumber });
     return { success: true, roundId: round.id, handNumber: insertedHandNumber };
