@@ -20,7 +20,28 @@ function fmt(v: unknown): string {
   return String(v);
 }
 
+/**
+ * Visible overlay disabled for clean runtime validation.
+ * Re-enable by setting SHOW_GIN_TIMELINE_OVERLAY = true, or via
+ *   localStorage.setItem('ptp_show_gin_timeline', '1')
+ * Underlying instrumentation (ginTrace, lifecycleDebug, copy/export plumbing)
+ * is intentionally preserved.
+ */
+const SHOW_GIN_TIMELINE_OVERLAY = false;
+
+function isOverlayEnabled(): boolean {
+  if (SHOW_GIN_TIMELINE_OVERLAY) return true;
+  try {
+    if (window.localStorage.getItem('ptp_show_gin_timeline') === '1') return true;
+  } catch { /* */ }
+  try {
+    if (new URLSearchParams(window.location.search).get('gin_timeline') === '1') return true;
+  } catch { /* */ }
+  return false;
+}
+
 export function LifecycleDebugBadge() {
+  if (!isOverlayEnabled()) return null;
   const snap = useLifecycleSnapshot();
   const milestones = useGinMilestones();
   const live = useGinLiveSnapshot();
