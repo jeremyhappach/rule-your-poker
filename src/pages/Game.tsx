@@ -8936,7 +8936,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
           // GIN RUMMY — unified single instance across dealer_selection, ante_decision, in_progress, game_over
           // One persistent GinRummyGameTable prevents table surface changes across phases
-          if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
+          const isGinRummyConfiguring = (game.status === 'configuring' || game.status === 'game_selection') && effectiveRenderGameType === 'gin-rummy';
+          if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyConfiguring || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
             return (
               <>
                 <GinRummyGameTable
