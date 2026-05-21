@@ -54,6 +54,7 @@ import { GinRummyMatchWinner } from './GinRummyMatchWinner';
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
