@@ -8166,13 +8166,31 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Non-canonical-shell families keep their legacy slate gradient on
   // the inner page wrapper (the shell sits transparently underneath
   // for them); canonical-shell families let the shell paint chrome.
-  const _innerBgClass = `${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${isCanonicalShellFamily(game.game_type) ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
+  // Route-stable shell family signal. game.game_type is null precisely
+  // during the configuring/game_selection window (the dealer is choosing
+  // inside the setup modal), so gating canonical shell ownership on
+  // game.game_type alone breaks continuity by construction. Fall through
+  // a sticky chain (current → last known → previous game config), and
+  // additionally treat the configuring/game_selection statuses as
+  // canonical-route by default — every game family currently selectable
+  // in the setup modal is a canonical-shell family, so this is safe.
+  const _routeShellGameType =
+    game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+  const _isConfiguringContext =
+    game.status === 'game_selection' ||
+    game.status === 'configuring' ||
+    ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete);
+  const _treatAsCanonicalRoute =
+    isCanonicalShellFamily(_routeShellGameType) ||
+    (game.game_type == null && _isConfiguringContext);
+
+  const _innerBgClass = `${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
   setLifecycleFact('Game.branch', 'loaded');
   setLifecycleFact('Game.loading', false);
   setLifecycleFact('Game.game_type', game.game_type ?? null);
   setLifecycleFact('Game.status', game.status ?? null);
   setLifecycleFact('Game.enableOuterShell', enableOuterShell);
-  setLifecycleFact('Game.shellCanonicalFamily', isCanonicalShellFamily(game.game_type));
+  setLifecycleFact('Game.shellCanonicalFamily', _treatAsCanonicalRoute);
   setLifecycleFact('Game.innerBgClass', _innerBgClass);
   const innerTree = (
     <div data-lifecycle-branch="loaded-inner" className={_innerBgClass}>
