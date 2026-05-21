@@ -1787,13 +1787,16 @@ export const GinRummyGameTable = ({
               );
             })()}
 
-            {/* Match Winner Celebration */}
-            {viewState.phase === 'complete' && viewState.winnerPlayerId && (
-              <GinRummyMatchWinner
-                ginState={viewState}
-                getPlayerUsername={getPlayerUsername}
-              />
-            )}
+            {/* Match Winner announcement intentionally NOT rendered here.
+                A bespoke Gin-owned celebration surface caused duplicated
+                terminal lifecycle replay (announcement → chip jump →
+                announcement again) and persisted across the dealer-game
+                identity boundary into the next game's setup. Long-term
+                this belongs under the canonical dealer announcement
+                contract; until then the chip-transfer animation is the
+                terminal visual and we let the canonical end-of-game
+                surfaces (Celebration / Settlement) own everything else. */}
+
 
             {/* Player-to-player chip transfer animation at match end */}
             {storedChipPositions && (
