@@ -17,6 +17,7 @@ import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
 import { ginTrace } from './ginStartupTrace';
+import { isGinTwoActionHarnessEnabled } from './debugFlags';
 
 /**
  * Start the first Gin Rummy round/hand.
