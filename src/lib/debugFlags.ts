@@ -71,40 +71,26 @@ export function isGinRiggedDealEnabled(): boolean {
  * Gin Rummy "two-action" debug harness — exercises round-end → next-hand and
  * match-win / chip-transfer flows in two quick human actions.
  *
- * CONTRACT (do not violate):
- *  1. DEFAULT OFF. Activate ONLY via:
- *       - URL: ?debug_gin_2action=1
- *       - localStorage: ptp_debug_gin_2action = "1"
- *     Never hardcode `return true`. Never global-force.
+ * STATUS: ALWAYS ON by explicit user directive for rapid deterministic
+ * validation of the Gin lifecycle. Do NOT re-gate behind URL/localStorage/UI
+ * until the user explicitly requests removal or proper gating.
  *
- *  2. The harness produces a FULLY LEGAL deterministic Gin state — not a
- *     scripted cinematic. The deal hands out real 10-card hands, a real
- *     upcard, and a real 31-card stockpile. All standard legal actions
- *     remain valid continuations:
- *       - non-dealer takes upcard / passes
- *       - dealer takes upcard / passes
- *       - either side draws stock, plays, knocks, lays off, etc.
- *     The *content* of the cards is what enables the fast happy path; it
- *     does NOT restrict legality of any other branch.
+ * CONTRACT (still holds while always-on):
+ *  1. Produces a FULLY LEGAL deterministic Gin state — not a scripted
+ *     cinematic. Real 10-card hands, real upcard, real 31-card stockpile.
+ *     All standard legal actions remain valid continuations.
+ *  2. Flag is read at decision time only — no sticky refs/scores leak
+ *     across dealer games beyond what the harness call sites apply.
+ *  3. While ON: match target = 50; dealer rotation suppressed within the
+ *     dealer game so both gins resolve to host.
  *
- *  3. Flag is read at decision time only — no flags/refs/scores persist
- *     across dealer games. When the flag flips off, the next dealer game
- *     uses normal rotation, normal target, normal deck.
- *
- *  4. While ON, by explicit harness requirement:
- *       - Match target = 50 (so two gins ≈ 41 + 41 close out the match)
- *       - Dealer rotation suppressed within that dealer game (host stays
- *         dealer so both gins resolve to host). This is gated at the call
- *         site by this flag — toggling the flag off restores normal rotation
- *         on the next hand.
- *
- *  Happy path: bot passes upcard → host takes upcard → instant gin (41 pts).
- *  Repeated for hand 2 → match win at 82.
- *  Off-path (host passes, etc.): game continues legally via the normal
- *  Gin engine — the deterministic deal supports it.
+ *  Happy path: bot passes upcard → host takes upcard → instant gin (41 pts),
+ *  repeat for hand 2 → match win at 82.
+ *  Off-path (host passes, etc.): continues legally via the normal Gin engine.
  */
 export function isGinTwoActionHarnessEnabled(): boolean {
-  return hasQueryFlag('debug_gin_2action') || hasLocalFlag('ptp_debug_gin_2action');
+  // ALWAYS ON until user explicitly says OFF. Do not re-gate without user direction.
+  return true;
 }
 
 /**
