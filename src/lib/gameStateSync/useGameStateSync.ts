@@ -482,7 +482,8 @@ export function useGameStateSync<T>(
     // forensic validation that the boundary reset clears stale terminal state.
     const preAuthForReset = authRef.current;
     const preProgress = getProgress(preAuthForReset);
-    const seedProgress = getProgress(initialStateRef.current);
+    const seed = getIdentityResetSeed();
+    const seedProgress = getProgress(seed);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -507,7 +508,6 @@ export function useGameStateSync<T>(
     // completedCount=0, turnIdx=0). Reseeding with the stale snapshot makes
     // every subsequent incoming forward update look "regressive" and the UI
     // deadlocks on a fresh hand even though the DB row is correct.
-    const seed = getIdentityResetSeed();
     reset(seed);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
