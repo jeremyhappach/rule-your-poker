@@ -8485,7 +8485,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                {!isCanonicalShellFamily(game.game_type) && (
+                {!_treatAsCanonicalRoute && (
                   <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
                     instanceLabel="status-keyed"
                     gameId={gameId}
