@@ -482,23 +482,12 @@ export const GinRummyGameTable = ({
   const geometryTokens = useGeometryTokensOptional();
   const tableSurfaceMaxHeight = geometryTokens?.tableSurfaceMaxHeight ?? '55vh';
 
-  // Local Tailwind placement per canonical slot identity. The slot
-  // identity itself comes from the shell's SeatAnchorLayer (single
-  // seat-coordinate source of truth); this only maps slot → CSS
-  // positioning for opponent chrome rendered inside Gin's felt.
-  const getCanonicalSlotPlacement = (slot: CanonicalSlot | null | undefined): { className: string } => {
-    switch (slot) {
-      case -2: return { className: 'top-14 left-1/2 -translate-x-1/2 items-center' };
-      case -1: return { className: 'bottom-14 left-1/2 -translate-x-1/2 items-center' };
-      case 0:  return { className: 'bottom-14 left-6 items-start' };
-      case 1:  return { className: 'top-1/2 left-6 -translate-y-1/2 items-start' };
-      case 2:  return { className: 'top-14 left-6 items-start' };
-      case 3:  return { className: 'top-14 right-6 items-end' };
-      case 4:  return { className: 'top-1/2 right-6 -translate-y-1/2 items-end' };
-      case 5:  return { className: 'bottom-14 right-6 items-end' };
-      default: return { className: 'top-14 left-6 items-start' };
-    }
-  };
+  // Canonical slot placement — sourced from the shell's single
+  // ergonomic-projection contract (canonicalSlotPlacement). This is the
+  // same anchor used by the spotlight cone, chip-transport endpoints,
+  // and any future seat-anchored overlays. No Gin-specific coordinates.
+  // (See: src/lib/canonicalShell/canonicalSlotPlacement.ts)
+
 
 
 
