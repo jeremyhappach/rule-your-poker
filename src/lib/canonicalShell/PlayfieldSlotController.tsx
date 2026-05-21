@@ -173,9 +173,15 @@ export function PlayfieldSlotController({
       phase !== 'neutral'
     ) {
       if (readyToMount) {
+        ginTrace('slot.cold-start direct mount (ready)', {
+          target: describeSlotIdentity(desiredIdentity),
+        });
         setMountedIdentity(desiredIdentity);
         setPhase('active');
       } else {
+        ginTrace('slot.cold-start hold neutral (awaiting-surface-ready)', {
+          target: describeSlotIdentity(desiredIdentity),
+        });
         // Treat as cold-start neutral; no dwell required, just wait
         // on readiness.
         dwellElapsedRef.current = true;
