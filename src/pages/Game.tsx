@@ -9356,10 +9356,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               Lives outside the slot so it can prove "first renderable frame
               exists" BEFORE the controller mounts the surface. */}
           {game.game_type === 'gin-rummy' && game.current_game_uuid && currentRound?.id ? (
-            <GinRummyReadinessProbe
-              dealerGameId={game.current_game_uuid}
-              roundId={currentRound.id}
-            />
+            <>
+              <GinRummyReadinessProbe
+                dealerGameId={game.current_game_uuid}
+                roundId={currentRound.id}
+              />
+              <GinStartupIdentityTracer
+                currentGameUuid={game.current_game_uuid}
+                currentRoundId={currentRound.id}
+                currentRoundDealerGameId={(currentRound as any).dealer_game_id ?? null}
+              />
+            </>
           ) : null}
         </SurfaceReadinessProvider>
       ) : innerTree}
