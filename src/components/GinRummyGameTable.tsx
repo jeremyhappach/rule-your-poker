@@ -1614,7 +1614,18 @@ export const GinRummyGameTable = ({
   // NOT reintroduce lifecycle messaging or a separate pre-hand UI
   // surface; gameplay children are simply gated off until viewState
   // arrives.
+  const placeholderPaintedRef = useRef(false);
+  const playablePaintedRef = useRef(false);
   if (!viewState) {
+    if (!placeholderPaintedRef.current) {
+      placeholderPaintedRef.current = true;
+      ginTrace('gin.first painted (placeholder)');
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          ginTrace('gin.placeholder visible (rAF)');
+        }));
+      }
+    }
     return (
       <div className="h-full flex flex-col bg-background relative">
         <div
@@ -1631,6 +1642,17 @@ export const GinRummyGameTable = ({
       </div>
     );
   }
+
+  if (!playablePaintedRef.current) {
+    playablePaintedRef.current = true;
+    ginTrace('gin.first painted (playable)');
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ginTrace('first active gameplay visible');
+      }));
+    }
+  }
+
 
 
   const opponentState = viewState.playerStates[opponentId];
