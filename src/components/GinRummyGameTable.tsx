@@ -416,7 +416,7 @@ export const GinRummyGameTable = ({
     losers: { playerId: string; x: number; y: number }[];
   } | null>(null);
   const [chipAnimAmount, setChipAnimAmount] = useState(0);
-  const matchEndAnimatedRef = useRef(false);
+  // matchEndAnimatedRef removed — replaced by matchEndKeyRef (keyed on dealerGameId+winnerId) for hard idempotency.
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
