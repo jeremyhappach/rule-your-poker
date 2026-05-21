@@ -8832,7 +8832,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
-            neutralGameKind={game.game_type === 'gin-rummy' ? 'gin-rummy' : null}
+            neutralGameKind={(() => {
+              const t = _routeShellGameType;
+              if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew') return t;
+              if (t === '3-5-7' || t === '3-5-7-game' || t === '357') return 'three-five-seven';
+              return null; // NeutralInterstitial falls back to a generic plate-less felt
+            })()}
             neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
               // Phase 7 readiness gate (narrow scope): only answer
