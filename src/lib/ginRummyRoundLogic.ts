@@ -201,8 +201,11 @@ export async function startNextGinRummyHand(
       return { success: false, error: 'Match already won' };
     }
 
-    // Rotate dealer
-    const nextDealerId = getNextDealer(previousState);
+    // Rotate dealer (suppressed in two-action harness so the host stays dealer)
+    const harnessOn = isGinTwoActionHarnessEnabled();
+    const nextDealerId = harnessOn
+      ? previousState.dealerPlayerId
+      : getNextDealer(previousState);
     const nextNonDealerId = nextDealerId === previousState.dealerPlayerId
       ? previousState.nonDealerPlayerId
       : previousState.dealerPlayerId;
