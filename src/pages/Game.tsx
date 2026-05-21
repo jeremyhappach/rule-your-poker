@@ -1468,11 +1468,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
 
       setGame((prev) => {
-        if (!prev?.rounds?.length) return prev;
-        const idx = prev.rounds.findIndex((r) => r.id === roundId);
-        if (idx === -1) return prev;
-
-        const nextRounds = [...prev.rounds];
+        if (!prev) return prev;
+        const rounds = prev.rounds ?? [];
+        const idx = rounds.findIndex((r) => r.id === roundId);
+        if (idx === -1) {
+          // INSERT path: append authoritative row so currentRound can be derived
+          // immediately, without waiting for the fetchGameData round-trip.
+          return { ...prev, rounds: [...rounds, newRound as any] };
+        }
+        const nextRounds = [...rounds];
         nextRounds[idx] = { ...nextRounds[idx], ...(newRound as any) };
         return { ...prev, rounds: nextRounds };
       });
