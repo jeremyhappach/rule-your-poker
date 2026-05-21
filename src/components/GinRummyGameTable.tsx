@@ -650,6 +650,7 @@ export const GinRummyGameTable = ({
         dealerGameId: dealerGameId?.slice(0, 8) ?? null,
         handNumber,
       });
+      ginTrace('gin.hydration load:start', { roundId: roundId?.slice(0, 8) });
       const { data, error } = await supabase
         .from('rounds')
         .select('gin_rummy_state')
@@ -669,12 +670,20 @@ export const GinRummyGameTable = ({
           phase: state.phase,
           handNumber: state.handNumber ?? null,
         });
+        ginTrace('gin.hydration load:applied', {
+          elapsedMs: Math.round(performance.now() - startedAt),
+          accepted: result.accepted,
+          phase: state.phase,
+        });
       } else {
         console.warn('[GIN_RUNTIME_TIMELINE] viewState hydration load:empty', {
           gameId,
           roundId: roundId?.slice(0, 8),
           elapsedMs: Math.round(performance.now() - startedAt),
           error: error?.message ?? null,
+        });
+        ginTrace('gin.hydration load:empty', {
+          elapsedMs: Math.round(performance.now() - startedAt),
         });
       }
     };
