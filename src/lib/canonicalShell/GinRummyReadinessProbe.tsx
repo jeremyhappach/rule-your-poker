@@ -93,6 +93,10 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
         },
         (payload: any) => {
           const row = payload.new ?? payload.record;
+          ginTrace('readiness probe: realtime event', {
+            roundId: roundId.slice(0, 8),
+            hasState: Boolean(row?.gin_rummy_state),
+          });
           if (row?.gin_rummy_state) {
             console.log('[GIN_RUNTIME_TIMELINE] readiness probe: frame available (realtime)', {
               roundId: roundId.slice(0, 8),
