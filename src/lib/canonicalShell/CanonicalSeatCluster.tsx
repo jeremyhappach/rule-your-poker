@@ -1,0 +1,114 @@
+/**
+ * CanonicalSeatCluster — single atomic projected seat cluster.
+ *
+ * Shell-owned primitive that anchors a seat's identity row, dealer pip,
+ * chip bubble, and (optional) game-owned seat content as ONE cohesive
+ * unit at a canonical slot. Replaces fragmented floating elements that
+ * could land partially on chrome, drift between active/observer
+ * projections, or require contrast-ring band-aids.
+ *
+ * Ownership boundary (intentional, do not expand without review):
+ *   Shell owns:
+ *     - cluster anchoring / projection (CanonicalSlot)
+ *     - identity row (name + dealer pip, inline)
+ *     - chip bubble (carries data-chip-center for transport endpoints)
+ *     - felt-toned backdrop so the cluster reads on light chrome
+ *       without per-game contrast hacks
+ *     - vertical cohesion / spacing between identity + chip + children
+ *   Game owns:
+ *     - score rails / top HUD composition
+ *     - card-back / seat-specific content (passed as children)
+ *     - what counts as "the dealer" (caller passes isDealer)
+ *
+ * Projection parity: identical for active-canonical and observer-absolute.
+ * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
+ */
+
+import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+import { getCanonicalSlotPlacement } from './canonicalSlotPlacement';
+import type { CanonicalSlot } from './seatAnchors';
+
+export interface CanonicalSeatClusterProps {
+  /** Canonical slot this cluster anchors to. Null → not rendered. */
+  slot: CanonicalSlot | null | undefined;
+  /** Authoritative seat position (1..7) — written to data-chip-center
+   *  so chip-transport animations resolve to the same DOM node. */
+  position: number;
+  /** Display name to show in the identity row. */
+  name: string;
+  /** Whether this seat currently holds the dealer pip. */
+  isDealer?: boolean;
+  /** Pre-formatted chip value (caller controls formatting / currency). */
+  chipValue: string;
+  /** Optional game-owned seat content (e.g. card backs) rendered below
+   *  the chip bubble as part of the same anchored cluster. */
+  children?: ReactNode;
+  /** Optional override for the cluster wrapper. */
+  className?: string;
+}
+
+export function CanonicalSeatCluster({
+  slot,
+  position,
+  name,
+  isDealer = false,
+  chipValue,
+  children,
+  className,
+}: CanonicalSeatClusterProps) {
+  if (slot === null || slot === undefined) return null;
+
+  const placement = getCanonicalSlotPlacement(slot);
+
+  return (
+    <div
+      data-canonical-seat-cluster=""
+      data-seat-position={position}
+      data-seat-slot={slot}
+      className={cn(
+        'absolute pointer-events-none flex flex-col gap-1',
+        placement.className,
+        className,
+      )}
+    >
+      {/* Felt-toned backdrop pill — wraps identity + chip only.
+          Game-owned children sit OUTSIDE this pill so card geometry
+          stays game-controlled. The pill keeps the cluster legible
+          regardless of whether the slot lands on felt or chrome,
+          replacing per-projection contrast hacks. */}
+      <div
+        className={cn(
+          'flex flex-col items-center gap-0.5 rounded-full px-2 py-1',
+          'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
+          'backdrop-blur-[2px]',
+        )}
+      >
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-white/95 font-medium truncate max-w-[100px]">
+            {name}
+          </span>
+          {isDealer && (
+            <div className="w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0">
+              <span className="text-white font-bold text-[6px] leading-none">D</span>
+            </div>
+          )}
+        </div>
+        <div
+          data-chip-center={position}
+          className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white"
+        >
+          <span className="text-[10px] font-bold text-slate-900">
+            {chipValue}
+          </span>
+        </div>
+      </div>
+
+      {children && (
+        <div data-canonical-seat-cluster-content="" className="flex flex-col items-center">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
