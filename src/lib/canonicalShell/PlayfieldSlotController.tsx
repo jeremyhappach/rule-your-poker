@@ -214,6 +214,11 @@ export function PlayfieldSlotController({
       !slotIdentityEquals(mountedIdentity, desiredIdentity) &&
       phase === 'active'
     ) {
+      ginTrace('slot.enter neutral (active→active rollover)', {
+        from: describeSlotIdentity(mountedIdentity),
+        to: describeSlotIdentity(desiredIdentity),
+        dwellMs: interstitialDwellMs,
+      });
       setMountedIdentity(null);
       setNeutralReason('dealer-game-rollover');
       setPhase('neutral');
@@ -224,6 +229,7 @@ export function PlayfieldSlotController({
       dwellTimerRef.current = setTimeout(() => {
         dwellTimerRef.current = null;
         dwellElapsedRef.current = true;
+        ginTrace('slot.dwell elapsed (rollover)', { ready: readyToMount });
         tryPromote(pendingIdentityRef.current, readyToMount);
       }, interstitialDwellMs);
       return;
@@ -237,9 +243,13 @@ export function PlayfieldSlotController({
       if (dwellElapsedRef.current) {
         tryPromote(desiredIdentity, readyToMount);
       } else if (!dwellTimerRef.current) {
+        ginTrace('slot.dwell timer armed (neutral hold)', {
+          dwellMs: interstitialDwellMs,
+        });
         dwellTimerRef.current = setTimeout(() => {
           dwellTimerRef.current = null;
           dwellElapsedRef.current = true;
+          ginTrace('slot.dwell elapsed (neutral hold)', { ready: readyToMount });
           tryPromote(pendingIdentityRef.current, readyToMount);
         }, interstitialDwellMs);
       }
