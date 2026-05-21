@@ -37,6 +37,7 @@ import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
 import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
+import { ginTrace } from '@/lib/ginStartupTrace';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
