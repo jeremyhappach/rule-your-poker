@@ -20,9 +20,7 @@ export function LifecycleDebugBadge() {
         top: 4,
         right: 4,
         zIndex: 2147483647,
-        maxWidth: 340,
-        maxHeight: '80vh',
-        overflow: 'auto',
+        maxWidth: 360,
         background: 'rgba(255,255,0,0.92)',
         color: '#000',
         fontFamily: 'ui-monospace, monospace',
@@ -35,6 +33,7 @@ export function LifecycleDebugBadge() {
         whiteSpace: 'pre-wrap',
       }}
     >
+
       <div style={{ fontWeight: 700 }}>GIN STARTUP TIMELINE</div>
       {milestones.length === 0 ? (
         <div style={{ opacity: 0.6 }}>(no T0 yet)</div>
