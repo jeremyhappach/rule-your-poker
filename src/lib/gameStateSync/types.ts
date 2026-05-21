@@ -88,8 +88,17 @@ export interface GameStateSyncConfig<T> {
    * presentation on forward identity advancement and exposes
    * `interactionsAllowed` for action gating. Omit to keep legacy
    * manual-reset behavior.
+   *
+   * A transition from a non-null identity to null is an explicit lifecycle
+   * boundary, not a request to keep rendering the prior presentation.
    */
   identity?: AuthoritativeIdentity | null;
+
+  /**
+   * Clean state used when an identity-aware surface crosses an explicit
+   * null boundary. Defaults to the hook's original initialState.
+   */
+  identityResetState?: T | (() => T);
 
   /**
    * Optional identity equality override. Defaults to deep tuple equality
