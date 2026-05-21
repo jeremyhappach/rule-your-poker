@@ -64,7 +64,8 @@ function _recordMilestone(label: string, dtMs: number) {
   if (_seenLabels.has(label)) return;
   _seenLabels.add(label);
   _milestones.push({ label, dtMs });
-  if (label === 'GinRummyGameTable mounted') _frozen = true;
+  // Freeze once playable gameplay is on screen (first non-null viewState).
+  if (label === 'gin.viewState ready') _frozen = true;
   _emit();
 }
 
