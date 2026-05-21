@@ -1783,6 +1783,7 @@ export const GinRummyGameTable = ({
                 if (!seatPlayer || !seatState) return null;
                 const slot = playerSlotById.get(seatId) ?? null;
                 const showCardBacks =
+                  seatId === opponentId &&
                   seatState.hand.length > 0 &&
                   viewState.phase !== 'knocking' &&
                   viewState.phase !== 'laying_off' &&
