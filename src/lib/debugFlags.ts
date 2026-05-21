@@ -89,8 +89,12 @@ export function isGinRiggedDealEnabled(): boolean {
  * Isolated from production deal logic; ignored unless flag is on.
  */
 export function isGinTwoActionHarnessEnabled(): boolean {
-  // TEMP: globally enabled for lifecycle validation. Flip back to flag-gated when done.
-  return true;
+  // Flag-gated only. The deterministic deal + 50-point target + suppressed dealer
+  // rotation only produce a valid game state for the scripted happy path
+  // (bot passes → host takes upcard → host gins). Any deviation (host passes,
+  // bot acts off-script) and any cross-boundary leakage (Gin → Gin replay,
+  // Gin → other game) leaves brittle config behind. Keep OFF by default.
+  return hasQueryFlag('debug_gin_2action') || hasLocalFlag('ptp_debug_gin_2action');
 }
 
 /**
