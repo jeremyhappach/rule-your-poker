@@ -25,6 +25,7 @@ export interface GinMilestone {
 let _milestones: GinMilestone[] = [];
 const _seenLabels = new Set<string>();
 const _listeners = new Set<() => void>();
+let _frozen = false;
 
 function _emit() {
   _milestones = [..._milestones];
@@ -32,9 +33,13 @@ function _emit() {
 }
 
 function _recordMilestone(label: string, dtMs: number) {
+  if (_frozen) return;
   if (_seenLabels.has(label)) return;
   _seenLabels.add(label);
   _milestones.push({ label, dtMs });
+  // Freeze the timeline once the gameplay surface is on screen so the
+  // completed run is preserved for inspection.
+  if (label === 'GinRummyGameTable mounted') _frozen = true;
   _emit();
 }
 
@@ -44,15 +49,16 @@ function _recordMilestone(label: string, dtMs: number) {
  */
 function _matchMilestone(event: string, data?: Record<string, unknown>): string | null {
   if (event === 'T0 submit') return 'T0 submit';
-  if (event === 'rounds.insert returned') return 'rounds persisted';
+  if (event === 'startGinRummyRound:entered') return 'startGinRummyRound entered';
+  if (event === 'rounds.insert returned') return 'round persisted';
   if (event === 'off-critical writes dispatched (games + player_cards)') return 'games update dispatched';
-  if (event === 'readiness probe: reporting ready=true') return 'probe ready';
+  if (event === 'readiness probe: reporting ready=true') return 'probe ready=true';
   if (event === 'currentRound.id changed' && data && (data as any).next) return 'currentRound present';
   if (event === 'game.current_game_uuid changed' && data && (data as any).next) return 'current_game_uuid present';
-  if (event === 'GinRummyGameTable mounted') return 'Gin mounted';
-  // Slot controller events derived from snapshots below.
+  if (event === 'GinRummyGameTable mounted') return 'GinRummyGameTable mounted';
   return null;
 }
+
 
 export function markGinSubmit(gameId: string | null | undefined): void {
   _t0 = performance.now();
