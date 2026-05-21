@@ -126,6 +126,9 @@ export const GinRummyGameTable = ({
   bootstrapState = null,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
+  useEffect(() => {
+    ginTrace('GinRummyGameTable mounted');
+  }, []);
   const { getCardBackColors } = useVisualPreferences();
 
   const cardBackColors = getCardBackColors();
