@@ -232,6 +232,7 @@ export const GinRummyGameTable = ({
     optimisticTimeoutMs: 3000,
     gameType: 'gin-rummy',
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+    identityResetState: null,
     identity: authIdentity,
   });
 
@@ -260,65 +261,6 @@ export const GinRummyGameTable = ({
       handNumber: (ginSync.presentationState as any)?.handNumber ?? null,
     });
   }, [ginSync.presentationState]);
-
-  // ── Dealer-game boundary hard teardown ─────────────────────────
-  // INVARIANT: ONE TABLE. ONE FELT. NEVER REMOUNT THE STAGE.
-  //
-  // The component stays mounted across game_selection / dealer_selection /
-  // ante_decision / game_over phases so the canonical felt persists. But
-  // terminal Gin presentation (completed-hand cards, match-end announcement,
-  // chip-transfer anchors, idempotency latches, viewState held in the sync
-  // framework) MUST NOT bleed across the dealer-game boundary.
-  //
-  // This effect is the SINGLE authoritative reset on dealerGameId transition:
-  //   * non-null → null (parent gates the prop off as the active match phase
-  //     ends — this is what observers are stuck on),
-  //   * X → Y (cross-game replay: Gin → Gin or Gin → another game type),
-  //   * null → X (entering a fresh active match).
-  //
-  // Without this, the framework's identity-advance auto-reset never fires for
-  // the non-null → null transition (it early-returns on `!identityProp`), so
-  // the prior terminal viewState persists indefinitely on observer clients.
-  const prevDealerGameIdRef = useRef<string | null | undefined>(dealerGameId);
-  const ginSyncResetRef = useRef(ginSync.reset);
-  useEffect(() => { ginSyncResetRef.current = ginSync.reset; }, [ginSync.reset]);
-  useEffect(() => {
-    const prev = prevDealerGameIdRef.current;
-    if (prev === dealerGameId) return;
-    const isFirstObservation = prev === undefined;
-    prevDealerGameIdRef.current = dealerGameId;
-    if (isFirstObservation) return;
-
-    // Hard teardown — clear every piece of state that could project terminal
-    // content from the prior dealer-game onto the persistent felt.
-    try { ginSyncResetRef.current(null); } catch (_e) { /* best-effort */ }
-    setGinState(null);
-    setChipAnimTriggerId(null);
-    setStoredChipPositions(null);
-    setChipAnimAmount(0);
-    setShowKnockOverlay(false);
-    setShowGinOverlay(false);
-    setOpponentDrawTriggerId(null);
-    setOpponentDrawCard(null);
-    setOpponentDrawTargetSlot(null);
-    matchEndKeyRef.current = null;
-    handCompletionInProgress.current = false;
-    lastObservedIdentityRef.current = null;
-    viewStateReadyRef.current = false;
-    prevPhaseRef.current = null;
-    prevLastActionRef.current = null;
-
-    persistSyncDebugEvent({
-      gameId, gameType: 'gin-rummy',
-      handNumber: null, roundId: null,
-      eventType: 'transition', severity: 'info',
-      eventName: 'gin-dealer-game-boundary-teardown',
-      payload: {
-        prevDealerGameId: prev ? prev.slice(0, 8) : null,
-        nextDealerGameId: dealerGameId ? dealerGameId.slice(0, 8) : null,
-      },
-    });
-  }, [dealerGameId, gameId]);
 
   // ── Writer-audit gate ──
   // Single framework-owned predicate covering frozen / contract / identity-stale.

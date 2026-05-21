@@ -54,6 +54,7 @@ export function useGameStateSync<T>(
     describeState,
     gameType,
     identity: identityProp = null,
+    identityResetState,
     identityEquals: identityEqualsFn = defaultIdentityEquals,
   } = config;
   const logPrefix = debugLabel ? `[GameStateSync:${debugLabel}]` : '[GameStateSync]';
@@ -77,6 +78,8 @@ export function useGameStateSync<T>(
   // of the stale terminal prior-hand state (which would otherwise dominate
   // every fresh next-hand snapshot as "regressive" on lower progress dims).
   const initialStateRef = useRef<T>(initialState);
+  const identityResetStateRef = useRef<GameStateSyncConfig<T>['identityResetState']>(identityResetState);
+  identityResetStateRef.current = identityResetState;
 
   // ── Visual contract refs ─────────────────────────────────────
   const contractRef = useRef<VisualContractIdentity | null>(null);
@@ -98,6 +101,14 @@ export function useGameStateSync<T>(
   const [presentationIdentity, setPresentationIdentity] = useState<AuthoritativeIdentity | null>(null);
   const identityPropRef = useRef<AuthoritativeIdentity | null>(identityProp);
   identityPropRef.current = identityProp;
+
+  const getIdentityResetSeed = useCallback((): T => {
+    const resetState = identityResetStateRef.current;
+    if (resetState === undefined) return initialStateRef.current;
+    return typeof resetState === 'function'
+      ? (resetState as () => T)()
+      : resetState;
+  }, []);
 
   // Keep refs in sync
   useEffect(() => { authRef.current = authoritative; }, [authoritative]);
@@ -127,6 +138,13 @@ export function useGameStateSync<T>(
   const canWritePresentation = (): boolean =>
     !frozenRef.current && contractRef.current === null;
 
+  const stampAcceptedIdentity = () => {
+    const currentIdentity = identityPropRef.current;
+    if (!currentIdentity) return;
+    presentationIdentityRef.current = currentIdentity;
+    setPresentationIdentity(currentIdentity);
+  };
+
   // ── Receive authoritative update (from realtime / poll) ──────
   const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
     const currentAuth = authRef.current;
@@ -144,6 +162,7 @@ export function useGameStateSync<T>(
         presentationRef.current = hydratedPresentation;
         setPresentation(hydratedPresentation);
         pendingPostResetHydrationRef.current = false;
+        stampAcceptedIdentity();
 
         return {
           accepted: true,
@@ -170,6 +189,7 @@ export function useGameStateSync<T>(
     // Accept: update authoritative
     authRef.current = incoming;
     setAuthoritative(incoming);
+    stampAcceptedIdentity();
 
     // If contract active, buffer and log — never write presentation here.
     if (contractRef.current !== null) {
@@ -216,14 +236,6 @@ export function useGameStateSync<T>(
 
     return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
   }, [getProgress, isEqual, resolvedGameType]);
-
-  // Stamp the latest known authoritative identity onto presentation whenever
-  // a forward/equal update is accepted (cheap; no-op when identity unwired).
-  useEffect(() => {
-    if (!identityProp) return;
-    presentationIdentityRef.current = identityProp;
-    setPresentationIdentity(identityProp);
-  }, [identityProp, authoritative]);
 
   // ── Apply optimistic local state ─────────────────────────────
   const applyOptimistic = useCallback((localState: T) => {
@@ -417,8 +429,39 @@ export function useGameStateSync<T>(
   // has advanced past us yet. Every subsequent forward divergence triggers
   // reset() and emits `framework-identity-reset-fired`.
   useEffect(() => {
-    if (!identityProp) return;
     const prev = presentationIdentityRef.current;
+
+    if (!identityProp) {
+      if (!prev) return;
+
+      const preAuthForReset = authRef.current;
+      const preProgress = getProgress(preAuthForReset);
+      const seed = getIdentityResetSeed();
+      const seedProgress = getProgress(seed);
+
+      persistSyncDebugEvent({
+        gameId: prev.dealerGameId ?? null,
+        gameType: resolvedGameType,
+        handNumber: prev.handNumber ?? null,
+        roundId: prev.roundId ?? null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'framework-identity-null-boundary',
+        payload: {
+          prevIdentity: identityKey(prev),
+          hadActiveContract: contractRef.current !== null,
+          wasFrozen: frozenRef.current,
+          preResetAuthProgress: preProgress,
+          resetSeedProgress: seedProgress,
+        },
+      });
+      reset(seed);
+      presentationIdentityRef.current = null;
+      setPresentationIdentity(null);
+      pendingPostResetHydrationRef.current = false;
+      return;
+    }
+
     if (identityEqualsFn(prev, identityProp)) return;
 
     if (!prev) {
@@ -441,7 +484,8 @@ export function useGameStateSync<T>(
     // forensic validation that the boundary reset clears stale terminal state.
     const preAuthForReset = authRef.current;
     const preProgress = getProgress(preAuthForReset);
-    const seedProgress = getProgress(initialStateRef.current);
+    const seed = getIdentityResetSeed();
+    const seedProgress = getProgress(seed);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -466,7 +510,7 @@ export function useGameStateSync<T>(
     // completedCount=0, turnIdx=0). Reseeding with the stale snapshot makes
     // every subsequent incoming forward update look "regressive" and the UI
     // deadlocks on a fresh hand even though the DB row is correct.
-    reset(initialStateRef.current);
+    reset(seed);
     persistSyncDebugEvent({
       gameId: identityProp.dealerGameId ?? null,
       gameType: resolvedGameType,
@@ -478,11 +522,11 @@ export function useGameStateSync<T>(
       payload: {
         prevIdentity: identityKey(prev),
         nextIdentity: identityKey(identityProp),
-        seededWith: 'initialState',
-        postResetAuthProgress: seedProgress,
+        seededWith: 'identityResetState',
+        postResetAuthProgress: getProgress(seed),
       },
     });
-  }, [identityProp, identityEqualsFn, reset, resolvedGameType, getProgress]);
+  }, [identityProp, identityEqualsFn, reset, resolvedGameType, getProgress, getIdentityResetSeed]);
 
 
 

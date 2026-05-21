@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { useGameStateSync } from './useGameStateSync';
 import type { GameStateSyncHandle } from './types';
+import type { AuthoritativeIdentity } from './authoritativeIdentityPure';
 
 type TestState = {
   roundId: string | null;
@@ -36,12 +37,24 @@ const getProgress = (state: TestState | null) => {
   return [state.handNumber, state.roundNumber, state.status === 'waiting_for_action' ? 1 : 0];
 };
 
-let latestHandle: GameStateSyncHandle<TestState> | null = null;
+let latestHandle: GameStateSyncHandle<TestState | null> | null = null;
 let latestPresentation: TestState | null = null;
 let presentationRenderCount = 0;
 
-function HookHarness({ initialState }: { initialState: TestState }) {
-  const handle = useGameStateSync(initialState, { getProgress });
+function HookHarness({
+  initialState,
+  identity = null,
+  identityResetState,
+}: {
+  initialState: TestState | null;
+  identity?: AuthoritativeIdentity | null;
+  identityResetState?: TestState | null;
+}) {
+  const handle = useGameStateSync<TestState | null>(initialState, {
+    getProgress,
+    identity,
+    identityResetState,
+  });
 
   useLayoutEffect(() => {
     latestHandle = handle;
@@ -98,7 +111,7 @@ describe('useGameStateSync reset hydration', () => {
     });
 
     const renderCountAfterReset = presentationRenderCount;
-    let firstResult: ReturnType<GameStateSyncHandle<TestState>['receiveAuthoritativeUpdate']> | null = null;
+    let firstResult: ReturnType<GameStateSyncHandle<TestState | null>['receiveAuthoritativeUpdate']> | null = null;
 
     await act(async () => {
       firstResult = latestHandle!.receiveAuthoritativeUpdate(RESET_STATE);
@@ -115,7 +128,7 @@ describe('useGameStateSync reset hydration', () => {
     expect(presentationRenderCount).toBe(renderCountAfterReset + 1);
 
     const renderCountAfterFirstHydration = presentationRenderCount;
-    let secondResult: ReturnType<GameStateSyncHandle<TestState>['receiveAuthoritativeUpdate']> | null = null;
+    let secondResult: ReturnType<GameStateSyncHandle<TestState | null>['receiveAuthoritativeUpdate']> | null = null;
 
     await act(async () => {
       secondResult = latestHandle!.receiveAuthoritativeUpdate(RESET_STATE);
@@ -128,5 +141,59 @@ describe('useGameStateSync reset hydration', () => {
       comparison: 0,
     });
     expect(presentationRenderCount).toBe(renderCountAfterFirstHydration);
+  });
+
+  it('treats identity → null as an explicit boundary reset, not a hold-current no-op', async () => {
+    const identityA: AuthoritativeIdentity = { dealerGameId: 'dealer-a', handNumber: 1, roundId: 'round-a' };
+
+    await act(async () => {
+      root.render(
+        <HookHarness
+          initialState={INITIAL_STATE}
+          identity={identityA}
+          identityResetState={null}
+        />,
+      );
+    });
+    expect(latestPresentation).toEqual(INITIAL_STATE);
+
+    await act(async () => {
+      root.render(
+        <HookHarness
+          initialState={INITIAL_STATE}
+          identity={null}
+          identityResetState={null}
+        />,
+      );
+    });
+
+    expect(latestPresentation).toBeNull();
+    expect(latestHandle!.presentationIdentity).toBeNull();
+  });
+
+  it('hydrates cleanly from null boundary into the next dealer-game identity', async () => {
+    const identityA: AuthoritativeIdentity = { dealerGameId: 'dealer-a', handNumber: 1, roundId: 'round-a' };
+    const identityB: AuthoritativeIdentity = { dealerGameId: 'dealer-b', handNumber: 1, roundId: 'round-b' };
+
+    await act(async () => {
+      root.render(<HookHarness initialState={INITIAL_STATE} identity={identityA} identityResetState={null} />);
+    });
+    await act(async () => {
+      root.render(<HookHarness initialState={INITIAL_STATE} identity={null} identityResetState={null} />);
+    });
+    await act(async () => {
+      root.render(<HookHarness initialState={INITIAL_STATE} identity={identityB} identityResetState={null} />);
+    });
+
+    expect(latestPresentation).toBeNull();
+    expect(latestHandle!.presentationIdentity).toEqual(identityB);
+
+    let result: ReturnType<GameStateSyncHandle<TestState | null>['receiveAuthoritativeUpdate']> | null = null;
+    await act(async () => {
+      result = latestHandle!.receiveAuthoritativeUpdate(RESET_STATE);
+    });
+
+    expect(result).toMatchObject({ accepted: true, presentationAction: 'written' });
+    expect(latestPresentation).toEqual(RESET_STATE);
   });
 });
