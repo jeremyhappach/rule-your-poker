@@ -77,6 +77,7 @@ function _matchMilestone(event: string, data?: Record<string, unknown>): string 
   if (event === 'realtime.games payload received') return 'realtime games received';
   if (event === 'realtime.rounds payload received') return 'realtime rounds received';
   if (event === 'reducer.setGame applied (fetchGameData)') return 'reducer setGame applied';
+  if (event === 'rounds.insert applied via realtime patch (no fetch)') return 'rounds patched (no fetch)';
   if (event === 'readiness probe: reporting ready=true') return 'probe ready=true';
   if (event === 'currentRound.id changed' && data && (data as any).next) return 'currentRound present';
   if (event === 'game.current_game_uuid changed' && data && (data as any).next) return 'current_game_uuid present';
