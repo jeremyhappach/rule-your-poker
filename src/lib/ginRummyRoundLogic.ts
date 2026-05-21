@@ -16,6 +16,7 @@ import { getBotAlias } from './botAlias';
 import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
+import { ginTrace } from './ginStartupTrace';
 
 /**
  * Start the first Gin Rummy round/hand.
@@ -91,6 +92,10 @@ export async function startGinRummyRound(
     ginState = { ...ginState, handNumber };
 
     // Create round record
+    ginTrace('rounds.insert dispatched', {
+      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+      handNumber,
+    });
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
@@ -105,6 +110,11 @@ export async function startGinRummyRound(
       })
       .select()
       .single();
+    ginTrace('rounds.insert returned', {
+      ok: !roundError && !!round,
+      code: roundError?.code ?? null,
+      roundId: round?.id?.slice(0, 8) ?? null,
+    });
 
     if (roundError || !round) {
       // Atomic guard: unique constraint violation means another client already created it
@@ -123,6 +133,7 @@ export async function startGinRummyRound(
     // (already persisted by the insert above). Run the games-status update and
     // player_cards upserts in parallel, off the awaited critical path, so the
     // caller can return as soon as the authoritative frame is queryable.
+    ginTrace('off-critical writes dispatched (games + player_cards)');
     const offCriticalWrites: PromiseLike<unknown>[] = [
       supabase
         .from('games')

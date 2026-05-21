@@ -18,6 +18,7 @@ import {
   SurfaceReadinessProvider,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
+import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -47,6 +48,7 @@ import { startHorsesRound } from "@/lib/horsesRoundLogic";
 import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
+import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
 import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
@@ -7275,6 +7277,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // Treat ante completion as the gin-startup T0 (the post-submit chain).
+    if (freshGame.game_type === 'gin-rummy') {
+      markGinSubmit(gameId);
+    }
     console.log('[GIN_RUNTIME_TIMELINE] ante completion handler:start', {
       t: Date.now(),
       gameId,
@@ -7520,7 +7526,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId,
               dealerGameId: game?.current_game_uuid ?? null,
             });
+            ginTrace('startGinRummyRound:entered', {
+              dealerGameId: game?.current_game_uuid ?? null,
+            });
             const ginStartResult = await startGinRummyRound(gameId!);
+            ginTrace('startGinRummyRound:returned', {
+              success: ginStartResult.success,
+              roundId: ginStartResult.roundId?.slice(0, 8) ?? null,
+              handNumber: ginStartResult.handNumber ?? null,
+            });
             console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:complete', {
               t: Date.now(),
               gameId,
@@ -9343,10 +9357,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               Lives outside the slot so it can prove "first renderable frame
               exists" BEFORE the controller mounts the surface. */}
           {game.game_type === 'gin-rummy' && game.current_game_uuid && currentRound?.id ? (
-            <GinRummyReadinessProbe
-              dealerGameId={game.current_game_uuid}
-              roundId={currentRound.id}
-            />
+            <>
+              <GinRummyReadinessProbe
+                dealerGameId={game.current_game_uuid}
+                roundId={currentRound.id}
+              />
+              <GinStartupIdentityTracer
+                currentGameUuid={game.current_game_uuid}
+                currentRoundId={currentRound.id}
+                currentRoundDealerGameId={(currentRound as any).dealer_game_id ?? null}
+              />
+            </>
           ) : null}
         </SurfaceReadinessProvider>
       ) : innerTree}

@@ -37,6 +37,7 @@ import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
 import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
+import { ginTrace } from '@/lib/ginStartupTrace';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -120,23 +121,39 @@ export function PlayfieldSlotController({
   });
 
   useEffect(() => {
-    console.log('[GIN_RUNTIME_TIMELINE] slot controller state', {
+    const snapshot = {
       gameId: gameId ?? null,
       phase,
       desiredIdentity: describeSlotIdentity(desiredIdentity),
       mountedIdentity: describeSlotIdentity(mountedIdentity),
       readyToMount,
+      surfaceReady,
+      readyToMountProp,
       dwellElapsed: dwellElapsedRef.current,
       pendingIdentity: describeSlotIdentity(pendingIdentityRef.current),
-    });
-  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount]);
+    };
+    console.log('[GIN_RUNTIME_TIMELINE] slot controller state', snapshot);
+    ginTrace('slot.state', snapshot);
+  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp]);
 
   // Helper: attempt to promote neutral → active iff dwell elapsed AND
   // readiness is satisfied AND we have a non-null target.
   const tryPromote = (target: PlayfieldSlotIdentity, ready: boolean) => {
     if (target === null) return;
-    if (!dwellElapsedRef.current) return;
-    if (!ready) return;
+    if (!dwellElapsedRef.current) {
+      ginTrace('slot.tryPromote blocked (dwell not elapsed)', {
+        target: describeSlotIdentity(target),
+        ready,
+      });
+      return;
+    }
+    if (!ready) {
+      ginTrace('slot.tryPromote blocked (not ready)', {
+        target: describeSlotIdentity(target),
+      });
+      return;
+    }
+    ginTrace('slot.MOUNT active', { target: describeSlotIdentity(target) });
     setMountedIdentity(target);
     setPhase('active');
     dwellElapsedRef.current = false;
@@ -160,9 +177,15 @@ export function PlayfieldSlotController({
       phase !== 'neutral'
     ) {
       if (readyToMount) {
+        ginTrace('slot.cold-start direct mount (ready)', {
+          target: describeSlotIdentity(desiredIdentity),
+        });
         setMountedIdentity(desiredIdentity);
         setPhase('active');
       } else {
+        ginTrace('slot.cold-start hold neutral (awaiting-surface-ready)', {
+          target: describeSlotIdentity(desiredIdentity),
+        });
         // Treat as cold-start neutral; no dwell required, just wait
         // on readiness.
         dwellElapsedRef.current = true;
@@ -195,6 +218,11 @@ export function PlayfieldSlotController({
       !slotIdentityEquals(mountedIdentity, desiredIdentity) &&
       phase === 'active'
     ) {
+      ginTrace('slot.enter neutral (active→active rollover)', {
+        from: describeSlotIdentity(mountedIdentity),
+        to: describeSlotIdentity(desiredIdentity),
+        dwellMs: interstitialDwellMs,
+      });
       setMountedIdentity(null);
       setNeutralReason('dealer-game-rollover');
       setPhase('neutral');
@@ -205,6 +233,7 @@ export function PlayfieldSlotController({
       dwellTimerRef.current = setTimeout(() => {
         dwellTimerRef.current = null;
         dwellElapsedRef.current = true;
+        ginTrace('slot.dwell elapsed (rollover)', { ready: readyToMount });
         tryPromote(pendingIdentityRef.current, readyToMount);
       }, interstitialDwellMs);
       return;
@@ -218,9 +247,13 @@ export function PlayfieldSlotController({
       if (dwellElapsedRef.current) {
         tryPromote(desiredIdentity, readyToMount);
       } else if (!dwellTimerRef.current) {
+        ginTrace('slot.dwell timer armed (neutral hold)', {
+          dwellMs: interstitialDwellMs,
+        });
         dwellTimerRef.current = setTimeout(() => {
           dwellTimerRef.current = null;
           dwellElapsedRef.current = true;
+          ginTrace('slot.dwell elapsed (neutral hold)', { ready: readyToMount });
           tryPromote(pendingIdentityRef.current, readyToMount);
         }, interstitialDwellMs);
       }

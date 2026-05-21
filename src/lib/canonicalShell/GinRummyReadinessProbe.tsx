@@ -24,6 +24,7 @@ import {
   useReportSurfaceReady,
   type SurfaceReadinessIdentity,
 } from './SurfaceReadinessContract';
+import { ginTrace } from '@/lib/ginStartupTrace';
 
 interface Props {
   dealerGameId: string | null;
@@ -38,15 +39,30 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
 
   useReportSurfaceReady(identity, hasFrame);
 
+  useEffect(() => {
+    if (hasFrame) {
+      ginTrace('readiness probe: reporting ready=true', {
+        roundId: roundId?.slice(0, 8) ?? null,
+      });
+    }
+  }, [hasFrame, roundId]);
+
   // Reset readiness when identity changes.
   useEffect(() => {
     setHasFrame(false);
+    ginTrace('readiness probe: identity bound', {
+      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+      roundId: roundId?.slice(0, 8) ?? null,
+    });
   }, [dealerGameId, roundId]);
 
   // Initial fetch.
   useEffect(() => {
     if (!roundId) return;
     let cancelled = false;
+    ginTrace('readiness probe: initial fetch dispatched', {
+      roundId: roundId.slice(0, 8),
+    });
     (async () => {
       const { data } = await supabase
         .from('rounds')
@@ -54,6 +70,10 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
         .eq('id', roundId)
         .maybeSingle();
       if (cancelled) return;
+      ginTrace('readiness probe: initial fetch returned', {
+        roundId: roundId.slice(0, 8),
+        hasState: Boolean(data?.gin_rummy_state),
+      });
       if (data?.gin_rummy_state) {
         console.log('[GIN_RUNTIME_TIMELINE] readiness probe: frame available (fetch)', {
           roundId: roundId.slice(0, 8),
@@ -81,6 +101,10 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
         },
         (payload: any) => {
           const row = payload.new ?? payload.record;
+          ginTrace('readiness probe: realtime event', {
+            roundId: roundId.slice(0, 8),
+            hasState: Boolean(row?.gin_rummy_state),
+          });
           if (row?.gin_rummy_state) {
             console.log('[GIN_RUNTIME_TIMELINE] readiness probe: frame available (realtime)', {
               roundId: roundId.slice(0, 8),
