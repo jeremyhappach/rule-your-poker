@@ -92,6 +92,10 @@ export async function startGinRummyRound(
     ginState = { ...ginState, handNumber };
 
     // Create round record
+    ginTrace('rounds.insert dispatched', {
+      dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+      handNumber,
+    });
     const { data: round, error: roundError } = await supabase
       .from('rounds')
       .insert({
@@ -106,6 +110,11 @@ export async function startGinRummyRound(
       })
       .select()
       .single();
+    ginTrace('rounds.insert returned', {
+      ok: !roundError && !!round,
+      code: roundError?.code ?? null,
+      roundId: round?.id?.slice(0, 8) ?? null,
+    });
 
     if (roundError || !round) {
       // Atomic guard: unique constraint violation means another client already created it
