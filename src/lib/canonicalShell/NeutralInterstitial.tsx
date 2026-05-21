@@ -12,6 +12,7 @@ import { recordShellEvent } from './diagnostics';
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFeltSurface';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
+import { ginTrace } from '@/lib/ginStartupTrace';
 
 
 export interface NeutralInterstitialProps {
