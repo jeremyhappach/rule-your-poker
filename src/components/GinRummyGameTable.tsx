@@ -1787,8 +1787,14 @@ export const GinRummyGameTable = ({
                   {getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
                 </span>
 
-                {/* Chip circle */}
-                <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
+                {/* Chip circle — carries data-chip-center so chip-transport
+                    animations and any future seat-anchored overlays resolve
+                    to the SAME DOM node the user sees (single source of
+                    truth: canonicalSlotPlacement → this element). */}
+                <div
+                  data-chip-center={seatPlayer.position}
+                  className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white"
+                >
                   <span className="text-[10px] font-bold text-slate-900">
                     ${formatChipValue(seatPlayer.chips)}
                   </span>
