@@ -21,7 +21,7 @@ import {
   sumDeadwood,
   canDrawFromStock,
 } from './ginRummyScoring';
-import { isGinRiggedDealEnabled } from './debugFlags';
+import { isGinRiggedDealEnabled, isGinTwoActionHarnessEnabled } from './debugFlags';
 
 /** Bump the monotonic action counter used by the anti-regression framework. */
 function bumpAction(state: GinRummyState): number {
