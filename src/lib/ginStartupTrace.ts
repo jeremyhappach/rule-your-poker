@@ -65,6 +65,7 @@ export function markGinSubmit(gameId: string | null | undefined): void {
   _t0GameId = gameId ?? null;
   _milestones = [];
   _seenLabels.clear();
+  _frozen = false;
   _recordMilestone('T0 submit', 0);
   // eslint-disable-next-line no-console
   console.log('[GIN_RUNTIME_TIMELINE] T0 submit', {
@@ -72,6 +73,7 @@ export function markGinSubmit(gameId: string | null | undefined): void {
     gameId: _t0GameId,
   });
 }
+
 
 export function ginTrace(event: string, data?: Record<string, unknown>): void {
   const now = performance.now();
