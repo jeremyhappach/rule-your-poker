@@ -14,6 +14,10 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
+import {
+  SurfaceReadinessProvider,
+} from "@/lib/canonicalShell/SurfaceReadinessContract";
+import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily } from "@/lib/canonicalShell/shellRouting";
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -8711,6 +8715,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
+            readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             neutralGameKind={game.game_type === 'gin-rummy' ? 'gin-rummy' : null}
             neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
@@ -9285,15 +9290,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         onModeChange={() => {}}
       />
       {enableOuterShell ? (
-        <PersistentTableShell
-          gameId={gameId ?? undefined}
-          gameType={game.game_type}
-          projectionMode={shellProjectionMode}
-          viewerPosition={shellViewerPosition}
-          seats={shellEligibleSeats}
-        >
-          {innerTree}
-        </PersistentTableShell>
+        <SurfaceReadinessProvider>
+          <PersistentTableShell
+            gameId={gameId ?? undefined}
+            gameType={game.game_type}
+            projectionMode={shellProjectionMode}
+            viewerPosition={shellViewerPosition}
+            seats={shellEligibleSeats}
+          >
+            {innerTree}
+          </PersistentTableShell>
+          {/* Gin-only readiness probe (capability-driven, not shell branching).
+              Lives outside the slot so it can prove "first renderable frame
+              exists" BEFORE the controller mounts the surface. */}
+          {game.game_type === 'gin-rummy' && game.current_game_uuid && currentRound?.id ? (
+            <GinRummyReadinessProbe
+              dealerGameId={game.current_game_uuid}
+              roundId={currentRound.id}
+            />
+          ) : null}
+        </SurfaceReadinessProvider>
       ) : innerTree}
 
     </VisualPreferencesProvider>

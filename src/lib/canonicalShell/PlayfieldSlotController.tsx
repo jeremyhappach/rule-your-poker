@@ -34,6 +34,7 @@ import {
 import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
 import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
+import { useSurfaceReadiness } from './SurfaceReadinessContract';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -46,8 +47,19 @@ export interface PlayfieldSlotControllerProps {
    * dwell expiry until this flips true. Defaults to true (backwards
    * compatible). Narrow scope: only answers "is the intended game
    * surface ready to paint a stable first frame?".
+   *
+   * The effective readiness ANDs this prop with any value reported
+   * through SurfaceReadinessContract for `desiredIdentity` (scoped by
+   * the optional `readinessScope`, e.g. roundId). Surfaces that don't
+   * register a probe default to true and behave as today.
    */
   readyToMount?: boolean;
+  /**
+   * Optional sub-scope key for surface readiness lookups (e.g. roundId).
+   * Combined with desiredIdentity.dealerGameId to consume reports from
+   * SurfaceReadinessContract.
+   */
+  readinessScope?: string | null;
   neutralGameKind?: CanonicalFeltGameKind | null;
   neutralAnteAmount?: number | string;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
@@ -60,11 +72,16 @@ export function PlayfieldSlotController({
   desiredIdentity,
   interstitialDwellMs = SLOT_CHOREOGRAPHY.interstitialDwellMs,
   gameId,
-  readyToMount = true,
+  readyToMount: readyToMountProp = true,
+  readinessScope = null,
   neutralGameKind = null,
   neutralAnteAmount = 0,
   children,
 }: PlayfieldSlotControllerProps) {
+  const surfaceReady = useSurfaceReadiness(
+    desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
+  );
+  const readyToMount = readyToMountProp && surfaceReady;
   const [mountedIdentity, setMountedIdentity] =
     useState<PlayfieldSlotIdentity>(
       // Cold start: only mount immediately if also ready. Otherwise
