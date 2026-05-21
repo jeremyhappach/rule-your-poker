@@ -138,6 +138,13 @@ export function useGameStateSync<T>(
   const canWritePresentation = (): boolean =>
     !frozenRef.current && contractRef.current === null;
 
+  const stampAcceptedIdentity = () => {
+    const currentIdentity = identityPropRef.current;
+    if (!currentIdentity) return;
+    presentationIdentityRef.current = currentIdentity;
+    setPresentationIdentity(currentIdentity);
+  };
+
   // ── Receive authoritative update (from realtime / poll) ──────
   const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
     const currentAuth = authRef.current;
@@ -155,6 +162,7 @@ export function useGameStateSync<T>(
         presentationRef.current = hydratedPresentation;
         setPresentation(hydratedPresentation);
         pendingPostResetHydrationRef.current = false;
+        stampAcceptedIdentity();
 
         return {
           accepted: true,
@@ -181,6 +189,7 @@ export function useGameStateSync<T>(
     // Accept: update authoritative
     authRef.current = incoming;
     setAuthoritative(incoming);
+    stampAcceptedIdentity();
 
     // If contract active, buffer and log — never write presentation here.
     if (contractRef.current !== null) {
@@ -227,14 +236,6 @@ export function useGameStateSync<T>(
 
     return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
   }, [getProgress, isEqual, resolvedGameType]);
-
-  // Stamp the latest known authoritative identity onto presentation whenever
-  // a forward/equal update is accepted (cheap; no-op when identity unwired).
-  useEffect(() => {
-    if (!identityProp) return;
-    presentationIdentityRef.current = identityProp;
-    setPresentationIdentity(identityProp);
-  }, [identityProp, authoritative]);
 
   // ── Apply optimistic local state ─────────────────────────────
   const applyOptimistic = useCallback((localState: T) => {
