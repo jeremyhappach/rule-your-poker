@@ -8044,7 +8044,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
   if (loading || !game) {
-    return <div className="min-h-screen flex items-center justify-center bg-shell-neutral text-foreground">Loading...</div>;
+    // Lifecycle ownership fix: do NOT return a bare full-page loading
+    // div above shell ownership — that's the root of the bootstrap
+    // black screen / HUD-disappears artifact.
+    //
+    // We cannot speculatively mount PersistentTableShell here: the
+    // shell family is unknown until `game` resolves, and swapping
+    // shell families post-hydration is forbidden. Instead, render a
+    // bootstrap placeholder that owns the *same* backdrop the
+    // canonical shell paints (`bg-shell-neutral`) so the transition
+    // into the real shell is background-continuous. No fake gameplay
+    // state, no fake HUD content — just the neutral backdrop.
+    return (
+      <div
+        data-canonical-bootstrap=""
+        className="min-h-screen bg-shell-neutral"
+        aria-busy="true"
+      />
+    );
   }
 
   const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
