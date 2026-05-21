@@ -16,6 +16,7 @@ import { getBotAlias } from './botAlias';
 import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
+import { ginTrace } from './ginStartupTrace';
 
 /**
  * Start the first Gin Rummy round/hand.
