@@ -104,9 +104,10 @@ export function useGameStateSync<T>(
 
   const getIdentityResetSeed = useCallback((): T => {
     const resetState = identityResetStateRef.current;
+    if (resetState === undefined) return initialStateRef.current;
     return typeof resetState === 'function'
       ? (resetState as () => T)()
-      : resetState ?? initialStateRef.current;
+      : resetState;
   }, []);
 
   // Keep refs in sync
