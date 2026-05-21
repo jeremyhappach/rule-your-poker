@@ -34,6 +34,7 @@ import {
 import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
 import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
+import { useSurfaceReadiness } from './SurfaceReadinessContract';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
