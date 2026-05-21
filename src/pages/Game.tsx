@@ -7276,6 +7276,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
+    // Treat ante completion as the gin-startup T0 (the post-submit chain).
+    if (freshGame.game_type === 'gin-rummy') {
+      markGinSubmit(gameId);
+    }
     console.log('[GIN_RUNTIME_TIMELINE] ante completion handler:start', {
       t: Date.now(),
       gameId,
