@@ -1782,30 +1782,40 @@ export const GinRummyGameTable = ({
                 "absolute flex flex-col items-start",
                 placement.className
               )}>
-                {/* Opponent name above chip stack */}
-                <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1 mb-0.5">
-                  {getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                </span>
+                {/* Opponent name + dealer pip inline. Inlining the dealer
+                    indicator beside the name avoids the "stray red artifact"
+                    that appeared when the pip was rendered below the chip:
+                    the opponent card-back row is anchored to this same slot
+                    at mt-[58px] and the below-chip pip overlapped the cards. */}
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1">
+                    {getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
+                  </span>
+                  {isCribDealer(seatId) && (
+                    <div className="w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0">
+                      <span className="text-white font-bold text-[6px] leading-none">D</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Chip circle — carries data-chip-center so chip-transport
                     animations and any future seat-anchored overlays resolve
                     to the SAME DOM node the user sees (single source of
-                    truth: canonicalSlotPlacement → this element). */}
+                    truth: canonicalSlotPlacement → this element).
+                    Observer projections may land on light chrome outside the
+                    felt; apply a dark outline ring (independent of fill) so
+                    the bubble stays legible regardless of chip color. */}
                 <div
                   data-chip-center={seatPlayer.position}
-                  className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white"
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white",
+                    isObserver && "ring-2 ring-black/70 shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
+                  )}
                 >
                   <span className="text-[10px] font-bold text-slate-900">
                     ${formatChipValue(seatPlayer.chips)}
                   </span>
                 </div>
-
-                {/* Dealer button below chip stack */}
-                {isCribDealer(seatId) && (
-                  <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center mt-0.5">
-                    <span className="text-white font-bold text-[7px]">D</span>
-                  </div>
-                )}
               </div>
               );
             })}
