@@ -74,7 +74,9 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppNetworkSim>
+            <LifecycleDebugBadge />
           </BrowserRouter>
+
         </ResponsiveGeometryProvider>
       </TooltipProvider>
     </QueryClientProvider>
