@@ -9294,15 +9294,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // recomputation. Roster filter is game-agnostic (seated, not
   // sitting-out, not waiting, not observer/left) — the resolver
   // canonicalizes 2P face-to-face / observer-upper-left semantics.
-  const shellEligibleSeats = enableOuterShell
+  // SeatAnchorLayer is a canonical-family-only feature. Gate it on
+  // game_type (NOT on shell mount, which is now route-stable). For
+  // non-canonical families we pass undefined so PersistentTableShell's
+  // `seats && projectionMode` check skips SeatAnchorLayer entirely.
+  const shellCanonicalFamily = isCanonicalShellFamily(game.game_type);
+  const shellEligibleSeats = shellCanonicalFamily
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
         .map(p => ({ position: p.position, occupied: true, hidden: false }))
-    : [];
+    : undefined;
   const shellViewerPosition = currentPlayer?.position ?? null;
-  const shellProjectionMode: 'active-canonical' | 'observer-absolute' = currentPlayer
-    ? 'active-canonical'
-    : 'observer-absolute';
+  const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellCanonicalFamily
+    ? (currentPlayer ? 'active-canonical' : 'observer-absolute')
+    : undefined;
+
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
   // single authoritative CanonicalFeltSurface; the shell no longer
