@@ -232,6 +232,7 @@ export const GinRummyGameTable = ({
     optimisticTimeoutMs: 3000,
     gameType: 'gin-rummy',
     isEqual: (a, b) => JSON.stringify(a) === JSON.stringify(b),
+    identityResetState: null,
     identity: authIdentity,
   });
 
