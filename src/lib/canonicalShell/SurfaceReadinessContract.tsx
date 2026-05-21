@@ -8,16 +8,16 @@
  * lifecycle; the shell only consumes whatever readiness has been
  * reported for the identity it's about to mount.
  *
- * Contract:
- *   - A reporter (typically a small probe component mounted as a sibling
- *     of the gameplay slot, OR the gameplay surface itself) calls
- *     useReportSurfaceReady(identity, ready).
- *   - A consumer (PlayfieldSlotController parent / Game.tsx) calls
- *     useSurfaceReadiness(identity) and ANDs the result with its
- *     identity scoping check.
- *   - When no probe has reported for the identity, the default is
- *     `true` (backwards compatible: surfaces that don't need explicit
- *     readiness continue to mount on identity alone).
+ * Identity scoping (strict, no stale-leak):
+ *   - Probes "register" themselves for a `dealerGameId`. While any
+ *     probe is registered for that dealerGameId, the consumer is
+ *     default-DENY for unknown scopes under it — a stale ready=true
+ *     from a prior round cannot leak forward to a new roundId.
+ *   - Probes seed `ready=false` for the new identity synchronously
+ *     (layout effect) on every identity change, and clear the previous
+ *     identity's entry. The map cannot accumulate stale truthy entries.
+ *   - Surfaces that never register a probe stay default-ALLOW
+ *     (backwards compatible).
  */
 
 import {
@@ -25,6 +25,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -42,14 +43,23 @@ function identityKey(id: SurfaceReadinessIdentity | null): string {
   return `${id.dealerGameId}::${id.scope ?? ''}`;
 }
 
+function parseKey(key: string): SurfaceReadinessIdentity {
+  const [dealerGameId, scope] = key.split('::');
+  return { dealerGameId, scope: scope || null };
+}
+
 interface ReadinessState {
   reports: Map<string, boolean>;
+  /** dealerGameId -> count of active probe registrations. */
+  registrations: Map<string, number>;
 }
 
 interface ReadinessContextValue {
   state: ReadinessState;
-  report: (id: SurfaceReadinessIdentity, ready: boolean) => void;
-  clear: (id: SurfaceReadinessIdentity) => void;
+  setReport: (id: SurfaceReadinessIdentity, ready: boolean) => void;
+  clearReport: (id: SurfaceReadinessIdentity) => void;
+  registerProbe: (dealerGameId: string) => void;
+  unregisterProbe: (dealerGameId: string) => void;
 }
 
 const ReadinessContext = createContext<ReadinessContextValue | null>(null);
@@ -57,34 +67,68 @@ const ReadinessContext = createContext<ReadinessContextValue | null>(null);
 export function SurfaceReadinessProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ReadinessState>(() => ({
     reports: new Map(),
+    registrations: new Map(),
   }));
 
-  const report = useCallback((id: SurfaceReadinessIdentity, ready: boolean) => {
+  const setReport = useCallback((id: SurfaceReadinessIdentity, ready: boolean) => {
     const key = identityKey(id);
     if (!key) return;
     setState(prev => {
-      const existing = prev.reports.get(key);
-      if (existing === ready) return prev;
-      const next = new Map(prev.reports);
-      next.set(key, ready);
-      return { reports: next };
+      if (prev.reports.get(key) === ready) return prev;
+      const reports = new Map(prev.reports);
+      reports.set(key, ready);
+      return { ...prev, reports };
     });
   }, []);
 
-  const clear = useCallback((id: SurfaceReadinessIdentity) => {
+  const clearReport = useCallback((id: SurfaceReadinessIdentity) => {
     const key = identityKey(id);
     if (!key) return;
     setState(prev => {
       if (!prev.reports.has(key)) return prev;
-      const next = new Map(prev.reports);
-      next.delete(key);
-      return { reports: next };
+      const reports = new Map(prev.reports);
+      reports.delete(key);
+      return { ...prev, reports };
+    });
+  }, []);
+
+  const registerProbe = useCallback((dealerGameId: string) => {
+    if (!dealerGameId) return;
+    setState(prev => {
+      const registrations = new Map(prev.registrations);
+      registrations.set(dealerGameId, (registrations.get(dealerGameId) ?? 0) + 1);
+      return { ...prev, registrations };
+    });
+  }, []);
+
+  const unregisterProbe = useCallback((dealerGameId: string) => {
+    if (!dealerGameId) return;
+    setState(prev => {
+      const current = prev.registrations.get(dealerGameId) ?? 0;
+      if (current <= 0) return prev;
+      const registrations = new Map(prev.registrations);
+      const next = current - 1;
+      if (next <= 0) {
+        registrations.delete(dealerGameId);
+        // Also purge any leftover reports under this dealerGameId.
+        const reports = new Map(prev.reports);
+        let mutated = false;
+        for (const k of Array.from(reports.keys())) {
+          if (parseKey(k).dealerGameId === dealerGameId) {
+            reports.delete(k);
+            mutated = true;
+          }
+        }
+        return { reports: mutated ? reports : prev.reports, registrations };
+      }
+      registrations.set(dealerGameId, next);
+      return { ...prev, registrations };
     });
   }, []);
 
   const value = useMemo<ReadinessContextValue>(
-    () => ({ state, report, clear }),
-    [state, report, clear],
+    () => ({ state, setReport, clearReport, registerProbe, unregisterProbe }),
+    [state, setReport, clearReport, registerProbe, unregisterProbe],
   );
 
   return (
@@ -95,64 +139,83 @@ export function SurfaceReadinessProvider({ children }: { children: ReactNode }) 
 }
 
 /**
- * Reporter hook. Stable across re-renders; only emits when value
- * actually changes.
+ * Reporter hook. On every identity change:
+ *   1. Synchronously (layout effect) seeds the new identity as
+ *      ready=false and clears the prior identity entry, so no stale
+ *      truthy report can leak across roundIds/dealerGames.
+ *   2. Registers a probe for the new dealerGameId (default-deny gate).
+ *   3. Emits the current `ready` value when it actually changes.
  */
 export function useReportSurfaceReady(
   identity: SurfaceReadinessIdentity | null,
   ready: boolean,
 ) {
   const ctx = useContext(ReadinessContext);
-  const lastReportedRef = useRef<{ key: string; ready: boolean } | null>(null);
+  const prevIdentityRef = useRef<SurfaceReadinessIdentity | null>(null);
+  const prevDealerGameIdRef = useRef<string | null>(null);
 
+  // Synchronous reset on identity change — runs before paint so the
+  // consumer never observes a stale `true` for the new identity.
+  useLayoutEffect(() => {
+    if (!ctx) return;
+    const prev = prevIdentityRef.current;
+    const prevKey = identityKey(prev);
+    const nextKey = identityKey(identity);
+
+    if (prevKey !== nextKey) {
+      if (prev) ctx.clearReport(prev);
+      if (identity) ctx.setReport(identity, false);
+      prevIdentityRef.current = identity;
+    }
+
+    const prevDealer = prevDealerGameIdRef.current;
+    const nextDealer = identity?.dealerGameId ?? null;
+    if (prevDealer !== nextDealer) {
+      if (prevDealer) ctx.unregisterProbe(prevDealer);
+      if (nextDealer) ctx.registerProbe(nextDealer);
+      prevDealerGameIdRef.current = nextDealer;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx, identity?.dealerGameId, identity?.scope]);
+
+  // Report current readiness value.
   useEffect(() => {
     if (!ctx || !identity) return;
-    const key = identityKey(identity);
-    if (!key) return;
-
-    const prev = lastReportedRef.current;
-    if (prev && prev.key === key && prev.ready === ready) return;
-
-    ctx.report(identity, ready);
-    lastReportedRef.current = { key, ready };
-
-    return () => {
-      // Clear when identity changes; allows fresh readiness lifecycle
-      // for the next identity.
-      const cur = lastReportedRef.current;
-      if (cur && cur.key !== identityKey(identity)) {
-        // no-op; cleared by the new identity's effect
-      }
-    };
+    ctx.setReport(identity, ready);
   }, [ctx, identity?.dealerGameId, identity?.scope, ready]);
 
-  // Clear on unmount.
+  // Unmount: release probe registration and clear the report.
   useEffect(() => {
     return () => {
-      const prev = lastReportedRef.current;
-      if (prev && ctx) {
-        ctx.clear({ dealerGameId: prev.key.split('::')[0], scope: prev.key.split('::')[1] || null });
-      }
+      if (!ctx) return;
+      const prev = prevIdentityRef.current;
+      const prevDealer = prevDealerGameIdRef.current;
+      if (prev) ctx.clearReport(prev);
+      if (prevDealer) ctx.unregisterProbe(prevDealer);
+      prevIdentityRef.current = null;
+      prevDealerGameIdRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
 /**
- * Consumer hook. Returns `true` when:
- *   - no probe has reported for this identity (default-allow), OR
- *   - the latest reported value for this identity is true.
- *
- * Returns `false` only when a probe has explicitly reported `false`
- * for the exact identity.
+ * Consumer hook.
+ *   - If NO probe is registered for the identity's dealerGameId:
+ *     default-ALLOW (returns true). Backwards compatible with surfaces
+ *     that don't opt into readiness.
+ *   - If a probe IS registered for the dealerGameId: strict default-
+ *     DENY. Returns true only when the exact identity (dealerGameId +
+ *     scope) has an explicit ready=true report.
  */
 export function useSurfaceReadiness(
   identity: SurfaceReadinessIdentity | null,
 ): boolean {
   const ctx = useContext(ReadinessContext);
   if (!ctx || !identity) return true;
+  const gated = (ctx.state.registrations.get(identity.dealerGameId) ?? 0) > 0;
   const key = identityKey(identity);
-  if (!key) return true;
   const reported = ctx.state.reports.get(key);
-  return reported === undefined ? true : reported;
+  if (!gated) return reported === undefined ? true : reported;
+  return reported === true;
 }
