@@ -117,39 +117,44 @@ export async function startGinRummyRound(
 
     const insertedHandNumber = round.hand_number ?? handNumber;
 
-    // Update game status with authoritative values from DB
-    await supabase
-      .from('games')
-      .update({
-        status: 'in_progress',
-        current_round: 1,
-        total_hands: insertedHandNumber,
-        pot: 0,
-        is_first_hand: handNumber === 1,
-      })
-      .eq('id', gameId);
-
     logGinHandStart(gameId, insertedHandNumber, dealerPlayer.id, round.id);
 
-    // Store player cards for hand history
+    // CRITICAL-PATH OPTIMIZATION: readiness depends only on rounds.gin_rummy_state
+    // (already persisted by the insert above). Run the games-status update and
+    // player_cards upserts in parallel, off the awaited critical path, so the
+    // caller can return as soon as the authoritative frame is queryable.
+    const offCriticalWrites: Promise<unknown>[] = [
+      supabase
+        .from('games')
+        .update({
+          status: 'in_progress',
+          current_round: 1,
+          total_hands: insertedHandNumber,
+          pot: 0,
+          is_first_hand: handNumber === 1,
+        })
+        .eq('id', gameId)
+        .then(({ error }) => {
+          if (error) console.warn('[GIN-RUMMY] games status update failed:', error.message);
+        }),
+    ];
     for (const playerId of [dealerPlayer.id, nonDealerPlayer.id]) {
       const playerState = ginState.playerStates[playerId];
-      if (playerState) {
-        await supabase
+      if (!playerState) continue;
+      offCriticalWrites.push(
+        supabase
           .from('player_cards')
           .upsert(
-            {
-              player_id: playerId,
-              round_id: round.id,
-              cards: playerState.hand as any,
-            },
+            { player_id: playerId, round_id: round.id, cards: playerState.hand as any },
             { onConflict: 'player_id,round_id' }
           )
           .then(({ error }) => {
             if (error) console.warn('[GIN-RUMMY] Failed to store player cards:', playerId, error.message);
-          });
-      }
+          })
+      );
     }
+    // Fire-and-forget: do NOT await — readiness probe does not depend on these.
+    void Promise.all(offCriticalWrites);
 
     console.log('[GIN-RUMMY] Round started', { roundId: round.id, handNumber: insertedHandNumber });
     return { success: true, roundId: round.id, handNumber: insertedHandNumber };
