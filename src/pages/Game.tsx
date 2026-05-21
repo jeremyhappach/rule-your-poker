@@ -8099,7 +8099,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // — legitimate teardown / exit flows are NOT suppressed.
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
-  if (loading || !game) {
+  if ((loading || !game) && !hasHydratedRef.current) {
     setLifecycleFact('Game.branch', 'bootstrap');
     setLifecycleFact('Game.loading', loading);
     setLifecycleFact('Game.game', !!game);
@@ -8119,6 +8119,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         </PersistentTableShell>
       </SurfaceReadinessProvider>
     );
+  }
+
+  // After hydration, `game` is guaranteed non-null via the
+  // lastGameRef fallback. Narrow the type for downstream code that
+  // assumes `game` is non-null past this point.
+  if (!game) {
+    return null;
   }
 
 
