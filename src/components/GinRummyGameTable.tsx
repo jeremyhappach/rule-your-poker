@@ -50,10 +50,11 @@ import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
-import { GinRummyMatchWinner } from './GinRummyMatchWinner';
+// GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
@@ -415,7 +416,7 @@ export const GinRummyGameTable = ({
     losers: { playerId: string; x: number; y: number }[];
   } | null>(null);
   const [chipAnimAmount, setChipAnimAmount] = useState(0);
-  const matchEndAnimatedRef = useRef(false);
+  // matchEndAnimatedRef removed — replaced by matchEndKeyRef (keyed on dealerGameId+winnerId) for hard idempotency.
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const prevMessageCountRef = useRef(0);
   const prevPhaseRef = useRef<string | null>(null);
@@ -1308,59 +1309,100 @@ export const GinRummyGameTable = ({
   }, [roundId]);
 
   // ─── Hand Completion & Next Hand ──────────────────────────────
+  // Driven off viewState (presentation), NOT raw ginState. This keeps the
+  // terminal lifecycle on a single authoritative-via-presentation trigger,
+  // matches what the user actually sees, and prevents optimistic +
+  // authoritative double-fire from re-running animation/announcement.
+  //
+  // Idempotency: the match-win path is keyed by `${dealerGameId}:${winnerId}`
+  // in matchEndKeyRef so it can NEVER fire twice for the same terminal.
+  // Hand-rotation path uses handCompletionInProgress as before.
   const handCompletionInProgress = useRef(false);
+  const matchEndKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!ginState || ginState.phase !== 'complete' || handCompletionInProgress.current) return;
+    if (!viewState || viewState.phase !== 'complete') return;
     if (!dealerGameId) return;
+    if (handCompletionInProgress.current) return;
+
+    // Match-win idempotency: once a terminal key fires, do not refire.
+    const matchKey = viewState.winnerPlayerId
+      ? `${dealerGameId}:${viewState.winnerPlayerId}`
+      : null;
+    if (matchKey && matchEndKeyRef.current === matchKey) return;
 
     handCompletionInProgress.current = true;
+    if (matchKey) matchEndKeyRef.current = matchKey;
 
     const processCompletion = async () => {
       try {
         // Record hand result (history only, no chip transfer per-hand)
-        if (ginState.knockResult) {
-          await recordGinRummyHandResult(gameId, dealerGameId, handNumber, ginState);
+        if (viewState.knockResult) {
+          await recordGinRummyHandResult(gameId, dealerGameId, handNumber, viewState);
         }
 
-        // Check if match is won
-        if (ginState.winnerPlayerId) {
-          // Trigger chip transfer animation before ending the game
-          if (!matchEndAnimatedRef.current) {
-            matchEndAnimatedRef.current = true;
-            // Compute player-to-player positions like cribbage
-            const container = tableContainerRef.current;
-            if (container) {
-              const rect = container.getBoundingClientRect();
-              const winnerId = ginState.winnerPlayerId;
-              const loserId = winnerId === ginState.dealerPlayerId ? ginState.nonDealerPlayerId : ginState.dealerPlayerId;
-              const winnerPlayer = players.find(p => p.id === winnerId);
-              const isWinnerCurrentPlayer = winnerPlayer?.user_id === currentUserId;
+        // Match-win path
+        if (viewState.winnerPlayerId) {
+          const winnerId = viewState.winnerPlayerId;
+          const loserId =
+            winnerId === viewState.dealerPlayerId
+              ? viewState.nonDealerPlayerId
+              : viewState.dealerPlayerId;
+          const winnerPlayer = players.find(p => p.id === winnerId);
+          const loserPlayer = players.find(p => p.id === loserId);
+          const container = tableContainerRef.current;
 
-              const winnerPos = isWinnerCurrentPlayer
+          if (container && winnerPlayer && loserPlayer) {
+            const rect = container.getBoundingClientRect();
+
+            // Resolve via canonical chip endpoints (data-chip-center).
+            // Works for active AND observer because the SeatAnchorLayer
+            // anchors place the markers at the correct projected seats.
+            const resolveSeat = (position: number, isLocal: boolean) => {
+              const resolved = resolveChipEndpoint({
+                ref: { kind: 'seat', position },
+                container,
+                debugLabel: 'gin-match-end',
+              });
+              if (resolved) {
+                return { x: rect.left + resolved.x, y: rect.top + resolved.y };
+              }
+              // Fallback: local seat (active player) has no chip-center marker
+              // in Gin → use bottom-center; otherwise use top-left as last resort.
+              return isLocal
                 ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
                 : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
-              const loserPos = isWinnerCurrentPlayer
-                ? { playerId: loserId, x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 }
-                : { playerId: loserId, x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 };
+            };
 
-              setChipAnimAmount(anteAmount);
-              setStoredChipPositions({ winner: winnerPos, losers: [loserPos] });
-              setChipAnimTriggerId(`gin-win-${roundId}-${Date.now()}`);
-            }
-            // Wait for animation to play
-            await new Promise(resolve => setTimeout(resolve, 4500));
+            const winnerIsLocal = winnerPlayer.user_id === currentUserId;
+            const loserIsLocal = loserPlayer.user_id === currentUserId;
+            const winnerPos = resolveSeat(winnerPlayer.position, winnerIsLocal);
+            const loserPos = resolveSeat(loserPlayer.position, loserIsLocal);
+
+            setChipAnimAmount(anteAmount);
+            setStoredChipPositions({
+              winner: winnerPos,
+              losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
+            });
+            setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
-          await endGinRummyGame(gameId, roundId, ginState);
+          // Wait for animation to play
+          await new Promise(resolve => setTimeout(resolve, 4500));
+          await endGinRummyGame(gameId, roundId, viewState);
+          // Hard teardown of terminal UI before handing off — prevents the
+          // chip-transfer overlay and any seat-projected terminal state from
+          // bleeding into the next-game / dealer-setup surface.
+          setStoredChipPositions(null);
+          setChipAnimTriggerId(null);
           onGameComplete();
           return;
         }
 
         // Start next hand after a delay (longer for gin so players can read cards)
-        const isGin = ginState.knockResult?.isGin;
-        const delay = !ginState.knockResult ? 1500 : isGin ? 5000 : 3000;
+        const isGin = viewState.knockResult?.isGin;
+        const delay = !viewState.knockResult ? 1500 : isGin ? 5000 : 3000;
         await new Promise(resolve => setTimeout(resolve, delay));
-        const result = await startNextGinRummyHand(gameId, dealerGameId, ginState);
+        const result = await startNextGinRummyHand(gameId, dealerGameId, viewState);
         if (result.success) {
           console.log('[GIN-RUMMY] Next hand started:', result.handNumber);
         }
@@ -1372,7 +1414,8 @@ export const GinRummyGameTable = ({
     };
 
     processCompletion();
-  }, [ginState?.phase, ginState?.winnerPlayerId]);
+  }, [viewState?.phase, viewState?.winnerPlayerId, dealerGameId]);
+
 
   const updateState = async (newState: GinRummyState, traceId?: string) => {
     // Writer-audit gate: refuse to write if the framework says we cannot interact
@@ -1744,13 +1787,16 @@ export const GinRummyGameTable = ({
               );
             })()}
 
-            {/* Match Winner Celebration */}
-            {viewState.phase === 'complete' && viewState.winnerPlayerId && (
-              <GinRummyMatchWinner
-                ginState={viewState}
-                getPlayerUsername={getPlayerUsername}
-              />
-            )}
+            {/* Match Winner announcement intentionally NOT rendered here.
+                A bespoke Gin-owned celebration surface caused duplicated
+                terminal lifecycle replay (announcement → chip jump →
+                announcement again) and persisted across the dealer-game
+                identity boundary into the next game's setup. Long-term
+                this belongs under the canonical dealer announcement
+                contract; until then the chip-transfer animation is the
+                terminal visual and we let the canonical end-of-game
+                surfaces (Celebration / Settlement) own everything else. */}
+
 
             {/* Player-to-player chip transfer animation at match end */}
             {storedChipPositions && (
