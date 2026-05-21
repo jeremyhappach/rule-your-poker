@@ -2094,19 +2094,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             hasGinState: !!(payload.new as any)?.gin_rummy_state,
           });
 
-          // If horses_state or yahtzee_state changed, patch it into local state immediately so
-          // dice animations / scorecard updates can start as soon as the realtime event arrives
-          // (no waiting on fetchGameData). Critical for human-vs-human Yahtzee.
-          if (payload.eventType === 'UPDATE' && payload.new && 
-              ('horses_state' in (payload.new as any) || 'yahtzee_state' in (payload.new as any))) {
+          // If horses_state, yahtzee_state, or gin_rummy_state changed, patch it into
+          // local state immediately so animations / UI start as soon as the realtime
+          // event arrives (no waiting on fetchGameData).
+          if (payload.eventType === 'UPDATE' && payload.new &&
+              ('horses_state' in (payload.new as any) ||
+               'yahtzee_state' in (payload.new as any) ||
+               'gin_rummy_state' in (payload.new as any))) {
             applyRoundRealtimePatch(payload.new);
             // Still refetch (debounced) to keep the rest of the game state consistent.
             debouncedFetch();
             return;
           }
 
-          // Immediate fetch for INSERT (new round started) or turn changes
+          // INSERT: for Gin Rummy, the realtime payload is fully authoritative
+          // (gin_rummy_state + dealer_game_id + hand_number). Patch it into rounds
+          // immediately so currentRound becomes non-null without a fetchGameData
+          // round-trip blocking startup. Other game types still need the fetch.
           if (payload.eventType === 'INSERT') {
+            const isGinInsert = !!(payload.new as any)?.gin_rummy_state;
+            if (isGinInsert) {
+              ginTrace('rounds.insert applied via realtime patch (no fetch)');
+              applyRoundRealtimePatch(payload.new);
+              // Off-critical: reconcile the rest of game state in the background.
+              debouncedFetch();
+              return;
+            }
             console.log('[REALTIME] 🎴 NEW ROUND INSERTED - Immediate fetch for all clients!');
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
