@@ -16,8 +16,6 @@ import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell"
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import {
   SurfaceReadinessProvider,
-  useSurfaceReadiness,
-  type SurfaceReadinessIdentity,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
