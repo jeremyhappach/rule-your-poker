@@ -64,8 +64,8 @@ function _recordMilestone(label: string, dtMs: number) {
   if (_seenLabels.has(label)) return;
   _seenLabels.add(label);
   _milestones.push({ label, dtMs });
-  // Freeze once playable gameplay is on screen (first non-null viewState).
-  if (label === 'gin.viewState ready') _frozen = true;
+  // Freeze once the user-visible playable surface has actually painted.
+  if (label === 'first active gameplay visible') _frozen = true;
   _emit();
 }
 
@@ -88,6 +88,11 @@ function _matchMilestone(event: string, data?: Record<string, unknown>): string 
   if (event === 'gin.hydration load:applied') return 'gin.hydration load:applied';
   if (event === 'gin.hydration load:empty') return 'gin.hydration load:empty';
   if (event === 'gin.viewState ready (first non-null)') return 'gin.viewState ready';
+  if (event === 'NeutralInterstitial mounted') return 'NeutralInterstitial mounted';
+  if (event === 'NeutralInterstitial unmounted') return 'NeutralInterstitial unmounted';
+  if (event === 'gin.first painted (placeholder)') return 'GinRummyGameTable first painted';
+  if (event === 'gin.first painted (playable)') return 'GinRummyGameTable first non-placeholder content painted';
+  if (event === 'first active gameplay visible') return 'first active gameplay visible';
   return null;
 }
 
