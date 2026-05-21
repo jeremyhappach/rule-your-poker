@@ -129,12 +129,14 @@ export function PlayfieldSlotController({
       readyToMount,
       surfaceReady,
       readyToMountProp,
+      readinessScope: readinessScope ?? null,
+      dealerGameId: desiredIdentity?.dealerGameId ?? null,
       dwellElapsed: dwellElapsedRef.current,
       pendingIdentity: describeSlotIdentity(pendingIdentityRef.current),
     };
     console.log('[GIN_RUNTIME_TIMELINE] slot controller state', snapshot);
     ginTrace('slot.state', snapshot);
-  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp]);
+  }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp, readinessScope]);
 
   // Helper: attempt to promote neutral → active iff dwell elapsed AND
   // readiness is satisfied AND we have a non-null target.
