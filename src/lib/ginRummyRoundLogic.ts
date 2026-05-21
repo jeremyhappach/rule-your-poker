@@ -133,6 +133,7 @@ export async function startGinRummyRound(
     // (already persisted by the insert above). Run the games-status update and
     // player_cards upserts in parallel, off the awaited critical path, so the
     // caller can return as soon as the authoritative frame is queryable.
+    ginTrace('off-critical writes dispatched (games + player_cards)');
     const offCriticalWrites: PromiseLike<unknown>[] = [
       supabase
         .from('games')
