@@ -7530,11 +7530,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               success: ginStartResult.success,
               error: ginStartResult.error ?? null,
             });
-            // Canonical sync: surface waits for fetchGameData → currentRound
-            // hydration → bootstrapState (round.gin_rummy_state) to flow
-            // through useGameStateSync. PlayfieldSlotController's neutral
-            // interstitial covers this window via readyToMount.
-            await fetchGameData();
+            // Canonical sync: realtime delivers rounds.gin_rummy_state and the
+            // games-status update independently; readiness probe (subscribed to
+            // rounds row) fires as soon as the insert lands. No awaited
+            // fetchGameData() and no setTimeout enrich on the critical path.
           } else {
             await supabase
               .from('games')
@@ -7545,9 +7544,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // CRITICAL: Reset processing ref AFTER successful round start
       // Without this, future ante processing in the same session would be blocked!
       anteProcessingRef.current = false;
-      
-      // Single fetch after round start - realtime will handle subsequent updates
-      setTimeout(() => fetchGameData(), 300);
     } catch (error: any) {
       console.error('[ANTE] Error starting round:', error);
       // If round start fails, reset status
