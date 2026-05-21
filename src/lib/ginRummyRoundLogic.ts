@@ -17,6 +17,7 @@ import { describeKnockResult } from './ginRummyScoring';
 import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
 import { ginTrace } from './ginStartupTrace';
+import { isGinTwoActionHarnessEnabled } from './debugFlags';
 
 /**
  * Start the first Gin Rummy round/hand.
@@ -60,7 +61,7 @@ export async function startGinRummyRound(
     const nonDealerPlayer = sortedPlayers.find((p: any) => p.id !== dealerPlayer.id)!;
 
     const anteAmount = game.ante_amount || 1;
-    const pointsToWin = game.points_to_win ?? 100;
+    const pointsToWin = isGinTwoActionHarnessEnabled() ? 50 : (game.points_to_win ?? 100);
 
     // Initialize and deal (handNumber set after DB query below)
     let ginState = createInitialGinRummyState(
@@ -200,8 +201,11 @@ export async function startNextGinRummyHand(
       return { success: false, error: 'Match already won' };
     }
 
-    // Rotate dealer
-    const nextDealerId = getNextDealer(previousState);
+    // Rotate dealer (suppressed in two-action harness so the host stays dealer)
+    const harnessOn = isGinTwoActionHarnessEnabled();
+    const nextDealerId = harnessOn
+      ? previousState.dealerPlayerId
+      : getNextDealer(previousState);
     const nextNonDealerId = nextDealerId === previousState.dealerPlayerId
       ? previousState.nonDealerPlayerId
       : previousState.dealerPlayerId;

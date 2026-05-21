@@ -68,6 +68,31 @@ export function isGinRiggedDealEnabled(): boolean {
 }
 
 /**
+ * Gin Rummy "two-action" debug harness — exercises round-end → next-hand and
+ * match-win / chip-transfer flows in two quick human actions.
+ *
+ * Enable via ?debug_gin_2action=1 or localStorage ptp_debug_gin_2action = "1"
+ *
+ * When active:
+ *  - Match target is forced to 50 points.
+ *  - Dealer rotation is suppressed; the player who is dealer in hand 1 stays
+ *    dealer for hand 2 (so the same human seat keeps acting second on the upcard).
+ *  - Both hands are dealt deterministically:
+ *      Dealer (host):   A♠2♠3♠ 4♥5♥6♥ 7♦8♦9♦ K♣  (deadwood K♣ = 10)
+ *      Upcard:          10♦                       (completes 7♦8♦9♦10♦ run)
+ *      Non-dealer (bot):K♥K♦K♠ A♣A♦ 2♣2♥ 3♦3♥ 4♣ (one set meld + 16 deadwood)
+ *  - Bot deadwood (16) is above knock threshold AND 10♦ adds no value, so bot
+ *    passes the upcard.
+ *  - Host takes upcard → instant gin → 25 + 16 = 41 pts.
+ *  - Hand 2 same → host total 82 → match win at 50.
+ *
+ * Isolated from production deal logic; ignored unless flag is on.
+ */
+export function isGinTwoActionHarnessEnabled(): boolean {
+  return hasQueryFlag('debug_gin_2action') || hasLocalFlag('ptp_debug_gin_2action');
+}
+
+/**
  * Forces Yahtzee bot to always pursue a large straight (1-2-3-4-5 or 2-3-4-5-6).
  * This creates deterministic selective hold patterns for debugging held-dice ordering.
  * Enable via ?debug_yahtzee_straight=1 or localStorage ptp_debug_yahtzee_straight = "1"

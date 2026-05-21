@@ -21,7 +21,7 @@ import {
   sumDeadwood,
   canDrawFromStock,
 } from './ginRummyScoring';
-import { isGinRiggedDealEnabled } from './debugFlags';
+import { isGinRiggedDealEnabled, isGinTwoActionHarnessEnabled } from './debugFlags';
 
 /** Bump the monotonic action counter used by the anti-regression framework. */
 function bumpAction(state: GinRummyState): number {
@@ -88,6 +88,11 @@ function createPlayerState(playerId: string): GinRummyPlayerState {
 export function dealHand(state: GinRummyState): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
+
+  // Debug: two-action harness (deterministic gin-on-upcard for both hands)
+  if (isGinTwoActionHarnessEnabled()) {
+    return dealTwoActionHarnessHand(state);
+  }
 
   // Debug: rigged hands for testing knock/lay-off flow
   if (isGinRiggedDealEnabled()) {
@@ -167,6 +172,71 @@ function dealRiggedHand(state: GinRummyState, fullDeck: GinRummyCard[]): GinRumm
   const stockPile = remaining.slice(1);
 
   console.log('[GIN-RUMMY DEBUG] Rigged deal active! Dealer deadwood=1, Non-dealer has 2 lay-off cards (4♠, 10♦) + isolated high deadwood (cannot accidentally gin)');
+
+  return {
+    ...state,
+    phase: 'first_draw',
+    playerStates: {
+      [dealerPlayerId]: {
+        ...state.playerStates[dealerPlayerId],
+        hand: dealerHand,
+      },
+      [nonDealerPlayerId]: {
+        ...state.playerStates[nonDealerPlayerId],
+        hand: nonDealerHand,
+      },
+    },
+    stockPile,
+    discardPile: [upCard],
+    currentTurnPlayerId: nonDealerPlayerId,
+    turnPhase: 'draw',
+    drawSource: null,
+    firstDrawOfferedTo: nonDealerPlayerId,
+    firstDrawPassed: [],
+  };
+}
+
+// ─── Debug: Two-Action Harness Deal ─────────────────────────────
+// Dealer (host):     A♠2♠3♠ 4♥5♥6♥ 7♦8♦9♦ K♣  (3 runs + K♣ deadwood = 10)
+// Upcard:            10♦                       (completes 7♦8♦9♦10♦)
+// Non-dealer (bot):  K♥K♦K♠ A♣A♦ 2♣2♥ 3♦3♥ 4♣ (set meld K-K-K + 16 deadwood)
+// → Bot deadwood (16) > knock threshold; 10♦ adds 0 improvement → bot passes.
+// → Host takes 10♦, discards K♣ → 0 deadwood gin. Score: 25 + 16 = 41 pts.
+function dealTwoActionHarnessHand(state: GinRummyState): GinRummyState {
+  const { dealerPlayerId, nonDealerPlayerId } = state;
+  const c = (rank: string, suit: '♠' | '♥' | '♦' | '♣'): GinRummyCard => {
+    let value: number;
+    if (rank === 'A') value = 1;
+    else if (['J', 'Q', 'K'].includes(rank)) value = 10;
+    else value = parseInt(rank, 10);
+    return { rank, suit, value };
+  };
+
+  const dealerHand: GinRummyCard[] = [
+    c('A', '♠'), c('2', '♠'), c('3', '♠'),
+    c('4', '♥'), c('5', '♥'), c('6', '♥'),
+    c('7', '♦'), c('8', '♦'), c('9', '♦'),
+    c('K', '♣'),
+  ];
+
+  const upCard: GinRummyCard = c('10', '♦');
+
+  const nonDealerHand: GinRummyCard[] = [
+    c('K', '♥'), c('K', '♦'), c('K', '♠'), // set meld
+    c('A', '♣'), c('A', '♦'),
+    c('2', '♣'), c('2', '♥'),
+    c('3', '♦'), c('3', '♥'),
+    c('4', '♣'),
+  ];
+
+  // Build stockpile from a fresh deck minus dealt cards + upcard.
+  const fullDeck = createGinRummyDeck();
+  const usedKeys = new Set(
+    [...dealerHand, ...nonDealerHand, upCard].map(cd => `${cd.rank}-${cd.suit}`),
+  );
+  const stockPile = fullDeck.filter(cd => !usedKeys.has(`${cd.rank}-${cd.suit}`));
+
+  console.log('[GIN-RUMMY DEBUG] Two-action harness active — dealer can gin by taking 10♦');
 
   return {
     ...state,
