@@ -19,6 +19,7 @@ import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogg
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
+import { ginTrace } from '@/lib/ginStartupTrace';
 
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import {
