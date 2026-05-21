@@ -18,6 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogger';
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
+import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
+
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import {
   drawFromStock,
@@ -122,7 +124,9 @@ export const GinRummyGameTable = ({
   onGameComplete,
   bootstrapState = null,
 }: GinRummyGameTableProps) => {
+  useLifecycleMount('GinRummyGameTable');
   const { getCardBackColors } = useVisualPreferences();
+
   const cardBackColors = getCardBackColors();
   const { playKnock } = useKnockSound();
   
