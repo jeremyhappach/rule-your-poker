@@ -20,6 +20,8 @@
 import { MobilePlayerTimer } from '@/components/MobilePlayerTimer';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useLifecycleMount } from './lifecycleDebug';
+
 
 export interface ActivePlayerHUDProps {
   /** Seconds remaining for this player's decision; null when not active. */
@@ -52,9 +54,11 @@ export function ActivePlayerHUD({
   gameType,
   children,
 }: ActivePlayerHUDProps) {
+  useLifecycleMount('ActivePlayerHUD');
   // Diagnostic: record active-handoff transitions per seat for the
   // canonical-shell telemetry stream. No-op outside dev.
   const wasActiveRef = useRef(false);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     if (isActive !== wasActiveRef.current) {

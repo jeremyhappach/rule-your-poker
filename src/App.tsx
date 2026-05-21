@@ -17,6 +17,8 @@ import DeadlineDebug from "./pages/DeadlineDebug";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { AppNetworkSim } from "@/components/AppNetworkSim";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
+import { LifecycleDebugBadge } from "@/lib/canonicalShell/LifecycleDebugBadge";
+
 
 const queryClient = new QueryClient();
 
@@ -74,7 +76,9 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppNetworkSim>
+            <LifecycleDebugBadge />
           </BrowserRouter>
+
         </ResponsiveGeometryProvider>
       </TooltipProvider>
     </QueryClientProvider>

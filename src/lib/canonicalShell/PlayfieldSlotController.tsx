@@ -25,6 +25,8 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useLifecycleMount, setLifecycleFact } from './lifecycleDebug';
+
 import { NeutralInterstitial } from './NeutralInterstitial';
 import {
   describeSlotIdentity,
@@ -78,6 +80,8 @@ export function PlayfieldSlotController({
   neutralAnteAmount = 0,
   children,
 }: PlayfieldSlotControllerProps) {
+  useLifecycleMount('PlayfieldSlotController');
+
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
   );

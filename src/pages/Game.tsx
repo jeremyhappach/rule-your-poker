@@ -20,6 +20,8 @@ import {
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily } from "@/lib/canonicalShell/shellRouting";
+import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
@@ -8044,20 +8046,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
   if (loading || !game) {
-    // Lifecycle ownership fix: the canonical shell is a route-stable
-    // boundary for every /game/:gameId session. Mount it here, during
-    // bootstrap, with the same SurfaceReadinessProvider + PersistentTableShell
-    // parents that the loaded-game branch uses below. This eliminates
-    // the mid-session parent insertion/remount that was the root cause
-    // of the post-selection black screen, HUD disappearance, and the
-    // black backdrop behind the game-selection modal. No fake gameplay
-    // state, no synthetic shell-family selection — the shell is simply
-    // always-on for the route lifetime.
+    setLifecycleFact('Game.branch', 'bootstrap');
+    setLifecycleFact('Game.loading', loading);
+    setLifecycleFact('Game.game', !!game);
+    setLifecycleFact('Game.game_type', game?.game_type ?? null);
+    setLifecycleFact('Game.status', game?.status ?? null);
+    setLifecycleFact('Game.enableOuterShell', 'bootstrap-forced');
+    setLifecycleFact('Game.innerBgClass', 'min-h-screen(bootstrap)');
     return (
       <SurfaceReadinessProvider>
         <PersistentTableShell gameId={gameId ?? undefined}>
           <div
             data-canonical-bootstrap=""
+            data-lifecycle-branch="bootstrap"
             className="min-h-screen"
             aria-busy="true"
           />
@@ -8065,6 +8066,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       </SurfaceReadinessProvider>
     );
   }
+
 
   const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
   const sessionStartTime = game.created_at ? new Date(game.created_at).toLocaleTimeString('en-US', { 
@@ -8103,8 +8105,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Non-canonical-shell families keep their legacy slate gradient on
   // the inner page wrapper (the shell sits transparently underneath
   // for them); canonical-shell families let the shell paint chrome.
+  const _innerBgClass = `${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${isCanonicalShellFamily(game.game_type) ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
+  setLifecycleFact('Game.branch', 'loaded');
+  setLifecycleFact('Game.loading', false);
+  setLifecycleFact('Game.game_type', game.game_type ?? null);
+  setLifecycleFact('Game.status', game.status ?? null);
+  setLifecycleFact('Game.enableOuterShell', enableOuterShell);
+  setLifecycleFact('Game.shellCanonicalFamily', isCanonicalShellFamily(game.game_type));
+  setLifecycleFact('Game.innerBgClass', _innerBgClass);
   const innerTree = (
-    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${isCanonicalShellFamily(game.game_type) ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
+    <div data-lifecycle-branch="loaded-inner" className={_innerBgClass}>
+
 
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
