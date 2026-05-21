@@ -8044,23 +8044,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
   if (loading || !game) {
-    // Lifecycle ownership fix: do NOT return a bare full-page loading
-    // div above shell ownership — that's the root of the bootstrap
-    // black screen / HUD-disappears artifact.
-    //
-    // We cannot speculatively mount PersistentTableShell here: the
-    // shell family is unknown until `game` resolves, and swapping
-    // shell families post-hydration is forbidden. Instead, render a
-    // bootstrap placeholder that owns the *same* backdrop the
-    // canonical shell paints (`bg-shell-neutral`) so the transition
-    // into the real shell is background-continuous. No fake gameplay
-    // state, no fake HUD content — just the neutral backdrop.
+    // Lifecycle ownership fix: the canonical shell is a route-stable
+    // boundary for every /game/:gameId session. Mount it here, during
+    // bootstrap, with the same SurfaceReadinessProvider + PersistentTableShell
+    // parents that the loaded-game branch uses below. This eliminates
+    // the mid-session parent insertion/remount that was the root cause
+    // of the post-selection black screen, HUD disappearance, and the
+    // black backdrop behind the game-selection modal. No fake gameplay
+    // state, no synthetic shell-family selection — the shell is simply
+    // always-on for the route lifetime.
     return (
-      <div
-        data-canonical-bootstrap=""
-        className="min-h-screen bg-shell-neutral"
-        aria-busy="true"
-      />
+      <SurfaceReadinessProvider>
+        <PersistentTableShell gameId={gameId ?? undefined}>
+          <div
+            data-canonical-bootstrap=""
+            className="min-h-screen"
+            aria-busy="true"
+          />
+        </PersistentTableShell>
+      </SurfaceReadinessProvider>
     );
   }
 
@@ -8082,21 +8084,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
-  // Phase 5: Outer canonical shell wraps the poker-variant render tree
-  // so the shell instance survives game.status transitions.
-  const enableOuterShell = phase6Enabled;
+  // Route-stable shell mount: the PersistentTableShell parent is
+  // decided once per /game/:gameId session at route entry and never
+  // flips based on mutable runtime state. This is what prevents the
+  // mid-session subtree remount that previously caused the post-
+  // selection black screen / HUD disappearance. Canonical-family
+  // features (seats, projection, identity tracker) remain gated by
+  // game_type below — they only adjust inert sub-props, never the
+  // parent identity.
+  const enableOuterShell =
+    import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
 
   // NOTE: do NOT define ShellWrap as an inline component here — its
   // type identity would change every render and remount the entire
   // subtree (and the PersistentTableShell itself), violating INV-shell-1
   // and breaking lobby interactions. Inline the conditional instead.
 
-  // P9.4 (re-scoped): for canonical-shell families, page chrome belongs
-  // to the shell — use neutral semantic chrome instead of the legacy
-  // slate gradient that leaked gameplay-flavored color into the page
-  // wrapper. Non-canonical families keep their prior background.
+  // Non-canonical-shell families keep their legacy slate gradient on
+  // the inner page wrapper (the shell sits transparently underneath
+  // for them); canonical-shell families let the shell paint chrome.
   const innerTree = (
-    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${enableOuterShell ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
+    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${isCanonicalShellFamily(game.game_type) ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
+
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
         {!isMobile && (
@@ -9285,15 +9294,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // recomputation. Roster filter is game-agnostic (seated, not
   // sitting-out, not waiting, not observer/left) — the resolver
   // canonicalizes 2P face-to-face / observer-upper-left semantics.
-  const shellEligibleSeats = enableOuterShell
+  // SeatAnchorLayer is a canonical-family-only feature. Gate it on
+  // game_type (NOT on shell mount, which is now route-stable). For
+  // non-canonical families we pass undefined so PersistentTableShell's
+  // `seats && projectionMode` check skips SeatAnchorLayer entirely.
+  const shellCanonicalFamily = isCanonicalShellFamily(game.game_type);
+  const shellEligibleSeats = shellCanonicalFamily
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
         .map(p => ({ position: p.position, occupied: true, hidden: false }))
-    : [];
+    : undefined;
   const shellViewerPosition = currentPlayer?.position ?? null;
-  const shellProjectionMode: 'active-canonical' | 'observer-absolute' = currentPlayer
-    ? 'active-canonical'
-    : 'observer-absolute';
+  const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellCanonicalFamily
+    ? (currentPlayer ? 'active-canonical' : 'observer-absolute')
+    : undefined;
+
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
   // single authoritative CanonicalFeltSurface; the shell no longer
