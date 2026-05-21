@@ -1584,7 +1584,7 @@ export const GinRummyGameTable = ({
   // arrives.
   if (!viewState) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-background relative">
         <div
           ref={tableContainerRef}
           className="flex-1 relative overflow-hidden min-h-0"
