@@ -64,6 +64,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
+import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 
