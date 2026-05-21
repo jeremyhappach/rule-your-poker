@@ -18,6 +18,7 @@ import {
   SurfaceReadinessProvider,
 } from "@/lib/canonicalShell/SurfaceReadinessContract";
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
+import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
