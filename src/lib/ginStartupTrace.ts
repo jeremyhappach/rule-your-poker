@@ -77,6 +77,12 @@ function _matchMilestone(event: string, data?: Record<string, unknown>): string 
   if (event === 'currentRound.id changed' && data && (data as any).next) return 'currentRound present';
   if (event === 'game.current_game_uuid changed' && data && (data as any).next) return 'current_game_uuid present';
   if (event === 'GinRummyGameTable mounted') return 'GinRummyGameTable mounted';
+  if (event === 'gin.first-render') return 'gin.first-render';
+  if (event === 'gin.bootstrapState applied') return 'gin.bootstrapState applied';
+  if (event === 'gin.hydration load:start') return 'gin.hydration load:start';
+  if (event === 'gin.hydration load:applied') return 'gin.hydration load:applied';
+  if (event === 'gin.hydration load:empty') return 'gin.hydration load:empty';
+  if (event === 'gin.viewState ready (first non-null)') return 'gin.viewState ready';
   return null;
 }
 
