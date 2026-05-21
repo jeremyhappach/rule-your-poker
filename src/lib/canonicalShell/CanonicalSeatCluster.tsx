@@ -2,7 +2,7 @@
  * CanonicalSeatCluster — single atomic projected seat cluster.
  *
  * Shell-owned primitive that anchors a seat's identity row, dealer pip,
- * chip bubble, and (optional) game-owned seat content as ONE cohesive
+ * chip bubble, and an OPEN game-owned seat content region as ONE cohesive
  * unit at a canonical slot. Replaces fragmented floating elements that
  * could land partially on chrome, drift between active/observer
  * projections, or require contrast-ring band-aids.
@@ -14,11 +14,18 @@
  *     - chip bubble (carries data-chip-center for transport endpoints)
  *     - felt-toned backdrop so the cluster reads on light chrome
  *       without per-game contrast hacks
- *     - vertical cohesion / spacing between identity + chip + children
- *   Game owns:
+ *     - vertical cohesion between identity + chip + game-owned content
+ *   Game owns (passed as children, fully arbitrary):
+ *     - whatever projected seat content belongs to this game
+ *       (Gin: hidden hand backs; Cribbage: dynamic hand region;
+ *        Yahtzee: possibly none; future games: anything)
  *     - score rails / top HUD composition
- *     - card-back / seat-specific content (passed as children)
  *     - what counts as "the dealer" (caller passes isDealer)
+ *
+ * NON-GOAL: the primitive does NOT encode game-shaped modes
+ * (e.g. "static" / "dynamic" / "none"). The seat-content region is an
+ * unopinionated children slot. If a game has no seat content, it passes
+ * no children and the cluster collapses to identity + chip.
  *
  * Projection parity: identical for active-canonical and observer-absolute.
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
