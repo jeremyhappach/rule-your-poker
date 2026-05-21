@@ -89,6 +89,11 @@ export function dealHand(state: GinRummyState): GinRummyState {
   const deck = shuffleDeck(createGinRummyDeck());
   const { dealerPlayerId, nonDealerPlayerId } = state;
 
+  // Debug: two-action harness (deterministic gin-on-upcard for both hands)
+  if (isGinTwoActionHarnessEnabled()) {
+    return dealTwoActionHarnessHand(state);
+  }
+
   // Debug: rigged hands for testing knock/lay-off flow
   if (isGinRiggedDealEnabled()) {
     return dealRiggedHand(state, deck);
