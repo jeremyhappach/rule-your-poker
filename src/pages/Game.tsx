@@ -7525,7 +7525,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               gameId,
               dealerGameId: game?.current_game_uuid ?? null,
             });
+            ginTrace('startGinRummyRound:entered', {
+              dealerGameId: game?.current_game_uuid ?? null,
+            });
             const ginStartResult = await startGinRummyRound(gameId!);
+            ginTrace('startGinRummyRound:returned', {
+              success: ginStartResult.success,
+              roundId: ginStartResult.roundId?.slice(0, 8) ?? null,
+              handNumber: ginStartResult.handNumber ?? null,
+            });
             console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:complete', {
               t: Date.now(),
               gameId,
