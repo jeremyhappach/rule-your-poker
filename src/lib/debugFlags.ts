@@ -89,7 +89,8 @@ export function isGinRiggedDealEnabled(): boolean {
  * Isolated from production deal logic; ignored unless flag is on.
  */
 export function isGinTwoActionHarnessEnabled(): boolean {
-  return hasQueryFlag('debug_gin_2action') || hasLocalFlag('ptp_debug_gin_2action');
+  // TEMP: globally enabled for lifecycle validation. Flip back to flag-gated when done.
+  return true;
 }
 
 /**
