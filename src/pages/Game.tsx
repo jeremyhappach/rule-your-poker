@@ -8084,21 +8084,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
-  // Phase 5: Outer canonical shell wraps the poker-variant render tree
-  // so the shell instance survives game.status transitions.
-  const enableOuterShell = phase6Enabled;
+  // Route-stable shell mount: the PersistentTableShell parent is
+  // decided once per /game/:gameId session at route entry and never
+  // flips based on mutable runtime state. This is what prevents the
+  // mid-session subtree remount that previously caused the post-
+  // selection black screen / HUD disappearance. Canonical-family
+  // features (seats, projection, identity tracker) remain gated by
+  // game_type below — they only adjust inert sub-props, never the
+  // parent identity.
+  const enableOuterShell =
+    import.meta.env.VITE_CANONICAL_SHELL_LIFT !== 'off';
 
   // NOTE: do NOT define ShellWrap as an inline component here — its
   // type identity would change every render and remount the entire
   // subtree (and the PersistentTableShell itself), violating INV-shell-1
   // and breaking lobby interactions. Inline the conditional instead.
 
-  // P9.4 (re-scoped): for canonical-shell families, page chrome belongs
-  // to the shell — use neutral semantic chrome instead of the legacy
-  // slate gradient that leaked gameplay-flavored color into the page
-  // wrapper. Non-canonical families keep their prior background.
+  // Non-canonical-shell families keep their legacy slate gradient on
+  // the inner page wrapper (the shell sits transparently underneath
+  // for them); canonical-shell families let the shell paint chrome.
   const innerTree = (
-    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${enableOuterShell ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
+    <div className={`${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${isCanonicalShellFamily(game.game_type) ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`}>
+
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
         {/* Desktop header */}
         {!isMobile && (
