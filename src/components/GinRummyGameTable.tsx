@@ -1604,7 +1604,7 @@ export const GinRummyGameTable = ({
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background relative">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
