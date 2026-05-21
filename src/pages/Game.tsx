@@ -2082,6 +2082,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         },
         simulateRealtime('rounds', (payload) => {
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
+          ginTrace('realtime.rounds payload received', {
+            eventType: payload.eventType,
+            roundId: (payload.new as any)?.id?.slice(0, 8) ?? null,
+            dealer_game_id: (payload.new as any)?.dealer_game_id?.slice(0, 8) ?? null,
+            hand_number: (payload.new as any)?.hand_number ?? null,
+            hasGinState: !!(payload.new as any)?.gin_rummy_state,
+          });
 
           // If horses_state or yahtzee_state changed, patch it into local state immediately so
           // dice animations / scorecard updates can start as soon as the realtime event arrives
