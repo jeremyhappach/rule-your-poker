@@ -32,9 +32,11 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
+
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
 export interface PersistentTableShellProps {
