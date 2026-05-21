@@ -39,11 +39,16 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Slot frame ownership: PlayfieldSlotController owns the outer
+  // w-full/h-full/flex-col envelope so neutral and active share
+  // identical frame constraints. Background continuity is owned by
+  // the canonical shell root. NeutralInterstitial contributes only
+  // its felt-region content.
   return (
     <div
       data-canonical-shell-neutral=""
       aria-hidden="true"
-      className="w-full h-full min-h-0 flex flex-col bg-shell-neutral"
+      className="flex-1 min-h-0 flex flex-col"
     >
       {gameKind ? (
         <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>

@@ -243,30 +243,33 @@ export function PlayfieldSlotController({
     };
   }, []);
 
-  if (mountedIdentity === null) {
-    return (
-      <NeutralInterstitial
-        gameId={gameId ?? null}
-        reason={neutralReason}
-        gameKind={neutralGameKind}
-        anteAmount={neutralAnteAmount}
-      />
-    );
-  }
-
-  // Re-key children by identity so the gameplay subtree gets a fresh
-  // lifecycle for each dealer game.
-  //
-  // Active slot must be transparent: the shell owns outer chrome/background,
-  // and the gameplay surface owns only its felt/table region.
+  // Unified slot frame: identical outer container for neutral and
+  // active so the transition is pixel-continuous. Only slot content
+  // swaps. Background continuity lives at the shell-root above.
+  // Re-keying the active child by identity gives the gameplay subtree
+  // a fresh lifecycle per dealer game.
   return (
     <div
       data-canonical-shell-slot=""
+      data-slot-phase={phase}
       data-slot-identity={describeSlotIdentity(mountedIdentity)}
-      className="w-full h-full min-h-0"
-      key={describeSlotIdentity(mountedIdentity)}
+      className="w-full h-full min-h-0 flex flex-col"
     >
-      {children}
+      {mountedIdentity === null ? (
+        <NeutralInterstitial
+          gameId={gameId ?? null}
+          reason={neutralReason}
+          gameKind={neutralGameKind}
+          anteAmount={neutralAnteAmount}
+        />
+      ) : (
+        <div
+          key={describeSlotIdentity(mountedIdentity)}
+          className="flex-1 min-h-0 flex flex-col"
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }
