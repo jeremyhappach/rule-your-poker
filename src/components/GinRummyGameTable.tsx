@@ -1639,6 +1639,13 @@ export const GinRummyGameTable = ({
             isWaitingPhase={false}
           />
         </div>
+        {/* Geometry-parity bottom-panel reservation: mirrors the
+            playable layout below so the felt region above resolves
+            against the same vertical share before viewState is ready. */}
+        <div
+          data-gin-placeholder-bottom-panel=""
+          className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border"
+        />
       </div>
     );
   }

@@ -58,13 +58,23 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
       className="flex-1 min-h-0 flex flex-col"
     >
       {gameKind ? (
-        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
-          <CanonicalFeltSurface
-            gameKind={gameKind}
-            anteAmount={anteAmount}
-            isWaitingPhase={false}
+        <>
+          <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
+            <CanonicalFeltSurface
+              gameKind={gameKind}
+              anteAmount={anteAmount}
+              isWaitingPhase={false}
+            />
+          </div>
+          {/* Geometry-parity bottom-panel reservation: mirrors the
+              active gameplay layout (felt + bottom panel) so the felt
+              region resolves against the same vertical share in
+              neutral and active. Content is intentionally empty. */}
+          <div
+            data-canonical-shell-neutral-bottom-panel=""
+            className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border"
           />
-        </div>
+        </>
       ) : null}
     </div>
   );
