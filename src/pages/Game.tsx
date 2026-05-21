@@ -9291,15 +9291,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         onModeChange={() => {}}
       />
       {enableOuterShell ? (
-        <PersistentTableShell
-          gameId={gameId ?? undefined}
-          gameType={game.game_type}
-          projectionMode={shellProjectionMode}
-          viewerPosition={shellViewerPosition}
-          seats={shellEligibleSeats}
-        >
-          {innerTree}
-        </PersistentTableShell>
+        <SurfaceReadinessProvider>
+          <PersistentTableShell
+            gameId={gameId ?? undefined}
+            gameType={game.game_type}
+            projectionMode={shellProjectionMode}
+            viewerPosition={shellViewerPosition}
+            seats={shellEligibleSeats}
+          >
+            {innerTree}
+          </PersistentTableShell>
+          {/* Gin-only readiness probe (capability-driven, not shell branching).
+              Lives outside the slot so it can prove "first renderable frame
+              exists" BEFORE the controller mounts the surface. */}
+          {game.game_type === 'gin-rummy' && game.current_game_uuid && currentRound?.id ? (
+            <GinRummyReadinessProbe
+              dealerGameId={game.current_game_uuid}
+              roundId={currentRound.id}
+            />
+          ) : null}
+        </SurfaceReadinessProvider>
       ) : innerTree}
 
     </VisualPreferencesProvider>
