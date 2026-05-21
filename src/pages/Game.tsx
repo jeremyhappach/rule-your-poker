@@ -8044,23 +8044,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const stickyDealerIdentityRef = useRef<{ gameType: string; dealerGameId: string } | null>(null);
 
   if (loading || !game) {
-    // Lifecycle ownership fix: do NOT return a bare full-page loading
-    // div above shell ownership — that's the root of the bootstrap
-    // black screen / HUD-disappears artifact.
-    //
-    // We cannot speculatively mount PersistentTableShell here: the
-    // shell family is unknown until `game` resolves, and swapping
-    // shell families post-hydration is forbidden. Instead, render a
-    // bootstrap placeholder that owns the *same* backdrop the
-    // canonical shell paints (`bg-shell-neutral`) so the transition
-    // into the real shell is background-continuous. No fake gameplay
-    // state, no fake HUD content — just the neutral backdrop.
+    // Lifecycle ownership fix: the canonical shell is a route-stable
+    // boundary for every /game/:gameId session. Mount it here, during
+    // bootstrap, with the same SurfaceReadinessProvider + PersistentTableShell
+    // parents that the loaded-game branch uses below. This eliminates
+    // the mid-session parent insertion/remount that was the root cause
+    // of the post-selection black screen, HUD disappearance, and the
+    // black backdrop behind the game-selection modal. No fake gameplay
+    // state, no synthetic shell-family selection — the shell is simply
+    // always-on for the route lifetime.
     return (
-      <div
-        data-canonical-bootstrap=""
-        className="min-h-screen bg-shell-neutral"
-        aria-busy="true"
-      />
+      <SurfaceReadinessProvider>
+        <PersistentTableShell gameId={gameId ?? undefined}>
+          <div
+            data-canonical-bootstrap=""
+            className="min-h-screen"
+            aria-busy="true"
+          />
+        </PersistentTableShell>
+      </SurfaceReadinessProvider>
     );
   }
 
