@@ -50,7 +50,7 @@ import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
-import { GinRummyMatchWinner } from './GinRummyMatchWinner';
+// GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
