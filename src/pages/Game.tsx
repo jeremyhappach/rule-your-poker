@@ -8717,6 +8717,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return null;
             })()}
             gameId={gameId ?? null}
+            readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             neutralGameKind={game.game_type === 'gin-rummy' ? 'gin-rummy' : null}
             neutralAnteAmount={game.ante_amount || 1}
             readyToMount={(() => {
