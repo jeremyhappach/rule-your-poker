@@ -1584,7 +1584,7 @@ export const GinRummyGameTable = ({
   // arrives.
   if (!viewState) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-background relative">
         <div
           ref={tableContainerRef}
           className="flex-1 relative overflow-hidden min-h-0"
@@ -1604,7 +1604,7 @@ export const GinRummyGameTable = ({
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background relative">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
@@ -1774,7 +1774,7 @@ export const GinRummyGameTable = ({
       </div>
 
       {/* Bottom Section - Tabs and Content */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
         {/* Dealer Announcements Area */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
