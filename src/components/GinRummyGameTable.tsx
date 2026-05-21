@@ -64,6 +64,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
+import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 
@@ -1770,75 +1771,52 @@ export const GinRummyGameTable = ({
               </div>
             )}
 
-            {/* Opponent overlay */}
-          <div className="absolute inset-0 z-50 pointer-events-none">
-            {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId) => {
-              const seatPlayer = players.find(p => p.id === seatId);
-              const seatState = viewState.playerStates[seatId];
-              if (!seatPlayer || !seatState) return null;
-              const placement = getCanonicalSlotPlacement(playerSlotById.get(seatId));
-              return (
-              <div key={seatId} className={cn(
-                "absolute flex flex-col items-start",
-                placement.className
-              )}>
-                {/* Opponent name + dealer pip inline. Inlining the dealer
-                    indicator beside the name avoids the "stray red artifact"
-                    that appeared when the pip was rendered below the chip:
-                    the opponent card-back row is anchored to this same slot
-                    at mt-[58px] and the below-chip pip overlapped the cards. */}
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-[10px] text-white/95 truncate max-w-[90px] font-medium bg-black/50 rounded px-1">
-                    {getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                  </span>
-                  {isCribDealer(seatId) && (
-                    <div className="w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0">
-                      <span className="text-white font-bold text-[6px] leading-none">D</span>
-                    </div>
-                  )}
-                </div>
+            {/* Opponent overlay — single CanonicalSeatCluster per opponent.
+                Shell owns identity + dealer pip + chip bubble + cluster
+                anchoring; this game body contributes only the seat-specific
+                card-back row as cluster children. No floating orphan
+                elements, no per-projection contrast hacks. */}
+            <div className="absolute inset-0 z-50 pointer-events-none">
+              {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId) => {
+                const seatPlayer = players.find(p => p.id === seatId);
+                const seatState = viewState.playerStates[seatId];
+                if (!seatPlayer || !seatState) return null;
+                const slot = playerSlotById.get(seatId) ?? null;
+                const showCardBacks =
+                  seatId === opponentId &&
+                  seatState.hand.length > 0 &&
+                  viewState.phase !== 'knocking' &&
+                  viewState.phase !== 'laying_off' &&
+                  viewState.phase !== 'scoring' &&
+                  !(viewState.phase === 'complete' && viewState.knockResult);
+                return (
+                  <CanonicalSeatCluster
+                    key={seatId}
+                    slot={slot}
+                    position={seatPlayer.position}
+                    name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
+                    isDealer={isCribDealer(seatId)}
+                    chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                  >
+                    {showCardBacks && (
+                      <div className="flex -space-x-3 mt-1">
+                        {seatState.hand.map((_, i) => (
+                          <div
+                            key={i}
+                            className="w-3.5 h-5 rounded-sm border border-white/20"
+                            style={{
+                              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CanonicalSeatCluster>
+                );
+              })}
+            </div>
+        </div>
 
-                {/* Chip circle — carries data-chip-center so chip-transport
-                    animations and any future seat-anchored overlays resolve
-                    to the SAME DOM node the user sees (single source of
-                    truth: canonicalSlotPlacement → this element).
-                    Observer projections may land on light chrome outside the
-                    felt; apply a dark outline ring (independent of fill) so
-                    the bubble stays legible regardless of chip color. */}
-                <div
-                  data-chip-center={seatPlayer.position}
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white",
-                    isObserver && "ring-2 ring-black/70 shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-                  )}
-                >
-                  <span className="text-[10px] font-bold text-slate-900">
-                    ${formatChipValue(seatPlayer.chips)}
-                  </span>
-                </div>
-              </div>
-              );
-            })}
-
-                {/* Opponent's cards (face down) - hide during knock/scoring/complete when melds are shown */}
-                {opponent && opponentState && opponentState.hand.length > 0 && viewState.phase !== 'knocking' && viewState.phase !== 'laying_off' && viewState.phase !== 'scoring' && !(viewState.phase === 'complete' && viewState.knockResult) && (() => {
-                  const placement = getCanonicalSlotPlacement(playerSlotById.get(opponentId));
-                  return (
-                  <div className={cn("absolute mt-[58px] flex -space-x-3", placement.className)}>
-                    {opponentState.hand.map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-3.5 h-5 rounded-sm border border-white/20"
-                        style={{
-                          background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                  );
-                })()}
-          </div>
-      </div>
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
