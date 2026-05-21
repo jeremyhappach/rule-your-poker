@@ -87,11 +87,7 @@ export function CanonicalFeltSurface({
             className="absolute inset-0 pointer-events-none w-full h-full object-cover"
             style={{
               objectPosition: isTablet || isDesktop ? "center 60%" : "center 38%",
-              opacity: isWaitingPhase
-                ? 0.45
-                : isTablet || isDesktop
-                ? 0.36
-                : 0.28,
+              opacity: isTablet || isDesktop ? 0.36 : 0.28,
             }}
           />
         )}
