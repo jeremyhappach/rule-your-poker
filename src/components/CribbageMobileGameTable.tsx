@@ -5298,7 +5298,13 @@ export const CribbageMobileGameTable = ({
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
                   totalPlayers={activeSeatPlayers.length}
                   opponentIds={projectedSeatPlayers.map(o => o.id)}
+                  currentTurnSlot={
+                    viewState.pegging.currentTurnPlayerId
+                      ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
+                      : null
+                  }
                 />
+
 
                 {/* Game Title */}
                 <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
