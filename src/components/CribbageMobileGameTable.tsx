@@ -4437,16 +4437,32 @@ export const CribbageMobileGameTable = ({
 
   // Phase E: gate chip animation on canonical match_win TTL (4500ms)
   // so the canonical announcement gets its full presentation window.
+  //
+  // ROOT-CAUSE FIX (match-end freeze): the previous implementation listed
+  // `handleAnnouncementComplete` in the dep array. That callback's identity
+  // changes whenever `players` mutates — and during match-end, the chip
+  // RPCs in endCribbageGame produce realtime updates that re-render the
+  // parent and replace the `players` array reference. Each replacement
+  // cancelled the in-flight 4500ms timer and re-armed a fresh one,
+  // indefinitely. Result: chip animation never fired and the game froze.
+  //
+  // Fix: hold the latest callback in a ref so the timer arms EXACTLY ONCE
+  // when winSequencePhase transitions into 'announcement'.
+  const announcementCompleteRef = useRef(handleAnnouncementComplete);
+  useEffect(() => {
+    announcementCompleteRef.current = handleAnnouncementComplete;
+  }, [handleAnnouncementComplete]);
+
   useEffect(() => {
     if (winSequencePhase !== 'announcement') return;
     if (!winSequenceData) return;
 
     const timer = setTimeout(() => {
-      handleAnnouncementComplete();
+      announcementCompleteRef.current?.();
     }, 4500);
 
     return () => clearTimeout(timer);
-  }, [winSequencePhase, winSequenceData, handleAnnouncementComplete]);
+  }, [winSequencePhase, winSequenceData]);
 
 
   // Safety timeout: If chip animation phase doesn't complete within 8 seconds, force transition
