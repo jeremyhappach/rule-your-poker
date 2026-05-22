@@ -104,9 +104,9 @@ interface CribbageMobileGameTableProps {
   onGameComplete: () => void;
   // Game configuration
   gameConfig?: CribbageGameConfig;
-  // Dealer selection props (optional - used during cribbage_dealer_selection phase)
+  // Dealer selection props (optional - used during cribbage_dealer_selection phase).
+  // Phase F.2: announcement string retired — dealer-selection messaging is canonical-only.
   dealerSelectionCards?: DealerSelectionCard[];
-  dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null;
   isDealerSelection?: boolean;
 
