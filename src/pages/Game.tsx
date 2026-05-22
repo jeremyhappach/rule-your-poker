@@ -8968,17 +8968,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     syncedState={(game as any).dealer_selection_state as any}
                     onCardsUpdate={setDealerSelectionCards}
                     // Note: onCardsUpdate trace - session-level HighCardDealerSelection cards pushed to parent
-                    onAnnouncementUpdate={(msg, complete) => {
-                      setDealerSelectionAnnouncement(msg);
-                      setDealerSelectionComplete(complete);
-                      // ── HANDOFF TRACE #3: session-level ds announcement updated ──
-                      emitCribbageHandoffTrace({
-                        gameId: gameId!,
-                        eventType: 'parent_ds_announcement_update',
-                        userId: user?.id ?? null,
-                        context: { msg: msg?.slice(0, 60), complete },
-                      });
-                    }}
                     onWinnerPositionUpdate={(pos) => {
                       setDealerSelectionWinnerPosition(pos);
                       // ── HANDOFF TRACE #3: session-level ds winner position updated ──
