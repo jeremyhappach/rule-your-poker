@@ -671,6 +671,8 @@ export const CribbageMobileGameTable = ({
 
 
   const announcements = useAnnouncements();
+  const announcementCtx = useAnnouncementContext();
+  const canonicalAnnouncementActive = !!announcementCtx?.active;
   const announcedDealerResolvedRef = useRef<string | null>(null);
 
   useEffect(() => {
