@@ -4028,7 +4028,16 @@ export const CribbageMobileGameTable = ({
       }
       
       const cardPlayed = freshPlayerState.hand[cardIndex];
+      const humanTraceCtx = { gameId, roundId: currentRoundId, handNumber: currentHandNumber, actorPlayerId: currentPlayerId };
+      traceGoRace(humanTraceCtx, 'human:playCard:before-write', {
+        cardIndex, cardPlayed,
+        subscriptionSnapshot: peggingSnapshot(cribbageState),
+        freshSnapshot: peggingSnapshot(freshState),
+      });
       const newState = playPeggingCard(freshState, currentPlayerId, cardIndex);
+      traceGoRace(humanTraceCtx, 'human:playCard:computed', {
+        wroteSnapshot: peggingSnapshot(newState),
+      });
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       if (cardPlayed) {
         logPeggingPlay(eventCtx, freshState, newState, currentPlayerId, cardPlayed);
@@ -4039,6 +4048,9 @@ export const CribbageMobileGameTable = ({
       }
       
       await updateState(newState, tid);
+      traceGoRace(humanTraceCtx, 'human:playCard:after-write', {
+        wroteSnapshot: peggingSnapshot(newState),
+      });
     } catch (err) {
       toast.error((err as Error).message);
     }
