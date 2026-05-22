@@ -44,9 +44,16 @@ export async function startGinRummyRound(
       return { success: false, error: 'Game already over' };
     }
 
-    // Get active players - gin rummy is strictly 2 players
+    // Get players who actually anted into this dealer game. At a dealer-game
+    // boundary, stale per-hand statuses like "folded" may still be present
+    // from the completed Gin match; those must not block same-game replay
+    // bootstrap once the player has anted and is still seated.
     const activePlayers = (game.players || []).filter(
-      (p: any) => !p.sitting_out && p.status === 'active'
+      (p: any) =>
+        p.ante_decision === 'ante_up' &&
+        !p.sitting_out &&
+        p.status !== 'observer' &&
+        p.status !== 'left'
     );
 
     if (activePlayers.length !== 2) {
