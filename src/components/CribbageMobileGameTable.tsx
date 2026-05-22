@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
+import { DISCARD_COUNT } from '@/lib/cribbageTypes';
 import {
   initializeCribbageGame, 
   discardToCrib, 
@@ -734,6 +735,145 @@ export const CribbageMobileGameTable = ({
     players,
     announcements,
   ]);
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase D — passive ambient lifecycle (waiting-on-opponent states)
+  //
+  // Emits canonical `waiting_for_player` ambient announcements during
+  // Cribbage discarding and pegging phases when the local user is NOT the
+  // active actor. Semantic-state driven, NOT render-driven:
+  //
+  //   • Derives strictly from authoritative phase + turn ownership
+  //   • Stable id per (dealerGameId, handNumber, kind, targetPlayerId) —
+  //     re-emitting the same id is a no-op refresh, so render churn never
+  //     produces ambient flicker
+  //   • Self-scoped teardown: only clears ambient that THIS effect owns
+  //     (tracked via lastWaitingIdRef) so dealer-selection ambient is not
+  //     clobbered during the dealer-select → discarding handoff
+  //   • Skipped during high-card mode, counting, complete, and result UI —
+  //     those have dedicated overlays / transient announcements
+  // ────────────────────────────────────────────────────────────────────────
+  const lastWaitingIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!gameId) return;
+    // Defer to dealer-selection ambient effect.
+    if (effectiveShowHighCardSelection) return;
+
+    // Source: presentation state when available (matches what the user
+    // actually sees); fall back to authoritative only for first-frame
+    // bootstrap before sync presentation lands.
+    const semanticState: CribbageState | null = (viewState as CribbageState | null) ?? cribbageState;
+    if (!semanticState) {
+      if (lastWaitingIdRef.current) {
+        announcements.clearAmbient();
+        lastWaitingIdRef.current = null;
+      }
+      return;
+    }
+
+    const phase = semanticState.phase;
+    // Phases that own their own UI: don't emit waiting ambient.
+    if (
+      phase === 'dealer-select' ||
+      phase === 'dealing' ||
+      phase === 'cutting' ||
+      phase === 'counting' ||
+      phase === 'complete'
+    ) {
+      if (lastWaitingIdRef.current) {
+        announcements.clearAmbient();
+        lastWaitingIdRef.current = null;
+      }
+      return;
+    }
+
+    const me = players.find((p) => p.user_id === currentUserId);
+    const myPlayerId = me?.id ?? null;
+
+    // Derive (kind, targetPlayerId, contextLabel)
+    let kind: 'discard' | 'peg' | null = null;
+    let targetPlayerId: string | null = null;
+    let context: string | undefined;
+
+    if (phase === 'discarding') {
+      const playerCount = players.filter((p) => !p.sitting_out).length || players.length;
+      const required = DISCARD_COUNT[playerCount] ?? 2;
+      const myDone =
+        myPlayerId &&
+        (semanticState.playerStates?.[myPlayerId]?.discardedToCrib?.length ?? 0) >= required;
+      // If I haven't discarded yet, the interactive UI owns the moment — no ambient.
+      if (!myDone) {
+        if (lastWaitingIdRef.current) {
+          announcements.clearAmbient();
+          lastWaitingIdRef.current = null;
+        }
+        return;
+      }
+      // Find first opponent still owing discards (deterministic by turnOrder).
+      const order = semanticState.turnOrder ?? Object.keys(semanticState.playerStates ?? {});
+      const pending = order.find((pid) => {
+        if (pid === myPlayerId) return false;
+        const ps = semanticState.playerStates?.[pid];
+        return ps && (ps.discardedToCrib?.length ?? 0) < required;
+      });
+      if (!pending) {
+        if (lastWaitingIdRef.current) {
+          announcements.clearAmbient();
+          lastWaitingIdRef.current = null;
+        }
+        return;
+      }
+      kind = 'discard';
+      targetPlayerId = pending;
+      context = 'discarding to crib';
+    } else if (phase === 'pegging') {
+      const turnId = semanticState.pegging?.currentTurnPlayerId ?? null;
+      // My turn → interactive UI owns it.
+      if (!turnId || turnId === myPlayerId) {
+        if (lastWaitingIdRef.current) {
+          announcements.clearAmbient();
+          lastWaitingIdRef.current = null;
+        }
+        return;
+      }
+      kind = 'peg';
+      targetPlayerId = turnId;
+      context = 'playing a card';
+    }
+
+    if (!kind || !targetPlayerId) return;
+
+    const targetPlayer = players.find((p) => p.id === targetPlayerId);
+    if (!targetPlayer) return;
+    const playerName = getDisplayName(
+      players,
+      targetPlayer,
+      targetPlayer.profiles?.username || 'opponent',
+    );
+
+    const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:waiting:${kind}:${targetPlayerId}`;
+    if (lastWaitingIdRef.current === id) return; // identity-stable: render churn is a no-op
+    lastWaitingIdRef.current = id;
+    announcements.emit({
+      id,
+      type: 'waiting_for_player',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: { playerName, context },
+    });
+  }, [
+    gameId,
+    dealerGameId,
+    currentRoundId,
+    currentHandNumber,
+    effectiveShowHighCardSelection,
+    viewState,
+    cribbageState,
+    players,
+    currentUserId,
+    announcements,
+  ]);
+
+
 
   // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
   const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
