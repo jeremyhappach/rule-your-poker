@@ -22,15 +22,15 @@ export function CanonicalAnnouncementLayer() {
       data-canonical-announcement-layer=""
       aria-live="polite"
       style={{
-        position: 'absolute',
-        top: 0,
+        position: 'fixed',
+        top: 'env(safe-area-inset-top, 0px)',
         left: 0,
         right: 0,
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: 8,
-        zIndex: 70,
+        paddingTop: 6,
+        zIndex: 90,
         pointerEvents: 'none',
       }}
     >
