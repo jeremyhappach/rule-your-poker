@@ -2828,7 +2828,6 @@ export const CribbageMobileGameTable = ({
     if (!showHighCardSelection) return;
     if (!cribbageState) return;
     setShowHighCardSelection(false);
-    setHighCardAnnouncement(null);
   }, [showHighCardSelection, cribbageState]);
 
   // Subscribe to DB-synced dealer selection state so everyone sees the same animation
