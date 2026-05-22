@@ -148,17 +148,57 @@ export function PersistentTableShell({
       {/* P9.6: shell-owned pre-hand felt removed. Gameplay surfaces
           (e.g. GinRummyGameTable) render the single authoritative
           CanonicalFeltSurface inside their own table region. */}
-      <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
+      <div
+        data-canonical-shell-column=""
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '100vh',
+        }}
+      >
+        {/* Shell-owned HUD header chrome. Authored by the route. */}
+        {header ? (
+          <div data-canonical-shell-header="" style={{ flex: '0 0 auto' }}>
+            {header}
+          </div>
+        ) : null}
 
-      {/* Canonical announcement layer — shell-owned single render
-          surface. Sits above slot/game content (z:70) and below the
-          shell-owned overlay root (z:80) and modal overlays. Pointer-
-          events:none — visual-only, never blocks interaction. */}
-      <CanonicalAnnouncementLayer />
+        {/* Shell-owned canonical announcement rail. Fixed dimensions,
+            fixed placement directly under the header and above the
+            opaque game subtree. Single canonical render path — no
+            slot pattern, no portal target, no per-game overrides. */}
+        <div
+          data-canonical-shell-announcement-rail=""
+          style={{
+            flex: '0 0 auto',
+            height: SHELL_ANNOUNCEMENT_RAIL_HEIGHT_PX,
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 12px',
+            pointerEvents: 'none',
+          }}
+        >
+          <CanonicalAnnouncementLayer />
+        </div>
+
+        {/* Opaque game subtree. */}
+        <div
+          data-canonical-shell-children=""
+          style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        >
+          {children}
+        </div>
+      </div>
+
       <CanonicalAnnouncementDebugTrigger
         dealerGameId={gameId ?? null}
         roundId={null}
       />
+
 
       {/* Shell-owned pot anchor — zero size, centered in shell-root.
           Invisible to users. Consumed by chipEndpoints resolver. */}
