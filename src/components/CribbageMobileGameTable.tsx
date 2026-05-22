@@ -1445,6 +1445,11 @@ export const CribbageMobileGameTable = ({
 
   const currentPlayer = players.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
+  // OBSERVER SUPPORT: viewers who are not seated in this dealer game have no
+  // currentPlayerId. They must still see the gameplay surface (cards face-down,
+  // pegboard, peg sequence). Mirror Gin Rummy's `isObserver = !currentPlayerId`
+  // gate so the bootstrap shell does not perpetually swallow observer renders.
+  const isObserver = !currentPlayerId;
   
   // Derive sequenceStartIndex from state - this is authoritative and survives missed realtime updates
   const dbSequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
