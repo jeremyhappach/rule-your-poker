@@ -174,5 +174,24 @@ export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
   return null;
 }
 
+/**
+ * Canonical shell provenance badge — temporary migration instrumentation.
+ *
+ * Renders an unmistakable "CSHELL" marker from inside PersistentTableShell so
+ * we can visually verify which surfaces are truly canonical vs hidden legacy
+ * render paths during the waiting/session canonical-ownership migration.
+ *
+ * Default: ON. Disable globally via localStorage `ptp_disable_canonical_badge = "1"`
+ * (or URL ?disable_canonical_badge=1). Remove this flag entirely once the
+ * migration is validated.
+ */
+export function isCanonicalShellBadgeEnabled(): boolean {
+  return !(
+    hasQueryFlag('disable_canonical_badge') ||
+    hasLocalFlag('ptp_disable_canonical_badge')
+  );
+}
+
+
 
 
