@@ -70,6 +70,12 @@ export function CanonicalSeatCluster({
   if (slot === null || slot === undefined) return null;
 
   const placement = getCanonicalSlotPlacement(slot);
+  // Bottom-anchored slots (HOME bottom-center, bottom corners) must
+  // render game-owned content ABOVE the identity+chip pill so the chip
+  // bubble hugs the lower rail and card backs / hand region sit in
+  // playable space above it. Top/middle slots keep the natural
+  // identity → chip → content stack.
+  const isBottomAnchored = slot === -1 || slot === 0 || slot === 5;
 
   return (
     <div
@@ -77,7 +83,8 @@ export function CanonicalSeatCluster({
       data-seat-position={position}
       data-seat-slot={slot}
       className={cn(
-        'absolute pointer-events-none flex flex-col gap-1',
+        'absolute pointer-events-none flex gap-1',
+        isBottomAnchored ? 'flex-col-reverse' : 'flex-col',
         placement.className,
         className,
       )}
