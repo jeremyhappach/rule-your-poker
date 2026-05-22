@@ -336,6 +336,10 @@ interface MobileGameTableProps {
   onLeaveGameNow?: () => void;
   // Waiting phase - hide pot display
   isWaitingPhase?: boolean;
+  // Canonical slot-owned waiting content (rendered inside the table container,
+  // not as a floating overlay). Used by WaitingForPlayersTable to fold the
+  // seated-count + invite/add-bot/start CTAs into the canonical stage.
+  waitingSlotContent?: React.ReactNode;
   // Real money indicator
   realMoney?: boolean;
   // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
