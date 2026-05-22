@@ -57,7 +57,6 @@ type HighCardDealerSelectionShimProps = {
   selectionVariant?: 'default' | 'cribbage';
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
   onWinnerPositionUpdate?: (position: number | null) => void;
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
