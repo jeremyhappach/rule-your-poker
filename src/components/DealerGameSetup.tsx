@@ -677,6 +677,7 @@ export const DealerGameSetup = ({
             
             const dealerGameId = dealerGame.id;
             logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-dice', { dealerPlayerId, dealerUserId, ante: parsedAnte });
+            await sanitizePlayersForNewDealerGame(gameId);
             
             const { error } = await supabase
               .from('games')
