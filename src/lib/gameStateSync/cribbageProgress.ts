@@ -52,6 +52,8 @@ export interface CribbageStateForProgress {
   dealerSelectionCohort?: number;
   /** Phase C prereq: latch — true once dealer has been resolved. */
   dealerResolved?: boolean;
+  /** Phase E prereq: terminal latch — true once match has completed. */
+  matchCompleteLatch?: boolean;
 }
 
 /**
@@ -61,17 +63,21 @@ export function getCribbageProgress(
   state: CribbageStateForProgress | null,
   handNumber?: number,
 ): ProgressVector {
-  if (!state) return [0, 0, 0, 0, 0];
+  if (!state) return [0, 0, 0, 0, 0, 0];
 
   const handNum = handNumber ?? (state as any).handNumber ?? 1;
   const cohort = state.dealerSelectionCohort ?? 0;
-  // Default-true semantics: legacy snapshots (phase !== 'dealer-select') are
-  // implicitly resolved. Explicit `dealerResolved === false` overrides only
-  // when phase is dealer-select.
   const resolved = state.phase === 'dealer-select'
     ? (state.dealerResolved ? 1 : 0)
     : (state.dealerResolved === false ? 0 : 1);
   const phaseOrd = PHASE_ORDER[state.phase] ?? 0;
+  // Default-true semantics: if phase is 'complete' the latch is implicitly
+  // set even if upstream state didn't carry the field (legacy snapshots).
+  const matchLatch = state.matchCompleteLatch
+    ? 1
+    : state.phase === 'complete'
+      ? 1
+      : 0;
 
   const playedCards = state.pegging?.playedCards?.length ?? 0;
   const cribSize = state.crib?.length ?? 0;
@@ -85,7 +91,7 @@ export function getCribbageProgress(
 
   const subPhase = playedCards * 1000 + totalDiscarded * 100 + cribSize * 10 + totalScore;
 
-  return [handNum, cohort, resolved, phaseOrd, subPhase];
+  return [matchLatch, handNum, cohort, resolved, phaseOrd, subPhase];
 }
 
 /** Convenience typed version for the sync framework config. */
