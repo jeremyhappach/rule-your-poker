@@ -4078,6 +4078,11 @@ export const CribbageMobileGameTable = ({
     const tid = newTraceId();
     logCribbageDebug(debugCtx, 'input:go', { phase: cribbageState.phase, count: cribbageState.pegging.currentCount }, tid);
 
+    const goTraceCtx = { gameId, roundId: currentRoundId, handNumber: currentHandNumber, actorPlayerId: currentPlayerId };
+    traceGoRace(goTraceCtx, 'human:handleGo:entered', {
+      subscriptionSnapshot: peggingSnapshot(cribbageState),
+    });
+
     try {
       // CRITICAL: Fetch fresh state from DB to prevent stale subscription state issues.
       // Same pattern as handlePlayCard - prevents missed Go points when subscription
@@ -4090,6 +4095,7 @@ export const CribbageMobileGameTable = ({
       
       if (fetchError || !freshRound?.cribbage_state) {
         console.error('[CRIBBAGE] Failed to fetch fresh state before Go:', fetchError);
+        traceGoRace(goTraceCtx, 'human:handleGo:fresh-fetch-failed', { error: fetchError?.message ?? null });
         // Fall back to subscription state
         const newState = callGo(cribbageState, currentPlayerId);
         logGoPointEvent(eventCtx, cribbageState, newState);
@@ -4098,10 +4104,17 @@ export const CribbageMobileGameTable = ({
       }
       
       const freshState = freshRound.cribbage_state as unknown as CribbageState;
+      traceGoRace(goTraceCtx, 'human:handleGo:fresh-fetched', {
+        freshSnapshot: peggingSnapshot(freshState),
+      });
       
       // Verify it's still our turn with fresh state
       if (freshState.pegging.currentTurnPlayerId !== currentPlayerId) {
         console.warn('[CRIBBAGE] Stale state detected for Go - not our turn in fresh state');
+        traceGoRace(goTraceCtx, 'human:handleGo:bail', {
+          reason: 'not-our-turn-in-fresh',
+          freshTurn: freshState.pegging.currentTurnPlayerId?.slice(0, 8) ?? null,
+        });
         syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
@@ -4111,6 +4124,7 @@ export const CribbageMobileGameTable = ({
       const freshPlayerState = freshState.playerStates[currentPlayerId];
       if (!freshPlayerState) {
         console.warn('[CRIBBAGE] Player state not found in fresh state for Go');
+        traceGoRace(goTraceCtx, 'human:handleGo:bail', { reason: 'no-player-state-in-fresh' });
         syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
@@ -4119,18 +4133,33 @@ export const CribbageMobileGameTable = ({
       // If fresh state shows we CAN play, don't call Go - update local state instead
       if (hasPlayableCard(freshPlayerState.hand, freshState.pegging.currentCount)) {
         console.warn('[CRIBBAGE] Fresh state shows playable card - skipping Go');
+        traceGoRace(goTraceCtx, 'human:handleGo:bail', {
+          reason: 'fresh-state-has-playable-card',
+          freshCount: freshState.pegging.currentCount,
+          freshHand: freshPlayerState.hand,
+        });
         syncHandle.receiveAuthoritativeUpdate(freshState);
         setCribbageState(freshState);
         return;
       }
       
+      traceGoRace(goTraceCtx, 'human:callGo:before-write', {
+        freshSnapshot: peggingSnapshot(freshState),
+      });
       const newState = callGo(freshState, currentPlayerId);
+      traceGoRace(goTraceCtx, 'human:callGo:computed', {
+        wroteSnapshot: peggingSnapshot(newState),
+      });
       // Fire-and-forget event logging (atomic DB guard prevents duplicates)
       logGoPointEvent(eventCtx, freshState, newState);
       
       await updateState(newState, tid);
+      traceGoRace(goTraceCtx, 'human:callGo:after-write', {
+        wroteSnapshot: peggingSnapshot(newState),
+      });
     } catch (err) {
       toast.error((err as Error).message);
+      traceGoRace(goTraceCtx, 'human:handleGo:error', { message: (err as Error).message });
     }
   }, [cribbageState, currentPlayerId, currentRoundId, eventCtx, debugCtx, evaluateWriterIdentity]);
 
