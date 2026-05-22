@@ -24,12 +24,27 @@ export type AnnouncementType =
   | 'round_win'
   | 'chip_award'
   | 'dealer_selected'
+  | 'peg_notice'
   // Ambient
   | 'dealer_configuring'
   | 'waiting_for_players'
   | 'waiting_for_player'
   | 'waiting_for_next_round'
-  | 'dealer_selection_in_progress';
+  | 'dealer_selection_in_progress'
+  | 'awaiting_ante'
+  | 'cta_prompt';
+
+/**
+ * Phase 2 (Transient UX Platform — rail migration) additions:
+ *   - `awaiting_ante` (ambient): ante decision lifecycle for every game.
+ *   - `cta_prompt` (ambient): actor-only call-to-action plate. Renderer
+ *     gates visibility on payload.actorUserId === viewerUserId; observers
+ *     see the matching `waiting_for_player` ambient instead.
+ *   - `peg_notice` (transient): lightweight non-blocking gameplay notice
+ *     (e.g. Cribbage "Go"). MUST NOT carry timing or progression
+ *     implications. Anything that gates progression is an overlay
+ *     (Phase 3), not a rail event.
+ */
 
 export interface AnnouncementScope {
   /** dealerGameId is the primary lifecycle boundary. */
