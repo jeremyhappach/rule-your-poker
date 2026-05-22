@@ -13,6 +13,7 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { AnnouncementRailSlot } from "@/lib/canonicalShell/announcements";
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import {
   SurfaceReadinessProvider,
@@ -1979,7 +1980,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (newData && 'status' in newData) {
             const newStatus = newData.status;
             // CRITICAL: Immediately fetch for any status change that affects UI flow
-            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended') {
+            if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended' || newStatus === 'cribbage_dealer_selection' || newStatus === 'dealer_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
 
               // ── HANDOFF TRACE #4: game status transition ──
@@ -8457,6 +8458,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             </span>
           </div>
         )}
+
+        {/* Canonical HUD announcement rail — dedicated mount point for
+            CanonicalAnnouncementLayer. Sits in HUD chrome above the
+            gameplay surface; the announcement layer portals into this
+            node. Not anchored to felt/table geometry. */}
+        <AnnouncementRailSlot />
 
         {/* waiting status - show empty table with seat selection */}
         {game.status === 'waiting' && (
