@@ -24,12 +24,27 @@ export type AnnouncementType =
   | 'round_win'
   | 'chip_award'
   | 'dealer_selected'
+  | 'peg_notice'
   // Ambient
   | 'dealer_configuring'
   | 'waiting_for_players'
   | 'waiting_for_player'
   | 'waiting_for_next_round'
-  | 'dealer_selection_in_progress';
+  | 'dealer_selection_in_progress'
+  | 'awaiting_ante'
+  | 'cta_prompt';
+
+/**
+ * Phase 2 (Transient UX Platform — rail migration) additions:
+ *   - `awaiting_ante` (ambient): ante decision lifecycle for every game.
+ *   - `cta_prompt` (ambient): actor-only call-to-action plate. Renderer
+ *     gates visibility on payload.actorUserId === viewerUserId; observers
+ *     see the matching `waiting_for_player` ambient instead.
+ *   - `peg_notice` (transient): lightweight non-blocking gameplay notice
+ *     (e.g. Cribbage "Go"). MUST NOT carry timing or progression
+ *     implications. Anything that gates progression is an overlay
+ *     (Phase 3), not a rail event.
+ */
 
 export interface AnnouncementScope {
   /** dealerGameId is the primary lifecycle boundary. */
@@ -67,10 +82,13 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   dealer_selected: 90,
   round_win: 80,
   chip_award: 60,
+  peg_notice: 55,
   dealer_configuring: 50,
   dealer_selection_in_progress: 50,
+  awaiting_ante: 45,
   waiting_for_players: 40,
   waiting_for_next_round: 40,
+  cta_prompt: 35,
   waiting_for_player: 30,
 };
 
@@ -79,8 +97,11 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   round_win: 'enqueue',
   chip_award: 'enqueue',
   dealer_selected: 'enqueue',
+  peg_notice: 'enqueue',
   dealer_configuring: 'ambient',
   dealer_selection_in_progress: 'ambient',
+  awaiting_ante: 'ambient',
+  cta_prompt: 'ambient',
   waiting_for_players: 'ambient',
   waiting_for_next_round: 'ambient',
   waiting_for_player: 'ambient',
@@ -91,6 +112,7 @@ export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
   round_win: 3000,
   chip_award: 2200,
   dealer_selected: 2500,
+  peg_notice: 1500,
   // Ambient types: no TTL — cleared by supersession or boundary teardown.
 };
 

@@ -315,6 +315,26 @@ export function useAnnouncementContext(): AnnouncementContextValue | null {
 export function useAnnouncements() {
   const ctx = useContext(AnnouncementContext);
   if (!ctx) {
+    // Fail loudly: a rail semantic event was emitted without canonical
+    // shell rail ownership. In dev this throws so the wiring gap is
+    // caught at the call site. In production we degrade to no-ops to
+    // avoid bricking the surface, but warn once per session.
+    if (import.meta.env?.DEV) {
+      throw new Error(
+        '[canonical-rail] useAnnouncements() called outside CanonicalAnnouncementProvider. ' +
+          'Rail semantic events require shell ownership — mount PersistentTableShell above this tree.',
+      );
+    }
+    if (typeof window !== 'undefined') {
+      const w = window as unknown as { __canonicalRailWarned?: boolean };
+      if (!w.__canonicalRailWarned) {
+        w.__canonicalRailWarned = true;
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[canonical-rail] useAnnouncements() used without provider; emits will no-op.',
+        );
+      }
+    }
     return {
       emit: () => {},
       dismiss: () => {},

@@ -156,7 +156,44 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
         />
       );
     }
+    case 'awaiting_ante': {
+      const x = p as { context?: string; deadline?: string };
+      return (
+        <LifecycleAnnouncement
+          title="Awaiting ante decisions"
+          subtitle={x.context ?? 'Choose to ante or sit out'}
+        />
+      );
+    }
+    case 'cta_prompt': {
+      // Actor-only CTA plate. Visibility gating on
+      // payload.actorUserId === viewerUserId is the responsibility of
+      // the rail layer (added alongside the first game cutover that
+      // emits cta_prompt). Observers see the matching `waiting_for_player`
+      // ambient instead, emitted by the same game.
+      const x = p as { title?: string; subtitle?: string; variant?: string };
+      if (!x.title) return null;
+      return <LifecycleAnnouncement title={x.title} subtitle={x.subtitle} />;
+    }
+    case 'peg_notice': {
+      // Lightweight non-blocking gameplay notice. MUST NOT carry
+      // timing or progression implications. Anything that gates
+      // progression is an overlay (Phase 3), not a rail event.
+      const x = p as { title?: string; subtitle?: string; variant?: string };
+      const title = x.title ?? (x.variant === 'go' ? 'Go' : null);
+      if (!title) return null;
+      return <LifecycleAnnouncement title={title} subtitle={x.subtitle} />;
+    }
     default:
+      // Exhaustiveness check — fail loudly in dev if a new
+      // AnnouncementType is added without a renderer case.
+      if (import.meta.env?.DEV) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[canonical-rail] Missing renderer for AnnouncementType:',
+          (event as { type?: string }).type,
+        );
+      }
       return null;
   }
 }
