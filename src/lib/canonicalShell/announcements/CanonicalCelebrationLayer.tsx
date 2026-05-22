@@ -15,10 +15,11 @@
  *   - Subscribes to the same CanonicalAnnouncementProvider context as
  *     the rail. No new event types, no game-specific emitters, no
  *     bespoke per-game overlays.
- *   - Renders when `active.type` is in CELEBRATION_TYPES; otherwise
- *     returns null.
- *   - Pointer-events disabled so it never blocks gameplay interaction
- *     (chip animations, win-sequence chip transport, etc. run beneath).
+ *   - Renders when `active.type` is in CELEBRATION_TYPES and the
+ *     renderer returns an overlay; otherwise returns null.
+ *   - Pointer-events are captured by the overlay while active, restoring
+ *     legacy terminal takeover semantics until the announcement TTL
+ *     releases chip transport / replay progression.
  *
  * Observer parity:
  *   - Render is driven purely by the canonical announcement context.
@@ -49,7 +50,7 @@ export function CanonicalCelebrationLayer() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        pointerEvents: 'none',
+        pointerEvents: 'auto',
         zIndex: 90, // above shell overlay root (80), below modal/toast layers.
       }}
     >

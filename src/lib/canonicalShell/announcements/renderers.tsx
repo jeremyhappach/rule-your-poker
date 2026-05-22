@@ -6,14 +6,6 @@
 import { LifecycleAnnouncement } from '@/components/LifecycleAnnouncement';
 import type { AnnouncementEvent } from './types';
 
-interface MatchWinPayload {
-  winnerName?: string;
-  amount?: number | string;
-  score?: { winner?: number; loser?: number };
-  /** Cribbage-specific. Other games may set undefined. */
-  skunk?: 'single' | 'double';
-}
-
 interface RoundWinPayload {
   winnerName?: string;
   amount?: number | string;
@@ -66,24 +58,12 @@ function formatCounts(counts?: RoundWinPayload['counts']): string | undefined {
 export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null {
   const p = (event.payload ?? {}) as Record<string, unknown>;
   switch (event.type) {
-    case 'match_win': {
-      const x = p as MatchWinPayload;
-      const skunkLabel =
-        x.skunk === 'double'
-          ? 'DOUBLE SKUNK!'
-          : x.skunk === 'single'
-            ? 'SKUNK!'
-            : null;
-      const baseTitle = x.winnerName ? `${x.winnerName} wins the match!` : 'Match won!';
-      const title = skunkLabel ? `${skunkLabel} ${baseTitle}` : baseTitle;
-      const scoreLine =
-        x.score && x.score.winner != null && x.score.loser != null
-          ? `${x.score.winner} – ${x.score.loser}`
-          : x.amount != null
-            ? `+${x.amount}`
-            : undefined;
-      return <LifecycleAnnouncement title={title} subtitle={scoreLine} />;
-    }
+    case 'match_win':
+      // Terminal match-win visuals are never lifecycle rail content.
+      // Skunk/double-skunk overlays are shell-owned by
+      // CanonicalCelebrationLayer; non-skunk wins proceed directly to
+      // chip transport without an invented announcement card.
+      return null;
     case 'round_win': {
       const x = p as RoundWinPayload;
       const kindLabel =
