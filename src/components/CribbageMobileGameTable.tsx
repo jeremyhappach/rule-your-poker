@@ -5305,16 +5305,13 @@ export const CribbageMobileGameTable = ({
 
       {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Banner area — consistent height across all modes.
-            Single dedicated announcement landing area:
-              - canonical announcements (dealer-selection, match_win,
-                round_win, dealer_configuring, etc.) portal in via
-                AnnouncementRailSlot
-              - legacy gameplay strings ("Discard to Crib", scoring
-                events) render via the local IIFE below, suppressed
-                whenever a canonical announcement owns the slot. */}
+        {/* Banner area — legacy gameplay strings ("Discard to Crib",
+            pegging score events). Canonical announcements are owned
+            and rendered by the shell-level announcement rail (above
+            the gameplay surface), NOT here. This strip is suppressed
+            while a canonical announcement is active so observers
+            never see two competing messages. */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3 relative">
-          <AnnouncementRailSlot />
           {!canonicalAnnouncementActive && (() => {
             // HIGH-CARD: canonical announcements (ambient
             // `dealer_selection_in_progress` / transient `dealer_selected`)
