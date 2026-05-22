@@ -47,6 +47,7 @@ export interface CribbageHandCountSummary {
 }
 
 export type CribbagePhase = 
+  | 'dealer-select' // High-card draw / cut for first dealer (incl. tie redraws)
   | 'dealing' 
   | 'discarding' // Players discard to crib
   | 'cutting' // Cut card is revealed
