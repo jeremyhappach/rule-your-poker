@@ -1028,6 +1028,7 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-dice-or-holm', { dealerPlayerId, dealerUserId });
+    await sanitizePlayersForNewDealerGame(gameId);
     
     const updateData: any = {
       game_type: gameTypeToSubmit,
