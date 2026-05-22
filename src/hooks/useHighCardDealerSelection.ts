@@ -166,13 +166,12 @@ export function useHighCardDealerSelection({
 
     lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
     onCardsUpdate(syncedState.cards);
-    onAnnouncementUpdate(syncedState.announcement, syncedState.isComplete);
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
     if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
     }
-  }, [isHost, syncedState, onCardsUpdate, onAnnouncementUpdate, onWinnerPositionUpdate]);
+  }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate]);
 
   // Forward declarations to avoid use-before-declaration in closures.
   const determineWinnerRef = useRef<(roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => void>(() => {});
