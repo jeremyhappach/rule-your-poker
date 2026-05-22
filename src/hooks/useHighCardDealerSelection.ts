@@ -191,7 +191,6 @@ export function useHighCardDealerSelection({
             : 'Tie! Drawing again...';
 
       if (roundAnnouncement !== null) {
-        onAnnouncementUpdate(roundAnnouncement, false);
         lastAnnouncementRef.current = roundAnnouncement;
       }
 
