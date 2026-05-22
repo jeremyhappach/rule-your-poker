@@ -5291,13 +5291,18 @@ export const CribbageMobileGameTable = ({
             {/* GAMEPLAY MODE: full game content */}
             {isGameplayMode && viewState && (
               <>
-                {/* Turn Spotlight */}
+                {/* Turn Spotlight — angle derived from the canonical seat-anchor slot
+                    of the active turn player so spotlight, chip bubble, dealer pip,
+                    card backs and chip-transport endpoints all resolve from the
+                    SAME projection truth. */}
                 <CribbageTurnSpotlight
                   currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-                  currentPlayerId={currentPlayerId || ''}
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                  totalPlayers={activeSeatPlayers.length}
-                  opponentIds={projectedSeatPlayers.map(o => o.id)}
+                  currentTurnSlot={
+                    viewState.pegging.currentTurnPlayerId
+                      ? (playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null)
+                      : null
+                  }
                 />
 
                 {/* Game Title */}
