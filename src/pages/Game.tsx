@@ -9041,10 +9041,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     allowBotDealers={allowBotDealers}
                     syncedState={(game as any).dealer_selection_state ?? null}
                     onCardsUpdate={setDealerSelectionCards}
-                    onAnnouncementUpdate={(msg, complete) => {
-                      setDealerSelectionAnnouncement(msg);
-                      setDealerSelectionComplete(complete);
-                    }}
                     onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                   />
                 )}
