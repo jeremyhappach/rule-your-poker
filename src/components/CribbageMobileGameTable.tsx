@@ -641,7 +641,6 @@ export const CribbageMobileGameTable = ({
   }
 
   const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
-  const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
   // ── Phase C: canonical dealer-selection announcements ────────────────────
