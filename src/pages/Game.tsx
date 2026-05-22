@@ -2021,8 +2021,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // The realtime status branch only fires on actual status change, so clearing
                 // here cannot wipe an in-progress draw.
                 setDealerSelectionCards([]);
-                setDealerSelectionAnnouncement(null);
-                setDealerSelectionComplete(false);
                 setDealerSelectionWinnerPosition(null);
                 // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
                 emitCribbageHandoffTrace({
