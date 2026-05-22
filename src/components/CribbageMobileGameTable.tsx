@@ -1407,6 +1407,8 @@ export const CribbageMobileGameTable = ({
   // Prevent double scheduling of the win sequence before the 2s delay fires.
   const winSequenceScheduledRef = useRef<string | null>(null);
   // Source-level guard for skunk overlay to prevent double-firing per animation-trigger pattern.
+  // Phase E: skunkOverlayFiredRef retained as a no-op latch sentinel
+  // (kept to avoid wider diff; no longer guards bespoke overlay).
   const skunkOverlayFiredRef = useRef<string | null>(null);
   // Source-level guard for chip animation trigger to prevent double-firing
   const chipAnimationFiredRef = useRef<string | null>(null);
@@ -4357,10 +4359,9 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber]);
 
-  // Win sequence phase handlers
-  const handleSkunkComplete = useCallback(() => {
-    setWinSequencePhase('announcement');
-  }, []);
+  // Phase E: handleSkunkComplete retired — skunk now rides inside the
+  // canonical match_win announcement, so the bespoke overlay phase is gone.
+
 
   const handleAnnouncementComplete = useCallback(() => {
     // Compute chip animation positions
