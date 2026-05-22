@@ -939,12 +939,14 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
       timestamp: new Date().toISOString(),
     });
   } else {
-    // In Holm game, folding only affects current hand - keep status 'active'
-    // In 3-5-7 game, folding eliminates player from entire session - set status 'folded'
-    const updatePayload = { 
+    // Only 3-5-7 variants treat fold as session-elimination (status='folded').
+    // All other game types (Holm, cribbage, gin, yahtzee, dice, etc.) must not
+    // stamp status='folded' — that's a 3-5-7-specific semantic and pollutes
+    // cross-dealer-game player rows. See bot-ownership boundary fix.
+    const updatePayload = {
       current_decision: 'fold',
       decision_locked: true,
-      ...(isHolmGame ? {} : { status: 'folded' })
+      ...(is357Game ? { status: 'folded' } : {})
     };
     
     console.log(`[MAKE_DECISION] Attempting DB UPDATE: SET ${JSON.stringify(updatePayload)} WHERE id=${shortPlayerId} AND decision_locked=false`);
@@ -1287,6 +1289,7 @@ export async function autoFoldUndecided(gameId: string, opts?: {
   }
 
   const isHolmGame = game?.game_type === 'holm-game';
+  const is357GameAutoFold = game?.game_type === '3-5-7' || game?.game_type === '3-5-7-game' || game?.game_type === '357';
 
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
@@ -1320,7 +1323,7 @@ export async function autoFoldUndecided(gameId: string, opts?: {
         decision_locked: true,
         // This function is only called for timer-expiry; mark humans as auto_fold.
         auto_fold: player.is_bot ? false : true,
-        ...(isHolmGame ? {} : { status: 'folded' }),
+        ...(is357GameAutoFold ? { status: 'folded' } : {}),
       })
       .eq('id', player.id);
     

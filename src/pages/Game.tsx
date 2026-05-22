@@ -3879,12 +3879,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     const isHolmGame = game?.game_type === 'holm-game';
-    
+
+    // POSITIVE WHITELIST: only games that use the shared generic decision
+    // loop (Holm, 3-5-7) should trigger makeBotDecisions. All other game
+    // types own their bot logic and must not enter this path.
+    const gType = game?.game_type;
+    const usesGenericDecisionLoop =
+      gType === 'holm-game' || gType === 'holm' ||
+      gType === '3-5-7' || gType === '3-5-7-game' || gType === '357';
+    if (!usesGenericDecisionLoop) {
+      return;
+    }
+
     // CRITICAL: Skip bot decisions if game is paused
     if (game?.is_paused) {
       console.log('[BOT TRIGGER] Game is paused, skipping bot decisions');
       return;
     }
+    
     
     console.log('[BOT TRIGGER EFFECT] Running', {
       status: game?.status,
