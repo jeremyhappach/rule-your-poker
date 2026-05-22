@@ -4676,9 +4676,12 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(safetyTimer);
   }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
 
-  // ── BUG A FIX: Compute opponents and helpers BEFORE any render branches ──
-  // This ensures all branches share the same opponent data and layout.
-  const opponents = players.filter(p => p.user_id !== currentUserId);
+  // Canonical projected seat roster. Active clients render opponents here;
+  // observers render both 2P participants here. The slot source is the
+  // shell-owned SeatAnchorLayer, not Cribbage-local absolute math.
+  const projectedSeatPlayers = isObserver
+    ? activeSeatPlayers
+    : activeSeatPlayers.filter(p => p.id !== currentPlayerId);
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
   // Determine current render mode for felt content (not layout — layout is always the same shell)
