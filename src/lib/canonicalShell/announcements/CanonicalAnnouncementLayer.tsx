@@ -1,23 +1,24 @@
 /**
- * CanonicalAnnouncementLayer — portals the active announcement into the
- * HUD-owned AnnouncementRailSlot. There is no shell/table fallback:
- * if the HUD rail is not mounted, nothing renders. This enforces
- * single-ownership of announcement placement at the HUD layer.
+ * CanonicalAnnouncementLayer — renders the active announcement inline.
+ *
+ * Shell ownership model (single canonical render path):
+ *   - PersistentTableShell renders this component inside its own
+ *     shell-owned announcement rail container (fixed dimensions,
+ *     fixed placement between the shell-owned header and the opaque
+ *     game children).
+ *   - There is no portal, no slot pattern, no fallback render
+ *     location. Games never anchor or position announcements.
  */
 
-import { createPortal } from 'react-dom';
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
-import { useAnnouncementRailNode } from './AnnouncementRail';
 import { renderAnnouncement } from './renderers';
 
 export function CanonicalAnnouncementLayer() {
   const ctx = useAnnouncementContext();
-  const railNode = useAnnouncementRailNode();
   if (!ctx || !ctx.active) return null;
-  if (!railNode) return null;
   const node = renderAnnouncement(ctx.active);
   if (!node) return null;
-  return createPortal(
+  return (
     <div
       data-canonical-announcement-content=""
       style={{
@@ -25,11 +26,11 @@ export function CanonicalAnnouncementLayer() {
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
+        height: '100%',
         pointerEvents: 'none',
       }}
     >
       {node}
-    </div>,
-    railNode,
+    </div>
   );
 }
