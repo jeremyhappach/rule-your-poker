@@ -9,6 +9,8 @@ import type { AnnouncementEvent } from './types';
 let container: HTMLDivElement;
 let root: Root;
 
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 beforeEach(() => {
   vi.useFakeTimers();
   container = document.createElement('div');
