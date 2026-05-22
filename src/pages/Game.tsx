@@ -9003,7 +9003,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   }}
                   isDealerSelection={isCribbageDealerSelection}
                   dealerSelectionCards={isCribbageDealerSelection ? dealerSelectionCards : undefined}
-                  dealerSelectionAnnouncement={isCribbageDealerSelection ? dealerSelectionAnnouncement : undefined}
                   dealerSelectionWinnerPosition={isCribbageDealerSelection ? dealerSelectionWinnerPosition : undefined}
                 />
               </>
