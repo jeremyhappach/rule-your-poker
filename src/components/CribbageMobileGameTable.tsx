@@ -3750,20 +3750,37 @@ export const CribbageMobileGameTable = ({
         const botState = cribbageState.playerStates[currentTurnId];
         if (!botState) return;
 
+        const traceCtx = { gameId, roundId: roundId ?? null, handNumber: currentHandNumber, actorPlayerId: currentTurnId };
+        traceGoRace(traceCtx, 'bot-effect:entered', {
+          botActionInProgress: botActionInProgress.current,
+          readSnapshot: peggingSnapshot(cribbageState),
+          botHandSize: botState.hand.length,
+        });
+
         botActionInProgress.current = true;
 
         await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
 
         try {
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
+            traceGoRace(traceCtx, 'bot:callGo:before-write', {
+              readSnapshot: peggingSnapshot(cribbageState),
+            });
             const newState = callGo(cribbageState, currentTurnId);
+            traceGoRace(traceCtx, 'bot:callGo:computed', {
+              wroteSnapshot: peggingSnapshot(newState),
+            });
             // Fire-and-forget event logging (atomic DB guard prevents duplicates)
             logGoPointEvent(eventCtx, cribbageState, newState);
             
-            await supabase
+            const { error: writeErr } = await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
               .eq('id', roundId);
+            traceGoRace(traceCtx, 'bot:callGo:after-write', {
+              ok: !writeErr,
+              error: writeErr?.message ?? null,
+            });
           } else {
             const cardIndex = getBotPeggingCardIndex(
               botState,
@@ -3773,7 +3790,14 @@ export const CribbageMobileGameTable = ({
 
             if (cardIndex !== null) {
               const cardPlayed = botState.hand[cardIndex];
+              traceGoRace(traceCtx, 'bot:playCard:before-write', {
+                cardIndex, cardPlayed,
+                readSnapshot: peggingSnapshot(cribbageState),
+              });
               const newState = playPeggingCard(cribbageState, currentTurnId, cardIndex);
+              traceGoRace(traceCtx, 'bot:playCard:computed', {
+                wroteSnapshot: peggingSnapshot(newState),
+              });
               // Fire-and-forget event logging (atomic DB guard prevents duplicates)
               logPeggingPlay(eventCtx, cribbageState, newState, currentTurnId, cardPlayed);
               // Check for his_heels on phase transition
@@ -3781,14 +3805,24 @@ export const CribbageMobileGameTable = ({
                 logHisHeelsEvent(eventCtx, newState);
               }
               
-              await supabase
+              const { error: writeErr } = await supabase
                 .from('rounds')
                 .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
                 .eq('id', roundId);
+              traceGoRace(traceCtx, 'bot:playCard:after-write', {
+                ok: !writeErr,
+                error: writeErr?.message ?? null,
+              });
+            } else {
+              traceGoRace(traceCtx, 'bot:no-action', {
+                reason: 'shouldCallGo=false and getBotPeggingCardIndex=null',
+                readSnapshot: peggingSnapshot(cribbageState),
+              });
             }
           }
         } catch (err) {
           console.error('[CRIBBAGE BOT] Pegging error:', err);
+          traceGoRace(traceCtx, 'bot:error', { message: (err as Error).message });
         } finally {
           botActionInProgress.current = false;
         }
