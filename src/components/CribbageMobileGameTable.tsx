@@ -22,6 +22,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { HighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from './HighCardDealerSelection';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 // CribbageWinnerAnnouncement removed - win message now in dealer banner area
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
