@@ -79,11 +79,20 @@ export interface CanonicalAnnouncementProviderProps {
 }
 
 function scopeMatches(eventScope: AnnouncementScope, current: AnnouncementScope): boolean {
-  const wantsDealer = eventScope.dealerGameId !== undefined;
-  const wantsRound = eventScope.roundId !== undefined;
-  if (!wantsDealer && !wantsRound) return true;
-  if (wantsDealer && eventScope.dealerGameId !== current.dealerGameId) return false;
-  if (wantsRound && eventScope.roundId !== current.roundId) return false;
+  // dealerGameId: enforce equality whenever the event specifies one.
+  // null/undefined on the event side = unscoped (matches any dealerGame).
+  if (eventScope.dealerGameId != null) {
+    if (eventScope.dealerGameId !== current.dealerGameId) return false;
+  }
+  // roundId: only enforce equality when BOTH sides specify a non-null value.
+  // The shell-owned provider is mounted with roundId=null (dealerGame-scoped
+  // ownership boundary). Per-game emits often carry a finer roundId for
+  // future-proofing; treating the provider's null as a wildcard at this
+  // dimension preserves the dealerGame-only contract and prevents silent
+  // drops of round-scoped events like `match_win` / `waiting_for_player`.
+  if (eventScope.roundId != null && current.roundId != null) {
+    if (eventScope.roundId !== current.roundId) return false;
+  }
   return true;
 }
 
