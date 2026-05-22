@@ -25,7 +25,7 @@ import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
-import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
+import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
