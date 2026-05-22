@@ -645,6 +645,8 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
   // All cards played - advance to counting
   return advanceToCounting(stateForReset);
 
+
+
 }
 
 /**
