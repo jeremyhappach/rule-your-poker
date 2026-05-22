@@ -485,6 +485,7 @@ export const MobileGameTable = ({
   getPositionForUserId,
   onLeaveGameNow,
   isWaitingPhase = false,
+  waitingSlotContent,
   realMoney = false,
   revealAtShowdown = false,
   externalShowdownCardsCache,
