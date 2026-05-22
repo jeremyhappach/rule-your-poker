@@ -23,7 +23,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
-import { useAnnouncements, AnnouncementRailSlot, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
+import { useAnnouncements, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
