@@ -202,6 +202,43 @@ function buildBoundaryGuardKey(
   return `${dealerGameId ?? 'no-dealer'}:${roundId ?? 'no-round'}:${handNumber}:${handKey ?? 'no-hand-key'}`;
 }
 
+/**
+ * Phase C.2: headless dealer-selection controller.
+ *
+ * Behavior-preserving extraction — identical to the previous
+ * `<HighCardDealerSelection selectionVariant="cribbage" allowBotDealers />`
+ * mount, but the underlying logic now lives in
+ * `useHighCardDealerSelection`. This shim exists ONLY to preserve the
+ * conditional mount/unmount semantics on
+ * `isHighCardMode && !isDealerSelection` so legacy timing and same-game
+ * replay reset behavior are bit-for-bit identical.
+ */
+function CribbageDealerSelectionController(props: {
+  gameId: string;
+  players: any[];
+  isHost: boolean;
+  syncedState: DealerSelectionState | null;
+  onCardsUpdate: (cards: DealerSelectionCard[]) => void;
+  onAnnouncementUpdate: (message: string | null) => void;
+  onWinnerPositionUpdate: (position: number | null) => void;
+  onComplete: (pos: number) => void;
+}) {
+  useHighCardDealerSelection({
+    gameId: props.gameId,
+    players: props.players,
+    isHost: props.isHost,
+    allowBotDealers: true,
+    selectionVariant: 'cribbage',
+    syncedState: props.syncedState,
+    onCardsUpdate: props.onCardsUpdate,
+    onAnnouncementUpdate: (message, _isComplete) => props.onAnnouncementUpdate(message),
+    onWinnerPositionUpdate: props.onWinnerPositionUpdate,
+    onComplete: props.onComplete,
+  });
+  return null;
+}
+
+
 export const CribbageMobileGameTable = ({
   gameId,
   roundId,
