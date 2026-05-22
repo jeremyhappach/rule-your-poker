@@ -20,13 +20,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { isDebugChannel } from './debugChannels';
-import type { CribbageState } from './cribbageGameLogic';
+import type { CribbageState } from './cribbageTypes';
 
 let _enabled: boolean | null = null;
 
 function checkEnabled(): boolean {
   try {
-    if (isDebugChannel('cribbage-go')) return true;
+    // Piggy-back on the existing 'cribbage' debug channel; also accept
+    // a dedicated URL / localStorage flag for finer-grained opt-in.
+    if (isDebugChannel('cribbage')) return true;
   } catch { /* */ }
   try {
     const p = new URLSearchParams(window.location.search);
