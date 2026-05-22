@@ -3100,6 +3100,10 @@ export const CribbageMobileGameTable = ({
       multiplier >= 3 ? 'double' : multiplier >= 2 ? 'single' : undefined;
     const winnerScoreVal = state.playerStates[winnerId]?.pegScore ?? 0;
     const loserLowest = state.loserScore ?? Math.min(...loserIds.map(id => state.playerStates[id]?.pegScore ?? 0));
+    // Defensive: ensure no ambient (e.g. waiting_for_player /
+    // dealer_selection_in_progress) is sitting under the transient
+    // match_win. One announcement owner only.
+    announcements.clearAmbient();
     announcements.emit({
       id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
       type: 'match_win',
