@@ -689,7 +689,7 @@ export const CribbageMobileGameTable = ({
     }
   }, [
     gameId,
-    isHighCardMode,
+    effectiveShowHighCardSelection,
     effectiveHighCardWinnerPosition,
     dealerSelectionCohortDerived,
     dealerSelectionTieDerived,
