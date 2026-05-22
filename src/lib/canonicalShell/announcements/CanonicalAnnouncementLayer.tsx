@@ -23,8 +23,8 @@ export function CanonicalAnnouncementLayer() {
       style={{
         display: 'flex',
         justifyContent: 'center',
+        alignItems: 'center',
         width: '100%',
-        padding: '4px 8px',
         pointerEvents: 'none',
       }}
     >
