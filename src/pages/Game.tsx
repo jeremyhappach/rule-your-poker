@@ -13,7 +13,8 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
-import { AnnouncementRailSlot } from "@/lib/canonicalShell/announcements";
+// AnnouncementRailSlot is mounted by the active gameplay surface
+// (e.g. CribbageMobileGameTable), not at the Game.tsx shell level.
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import {
   SurfaceReadinessProvider,
@@ -8459,11 +8460,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </div>
         )}
 
-        {/* Canonical HUD announcement rail — dedicated mount point for
-            CanonicalAnnouncementLayer. Sits in HUD chrome above the
-            gameplay surface; the announcement layer portals into this
-            node. Not anchored to felt/table geometry. */}
-        <AnnouncementRailSlot />
+        {/* Canonical HUD announcement rail mount point lives inside
+            the active gameplay surface (e.g. CribbageMobileGameTable's
+            dedicated banner area between the felt and the tab bar) —
+            NOT here. Hoisting it back to a shell-level slot above the
+            felt creates a second landing area and was rejected. */}
 
         {/* waiting status - show empty table with seat selection */}
         {game.status === 'waiting' && (

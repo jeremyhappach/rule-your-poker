@@ -23,7 +23,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
-import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import { useAnnouncements, AnnouncementRailSlot, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
@@ -671,6 +671,8 @@ export const CribbageMobileGameTable = ({
 
 
   const announcements = useAnnouncements();
+  const announcementCtx = useAnnouncementContext();
+  const canonicalAnnouncementActive = !!announcementCtx?.active;
   const announcedDealerResolvedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -5303,9 +5305,17 @@ export const CribbageMobileGameTable = ({
 
       {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Banner area — consistent height across all modes */}
-        <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
-          {(() => {
+        {/* Banner area — consistent height across all modes.
+            Single dedicated announcement landing area:
+              - canonical announcements (dealer-selection, match_win,
+                round_win, dealer_configuring, etc.) portal in via
+                AnnouncementRailSlot
+              - legacy gameplay strings ("Discard to Crib", scoring
+                events) render via the local IIFE below, suppressed
+                whenever a canonical announcement owns the slot. */}
+        <div className="h-[36px] shrink-0 flex items-center justify-center px-3 relative">
+          <AnnouncementRailSlot />
+          {!canonicalAnnouncementActive && (() => {
             // HIGH-CARD: canonical announcements (ambient
             // `dealer_selection_in_progress` / transient `dealer_selected`)
             // own all messaging during dealer selection. The legacy gold
