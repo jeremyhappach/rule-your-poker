@@ -59,7 +59,14 @@ export interface UseHighCardDealerSelectionArgs {
   selectionVariant?: 'default' | 'cribbage';
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
+  /**
+   * Phase F.2: announcement callback retired. Dealer-selection messaging
+   * is now exclusively owned by the canonical announcement layer (see
+   * `dealer_selection_in_progress` / `dealer_selected` in
+   * `canonicalShell/announcements/renderers.tsx`). The `announcement`
+   * field is still written to `games.dealer_selection_state` for DB
+   * sync continuity, but no consumer renders the string.
+   */
   onWinnerPositionUpdate?: (position: number | null) => void;
 }
 
@@ -72,7 +79,6 @@ export function useHighCardDealerSelection({
   selectionVariant = 'default',
   syncedState,
   onCardsUpdate,
-  onAnnouncementUpdate,
   onWinnerPositionUpdate,
 }: UseHighCardDealerSelectionArgs) {
   const hasInitializedRef = useRef(false);
