@@ -5346,14 +5346,6 @@ export const CribbageMobileGameTable = ({
                   />
                 )}
 
-                {/* Dealer button at bottom */}
-                {currentPlayer && isCribDealer(currentPlayerId) && (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-                    <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-                      <span className="text-white font-bold text-[10px]">D</span>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -5364,6 +5356,7 @@ export const CribbageMobileGameTable = ({
               // During gameplay, read card data from viewState; otherwise no cards shown
               const seatState = isGameplayMode && viewState ? viewState.playerStates[seatPlayer.id] : null;
               const slot = playerSlotById.get(seatPlayer.id) ?? null;
+              const showSeatCardBacks = isObserver || seatPlayer.id !== currentPlayerId;
 
               return (
                 <CanonicalSeatCluster
@@ -5374,7 +5367,7 @@ export const CribbageMobileGameTable = ({
                   isDealer={isGameplayMode ? isCribDealer(seatPlayer.id) : false}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
                 >
-                  {seatState && seatState.hand.length > 0 && (
+                  {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
                       {seatState.hand.map((_, i) => (
                         <div 
