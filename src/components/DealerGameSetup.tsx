@@ -1330,6 +1330,7 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
+    await sanitizePlayersForNewDealerGame(gameId);
     if (isGinRummy) {
       console.log('[GIN_RUNTIME_TIMELINE] dealer game creation:inserted', {
         t: Date.now(),
