@@ -8458,6 +8458,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           </div>
         )}
 
+        {/* Canonical HUD announcement rail — dedicated mount point for
+            CanonicalAnnouncementLayer. Sits in HUD chrome above the
+            gameplay surface; the announcement layer portals into this
+            node. Not anchored to felt/table geometry. */}
+        <AnnouncementRailSlot />
+
         {/* waiting status - show empty table with seat selection */}
         {game.status === 'waiting' && (
           <WaitingForPlayersTable
