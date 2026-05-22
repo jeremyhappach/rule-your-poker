@@ -4855,7 +4855,7 @@ export const CribbageMobileGameTable = ({
     if (!viewState) return '(no viewState)';
     if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return '(win overlay)';
     if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
-      return `${winSequenceData.winnerName} Wins! +$${winSequenceData.totalWinnings}`;
+      return '(canonical match_win)';
     }
     const isCountingAnimActive = !!countingStateSnapshot;
     const countingOutroActive = isCountingAnimActive && countingDelayActive;
@@ -5268,18 +5268,11 @@ export const CribbageMobileGameTable = ({
             const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
           
             if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
-            
-            if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
-              return (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
-                  </p>
-                </div>
-              );
-            }
-            
-            if (winSequencePhase === 'chips' || winSequencePhase === 'announcement') return null;
+
+            // Phase E: bespoke winner banner retired. Canonical
+            // `match_win` announcement is the SOLE winner UI surface.
+            if (winSequencePhase === 'announcement' || winSequencePhase === 'chips') return null;
+
             
             const isPeggingEvent = effectiveLastEvent && (
               effectiveLastEvent.type === 'pegging_points' || 
