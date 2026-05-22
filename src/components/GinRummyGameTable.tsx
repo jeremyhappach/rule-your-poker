@@ -455,7 +455,7 @@ export const GinRummyGameTable = ({
   // canonical-shell game. If the layer is somehow absent (test harness,
   // flag-off), the map degrades to all-nulls rather than reintroducing
   // a per-game projection clone.
-  const shellAnchors = useSeatAnchorsOptional();
+  const shellAnchors = useRequiredSeatAnchors('gin-rummy');
   const playerSlotById = useMemo(() => {
     const slotByPosition = shellAnchors
       ? new Map<number, CanonicalSlot | null>(
