@@ -186,16 +186,20 @@ export function resolveSeatAnchors(
   // Observer canonicalization for inherently-2P games:
   // Mirror the active-canonical projection so observer geometry matches
   // what seated players see. Lower-positioned seat → HOME; opponent →
-  // the same slot active-canonical would use (Gin → slot 2 / upper-left
-  // to avoid top-center shell chrome collision; Cribbage/Yahtzee →
-  // FACE_TO_FACE top-center).
+  // ergonomic upper-offset (slot 2, top-left). Literal FACE_TO_FACE
+  // (top-center) is mathematically symmetric but ergonomically wrong
+  // for this app — it overlaps top-rail shell chrome and reads as
+  // unbalanced. All inherently-2P games (Cribbage, Gin, Yahtzee) share
+  // this ergonomic policy.
   const canCanonicalize2pObserver =
     projectionMode === 'observer-absolute' &&
     isTwoPlayerGameType &&
     activeOccupied.length === 2;
 
-  const observerOpponentSlot: CanonicalSlot =
-    isGinRummyGameType(gameType) ? 2 : SLOT.FACE_TO_FACE;
+  // Ergonomic 2P opponent slot — upper-left offset for all 2P games.
+  // (gameType retained in signature for future per-game overrides.)
+  void isGinRummyGameType;
+  const observerOpponentSlot: CanonicalSlot = 2;
 
   const sorted2pPositions = canCanonicalize2pObserver
     ? [...activeOccupied].map(s => s.position).sort((a, b) => a - b)
