@@ -47,6 +47,7 @@ export interface CribbageHandCountSummary {
 }
 
 export type CribbagePhase = 
+  | 'dealer-select' // High-card draw / cut for first dealer (incl. tie redraws)
   | 'dealing' 
   | 'discarding' // Players discard to crib
   | 'cutting' // Cut card is revealed
@@ -90,6 +91,23 @@ export interface CribbageState {
   winnerPlayerId: string | null;
   loserScore: number | null; // For determining skunk/double-skunk
   payoutMultiplier: number; // 1 = normal, 2 = skunk, 3 = double-skunk
+
+  // ── Phase C prerequisites: dealer-selection identity dims ──────────────────
+  /**
+   * Monotonic cohort counter for dealer-selection. Increments on every tie
+   * redraw so identity boundaries are clean across high-card-draw retries.
+   * 0 = first/only selection cohort. Persists at last value once dealer is
+   * resolved; reset only at dealerGame boundary.
+   */
+  dealerSelectionCohort?: number;
+  /**
+   * Latch flipped to true once a dealer has been definitively chosen
+   * (i.e. lifecycle has progressed past `dealer-select`). Provides a
+   * monotonic dimension distinguishing pre-/post-resolution snapshots
+   * within the same cohort. Required for canonical announcement
+   * sequencing (`dealer_selected`) before Phase C surface migration.
+   */
+  dealerResolved?: boolean;
 }
 
 // Scoring constants
