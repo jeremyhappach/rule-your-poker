@@ -23,6 +23,7 @@ export type AnnouncementType =
   | 'match_win'
   | 'round_win'
   | 'chip_award'
+  | 'dealer_selected'
   // Ambient
   | 'dealer_configuring'
   | 'waiting_for_players'
@@ -63,6 +64,7 @@ export interface AnnouncementEvent {
 
 export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   match_win: 100,
+  dealer_selected: 90,
   round_win: 80,
   chip_award: 60,
   dealer_configuring: 50,
@@ -76,6 +78,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   match_win: 'enqueue',
   round_win: 'enqueue',
   chip_award: 'enqueue',
+  dealer_selected: 'enqueue',
   dealer_configuring: 'ambient',
   dealer_selection_in_progress: 'ambient',
   waiting_for_players: 'ambient',
@@ -87,6 +90,7 @@ export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
   match_win: 4500,
   round_win: 3000,
   chip_award: 2200,
+  dealer_selected: 2500,
   // Ambient types: no TTL — cleared by supersession or boundary teardown.
 };
 
