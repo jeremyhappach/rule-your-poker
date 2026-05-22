@@ -1,75 +1,53 @@
 import { useEffect, useState } from 'react';
+import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
 interface CribbageTurnSpotlightProps {
   /** Player ID whose turn it is */
   currentTurnPlayerId: string | null;
-  /** The current user's player ID */
-  currentPlayerId: string;
   /** Whether spotlight should be visible */
   isVisible: boolean;
-  /** Total number of players in the game */
-  totalPlayers: number;
-  /** Ordered list of opponent player IDs (in turn order, excluding current player) */
-  opponentIds: string[];
+  /** Canonical slot the active turn player projects to. Derived from the
+   *  same SeatAnchorLayer map that drives chip bubbles, dealer pips,
+   *  card backs, and chip-transport endpoints — guaranteeing the
+   *  spotlight aims at the SAME location those surfaces render to. */
+  currentTurnSlot: CanonicalSlot | null;
 }
 
 /**
- * A spotlight for cribbage that points toward the active player.
- * Dynamically calculates angle based on player count and position.
- * - 2 player: opponent at upper-left (-45°), self at bottom (180°)
- * - 3 player: opponents at upper-left (-45°) and upper-right (45°), self at bottom (180°)
- * - 4 player: opponents at upper-left (-45°), upper-right (45°), lower-right (135°), self at bottom (180°)
+ * Spotlight angle is derived purely from the canonical slot of the active
+ * turn player. ONE seat-anchor truth drives placement; the spotlight
+ * cannot drift relative to player count or projection mode.
  */
+const SLOT_ANGLE: Record<number, number> = {
+  [-1]: 180,  // HOME — bottom-center
+  [-2]: 0,    // FACE_TO_FACE — top-center
+  0: -135,    // bottom-left
+  1: -90,     // middle-left
+  2: -45,     // top-left
+  3: 45,      // top-right
+  4: 90,      // middle-right
+  5: 135,     // bottom-right
+};
+
 export const CribbageTurnSpotlight = ({
   currentTurnPlayerId,
-  currentPlayerId,
   isVisible,
-  totalPlayers,
-  opponentIds,
+  currentTurnSlot,
 }: CribbageTurnSpotlightProps) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
-    if (!isVisible || !currentTurnPlayerId) {
+    if (!isVisible || !currentTurnPlayerId || currentTurnSlot === null || currentTurnSlot === undefined) {
       setOpacity(0);
       return;
     }
-
-    const isMyTurn = currentTurnPlayerId === currentPlayerId;
-    
-    let angle: number;
-    
-    if (isMyTurn) {
-      // Current player is always at bottom
-      angle = 180;
-    } else {
-      // Find which opponent index this is
-      const opponentIndex = opponentIds.indexOf(currentTurnPlayerId);
-      
-      if (totalPlayers === 2) {
-        // 2 player: single opponent at upper-left
-        angle = -45;
-      } else if (totalPlayers === 3) {
-        // 3 player: opponents at upper-left (index 0) and upper-right (index 1)
-        angle = opponentIndex === 0 ? -45 : 45;
-      } else {
-        // 4 player: opponents at upper-left (0), upper-right (1), lower-right (2)
-        if (opponentIndex === 0) {
-          angle = -45;  // upper-left
-        } else if (opponentIndex === 1) {
-          angle = 45;   // upper-right
-        } else {
-          angle = 135;  // lower-right
-        }
-      }
-    }
-    
+    const angle = SLOT_ANGLE[currentTurnSlot] ?? 180;
     setRotation(angle);
     setOpacity(1);
-  }, [isVisible, currentTurnPlayerId, currentPlayerId, totalPlayers, opponentIds]);
+  }, [isVisible, currentTurnPlayerId, currentTurnSlot]);
 
-  if (!isVisible || !currentTurnPlayerId) {
+  if (!isVisible || !currentTurnPlayerId || currentTurnSlot === null || currentTurnSlot === undefined) {
     return null;
   }
 
@@ -77,8 +55,7 @@ export const CribbageTurnSpotlight = ({
 
   return (
     <>
-      {/* Golden glow in spotlight area - z-5 to stay behind pegboard (z-10) and count (z-20) */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{
           opacity,
@@ -96,9 +73,8 @@ export const CribbageTurnSpotlight = ({
           }}
         />
       </div>
-      
-      {/* Dim overlay with spotlight cutout */}
-      <div 
+
+      <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{
           opacity,
