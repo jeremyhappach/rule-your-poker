@@ -21,7 +21,12 @@ function debugEnabled(): boolean {
   return false;
 }
 
-const TRANSIENT: AnnouncementType[] = ['match_win', 'round_win', 'chip_award'];
+const TRANSIENT: AnnouncementType[] = [
+  'match_win',
+  'round_win',
+  'chip_award',
+  'dealer_selected',
+];
 const AMBIENT: AnnouncementType[] = [
   'dealer_configuring',
   'dealer_selection_in_progress',
@@ -39,23 +44,45 @@ export function CanonicalAnnouncementDebugTrigger({ dealerGameId = null, roundId
   const { emit, clearAmbient } = useAnnouncements();
   if (!debugEnabled()) return null;
 
+  const payloadFor = (type: AnnouncementType): Record<string, unknown> => {
+    switch (type) {
+      case 'match_win':
+        return {
+          winnerName: 'Debug',
+          score: { winner: 121, loser: 89 },
+          skunk: 'single',
+        };
+      case 'round_win':
+        return {
+          winnerName: 'Debug',
+          kind: 'hand',
+          counts: { fifteens: 4, pairs: 2, runs: 3, flush: 0, his_nobs: 1 },
+        };
+      case 'chip_award':
+        return { recipientName: 'Debug', amount: 2, reason: 'his heels' };
+      case 'dealer_selected':
+        return { dealerName: 'Debug', cardLabel: 'K♠' };
+      case 'dealer_selection_in_progress':
+        return { cohort: 1, tie: true };
+      case 'dealer_configuring':
+        return { dealerName: 'Debug', gameType: 'cribbage' };
+      case 'waiting_for_players':
+        return { seated: 2, needed: 4 };
+      case 'waiting_for_player':
+        return { playerName: 'Debug', context: 'discarding to crib' };
+      case 'waiting_for_next_round':
+        return { context: 'shuffling…' };
+      default:
+        return {};
+    }
+  };
+
   const fire = (type: AnnouncementType) => {
     emit({
       id: `debug:${type}:${Date.now()}`,
       type,
       scope: { dealerGameId, roundId },
-      payload: {
-        winnerName: 'Debug',
-        recipientName: 'Debug',
-        playerName: 'Debug',
-        amount: 42,
-        reason: 'debug trigger',
-        dealerName: 'Debug',
-        gameType: 'cribbage',
-        seated: 2,
-        needed: 4,
-        context: 'debug context',
-      },
+      payload: payloadFor(type),
     });
   };
 
