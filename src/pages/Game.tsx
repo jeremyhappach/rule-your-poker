@@ -7490,7 +7490,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setExpectedPostAnteChips(expectedChips);
             setAnteAnimationExpectedPot(expectedPot);
 
-            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : '357'}-first-ante-${expectedPot}`;
+            // Identity-scoped guard: tie the key to the authoritative dealer-game UUID,
+            // NOT to derived chip/pot values. expectedPot depends on freshGame.ante_amount *
+            // players.filter(...) — the latter reads React state, which can race realtime
+            // during inter-game transitions (e.g. Gin → Holm). If the cohort changes between
+            // an early-returned first call and a second call, expectedPot would differ,
+            // producing a different triggerKey and bypassing the dedup guard. Using
+            // current_game_uuid makes the guard stable across any cohort/pot drift within
+            // the same dealer game's first ante.
+            const dealerGameKey = freshGame?.current_game_uuid ?? `nodgid-${expectedPot}`;
+            const triggerKey = `${isHolmGame ? 'holm' : isHorsesGame ? 'horses' : '357'}-first-ante-${dealerGameKey}`;
             if (anteAnimationFiredRef.current !== triggerKey) {
               anteAnimationFiredRef.current = triggerKey;
               setAnteAnimationTriggerId(`ante-${Date.now()}`);
