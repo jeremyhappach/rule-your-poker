@@ -2472,6 +2472,35 @@ export const CribbageMobileGameTable = ({
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
+
+  // Phase F.3: dealerGameId boundary reset.
+  // Cribbage→Cribbage replay (Run Back) creates a new dealerGameId while the
+  // persistent table shell keeps this component MOUNTED. Without this
+  // reset, `hasInitializedRef`/`initialLoadComplete` from the prior match
+  // make `loadOrInitializeState` short-circuit, leaving the new dealer-
+  // selection winner unable to bootstrap fresh cribbage_state → freeze.
+  // Also clears stale high-card local state so cohort/tie derivation
+  // starts clean for the new match.
+  const prevDealerGameIdRef = useRef<string | null | undefined>(dealerGameId);
+  useEffect(() => {
+    if (prevDealerGameIdRef.current === dealerGameId) return;
+    if (prevDealerGameIdRef.current != null && dealerGameId != null) {
+      console.log('[CRIBBAGE] dealerGameId boundary — resetting init latches', {
+        prev: prevDealerGameIdRef.current?.slice(0, 8),
+        next: dealerGameId.slice(0, 8),
+      });
+      hasInitializedRef.current = false;
+      setInitialLoadComplete(false);
+      setHighCardCards([]);
+      setHighCardWinnerPosition(null);
+      setHighCardSyncedState(null);
+      setShowHighCardSelection(false);
+      announcedDealerResolvedRef.current = null;
+    }
+    prevDealerGameIdRef.current = dealerGameId;
+  }, [dealerGameId]);
+
+
   
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
