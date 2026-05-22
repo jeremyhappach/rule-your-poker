@@ -1289,6 +1289,7 @@ export async function autoFoldUndecided(gameId: string, opts?: {
   }
 
   const isHolmGame = game?.game_type === 'holm-game';
+  const is357GameAutoFold = game?.game_type === '3-5-7' || game?.game_type === '3-5-7-game' || game?.game_type === '357';
 
   // Get players who haven't decided yet (active and not sitting out)
   const { data: undecidedPlayers, error: fetchError } = await supabase
