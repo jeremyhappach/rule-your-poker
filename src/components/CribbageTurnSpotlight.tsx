@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
 interface CribbageTurnSpotlightProps {
   /** Player ID whose turn it is */
@@ -10,22 +11,41 @@ interface CribbageTurnSpotlightProps {
   /** Total number of players in the game */
   totalPlayers: number;
   /** Ordered list of opponent player IDs (in turn order, excluding current player) */
-  opponentIds: string[];
+  opponentIds?: string[];
+  /**
+   * Canonical seat slot of the player whose turn it is, derived from the
+   * shell-owned SeatAnchorLayer. When provided this is the authoritative
+   * angle source for BOTH active and observer projections (so observers
+   * rebind as turn ownership changes instead of being pinned at -45°).
+   * When null/undefined, falls back to the legacy player-count math.
+   */
+  currentTurnSlot?: CanonicalSlot | null;
 }
+
+const SLOT_TO_ANGLE: Record<number, number> = {
+  [-2]: 0,      // FACE_TO_FACE — top center
+  [-1]: 180,    // HOME — bottom center
+  0: -135,      // bottom-left
+  1: -90,       // mid-left
+  2: -45,       // top-left
+  3: 45,        // top-right
+  4: 90,        // mid-right
+  5: 135,       // bottom-right
+};
 
 /**
  * A spotlight for cribbage that points toward the active player.
- * Dynamically calculates angle based on player count and position.
- * - 2 player: opponent at upper-left (-45°), self at bottom (180°)
- * - 3 player: opponents at upper-left (-45°) and upper-right (45°), self at bottom (180°)
- * - 4 player: opponents at upper-left (-45°), upper-right (45°), lower-right (135°), self at bottom (180°)
+ * Prefers the canonical seat anchor slot when supplied (single source of
+ * truth shared with chip clusters), otherwise falls back to legacy
+ * relative math for safety.
  */
 export const CribbageTurnSpotlight = ({
   currentTurnPlayerId,
   currentPlayerId,
   isVisible,
   totalPlayers,
-  opponentIds,
+  opponentIds = [],
+  currentTurnSlot,
 }: CribbageTurnSpotlightProps) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
@@ -36,38 +56,34 @@ export const CribbageTurnSpotlight = ({
       return;
     }
 
-    const isMyTurn = currentTurnPlayerId === currentPlayerId;
-    
     let angle: number;
-    
-    if (isMyTurn) {
-      // Current player is always at bottom
-      angle = 180;
+
+    // Preferred path: derive from canonical slot so observer + active
+    // share one geometry truth and observer rebinds with turn ownership.
+    if (currentTurnSlot !== undefined && currentTurnSlot !== null) {
+      angle = SLOT_TO_ANGLE[currentTurnSlot] ?? 180;
     } else {
-      // Find which opponent index this is
-      const opponentIndex = opponentIds.indexOf(currentTurnPlayerId);
-      
-      if (totalPlayers === 2) {
-        // 2 player: single opponent at upper-left
-        angle = -45;
-      } else if (totalPlayers === 3) {
-        // 3 player: opponents at upper-left (index 0) and upper-right (index 1)
-        angle = opponentIndex === 0 ? -45 : 45;
+      const isMyTurn = currentTurnPlayerId === currentPlayerId;
+      if (isMyTurn) {
+        angle = 180;
       } else {
-        // 4 player: opponents at upper-left (0), upper-right (1), lower-right (2)
-        if (opponentIndex === 0) {
-          angle = -45;  // upper-left
-        } else if (opponentIndex === 1) {
-          angle = 45;   // upper-right
+        const opponentIndex = opponentIds.indexOf(currentTurnPlayerId);
+        if (totalPlayers === 2) {
+          angle = -45;
+        } else if (totalPlayers === 3) {
+          angle = opponentIndex === 0 ? -45 : 45;
         } else {
-          angle = 135;  // lower-right
+          if (opponentIndex === 0) angle = -45;
+          else if (opponentIndex === 1) angle = 45;
+          else angle = 135;
         }
       }
     }
-    
+
     setRotation(angle);
     setOpacity(1);
-  }, [isVisible, currentTurnPlayerId, currentPlayerId, totalPlayers, opponentIds]);
+  }, [isVisible, currentTurnPlayerId, currentPlayerId, totalPlayers, opponentIds, currentTurnSlot]);
+
 
   if (!isVisible || !currentTurnPlayerId) {
     return null;
