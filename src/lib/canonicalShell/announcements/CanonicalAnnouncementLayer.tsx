@@ -1,40 +1,35 @@
 /**
- * CanonicalAnnouncementLayer — single shell-owned render surface for
- * announcements. Reads provider state and renders the active event.
- *
- * Z-order contract:
- *   - Above slot/game content (z-index 70)
- *   - Below shell-owned modal/overlay roots (overlay-root is z-80,
- *     modals are higher). Announcements are visual-only and pointer-
- *     events:none so they never block interaction.
+ * CanonicalAnnouncementLayer — portals the active announcement into the
+ * HUD-owned AnnouncementRailSlot. There is no shell/table fallback:
+ * if the HUD rail is not mounted, nothing renders. This enforces
+ * single-ownership of announcement placement at the HUD layer.
  */
 
+import { createPortal } from 'react-dom';
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
-import { LifecycleAnnouncement } from '@/components/LifecycleAnnouncement';
+import { useAnnouncementRailNode } from './AnnouncementRail';
 import { renderAnnouncement } from './renderers';
 
 export function CanonicalAnnouncementLayer() {
   const ctx = useAnnouncementContext();
+  const railNode = useAnnouncementRailNode();
   if (!ctx || !ctx.active) return null;
+  if (!railNode) return null;
   const node = renderAnnouncement(ctx.active);
-  return (
+  if (!node) return null;
+  return createPortal(
     <div
-      data-canonical-announcement-layer=""
-      aria-live="polite"
+      data-canonical-announcement-content=""
       style={{
-        position: 'fixed',
-        top: 'env(safe-area-inset-top, 0px)',
-        left: 0,
-        right: 0,
         display: 'flex',
-        alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: 6,
-        zIndex: 90,
+        width: '100%',
+        padding: '4px 8px',
         pointerEvents: 'none',
       }}
     >
-      {node ?? <LifecycleAnnouncement title={ctx.active.type} />}
-    </div>
+      {node}
+    </div>,
+    railNode,
   );
 }
