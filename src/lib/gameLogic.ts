@@ -1323,7 +1323,7 @@ export async function autoFoldUndecided(gameId: string, opts?: {
         decision_locked: true,
         // This function is only called for timer-expiry; mark humans as auto_fold.
         auto_fold: player.is_bot ? false : true,
-        ...(isHolmGame ? {} : { status: 'folded' }),
+        ...(is357GameAutoFold ? { status: 'folded' } : {}),
       })
       .eq('id', player.id);
     
