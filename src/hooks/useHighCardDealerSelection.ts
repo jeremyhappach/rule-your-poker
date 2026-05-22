@@ -344,7 +344,6 @@ export function useHighCardDealerSelection({
       hasCompletedRef.current = true;
       lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
       onCardsUpdate(syncedState.cards || []);
-      onAnnouncementUpdate(syncedState.announcement ?? null, true);
       onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
       const t = setTimeout(() => onComplete(syncedState.winnerPosition!), WINNER_ANNOUNCE_DELAY);
