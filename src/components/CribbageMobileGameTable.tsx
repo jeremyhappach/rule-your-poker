@@ -4903,13 +4903,10 @@ export const CribbageMobileGameTable = ({
   // inside the felt circle to avoid unmount/remount flicker.
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      {/* Win Sequence Overlays - Portaled above everything (gameplay mode only) */}
-      {isGameplayMode && winSequencePhase === 'skunk' && winSequenceData && (
-        <CribbageSkunkOverlay
-          multiplier={winSequenceData.multiplier}
-          onComplete={handleSkunkComplete}
-        />
-      )}
+      {/* Phase E: canonical `match_win` announcement owns winner UI.
+          The 'skunk' win-sequence phase is retired — skunk semantics
+          ride inside the canonical announcement payload. */}
+
 
       {isGameplayMode && winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
         <CribbageChipTransferAnimation
