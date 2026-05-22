@@ -25,21 +25,21 @@ Where:
 
 ## Required vector per plan §4a (13 dims)
 
-| Dim | Status | Action |
+| Dim | Status | Notes |
 |---|---|---|
-| `dealerGameId` | Implicit (scope reset) | Verify framework reset() fires on dealerGameId flip, not just roundId |
+| `dealerGameId` | Implicit (scope reset) | Verify framework reset() fires on dealerGameId flip — owned by Phase F validation |
 | `handNumber` | ✅ present (dim 1) | — |
-| `roundNumber` | ❌ missing | Add to scope key (Triple-Key Scoping memory rule) |
-| `dealerSelectionCohort` | ❌ missing | Add dim — must increment on each tie redraw |
-| `dealerResolved` | ❌ missing (no `dealer-select` phase) | Add to phase enum + latch dim |
-| `phase` | ⚠️ partial | Phase enum lacks `dealer-select` and split count phases (`count-non-dealer`, `count-dealer`, `count-crib`) |
-| `peggingTurnOwner` | ❌ missing | Add content tiebreaker |
-| `peggingTurnSeq` | ⚠️ partial | `playedCards` count proxies this but doesn't reset per segment |
-| `peggingSegmentSeq` | ❌ missing | Required tiebreaker per memory `progress-vector-tiebreakers` |
-| `countOwner` | ❌ missing | Required tiebreaker per memory |
-| `cribCountOwner` | ❌ missing | Resolved separately for clarity |
-| `handCompleteLatch` | ⚠️ partial (`complete` phase) | Make explicit boolean dim |
-| `matchCompleteLatch` | ❌ missing | Required for match-end vs hand-end disambiguation |
+| `roundNumber` | ⚠️ scope-keyed | Triple-Key Scoping enforced at scope-key level, not as a vector dim |
+| `dealerSelectionCohort` | ✅ **LANDED** (dim 2) | Phase C prereq — increments on each tie redraw |
+| `dealerResolved` | ✅ **LANDED** (dim 3) | Phase C prereq — latch, paired with `dealer-select` phase |
+| `phase` | ✅ extended | `'dealer-select'` added; split count phases deferred to counting migration |
+| `peggingTurnOwner` | ⏳ pegging-prereq | MUST land before pegging surface migration |
+| `peggingTurnSeq` | ⏳ pegging-prereq | MUST land before pegging surface migration |
+| `peggingSegmentSeq` | ⏳ pegging-prereq | MUST land before pegging surface migration |
+| `countOwner` | ⏳ counting-prereq | MUST land before counting surface migration |
+| `cribCountOwner` | ⏳ counting-prereq | MUST land before counting surface migration |
+| `handCompleteLatch` | ⏳ counting-prereq | MUST land before counting surface migration |
+| `matchCompleteLatch` | ⏳ match-end-prereq | MUST land before match-end surface migration |
 
 ## Gap summary
 
