@@ -4615,7 +4615,7 @@ export const CribbageMobileGameTable = ({
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, playerSlotById]);
 
   const handleChipAnimationEnd = useCallback(() => {
     setWinSequencePhase('complete');
