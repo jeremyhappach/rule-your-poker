@@ -658,15 +658,17 @@ export const CribbageMobileGameTable = ({
     return Math.max(0, maxRound - 1);
   }, [effectiveHighCardCards]);
 
+  // Tie is only true when an actual tie was determined in a prior cohort
+  // (cohort > 0 means a redraw was triggered) AND no winner is resolved yet.
+  // Deriving from `!isDimmed` during the deal window incorrectly flagged
+  // every freshly-dealt first cohort as a tie until the 700ms determination
+  // pass dimmed losers — producing a phantom "Tie — redrawing" flicker on
+  // every match start (and very visibly on Cribbage→Cribbage replay).
   const dealerSelectionTieDerived = useMemo(() => {
-    if (effectiveHighCardCards.length === 0) return false;
     if (effectiveHighCardWinnerPosition !== null) return false;
-    const currentCohortRound = dealerSelectionCohortDerived + 1;
-    const cohortCards = effectiveHighCardCards.filter(
-      (c) => c.roundNumber === currentCohortRound && !c.isDimmed,
-    );
-    return cohortCards.length >= 2;
-  }, [effectiveHighCardCards, effectiveHighCardWinnerPosition, dealerSelectionCohortDerived]);
+    return dealerSelectionCohortDerived > 0;
+  }, [effectiveHighCardWinnerPosition, dealerSelectionCohortDerived]);
+
 
   const announcements = useAnnouncements();
   const announcedDealerResolvedRef = useRef<string | null>(null);
@@ -2470,6 +2472,35 @@ export const CribbageMobileGameTable = ({
 
   // FIX B: Fetch token to prevent overlapping loads from racing
   const cribbageFetchTokenRef = useRef(0);
+
+  // Phase F.3: dealerGameId boundary reset.
+  // Cribbage→Cribbage replay (Run Back) creates a new dealerGameId while the
+  // persistent table shell keeps this component MOUNTED. Without this
+  // reset, `hasInitializedRef`/`initialLoadComplete` from the prior match
+  // make `loadOrInitializeState` short-circuit, leaving the new dealer-
+  // selection winner unable to bootstrap fresh cribbage_state → freeze.
+  // Also clears stale high-card local state so cohort/tie derivation
+  // starts clean for the new match.
+  const prevDealerGameIdRef = useRef<string | null | undefined>(dealerGameId);
+  useEffect(() => {
+    if (prevDealerGameIdRef.current === dealerGameId) return;
+    if (prevDealerGameIdRef.current != null && dealerGameId != null) {
+      console.log('[CRIBBAGE] dealerGameId boundary — resetting init latches', {
+        prev: prevDealerGameIdRef.current?.slice(0, 8),
+        next: dealerGameId.slice(0, 8),
+      });
+      hasInitializedRef.current = false;
+      setInitialLoadComplete(false);
+      setHighCardCards([]);
+      setHighCardWinnerPosition(null);
+      setHighCardSyncedState(null);
+      setShowHighCardSelection(false);
+      announcedDealerResolvedRef.current = null;
+    }
+    prevDealerGameIdRef.current = dealerGameId;
+  }, [dealerGameId]);
+
+
   
   // Initialize game state - check if we need high card selection first
   // This runs ONCE on mount to determine if we need high-card selection or can load existing state
