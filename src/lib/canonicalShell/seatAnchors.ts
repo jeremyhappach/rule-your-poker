@@ -255,7 +255,7 @@ export function resolveSeatAnchors(
 
     // active-canonical
     if (canCanonicalize2pActive && seat.position !== viewerPosition && seat.occupied) {
-      const projectedSlot = isGinRummyGameType(gameType) ? 2 : SLOT.FACE_TO_FACE;
+      const projectedSlot: CanonicalSlot = 2;
       if (import.meta.env.DEV) {
         recordShellEvent('seat-anchor-canonicalized-2p', {
           gameId: ctx.gameId ?? null,
