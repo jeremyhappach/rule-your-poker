@@ -39,7 +39,7 @@ export const LifecycleAnnouncement = ({
   overlay = false,
 }: LifecycleAnnouncementProps) => {
   const plate = (
-    <div className="bg-poker-gold/95 backdrop-blur-sm rounded-md px-4 py-1.5 shadow-xl border-2 border-amber-900 animate-scale-in max-w-[92vw]">
+    <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-4 py-1.5 shadow-xl border-2 border-amber-900 animate-scale-in">
       <p className="text-sm font-bold text-amber-950 text-center leading-tight">
         {title}
       </p>
