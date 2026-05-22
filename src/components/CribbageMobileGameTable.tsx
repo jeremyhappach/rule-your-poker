@@ -4782,34 +4782,10 @@ export const CribbageMobileGameTable = ({
             {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
             {isHighCardMode && (
               <>
-              {!isDealerSelection && (
-                  <HighCardDealerSelection
-                    gameId={gameId}
-                    players={players as any}
-                    onComplete={(pos) => {
-                      // ── HANDOFF TRACE #1 (child): dealer-game HighCardDealerSelection onComplete ──
-                      emitCribbageHandoffTrace({
-                        gameId,
-                        eventType: 'child_hc_onComplete',
-                        userId: currentUserId,
-                        roundId: currentRoundId || null,
-                        context: {
-                          winnerPosition: pos,
-                          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-                          isHost,
-                        },
-                      });
-                      handleHighCardComplete(pos);
-                    }}
-                    isHost={isHost}
-                    allowBotDealers={true}
-                    selectionVariant="cribbage"
-                    syncedState={highCardSyncedState}
-                    onCardsUpdate={setHighCardCards}
-                    onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
-                    onWinnerPositionUpdate={setHighCardWinnerPosition}
-                  />
-                )}
+                {/* Phase C.2: dealer-selection controller is now a headless
+                    hook (`useHighCardDealerSelection`) called below — no
+                    surface mount, no slot identity churn. The card
+                    rendering lives in the canonical Cribbage felt. */}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
                   <div className="flex gap-4 items-start">
                     {highCardPositions.map((position) => {
