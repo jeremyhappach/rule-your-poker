@@ -1,38 +1,31 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { getBotAlias } from "@/lib/botAlias";
-import { Card, createDeck, shuffleDeck, RANK_VALUES } from "@/lib/cardUtils";
-import { supabase } from "@/integrations/supabase/client";
-import { logDebugEvent } from "@/lib/debugEventLogger";
+/**
+ * HighCardDealerSelection — legacy thin wrapper.
+ *
+ * Phase C.2 extraction: all logic moved to `useHighCardDealerSelection`.
+ * This component is preserved ONLY for the remaining session-level
+ * callsites in `Game.tsx` (pre-Cribbage, neutral shell territory). The
+ * Cribbage dealer-game callsite uses the hook directly with no surface.
+ *
+ * Final retirement of this file is gated on the session-level dealer-
+ * game-selection canonical migration, which is OUTSIDE Phase C scope
+ * (Phase C is "once Cribbage is selected").
+ */
+import {
+  useHighCardDealerSelection,
+  type DealerSelectionCard,
+  type DealerSelectionState,
+} from '@/hooks/useHighCardDealerSelection';
+
+export type { DealerSelectionCard, DealerSelectionState };
 
 interface Player {
   id: string;
   user_id: string;
   position: number;
   created_at?: string;
-  profiles?: {
-    username: string;
-  };
+  profiles?: { username: string };
   is_bot: boolean;
   sitting_out?: boolean;
-}
-
-// Card dealt to a player during dealer selection
-export interface DealerSelectionCard {
-  playerId: string;
-  position: number;
-  card: Card;
-  isRevealed: boolean;
-  isWinner: boolean;
-  isDimmed: boolean;
-  roundNumber: number; // Which deal round (1 = initial, 2+ = tiebreaker)
-}
-
-// State stored in database for sync
-export interface DealerSelectionState {
-  cards: DealerSelectionCard[];
-  announcement: string | null;
-  isComplete: boolean;
-  winnerPosition: number | null;
 }
 
 interface HighCardDealerSelectionProps {
@@ -41,353 +34,15 @@ interface HighCardDealerSelectionProps {
   onComplete: (dealerPosition: number) => void;
   isHost: boolean;
   allowBotDealers?: boolean;
-  /**
-   * Optional behavior tweaks for specific games.
-   * - default: current behavior (tie announcement + longer delays)
-   * - cribbage: no tie announcement, fast redraw cadence
-   */
   selectionVariant?: 'default' | 'cribbage';
-  // DB-synced state from parent (received via realtime)
   syncedState: DealerSelectionState | null;
-  // Callback to provide cards for rendering in the game table
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  // Callback for announcement messages
   onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
-  // Callback to report the winning position when determined (for spotlight effect)
   onWinnerPositionUpdate?: (position: number | null) => void;
 }
 
-export const HighCardDealerSelection = ({ 
-  gameId,
-  players, 
-  onComplete, 
-  isHost,
-  allowBotDealers = false,
-  selectionVariant = 'default',
-  syncedState,
-  onCardsUpdate,
-  onAnnouncementUpdate,
-  onWinnerPositionUpdate
-}: HighCardDealerSelectionProps) => {
-  const hasInitializedRef = useRef(false);
-  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const deckRef = useRef<Card[]>([]);
-  const hasCompletedRef = useRef(false);
-  const lastAnnouncementRef = useRef<string | null>(null);
-
-  // TRACE-4: log on mount with received syncedState (observation only)
-  useEffect(() => {
-    logDebugEvent({
-      gameId,
-      eventType: 'crib:bugA:child_mount',
-      payload: {
-        isHost,
-        selectionVariant,
-        hasSyncedState: !!syncedState,
-        syncedCardCount: syncedState?.cards?.length ?? 0,
-        syncedIsComplete: syncedState?.isComplete ?? null,
-        syncedCardIds: (syncedState?.cards ?? []).slice(0, 3).map(c => `${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
-        playerCount: players.length,
-      },
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Mount only
-
-  const isCribbageVariant = selectionVariant === 'cribbage';
-  
-  // Filter to eligible dealers: NOT sitting out, and (not a bot OR allowBotDealers)
-  const sortedPlayers = [...players].sort((a, b) => a.position - b.position);
-  const eligibleDealers = sortedPlayers.filter(p => !p.sitting_out && (!p.is_bot || allowBotDealers));
-  
-  // Stable key for eligible dealers to avoid re-triggering effect on every render
-  const eligibleDealerKey = eligibleDealers.map(p => p.id).join(',');
-  
-  // Timing constants
-  const ANNOUNCE_DURATION = 900; // Show announcement before first deal
-  const ROUND_PAUSE = 700; // Pause after dealing before checking winner/tiebreaker
-  const WINNER_ANNOUNCE_DELAY = 2200; // Show winner before completing
-  const CRIBBAGE_TIE_REDEAL_DELAY = 500; // Fast redraw cadence for cribbage ties
-  
-  const clearTimeouts = useCallback(() => {
-    timeoutsRef.current.forEach(t => clearTimeout(t));
-    timeoutsRef.current = [];
-  }, []);
-  
-  const addTimeout = useCallback((fn: () => void, delay: number) => {
-    const t = setTimeout(fn, delay);
-    timeoutsRef.current.push(t);
-    return t;
-  }, []);
-
-  const getPlayerName = useCallback((player: Player) => {
-    if (player.is_bot) {
-      return getBotAlias(sortedPlayers, player.user_id);
-    }
-    return player.profiles?.username || `Seat ${player.position}`;
-  }, [sortedPlayers]);
-  
-  // Write state to database (host only)
-  const syncToDatabase = useCallback(async (state: DealerSelectionState) => {
-    if (!isHost) return;
-    
-    try {
-      const { error } = await supabase
-        .from('games')
-        .update({ dealer_selection_state: state as any })
-        .eq('id', gameId);
-      
-      if (error) {
-        console.error('[HIGH CARD] Failed to sync state to DB:', error);
-      }
-    } catch (err) {
-      console.error('[HIGH CARD] Error syncing to DB:', err);
-    }
-  }, [isHost, gameId]);
-  
-  // NON-HOST: React to synced state from database
-  useEffect(() => {
-    if (isHost) return; // Host drives state, doesn't react to it
-    if (!syncedState) return;
-
-    // Keep last announcement for consistency (even if caller doesn't render it)
-    lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
-    
-    // Update local UI via callbacks
-    onCardsUpdate(syncedState.cards);
-    onAnnouncementUpdate(syncedState.announcement, syncedState.isComplete);
-    onWinnerPositionUpdate?.(syncedState.winnerPosition);
-    
-    // IMPORTANT:
-    // Non-host clients must NEVER call onComplete.
-    // If they do, they can flip the game status early which unmounts the host's
-    // HighCardDealerSelection and cancels the host timeout that actually starts round 1.
-    // Non-hosts should only render synced UI; the host alone transitions the game.
-    if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
-      hasCompletedRef.current = true;
-    }
-  }, [isHost, syncedState, onCardsUpdate, onAnnouncementUpdate, onWinnerPositionUpdate]);
-  
-  // HOST: Run the selection sequence and sync to DB
-  useEffect(() => {
-    // Recovery: if a completed syncedState already exists (e.g., page refresh mid-phase),
-    // don't replay the animation. Just finish the transition.
-    if (
-      isHost &&
-      syncedState?.isComplete &&
-      syncedState.winnerPosition !== null &&
-      !hasCompletedRef.current
-    ) {
-      hasCompletedRef.current = true;
-      lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
-      onCardsUpdate(syncedState.cards || []);
-      onAnnouncementUpdate(syncedState.announcement ?? null, true);
-      onWinnerPositionUpdate?.(syncedState.winnerPosition);
-
-      // Let the UI paint the winner state, then complete.
-      const t = setTimeout(() => onComplete(syncedState.winnerPosition!), WINNER_ANNOUNCE_DELAY);
-      return () => clearTimeout(t);
-    }
-
-    if (hasInitializedRef.current) return;
-    
-    // Handle edge cases
-    if (eligibleDealers.length === 0) {
-      hasInitializedRef.current = true;
-      const activePlayers = sortedPlayers.filter(p => !p.sitting_out);
-      if (activePlayers.length === 0) {
-        onComplete(sortedPlayers[0]?.position || 1);
-      } else {
-        onComplete(activePlayers[0]?.position || 1);
-      }
-      return;
-    }
-    
-    // Single eligible dealer: bypass selection
-    if (eligibleDealers.length === 1) {
-      hasInitializedRef.current = true;
-      console.log('[HIGH CARD] Only one eligible dealer, bypassing selection');
-      if (isHost) {
-        onComplete(eligibleDealers[0].position);
-      }
-      return;
-    }
-    
-    // Only host runs the actual selection logic
-    if (!isHost) {
-      // Non-hosts receive state via syncedState prop (realtime)
-      // Don't set hasInitializedRef - allow re-check if isHost changes
-      return;
-    }
-    
-    // NOW mark as initialized - only after we confirm we're the host with multiple dealers
-    hasInitializedRef.current = true;
-    
-    console.log('[HIGH CARD] Starting high card dealer selection with', eligibleDealers.length, 'eligible players');
-    
-    // Initialize deck
-    deckRef.current = shuffleDeck(createDeck());
-    
-    // Start the sequence
-    runSelectionRound(eligibleDealers, 1, []);
-    
-    return () => clearTimeouts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, eligibleDealerKey]);
-  
-  const runSelectionRound = useCallback((playersInRound: Player[], roundNum: number, existingCards: DealerSelectionCard[]) => {
-    console.log('[HIGH CARD] Round', roundNum, 'with', playersInRound.length, 'players');
-    
-    // Clear winner position when starting a new round (including tiebreakers)
-    onWinnerPositionUpdate?.(null);
-
-    const roundAnnouncement =
-      roundNum === 1
-        ? (isCribbageVariant ? 'Drawing for button' : 'High card wins deal')
-        : isCribbageVariant
-          ? null
-          : 'Tie! Drawing again...';
-
-    if (roundAnnouncement !== null) {
-      onAnnouncementUpdate(roundAnnouncement, false);
-      lastAnnouncementRef.current = roundAnnouncement;
-    }
-
-    const announcementToSync = roundAnnouncement ?? lastAnnouncementRef.current ?? null;
-
-    // NOTE: No intermediate sync here — announcement is local-only.
-    // Non-host will receive the full state atomically at winner/tiebreaker decision.
-
-    const dealDelayMs =
-      roundNum === 1
-        ? ANNOUNCE_DURATION
-        : isCribbageVariant
-          ? 0
-          : ANNOUNCE_DURATION;
-    
-    // Deal all cards face-up after brief announcement (or immediately for cribbage tie redraws)
-    addTimeout(() => {
-      // Deal one card to each player - all at once, all face-up
-      const newCards: DealerSelectionCard[] = playersInRound.map((player) => {
-        const card = deckRef.current.shift()!;
-        return {
-          playerId: player.id,
-          position: player.position,
-          card,
-          isRevealed: true, // Always face-up
-          isWinner: false,
-          isDimmed: false,
-          roundNumber: roundNum
-        };
-      });
-      
-      // Combine with existing cards from other rounds
-      const allCards = [...existingCards.filter(c => c.roundNumber !== roundNum), ...newCards];
-      
-      // Update local UI
-      onCardsUpdate(allCards);
-      
-      // NOTE: No intermediate sync here — cards are local-only until winner/tiebreaker decision.
-      // Non-host receives the full round result atomically via the final sync.
-
-      const pauseAfterDealMs =
-        roundNum === 1
-          ? ROUND_PAUSE
-          : isCribbageVariant
-            ? 0
-            : ROUND_PAUSE;
-      
-      // After a pause, check for winner or tiebreaker
-      addTimeout(() => {
-        determineWinner(newCards, allCards, playersInRound, roundNum);
-      }, pauseAfterDealMs);
-      
-    }, dealDelayMs);
-  }, [addTimeout, onAnnouncementUpdate, onCardsUpdate, syncToDatabase, onWinnerPositionUpdate, isCribbageVariant]);
-  
-  const determineWinner = useCallback((roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => {
-    // Find highest card(s)
-    let highestRank = 0;
-    let winners: DealerSelectionCard[] = [];
-    
-    roundCards.forEach(pc => {
-      const rankValue = RANK_VALUES[pc.card.rank];
-      if (rankValue > highestRank) {
-        highestRank = rankValue;
-        winners = [pc];
-      } else if (rankValue === highestRank) {
-        winners.push(pc);
-      }
-    });
-    
-    console.log('[HIGH CARD] Round', roundNum, 'highest rank:', highestRank, 'winners:', winners.length);
-    
-    // Update card states - highlight winners, dim losers
-    const updatedCards = allCards.map(p => {
-      if (p.roundNumber !== roundNum) return p;
-      const isWinner = winners.some(w => w.playerId === p.playerId);
-      return {
-        ...p,
-        isWinner,
-        isDimmed: !isWinner
-      };
-    });
-    
-    onCardsUpdate(updatedCards);
-    
-    if (winners.length === 1) {
-      // Single winner!
-      const winnerPlayer = playersInRound.find(p => p.id === winners[0].playerId);
-      if (winnerPlayer) {
-        const name = getPlayerName(winnerPlayer);
-        const winAnnouncement = `${name} wins the deal!`;
-
-        lastAnnouncementRef.current = winAnnouncement;
-        
-        onAnnouncementUpdate(winAnnouncement, true);
-        onWinnerPositionUpdate?.(winnerPlayer.position);
-        
-        // Sync final state to DB
-        syncToDatabase({
-          cards: updatedCards,
-          announcement: winAnnouncement,
-          isComplete: true,
-          winnerPosition: winnerPlayer.position
-        });
-        
-        hasCompletedRef.current = true;
-        
-        // Complete after showing winner
-        addTimeout(() => {
-          onComplete(winnerPlayer.position);
-        }, WINNER_ANNOUNCE_DELAY);
-      }
-    } else {
-      // Tiebreaker needed
-      const announcementToSync = isCribbageVariant
-        ? (lastAnnouncementRef.current ?? null)
-        : 'Tie! Drawing again...';
-
-      // Sync current state before tiebreaker
-      syncToDatabase({
-        cards: updatedCards,
-        announcement: announcementToSync,
-        isComplete: false,
-        winnerPosition: null
-      });
-      
-      const tiedPlayerIds = winners.map(w => w.playerId);
-      const tiedPlayers = playersInRound.filter(p => tiedPlayerIds.includes(p.id));
-
-      // Cribbage: no tie announcement, fast redraw cadence
-      const nextRoundDelayMs = isCribbageVariant ? CRIBBAGE_TIE_REDEAL_DELAY : ROUND_PAUSE;
-      
-      addTimeout(() => {
-        runSelectionRound(tiedPlayers, roundNum + 1, updatedCards);
-      }, nextRoundDelayMs);
-    }
-  }, [addTimeout, getPlayerName, onComplete, onAnnouncementUpdate, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, runSelectionRound, isCribbageVariant]);
-  
-  // This component doesn't render anything - it just manages state
-  // The actual rendering happens in MobileGameTable/GameTable via props
+export const HighCardDealerSelection = (props: HighCardDealerSelectionProps) => {
+  useHighCardDealerSelection(props);
+  // Headless: the actual rendering happens in MobileGameTable/GameTable via callbacks.
   return null;
 };

@@ -21,7 +21,7 @@ import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
-import { HighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from './HighCardDealerSelection';
+import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 // CribbageWinnerAnnouncement removed - win message now in dealer banner area
@@ -201,6 +201,43 @@ function buildBoundaryGuardKey(
 ) {
   return `${dealerGameId ?? 'no-dealer'}:${roundId ?? 'no-round'}:${handNumber}:${handKey ?? 'no-hand-key'}`;
 }
+
+/**
+ * Phase C.2: headless dealer-selection controller.
+ *
+ * Behavior-preserving extraction — identical to the previous
+ * `<HighCardDealerSelection selectionVariant="cribbage" allowBotDealers />`
+ * mount, but the underlying logic now lives in
+ * `useHighCardDealerSelection`. This shim exists ONLY to preserve the
+ * conditional mount/unmount semantics on
+ * `isHighCardMode && !isDealerSelection` so legacy timing and same-game
+ * replay reset behavior are bit-for-bit identical.
+ */
+function CribbageDealerSelectionController(props: {
+  gameId: string;
+  players: any[];
+  isHost: boolean;
+  syncedState: DealerSelectionState | null;
+  onCardsUpdate: (cards: DealerSelectionCard[]) => void;
+  onAnnouncementUpdate: (message: string | null) => void;
+  onWinnerPositionUpdate: (position: number | null) => void;
+  onComplete: (pos: number) => void;
+}) {
+  useHighCardDealerSelection({
+    gameId: props.gameId,
+    players: props.players,
+    isHost: props.isHost,
+    allowBotDealers: true,
+    selectionVariant: 'cribbage',
+    syncedState: props.syncedState,
+    onCardsUpdate: props.onCardsUpdate,
+    onAnnouncementUpdate: (message, _isComplete) => props.onAnnouncementUpdate(message),
+    onWinnerPositionUpdate: props.onWinnerPositionUpdate,
+    onComplete: props.onComplete,
+  });
+  return null;
+}
+
 
 export const CribbageMobileGameTable = ({
   gameId,
@@ -4782,12 +4819,24 @@ export const CribbageMobileGameTable = ({
             {/* HIGH-CARD MODE: DB-synced selection logic + centered card display */}
             {isHighCardMode && (
               <>
-              {!isDealerSelection && (
-                  <HighCardDealerSelection
+                {/* Phase C.2: dealer-selection controller is now a headless
+                    hook (`useHighCardDealerSelection`) called via this tiny
+                    inline component so mount/unmount semantics on
+                    `isHighCardMode && !isDealerSelection` are preserved
+                    exactly as before. No surface mount, no slot identity
+                    churn — the card rendering lives in the canonical
+                    Cribbage felt below. */}
+                {!isDealerSelection && (
+                  <CribbageDealerSelectionController
                     gameId={gameId}
                     players={players as any}
+                    isHost={isHost}
+                    syncedState={highCardSyncedState}
+                    onCardsUpdate={setHighCardCards}
+                    onAnnouncementUpdate={(message) => setHighCardAnnouncement(message)}
+                    onWinnerPositionUpdate={setHighCardWinnerPosition}
                     onComplete={(pos) => {
-                      // ── HANDOFF TRACE #1 (child): dealer-game HighCardDealerSelection onComplete ──
+                      // ── HANDOFF TRACE #1 (child): dealer-game onComplete ──
                       emitCribbageHandoffTrace({
                         gameId,
                         eventType: 'child_hc_onComplete',
@@ -4801,13 +4850,6 @@ export const CribbageMobileGameTable = ({
                       });
                       handleHighCardComplete(pos);
                     }}
-                    isHost={isHost}
-                    allowBotDealers={true}
-                    selectionVariant="cribbage"
-                    syncedState={highCardSyncedState}
-                    onCardsUpdate={setHighCardCards}
-                    onAnnouncementUpdate={(message, _isComplete) => setHighCardAnnouncement(message)}
-                    onWinnerPositionUpdate={setHighCardWinnerPosition}
                   />
                 )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
