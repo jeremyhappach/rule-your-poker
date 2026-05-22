@@ -9455,9 +9455,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
         .map(p => ({ position: p.position, occupied: true, hidden: false }))
     : undefined;
-  const shellViewerPosition = currentPlayer?.position ?? null;
+  // An observer is any viewer who is NOT actively seated — including
+  // a viewer whose player row exists but has status 'observer' / 'left'
+  // or is sitting_out/waiting. Treating those as "active" here would
+  // give them an active-canonical viewerPosition that isn't in the
+  // 2P seated set, defeating canCanonicalize2pActive AND skipping the
+  // canCanonicalize2pObserver branch.
+  const isViewerSeated = !!currentPlayer
+    && currentPlayer.status !== 'observer'
+    && currentPlayer.status !== 'left'
+    && !currentPlayer.sitting_out
+    && !currentPlayer.waiting;
+  const shellViewerPosition = isViewerSeated ? (currentPlayer?.position ?? null) : null;
   const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellCanonicalFamily
-    ? (currentPlayer ? 'active-canonical' : 'observer-absolute')
+    ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
     : undefined;
 
 
