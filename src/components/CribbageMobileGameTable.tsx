@@ -3118,7 +3118,7 @@ export const CribbageMobileGameTable = ({
     // Drop into 'announcement' phase; canonical TTL gates the chip animation.
     setWinSequencePhase('announcement');
 
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, injectDealerMessage, currentHandNumber]);
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
