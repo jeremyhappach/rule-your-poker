@@ -39,10 +39,30 @@ export async function startCribbageRound(
       return { success: false, error: 'Game already over' };
     }
 
-    // Get active players (not sitting out)
+    // Cribbage has no per-hand "folded" player state. A prior dealer game can
+    // legitimately leave seated participants with status='folded' (for example
+    // from a completed hand), but replay bootstrap must treat every seated,
+    // non-sitting-out, non-observer/non-left player as eligible. Normalize the
+    // DB row before creating the hand so subsequent realtime/fetches agree.
     const activePlayers = (game.players || []).filter(
-      (p: any) => !p.sitting_out && p.status === 'active'
+      (p: any) => !p.sitting_out && p.status !== 'observer' && p.status !== 'left'
     );
+
+    const { error: resetPlayerError } = await supabase
+      .from('players')
+      .update({
+        status: 'active',
+        current_decision: null,
+        decision_locked: false,
+      })
+      .eq('game_id', gameId)
+      .eq('sitting_out', false)
+      .neq('status', 'observer')
+      .neq('status', 'left');
+
+    if (resetPlayerError) {
+      console.warn('[CRIBBAGE] Failed to normalize player statuses before round start:', resetPlayerError.message);
+    }
 
     if (activePlayers.length < 2) {
       throw new Error('Need at least 2 players to start cribbage');
