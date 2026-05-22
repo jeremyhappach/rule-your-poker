@@ -234,7 +234,7 @@ export function useHighCardDealerSelection({
         }, pauseAfterDealMs);
       }, dealDelayMs);
     },
-    [addTimeout, onAnnouncementUpdate, onCardsUpdate, onWinnerPositionUpdate, isCribbageVariant],
+    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, isCribbageVariant],
   );
 
   const determineWinner = useCallback(
