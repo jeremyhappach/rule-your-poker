@@ -1466,7 +1466,7 @@ export const CribbageMobileGameTable = ({
   // pegboard, peg sequence). Mirror Gin Rummy's `isObserver = !currentPlayerId`
   // gate so the bootstrap shell does not perpetually swallow observer renders.
   const isObserver = !currentPlayerId;
-  const shellAnchors = useSeatAnchorsOptional();
+  const shellAnchors = useRequiredSeatAnchors('cribbage');
   const playerSlotById = useMemo(() => {
     const slotByPosition = shellAnchors
       ? new Map<number, CanonicalSlot | null>(
