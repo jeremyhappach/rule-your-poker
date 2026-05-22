@@ -4,9 +4,12 @@ export {
   useAnnouncementContext,
 } from './CanonicalAnnouncementProvider';
 export { CanonicalAnnouncementLayer } from './CanonicalAnnouncementLayer';
+export { CanonicalCelebrationLayer } from './CanonicalCelebrationLayer';
 export { CanonicalAnnouncementDebugTrigger } from './CanonicalAnnouncementDebugTrigger';
 export type {
   AnnouncementEvent,
   AnnouncementType,
   AnnouncementScope,
 } from './types';
+export { CELEBRATION_TYPES, isCelebrationType } from './types';
+
