@@ -9468,6 +9468,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             seats={shellEligibleSeats}
+            header={mobileHeader}
           >
             {innerTree}
           </PersistentTableShell>
@@ -9488,7 +9489,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             </>
           ) : null}
         </SurfaceReadinessProvider>
-      ) : innerTree}
+      ) : (
+        // Non-shell fallback: render the mobile header inline above
+        // the inner tree so behavior matches the shell-enabled path
+        // (header still appears) without the shell-owned rail.
+        <>
+          {mobileHeader}
+          {innerTree}
+        </>
+      )}
 
     </VisualPreferencesProvider>
   );
