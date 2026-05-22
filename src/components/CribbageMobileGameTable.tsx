@@ -221,7 +221,6 @@ function CribbageDealerSelectionController(props: {
   isHost: boolean;
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  onAnnouncementUpdate: (message: string | null) => void;
   onWinnerPositionUpdate: (position: number | null) => void;
   onComplete: (pos: number) => void;
 }) {
@@ -233,7 +232,6 @@ function CribbageDealerSelectionController(props: {
     selectionVariant: 'cribbage',
     syncedState: props.syncedState,
     onCardsUpdate: props.onCardsUpdate,
-    onAnnouncementUpdate: (message, _isComplete) => props.onAnnouncementUpdate(message),
     onWinnerPositionUpdate: props.onWinnerPositionUpdate,
     onComplete: props.onComplete,
   });
