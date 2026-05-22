@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { MobileGameTable } from "./MobileGameTable";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Share2, Users, Bot, Loader2 } from "lucide-react";
 import { toast } from "sonner";
