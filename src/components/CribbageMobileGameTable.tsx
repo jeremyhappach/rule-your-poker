@@ -5296,10 +5296,10 @@ export const CribbageMobileGameTable = ({
                 {/* Turn Spotlight */}
                 <CribbageTurnSpotlight
                   currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-                  currentPlayerId={currentPlayerId}
+                  currentPlayerId={currentPlayerId || ''}
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                  totalPlayers={players.length}
-                  opponentIds={opponents.map(o => o.id)}
+                  totalPlayers={activeSeatPlayers.length}
+                  opponentIds={projectedSeatPlayers.map(o => o.id)}
                 />
 
                 {/* Game Title */}
