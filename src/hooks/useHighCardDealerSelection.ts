@@ -59,7 +59,14 @@ export interface UseHighCardDealerSelectionArgs {
   selectionVariant?: 'default' | 'cribbage';
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
+  /**
+   * Phase F.2: announcement callback retired. Dealer-selection messaging
+   * is now exclusively owned by the canonical announcement layer (see
+   * `dealer_selection_in_progress` / `dealer_selected` in
+   * `canonicalShell/announcements/renderers.tsx`). The `announcement`
+   * field is still written to `games.dealer_selection_state` for DB
+   * sync continuity, but no consumer renders the string.
+   */
   onWinnerPositionUpdate?: (position: number | null) => void;
 }
 
@@ -72,7 +79,6 @@ export function useHighCardDealerSelection({
   selectionVariant = 'default',
   syncedState,
   onCardsUpdate,
-  onAnnouncementUpdate,
   onWinnerPositionUpdate,
 }: UseHighCardDealerSelectionArgs) {
   const hasInitializedRef = useRef(false);
@@ -160,13 +166,12 @@ export function useHighCardDealerSelection({
 
     lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
     onCardsUpdate(syncedState.cards);
-    onAnnouncementUpdate(syncedState.announcement, syncedState.isComplete);
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
     if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
     }
-  }, [isHost, syncedState, onCardsUpdate, onAnnouncementUpdate, onWinnerPositionUpdate]);
+  }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate]);
 
   // Forward declarations to avoid use-before-declaration in closures.
   const determineWinnerRef = useRef<(roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => void>(() => {});
@@ -186,7 +191,6 @@ export function useHighCardDealerSelection({
             : 'Tie! Drawing again...';
 
       if (roundAnnouncement !== null) {
-        onAnnouncementUpdate(roundAnnouncement, false);
         lastAnnouncementRef.current = roundAnnouncement;
       }
 
@@ -230,7 +234,7 @@ export function useHighCardDealerSelection({
         }, pauseAfterDealMs);
       }, dealDelayMs);
     },
-    [addTimeout, onAnnouncementUpdate, onCardsUpdate, onWinnerPositionUpdate, isCribbageVariant],
+    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, isCribbageVariant],
   );
 
   const determineWinner = useCallback(
@@ -277,7 +281,6 @@ export function useHighCardDealerSelection({
           const winAnnouncement = `${name} wins the deal!`;
           lastAnnouncementRef.current = winAnnouncement;
 
-          onAnnouncementUpdate(winAnnouncement, true);
           onWinnerPositionUpdate?.(winnerPlayer.position);
 
           syncToDatabase({
@@ -319,7 +322,6 @@ export function useHighCardDealerSelection({
       addTimeout,
       getPlayerName,
       onComplete,
-      onAnnouncementUpdate,
       onCardsUpdate,
       onWinnerPositionUpdate,
       syncToDatabase,
@@ -342,7 +344,6 @@ export function useHighCardDealerSelection({
       hasCompletedRef.current = true;
       lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
       onCardsUpdate(syncedState.cards || []);
-      onAnnouncementUpdate(syncedState.announcement ?? null, true);
       onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
       const t = setTimeout(() => onComplete(syncedState.winnerPosition!), WINNER_ANNOUNCE_DELAY);

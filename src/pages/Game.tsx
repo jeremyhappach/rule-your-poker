@@ -57,7 +57,6 @@ type HighCardDealerSelectionShimProps = {
   selectionVariant?: 'default' | 'cribbage';
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
   onWinnerPositionUpdate?: (position: number | null) => void;
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
@@ -587,10 +586,10 @@ const Game = () => {
   type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
   const [sessionGameConfigs, setSessionGameConfigs] = useState<SessionGameConfigs>({});
   
-  // High card dealer selection state
+  // High card dealer selection state.
+  // Phase F.2: announcement string + complete flag retired — dealer-selection
+  // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
-  const [dealerSelectionAnnouncement, setDealerSelectionAnnouncement] = useState<string | null>(null);
-  const [dealerSelectionComplete, setDealerSelectionComplete] = useState(false);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
 
   // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
@@ -2022,8 +2021,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // The realtime status branch only fires on actual status change, so clearing
                 // here cannot wipe an in-progress draw.
                 setDealerSelectionCards([]);
-                setDealerSelectionAnnouncement(null);
-                setDealerSelectionComplete(false);
                 setDealerSelectionWinnerPosition(null);
                 // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
                 emitCribbageHandoffTrace({
@@ -7273,7 +7270,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // handoff point where session-level high-card completes. This prevents the
     // one-frame flash of stale session cards when the dealer-game scope begins.
     setDealerSelectionCards([]);
-    setDealerSelectionAnnouncement(null);
     setDealerSelectionWinnerPosition(null);
 
     // ── HANDOFF TRACE #3: parent dealer-selection state cleared (handoff callback) ──
@@ -7633,7 +7629,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // draw and leak into the dealer-game's HighCardDealerSelection as
             // stale props if not cleared here.
             setDealerSelectionCards([]);
-            setDealerSelectionAnnouncement('');
             setDealerSelectionWinnerPosition(null);
             await supabase
               .from('games')
@@ -8530,7 +8525,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onChatInputChange={setMobileChatInput}
                     isWaitingPhase={true}
                     dealerSelectionCards={dealerSelectionCards}
-                    dealerSelectionAnnouncement={dealerSelectionAnnouncement}
                     dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
                   />
                 {/* High Card Dealer Selection */}
@@ -8542,12 +8536,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   allowBotDealers={allowBotDealers}
                   syncedState={(game as any).dealer_selection_state ?? null}
                   onCardsUpdate={setDealerSelectionCards}
-                  onAnnouncementUpdate={(msg, complete) => {
-                    setDealerSelectionAnnouncement(msg);
-                    setDealerSelectionComplete(complete);
-                  }}
                   onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                 />
+
               </>
             )}
             {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
@@ -8977,17 +8968,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     syncedState={(game as any).dealer_selection_state as any}
                     onCardsUpdate={setDealerSelectionCards}
                     // Note: onCardsUpdate trace - session-level HighCardDealerSelection cards pushed to parent
-                    onAnnouncementUpdate={(msg, complete) => {
-                      setDealerSelectionAnnouncement(msg);
-                      setDealerSelectionComplete(complete);
-                      // ── HANDOFF TRACE #3: session-level ds announcement updated ──
-                      emitCribbageHandoffTrace({
-                        gameId: gameId!,
-                        eventType: 'parent_ds_announcement_update',
-                        userId: user?.id ?? null,
-                        context: { msg: msg?.slice(0, 60), complete },
-                      });
-                    }}
                     onWinnerPositionUpdate={(pos) => {
                       setDealerSelectionWinnerPosition(pos);
                       // ── HANDOFF TRACE #3: session-level ds winner position updated ──
@@ -9023,7 +9003,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   }}
                   isDealerSelection={isCribbageDealerSelection}
                   dealerSelectionCards={isCribbageDealerSelection ? dealerSelectionCards : undefined}
-                  dealerSelectionAnnouncement={isCribbageDealerSelection ? dealerSelectionAnnouncement : undefined}
                   dealerSelectionWinnerPosition={isCribbageDealerSelection ? dealerSelectionWinnerPosition : undefined}
                 />
               </>
@@ -9062,10 +9041,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     allowBotDealers={allowBotDealers}
                     syncedState={(game as any).dealer_selection_state ?? null}
                     onCardsUpdate={setDealerSelectionCards}
-                    onAnnouncementUpdate={(msg, complete) => {
-                      setDealerSelectionAnnouncement(msg);
-                      setDealerSelectionComplete(complete);
-                    }}
                     onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                   />
                 )}

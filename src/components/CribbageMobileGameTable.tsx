@@ -104,9 +104,9 @@ interface CribbageMobileGameTableProps {
   onGameComplete: () => void;
   // Game configuration
   gameConfig?: CribbageGameConfig;
-  // Dealer selection props (optional - used during cribbage_dealer_selection phase)
+  // Dealer selection props (optional - used during cribbage_dealer_selection phase).
+  // Phase F.2: announcement string retired — dealer-selection messaging is canonical-only.
   dealerSelectionCards?: DealerSelectionCard[];
-  dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null;
   isDealerSelection?: boolean;
 
@@ -221,7 +221,6 @@ function CribbageDealerSelectionController(props: {
   isHost: boolean;
   syncedState: DealerSelectionState | null;
   onCardsUpdate: (cards: DealerSelectionCard[]) => void;
-  onAnnouncementUpdate: (message: string | null) => void;
   onWinnerPositionUpdate: (position: number | null) => void;
   onComplete: (pos: number) => void;
 }) {
@@ -233,7 +232,6 @@ function CribbageDealerSelectionController(props: {
     selectionVariant: 'cribbage',
     syncedState: props.syncedState,
     onCardsUpdate: props.onCardsUpdate,
-    onAnnouncementUpdate: (message, _isComplete) => props.onAnnouncementUpdate(message),
     onWinnerPositionUpdate: props.onWinnerPositionUpdate,
     onComplete: props.onComplete,
   });
@@ -263,7 +261,6 @@ export const CribbageMobileGameTable = ({
   },
   // Dealer selection props (from parent during cribbage_dealer_selection phase)
   dealerSelectionCards: externalDealerSelectionCards,
-  dealerSelectionAnnouncement: externalDealerSelectionAnnouncement,
   dealerSelectionWinnerPosition: externalDealerSelectionWinnerPosition,
   isDealerSelection = false,
 
@@ -604,7 +601,7 @@ export const CribbageMobileGameTable = ({
 
   // High card dealer selection state - only for first hand
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
-  const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
+  // Phase F.2: announcement string state retired — dealer-selection messaging is canonical-only.
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
 
@@ -644,7 +641,6 @@ export const CribbageMobileGameTable = ({
   }
 
   const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
-  const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
   // ── Phase C: canonical dealer-selection announcements ────────────────────
@@ -2832,7 +2828,6 @@ export const CribbageMobileGameTable = ({
     if (!showHighCardSelection) return;
     if (!cribbageState) return;
     setShowHighCardSelection(false);
-    setHighCardAnnouncement(null);
   }, [showHighCardSelection, cribbageState]);
 
   // Subscribe to DB-synced dealer selection state so everyone sees the same animation
@@ -2924,7 +2919,6 @@ export const CribbageMobileGameTable = ({
     if (!isHost) return;
 
     setShowHighCardSelection(false);
-    setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
 
     // Initialize the game with the winner as dealer.
@@ -4850,7 +4844,7 @@ export const CribbageMobileGameTable = ({
   // ── ANNOUNCEMENT TRACER ──────────────────────────────────────
   // Derive current banner text (mirrors the inline IIFE in JSX) for change tracking
   const derivedBannerText = useMemo(() => {
-    if (isHighCardMode) return effectiveHighCardAnnouncement ?? '(none)';
+    if (isHighCardMode) return '(canonical dealer-selection)';
     if (isBootstrapMode) return shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...';
     if (!viewState) return '(no viewState)';
     if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return '(win overlay)';
@@ -4868,7 +4862,7 @@ export const CribbageMobileGameTable = ({
     if (effectivePhase === 'discarding') return 'Discard to Crib';
     if (effectivePhase === 'cutting') return 'Cut Card';
     return '(pegging/none)';
-  }, [isHighCardMode, isBootstrapMode, shouldShowAwaitingAnteAnnouncement, viewState, winSequencePhase, winSequenceData, countingStateSnapshot, countingDelayActive, postCountingTransitionActive, countingAnnouncement, countingTargetLabel, effectiveHighCardAnnouncement]);
+  }, [isHighCardMode, isBootstrapMode, shouldShowAwaitingAnteAnnouncement, viewState, winSequencePhase, winSequenceData, countingStateSnapshot, countingDelayActive, postCountingTransitionActive, countingAnnouncement, countingTargetLabel]);
 
   const prevBannerTextRef = useRef<string | null>(null);
   useEffect(() => {
@@ -4980,7 +4974,6 @@ export const CribbageMobileGameTable = ({
                     isHost={isHost}
                     syncedState={highCardSyncedState}
                     onCardsUpdate={setHighCardCards}
-                    onAnnouncementUpdate={(message) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
                     onComplete={(pos) => {
                       // ── HANDOFF TRACE #1 (child): dealer-game onComplete ──
