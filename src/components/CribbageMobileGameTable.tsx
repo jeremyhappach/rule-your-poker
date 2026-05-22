@@ -639,7 +639,7 @@ export const CribbageMobileGameTable = ({
   useEffect(() => {
     if (!gameId) return;
     // Ambient: only while in high-card mode AND dealer not yet resolved.
-    if (isHighCardMode && effectiveHighCardWinnerPosition === null) {
+    if (effectiveShowHighCardSelection && effectiveHighCardWinnerPosition === null) {
       const id = `${gameId}:dealer-selection:${dealerSelectionCohortDerived}`;
       announcements.emit({
         id,
@@ -653,7 +653,7 @@ export const CribbageMobileGameTable = ({
       return;
     }
     // Out of high-card mode → tear down ambient.
-    if (!isHighCardMode) {
+    if (!effectiveShowHighCardSelection) {
       announcements.clearAmbient();
       announcedDealerResolvedRef.current = null;
       return;
