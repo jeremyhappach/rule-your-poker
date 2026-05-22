@@ -4783,9 +4783,38 @@ export const CribbageMobileGameTable = ({
             {isHighCardMode && (
               <>
                 {/* Phase C.2: dealer-selection controller is now a headless
-                    hook (`useHighCardDealerSelection`) called below — no
-                    surface mount, no slot identity churn. The card
-                    rendering lives in the canonical Cribbage felt. */}
+                    hook (`useHighCardDealerSelection`) called via this tiny
+                    inline component so mount/unmount semantics on
+                    `isHighCardMode && !isDealerSelection` are preserved
+                    exactly as before. No surface mount, no slot identity
+                    churn — the card rendering lives in the canonical
+                    Cribbage felt below. */}
+                {!isDealerSelection && (
+                  <CribbageDealerSelectionController
+                    gameId={gameId}
+                    players={players as any}
+                    isHost={isHost}
+                    syncedState={highCardSyncedState}
+                    onCardsUpdate={setHighCardCards}
+                    onAnnouncementUpdate={(message) => setHighCardAnnouncement(message)}
+                    onWinnerPositionUpdate={setHighCardWinnerPosition}
+                    onComplete={(pos) => {
+                      // ── HANDOFF TRACE #1 (child): dealer-game onComplete ──
+                      emitCribbageHandoffTrace({
+                        gameId,
+                        eventType: 'child_hc_onComplete',
+                        userId: currentUserId,
+                        roundId: currentRoundId || null,
+                        context: {
+                          winnerPosition: pos,
+                          dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                          isHost,
+                        },
+                      });
+                      handleHighCardComplete(pos);
+                    }}
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
                   <div className="flex gap-4 items-start">
                     {highCardPositions.map((position) => {
