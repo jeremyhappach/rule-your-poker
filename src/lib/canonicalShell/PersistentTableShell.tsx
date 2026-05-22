@@ -242,6 +242,11 @@ export function PersistentTableShell({
         containerRef={shellRootRef}
         overlayRootRef={overlayRootRef}
       />
+      {/* Shell-owned celebration overlay — distinct from the 36px
+          lifecycle rail. Activates for CELEBRATION_TYPES (match_win
+          today). Driven by the same CanonicalAnnouncementProvider
+          context; no new emitters, no per-game overlays. */}
+      <CanonicalCelebrationLayer />
     </div>
   );
 
