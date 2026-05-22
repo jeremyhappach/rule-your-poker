@@ -3097,18 +3097,27 @@ export const CribbageMobileGameTable = ({
       });
     }
 
-    // Start sequence - skunk overlay if applicable, otherwise straight to announcement
-    // Use source-level guard to prevent double-firing of skunk overlay
-    const skunkKey = `${winKey}-skunk-${multiplier}`;
-    if (multiplier >= 2 && skunkOverlayFiredRef.current !== skunkKey) {
-      skunkOverlayFiredRef.current = skunkKey;
-      setWinSequencePhase('skunk');
-    } else if (multiplier >= 2) {
-      // Already showed skunk, skip to announcement
-      setWinSequencePhase('announcement');
-    } else {
-      setWinSequencePhase('announcement');
-    }
+    // Phase E: emit canonical `match_win` announcement. The bespoke
+    // skunk overlay is retired — the canonical renderer formats
+    // `skunk: 'single' | 'double'` into the title.
+    const skunkPayload: 'single' | 'double' | undefined =
+      multiplier >= 3 ? 'double' : multiplier >= 2 ? 'single' : undefined;
+    const winnerScoreVal = state.playerStates[winnerId]?.pegScore ?? 0;
+    const loserLowest = state.loserScore ?? Math.min(...loserIds.map(id => state.playerStates[id]?.pegScore ?? 0));
+    announcements.emit({
+      id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+      type: 'match_win',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: {
+        winnerName,
+        score: { winner: winnerScoreVal, loser: loserLowest },
+        skunk: skunkPayload,
+        amount: totalWinnings,
+      },
+    });
+    // Drop into 'announcement' phase; canonical TTL gates the chip animation.
+    setWinSequencePhase('announcement');
+
   }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, injectDealerMessage, currentHandNumber]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
