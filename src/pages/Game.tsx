@@ -586,10 +586,10 @@ const Game = () => {
   type SessionGameConfigs = Partial<Record<string, PreviousGameConfig>>;
   const [sessionGameConfigs, setSessionGameConfigs] = useState<SessionGameConfigs>({});
   
-  // High card dealer selection state
+  // High card dealer selection state.
+  // Phase F.2: announcement string + complete flag retired — dealer-selection
+  // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
-  const [dealerSelectionAnnouncement, setDealerSelectionAnnouncement] = useState<string | null>(null);
-  const [dealerSelectionComplete, setDealerSelectionComplete] = useState(false);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
 
   // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
