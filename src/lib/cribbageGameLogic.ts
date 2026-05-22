@@ -137,6 +137,10 @@ export function initializeCribbageGame(
     winnerPlayerId: null,
     loserScore: null,
     payoutMultiplier: 1,
+    // Phase C prereq dims — written once at game-init so cribbageProgress
+    // vector advances on dealer resolution boundary.
+    dealerSelectionCohort: identity?.dealerSelectionCohort ?? 0,
+    dealerResolved: identity?.dealerResolved ?? true,
   };
 }
 
