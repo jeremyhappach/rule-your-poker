@@ -767,6 +767,7 @@ export const DealerGameSetup = ({
             
             const dealerGameId = dealerGame.id;
             logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-card', { dealerPlayerId, dealerUserId });
+            await sanitizePlayersForNewDealerGame(gameId);
             
             const updateData: any = {
               game_type: previousGameType,
