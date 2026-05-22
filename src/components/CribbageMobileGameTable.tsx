@@ -675,8 +675,22 @@ export const CribbageMobileGameTable = ({
 
   useEffect(() => {
     if (!gameId) return;
-    // Ambient: only while in high-card mode AND dealer not yet resolved.
-    if (effectiveShowHighCardSelection && effectiveHighCardWinnerPosition === null) {
+    // Ambient: only while in high-card mode AND dealer not yet resolved
+    // AND we have NOT already announced resolution for this dealer-game.
+    //
+    // Sequencing fix: after `handleCribbageDealerSelectionComplete`
+    // clears externalDealerSelectionCards / externalDealerSelectionWinnerPosition,
+    // `game.status` may still be `cribbage_dealer_selection` for a frame.
+    // Without the latch below, the effect re-detects
+    // `effectiveShowHighCardSelection=true` + `winner=null` and re-emits
+    // the in-progress ambient — producing the duplicate "Selecting next
+    // dealer" plate. The `announcedDealerResolvedRef` latch (cleared on
+    // dealerGameId boundary + when high-card mode exits) prevents this.
+    if (
+      effectiveShowHighCardSelection &&
+      effectiveHighCardWinnerPosition === null &&
+      announcedDealerResolvedRef.current === null
+    ) {
       const id = `${gameId}:dealer-selection:${dealerSelectionCohortDerived}`;
       announcements.emit({
         id,
@@ -2496,8 +2510,17 @@ export const CribbageMobileGameTable = ({
       setHighCardSyncedState(null);
       setShowHighCardSelection(false);
       announcedDealerResolvedRef.current = null;
+      // Reset forward-only local round identity. Without this, the
+      // previous match's terminal `currentRoundId`/`currentHandNumber`
+      // persist into the new dealer-game scope and cause
+      // `loadOrInitializeState` to run against a stale round during the
+      // replay bootstrap window, wedging the table.
+      setCurrentRoundId(roundId);
+      setCurrentHandNumber(handNumber);
+      lastObservedIdentityRef.current = null;
     }
     prevDealerGameIdRef.current = dealerGameId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealerGameId]);
 
 
