@@ -601,7 +601,7 @@ export const CribbageMobileGameTable = ({
 
   // High card dealer selection state - only for first hand
   const [showHighCardSelection, setShowHighCardSelection] = useState(false);
-  const [highCardAnnouncement, setHighCardAnnouncement] = useState<string | null>(null);
+  // Phase F.2: announcement string state retired — dealer-selection messaging is canonical-only.
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const hasInitializedRef = useRef(false);
 
