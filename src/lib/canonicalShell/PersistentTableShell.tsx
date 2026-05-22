@@ -38,6 +38,7 @@ import {
   CanonicalAnnouncementProvider,
   CanonicalAnnouncementLayer,
   CanonicalAnnouncementDebugTrigger,
+  AnnouncementRailProvider,
 } from './announcements';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
@@ -187,7 +188,7 @@ export function PersistentTableShell({
         dealerGameId={gameId ?? null}
         roundId={null}
       >
-        {body}
+        <AnnouncementRailProvider>{body}</AnnouncementRailProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
