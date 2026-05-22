@@ -4540,36 +4540,38 @@ export const CribbageMobileGameTable = ({
     const container = tableContainerRef.current;
     const rect = container.getBoundingClientRect();
 
-    // Winner position - find the winner player's chip stack position
-    const winnerPlayer = players.find(p => p.id === winSequenceData.winnerId);
-    const isWinnerCurrentPlayer = winnerPlayer?.user_id === currentUserId;
-
-    // Calculate positions based on player layout
-    // Winner at bottom center if current player, otherwise in opponent area
-    const winnerPos = isWinnerCurrentPlayer
-      ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
-      : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
-
-    // Loser positions
-    const loserPositions = winSequenceData.loserIds.map((loserId, index) => {
-      const loserPlayer = players.find(p => p.id === loserId);
-      const isLoserCurrentPlayer = loserPlayer?.user_id === currentUserId;
-      
-      if (isLoserCurrentPlayer) {
-        return {
-          playerId: loserId,
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height * 0.85,
-        };
+    // Resolve a player's chip endpoint via the canonical seat marker
+    // ([data-chip-center="<position>"]) so observer and active viewers
+    // both target the same DOM truth (projection placement is already
+    // baked into the marker by SeatAnchorLayer / CanonicalSeatCluster).
+    // Falls back to the prior heuristic only if the marker is missing.
+    const resolveSeatPoint = (playerId: string, fallbackIndex = 0) => {
+      const player = players.find(p => p.id === playerId);
+      const pos = player?.position;
+      if (pos != null) {
+        const el = container.querySelector(
+          `[data-chip-center="${pos}"]`,
+        ) as HTMLElement | null;
+        if (el) {
+          const r = el.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }
       }
-      
-      // Opponent positions - stack vertically on left side
+      const isCurrent = player?.user_id === currentUserId;
+      if (isCurrent) {
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 };
+      }
       return {
-        playerId: loserId,
         x: rect.left + rect.width * 0.15,
-        y: rect.top + rect.height * (0.2 + index * 0.15),
+        y: rect.top + rect.height * (0.2 + fallbackIndex * 0.15),
       };
-    });
+    };
+
+    const winnerPos = resolveSeatPoint(winSequenceData.winnerId);
+    const loserPositions = winSequenceData.loserIds.map((loserId, index) => ({
+      playerId: loserId,
+      ...resolveSeatPoint(loserId, index),
+    }));
 
     // Store positions in state so chip animation has them on first render
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
