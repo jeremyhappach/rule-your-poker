@@ -1,13 +1,9 @@
 /**
- * CanonicalAnnouncementDebugTrigger — temporary shell-owned debug
- * surface for validating the canonical announcement pipeline without
- * relying on console emit injection.
+ * CanonicalAnnouncementDebugTrigger — shell-owned debug surface for
+ * validating both transient and ambient announcement tracks.
  *
- * Visibility: gated by localStorage `ptp_announcement_debug=1` or URL
- * `?announcement_debug=1`. Off by default. Pointer-events on.
- *
- * Remove (or keep behind the flag) once Cribbage canonical migration
- * exercises the pipeline organically.
+ * Visibility: localStorage `ptp_announcement_debug=1` or
+ * URL `?announcement_debug=1`. Off by default.
  */
 
 import { useAnnouncements } from './CanonicalAnnouncementProvider';
@@ -25,12 +21,13 @@ function debugEnabled(): boolean {
   return false;
 }
 
-const TYPES: AnnouncementType[] = [
-  'match_win',
-  'round_win',
-  'chip_award',
+const TRANSIENT: AnnouncementType[] = ['match_win', 'round_win', 'chip_award'];
+const AMBIENT: AnnouncementType[] = [
   'dealer_configuring',
+  'dealer_selection_in_progress',
   'waiting_for_players',
+  'waiting_for_player',
+  'waiting_for_next_round',
 ];
 
 interface Props {
@@ -39,7 +36,7 @@ interface Props {
 }
 
 export function CanonicalAnnouncementDebugTrigger({ dealerGameId = null, roundId = null }: Props) {
-  const { emit } = useAnnouncements();
+  const { emit, clearAmbient } = useAnnouncements();
   if (!debugEnabled()) return null;
 
   const fire = (type: AnnouncementType) => {
@@ -50,14 +47,37 @@ export function CanonicalAnnouncementDebugTrigger({ dealerGameId = null, roundId
       payload: {
         winnerName: 'Debug',
         recipientName: 'Debug',
+        playerName: 'Debug',
         amount: 42,
         reason: 'debug trigger',
         dealerName: 'Debug',
+        gameType: 'cribbage',
         seated: 2,
         needed: 4,
+        context: 'debug context',
       },
     });
   };
+
+  const btn = (label: string, onClick: () => void, color = '#0f3460') => (
+    <button
+      key={label}
+      type="button"
+      onClick={onClick}
+      style={{
+        fontSize: 10,
+        padding: '2px 6px',
+        background: color,
+        color: '#fff',
+        border: '1px solid #1e3a5f',
+        borderRadius: 3,
+        cursor: 'pointer',
+        textAlign: 'left',
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div
@@ -71,33 +91,22 @@ export function CanonicalAnnouncementDebugTrigger({ dealerGameId = null, roundId
         flexDirection: 'column',
         gap: 4,
         padding: 6,
-        background: 'rgba(0,0,0,0.7)',
+        background: 'rgba(0,0,0,0.75)',
         border: '1px solid #10b981',
         borderRadius: 6,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        maxWidth: 220,
       }}
     >
       <div style={{ color: '#10b981', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em' }}>
-        ANNOUNCE DEBUG
+        ANNOUNCE · TRANSIENT
       </div>
-      {TYPES.map((t) => (
-        <button
-          key={t}
-          type="button"
-          onClick={() => fire(t)}
-          style={{
-            fontSize: 10,
-            padding: '2px 6px',
-            background: '#0f3460',
-            color: '#fff',
-            border: '1px solid #1e3a5f',
-            borderRadius: 3,
-            cursor: 'pointer',
-          }}
-        >
-          {t}
-        </button>
-      ))}
+      {TRANSIENT.map((t) => btn(t, () => fire(t)))}
+      <div style={{ color: '#fbbf24', fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', marginTop: 4 }}>
+        ANNOUNCE · AMBIENT
+      </div>
+      {AMBIENT.map((t) => btn(t, () => fire(t), '#3a2f0f'))}
+      {btn('clear ambient', () => clearAmbient(), '#5c1f1f')}
     </div>
   );
 }

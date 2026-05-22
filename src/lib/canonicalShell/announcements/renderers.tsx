@@ -6,17 +6,8 @@
 import { LifecycleAnnouncement } from '@/components/LifecycleAnnouncement';
 import type { AnnouncementEvent } from './types';
 
-interface MatchWinPayload {
+interface NamedAmount {
   winnerName?: string;
-  amount?: number | string;
-}
-
-interface RoundWinPayload {
-  winnerName?: string;
-  amount?: number | string;
-}
-
-interface ChipAwardPayload {
   recipientName?: string;
   amount?: number | string;
   reason?: string;
@@ -25,64 +16,94 @@ interface ChipAwardPayload {
 interface WaitingPayload {
   seated?: number;
   needed?: number;
+  playerName?: string;
+  context?: string;
 }
 
 interface ConfiguringPayload {
   dealerName?: string;
+  gameType?: string;
 }
 
 export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null {
+  const p = (event.payload ?? {}) as Record<string, unknown>;
   switch (event.type) {
     case 'match_win': {
-      const p = (event.payload ?? {}) as MatchWinPayload;
+      const x = p as NamedAmount;
       return (
         <LifecycleAnnouncement
-          title={p.winnerName ? `${p.winnerName} wins the match!` : 'Match won!'}
-          subtitle={p.amount != null ? `+${p.amount}` : undefined}
+          title={x.winnerName ? `${x.winnerName} wins the match!` : 'Match won!'}
+          subtitle={x.amount != null ? `+${x.amount}` : undefined}
         />
       );
     }
     case 'round_win': {
-      const p = (event.payload ?? {}) as RoundWinPayload;
+      const x = p as NamedAmount;
       return (
         <LifecycleAnnouncement
-          title={p.winnerName ? `${p.winnerName} wins the round` : 'Round complete'}
-          subtitle={p.amount != null ? `+${p.amount}` : undefined}
+          title={x.winnerName ? `${x.winnerName} wins the round` : 'Round complete'}
+          subtitle={x.amount != null ? `+${x.amount}` : undefined}
         />
       );
     }
     case 'chip_award': {
-      const p = (event.payload ?? {}) as ChipAwardPayload;
+      const x = p as NamedAmount;
       return (
         <LifecycleAnnouncement
           title={
-            p.recipientName && p.amount != null
-              ? `${p.recipientName} +${p.amount}`
+            x.recipientName && x.amount != null
+              ? `${x.recipientName} +${x.amount}`
               : 'Chips awarded'
           }
-          subtitle={p.reason}
+          subtitle={x.reason}
         />
       );
     }
     case 'dealer_configuring': {
-      const p = (event.payload ?? {}) as ConfiguringPayload;
+      const x = p as ConfiguringPayload;
       return (
         <LifecycleAnnouncement
-          title="Dealer configuring next game"
-          subtitle={p.dealerName ? `${p.dealerName} is choosing…` : undefined}
+          title={x.gameType ? `Setting up ${x.gameType}…` : 'Dealer configuring next game'}
+          subtitle={x.dealerName ? `${x.dealerName} is choosing` : 'Please wait…'}
+        />
+      );
+    }
+    case 'dealer_selection_in_progress': {
+      return (
+        <LifecycleAnnouncement
+          title="Selecting next dealer"
+          subtitle="Drawing for the cut…"
         />
       );
     }
     case 'waiting_for_players': {
-      const p = (event.payload ?? {}) as WaitingPayload;
+      const x = p as WaitingPayload;
       return (
         <LifecycleAnnouncement
           title="Waiting for players"
           subtitle={
-            p.seated != null && p.needed != null
-              ? `${p.seated} / ${p.needed} seated`
+            x.seated != null && x.needed != null
+              ? `${x.seated} / ${x.needed} seated`
               : undefined
           }
+        />
+      );
+    }
+    case 'waiting_for_player': {
+      const x = p as WaitingPayload;
+      return (
+        <LifecycleAnnouncement
+          title={x.playerName ? `Waiting on ${x.playerName}` : 'Waiting on player'}
+          subtitle={x.context}
+        />
+      );
+    }
+    case 'waiting_for_next_round': {
+      const x = p as WaitingPayload;
+      return (
+        <LifecycleAnnouncement
+          title="Next round starting…"
+          subtitle={x.context ?? 'Hold tight'}
         />
       );
     }
