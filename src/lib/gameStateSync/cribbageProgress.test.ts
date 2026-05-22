@@ -15,7 +15,32 @@ function stubState(overrides: Partial<CribbageStateForProgress> & { handNumber?:
 
 describe('getCribbageProgress', () => {
   it('null state returns zero vector', () => {
-    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0]);
+    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+
+  // ── Phase E prereq: matchCompleteLatch top-bit ─────────────────
+
+  it('matchCompleteLatch is top-bit forward dimension', () => {
+    const inProgress = stubState({
+      handNumber: 5, phase: 'pegging',
+      pegging: { playedCards: new Array(8) },
+      playerStates: { p1: { pegScore: 100 }, p2: { pegScore: 90 } },
+    });
+    const completed = stubState({
+      handNumber: 1, phase: 'discarding', // earlier-looking on every other dim
+      matchCompleteLatch: true,
+    } as any);
+    // Latch dominates: completed > inProgress despite lower handNumber/phase.
+    expect(compareProgress(getCribbageProgress(inProgress), getCribbageProgress(completed))).toBe(1);
+  });
+
+  it('phase=complete implicitly sets matchLatch', () => {
+    const a = stubState({ phase: 'counting' });
+    const b = stubState({ phase: 'complete' });
+    const va = getCribbageProgress(a);
+    const vb = getCribbageProgress(b);
+    expect(va[0]).toBe(0);
+    expect(vb[0]).toBe(1);
   });
 
   // ── Phase C prereq: dealer-select dims ───────────────────────
@@ -41,8 +66,8 @@ describe('getCribbageProgress', () => {
   it('legacy (no cohort/resolved fields) snapshot is treated as resolved', () => {
     const legacy = stubState({ phase: 'dealing' });
     const vec = getCribbageProgress(legacy);
-    // [hand=1, cohort=0, resolved=1, phaseOrd=0, sub=0]
-    expect(vec).toEqual([1, 0, 1, 0, 0]);
+    // [matchLatch=0, hand=1, cohort=0, resolved=1, phaseOrd=0, sub=0]
+    expect(vec).toEqual([0, 1, 0, 1, 0, 0]);
   });
 
   it('discarding → cutting is forward', () => {
