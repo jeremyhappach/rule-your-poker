@@ -22,6 +22,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { HighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from './HighCardDealerSelection';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
 // CribbageWinnerAnnouncement removed - win message now in dealer banner area
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
@@ -606,6 +607,96 @@ export const CribbageMobileGameTable = ({
   const effectiveHighCardCards = isDealerSelection ? (externalDealerSelectionCards || []) : highCardCards;
   const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
+
+  // ── Phase C: canonical dealer-selection announcements ────────────────────
+  // Derive (cohort, tie) from the authoritative card stream:
+  //   cohort = max(card.roundNumber) - 1 (0-indexed: 0 = first attempt)
+  //   tie    = current cohort has multiple top-rank cards still un-dimmed
+  //            and no winner has resolved.
+  // Identity-stable id keeps the ambient announcement deduped per cohort.
+  const dealerSelectionCohortDerived = useMemo(() => {
+    if (effectiveHighCardCards.length === 0) return 0;
+    let maxRound = 1;
+    for (const c of effectiveHighCardCards) {
+      if (c.roundNumber > maxRound) maxRound = c.roundNumber;
+    }
+    return Math.max(0, maxRound - 1);
+  }, [effectiveHighCardCards]);
+
+  const dealerSelectionTieDerived = useMemo(() => {
+    if (effectiveHighCardCards.length === 0) return false;
+    if (effectiveHighCardWinnerPosition !== null) return false;
+    const currentCohortRound = dealerSelectionCohortDerived + 1;
+    const cohortCards = effectiveHighCardCards.filter(
+      (c) => c.roundNumber === currentCohortRound && !c.isDimmed,
+    );
+    return cohortCards.length >= 2;
+  }, [effectiveHighCardCards, effectiveHighCardWinnerPosition, dealerSelectionCohortDerived]);
+
+  const announcements = useAnnouncements();
+  const announcedDealerResolvedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!gameId) return;
+    // Ambient: only while in high-card mode AND dealer not yet resolved.
+    if (effectiveShowHighCardSelection && effectiveHighCardWinnerPosition === null) {
+      const id = `${gameId}:dealer-selection:${dealerSelectionCohortDerived}`;
+      announcements.emit({
+        id,
+        type: 'dealer_selection_in_progress',
+        scope: { dealerGameId: gameId },
+        payload: {
+          cohort: dealerSelectionCohortDerived,
+          tie: dealerSelectionTieDerived,
+        },
+      });
+      return;
+    }
+    // Out of high-card mode → tear down ambient.
+    if (!effectiveShowHighCardSelection) {
+      announcements.clearAmbient();
+      announcedDealerResolvedRef.current = null;
+      return;
+    }
+    // High-card mode AND winner resolved: emit transient `dealer_selected`
+    // exactly once per (gameId, cohort, winnerPosition).
+    if (effectiveHighCardWinnerPosition !== null) {
+      const winnerPlayer = players.find((p) => p.position === effectiveHighCardWinnerPosition);
+      if (!winnerPlayer) return;
+      const winnerCard = effectiveHighCardCards
+        .filter((c) => c.position === effectiveHighCardWinnerPosition && !c.isDimmed)
+        .slice(-1)[0];
+      const cardLabel = winnerCard
+        ? `${winnerCard.card.rank}${winnerCard.card.suit}`
+        : '';
+      const id = `${gameId}:dealer-selected:${dealerSelectionCohortDerived}:${effectiveHighCardWinnerPosition}`;
+      if (announcedDealerResolvedRef.current === id) return;
+      announcedDealerResolvedRef.current = id;
+      announcements.clearAmbient();
+      announcements.emit({
+        id,
+        type: 'dealer_selected',
+        scope: { dealerGameId: gameId },
+        payload: {
+          dealerName: getDisplayName(
+            players,
+            winnerPlayer,
+            winnerPlayer.profiles?.username || `Seat ${effectiveHighCardWinnerPosition}`,
+          ),
+          cardLabel,
+        },
+      });
+    }
+  }, [
+    gameId,
+    effectiveShowHighCardSelection,
+    effectiveHighCardWinnerPosition,
+    dealerSelectionCohortDerived,
+    dealerSelectionTieDerived,
+    effectiveHighCardCards,
+    players,
+    announcements,
+  ]);
 
   // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
   const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
@@ -2656,10 +2747,22 @@ export const CribbageMobileGameTable = ({
     setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
 
-    // Initialize the game with the winner as dealer
+    // Initialize the game with the winner as dealer.
+    // Phase C prereq: stamp dealerSelectionCohort + dealerResolved so the
+    // sync framework progress vector advances cleanly across the
+    // dealer-select → discarding boundary (incl. tie redraws).
     hasInitializedRef.current = true;
     const playerIds = players.map(p => p.id);
-    const newState = initializeCribbageGame(playerIds, winnerPlayer.id, anteAmount, gameConfig);
+    const newState = initializeCribbageGame(
+      playerIds,
+      winnerPlayer.id,
+      anteAmount,
+      gameConfig,
+      {
+        dealerSelectionCohort: dealerSelectionCohortDerived,
+        dealerResolved: true,
+      },
+    );
 
     await supabase
       .from('rounds')
@@ -4947,15 +5050,12 @@ export const CribbageMobileGameTable = ({
         {/* Banner area — consistent height across all modes */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
-            // HIGH-CARD & BOOTSTRAP banners
+            // HIGH-CARD: canonical announcements (ambient
+            // `dealer_selection_in_progress` / transient `dealer_selected`)
+            // own all messaging during dealer selection. The legacy gold
+            // banner is suppressed in this mode — Phase C migration.
             if (isHighCardMode) {
-              return effectiveHighCardAnnouncement ? (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {effectiveHighCardAnnouncement}
-                  </p>
-                </div>
-              ) : null;
+              return null;
             }
 
             if (isBootstrapMode) {
