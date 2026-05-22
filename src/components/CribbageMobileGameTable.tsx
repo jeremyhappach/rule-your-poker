@@ -4844,7 +4844,7 @@ export const CribbageMobileGameTable = ({
   // ── ANNOUNCEMENT TRACER ──────────────────────────────────────
   // Derive current banner text (mirrors the inline IIFE in JSX) for change tracking
   const derivedBannerText = useMemo(() => {
-    if (isHighCardMode) return effectiveHighCardAnnouncement ?? '(none)';
+    if (isHighCardMode) return '(canonical dealer-selection)';
     if (isBootstrapMode) return shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...';
     if (!viewState) return '(no viewState)';
     if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return '(win overlay)';
