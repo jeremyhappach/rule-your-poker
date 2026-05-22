@@ -19,7 +19,6 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { isDebugChannel } from './debugChannels';
 import type { CribbageState } from './cribbageTypes';
 
 // ── Default-ON validation window ──────────────────────────────
