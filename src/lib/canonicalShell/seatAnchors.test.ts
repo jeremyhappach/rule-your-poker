@@ -19,7 +19,7 @@ describe('seatAnchors — observer-absolute', () => {
     expect(observerSlotForPosition(7)).toBe(3);
   });
 
-  it('canonicalizes inherently-2P observer view to HOME + upper-left for ergonomics', () => {
+  it('canonicalizes 2P Cribbage observer view to the same HOME + FACE_TO_FACE ergonomics as active clients', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'observer-absolute',
       viewerPosition: null,
@@ -29,9 +29,10 @@ describe('seatAnchors — observer-absolute', () => {
         { position: 5, occupied: true },
       ],
     });
-    // Lower position → HOME (bottom-center), higher → slot 2 (upper-left).
+    // Lower position → HOME (bottom-center), higher → FACE_TO_FACE (top-center),
+    // matching the active Cribbage 2P projection instead of Gin's upper-left variant.
     expect(anchors.find(a => a.position === 1)?.slot).toBe(SLOT.HOME);
-    expect(anchors.find(a => a.position === 5)?.slot).toBe(2);
+    expect(anchors.find(a => a.position === 5)?.slot).toBe(SLOT.FACE_TO_FACE);
     expect(anchors.every(a => a.canonicalized2p)).toBe(true);
   });
 
