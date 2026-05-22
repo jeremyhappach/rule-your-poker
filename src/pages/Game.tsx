@@ -7629,7 +7629,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // draw and leak into the dealer-game's HighCardDealerSelection as
             // stale props if not cleared here.
             setDealerSelectionCards([]);
-            setDealerSelectionAnnouncement('');
             setDealerSelectionWinnerPosition(null);
             await supabase
               .from('games')
