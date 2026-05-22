@@ -56,6 +56,13 @@ export interface PersistentTableShellProps {
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   seats?: SeatAnchorInput[];
+  /**
+   * Shell-owned HUD header chrome. Rendered above the canonical
+   * announcement rail and the opaque game children. Authored by the
+   * route (Game.tsx) so existing data wiring stays put, but its
+   * placement and surrounding layout are owned by the shell.
+   */
+  header?: ReactNode;
   children: ReactNode;
 }
 
@@ -67,6 +74,7 @@ export function PersistentTableShell({
   projectionMode,
   viewerPosition = null,
   seats,
+  header,
   children,
 }: PersistentTableShellProps) {
 
