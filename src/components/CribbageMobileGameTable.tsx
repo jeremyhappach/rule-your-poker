@@ -658,15 +658,17 @@ export const CribbageMobileGameTable = ({
     return Math.max(0, maxRound - 1);
   }, [effectiveHighCardCards]);
 
+  // Tie is only true when an actual tie was determined in a prior cohort
+  // (cohort > 0 means a redraw was triggered) AND no winner is resolved yet.
+  // Deriving from `!isDimmed` during the deal window incorrectly flagged
+  // every freshly-dealt first cohort as a tie until the 700ms determination
+  // pass dimmed losers — producing a phantom "Tie — redrawing" flicker on
+  // every match start (and very visibly on Cribbage→Cribbage replay).
   const dealerSelectionTieDerived = useMemo(() => {
-    if (effectiveHighCardCards.length === 0) return false;
     if (effectiveHighCardWinnerPosition !== null) return false;
-    const currentCohortRound = dealerSelectionCohortDerived + 1;
-    const cohortCards = effectiveHighCardCards.filter(
-      (c) => c.roundNumber === currentCohortRound && !c.isDimmed,
-    );
-    return cohortCards.length >= 2;
-  }, [effectiveHighCardCards, effectiveHighCardWinnerPosition, dealerSelectionCohortDerived]);
+    return dealerSelectionCohortDerived > 0;
+  }, [effectiveHighCardWinnerPosition, dealerSelectionCohortDerived]);
+
 
   const announcements = useAnnouncements();
   const announcedDealerResolvedRef = useRef<string | null>(null);
