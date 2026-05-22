@@ -165,10 +165,27 @@ export function PersistentTableShell({
           </div>
         ) : null}
 
-        {/* Shell-owned canonical announcement rail. Fixed dimensions,
-            fixed placement directly under the header and above the
-            opaque game subtree. Single canonical render path — no
-            slot pattern, no portal target, no per-game overrides. */}
+        {/* Opaque game subtree. */}
+        <div
+          data-canonical-shell-children=""
+          style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
+        >
+          {children}
+        </div>
+
+        {/* Shell-owned canonical announcement rail.
+            TEMPORARY STRUCTURAL COMPROMISE (Pass 1 / Option A):
+              - Rail lives at the bottom of the shell column, in the
+                existing visual zone where per-game gameplay strips
+                (e.g. Cribbage "Discard to Crib") render today.
+              - Reserved 36px height to prevent layout hopping.
+              - Idle container is visually neutral (transparent — no
+                background, no border). Only the inner plate paints
+                when an announcement is active.
+              - Shell owns announcement state + rendering. True
+                tab-bar promotion / named layout regions remain a
+                future pass. Per-game CTA strips are NOT retired yet
+                and may visually coexist for now. */}
         <div
           data-canonical-shell-announcement-rail=""
           style={{
@@ -180,17 +197,10 @@ export function PersistentTableShell({
             justifyContent: 'center',
             padding: '0 12px',
             pointerEvents: 'none',
+            background: 'transparent',
           }}
         >
           <CanonicalAnnouncementLayer />
-        </div>
-
-        {/* Opaque game subtree. */}
-        <div
-          data-canonical-shell-children=""
-          style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
-        >
-          {children}
         </div>
       </div>
 
