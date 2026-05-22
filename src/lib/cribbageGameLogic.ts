@@ -740,6 +740,7 @@ export function applyHandCountScores(state: CribbageState): CribbageState {
         loserScore: lowestScore,
         payoutMultiplier: multiplier,
         lastHandCount: null,
+        matchCompleteLatch: true,
       };
     }
   }
@@ -778,6 +779,7 @@ function endGame(state: CribbageState, winnerPlayerId: string): CribbageState {
     winnerPlayerId,
     loserScore: lowestScore,
     payoutMultiplier: multiplier,
+    matchCompleteLatch: true,
   };
 }
 
@@ -834,6 +836,7 @@ export function startNewHand(
         winnerPlayerId: winnerId,
         loserScore: lowestScore,
         payoutMultiplier: multiplier,
+        matchCompleteLatch: true,
       };
     }
   }

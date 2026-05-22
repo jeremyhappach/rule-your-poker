@@ -24,8 +24,9 @@ import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
-import { CribbageSkunkOverlay } from './CribbageSkunkOverlay';
-// CribbageWinnerAnnouncement removed - win message now in dealer banner area
+// Phase E: bespoke match-end UI retired in favor of canonical
+// `match_win` announcement. CribbageSkunkOverlay +
+// CribbageWinnerAnnouncement deleted.
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
@@ -1406,6 +1407,8 @@ export const CribbageMobileGameTable = ({
   // Prevent double scheduling of the win sequence before the 2s delay fires.
   const winSequenceScheduledRef = useRef<string | null>(null);
   // Source-level guard for skunk overlay to prevent double-firing per animation-trigger pattern.
+  // Phase E: skunkOverlayFiredRef retained as a no-op latch sentinel
+  // (kept to avoid wider diff; no longer guards bespoke overlay).
   const skunkOverlayFiredRef = useRef<string | null>(null);
   // Source-level guard for chip animation trigger to prevent double-firing
   const chipAnimationFiredRef = useRef<string | null>(null);
@@ -3096,19 +3099,28 @@ export const CribbageMobileGameTable = ({
       });
     }
 
-    // Start sequence - skunk overlay if applicable, otherwise straight to announcement
-    // Use source-level guard to prevent double-firing of skunk overlay
-    const skunkKey = `${winKey}-skunk-${multiplier}`;
-    if (multiplier >= 2 && skunkOverlayFiredRef.current !== skunkKey) {
-      skunkOverlayFiredRef.current = skunkKey;
-      setWinSequencePhase('skunk');
-    } else if (multiplier >= 2) {
-      // Already showed skunk, skip to announcement
-      setWinSequencePhase('announcement');
-    } else {
-      setWinSequencePhase('announcement');
-    }
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, injectDealerMessage, currentHandNumber]);
+    // Phase E: emit canonical `match_win` announcement. The bespoke
+    // skunk overlay is retired — the canonical renderer formats
+    // `skunk: 'single' | 'double'` into the title.
+    const skunkPayload: 'single' | 'double' | undefined =
+      multiplier >= 3 ? 'double' : multiplier >= 2 ? 'single' : undefined;
+    const winnerScoreVal = state.playerStates[winnerId]?.pegScore ?? 0;
+    const loserLowest = state.loserScore ?? Math.min(...loserIds.map(id => state.playerStates[id]?.pegScore ?? 0));
+    announcements.emit({
+      id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+      type: 'match_win',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: {
+        winnerName,
+        score: { winner: winnerScoreVal, loser: loserLowest },
+        skunk: skunkPayload,
+        amount: totalWinnings,
+      },
+    });
+    // Drop into 'announcement' phase; canonical TTL gates the chip animation.
+    setWinSequencePhase('announcement');
+
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
@@ -4347,10 +4359,9 @@ export const CribbageMobileGameTable = ({
     }
   }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber]);
 
-  // Win sequence phase handlers
-  const handleSkunkComplete = useCallback(() => {
-    setWinSequencePhase('announcement');
-  }, []);
+  // Phase E: handleSkunkComplete retired — skunk now rides inside the
+  // canonical match_win announcement, so the bespoke overlay phase is gone.
+
 
   const handleAnnouncementComplete = useCallback(() => {
     // Compute chip animation positions
@@ -4426,20 +4437,19 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [ensureBackendGameOverAck, onGameComplete]);
 
-  // Auto-transition from 'announcement' to 'chips' (banner-only winner message; don't stall the flow)
+  // Phase E: gate chip animation on canonical match_win TTL (4500ms)
+  // so the canonical announcement gets its full presentation window.
   useEffect(() => {
     if (winSequencePhase !== 'announcement') return;
-
-    // If we somehow don't have data yet, wait for it rather than calling handleAnnouncementComplete
-    // which would force-complete and potentially leave the UI in a confusing state.
     if (!winSequenceData) return;
 
     const timer = setTimeout(() => {
       handleAnnouncementComplete();
-    }, 50);
-    
+    }, 4500);
+
     return () => clearTimeout(timer);
   }, [winSequencePhase, winSequenceData, handleAnnouncementComplete]);
+
 
   // Safety timeout: If chip animation phase doesn't complete within 8 seconds, force transition
   // (animation is now ~4s + stagger, so 8s is safe)
@@ -4845,7 +4855,7 @@ export const CribbageMobileGameTable = ({
     if (!viewState) return '(no viewState)';
     if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return '(win overlay)';
     if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
-      return `${winSequenceData.winnerName} Wins! +$${winSequenceData.totalWinnings}`;
+      return '(canonical match_win)';
     }
     const isCountingAnimActive = !!countingStateSnapshot;
     const countingOutroActive = isCountingAnimActive && countingDelayActive;
@@ -4893,13 +4903,10 @@ export const CribbageMobileGameTable = ({
   // inside the felt circle to avoid unmount/remount flicker.
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      {/* Win Sequence Overlays - Portaled above everything (gameplay mode only) */}
-      {isGameplayMode && winSequencePhase === 'skunk' && winSequenceData && (
-        <CribbageSkunkOverlay
-          multiplier={winSequenceData.multiplier}
-          onComplete={handleSkunkComplete}
-        />
-      )}
+      {/* Phase E: canonical `match_win` announcement owns winner UI.
+          The 'skunk' win-sequence phase is retired — skunk semantics
+          ride inside the canonical announcement payload. */}
+
 
       {isGameplayMode && winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
         <CribbageChipTransferAnimation
@@ -5261,18 +5268,11 @@ export const CribbageMobileGameTable = ({
             const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
           
             if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
-            
-            if ((winSequencePhase === 'chips' || winSequencePhase === 'announcement') && winSequenceData) {
-              return (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {winSequenceData.winnerName} Wins{winSequenceData.multiplier === 2 ? ' (Skunk!)' : winSequenceData.multiplier === 3 ? ' (Double Skunk!)' : ''}! +${winSequenceData.totalWinnings}
-                  </p>
-                </div>
-              );
-            }
-            
-            if (winSequencePhase === 'chips' || winSequencePhase === 'announcement') return null;
+
+            // Phase E: bespoke winner banner retired. Canonical
+            // `match_win` announcement is the SOLE winner UI surface.
+            if (winSequencePhase === 'announcement' || winSequencePhase === 'chips') return null;
+
             
             const isPeggingEvent = effectiveLastEvent && (
               effectiveLastEvent.type === 'pegging_points' || 

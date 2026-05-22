@@ -15,7 +15,32 @@ function stubState(overrides: Partial<CribbageStateForProgress> & { handNumber?:
 
 describe('getCribbageProgress', () => {
   it('null state returns zero vector', () => {
-    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0]);
+    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+
+  // ── Phase E prereq: matchCompleteLatch top-bit ─────────────────
+
+  it('matchCompleteLatch is top-bit forward dimension', () => {
+    const inProgress = stubState({
+      handNumber: 5, phase: 'pegging',
+      pegging: { playedCards: new Array(8) },
+      playerStates: { p1: { pegScore: 100 }, p2: { pegScore: 90 } },
+    });
+    const completed = stubState({
+      handNumber: 1, phase: 'discarding', // earlier-looking on every other dim
+      matchCompleteLatch: true,
+    } as any);
+    // Latch dominates: completed > inProgress despite lower handNumber/phase.
+    expect(compareProgress(getCribbageProgress(inProgress), getCribbageProgress(completed))).toBe(1);
+  });
+
+  it('phase=complete implicitly sets matchLatch', () => {
+    const a = stubState({ phase: 'counting' });
+    const b = stubState({ phase: 'complete' });
+    const va = getCribbageProgress(a);
+    const vb = getCribbageProgress(b);
+    expect(va[0]).toBe(0);
+    expect(vb[0]).toBe(1);
   });
 
   // ── Phase C prereq: dealer-select dims ───────────────────────
@@ -41,8 +66,8 @@ describe('getCribbageProgress', () => {
   it('legacy (no cohort/resolved fields) snapshot is treated as resolved', () => {
     const legacy = stubState({ phase: 'dealing' });
     const vec = getCribbageProgress(legacy);
-    // [hand=1, cohort=0, resolved=1, phaseOrd=0, sub=0]
-    expect(vec).toEqual([1, 0, 1, 0, 0]);
+    // [matchLatch=0, hand=1, cohort=0, resolved=1, phaseOrd=0, sub=0]
+    expect(vec).toEqual([0, 1, 0, 1, 0, 0]);
   });
 
   it('discarding → cutting is forward', () => {
@@ -104,10 +129,12 @@ describe('getCribbageProgress', () => {
 
   // ── Hand boundary tests ──────────────────────────────────────
 
-  it('new hand after complete is forward progress', () => {
-    const completeHandN = stubState({
+  it('new hand after counting is forward progress', () => {
+    // NOTE: 'complete' is reserved for match-end (matchCompleteLatch top-bit).
+    // Between hands the lifecycle goes counting → discarding via startNewHand.
+    const countingHandN = stubState({
       handNumber: 1,
-      phase: 'complete',
+      phase: 'counting',
       pegging: { playedCards: new Array(8) },
       playerStates: { p1: { pegScore: 45 }, p2: { pegScore: 38 } },
     });
@@ -118,7 +145,7 @@ describe('getCribbageProgress', () => {
       playerStates: { p1: { pegScore: 45 }, p2: { pegScore: 38 } },
     });
     expect(compareProgress(
-      getCribbageProgress(completeHandN),
+      getCribbageProgress(countingHandN),
       getCribbageProgress(discardingHandN1),
     )).toBe(1);
   });
@@ -142,8 +169,9 @@ describe('getCribbageProgress', () => {
   // ── Multi-hand match continuity ──────────────────────────────
 
   it('three consecutive hands are monotonically forward', () => {
-    const h1Complete = stubState({
-      handNumber: 1, phase: 'complete',
+    // 'counting' is the inter-hand boundary phase; 'complete' is match-end.
+    const h1End = stubState({
+      handNumber: 1, phase: 'counting',
       pegging: { playedCards: new Array(8) },
       playerStates: { p1: { pegScore: 20 }, p2: { pegScore: 15 } },
     });
@@ -151,8 +179,8 @@ describe('getCribbageProgress', () => {
       handNumber: 2, phase: 'discarding',
       playerStates: { p1: { pegScore: 20 }, p2: { pegScore: 15 } },
     });
-    const h2Complete = stubState({
-      handNumber: 2, phase: 'complete',
+    const h2End = stubState({
+      handNumber: 2, phase: 'counting',
       pegging: { playedCards: new Array(8) },
       playerStates: { p1: { pegScore: 55 }, p2: { pegScore: 42 } },
     });
@@ -161,9 +189,9 @@ describe('getCribbageProgress', () => {
       playerStates: { p1: { pegScore: 55 }, p2: { pegScore: 42 } },
     });
 
-    expect(compareProgress(getCribbageProgress(h1Complete), getCribbageProgress(h2Start))).toBe(1);
-    expect(compareProgress(getCribbageProgress(h2Start), getCribbageProgress(h2Complete))).toBe(1);
-    expect(compareProgress(getCribbageProgress(h2Complete), getCribbageProgress(h3Start))).toBe(1);
+    expect(compareProgress(getCribbageProgress(h1End), getCribbageProgress(h2Start))).toBe(1);
+    expect(compareProgress(getCribbageProgress(h2Start), getCribbageProgress(h2End))).toBe(1);
+    expect(compareProgress(getCribbageProgress(h2End), getCribbageProgress(h3Start))).toBe(1);
   });
 
   // ── Pegging win (no counting phase) ──────────────────────────
@@ -203,6 +231,7 @@ describe('getCribbageProgress', () => {
   it('handles missing handNumber gracefully', () => {
     const noHand = stubState({ handNumber: undefined, phase: 'pegging' });
     const vec = getCribbageProgress(noHand);
-    expect(vec[0]).toBe(1);
+    // [matchLatch=0, handNumber=1 (default), ...]
+    expect(vec[1]).toBe(1);
   });
 });

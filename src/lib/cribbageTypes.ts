@@ -108,6 +108,17 @@ export interface CribbageState {
    * sequencing (`dealer_selected`) before Phase C surface migration.
    */
   dealerResolved?: boolean;
+
+  /**
+   * Phase E prerequisite: monotonic latch flipped to true the first
+   * time `phase === 'complete'` (match end). Provides a top-bit
+   * progress dimension so reconnecting clients cannot regress out of
+   * a terminal match snapshot, and so canonical `match_win`
+   * announcement sequencing has a presentation-safe identity to key
+   * on. Once true within a dealerGame, never flips back; reset only
+   * at dealerGame boundary by the next `initializeCribbageGame`.
+   */
+  matchCompleteLatch?: boolean;
 }
 
 // Scoring constants
