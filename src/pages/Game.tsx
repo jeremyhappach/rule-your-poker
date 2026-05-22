@@ -13,6 +13,7 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { AnnouncementRailSlot } from "@/lib/canonicalShell/announcements";
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
 import {
   SurfaceReadinessProvider,
