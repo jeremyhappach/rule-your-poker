@@ -261,7 +261,6 @@ export const CribbageMobileGameTable = ({
   },
   // Dealer selection props (from parent during cribbage_dealer_selection phase)
   dealerSelectionCards: externalDealerSelectionCards,
-  dealerSelectionAnnouncement: externalDealerSelectionAnnouncement,
   dealerSelectionWinnerPosition: externalDealerSelectionWinnerPosition,
   isDealerSelection = false,
 
