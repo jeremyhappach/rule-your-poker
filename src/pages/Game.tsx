@@ -35,7 +35,35 @@ import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 
 
-import { HighCardDealerSelection, DealerSelectionCard } from "@/components/HighCardDealerSelection";
+import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
+
+/**
+ * HighCardDealerSelection — Phase C.2 retirement shim.
+ *
+ * The standalone `HighCardDealerSelection.tsx` component was deleted in Phase
+ * C.2 (Cribbage canonical migration). All logic lives in
+ * `useHighCardDealerSelection`. This local wrapper exists ONLY so the three
+ * remaining session-level callsites below (pre-Cribbage neutral shell, plus
+ * Gin Rummy dealer-selection overlay) can keep their JSX shape unchanged
+ * while the hook does the work. Behavior-preserving: identical props,
+ * identical effects, identical mount/unmount semantics. No render output.
+ */
+type HighCardDealerSelectionShimProps = {
+  gameId: string;
+  players: Array<{ id: string; user_id: string; position: number; created_at?: string; profiles?: { username: string }; is_bot: boolean; sitting_out?: boolean }>;
+  onComplete: (dealerPosition: number) => void;
+  isHost: boolean;
+  allowBotDealers?: boolean;
+  selectionVariant?: 'default' | 'cribbage';
+  syncedState: DealerSelectionState | null;
+  onCardsUpdate: (cards: DealerSelectionCard[]) => void;
+  onAnnouncementUpdate: (message: string | null, isComplete: boolean) => void;
+  onWinnerPositionUpdate?: (position: number | null) => void;
+};
+const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
+  useHighCardDealerSelection(props);
+  return null;
+};
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
