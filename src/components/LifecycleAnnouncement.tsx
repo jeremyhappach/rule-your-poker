@@ -39,17 +39,18 @@ export const LifecycleAnnouncement = ({
   overlay = false,
 }: LifecycleAnnouncementProps) => {
   const plate = (
-    <div className="bg-gradient-to-br from-poker-felt to-poker-felt-dark rounded p-2 border-2 border-poker-gold shadow-xl animate-scale-in">
-      <p className="text-sm font-bold text-poker-gold text-center px-2 leading-tight">
+    <div className="bg-poker-gold/95 backdrop-blur-sm rounded-md px-4 py-1.5 shadow-xl border-2 border-amber-900 animate-scale-in max-w-[92vw]">
+      <p className="text-sm font-bold text-amber-950 text-center leading-tight">
         {title}
       </p>
       {subtitle && (
-        <p className="text-[10px] text-amber-200/80 text-center px-2 mt-0.5 leading-tight">
+        <p className="text-[11px] text-amber-900/85 text-center mt-0.5 leading-tight">
           {subtitle}
         </p>
       )}
     </div>
   );
+
 
   if (!overlay) return plate;
 
