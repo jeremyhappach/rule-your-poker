@@ -68,7 +68,15 @@ export function initializeCribbageGame(
   playerIds: string[],
   dealerPlayerId: string,
   anteAmount: number,
-  config?: CribbageGameConfig
+  config?: CribbageGameConfig,
+  /**
+   * Phase C prereq: dealer-selection identity dims, stamped at game-init
+   * so the progress-vector dimensions (`dealerSelectionCohort`,
+   * `dealerResolved`) carry signal across the dealer-select → discarding
+   * lifecycle boundary. `cohort` should be `(redrawCount)` — 0 if the
+   * dealer was decided on the first attempt, 1 after one tie redraw, etc.
+   */
+  identity?: { dealerSelectionCohort?: number; dealerResolved?: boolean },
 ): CribbageState {
   const playerCount = playerIds.length;
   const cardsPerPlayer = CARDS_PER_PLAYER[playerCount] || 6;
