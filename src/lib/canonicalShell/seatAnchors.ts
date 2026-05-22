@@ -22,7 +22,8 @@
  * (Holm, 3-5-7, Horses, SCC) ALWAYS preserve relative seating semantics
  * even when only two humans happen to be seated — additional players
  * may join and the seating model must remain semantically consistent.
- * Observer mode never canonicalizes.
+ * Observer mode canonicalizes only for inherently-2P games with exactly two active seats,
+ * mirroring the active ergonomic projection; otherwise it preserves absolute seating.
  *
  * Hidden seats never reflow others: an unoccupied or hidden position
  * simply yields a null anchor — the perimeter geometry is fixed.

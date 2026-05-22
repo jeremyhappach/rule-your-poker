@@ -24,6 +24,9 @@ import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
+import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
+import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
@@ -80,6 +83,8 @@ interface Player {
   chips: number;
   is_bot?: boolean;
   sitting_out?: boolean;
+  waiting?: boolean;
+  status?: string;
   profiles?: { username: string };
 }
 
@@ -1443,13 +1448,35 @@ export const CribbageMobileGameTable = ({
   // Track if we've logged the cut card for this hand
   const cutCardLoggedRef = useRef<string | null>(null);
 
-  const currentPlayer = players.find(p => p.user_id === currentUserId);
+  const viewStateParticipantIds = viewState
+    ? new Set(Object.keys(viewState.playerStates ?? {}))
+    : null;
+  const isSeatedGamePlayer = useCallback((player: Player) => {
+    if (player.status === 'observer' || player.status === 'left') return false;
+    if (player.sitting_out || player.waiting) return false;
+    return true;
+  }, []);
+  const activeSeatPlayers = viewStateParticipantIds
+    ? players.filter(player => viewStateParticipantIds.has(player.id))
+    : players.filter(isSeatedGamePlayer);
+  const currentPlayer = activeSeatPlayers.find(p => p.user_id === currentUserId);
   const currentPlayerId = currentPlayer?.id;
   // OBSERVER SUPPORT: viewers who are not seated in this dealer game have no
   // currentPlayerId. They must still see the gameplay surface (cards face-down,
   // pegboard, peg sequence). Mirror Gin Rummy's `isObserver = !currentPlayerId`
   // gate so the bootstrap shell does not perpetually swallow observer renders.
   const isObserver = !currentPlayerId;
+  const shellAnchors = useSeatAnchorsOptional();
+  const playerSlotById = useMemo(() => {
+    const slotByPosition = shellAnchors
+      ? new Map<number, CanonicalSlot | null>(
+          shellAnchors.anchors.map(a => [a.position, a.slot]),
+        )
+      : new Map<number, CanonicalSlot | null>();
+    return new Map<string, CanonicalSlot | null>(
+      activeSeatPlayers.map(player => [player.id, slotByPosition.get(player.position) ?? null]),
+    );
+  }, [activeSeatPlayers, shellAnchors]);
   
   // Derive sequenceStartIndex from state - this is authoritative and survives missed realtime updates
   const dbSequenceStartIndex = cribbageState?.pegging?.sequenceStartIndex ?? 0;
@@ -4649,9 +4676,10 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(safetyTimer);
   }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
 
-  // ── BUG A FIX: Compute opponents and helpers BEFORE any render branches ──
-  // This ensures all branches share the same opponent data and layout.
-  const opponents = players.filter(p => p.user_id !== currentUserId);
+  // Canonical projected seat roster. Every active participant renders from
+  // the shell-owned SeatAnchorLayer so chips, dealer pips, card backs, and
+  // animation endpoints share one projected anchor map on active + observer clients.
+  const projectedSeatPlayers = activeSeatPlayers;
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
   // Determine current render mode for felt content (not layout — layout is always the same shell)
@@ -5266,10 +5294,10 @@ export const CribbageMobileGameTable = ({
                 {/* Turn Spotlight */}
                 <CribbageTurnSpotlight
                   currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-                  currentPlayerId={currentPlayerId}
+                  currentPlayerId={currentPlayerId || ''}
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                  totalPlayers={players.length}
-                  opponentIds={opponents.map(o => o.id)}
+                  totalPlayers={activeSeatPlayers.length}
+                  opponentIds={projectedSeatPlayers.map(o => o.id)}
                 />
 
                 {/* Game Title */}
@@ -5318,85 +5346,30 @@ export const CribbageMobileGameTable = ({
                   />
                 )}
 
-                {/* Dealer button at bottom */}
-                {currentPlayer && isCribDealer(currentPlayerId) && (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
-                    <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-                      <span className="text-white font-bold text-[10px]">D</span>
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
 
-          {/* ═══════ UNIFIED OPPONENT OVERLAY — same layout for ALL modes ═══════ */}
+          {/* ═══════ PROJECTED SEAT OVERLAY — shell anchors drive all seat chrome ═══════ */}
           <div className="absolute inset-0 z-50 pointer-events-none">
-            {opponents.map((opponent, index) => {
+            {projectedSeatPlayers.map((seatPlayer) => {
               // During gameplay, read card data from viewState; otherwise no cards shown
-              const oppState = isGameplayMode && viewState ? viewState.playerStates[opponent.id] : null;
-              const isDealerPlayer = isGameplayMode ? isCribDealer(opponent.id) : false;
-              const totalOpponents = opponents.length;
-              
-              let positionClasses: string;
-              let alignmentClasses: string;
-              
-              if (totalOpponents === 1) {
-                positionClasses = 'top-14 left-6';
-                alignmentClasses = 'items-start';
-              } else if (totalOpponents === 2) {
-                if (index === 0) {
-                  positionClasses = 'top-14 left-6';
-                  alignmentClasses = 'items-start';
-                } else {
-                  positionClasses = 'top-14 right-6';
-                  alignmentClasses = 'items-end';
-                }
-              } else {
-                if (index === 0) {
-                  positionClasses = 'top-14 left-6';
-                  alignmentClasses = 'items-start';
-                } else if (index === 1) {
-                  positionClasses = 'top-14 right-6';
-                  alignmentClasses = 'items-end';
-                } else {
-                  positionClasses = 'bottom-44 right-6';
-                  alignmentClasses = 'items-end';
-                }
-              }
+              const seatState = isGameplayMode && viewState ? viewState.playerStates[seatPlayer.id] : null;
+              const slot = playerSlotById.get(seatPlayer.id) ?? null;
+              const showSeatCardBacks = isObserver || seatPlayer.id !== currentPlayerId;
 
               return (
-                <div 
-                  key={opponent.id} 
-                  className={`absolute flex flex-col ${positionClasses} ${alignmentClasses}`}
+                <CanonicalSeatCluster
+                  key={seatPlayer.id}
+                  slot={slot}
+                  position={seatPlayer.position}
+                  name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
+                  isDealer={isGameplayMode ? isCribDealer(seatPlayer.id) : false}
+                  chipValue={`$${formatChipValue(seatPlayer.chips)}`}
                 >
-                  {/* Chip circle row */}
-                  <div className={`flex items-center gap-1.5 ${index > 0 && totalOpponents >= 2 && index === totalOpponents - 1 ? 'flex-row-reverse' : ''}`}>
-                    <div className="relative">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
-                        <span className="text-[10px] font-bold text-slate-900">
-                          ${formatChipValue(opponent.chips)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Name */}
-                    <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
-                      {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
-                    </span>
-
-                    {/* Dealer button inline — only during gameplay */}
-                    {isDealerPlayer && (
-                      <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                        <span className="text-white font-bold text-[7px]">D</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Opponent's cards (face down) — only during gameplay with card data */}
-                  {oppState && oppState.hand.length > 0 && (
-                    <div className={`flex -space-x-1.5 mt-1 ${alignmentClasses === 'items-end' ? 'justify-end mr-1' : alignmentClasses === 'items-center' ? 'justify-center' : 'ml-1'}`}>
-                      {oppState.hand.map((_, i) => (
+                  {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
+                    <div className="flex -space-x-1.5 mt-1 justify-center">
+                      {seatState.hand.map((_, i) => (
                         <div 
                           key={i} 
                           className="w-4 h-6 rounded-sm border border-white/20"
@@ -5407,7 +5380,7 @@ export const CribbageMobileGameTable = ({
                       ))}
                     </div>
                   )}
-                </div>
+                </CanonicalSeatCluster>
               );
             })}
           </div>
