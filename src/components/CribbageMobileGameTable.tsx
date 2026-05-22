@@ -4862,7 +4862,7 @@ export const CribbageMobileGameTable = ({
     if (effectivePhase === 'discarding') return 'Discard to Crib';
     if (effectivePhase === 'cutting') return 'Cut Card';
     return '(pegging/none)';
-  }, [isHighCardMode, isBootstrapMode, shouldShowAwaitingAnteAnnouncement, viewState, winSequencePhase, winSequenceData, countingStateSnapshot, countingDelayActive, postCountingTransitionActive, countingAnnouncement, countingTargetLabel, effectiveHighCardAnnouncement]);
+  }, [isHighCardMode, isBootstrapMode, shouldShowAwaitingAnteAnnouncement, viewState, winSequencePhase, winSequenceData, countingStateSnapshot, countingDelayActive, postCountingTransitionActive, countingAnnouncement, countingTargetLabel]);
 
   const prevBannerTextRef = useRef<string | null>(null);
   useEffect(() => {
