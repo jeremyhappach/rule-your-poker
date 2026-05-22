@@ -34,6 +34,11 @@ import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
+import {
+  CanonicalAnnouncementProvider,
+  CanonicalAnnouncementLayer,
+  CanonicalAnnouncementDebugTrigger,
+} from './announcements';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
@@ -132,6 +137,16 @@ export function PersistentTableShell({
           CanonicalFeltSurface inside their own table region. */}
       <div style={{ position: 'relative', zIndex: 1 }}>{children}</div>
 
+      {/* Canonical announcement layer — shell-owned single render
+          surface. Sits above slot/game content (z:70) and below the
+          shell-owned overlay root (z:80) and modal overlays. Pointer-
+          events:none — visual-only, never blocks interaction. */}
+      <CanonicalAnnouncementLayer />
+      <CanonicalAnnouncementDebugTrigger
+        dealerGameId={gameId ?? null}
+        roundId={null}
+      />
+
       {/* Shell-owned pot anchor — zero size, centered in shell-root.
           Invisible to users. Consumed by chipEndpoints resolver. */}
       <div
@@ -168,7 +183,12 @@ export function PersistentTableShell({
 
   const wrapped = (
     <ChipTransportProvider gameId={gameId ?? null} gameType={gameType ?? null}>
-      {body}
+      <CanonicalAnnouncementProvider
+        dealerGameId={gameId ?? null}
+        roundId={null}
+      >
+        {body}
+      </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
 
