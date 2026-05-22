@@ -2747,10 +2747,22 @@ export const CribbageMobileGameTable = ({
     setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
 
-    // Initialize the game with the winner as dealer
+    // Initialize the game with the winner as dealer.
+    // Phase C prereq: stamp dealerSelectionCohort + dealerResolved so the
+    // sync framework progress vector advances cleanly across the
+    // dealer-select → discarding boundary (incl. tie redraws).
     hasInitializedRef.current = true;
     const playerIds = players.map(p => p.id);
-    const newState = initializeCribbageGame(playerIds, winnerPlayer.id, anteAmount, gameConfig);
+    const newState = initializeCribbageGame(
+      playerIds,
+      winnerPlayer.id,
+      anteAmount,
+      gameConfig,
+      {
+        dealerSelectionCohort: dealerSelectionCohortDerived,
+        dealerResolved: true,
+      },
+    );
 
     await supabase
       .from('rounds')
