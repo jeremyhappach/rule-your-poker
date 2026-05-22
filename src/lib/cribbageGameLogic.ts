@@ -605,45 +605,13 @@ function advanceToNextPeggingTurn(state: CribbageState): CribbageState {
     }
   }
   
-  // If everyone else with cards has already called go, the current player (lastToPlay)
-  // is entitled to the +1 Go point before the run resets. This is the standard cribbage
-  // "go" resolution: opponent says Go, you play any remaining playable cards, then
-  // collect 1 for Go (or 2 if you hit 31 — handled separately in playPeggingCard).
-  const lastToPlayId = state.pegging.lastToPlay;
-  let stateForReset: CribbageState = state;
-  if (lastToPlayId && state.pegging.currentCount !== 31 && state.pegging.currentCount > 0) {
-    const lastPlayer = state.playerStates[lastToPlayId];
-    if (lastPlayer) {
-      const newScore = lastPlayer.pegScore + 1;
-      stateForReset = {
-        ...state,
-        playerStates: {
-          ...state.playerStates,
-          [lastToPlayId]: { ...lastPlayer, pegScore: newScore },
-        },
-        lastEvent: {
-          id: generateUUID(),
-          type: 'go_point',
-          playerId: lastToPlayId,
-          points: 1,
-          label: 'Go',
-          createdAt: new Date().toISOString(),
-          count: state.pegging.currentCount,
-        },
-      };
-      if (newScore >= stateForReset.pointsToWin) {
-        return endGame(stateForReset, lastToPlayId);
-      }
-    }
-  }
-  
-  const resetState = beginNewPeggingRun(stateForReset, lastToPlayId);
+  // PRE-FIX SIMULATION (temporary) — silent reset, no +1 awarded.
+  const resetState = beginNewPeggingRun(state, state.pegging.lastToPlay);
   if (resetState.pegging.currentTurnPlayerId) {
     return resetState;
   }
-  
-  // All cards played - advance to counting
-  return advanceToCounting(stateForReset);
+  return advanceToCounting(state);
+
 
 }
 
