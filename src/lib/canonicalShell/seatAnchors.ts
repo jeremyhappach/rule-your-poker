@@ -183,15 +183,18 @@ export function resolveSeatAnchors(
     activeOccupied.some(s => s.position === viewerPosition);
 
   // Observer canonicalization for inherently-2P games:
-  // Top-center collides with shell chrome (title plate, score rails,
-  // chip bubble stack). For observer utility (primarily joining the
-  // next hand), readability beats literal absolute seating. Project
-  // the lower-positioned seat to HOME (bottom-center) and the higher
-  // to slot 2 (upper-left), matching legacy Gin/Cribbage layout.
+  // Mirror the active-canonical projection so observer geometry matches
+  // what seated players see. Lower-positioned seat → HOME; opponent →
+  // the same slot active-canonical would use (Gin → slot 2 / upper-left
+  // to avoid top-center shell chrome collision; Cribbage/Yahtzee →
+  // FACE_TO_FACE top-center).
   const canCanonicalize2pObserver =
     projectionMode === 'observer-absolute' &&
     isTwoPlayerGameType &&
     activeOccupied.length === 2;
+
+  const observerOpponentSlot: CanonicalSlot =
+    isGinRummyGameType(gameType) ? 2 : SLOT.FACE_TO_FACE;
 
   const sorted2pPositions = canCanonicalize2pObserver
     ? [...activeOccupied].map(s => s.position).sort((a, b) => a - b)
@@ -229,14 +232,15 @@ export function resolveSeatAnchors(
               detail: {
                 mode: 'observer',
                 position: seat.position,
-                projectedSlot: 2,
-                reason: 'observer-2p-ergonomic-layout',
+                projectedSlot: observerOpponentSlot,
+                reason: 'observer-2p-mirror-active-projection',
               },
             });
           }
-          return { position: seat.position, slot: 2, canonicalized2p: true };
+          return { position: seat.position, slot: observerOpponentSlot, canonicalized2p: true };
         }
       }
+
       return {
         position: seat.position,
         slot: observerSlotForPosition(seat.position),
