@@ -718,6 +718,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const [chuckyLossTriggerId, setChuckyLossTriggerId] = useState<string | null>(null);
   const [chuckyLossAmount, setChuckyLossAmount] = useState<number>(0);
   const [chuckyLossPlayerIds, setChuckyLossPlayerIds] = useState<string[]>([]);
+
+  // OBSERVER REPLAY FIX: Clear any pending ante animation trigger whenever the
+  // game leaves the ante_decision phase. Without this, a triggerId set during a
+  // prior game-type's ante (e.g. Gin Rummy, which renders GinRummyGameTable —
+  // no AnteUpAnimation child to consume + clear the trigger) survives in parent
+  // state until the next game-type mounts MobileGameTable, at which point the
+  // freshly-constructed AnteUpAnimation consumes the stale trigger as if it had
+  // just fired. The next game (Holm) then sets its own real trigger → user sees
+  // two ante animations on the observer client. The active player only avoids
+  // this because their leader-only reset paths (handleGameOverComplete /
+  // handleGameTypeSelect) happen to clear `anteAnimationFiredRef` and re-render
+  // before the stale trigger can be consumed; observers run none of those.
+  // Clearing on phase transition guarantees no stale trigger can be replayed by
+  // a remount, regardless of which client we are.
+  useEffect(() => {
+    const status = game?.status;
+    if (
+      status === 'game_over' ||
+      status === 'dealer_selection' ||
+      status === 'game_selection' ||
+      status === 'configuring'
+    ) {
+      setAnteAnimationTriggerId(null);
+      setAnteAnimationExpectedPot(null);
+      setPreAnteChips(null);
+      setExpectedPostAnteChips(null);
+    }
+  }, [game?.status]);
+
   
   // Holm multi-player showdown animation state (pot-to-winner, then losers-to-pot)
   const [holmShowdownTriggerId, setHolmShowdownTriggerId] = useState<string | null>(null);
