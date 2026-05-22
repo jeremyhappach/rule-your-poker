@@ -15,6 +15,7 @@ import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 // startCribbageRound is now called from Game.tsx after dealer selection completes
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
+import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
 
 // P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
 // This identifies which client/code-path creates new dealer_games mid-session
@@ -676,6 +677,7 @@ export const DealerGameSetup = ({
             
             const dealerGameId = dealerGame.id;
             logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-dice', { dealerPlayerId, dealerUserId, ante: parsedAnte });
+            await sanitizePlayersForNewDealerGame(gameId);
             
             const { error } = await supabase
               .from('games')
@@ -765,6 +767,7 @@ export const DealerGameSetup = ({
             
             const dealerGameId = dealerGame.id;
             logDealerGameCreated(gameId, previousGameType, dealerGameId, 'bot-dealer-run-it-back-card', { dealerPlayerId, dealerUserId });
+            await sanitizePlayersForNewDealerGame(gameId);
             
             const updateData: any = {
               game_type: previousGameType,
@@ -872,6 +875,7 @@ export const DealerGameSetup = ({
             
             const dealerGameId = dealerGame.id;
             logDealerGameCreated(gameId, gameType, dealerGameId, 'bot-dealer-defaults', { dealerPlayerId, dealerUserId });
+            await sanitizePlayersForNewDealerGame(gameId);
             
             const updateData: any = {
               game_type: gameType,
@@ -1024,6 +1028,7 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-dice-or-holm', { dealerPlayerId, dealerUserId });
+    await sanitizePlayersForNewDealerGame(gameId);
     
     const updateData: any = {
       game_type: gameTypeToSubmit,
@@ -1325,6 +1330,7 @@ export const DealerGameSetup = ({
     
     const dealerGameId = dealerGame.id;
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
+    await sanitizePlayersForNewDealerGame(gameId);
     if (isGinRummy) {
       console.log('[GIN_RUNTIME_TIMELINE] dealer game creation:inserted', {
         t: Date.now(),
