@@ -97,3 +97,23 @@ export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
 export function isAmbientBehavior(b: AnnouncementBehavior | undefined): boolean {
   return b === 'ambient' || b === 'replace';
 }
+
+/**
+ * Celebration-tier announcement types.
+ *
+ * Rendered by the shell-owned CanonicalCelebrationLayer as a centered
+ * overlay surface (not the 36px lifecycle rail). The rail-mounted
+ * CanonicalAnnouncementLayer skips these types so a celebration event
+ * never occupies the lifecycle messaging slot.
+ *
+ * Currently: match_win only. Add round-tier celebrations here when
+ * their visual class is promoted out of lifecycle messaging.
+ */
+export const CELEBRATION_TYPES: ReadonlySet<AnnouncementType> = new Set<AnnouncementType>([
+  'match_win',
+]);
+
+export function isCelebrationType(t: AnnouncementType | undefined | null): boolean {
+  return !!t && CELEBRATION_TYPES.has(t);
+}
+
