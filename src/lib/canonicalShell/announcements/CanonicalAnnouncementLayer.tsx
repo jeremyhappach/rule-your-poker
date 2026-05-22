@@ -23,10 +23,13 @@ export function CanonicalAnnouncementLayer() {
       aria-live="polite"
       style={{
         position: 'absolute',
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
+        paddingTop: 8,
         zIndex: 70,
         pointerEvents: 'none',
       }}
