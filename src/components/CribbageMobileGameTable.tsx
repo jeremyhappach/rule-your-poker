@@ -608,6 +608,96 @@ export const CribbageMobileGameTable = ({
   const effectiveHighCardAnnouncement = isDealerSelection ? externalDealerSelectionAnnouncement : highCardAnnouncement;
   const effectiveHighCardWinnerPosition = isDealerSelection ? externalDealerSelectionWinnerPosition : highCardWinnerPosition;
 
+  // ── Phase C: canonical dealer-selection announcements ────────────────────
+  // Derive (cohort, tie) from the authoritative card stream:
+  //   cohort = max(card.roundNumber) - 1 (0-indexed: 0 = first attempt)
+  //   tie    = current cohort has multiple top-rank cards still un-dimmed
+  //            and no winner has resolved.
+  // Identity-stable id keeps the ambient announcement deduped per cohort.
+  const dealerSelectionCohortDerived = useMemo(() => {
+    if (effectiveHighCardCards.length === 0) return 0;
+    let maxRound = 1;
+    for (const c of effectiveHighCardCards) {
+      if (c.roundNumber > maxRound) maxRound = c.roundNumber;
+    }
+    return Math.max(0, maxRound - 1);
+  }, [effectiveHighCardCards]);
+
+  const dealerSelectionTieDerived = useMemo(() => {
+    if (effectiveHighCardCards.length === 0) return false;
+    if (effectiveHighCardWinnerPosition !== null) return false;
+    const currentCohortRound = dealerSelectionCohortDerived + 1;
+    const cohortCards = effectiveHighCardCards.filter(
+      (c) => c.roundNumber === currentCohortRound && !c.isDimmed,
+    );
+    return cohortCards.length >= 2;
+  }, [effectiveHighCardCards, effectiveHighCardWinnerPosition, dealerSelectionCohortDerived]);
+
+  const announcements = useAnnouncements();
+  const announcedDealerResolvedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!gameId) return;
+    // Ambient: only while in high-card mode AND dealer not yet resolved.
+    if (isHighCardMode && effectiveHighCardWinnerPosition === null) {
+      const id = `${gameId}:dealer-selection:${dealerSelectionCohortDerived}`;
+      announcements.emit({
+        id,
+        type: 'dealer_selection_in_progress',
+        scope: { dealerGameId: gameId },
+        payload: {
+          cohort: dealerSelectionCohortDerived,
+          tie: dealerSelectionTieDerived,
+        },
+      });
+      return;
+    }
+    // Out of high-card mode → tear down ambient.
+    if (!isHighCardMode) {
+      announcements.clearAmbient();
+      announcedDealerResolvedRef.current = null;
+      return;
+    }
+    // High-card mode AND winner resolved: emit transient `dealer_selected`
+    // exactly once per (gameId, cohort, winnerPosition).
+    if (effectiveHighCardWinnerPosition !== null) {
+      const winnerPlayer = players.find((p) => p.position === effectiveHighCardWinnerPosition);
+      if (!winnerPlayer) return;
+      const winnerCard = effectiveHighCardCards
+        .filter((c) => c.position === effectiveHighCardWinnerPosition && !c.isDimmed)
+        .slice(-1)[0];
+      const cardLabel = winnerCard
+        ? `${winnerCard.card.rank}${winnerCard.card.suit}`
+        : '';
+      const id = `${gameId}:dealer-selected:${dealerSelectionCohortDerived}:${effectiveHighCardWinnerPosition}`;
+      if (announcedDealerResolvedRef.current === id) return;
+      announcedDealerResolvedRef.current = id;
+      announcements.clearAmbient();
+      announcements.emit({
+        id,
+        type: 'dealer_selected',
+        scope: { dealerGameId: gameId },
+        payload: {
+          dealerName: getDisplayName(
+            players,
+            winnerPlayer,
+            winnerPlayer.profiles?.username || `Seat ${effectiveHighCardWinnerPosition}`,
+          ),
+          cardLabel,
+        },
+      });
+    }
+  }, [
+    gameId,
+    isHighCardMode,
+    effectiveHighCardWinnerPosition,
+    dealerSelectionCohortDerived,
+    dealerSelectionTieDerived,
+    effectiveHighCardCards,
+    players,
+    announcements,
+  ]);
+
   // ── BUG-A TRACE: correlation id for session→dealer-game transition ──
   const hcTransitionIdRef = useRef<string>(crypto.randomUUID().slice(0, 8));
   // Rotate correlation id when isDealerSelection flips (observation only)
