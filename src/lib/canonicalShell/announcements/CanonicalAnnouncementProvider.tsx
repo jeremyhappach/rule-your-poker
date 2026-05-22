@@ -1,22 +1,32 @@
 /**
  * CanonicalAnnouncementProvider — shell-owned announcement orchestration.
  *
- * Responsibilities:
- *   - Receives semantic events via `emit()` (see useAnnouncements).
- *   - Scoped, boundary-aware dedupe — NOT a forever-seen Map.
- *     Seen-ids are bucketed by current (dealerGameId, roundId) scope
- *     and dropped when the scope changes.
- *   - Queue with priority preemption: higher-priority events become
- *     active immediately, displacing the current visible event.
- *     Replaced events are NOT requeued (preemption, not interruption).
- *   - 'replace' behavior for stateful types (waiting/configuring): a
- *     new event of the same type updates in place instead of stacking.
- *   - Boundary teardown: when shell scope (dealerGameId or roundId)
- *     changes, drop any queued/active events whose scope no longer
- *     matches, AND reset the seen-id buckets for the departing scope.
+ * Two-track model:
  *
- * Scope source: derived from PersistentTableShell context (gameId =
- * dealerGameId). Game.tsx is NOT involved — provider is shell-owned.
+ *  Transient track:
+ *    - Priority queue of discrete event bursts (match_win, round_win,
+ *      chip_award). Higher priority preempts current transient (preempted
+ *      transient is dropped, not requeued).
+ *    - Auto-dismissed by TTL; on dismiss, next transient promotes.
+ *    - Scoped, boundary-aware dedupe by event id (NOT a forever Map).
+ *
+ *  Ambient track:
+ *    - Single slot for persistent contextual state (dealer_configuring,
+ *      waiting_for_*, dealer_selection_in_progress).
+ *    - Latest ambient replaces prior ambient (no stacking).
+ *    - No TTL — persists until superseded, explicitly cleared, or
+ *      scope boundary teardown.
+ *    - Transient events render OVER ambient. When transient ends,
+ *      ambient is still there and renders again — observers never
+ *      stare at unexplained felt.
+ *
+ * Boundary teardown:
+ *    When shell scope (dealerGameId or roundId) changes, drop active /
+ *    queued / ambient events whose scope no longer matches, and reset
+ *    the seen-id dedupe buckets for departing scopes.
+ *
+ * Scope source: derived from PersistentTableShell (gameId =
+ * dealerGameId). Game.tsx is not involved — provider is shell-owned.
  */
 
 import {
@@ -33,6 +43,8 @@ import {
   DEFAULT_BEHAVIOR,
   DEFAULT_PRIORITY,
   DEFAULT_TTL_MS,
+  isAmbientBehavior,
+  type AnnouncementBehavior,
   type AnnouncementEvent,
   type AnnouncementScope,
   type AnnouncementType,
@@ -40,29 +52,33 @@ import {
 
 interface ResolvedAnnouncement extends AnnouncementEvent {
   resolvedPriority: number;
-  resolvedBehavior: 'enqueue' | 'replace';
+  resolvedBehavior: AnnouncementBehavior;
   enqueuedAt: number;
 }
 
 interface AnnouncementContextValue {
+  /** Currently visible event — transient (if any) wins, else ambient. */
   active: ResolvedAnnouncement | null;
+  /** Underlying ambient state, exposed for diagnostics/tests. */
+  ambient: ResolvedAnnouncement | null;
+  /** Currently visible transient burst, if any. */
+  transient: ResolvedAnnouncement | null;
   emit: (event: AnnouncementEvent) => void;
   dismiss: (id: string) => void;
   clearScope: (scope: AnnouncementScope) => void;
+  /** Explicitly clear ambient (e.g. game leaves a passive phase). */
+  clearAmbient: (type?: AnnouncementType) => void;
 }
 
 const AnnouncementContext = createContext<AnnouncementContextValue | null>(null);
 
 export interface CanonicalAnnouncementProviderProps {
-  /** Current dealerGameId from shell. null = no active dealer game. */
   dealerGameId?: string | null;
-  /** Optional roundId for round-scoped dedupe. */
   roundId?: string | null;
   children: ReactNode;
 }
 
 function scopeMatches(eventScope: AnnouncementScope, current: AnnouncementScope): boolean {
-  // Event with no scope keys is ambient — survives all boundaries.
   const wantsDealer = eventScope.dealerGameId !== undefined;
   const wantsRound = eventScope.roundId !== undefined;
   if (!wantsDealer && !wantsRound) return true;
@@ -72,11 +88,12 @@ function scopeMatches(eventScope: AnnouncementScope, current: AnnouncementScope)
 }
 
 function resolve(event: AnnouncementEvent): ResolvedAnnouncement {
+  const behavior = event.behavior ?? DEFAULT_BEHAVIOR[event.type] ?? 'enqueue';
   return {
     ...event,
     resolvedPriority: event.priority ?? DEFAULT_PRIORITY[event.type] ?? 0,
-    resolvedBehavior: event.behavior ?? DEFAULT_BEHAVIOR[event.type] ?? 'enqueue',
-    ttlMs: event.ttlMs ?? DEFAULT_TTL_MS[event.type],
+    resolvedBehavior: behavior,
+    ttlMs: isAmbientBehavior(behavior) ? undefined : event.ttlMs ?? DEFAULT_TTL_MS[event.type],
     enqueuedAt: Date.now(),
   };
 }
@@ -91,19 +108,21 @@ export function CanonicalAnnouncementProvider({
     [dealerGameId, roundId],
   );
 
-  // Queue (excluding the active event). Sorted by priority on insert.
+  // --- Transient track ---
   const queueRef = useRef<ResolvedAnnouncement[]>([]);
-  const [active, setActive] = useState<ResolvedAnnouncement | null>(null);
-
-  // Scoped seen-id buckets. Key = scope signature.
-  // When scope changes, the OLD bucket is discarded, so re-emits of the
-  // same id under a new scope are NOT deduped.
-  const seenRef = useRef<Map<string, Set<string>>>(new Map());
+  const [transient, setTransient] = useState<ResolvedAnnouncement | null>(null);
   const ttlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const scopeKey = useCallback((s: AnnouncementScope) => {
-    return `${s.dealerGameId ?? 'null'}::${s.roundId ?? 'null'}`;
-  }, []);
+  // --- Ambient track ---
+  const [ambient, setAmbient] = useState<ResolvedAnnouncement | null>(null);
+
+  // --- Scoped dedupe (transient only) ---
+  const seenRef = useRef<Map<string, Set<string>>>(new Map());
+
+  const scopeKey = useCallback(
+    (s: AnnouncementScope) => `${s.dealerGameId ?? 'null'}::${s.roundId ?? 'null'}`,
+    [],
+  );
 
   const clearTtl = useCallback(() => {
     if (ttlTimerRef.current) {
@@ -112,117 +131,77 @@ export function CanonicalAnnouncementProvider({
     }
   }, []);
 
-  const promoteNext = useCallback(() => {
+  const armTtl = useCallback((next: ResolvedAnnouncement) => {
+    if (!next.ttlMs || next.ttlMs <= 0) return;
+    const id = next.id;
+    ttlTimerRef.current = setTimeout(() => {
+      ttlTimerRef.current = null;
+      setTransient((cur) => {
+        if (cur && cur.id === id) {
+          queueMicrotask(promoteNextTransient);
+          return null;
+        }
+        return cur;
+      });
+    }, next.ttlMs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const promoteNextTransient = useCallback(() => {
     clearTtl();
     const queue = queueRef.current;
-    // Drop any queued events whose scope is no longer current.
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       queue.shift();
     }
     const next = queue.shift() ?? null;
-    setActive(next);
-    if (next?.ttlMs && next.ttlMs > 0) {
-      const id = next.id;
-      ttlTimerRef.current = setTimeout(() => {
-        ttlTimerRef.current = null;
-        setActive((cur) => {
-          if (cur && cur.id === id) {
-            // Promote next on next tick to avoid setState-in-setState.
-            queueMicrotask(promoteNext);
-            return null;
-          }
-          return cur;
-        });
-      }, next.ttlMs);
-    }
-  }, [clearTtl, currentScope]);
+    setTransient(next);
+    if (next) armTtl(next);
+  }, [clearTtl, currentScope, armTtl]);
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
-      // Reject events whose scope is already stale.
-      if (!scopeMatches(event.scope, currentScope)) {
-        return;
-      }
+      if (!scopeMatches(event.scope, currentScope)) return;
       const resolved = resolve(event);
 
-      // Scoped dedupe.
+      // ---- Ambient path: dedicated slot, replaces prior ambient. ----
+      if (isAmbientBehavior(resolved.resolvedBehavior)) {
+        setAmbient((prev) => {
+          // Same id refresh → keep existing (idempotent no-op for identity).
+          if (prev && prev.id === resolved.id && prev.type === resolved.type) {
+            // Update payload if changed.
+            return { ...prev, ...resolved };
+          }
+          return resolved;
+        });
+        return;
+      }
+
+      // ---- Transient path: scoped dedupe + priority queue. ----
       const bucketKey = scopeKey(currentScope);
       let bucket = seenRef.current.get(bucketKey);
       if (!bucket) {
         bucket = new Set();
         seenRef.current.set(bucketKey, bucket);
       }
-      if (bucket.has(event.id)) {
-        // Already seen in this scope — idempotent no-op.
-        return;
-      }
+      if (bucket.has(event.id)) return; // idempotent
       bucket.add(event.id);
 
-      // Replace behavior: collapse same-type entries.
-      if (resolved.resolvedBehavior === 'replace') {
-        queueRef.current = queueRef.current.filter((q) => q.type !== resolved.type);
-        if (active && active.type === resolved.type) {
-          // Update active in place if same type.
-          clearTtl();
-          setActive(resolved);
-          if (resolved.ttlMs && resolved.ttlMs > 0) {
-            const id = resolved.id;
-            ttlTimerRef.current = setTimeout(() => {
-              ttlTimerRef.current = null;
-              setActive((cur) => {
-                if (cur && cur.id === id) {
-                  queueMicrotask(promoteNext);
-                  return null;
-                }
-                return cur;
-              });
-            }, resolved.ttlMs);
-          }
-          return;
-        }
-      }
-
-      // Priority preemption: if higher-priority than active, displace.
-      if (active && resolved.resolvedPriority > active.resolvedPriority) {
+      // Preempt current transient if higher priority.
+      if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
         clearTtl();
-        // Active is dropped (preempted) — not requeued.
-        setActive(resolved);
-        if (resolved.ttlMs && resolved.ttlMs > 0) {
-          const id = resolved.id;
-          ttlTimerRef.current = setTimeout(() => {
-            ttlTimerRef.current = null;
-            setActive((cur) => {
-              if (cur && cur.id === id) {
-                queueMicrotask(promoteNext);
-                return null;
-              }
-              return cur;
-            });
-          }, resolved.ttlMs);
-        }
+        setTransient(resolved);
+        armTtl(resolved);
         return;
       }
 
-      // No active → become active.
-      if (!active) {
-        setActive(resolved);
-        if (resolved.ttlMs && resolved.ttlMs > 0) {
-          const id = resolved.id;
-          ttlTimerRef.current = setTimeout(() => {
-            ttlTimerRef.current = null;
-            setActive((cur) => {
-              if (cur && cur.id === id) {
-                queueMicrotask(promoteNext);
-                return null;
-              }
-              return cur;
-            });
-          }, resolved.ttlMs);
-        }
+      // No active transient → become active.
+      if (!transient) {
+        setTransient(resolved);
+        armTtl(resolved);
         return;
       }
 
-      // Enqueue, sorted by priority desc, then FIFO.
+      // Otherwise enqueue priority-desc, FIFO within tie.
       const q = queueRef.current;
       let insertAt = q.length;
       for (let i = 0; i < q.length; i++) {
@@ -233,73 +212,86 @@ export function CanonicalAnnouncementProvider({
       }
       q.splice(insertAt, 0, resolved);
     },
-    [active, clearTtl, currentScope, promoteNext, scopeKey],
+    [currentScope, transient, clearTtl, armTtl, scopeKey],
   );
 
   const dismiss = useCallback(
     (id: string) => {
-      setActive((cur) => {
+      setTransient((cur) => {
         if (cur && cur.id === id) {
-          queueMicrotask(promoteNext);
+          queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
+      setAmbient((cur) => (cur && cur.id === id ? null : cur));
       queueRef.current = queueRef.current.filter((q) => q.id !== id);
     },
-    [promoteNext],
+    [promoteNextTransient],
   );
+
+  const clearAmbient = useCallback((type?: AnnouncementType) => {
+    setAmbient((cur) => {
+      if (!cur) return null;
+      if (type && cur.type !== type) return cur;
+      return null;
+    });
+  }, []);
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
       queueRef.current = queueRef.current.filter((q) => !scopeMatches(q.scope, scope));
-      // Drop the seen-bucket for that scope.
       seenRef.current.delete(scopeKey(scope));
-      setActive((cur) => {
+      setTransient((cur) => {
         if (cur && scopeMatches(cur.scope, scope)) {
-          queueMicrotask(promoteNext);
+          queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
+      setAmbient((cur) => (cur && scopeMatches(cur.scope, scope) ? null : cur));
     },
-    [promoteNext, scopeKey],
+    [promoteNextTransient, scopeKey],
   );
 
-  // Boundary teardown: when scope changes, drop stale events and reset
-  // dedupe buckets that are no longer current.
+  // Boundary teardown.
   const prevScopeRef = useRef<AnnouncementScope>(currentScope);
   useEffect(() => {
     const prev = prevScopeRef.current;
-    const sameDealer = prev.dealerGameId === currentScope.dealerGameId;
-    const sameRound = prev.roundId === currentScope.roundId;
-    if (sameDealer && sameRound) return;
+    if (
+      prev.dealerGameId === currentScope.dealerGameId &&
+      prev.roundId === currentScope.roundId
+    ) {
+      return;
+    }
 
-    // Drop active/queued events that no longer match new scope.
     queueRef.current = queueRef.current.filter((q) => scopeMatches(q.scope, currentScope));
-    setActive((cur) => {
+    setTransient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
         clearTtl();
-        queueMicrotask(promoteNext);
+        queueMicrotask(promoteNextTransient);
         return null;
       }
       return cur;
     });
+    setAmbient((cur) => (cur && !scopeMatches(cur.scope, currentScope) ? null : cur));
 
-    // Reset stale dedupe buckets — keep only the bucket for the new scope.
     const keepKey = scopeKey(currentScope);
     for (const k of Array.from(seenRef.current.keys())) {
       if (k !== keepKey) seenRef.current.delete(k);
     }
 
     prevScopeRef.current = currentScope;
-  }, [currentScope, clearTtl, promoteNext, scopeKey]);
+  }, [currentScope, clearTtl, promoteNextTransient, scopeKey]);
 
   useEffect(() => () => clearTtl(), [clearTtl]);
 
+  // Active = transient if present, else ambient.
+  const active = transient ?? ambient;
+
   const value = useMemo<AnnouncementContextValue>(
-    () => ({ active, emit, dismiss, clearScope }),
-    [active, emit, dismiss, clearScope],
+    () => ({ active, ambient, transient, emit, dismiss, clearScope, clearAmbient }),
+    [active, ambient, transient, emit, dismiss, clearScope, clearAmbient],
   );
 
   return (
@@ -314,15 +306,19 @@ export function useAnnouncementContext(): AnnouncementContextValue | null {
 export function useAnnouncements() {
   const ctx = useContext(AnnouncementContext);
   if (!ctx) {
-    // Safe no-op outside provider — keeps gameplay surfaces resilient.
     return {
       emit: () => {},
       dismiss: () => {},
       clearScope: () => {},
+      clearAmbient: () => {},
     };
   }
-  return { emit: ctx.emit, dismiss: ctx.dismiss, clearScope: ctx.clearScope };
+  return {
+    emit: ctx.emit,
+    dismiss: ctx.dismiss,
+    clearScope: ctx.clearScope,
+    clearAmbient: ctx.clearAmbient,
+  };
 }
 
-// Re-export for tests / debug trigger.
 export type { AnnouncementType };

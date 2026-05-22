@@ -1,49 +1,64 @@
 /**
  * Canonical announcement system — type contract.
  *
- * Shell-owned semantic announcement pipeline. Games emit semantic
- * events; the shell owns rendering, placement, dedupe, queueing and
- * teardown. See CanonicalAnnouncementProvider for orchestration.
+ * Two announcement classes:
+ *
+ *  TRANSIENT (behavior: 'enqueue')
+ *    Discrete event bursts — match_win, round_win, chip_award.
+ *    Queued, priority-preemptive, auto-dismissed by TTL.
+ *
+ *  AMBIENT (behavior: 'ambient')
+ *    Persistent contextual state — dealer_configuring, waiting_for_*,
+ *    dealer_selection_in_progress. Lives in a single dedicated slot
+ *    (NOT the transient queue). Latest ambient replaces prior ambient.
+ *    No TTL: persists until superseded or scope boundary teardown.
+ *    Transient events render OVER ambient; when transient ends,
+ *    ambient resumes if still relevant.
+ *
+ * The legacy 'replace' behavior is preserved as an alias of 'ambient'.
  */
 
 export type AnnouncementType =
+  // Transient
   | 'match_win'
   | 'round_win'
   | 'chip_award'
+  // Ambient
   | 'dealer_configuring'
-  | 'waiting_for_players';
+  | 'waiting_for_players'
+  | 'waiting_for_player'
+  | 'waiting_for_next_round'
+  | 'dealer_selection_in_progress';
 
 export interface AnnouncementScope {
   /** dealerGameId is the primary lifecycle boundary. */
   dealerGameId?: string | null;
-  /** Optional finer scope for round-bound events (round_win, chip_award). */
+  /** Optional finer scope for round-bound events. */
   roundId?: string | null;
 }
 
+export type AnnouncementBehavior = 'enqueue' | 'ambient' | 'replace';
+
 export interface AnnouncementEvent {
   /**
-   * Semantic stable id. Same id = same event = dedupe.
-   * Convention: `${dealerGameId}:${type}` for once-per-dealer-game,
-   * `${roundId}:${type}` for once-per-round, etc.
+   * Semantic stable id. For transient events: dedupe key.
+   * For ambient events: identity for "is this the same ambient state
+   * already showing?" — re-emitting the same id is a no-op refresh.
    */
   id: string;
   type: AnnouncementType;
   scope: AnnouncementScope;
   payload?: Record<string, unknown>;
-  /** ms before auto-dismiss. Omit for caller-driven dismiss. */
+  /** ms before auto-dismiss. Ignored for ambient events. */
   ttlMs?: number;
-  /**
-   * Override default type priority (higher wins). Lifecycle events
-   * (match_win) preempt informational ones (waiting_for_players).
-   */
+  /** Override default type priority (transient-vs-transient ordering). */
   priority?: number;
   /**
-   * 'replace' = stateful announcement; replaces any other queued event
-   *   of the same type instead of stacking. Used for waiting_for_players,
-   *   dealer_configuring.
-   * 'enqueue' (default) = discrete event; queued and shown once.
+   * 'enqueue' = transient burst.
+   * 'ambient' = persistent contextual state (replaces prior ambient).
+   * 'replace' = legacy alias for 'ambient'.
    */
-  behavior?: 'enqueue' | 'replace';
+  behavior?: AnnouncementBehavior;
 }
 
 export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
@@ -51,21 +66,30 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   round_win: 80,
   chip_award: 60,
   dealer_configuring: 50,
+  dealer_selection_in_progress: 50,
   waiting_for_players: 40,
+  waiting_for_next_round: 40,
+  waiting_for_player: 30,
 };
 
-export const DEFAULT_BEHAVIOR: Record<AnnouncementType, 'enqueue' | 'replace'> = {
+export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = {
   match_win: 'enqueue',
   round_win: 'enqueue',
   chip_award: 'enqueue',
-  dealer_configuring: 'replace',
-  waiting_for_players: 'replace',
+  dealer_configuring: 'ambient',
+  dealer_selection_in_progress: 'ambient',
+  waiting_for_players: 'ambient',
+  waiting_for_next_round: 'ambient',
+  waiting_for_player: 'ambient',
 };
 
 export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
   match_win: 4500,
   round_win: 3000,
   chip_award: 2200,
-  // dealer_configuring / waiting_for_players: no TTL — cleared by scope teardown
-  // or by the caller emitting a different replace-type event.
+  // Ambient types: no TTL — cleared by supersession or boundary teardown.
 };
+
+export function isAmbientBehavior(b: AnnouncementBehavior | undefined): boolean {
+  return b === 'ambient' || b === 'replace';
+}
