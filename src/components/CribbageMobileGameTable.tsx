@@ -25,9 +25,8 @@ import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 // Phase E: bespoke match-end UI retired in favor of canonical
-// `match_win` announcement (see CanonicalAnnouncementLayer).
-// CribbageSkunkOverlay + CribbageWinnerAnnouncement deleted.
-import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+// `match_win` announcement. CribbageSkunkOverlay +
+// CribbageWinnerAnnouncement deleted.
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
