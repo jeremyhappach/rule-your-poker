@@ -422,13 +422,23 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   
   if (!buckPosition || effectiveIsFirstHand) {
     // First hand - buck starts one position to the LEFT of dealer (clockwise order)
-    // In clockwise rotation, LEFT means the NEXT higher position number
+    // In clockwise rotation, LEFT means the NEXT higher position number.
+    //
+    // IMPORTANT: do NOT filter on status='active' here. When transitioning
+    // from another completed game (e.g. Gin → Holm), players retain stale
+    // per-hand statuses like 'folded' from the previous dealer game; the
+    // end-of-game evaluation does not reset status back to 'active'. Filtering
+    // on 'active' would yield 0 rows and fall through to buckPosition=dealer,
+    // which is the Gin → Holm transition contamination bug. Source the seat
+    // cohort the same way the round bootstrap does: seated, not sitting out,
+    // not observer/left.
     const { data: allPlayers } = await supabase
       .from('players')
-      .select('position')
+      .select('position, status, sitting_out')
       .eq('game_id', gameId)
-      .eq('status', 'active')
       .eq('sitting_out', false)
+      .neq('status', 'observer')
+      .neq('status', 'left')
       .order('position');
     
     if (allPlayers && allPlayers.length > 0) {
