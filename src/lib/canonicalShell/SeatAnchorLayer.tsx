@@ -18,6 +18,7 @@ import {
   type SeatAnchorInput,
 } from './seatAnchors';
 import { recordShellEvent } from './diagnostics';
+import { isCanonicalSeatConsumer } from './shellRouting';
 
 interface SeatAnchorContextValue {
   projectionMode: ProjectionMode;
