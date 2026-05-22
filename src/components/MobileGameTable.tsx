@@ -4366,6 +4366,14 @@ export const MobileGameTable = ({
             </>
           );
         })()}
+
+        {/* Canonical slot-owned waiting content — lives INSIDE the table
+            container (not a wrapper-level floating overlay). Renders during
+            the waiting phase so seated-count and invite/start CTAs are
+            owned by the canonical stage. */}
+        {isWaitingPhase && waitingSlotContent}
+
+        
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
