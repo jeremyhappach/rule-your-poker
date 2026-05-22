@@ -4171,19 +4171,42 @@ export const CribbageMobileGameTable = ({
   // Auto-go: Automatically call Go when player can't play any cards
   // Uses ref to avoid stale closure issues - ensures eventCtx is always current
   useEffect(() => {
-    if (!cribbageState || !currentPlayerId || isProcessing) return;
-    if (cribbageState.phase !== 'pegging') return;
-    if (cribbageState.pegging.currentTurnPlayerId !== currentPlayerId) return;
-    
+    if (!cribbageState || !currentPlayerId) return;
+    const autoCtx = { gameId, roundId: currentRoundId ?? null, handNumber: currentHandNumber, actorPlayerId: currentPlayerId };
+    const peg = cribbageState.pegging;
     const myState = cribbageState.playerStates[currentPlayerId];
-    if (!myState) return;
+    const baseDeps = {
+      phase: cribbageState.phase,
+      isProcessing,
+      currentTurnPlayerId: peg?.currentTurnPlayerId?.slice(0, 8) ?? null,
+      currentCount: peg?.currentCount,
+      goCalledBy: (peg?.goCalledBy ?? []).map(id => id.slice(0, 8)),
+      myPlayerId: currentPlayerId.slice(0, 8),
+      myHandSize: myState?.hand.length ?? null,
+      handleGoRefSet: !!handleGoRef.current,
+    };
+    traceGoRace(autoCtx, 'auto-go:effect-entered', baseDeps);
+
+    if (isProcessing) { traceGoRace(autoCtx, 'auto-go:bail', { reason: 'isProcessing', ...baseDeps }); return; }
+    if (cribbageState.phase !== 'pegging') { traceGoRace(autoCtx, 'auto-go:bail', { reason: 'not-pegging', ...baseDeps }); return; }
+    if (peg.currentTurnPlayerId !== currentPlayerId) { traceGoRace(autoCtx, 'auto-go:bail', { reason: 'not-our-turn', ...baseDeps }); return; }
+    if (!myState) { traceGoRace(autoCtx, 'auto-go:bail', { reason: 'no-my-state', ...baseDeps }); return; }
     
-    const canPlay = hasPlayableCard(myState.hand, cribbageState.pegging.currentCount);
+    const canPlay = hasPlayableCard(myState.hand, peg.currentCount);
     if (!canPlay && myState.hand.length > 0) {
+      traceGoRace(autoCtx, 'auto-go:armed', { ...baseDeps, hand: myState.hand });
       const timeout = setTimeout(() => {
+        traceGoRace(autoCtx, 'auto-go:timeout-fired', {
+          handleGoRefSet: !!handleGoRef.current,
+        });
         handleGoRef.current?.();
       }, 500);
       return () => clearTimeout(timeout);
+    } else {
+      traceGoRace(autoCtx, 'auto-go:no-action', {
+        reason: canPlay ? 'has-playable-card' : 'empty-hand',
+        ...baseDeps, hand: myState.hand,
+      });
     }
   }, [cribbageState?.pegging.currentTurnPlayerId, cribbageState?.pegging.currentCount, currentPlayerId, isProcessing]);
 
