@@ -328,11 +328,18 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
     return false;
   }
   
-  // CRITICAL: Skip for dice games - they have their own bot logic in horsesBotLogic.ts and sccBotLogic.ts
-  // This function is ONLY for poker-style games (Holm, 3-5-7) that use current_decision/decision_locked
-  const isDiceGame = gameData?.game_type === 'horses' || gameData?.game_type === 'ship-captain-crew' || gameData?.game_type === 'yahtzee';
-  if (isDiceGame) {
-    console.log('[BOT DECISIONS] Skipping - dice games have their own bot logic');
+  // POSITIVE WHITELIST: only Holm and 3-5-7 variants use this generic
+  // current_decision/decision_locked bot loop. Every other game type
+  // (cribbage, gin, yahtzee, horses, ship-captain-crew, etc.) owns its
+  // own bot logic and must NEVER enter this path — doing so previously
+  // caused cribbage bots to randomly fold mid-hand and contaminate
+  // players.status with a 3-5-7 'folded' stamp.
+  const gType = gameData?.game_type;
+  const usesGenericDecisionLoop =
+    gType === 'holm-game' || gType === 'holm' ||
+    gType === '3-5-7' || gType === '3-5-7-game' || gType === '357';
+  if (!usesGenericDecisionLoop) {
+    console.log('[BOT DECISIONS] Skipping — game type uses its own bot logic:', gType);
     return false;
   }
   
