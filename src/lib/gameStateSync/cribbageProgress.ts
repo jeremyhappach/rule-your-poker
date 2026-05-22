@@ -1,37 +1,26 @@
 /**
  * Cribbage progress vector extractor for the anti-regression framework.
  *
- * Vector (Phase C-prereq, 5-dim):
- *   [handNumber, dealerSelectionCohort, dealerResolved, phaseOrdinal, subPhase]
+ * Vector (Phase E-prereq, 6-dim):
+ *   [matchCompleteLatch, handNumber, dealerSelectionCohort, dealerResolved, phaseOrdinal, subPhase]
  *
- * Dimensions (left to right, most significant first):
+ *   1. matchCompleteLatch — terminal latch. 0 until phase first reaches
+ *      'complete', 1 thereafter. Top-bit guards reconnecting clients
+ *      from regressing out of a terminal snapshot, and provides
+ *      canonical `match_win` announcement sequencing a presentation-safe
+ *      identity. Reset only at dealerGame boundary.
  *
- *   1. handNumber — match-level monotonic counter. Increments each hand so that
- *      new-hand snapshots (where phase and sub-counters reset) are always treated
- *      as forward progress.
+ *   2. handNumber — match-level monotonic counter.
+ *   3. dealerSelectionCohort — monotonic per-tie-redraw counter.
+ *   4. dealerResolved — 0 in dealer-select pre-resolution, 1 thereafter.
+ *   5. phaseOrdinal — dealer-select=-1, dealing=0, discarding=1,
+ *      cutting=2, pegging=3, counting=4, complete=5.
+ *   6. subPhase — (playedCards * 1000) + (totalDiscarded * 100) +
+ *      (cribSize * 10) + totalScore.
  *
- *   2. dealerSelectionCohort — monotonic per-tie-redraw counter. Increments on
- *      each high-card-draw retry so identity boundaries are clean across ties.
- *      Existing snapshots without the field default to 0, preserving backward
- *      compatibility with pre-Phase-C state.
- *
- *   3. dealerResolved — latch dimension. 0 while phase === 'dealer-select',
- *      1 once the dealer has been definitively chosen and lifecycle has
- *      advanced. Provides forward progress within a cohort even before the
- *      phase ordinal advances. Existing snapshots (phase !== 'dealer-select')
- *      default to 1 — the dealer is implicitly resolved.
- *
- *   4. phaseOrdinal — monotonically increases through the hand lifecycle:
- *      dealer-select=-1, dealing=0, discarding=1, cutting=2, pegging=3,
- *      counting=4, complete=5. The negative dealer-select ordinal preserves
- *      ordering against legacy snapshots that started at `dealing=0`.
- *
- *   5. subPhase — composite intra-phase progress metric:
- *      (playedCards * 1000) + (totalDiscarded * 100) + (cribSize * 10) + totalScore
- *
- * Pegging/counting/match-end dims are intentionally NOT yet included —
- * they will land before their respective surface migrations (per
- * "structural prerequisites for clean canonical migration" rule).
+ * Pegging/counting ownership dims (peggingTurnOwner, peggingTurnSeq,
+ * countOwner, handCompleteLatch) are intentionally NOT yet included —
+ * they will land before their respective surface migrations.
  */
 
 import type { CribbageState, CribbagePhase } from '@/lib/cribbageTypes';
