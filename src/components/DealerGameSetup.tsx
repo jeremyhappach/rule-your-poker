@@ -15,6 +15,7 @@ import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 // startCribbageRound is now called from Game.tsx after dealer selection completes
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
+import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
 
 // P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
 // This identifies which client/code-path creates new dealer_games mid-session
