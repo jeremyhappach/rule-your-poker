@@ -19,34 +19,19 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { isDebugChannel } from './debugChannels';
 import type { CribbageState } from './cribbageTypes';
 
-let _enabled: boolean | null = null;
-
-function checkEnabled(): boolean {
-  try {
-    // Piggy-back on the existing 'cribbage' debug channel; also accept
-    // a dedicated URL / localStorage flag for finer-grained opt-in.
-    if (isDebugChannel('cribbage')) return true;
-  } catch { /* */ }
-  try {
-    const p = new URLSearchParams(window.location.search);
-    const v = p.get('cribbage_go_trace');
-    if (v === '1' || v === '' || v?.toLowerCase() === 'true') return true;
-    if (v === '0' || v?.toLowerCase() === 'false') return false;
-  } catch { /* */ }
-  try {
-    const s = window.localStorage.getItem('ptp_cribbage_go_trace');
-    if (s === '1') return true;
-    if (s === '0') return false;
-  } catch { /* */ }
-  return false;
-}
+// ── Default-ON validation window ──────────────────────────────
+//
+// Per active bug hunt: Cribbage Go race tracing is ON by default for
+// every session, with no URL / localStorage / console activation required.
+//
+// To disable when the bug is closed, flip ENABLED_DEFAULT to false (or
+// delete this module and its call sites).
+const ENABLED_DEFAULT = true;
 
 export function isGoRaceTraceEnabled(): boolean {
-  if (_enabled === null) _enabled = checkEnabled();
-  return _enabled;
+  return ENABLED_DEFAULT;
 }
 
 let seq = 0;
