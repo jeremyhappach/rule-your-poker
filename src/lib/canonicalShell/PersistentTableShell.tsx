@@ -37,6 +37,7 @@ import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   CanonicalAnnouncementProvider,
   CanonicalAnnouncementLayer,
+  CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
