@@ -3,14 +3,24 @@
 Source: `src/lib/gameStateSync/cribbageProgress.ts`
 Plan reference: §4a (Cribbage progress-vector audit, mandatory)
 
-## Current vector (3-dim)
+## Status: Phase C prerequisites LANDED
+
+Per the locked-in rule "identity/progress dimensions must land BEFORE the
+corresponding lifecycle surface migrates", the Phase C-prereq subset has
+been delivered ahead of the dealer-selection canonical surface migration.
+
+## Current vector (5-dim, post Phase C-prereq)
 
 ```text
-[handNumber, phaseOrdinal, subPhase]
+[handNumber, dealerSelectionCohort, dealerResolved, phaseOrdinal, subPhase]
 ```
 
 Where:
-- `phaseOrdinal`: dealing=0, discarding=1, cutting=2, pegging=3, counting=4, complete=5
+- `dealerSelectionCohort`: monotonic per-tie-redraw counter (defaults 0)
+- `dealerResolved`: latch — 0 only when `phase === 'dealer-select'` and
+  `dealerResolved === false`; legacy snapshots default to 1
+- `phaseOrdinal`: dealer-select=-1, dealing=0, discarding=1, cutting=2,
+  pegging=3, counting=4, complete=5
 - `subPhase = playedCards*1000 + totalDiscarded*100 + cribSize*10 + totalScore`
 
 ## Required vector per plan §4a (13 dims)
