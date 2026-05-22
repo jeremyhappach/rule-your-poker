@@ -5360,73 +5360,25 @@ export const CribbageMobileGameTable = ({
             )}
           </div>
 
-          {/* ═══════ UNIFIED OPPONENT OVERLAY — same layout for ALL modes ═══════ */}
+          {/* ═══════ PROJECTED SEAT OVERLAY — shell anchors drive all seat chrome ═══════ */}
           <div className="absolute inset-0 z-50 pointer-events-none">
-            {opponents.map((opponent, index) => {
+            {projectedSeatPlayers.map((seatPlayer) => {
               // During gameplay, read card data from viewState; otherwise no cards shown
-              const oppState = isGameplayMode && viewState ? viewState.playerStates[opponent.id] : null;
-              const isDealerPlayer = isGameplayMode ? isCribDealer(opponent.id) : false;
-              const totalOpponents = opponents.length;
-              
-              let positionClasses: string;
-              let alignmentClasses: string;
-              
-              if (totalOpponents === 1) {
-                positionClasses = 'top-14 left-6';
-                alignmentClasses = 'items-start';
-              } else if (totalOpponents === 2) {
-                if (index === 0) {
-                  positionClasses = 'top-14 left-6';
-                  alignmentClasses = 'items-start';
-                } else {
-                  positionClasses = 'top-14 right-6';
-                  alignmentClasses = 'items-end';
-                }
-              } else {
-                if (index === 0) {
-                  positionClasses = 'top-14 left-6';
-                  alignmentClasses = 'items-start';
-                } else if (index === 1) {
-                  positionClasses = 'top-14 right-6';
-                  alignmentClasses = 'items-end';
-                } else {
-                  positionClasses = 'bottom-44 right-6';
-                  alignmentClasses = 'items-end';
-                }
-              }
+              const seatState = isGameplayMode && viewState ? viewState.playerStates[seatPlayer.id] : null;
+              const slot = playerSlotById.get(seatPlayer.id) ?? null;
 
               return (
-                <div 
-                  key={opponent.id} 
-                  className={`absolute flex flex-col ${positionClasses} ${alignmentClasses}`}
+                <CanonicalSeatCluster
+                  key={seatPlayer.id}
+                  slot={slot}
+                  position={seatPlayer.position}
+                  name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
+                  isDealer={isGameplayMode ? isCribDealer(seatPlayer.id) : false}
+                  chipValue={`$${formatChipValue(seatPlayer.chips)}`}
                 >
-                  {/* Chip circle row */}
-                  <div className={`flex items-center gap-1.5 ${index > 0 && totalOpponents >= 2 && index === totalOpponents - 1 ? 'flex-row-reverse' : ''}`}>
-                    <div className="relative">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white">
-                        <span className="text-[10px] font-bold text-slate-900">
-                          ${formatChipValue(opponent.chips)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Name */}
-                    <span className="text-[10px] text-white/90 truncate max-w-[70px] font-medium">
-                      {getDisplayName(players, opponent, opponent.profiles?.username || 'Player')}
-                    </span>
-
-                    {/* Dealer button inline — only during gameplay */}
-                    {isDealerPlayer && (
-                      <div className="w-4 h-4 rounded-full bg-red-600 border border-white flex items-center justify-center">
-                        <span className="text-white font-bold text-[7px]">D</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Opponent's cards (face down) — only during gameplay with card data */}
-                  {oppState && oppState.hand.length > 0 && (
-                    <div className={`flex -space-x-1.5 mt-1 ${alignmentClasses === 'items-end' ? 'justify-end mr-1' : alignmentClasses === 'items-center' ? 'justify-center' : 'ml-1'}`}>
-                      {oppState.hand.map((_, i) => (
+                  {seatState && seatState.hand.length > 0 && (
+                    <div className="flex -space-x-1.5 mt-1 justify-center">
+                      {seatState.hand.map((_, i) => (
                         <div 
                           key={i} 
                           className="w-4 h-6 rounded-sm border border-white/20"
@@ -5437,7 +5389,7 @@ export const CribbageMobileGameTable = ({
                       ))}
                     </div>
                   )}
-                </div>
+                </CanonicalSeatCluster>
               );
             })}
           </div>
