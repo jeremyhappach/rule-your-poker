@@ -98,7 +98,42 @@ export function useSeatAnchors(): SeatAnchorContextValue {
   return v;
 }
 
-/** Optional variant: returns null instead of throwing (for gradual adoption). */
+/**
+ * Optional variant — returns null instead of throwing. Use ONLY when a
+ * component intentionally supports both anchor-driven and standalone
+ * mounting. Canonical seat consumers should use
+ * `useRequiredSeatAnchors(gameType)` instead so missing-provider
+ * misconfigurations fail loudly during development rather than
+ * silently rendering empty seat clusters.
+ */
 export function useSeatAnchorsOptional(): SeatAnchorContextValue | null {
   return useContext(SeatAnchorContext);
+}
+
+/**
+ * Strict variant for registered canonical seat consumers. In dev,
+ * throws loudly when the game_type is in CANONICAL_SEAT_CONSUMERS but
+ * no <SeatAnchorLayer> is mounted above — exactly the wiring failure
+ * that wiped chip stacks across the Gin and Cribbage migrations
+ * (consumer rendered with all-null slots because the family registry
+ * and the provider mount diverged). In production it returns null so a
+ * wiring miss degrades to the same broken-but-not-crashed state as
+ * before, while build/test/dev/code-review catch recurrence early.
+ * See .lovable/canonical-shell-onboarding-checklist.md.
+ */
+export function useRequiredSeatAnchors(
+  gameType: string | null | undefined,
+): SeatAnchorContextValue | null {
+  const v = useContext(SeatAnchorContext);
+  if (!v && import.meta.env.DEV && isCanonicalSeatConsumer(gameType)) {
+    throw new Error(
+      `[SeatAnchorLayer] game_type "${gameType}" is registered as a ` +
+        `canonical seat consumer but no <SeatAnchorLayer> is mounted ` +
+        `above this component. This usually means the game_type is ` +
+        `missing from CANONICAL_SHELL_FAMILY in shellRouting.ts, so ` +
+        `Game.tsx skipped mounting the shell-owned anchor provider. ` +
+        `See .lovable/canonical-shell-onboarding-checklist.md.`,
+    );
+  }
+  return v;
 }
