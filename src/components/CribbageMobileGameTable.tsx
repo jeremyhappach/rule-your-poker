@@ -4978,7 +4978,6 @@ export const CribbageMobileGameTable = ({
                     isHost={isHost}
                     syncedState={highCardSyncedState}
                     onCardsUpdate={setHighCardCards}
-                    onAnnouncementUpdate={(message) => setHighCardAnnouncement(message)}
                     onWinnerPositionUpdate={setHighCardWinnerPosition}
                     onComplete={(pos) => {
                       // ── HANDOFF TRACE #1 (child): dealer-game onComplete ──
