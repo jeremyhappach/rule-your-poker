@@ -7270,7 +7270,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // handoff point where session-level high-card completes. This prevents the
     // one-frame flash of stale session cards when the dealer-game scope begins.
     setDealerSelectionCards([]);
-    setDealerSelectionAnnouncement(null);
     setDealerSelectionWinnerPosition(null);
 
     // ── HANDOFF TRACE #3: parent dealer-selection state cleared (handoff callback) ──
