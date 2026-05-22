@@ -4676,12 +4676,10 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(safetyTimer);
   }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
 
-  // Canonical projected seat roster. Active clients render opponents here;
-  // observers render both 2P participants here. The slot source is the
-  // shell-owned SeatAnchorLayer, not Cribbage-local absolute math.
-  const projectedSeatPlayers = isObserver
-    ? activeSeatPlayers
-    : activeSeatPlayers.filter(p => p.id !== currentPlayerId);
+  // Canonical projected seat roster. Every active participant renders from
+  // the shell-owned SeatAnchorLayer so chips, dealer pips, card backs, and
+  // animation endpoints share one projected anchor map on active + observer clients.
+  const projectedSeatPlayers = activeSeatPlayers;
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
   // Determine current render mode for felt content (not layout — layout is always the same shell)
