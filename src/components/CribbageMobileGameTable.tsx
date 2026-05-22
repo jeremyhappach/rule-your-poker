@@ -5050,15 +5050,12 @@ export const CribbageMobileGameTable = ({
         {/* Banner area — consistent height across all modes */}
         <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
           {(() => {
-            // HIGH-CARD & BOOTSTRAP banners
+            // HIGH-CARD: canonical announcements (ambient
+            // `dealer_selection_in_progress` / transient `dealer_selected`)
+            // own all messaging during dealer selection. The legacy gold
+            // banner is suppressed in this mode — Phase C migration.
             if (isHighCardMode) {
-              return effectiveHighCardAnnouncement ? (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {effectiveHighCardAnnouncement}
-                  </p>
-                </div>
-              ) : null;
+              return null;
             }
 
             if (isBootstrapMode) {
