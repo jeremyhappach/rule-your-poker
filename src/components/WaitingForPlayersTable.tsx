@@ -463,29 +463,16 @@ export const WaitingForPlayersTable = ({
   };
 
   return (
-    <div className="relative flex-1 overflow-hidden">
-      <MobileGameTable
-        {...emptyTableProps}
-        chatBubbles={chatBubbles}
-        allMessages={allMessages}
-        onSendChat={onSendChat}
-        isChatSending={isChatSending}
-        getPositionForUserId={getPositionForUserId}
-        onLeaveGameNow={onLeaveGameNow}
-        isHost={isHost}
-      />
-      {renderFeltMessage()}
-      
-      {/* Header showing player count */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
-        <Badge 
-          variant="outline" 
-          className="bg-black/60 border-amber-600/50 text-amber-300 px-3 py-1"
-        >
-          <Users className="w-4 h-4 mr-2" />
-          {seatedPlayerCount} Player{seatedPlayerCount !== 1 ? 's' : ''} Seated
-        </Badge>
-      </div>
-    </div>
+    <MobileGameTable
+      {...emptyTableProps}
+      chatBubbles={chatBubbles}
+      allMessages={allMessages}
+      onSendChat={onSendChat}
+      isChatSending={isChatSending}
+      getPositionForUserId={getPositionForUserId}
+      onLeaveGameNow={onLeaveGameNow}
+      isHost={isHost}
+      waitingSlotContent={renderFeltMessage()}
+    />
   );
 };
