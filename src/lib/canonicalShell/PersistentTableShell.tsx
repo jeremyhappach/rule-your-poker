@@ -95,6 +95,38 @@ export function PersistentTableShell({
       className="min-h-screen bg-shell-neutral"
       style={{ position: 'relative' }}
     >
+      {/* TEMPORARY MIGRATION AID — canonical shell provenance badge.
+          Rendered ONLY here, inside PersistentTableShell. If you see this
+          marker on screen, the surface beneath is genuinely canonical.
+          Disable via localStorage ptp_disable_canonical_badge="1" or
+          URL ?disable_canonical_badge=1. Remove the flag + this block
+          once waiting/session canonical migration is validated. */}
+      {isCanonicalShellBadgeEnabled() && (
+        <div
+          data-canonical-shell-badge=""
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            top: 6,
+            right: 6,
+            zIndex: 9999,
+            padding: '2px 6px',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.08em',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            color: '#0a0a0a',
+            background: 'linear-gradient(135deg, #34d399, #10b981)',
+            border: '1px solid rgba(0,0,0,0.4)',
+            borderRadius: 4,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+            pointerEvents: 'none',
+            textTransform: 'uppercase',
+          }}
+        >
+          CSHELL · SLOT: {(gameType ?? 'WAITING').toString().toUpperCase()}
+        </div>
+      )}
       {/* P9.6: shell-owned pre-hand felt removed. Gameplay surfaces
           (e.g. GinRummyGameTable) render the single authoritative
           CanonicalFeltSurface inside their own table region. */}
