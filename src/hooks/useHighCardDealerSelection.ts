@@ -281,7 +281,6 @@ export function useHighCardDealerSelection({
           const winAnnouncement = `${name} wins the deal!`;
           lastAnnouncementRef.current = winAnnouncement;
 
-          onAnnouncementUpdate(winAnnouncement, true);
           onWinnerPositionUpdate?.(winnerPlayer.position);
 
           syncToDatabase({
