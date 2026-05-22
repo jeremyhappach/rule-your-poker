@@ -228,6 +228,7 @@ describe('getCribbageProgress', () => {
   it('handles missing handNumber gracefully', () => {
     const noHand = stubState({ handNumber: undefined, phase: 'pegging' });
     const vec = getCribbageProgress(noHand);
-    expect(vec[0]).toBe(1);
+    // [matchLatch=0, handNumber=1 (default), ...]
+    expect(vec[1]).toBe(1);
   });
 });
