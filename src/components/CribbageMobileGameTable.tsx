@@ -4584,13 +4584,24 @@ export const CribbageMobileGameTable = ({
           return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
         }
       }
-      const isCurrent = player?.user_id === currentUserId;
-      if (isCurrent) {
-        return { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 };
-      }
+      // Fallback: derive a DISTINCT point per player from the same canonical
+      // slot the cluster would have rendered into. Prevents observer
+      // source==destination collapse when the marker is briefly absent.
+      const slot = playerSlotById.get(playerId) ?? null;
+      const slotFrac: Record<number, { fx: number; fy: number }> = {
+        [-1]: { fx: 0.5, fy: 0.92 }, // HOME bottom-center
+        [-2]: { fx: 0.5, fy: 0.08 }, // FACE_TO_FACE top-center
+        0:    { fx: 0.10, fy: 0.85 },
+        1:    { fx: 0.06, fy: 0.50 },
+        2:    { fx: 0.10, fy: 0.15 },
+        3:    { fx: 0.90, fy: 0.15 },
+        4:    { fx: 0.94, fy: 0.50 },
+        5:    { fx: 0.90, fy: 0.85 },
+      };
+      const frac = (slot !== null && slotFrac[slot]) || { fx: 0.15, fy: 0.2 + fallbackIndex * 0.15 };
       return {
-        x: rect.left + rect.width * 0.15,
-        y: rect.top + rect.height * (0.2 + fallbackIndex * 0.15),
+        x: rect.left + rect.width * frac.fx,
+        y: rect.top + rect.height * frac.fy,
       };
     };
 
@@ -4604,7 +4615,7 @@ export const CribbageMobileGameTable = ({
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, playerSlotById]);
 
   const handleChipAnimationEnd = useCallback(() => {
     setWinSequencePhase('complete');
@@ -5291,13 +5302,18 @@ export const CribbageMobileGameTable = ({
             {/* GAMEPLAY MODE: full game content */}
             {isGameplayMode && viewState && (
               <>
-                {/* Turn Spotlight */}
+                {/* Turn Spotlight — angle derived from the canonical seat-anchor slot
+                    of the active turn player so spotlight, chip bubble, dealer pip,
+                    card backs and chip-transport endpoints all resolve from the
+                    SAME projection truth. */}
                 <CribbageTurnSpotlight
                   currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-                  currentPlayerId={currentPlayerId || ''}
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                  totalPlayers={activeSeatPlayers.length}
-                  opponentIds={projectedSeatPlayers.map(o => o.id)}
+                  currentTurnSlot={
+                    viewState.pegging.currentTurnPlayerId
+                      ? (playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null)
+                      : null
+                  }
                 />
 
                 {/* Game Title */}
