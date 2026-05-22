@@ -15,7 +15,34 @@ function stubState(overrides: Partial<CribbageStateForProgress> & { handNumber?:
 
 describe('getCribbageProgress', () => {
   it('null state returns zero vector', () => {
-    expect(getCribbageProgress(null)).toEqual([0, 0, 0]);
+    expect(getCribbageProgress(null)).toEqual([0, 0, 0, 0, 0]);
+  });
+
+  // ── Phase C prereq: dealer-select dims ───────────────────────
+
+  it('dealer-select → dealing (resolution latch) is forward', () => {
+    const select = stubState({ phase: 'dealer-select', dealerResolved: false } as any);
+    const dealing = stubState({ phase: 'dealing' });
+    expect(compareProgress(getCribbageProgress(select), getCribbageProgress(dealing))).toBe(1);
+  });
+
+  it('dealer-select tie redraw (cohort++) is forward', () => {
+    const c0 = stubState({ phase: 'dealer-select', dealerSelectionCohort: 0, dealerResolved: false } as any);
+    const c1 = stubState({ phase: 'dealer-select', dealerSelectionCohort: 1, dealerResolved: false } as any);
+    expect(compareProgress(getCribbageProgress(c0), getCribbageProgress(c1))).toBe(1);
+  });
+
+  it('dealer-select resolved within same cohort is forward', () => {
+    const unresolved = stubState({ phase: 'dealer-select', dealerSelectionCohort: 0, dealerResolved: false } as any);
+    const resolved = stubState({ phase: 'dealer-select', dealerSelectionCohort: 0, dealerResolved: true } as any);
+    expect(compareProgress(getCribbageProgress(unresolved), getCribbageProgress(resolved))).toBe(1);
+  });
+
+  it('legacy (no cohort/resolved fields) snapshot is treated as resolved', () => {
+    const legacy = stubState({ phase: 'dealing' });
+    const vec = getCribbageProgress(legacy);
+    // [hand=1, cohort=0, resolved=1, phaseOrd=0, sub=0]
+    expect(vec).toEqual([1, 0, 1, 0, 0]);
   });
 
   it('discarding → cutting is forward', () => {
