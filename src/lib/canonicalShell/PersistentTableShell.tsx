@@ -38,11 +38,15 @@ import {
   CanonicalAnnouncementProvider,
   CanonicalAnnouncementLayer,
   CanonicalAnnouncementDebugTrigger,
-  AnnouncementRailProvider,
 } from './announcements';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
+
+// Shell-owned HUD announcement rail dimensions. Fixed. Not
+// overridable by games. Sits between the shell-owned header and the
+// opaque game children.
+const SHELL_ANNOUNCEMENT_RAIL_HEIGHT_PX = 36;
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
