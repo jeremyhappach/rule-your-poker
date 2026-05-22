@@ -2919,7 +2919,6 @@ export const CribbageMobileGameTable = ({
     if (!isHost) return;
 
     setShowHighCardSelection(false);
-    setHighCardAnnouncement(null);
     setInitialLoadComplete(true);
 
     // Initialize the game with the winner as dealer.
