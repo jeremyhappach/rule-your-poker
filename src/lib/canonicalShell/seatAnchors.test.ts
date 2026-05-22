@@ -107,7 +107,7 @@ describe('seatAnchors — game-type-driven 2P face-to-face', () => {
     expect(isInherentlyTwoPlayerGameType(undefined)).toBe(false);
   });
 
-  it('canonicalizes opponent to FACE_TO_FACE for inherently-2P game types', () => {
+  it('canonicalizes opponent to ergonomic upper-left (slot 2) for inherently-2P game types', () => {
     const anchors = resolveSeatAnchors({
       projectionMode: 'active-canonical',
       viewerPosition: 2,
@@ -119,7 +119,7 @@ describe('seatAnchors — game-type-driven 2P face-to-face', () => {
     });
     expect(anchors.find(a => a.position === 2)?.slot).toBe(SLOT.HOME);
     const opp = anchors.find(a => a.position === 5);
-    expect(opp?.slot).toBe(SLOT.FACE_TO_FACE);
+    expect(opp?.slot).toBe(2);
     expect(opp?.canonicalized2p).toBe(true);
   });
 
