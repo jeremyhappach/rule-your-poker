@@ -8260,8 +8260,81 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   setLifecycleFact('Game.enableOuterShell', enableOuterShell);
   setLifecycleFact('Game.shellCanonicalFamily', _treatAsCanonicalRoute);
   setLifecycleFact('Game.innerBgClass', _innerBgClass);
+  // Shell-owned mobile header chrome. Authored here (so the existing
+  // data wiring stays put) and handed to PersistentTableShell via the
+  // `header` prop. The shell renders it above the canonical
+  // announcement rail and the opaque game children.
+  const mobileHeader = isMobile ? (
+    <div className="flex items-center justify-between px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">PPL</span>
+        {currentPlayer && (
+          <PlayerOptionsMenu
+            isSittingOut={currentPlayer.sitting_out}
+            isObserver={false}
+            waiting={currentPlayer.waiting}
+            autoAnte={playerOptions.autoAnte}
+            autoAnteRunback={playerOptions.autoAnteRunback}
+            sitOutNextHand={playerOptions.sitOutNextHand}
+            standUpNextHand={playerOptions.standUpNextHand}
+            onAutoAnteChange={(v) => handlePlayerOptionChange('auto_ante', v)}
+            onAutoAnteRunbackChange={(v) => handlePlayerOptionChange('auto_ante_runback', v)}
+            onSitOutNextHandChange={(v) => handlePlayerOptionChange('sit_out_next_hand', v)}
+            onStandUpNextHandChange={(v) => handlePlayerOptionChange('stand_up_next_hand', v)}
+            onStandUpNow={handleStandUpNow}
+            onLeaveGameNow={handleLeaveGameNow}
+            variant="mobile"
+            gameStatus={game.status}
+            isHost={isCreator}
+            isPaused={game.is_paused}
+            onTogglePause={(game.status === 'in_progress' || game.status === 'configuring' || game.status === 'game_selection' || game.status === 'ante_decision') ? handleTogglePause : undefined}
+            onAddBot={async () => {
+              try {
+                await addBotPlayerSittingOut(gameId!);
+                fetchGameData();
+              } catch (error: any) {
+                toast({ title: "Error", description: error.message, variant: "destructive" });
+              }
+            }}
+            canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting') && !game.real_money}
+            onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
+            deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
+            onDeckColorModeChange={async (mode) => {
+              await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
+            }}
+          />
+        )}
+        <VisualBugReportButton
+          gameId={gameId!}
+          gameType={game.game_type}
+          dealerGameId={currentRound?.dealer_game_id || game.current_game_uuid || null}
+          roundId={currentRound?.id || null}
+          handNumber={game.total_hands ?? null}
+          phase={currentRound?.status || game.status}
+          currentTurnPlayerId={null}
+          viewerPlayerId={currentPlayer?.id || null}
+          activeTab={null}
+          isPaused={game.is_paused}
+          hasActiveTimer={!!decisionDeadline && !game.is_paused}
+          onPause={handleTogglePause}
+          onResume={handleTogglePause}
+          variant="mobile"
+          reporterUsername={currentPlayer?.profiles?.username}
+        />
+        {game.pending_session_end && (
+          <Badge variant="destructive" className="text-xs px-2 py-0.5">LAST HAND</Badge>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground">
+        {gameName}
+        {game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
+      </span>
+    </div>
+  ) : null;
+
   const innerTree = (
     <div data-lifecycle-branch="loaded-inner" className={_innerBgClass}>
+
 
 
       <div className={`${isMobile ? 'h-full flex flex-col overflow-hidden' : 'max-w-7xl mx-auto space-y-6'}`}>
