@@ -8525,7 +8525,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onChatInputChange={setMobileChatInput}
                     isWaitingPhase={true}
                     dealerSelectionCards={dealerSelectionCards}
-                    dealerSelectionAnnouncement={dealerSelectionAnnouncement}
                     dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
                   />
                 {/* High Card Dealer Selection */}
@@ -8537,12 +8536,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   allowBotDealers={allowBotDealers}
                   syncedState={(game as any).dealer_selection_state ?? null}
                   onCardsUpdate={setDealerSelectionCards}
-                  onAnnouncementUpdate={(msg, complete) => {
-                    setDealerSelectionAnnouncement(msg);
-                    setDealerSelectionComplete(complete);
-                  }}
                   onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                 />
+
               </>
             )}
             {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
