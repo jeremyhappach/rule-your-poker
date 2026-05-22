@@ -4436,20 +4436,19 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [ensureBackendGameOverAck, onGameComplete]);
 
-  // Auto-transition from 'announcement' to 'chips' (banner-only winner message; don't stall the flow)
+  // Phase E: gate chip animation on canonical match_win TTL (4500ms)
+  // so the canonical announcement gets its full presentation window.
   useEffect(() => {
     if (winSequencePhase !== 'announcement') return;
-
-    // If we somehow don't have data yet, wait for it rather than calling handleAnnouncementComplete
-    // which would force-complete and potentially leave the UI in a confusing state.
     if (!winSequenceData) return;
 
     const timer = setTimeout(() => {
       handleAnnouncementComplete();
-    }, 50);
-    
+    }, 4500);
+
     return () => clearTimeout(timer);
   }, [winSequencePhase, winSequenceData, handleAnnouncementComplete]);
+
 
   // Safety timeout: If chip animation phase doesn't complete within 8 seconds, force transition
   // (animation is now ~4s + stagger, so 8s is safe)
