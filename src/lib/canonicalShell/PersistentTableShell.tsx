@@ -240,7 +240,7 @@ export function PersistentTableShell({
         dealerGameId={gameId ?? null}
         roundId={null}
       >
-        <AnnouncementRailProvider>{body}</AnnouncementRailProvider>
+        {body}
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
