@@ -336,6 +336,10 @@ interface MobileGameTableProps {
   onLeaveGameNow?: () => void;
   // Waiting phase - hide pot display
   isWaitingPhase?: boolean;
+  // Canonical slot-owned waiting content (rendered inside the table container,
+  // not as a floating overlay). Used by WaitingForPlayersTable to fold the
+  // seated-count + invite/add-bot/start CTAs into the canonical stage.
+  waitingSlotContent?: React.ReactNode;
   // Real money indicator
   realMoney?: boolean;
   // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
@@ -481,6 +485,7 @@ export const MobileGameTable = ({
   getPositionForUserId,
   onLeaveGameNow,
   isWaitingPhase = false,
+  waitingSlotContent,
   realMoney = false,
   revealAtShowdown = false,
   externalShowdownCardsCache,
@@ -4361,6 +4366,14 @@ export const MobileGameTable = ({
             </>
           );
         })()}
+
+        {/* Canonical slot-owned waiting content — lives INSIDE the table
+            container (not a wrapper-level floating overlay). Renders during
+            the waiting phase so seated-count and invite/start CTAs are
+            owned by the canonical stage. */}
+        {isWaitingPhase && waitingSlotContent}
+
+        
         
         
         {/* Turn Spotlight - Holm games and Dice games */}
