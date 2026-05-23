@@ -68,6 +68,7 @@ import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPla
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
+import { CanonicalAnnouncementSlot } from '@/lib/canonicalShell/announcements';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
