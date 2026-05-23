@@ -5560,32 +5560,35 @@ export const CribbageMobileGameTable = ({
             
             const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
             
+            // Phase 2 / Step 3: 'Discard to Crib' is owned by the
+            // canonical rail (cta_prompt for the actor;
+            // waiting_for_player for observers/opponents). The legacy
+            // string is retired here so it never double-renders. The
+            // 'Cut Card' lifecycle label still renders locally pending
+            // a later step.
             const shouldShowBanner = (
-              (effectivePhase === 'counting' && !isCountingComplete) || 
+              (effectivePhase === 'counting' && !isCountingComplete) ||
               (effectiveLastEvent && !hideEventAnnouncement) ||
-              effectivePhase === 'discarding' ||
               effectivePhase === 'cutting' ||
               isCountingComplete
             );
-            
+
             if (!shouldShowBanner) return null;
-            
+
             return (
               <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                 <p className="text-slate-900 font-bold text-[11px] text-center truncate">
                   {isCountingComplete
                     ? 'Dealing Next Hand...'
                     : effectivePhase === 'counting'
-                      ? countingAnnouncement 
+                      ? countingAnnouncement
                         ? `${countingTargetLabel}: ${countingAnnouncement}`
                         : countingTargetLabel
                           ? `Scoring ${countingTargetLabel}...`
                           : 'Scoring hands...'
                       : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
                         ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                        : effectivePhase === 'discarding'
-                          ? 'Discard to Crib'
-                          : 'Cut Card'}
+                        : 'Cut Card'}
                 </p>
               </div>
             );
