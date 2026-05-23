@@ -454,6 +454,18 @@ export const CribbageMobileGameTable = ({
     }
   }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
+  // Publish tab metadata to the shell-owned tab bar. Shell owns layout
+  // and geometry; this surface provides only the icon choice and the
+  // gameplay-derived indicator state.
+  useShellTabBar({
+    cardsIcon: 'spade',
+    activeTab,
+    setActiveTab,
+    chatFlashing: showGreenChatIndicator ? 'green' : null,
+    chatIndicator: showRedChatIndicator ? 'red' : null,
+    onOpenChat: handleOpenChatTab,
+  });
+
   useEffect(() => {
     return () => {
       if (greenClearTimeoutRef.current) {
