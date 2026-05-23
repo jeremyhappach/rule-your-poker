@@ -73,6 +73,7 @@ import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -6332,8 +6333,8 @@ export const MobileGameTable = ({
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
-        {/* FIXED HEIGHT announcement/timer area - prevents layout shift when announcements appear/disappear */}
-        <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
+        <ShellHudChrome announcementFallback={
+          <>
           {/* Dice games: dealer announcement + countdown timer live here (top of the active player box) */}
           {/* CRITICAL: Show turnAnnouncement even after gamePhase changes to prevent 3x flash on win.
               The announcement has its own 2.5s timeout and will clear naturally. */}
@@ -6439,12 +6440,8 @@ export const MobileGameTable = ({
             // the canonical rail. Legacy in-table announcement retired.
             null
           ) : null}
-
-        </div>
-
-        {/* Canonical announcement rail + tab bar are shell-owned and
-            rendered by PersistentTableShell. This game publishes only
-            tab metadata via `useShellTabBar` (registered above). */}
+          </>
+        } />
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (
