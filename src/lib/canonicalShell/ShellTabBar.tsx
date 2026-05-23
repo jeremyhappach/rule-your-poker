@@ -209,7 +209,7 @@ export function ShellTabBar() {
     <div
       data-canonical-shell-tabbar=""
       className="flex items-center justify-center gap-1 px-3 py-1 border-t border-border/50 bg-background"
-      style={{ flex: '0 0 auto' }}
+      style={{ height: 44, minHeight: 44 }}
     >
       <button
         onClick={() => setActiveTab('cards')}
