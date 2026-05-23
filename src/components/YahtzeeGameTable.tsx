@@ -52,8 +52,9 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
-import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
-import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
+import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
@@ -492,6 +493,48 @@ export function YahtzeeGameTable({
 
   const getPlayerUsername = (player: Player) =>
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
+
+  // ── Phase 5: Canonical match_win emit ────────────────────────────────
+  // Migrates the retired local Yahtzee game-over gold plate to a
+  // shell-owned semantic emit. Operational HUD chrome (turn chip + rolls
+  // badge) is relocated as a sibling region of the rail at the render
+  // site below — it is NOT a semantic announcement.
+  const announcements = useAnnouncements();
+  const lastEmittedYahtzeeMatchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (gamePhase !== 'complete') return;
+    if (!viewState) return;
+    const results = Object.entries(viewState.playerStates || {})
+      .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
+      .sort((a, b) => b.total - a.total);
+    if (results.length === 0) return;
+    const winnerPlayer = players.find(p => p.id === results[0].pid);
+    const winnerName = winnerPlayer ? getPlayerUsername(winnerPlayer) : '?';
+    const scoreLine = results.map(r => {
+      const p = players.find(pl => pl.id === r.pid);
+      return `${p ? getPlayerUsername(p) : '?'}: ${r.total}`;
+    }).join(' • ');
+    const text = `${winnerName} Wins! ${scoreLine}`;
+    const key = `yahtzee-match:${dealerGameId ?? 'no-dg'}:${currentRoundId ?? 'no-r'}:${results[0].pid}:${results[0].total}`;
+    if (lastEmittedYahtzeeMatchRef.current === key) return;
+    lastEmittedYahtzeeMatchRef.current = key;
+    announcements.clearAmbient();
+    announcements.emit({
+      id: `match_win:${key}`,
+      type: 'match_win',
+      scope: { dealerGameId: dealerGameId ?? null, roundId: currentRoundId ?? null },
+      payload: { text },
+      // Persist through chip transfer / winner overlay sequence.
+      ttlMs: 10000,
+    });
+  }, [
+    gamePhase,
+    viewState?.playerStates,
+    dealerGameId,
+    currentRoundId,
+    players,
+    announcements,
+  ]);
 
   // Scores — derived from viewState for render stability
   const allTotals = useMemo(() =>
@@ -2060,8 +2103,16 @@ export function YahtzeeGameTable({
       {/* ===== BOTTOM SECTION ===== */}
       <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-t from-background via-background to-background/95 border-t border-border overflow-hidden">
 
-        <ShellHudChrome announcementFallback={
-          <>
+        {/* Phase 5 architectural finish line: shell-owned announcement
+            rail (announcement-only) + sibling operational HUD chrome
+            (per-actor turn chip + rolls badge — NOT a semantic
+            announcement) + tab bar. The match-win plate is emitted
+            via useAnnouncements() above; no local game-over plate. */}
+        <ShellAnnouncementRail />
+        <div
+          data-shell-operational-hud=""
+          className="w-full flex items-center justify-center px-3 min-h-[28px]"
+        >
           {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
               <Clock className="w-4 h-4 text-muted-foreground" />
@@ -2072,27 +2123,9 @@ export function YahtzeeGameTable({
                 Rolls: {isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 0)}
               </Badge>
             </div>
-          ) : gamePhase === 'complete' ? (
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {(() => {
-                  const results = Object.entries(viewState?.playerStates || {})
-                    .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
-                    .sort((a, b) => b.total - a.total);
-                  if (results.length === 0) return 'Game Complete!';
-                  const winner = players.find(p => p.id === results[0].pid);
-                  const winnerName = winner ? getPlayerUsername(winner) : '?';
-                  const scoreLine = results.map(r => {
-                    const p = players.find(pl => pl.id === r.pid);
-                    return `${p ? getPlayerUsername(p) : '?'}: ${r.total}`;
-                  }).join(' • ');
-                  return `${winnerName} Wins! ${scoreLine}`;
-                })()}
-              </p>
-            </div>
           ) : null}
-          </>
-        } />
+        </div>
+        <ShellTabBar />
 
         {/* CARDS/DICE TAB */}
         {activeTab === 'cards' && (
