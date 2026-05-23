@@ -5624,7 +5624,7 @@ export const CribbageMobileGameTable = ({
 
       {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        <ShellHudChrome announcementFallback={undefined} />
+        <ShellHudChrome />
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
