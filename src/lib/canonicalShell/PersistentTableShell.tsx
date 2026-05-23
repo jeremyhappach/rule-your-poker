@@ -80,6 +80,7 @@ export function PersistentTableShell({
   gameType,
   projectionMode,
   viewerPosition = null,
+  viewerUserId = null,
   seats,
   header,
   children,
