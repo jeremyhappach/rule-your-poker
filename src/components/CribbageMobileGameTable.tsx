@@ -5280,6 +5280,57 @@ export const CribbageMobileGameTable = ({
     prevBannerTextRef.current = derivedBannerText;
   }, [derivedBannerText, gameId, currentHandNumber, currentRoundId, isHighCardMode, isBootstrapMode, viewState?.phase, isTransitioning, postCountingTransitionActive, renderHandKey, currentHandKey, winSequencePhase, countingStateSnapshot]);
 
+  const gameplayAnnouncementFallback = (() => {
+    // Gameplay scoring/result announcements intentionally remain local
+    // pre-migration, but are now injected into the shell-owned HUD rail so
+    // canonical lifecycle plates and legacy gameplay plates share geometry.
+    if (isHighCardMode || isBootstrapMode || !viewState) return null;
+
+    const isCountingAnimActive = !!countingStateSnapshot;
+    const countingOutroActive = isCountingAnimActive && countingDelayActive;
+    const effectivePhase = isCountingAnimActive
+      ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
+      : viewState.phase;
+    const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
+
+    if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
+    if (winSequencePhase === 'announcement' || winSequencePhase === 'chips') return null;
+
+    const isPeggingEvent = effectiveLastEvent && (
+      effectiveLastEvent.type === 'pegging_points' ||
+      effectiveLastEvent.type === 'go_point' ||
+      effectiveLastEvent.type === 'his_heels'
+    );
+    const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
+    const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
+    const shouldShowBanner = (
+      (effectivePhase === 'counting' && !isCountingComplete) ||
+      (effectiveLastEvent && !hideEventAnnouncement) ||
+      effectivePhase === 'cutting' ||
+      isCountingComplete
+    );
+
+    if (!shouldShowBanner) return null;
+
+    return (
+      <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+        <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+          {isCountingComplete
+            ? 'Dealing Next Hand...'
+            : effectivePhase === 'counting'
+              ? countingAnnouncement
+                ? `${countingTargetLabel}: ${countingAnnouncement}`
+                : countingTargetLabel
+                  ? `Scoring ${countingTargetLabel}...`
+                  : 'Scoring hands...'
+              : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
+                ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                : 'Cut Card'}
+        </p>
+      </div>
+    );
+  })();
+
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
