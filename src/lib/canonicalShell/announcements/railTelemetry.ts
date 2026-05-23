@@ -5,9 +5,10 @@
  * inspectable from telemetry queries, with no console dependency
  * and no need to ask the tester to read devtools.
  *
- * Temporarily forced ON for the Cribbage announcement regression investigation.
- * This avoids URL/localStorage manipulation and keeps the signal persistently
- * inspectable until the investigation is explicitly turned off.
+ * Gated by the standard sync-debug channel
+ * (?ptp_debug=sync, ?debug_sync_events=1, or
+ * localStorage ptp_debug_sync_events="1") — same posture as the
+ * rest of the sync investigations. Always-on would be too noisy.
  *
  * Event names emitted (event_type = 'transition'):
  *   - rail-emit-accepted          provider accepted an emit
@@ -25,16 +26,29 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { isDebugChannel } from '@/lib/debugChannels';
 import type { AnnouncementBehavior, AnnouncementScope, AnnouncementType } from './types';
 
-const RAIL_TELEMETRY_FORCED_ON = true;
-
+let _enabled: boolean | null = null;
 function isEnabled(): boolean {
-  return RAIL_TELEMETRY_FORCED_ON;
+  if (_enabled !== null) return _enabled;
+  try {
+    if (isDebugChannel('sync')) return (_enabled = true);
+  } catch { /* */ }
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const v = p.get('debug_sync_events') ?? p.get('debug_rail');
+    if (v === '1' || v === '' || v?.toLowerCase() === 'true') return (_enabled = true);
+  } catch { /* */ }
+  try {
+    if (window.localStorage.getItem('ptp_debug_sync_events') === '1') return (_enabled = true);
+    if (window.localStorage.getItem('ptp_debug_rail') === '1') return (_enabled = true);
+  } catch { /* */ }
+  return (_enabled = false);
 }
 
 export function refreshRailTelemetryFlag(): void {
-  // Kept for existing callers; telemetry is intentionally force-enabled here.
+  _enabled = null;
 }
 
 export type RailTelemetryName =
@@ -98,5 +112,11 @@ export function persistRailTelemetry(args: RailTelemetryArgs): void {
       event_name: args.eventName,
       payload,
     } as any)
-    .then(() => undefined);
+    .then(({ error }) => {
+      if (error) {
+        // Last-resort console — telemetry channel itself failed.
+        // eslint-disable-next-line no-console
+        console.warn('[rail-telemetry] write failed:', error.message);
+      }
+    });
 }
