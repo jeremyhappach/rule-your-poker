@@ -139,3 +139,21 @@ export function isCelebrationType(t: AnnouncementType | undefined | null): boole
   return !!t && CELEBRATION_TYPES.has(t);
 }
 
+/**
+ * Actor-directed CTA / ambient helper types.
+ *
+ * These are PLAYER-DIRECTED prompts ("Your turn", "Discard to crib",
+ * "Waiting on Player 1") and belong in the ambient helper text area
+ * inside the active content pane — NOT in the shell announcement rail.
+ * Keeping them out of the rail prevents UX churn between gameplay
+ * announcements and CTA prompts that flip every action.
+ */
+export const CTA_AMBIENT_TYPES: ReadonlySet<AnnouncementType> = new Set<AnnouncementType>([
+  'cta_prompt',
+  'waiting_for_player',
+]);
+
+export function isCtaAmbientType(t: AnnouncementType | undefined | null): boolean {
+  return !!t && CTA_AMBIENT_TYPES.has(t);
+}
+
