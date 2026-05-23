@@ -166,13 +166,10 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       );
     }
     case 'awaiting_discards': {
-      const x = p as { context?: string; pending?: number; total?: number };
-      const subtitle =
-        x.context ??
-        (x.pending != null && x.total != null
-          ? `${x.total - x.pending} / ${x.total} discarded`
-          : 'Players are selecting cards for the crib');
-      return <LifecycleAnnouncement title="Waiting on Discards" subtitle={subtitle} />;
+      // Progress count is intentionally omitted — the per-actor primary
+      // action button ("Send to Crib (n/total)") already surfaces it.
+      // The rail plate is the shared phase label only.
+      return <LifecycleAnnouncement title="Waiting on Discards" />;
     }
     case 'cta_prompt': {
       // Actor-only CTA plate. Visibility gating on
