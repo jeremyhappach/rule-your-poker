@@ -58,12 +58,30 @@ function formatCounts(counts?: RoundWinPayload['counts']): string | undefined {
 export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null {
   const p = (event.payload ?? {}) as Record<string, unknown>;
   switch (event.type) {
-    case 'match_win':
-      // Terminal match-win visuals are never lifecycle rail content.
-      // Skunk/double-skunk overlays are shell-owned by
-      // CanonicalCelebrationLayer; non-skunk wins proceed directly to
-      // chip transport without an invented announcement card.
-      return null;
+    case 'match_win': {
+      // Winner card renders in the lifecycle rail for both active
+      // players and observers. Skunk/double-skunk centered overlays
+      // are rendered IN ADDITION by CanonicalCelebrationLayer; this
+      // rail plate is the canonical "who won" announcement.
+      const x = p as {
+        winnerName?: string;
+        amount?: number | string;
+        score?: { winner?: number; loser?: number };
+        skunk?: 'single' | 'double';
+      };
+      const skunkPrefix =
+        x.skunk === 'double' ? 'DOUBLE SKUNK! ' : x.skunk === 'single' ? 'SKUNK! ' : '';
+      const title = x.winnerName
+        ? `${skunkPrefix}${x.winnerName} wins`
+        : `${skunkPrefix}Match won`;
+      const scorePart =
+        x.score && x.score.winner != null && x.score.loser != null
+          ? `${x.score.winner} — ${x.score.loser}`
+          : undefined;
+      const amountPart = x.amount != null ? `+${x.amount}` : undefined;
+      const subtitle = [scorePart, amountPart].filter(Boolean).join(' · ') || undefined;
+      return <LifecycleAnnouncement title={title} subtitle={subtitle} />;
+    }
     case 'round_win': {
       const x = p as RoundWinPayload;
       const kindLabel =

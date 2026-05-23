@@ -13,7 +13,9 @@ export function ShellAnnouncementRail({ announcementFallback }: ShellHudChromePr
   const ctx = useAnnouncementContext();
   const active = ctx?.active;
   const hasCanonicalRailEvent =
-    !!active && !isCelebrationType(active.type) && !isCtaAmbientType(active.type);
+    !!active &&
+    (active.type === 'match_win' || !isCelebrationType(active.type)) &&
+    !isCtaAmbientType(active.type);
 
   return (
     <div
