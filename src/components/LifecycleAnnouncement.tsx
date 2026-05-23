@@ -39,15 +39,15 @@ export const LifecycleAnnouncement = ({
   overlay = false,
 }: LifecycleAnnouncementProps) => {
   const plate = (
-    <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-4 py-1.5 shadow-xl border-2 border-amber-900 animate-scale-in">
-      <p className="text-sm font-bold text-amber-950 text-center leading-tight">
+    <div className="w-full h-full flex items-center justify-center bg-poker-gold/95 backdrop-blur-sm px-4 shadow-xl border-y-2 border-poker-gold animate-scale-in overflow-hidden">
+      <p className="text-sm font-bold text-primary-foreground text-center leading-tight truncate">
         {title}
+        {subtitle && (
+          <span className="text-[11px] font-semibold opacity-80 ml-2">
+            {subtitle}
+          </span>
+        )}
       </p>
-      {subtitle && (
-        <p className="text-[11px] text-amber-900/85 text-center mt-0.5 leading-tight">
-          {subtitle}
-        </p>
-      )}
     </div>
   );
 

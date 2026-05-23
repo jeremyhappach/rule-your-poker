@@ -120,7 +120,7 @@ export function PersistentTableShell({
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
       className="min-h-screen bg-shell-neutral"
-      style={{ position: 'relative' }}
+      style={{ position: 'relative', height: '100dvh', overflow: 'hidden' }}
     >
       {/* TEMPORARY MIGRATION AID — canonical shell provenance badge.
           Rendered ONLY here, inside PersistentTableShell. If you see this
@@ -164,7 +164,8 @@ export function PersistentTableShell({
           zIndex: 1,
           display: 'flex',
           flexDirection: 'column',
-          minHeight: '100vh',
+          height: '100%',
+          minHeight: 0,
         }}
       >
         {/* Shell-owned HUD header chrome. Authored by the route. */}
@@ -200,7 +201,8 @@ export function PersistentTableShell({
             justifyContent: 'center',
             padding: '0 12px',
             pointerEvents: 'none',
-            background: 'transparent',
+            background: 'hsl(var(--background))',
+            overflow: 'hidden',
           }}
         >
           <CanonicalAnnouncementLayer />

@@ -27,7 +27,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -66,12 +65,8 @@ export interface ShellTabBarState {
   isPaused?: boolean;
 }
 
-interface InternalContextValue {
-  state: ShellTabBarState | null;
-  register: (state: ShellTabBarState | null) => void;
-}
-
-const ShellTabBarContext = createContext<InternalContextValue | null>(null);
+const ShellTabBarStateContext = createContext<ShellTabBarState | null>(null);
+const ShellTabBarRegisterContext = createContext<((state: ShellTabBarState | null) => void) | null>(null);
 
 /**
  * Provider mounted inside PersistentTableShell. Holds the single
@@ -83,11 +78,12 @@ export function ShellTabBarProvider({ children }: { children: React.ReactNode })
   const register = useCallback((next: ShellTabBarState | null) => {
     setState(next);
   }, []);
-  const value = useMemo(() => ({ state, register }), [state, register]);
   return (
-    <ShellTabBarContext.Provider value={value}>
-      {children}
-    </ShellTabBarContext.Provider>
+    <ShellTabBarRegisterContext.Provider value={register}>
+      <ShellTabBarStateContext.Provider value={state}>
+        {children}
+      </ShellTabBarStateContext.Provider>
+    </ShellTabBarRegisterContext.Provider>
   );
 }
 
@@ -101,7 +97,7 @@ export function ShellTabBarProvider({ children }: { children: React.ReactNode })
  * content panels.
  */
 export function useShellTabBar(state: ShellTabBarState | null): void {
-  const ctx = useContext(ShellTabBarContext);
+  const register = useContext(ShellTabBarRegisterContext);
   // Stable signature so we don't thrash on identity-only changes.
   const signature = state
     ? JSON.stringify({
@@ -121,30 +117,26 @@ export function useShellTabBar(state: ShellTabBarState | null): void {
   onOpenChatRef.current = state?.onOpenChat ?? null;
 
   useEffect(() => {
-    if (!ctx) return;
+    if (!register) return;
     if (!state) {
-      ctx.register(null);
+      register(null);
       return;
     }
-    ctx.register({
+    register({
       ...state,
       setActiveTab: (t) => setActiveRef.current?.(t),
       onOpenChat: state.onOpenChat ? () => onOpenChatRef.current?.() : undefined,
     });
     return () => {
-      // Only clear if we're still the registered owner. Last-writer-wins
-      // ordering means a subsequent registrant may have already replaced
-      // us; clearing unconditionally would race.
-      ctx.register(null);
+      register(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx, signature]);
+  }, [register, signature]);
 }
 
 /** Shell-rendered tab bar. Reads from the provider. */
 export function ShellTabBar() {
-  const ctx = useContext(ShellTabBarContext);
-  const state = ctx?.state ?? null;
+  const state = useContext(ShellTabBarStateContext);
   if (!state) return null;
 
   const {
