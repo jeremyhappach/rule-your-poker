@@ -66,6 +66,8 @@ const Index = () => {
   const { makeItTakeIt, loading: makeItTakeItLoading, toggleMakeItTakeIt } = useMakeItTakeIt();
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   const [isTogglingMakeItTakeIt, setIsTogglingMakeItTakeIt] = useState(false);
+  const { enabled: debugModeEnabled, loading: debugModeLoading, toggle: toggleDebugMode } = useGlobalDebugMode();
+  const [isTogglingDebugMode, setIsTogglingDebugMode] = useState(false);
   const { isAdmin } = useIsAdmin(user?.id);
   const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
