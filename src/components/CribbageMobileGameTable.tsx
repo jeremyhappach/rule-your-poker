@@ -680,6 +680,7 @@ export const CribbageMobileGameTable = ({
   const announcementCtx = useAnnouncementContext();
   const canonicalAnnouncementActive = !!announcementCtx?.active;
   const announcedDealerResolvedRef = useRef<string | null>(null);
+  const lastHighCardAmbientIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -700,6 +701,7 @@ export const CribbageMobileGameTable = ({
       announcedDealerResolvedRef.current === null
     ) {
       const id = `${gameId}:dealer-selection:${dealerSelectionCohortDerived}`;
+      lastHighCardAmbientIdRef.current = id;
       announcements.emit({
         id,
         type: 'dealer_selection_in_progress',
@@ -711,9 +713,14 @@ export const CribbageMobileGameTable = ({
       });
       return;
     }
-    // Out of high-card mode → tear down ambient.
+    // Out of high-card mode → tear down ONLY the ambient we emitted.
+    // Scoped dismiss prevents clobbering ambient owned by other effects
+    // (bootstrap awaiting_ante, waiting_for_player, cta_prompt).
     if (!effectiveShowHighCardSelection) {
-      announcements.clearAmbient();
+      if (lastHighCardAmbientIdRef.current) {
+        announcements.dismiss(lastHighCardAmbientIdRef.current);
+        lastHighCardAmbientIdRef.current = null;
+      }
       announcedDealerResolvedRef.current = null;
       return;
     }
@@ -731,7 +738,13 @@ export const CribbageMobileGameTable = ({
       const id = `${gameId}:dealer-selected:${dealerSelectionCohortDerived}:${effectiveHighCardWinnerPosition}`;
       if (announcedDealerResolvedRef.current === id) return;
       announcedDealerResolvedRef.current = id;
-      announcements.clearAmbient();
+      // Scoped dismiss of our own in-progress ambient so the transient
+      // cleanly supersedes the "Selecting next dealer" plate without
+      // wiping ambient owned by adjacent effects.
+      if (lastHighCardAmbientIdRef.current) {
+        announcements.dismiss(lastHighCardAmbientIdRef.current);
+        lastHighCardAmbientIdRef.current = null;
+      }
       announcements.emit({
         id,
         type: 'dealer_selected',
@@ -801,7 +814,7 @@ export const CribbageMobileGameTable = ({
     const semanticState: CribbageState | null = (viewState as CribbageState | null) ?? cribbageState;
     if (!semanticState) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
@@ -817,7 +830,7 @@ export const CribbageMobileGameTable = ({
       phase === 'complete'
     ) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
@@ -887,7 +900,7 @@ export const CribbageMobileGameTable = ({
 
     if (!intent) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
@@ -915,7 +928,7 @@ export const CribbageMobileGameTable = ({
     const targetPlayer = players.find((p) => p.id === intent.targetPlayerId);
     if (!targetPlayer) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
@@ -3852,6 +3865,18 @@ export const CribbageMobileGameTable = ({
         await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
 
         try {
+          // P0 concurrency guard — snapshot identity captured at read time.
+          // A stale bot write must not overwrite a newer human Go/play/reset
+          // that landed between our read and write. We enforce optimistic
+          // concurrency via JSONB predicates: if any of (phase,
+          // currentTurnPlayerId, currentCount) has moved, the UPDATE
+          // matches 0 rows and we bail. The bot effect will re-evaluate
+          // on the next authoritative snapshot.
+          const guardCurrentTurnId = cribbageState.pegging.currentTurnPlayerId;
+          const guardCurrentCount = cribbageState.pegging.currentCount;
+          const guardPlayedLen = cribbageState.pegging.playedCards.length;
+          const guardGoLen = cribbageState.pegging.goCalledBy.length;
+
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
             traceGoRace(traceCtx, 'bot:callGo:before-write', {
               readSnapshot: peggingSnapshot(cribbageState),
@@ -3862,15 +3887,25 @@ export const CribbageMobileGameTable = ({
             });
             // Fire-and-forget event logging (atomic DB guard prevents duplicates)
             logGoPointEvent(eventCtx, cribbageState, newState);
-            
-            const { error: writeErr } = await supabase
+
+            const { data: writeRows, error: writeErr } = await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-              .eq('id', roundId);
+              .eq('id', roundId)
+              .eq('cribbage_state->>phase', 'pegging')
+              .eq('cribbage_state->pegging->>currentTurnPlayerId', guardCurrentTurnId as string)
+              .eq('cribbage_state->pegging->>currentCount', String(guardCurrentCount))
+              .select('id');
+            const staleGo = !writeErr && (!writeRows || writeRows.length === 0);
             traceGoRace(traceCtx, 'bot:callGo:after-write', {
-              ok: !writeErr,
+              ok: !writeErr && !staleGo,
               error: writeErr?.message ?? null,
+              stale: staleGo,
+              guard: { guardCurrentTurnId, guardCurrentCount, guardPlayedLen, guardGoLen },
             });
+            if (staleGo) {
+              console.warn('[CRIBBAGE BOT] callGo rejected by concurrency predicate — snapshot stale.');
+            }
           } else {
             const cardIndex = getBotPeggingCardIndex(
               botState,
@@ -3894,15 +3929,25 @@ export const CribbageMobileGameTable = ({
               if (newState.lastEvent?.type === 'his_heels') {
                 logHisHeelsEvent(eventCtx, newState);
               }
-              
-              const { error: writeErr } = await supabase
+
+              const { data: writeRows, error: writeErr } = await supabase
                 .from('rounds')
                 .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-                .eq('id', roundId);
+                .eq('id', roundId)
+                .eq('cribbage_state->>phase', 'pegging')
+                .eq('cribbage_state->pegging->>currentTurnPlayerId', guardCurrentTurnId as string)
+                .eq('cribbage_state->pegging->>currentCount', String(guardCurrentCount))
+                .select('id');
+              const stalePlay = !writeErr && (!writeRows || writeRows.length === 0);
               traceGoRace(traceCtx, 'bot:playCard:after-write', {
-                ok: !writeErr,
+                ok: !writeErr && !stalePlay,
                 error: writeErr?.message ?? null,
+                stale: stalePlay,
+                guard: { guardCurrentTurnId, guardCurrentCount, guardPlayedLen, guardGoLen },
               });
+              if (stalePlay) {
+                console.warn('[CRIBBAGE BOT] playPeggingCard rejected by concurrency predicate — snapshot stale.');
+              }
             } else {
               traceGoRace(traceCtx, 'bot:no-action', {
                 reason: 'shouldCallGo=false and getBotPeggingCardIndex=null',
@@ -4827,7 +4872,7 @@ export const CribbageMobileGameTable = ({
     if (!gameId) return;
     if (effectiveShowHighCardSelection) {
       if (lastBootstrapAmbientIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastBootstrapAmbientIdRef.current);
         lastBootstrapAmbientIdRef.current = null;
       }
       return;
@@ -4842,7 +4887,7 @@ export const CribbageMobileGameTable = ({
 
     if (!kind) {
       if (lastBootstrapAmbientIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastBootstrapAmbientIdRef.current);
         lastBootstrapAmbientIdRef.current = null;
       }
       return;
@@ -5645,13 +5690,14 @@ export const CribbageMobileGameTable = ({
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
-          {/* Cards tab: during high-card or bootstrap, show contextual placeholder */}
+          {/* Cards tab during high-card or bootstrap modes intentionally
+              renders nothing. All passive lifecycle messaging
+              ("Drawing for dealer...", "Awaiting ante decisions...",
+              "Preparing next hand...") is owned by the canonical
+              announcement rail. Local placeholders here would split
+              ownership and produce competing surfaces (Phase 2 / Step 4). */}
           {activeTab === 'cards' && (isHighCardMode || isBootstrapMode) && (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-sm">
-                {isHighCardMode ? 'Drawing for dealer...' : (shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...')}
-              </p>
-            </div>
+            <div className="h-full" aria-hidden="true" />
           )}
 
           {/* Cards tab: gameplay mode with guards */}
