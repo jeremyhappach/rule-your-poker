@@ -21,13 +21,18 @@
 
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderAnnouncement } from './renderers';
-import { isCelebrationType } from './types';
+import { isCelebrationType, isCtaAmbientType } from './types';
 
 export function CanonicalAnnouncementLayer() {
   const ctx = useAnnouncementContext();
   if (!ctx || !ctx.active) return null;
   // Celebration-tier events render in the dedicated celebration overlay.
   if (isCelebrationType(ctx.active.type)) return null;
+  // Actor-directed CTAs / waiting-on-player prompts render in the
+  // ambient helper text area inside the active content pane — not in
+  // the shell announcement rail. This keeps the rail focused on
+  // shared gameplay/lifecycle state and avoids per-action churn.
+  if (isCtaAmbientType(ctx.active.type)) return null;
 
   // Actor-only visibility gate for cta_prompt.
   if (ctx.active.type === 'cta_prompt') {

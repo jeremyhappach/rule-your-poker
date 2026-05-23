@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { CanonicalAnnouncementLayer } from './announcements';
 import { useAnnouncementContext } from './announcements/CanonicalAnnouncementProvider';
-import { isCelebrationType } from './announcements/types';
+import { isCelebrationType, isCtaAmbientType } from './announcements/types';
 import { ShellTabBar } from './ShellTabBar';
 
 interface ShellHudChromeProps {
@@ -11,7 +11,9 @@ interface ShellHudChromeProps {
 
 export function ShellAnnouncementRail({ announcementFallback }: ShellHudChromeProps) {
   const ctx = useAnnouncementContext();
-  const hasCanonicalRailEvent = !!ctx?.active && !isCelebrationType(ctx.active.type);
+  const active = ctx?.active;
+  const hasCanonicalRailEvent =
+    !!active && !isCelebrationType(active.type) && !isCtaAmbientType(active.type);
 
   return (
     <div
