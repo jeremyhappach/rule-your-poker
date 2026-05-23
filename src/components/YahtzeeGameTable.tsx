@@ -2083,6 +2083,10 @@ export function YahtzeeGameTable({
           ) : null}
         </div>
 
+        {/* Canonical lifecycle announcement slot — directly above the
+            tab bar. Reserved 36px, transparent when idle. */}
+        <CanonicalAnnouncementSlot />
+
         {/* Tab navigation */}
         <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
           <button
