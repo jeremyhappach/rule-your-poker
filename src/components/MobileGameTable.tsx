@@ -72,6 +72,7 @@ import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, res
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
+import { CanonicalAnnouncementSlot } from "@/lib/canonicalShell/announcements";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -6417,7 +6418,11 @@ export const MobileGameTable = ({
           ) : null}
 
         </div>
-        
+
+        {/* Canonical lifecycle announcement slot — directly above the
+            tab bar. Reserved 36px, transparent when idle. */}
+        <CanonicalAnnouncementSlot />
+
         {/* Tab navigation bar */}
         {(() => {
           // Determine if we should pulse the cards tab (it's your turn and you're not on cards tab)

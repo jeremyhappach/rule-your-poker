@@ -68,6 +68,7 @@ import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPla
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
+import { CanonicalAnnouncementSlot } from '@/lib/canonicalShell/announcements';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -1913,6 +1914,10 @@ export const GinRummyGameTable = ({
             return null;
           })()}
         </div>
+
+        {/* Canonical lifecycle announcement slot — directly above the
+            tab bar. Reserved 36px, transparent when idle. */}
+        <CanonicalAnnouncementSlot />
 
         {/* Tab navigation bar */}
         <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">

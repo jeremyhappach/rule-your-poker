@@ -52,6 +52,7 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+import { CanonicalAnnouncementSlot } from "@/lib/canonicalShell/announcements";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
@@ -2082,6 +2083,10 @@ export function YahtzeeGameTable({
             </div>
           ) : null}
         </div>
+
+        {/* Canonical lifecycle announcement slot — directly above the
+            tab bar. Reserved 36px, transparent when idle. */}
+        <CanonicalAnnouncementSlot />
 
         {/* Tab navigation */}
         <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">

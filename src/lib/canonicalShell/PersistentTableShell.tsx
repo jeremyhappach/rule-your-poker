@@ -36,7 +36,6 @@ import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   CanonicalAnnouncementProvider,
-  CanonicalAnnouncementLayer,
   CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
@@ -44,10 +43,11 @@ import {
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
 
-// Shell-owned HUD announcement rail dimensions. Fixed. Not
-// overridable by games. Sits between the shell-owned header and the
-// opaque game children.
-const SHELL_ANNOUNCEMENT_RAIL_HEIGHT_PX = 36;
+// Shell-owned HUD announcement rail dimensions. The shell no longer
+// renders the rail itself — gameplay surfaces mount
+// `CanonicalAnnouncementSlot` directly above their tab bar so the
+// reserved 36px lives between gameplay content and the tab nav, not
+// at the bottom of the shell column.
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
@@ -181,35 +181,11 @@ export function PersistentTableShell({
           {children}
         </div>
 
-        {/* Shell-owned canonical announcement rail.
-            TEMPORARY STRUCTURAL COMPROMISE (Pass 1 / Option A):
-              - Rail lives at the bottom of the shell column, in the
-                existing visual zone where per-game gameplay strips
-                (e.g. Cribbage "Discard to Crib") render today.
-              - Reserved 36px height to prevent layout hopping.
-              - Idle container is visually neutral (transparent — no
-                background, no border). Only the inner plate paints
-                when an announcement is active.
-              - Shell owns announcement state + rendering. True
-                tab-bar promotion / named layout regions remain a
-                future pass. Per-game CTA strips are NOT retired yet
-                and may visually coexist for now. */}
-        <div
-          data-canonical-shell-announcement-rail=""
-          style={{
-            flex: '0 0 auto',
-            height: SHELL_ANNOUNCEMENT_RAIL_HEIGHT_PX,
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '0 12px',
-            pointerEvents: 'none',
-            background: 'transparent',
-          }}
-        >
-          <CanonicalAnnouncementLayer />
-        </div>
+        {/* Canonical announcement rail is now mounted by gameplay
+            surfaces via `CanonicalAnnouncementSlot`, positioned
+            directly above their tab bar. The shell no longer renders
+            it at the bottom of the column (that placement put it
+            beneath the entire HUD/tab content). */}
       </div>
 
       <CanonicalAnnouncementDebugTrigger
