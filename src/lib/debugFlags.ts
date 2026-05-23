@@ -162,6 +162,10 @@ export function isDebugTestingUnlocked(): boolean {
 export type YahtzeeSeedScenario = 'clear_winner' | 'tie' | 'close_game';
 
 export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
+  // Persistent Debug Harness selector (game_defaults.debug_harness for 'yahtzee').
+  // Takes precedence over URL/localStorage so admins don't need device-specific setup.
+  if (getActiveHarnessCached('yahtzee') === 'near_win') return 'clear_winner';
+
   if (!isDebugTestingUnlocked()) return null;
   const valid = (v: string | null): YahtzeeSeedScenario | null =>
     v === 'clear_winner' || v === 'tie' || v === 'close_game' ? v : null;
