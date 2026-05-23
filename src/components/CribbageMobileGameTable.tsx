@@ -763,21 +763,31 @@ export const CribbageMobileGameTable = ({
 
 
   // ────────────────────────────────────────────────────────────────────────
-  // Phase D — passive ambient lifecycle (waiting-on-opponent states)
+  // Phase D / Step 3 — passive ambient + actor-scoped CTA lifecycle
   //
-  // Emits canonical `waiting_for_player` ambient announcements during
-  // Cribbage discarding and pegging phases when the local user is NOT the
-  // active actor. Semantic-state driven, NOT render-driven:
+  // Emits canonical rail events for Cribbage discarding and pegging:
   //
-  //   • Derives strictly from authoritative phase + turn ownership
-  //   • Stable id per (dealerGameId, handNumber, kind, targetPlayerId) —
-  //     re-emitting the same id is a no-op refresh, so render churn never
-  //     produces ambient flicker
-  //   • Self-scoped teardown: only clears ambient that THIS effect owns
-  //     (tracked via lastWaitingIdRef) so dealer-selection ambient is not
-  //     clobbered during the dealer-select → discarding handoff
-  //   • Skipped during high-card mode, counting, complete, and result UI —
-  //     those have dedicated overlays / transient announcements
+  //   • Seated actor pre-discard       → `cta_prompt` ("Discard to Crib")
+  //   • Seated viewer post-discard     → `waiting_for_player`
+  //   • Observer during discarding     → `waiting_for_player`
+  //   • Seated viewer, not pegging turn→ `waiting_for_player`
+  //   • Observer during pegging        → `waiting_for_player`
+  //
+  // Strict actor-visibility discipline:
+  //   - `cta_prompt` is ONLY emitted from the actor's own client and
+  //     carries payload.actorUserId for defense-in-depth rail gating.
+  //   - Observers and opponents never emit cta_prompt; they see the
+  //     companion `waiting_for_player` ambient instead.
+  //
+  // Semantic-state driven, NOT render-driven:
+  //   • Derives from authoritative phase + turn ownership
+  //   • Stable id per (dealerGameId, handNumber, kind, targetUserId)
+  //     so re-emits are identity-stable refreshes (no flicker)
+  //   • Self-scoped teardown via lastRailIdRef — does not clobber
+  //     ambient owned by other effects (e.g. dealer-selection,
+  //     bootstrap-lifecycle)
+  //   • Skipped during high-card mode, counting, complete, and result
+  //     UI — those have dedicated overlays / transient announcements
   // ────────────────────────────────────────────────────────────────────────
   const lastWaitingIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -815,76 +825,115 @@ export const CribbageMobileGameTable = ({
 
     const me = players.find((p) => p.user_id === currentUserId);
     const myPlayerId = me?.id ?? null;
+    const isObserverViewer = !myPlayerId;
 
-    // Derive (kind, targetPlayerId, contextLabel)
-    let kind: 'discard' | 'peg' | null = null;
-    let targetPlayerId: string | null = null;
-    let context: string | undefined;
+    // Resolved rail intent. One of:
+    //   { kind: 'cta', title, actorUserId }                   — actor only
+    //   { kind: 'waiting', targetPlayerId, context }          — observer/opponent
+    let intent:
+      | { kind: 'cta'; title: string; subtitle?: string }
+      | { kind: 'waiting'; targetPlayerId: string; context?: string }
+      | null = null;
 
     if (phase === 'discarding') {
       const playerCount = players.filter((p) => !p.sitting_out).length || players.length;
       const required = DISCARD_COUNT[playerCount] ?? 2;
-      const myDone =
-        myPlayerId &&
-        (semanticState.playerStates?.[myPlayerId]?.discardedToCrib?.length ?? 0) >= required;
-      // If I haven't discarded yet, the interactive UI owns the moment — no ambient.
-      if (!myDone) {
-        if (lastWaitingIdRef.current) {
-          announcements.clearAmbient();
-          lastWaitingIdRef.current = null;
-        }
-        return;
-      }
-      // Find first opponent still owing discards (deterministic by turnOrder).
       const order = semanticState.turnOrder ?? Object.keys(semanticState.playerStates ?? {});
-      const pending = order.find((pid) => {
-        if (pid === myPlayerId) return false;
-        const ps = semanticState.playerStates?.[pid];
-        return ps && (ps.discardedToCrib?.length ?? 0) < required;
-      });
-      if (!pending) {
-        if (lastWaitingIdRef.current) {
-          announcements.clearAmbient();
-          lastWaitingIdRef.current = null;
+
+      if (!isObserverViewer && myPlayerId) {
+        const myDiscarded =
+          semanticState.playerStates?.[myPlayerId]?.discardedToCrib?.length ?? 0;
+        if (myDiscarded < required) {
+          // I am the actor — emit actor-scoped CTA.
+          intent = {
+            kind: 'cta',
+            title: 'Discard to Crib',
+            subtitle: required === 2 ? 'Select 2 cards' : 'Select 1 card',
+          };
+        } else {
+          // I'm done; find first opponent still owing discards.
+          const pending = order.find((pid) => {
+            if (pid === myPlayerId) return false;
+            const ps = semanticState.playerStates?.[pid];
+            return ps && (ps.discardedToCrib?.length ?? 0) < required;
+          });
+          if (pending) {
+            intent = { kind: 'waiting', targetPlayerId: pending, context: 'discarding to crib' };
+          }
         }
-        return;
+      } else {
+        // Observer: surface any pending discarder (deterministic by order).
+        const pending = order.find((pid) => {
+          const ps = semanticState.playerStates?.[pid];
+          return ps && (ps.discardedToCrib?.length ?? 0) < required;
+        });
+        if (pending) {
+          intent = { kind: 'waiting', targetPlayerId: pending, context: 'discarding to crib' };
+        }
       }
-      kind = 'discard';
-      targetPlayerId = pending;
-      context = 'discarding to crib';
     } else if (phase === 'pegging') {
       const turnId = semanticState.pegging?.currentTurnPlayerId ?? null;
-      // My turn → interactive UI owns it.
-      if (!turnId || turnId === myPlayerId) {
-        if (lastWaitingIdRef.current) {
-          announcements.clearAmbient();
-          lastWaitingIdRef.current = null;
-        }
-        return;
+      if (!turnId) {
+        intent = null;
+      } else if (!isObserverViewer && turnId === myPlayerId) {
+        // Seated player on their pegging turn: the cards-tab interactive
+        // UI owns the moment. Pegging CTA migration is deferred (Step 3
+        // explicitly excludes pegging notices).
+        intent = null;
+      } else {
+        intent = { kind: 'waiting', targetPlayerId: turnId, context: 'playing a card' };
       }
-      kind = 'peg';
-      targetPlayerId = turnId;
-      context = 'playing a card';
     }
 
-    if (!kind || !targetPlayerId) return;
+    if (!intent) {
+      if (lastWaitingIdRef.current) {
+        announcements.clearAmbient();
+        lastWaitingIdRef.current = null;
+      }
+      return;
+    }
 
-    const targetPlayer = players.find((p) => p.id === targetPlayerId);
-    if (!targetPlayer) return;
+    if (intent.kind === 'cta') {
+      const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:cta:discard:${currentUserId}`;
+      if (lastWaitingIdRef.current === id) return;
+      lastWaitingIdRef.current = id;
+      announcements.emit({
+        id,
+        type: 'cta_prompt',
+        scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+        payload: {
+          title: intent.title,
+          subtitle: intent.subtitle,
+          actorUserId: currentUserId,
+          variant: 'discard',
+        },
+      });
+      return;
+    }
+
+    // waiting
+    const targetPlayer = players.find((p) => p.id === intent.targetPlayerId);
+    if (!targetPlayer) {
+      if (lastWaitingIdRef.current) {
+        announcements.clearAmbient();
+        lastWaitingIdRef.current = null;
+      }
+      return;
+    }
     const playerName = getDisplayName(
       players,
       targetPlayer,
       targetPlayer.profiles?.username || 'opponent',
     );
-
-    const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:waiting:${kind}:${targetPlayerId}`;
-    if (lastWaitingIdRef.current === id) return; // identity-stable: render churn is a no-op
+    const kindKey = phase === 'discarding' ? 'discard' : 'peg';
+    const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:waiting:${kindKey}:${intent.targetPlayerId}`;
+    if (lastWaitingIdRef.current === id) return;
     lastWaitingIdRef.current = id;
     announcements.emit({
       id,
       type: 'waiting_for_player',
       scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-      payload: { playerName, context },
+      payload: { playerName, context: intent.context },
     });
   }, [
     gameId,
