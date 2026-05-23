@@ -315,8 +315,8 @@ export function CanonicalAnnouncementProvider({
   const active = transient ?? ambient;
 
   const value = useMemo<AnnouncementContextValue>(
-    () => ({ active, ambient, transient, emit, dismiss, clearScope, clearAmbient }),
-    [active, ambient, transient, emit, dismiss, clearScope, clearAmbient],
+    () => ({ active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient }),
+    [active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient],
   );
 
   return (
