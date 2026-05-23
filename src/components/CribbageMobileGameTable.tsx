@@ -853,10 +853,10 @@ export const CribbageMobileGameTable = ({
     const isObserverViewer = !myPlayerId;
 
     // Resolved rail intent. One of:
-    //   { kind: 'cta', title, actorUserId }                   — actor only
-    //   { kind: 'waiting', targetPlayerId, context }          — observer/opponent
+    //   { kind: 'awaiting_discards', pending, total } — shared phase state
+    //   { kind: 'waiting', targetPlayerId, context }  — observer/opponent
     let intent:
-      | { kind: 'cta'; title: string; subtitle?: string }
+      | { kind: 'awaiting_discards'; pending: number; total: number }
       | { kind: 'waiting'; targetPlayerId: string; context?: string }
       | null = null;
 
@@ -865,36 +865,17 @@ export const CribbageMobileGameTable = ({
       const required = DISCARD_COUNT[playerCount] ?? 2;
       const order = semanticState.turnOrder ?? Object.keys(semanticState.playerStates ?? {});
 
-      if (!isObserverViewer && myPlayerId) {
-        const myDiscarded =
-          semanticState.playerStates?.[myPlayerId]?.discardedToCrib?.length ?? 0;
-        if (myDiscarded < required) {
-          // I am the actor — emit actor-scoped CTA.
-          intent = {
-            kind: 'cta',
-            title: 'Discard to Crib',
-            subtitle: required === 2 ? 'Select 2 cards' : 'Select 1 card',
-          };
-        } else {
-          // I'm done; find first opponent still owing discards.
-          const pending = order.find((pid) => {
-            if (pid === myPlayerId) return false;
-            const ps = semanticState.playerStates?.[pid];
-            return ps && (ps.discardedToCrib?.length ?? 0) < required;
-          });
-          if (pending) {
-            intent = { kind: 'waiting', targetPlayerId: pending, context: 'discarding to crib' };
-          }
-        }
-      } else {
-        // Observer: surface any pending discarder (deterministic by order).
-        const pending = order.find((pid) => {
-          const ps = semanticState.playerStates?.[pid];
-          return ps && (ps.discardedToCrib?.length ?? 0) < required;
-        });
-        if (pending) {
-          intent = { kind: 'waiting', targetPlayerId: pending, context: 'discarding to crib' };
-        }
+      // "Discarding" is a SHARED game phase, not a private actor CTA.
+      // Both the actor and observers see the same lifecycle rail plate
+      // ("Waiting on Discards"). The per-actor primary action button
+      // ("Send to Crib") provides the actor's interaction affordance.
+      const pendingCount = order.reduce((acc, pid) => {
+        const ps = semanticState.playerStates?.[pid];
+        const done = ps?.discardedToCrib?.length ?? 0;
+        return acc + (done < required ? 1 : 0);
+      }, 0);
+      if (pendingCount > 0) {
+        intent = { kind: 'awaiting_discards', pending: pendingCount, total: order.length };
       }
     } else if (phase === 'pegging') {
       const turnId = semanticState.pegging?.currentTurnPlayerId ?? null;
@@ -918,23 +899,19 @@ export const CribbageMobileGameTable = ({
       return;
     }
 
-    if (intent.kind === 'cta') {
-      const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:cta:discard:${currentUserId}`;
+    if (intent.kind === 'awaiting_discards') {
+      const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:awaiting_discards`;
       if (lastWaitingIdRef.current === id) return;
       lastWaitingIdRef.current = id;
       announcements.emit({
         id,
-        type: 'cta_prompt',
+        type: 'awaiting_discards',
         scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-        payload: {
-          title: intent.title,
-          subtitle: intent.subtitle,
-          actorUserId: currentUserId,
-          variant: 'discard',
-        },
+        payload: { pending: intent.pending, total: intent.total },
       });
       return;
     }
+
 
     // waiting
     const targetPlayer = players.find((p) => p.id === intent.targetPlayerId);
