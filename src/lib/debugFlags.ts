@@ -12,6 +12,9 @@
  *   - ptp_debug_disable_safety_polls = "1"
  */
 
+import { getActiveHarnessCached } from '@/lib/debugHarness/runtimeCache';
+
+
 function hasQueryFlag(name: string): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -71,26 +74,25 @@ export function isGinRiggedDealEnabled(): boolean {
  * Gin Rummy "two-action" debug harness — exercises round-end → next-hand and
  * match-win / chip-transfer flows in two quick human actions.
  *
- * STATUS: ALWAYS ON by explicit user directive for rapid deterministic
- * validation of the Gin lifecycle. Do NOT re-gate behind URL/localStorage/UI
- * until the user explicitly requests removal or proper gating.
+ * Now gated by the persistent Debug Harness selector on Game Defaults
+ * (game_defaults.debug_harness = 'near_gin' for game_type 'gin-rummy').
+ * 'none' = no-op; the standard Gin engine runs unchanged.
  *
- * CONTRACT (still holds while always-on):
+ * CONTRACT (when active):
  *  1. Produces a FULLY LEGAL deterministic Gin state — not a scripted
  *     cinematic. Real 10-card hands, real upcard, real 31-card stockpile.
  *     All standard legal actions remain valid continuations.
  *  2. Flag is read at decision time only — no sticky refs/scores leak
  *     across dealer games beyond what the harness call sites apply.
- *  3. While ON: match target = 50; dealer rotation suppressed within the
- *     dealer game so both gins resolve to host.
+ *  3. Match target = 50; dealer rotation suppressed within the dealer game
+ *     so both gins resolve to host.
  *
  *  Happy path: bot passes upcard → host takes upcard → instant gin (41 pts),
  *  repeat for hand 2 → match win at 82.
  *  Off-path (host passes, etc.): continues legally via the normal Gin engine.
  */
 export function isGinTwoActionHarnessEnabled(): boolean {
-  // ALWAYS ON until user explicitly says OFF. Do not re-gate without user direction.
-  return true;
+  return getActiveHarnessCached('gin-rummy') === 'near_gin';
 }
 
 /**
@@ -160,6 +162,10 @@ export function isDebugTestingUnlocked(): boolean {
 export type YahtzeeSeedScenario = 'clear_winner' | 'tie' | 'close_game';
 
 export function getYahtzeeSeedScenario(): YahtzeeSeedScenario | null {
+  // Persistent Debug Harness selector (game_defaults.debug_harness for 'yahtzee').
+  // Takes precedence over URL/localStorage so admins don't need device-specific setup.
+  if (getActiveHarnessCached('yahtzee') === 'near_win') return 'clear_winner';
+
   if (!isDebugTestingUnlocked()) return null;
   const valid = (v: string | null): YahtzeeSeedScenario | null =>
     v === 'clear_winner' || v === 'tie' || v === 'close_game' ? v : null;
