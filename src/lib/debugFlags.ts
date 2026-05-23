@@ -71,26 +71,29 @@ export function isGinRiggedDealEnabled(): boolean {
  * Gin Rummy "two-action" debug harness — exercises round-end → next-hand and
  * match-win / chip-transfer flows in two quick human actions.
  *
- * STATUS: ALWAYS ON by explicit user directive for rapid deterministic
- * validation of the Gin lifecycle. Do NOT re-gate behind URL/localStorage/UI
- * until the user explicitly requests removal or proper gating.
+ * Now gated by the persistent Debug Harness selector on Game Defaults
+ * (game_defaults.debug_harness = 'near_gin' for game_type 'gin-rummy').
+ * 'none' = no-op; the standard Gin engine runs unchanged.
  *
- * CONTRACT (still holds while always-on):
+ * CONTRACT (when active):
  *  1. Produces a FULLY LEGAL deterministic Gin state — not a scripted
  *     cinematic. Real 10-card hands, real upcard, real 31-card stockpile.
  *     All standard legal actions remain valid continuations.
  *  2. Flag is read at decision time only — no sticky refs/scores leak
  *     across dealer games beyond what the harness call sites apply.
- *  3. While ON: match target = 50; dealer rotation suppressed within the
- *     dealer game so both gins resolve to host.
+ *  3. Match target = 50; dealer rotation suppressed within the dealer game
+ *     so both gins resolve to host.
  *
  *  Happy path: bot passes upcard → host takes upcard → instant gin (41 pts),
  *  repeat for hand 2 → match win at 82.
  *  Off-path (host passes, etc.): continues legally via the normal Gin engine.
  */
 export function isGinTwoActionHarnessEnabled(): boolean {
-  // ALWAYS ON until user explicitly says OFF. Do not re-gate without user direction.
-  return true;
+  // Lazy import to avoid circular dep with runtimeCache (which imports supabase).
+  // The cache is sync; returns 'none' until hydrated, which is the safe default.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { getActiveHarnessCached } = require('@/lib/debugHarness/runtimeCache') as typeof import('@/lib/debugHarness/runtimeCache');
+  return getActiveHarnessCached('gin-rummy') === 'near_gin';
 }
 
 /**
