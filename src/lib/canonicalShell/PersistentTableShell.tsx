@@ -266,7 +266,7 @@ export function PersistentTableShell({
         roundId={null}
         viewerUserId={viewerUserId}
       >
-        {body}
+        <ShellTabBarProvider>{body}</ShellTabBarProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
