@@ -1879,53 +1879,14 @@ export const GinRummyGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
-        <ShellHudChrome announcementFallback={
-          <>
-          {(() => {
-            if (viewState.phase === 'complete' && viewState.knockResult) {
-              const r = viewState.knockResult;
-              const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
-              const bonus = r.isGin ? ` (${dwDiff} dw + 25 gin bonus)` :
-                            r.isUndercut ? ` (${dwDiff} dw + 25 undercut bonus)` :
-                            '';
-              return (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {getPlayerUsername(r.winnerId)} +{r.pointsAwarded}{bonus}
-                  </p>
-                </div>
-              );
-            }
-
-            if (viewState.phase === 'complete' && !viewState.knockResult) {
-              return (
-                <div className="w-full bg-muted/80 backdrop-blur-sm rounded-md px-3 py-1.5">
-                  <p className="text-muted-foreground font-bold text-[11px] text-center">
-                    Void Hand — Stock Exhausted
-                  </p>
-                </div>
-              );
-            }
-
-            if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
-              const knockerId = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked || ps.hasGin)?.[0];
-              if (knockerId) {
-                const knockerState = viewState.playerStates[knockerId];
-                const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
-                return (
-                  <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                    <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                      {getPlayerUsername(knockerId)} {knockerState?.hasGin ? 'has GIN! 🎉' : `knocked!${dwText}`}
-                    </p>
-                  </div>
-                );
-              }
-            }
-
-            return null;
-          })()}
-          </>
-        } />
+        {/* Phase 5: shell-owned announcement rail only. Round-win,
+            match-win, and void-hand plates are emitted via
+            useAnnouncements().emit(...) above; no local gameplay
+            announcement renderer here. Knock/Gin notices are
+            intentionally retired from the rail — the centered
+            GinRummyKnockOverlay / GinRummyGinOverlay above already
+            convey that transition. */}
+        <ShellHudChrome />
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
