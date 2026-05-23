@@ -1,15 +1,29 @@
-import type { ReactNode } from 'react';
+/**
+ * ShellHudChrome — shell-owned HUD chrome composition.
+ *
+ * Architectural finish line for the canonical announcement rail
+ * (Phase 5 retirement):
+ *
+ *   - The 36px announcement rail is OWNED BY THE SHELL. It renders
+ *     only the canonical announcement rail driven by the announcement
+ *     provider. There is NO `announcementFallback` slot anymore — game
+ *     surfaces must emit semantically into the canonical rail via
+ *     `useAnnouncements().emit(...)`.
+ *
+ *   - Non-announcement operational HUD chrome (per-actor turn chips,
+ *     timer bars, paused badges, etc.) lives in a sibling region
+ *     between the rail and the tab bar at each callsite. Use
+ *     `<ShellAnnouncementRail />` + your chrome + `<ShellTabBar />`
+ *     when a surface needs that. Surfaces with no chrome can keep
+ *     using `<ShellHudChrome />`.
+ */
+
 import { CanonicalAnnouncementLayer } from './announcements';
 import { useAnnouncementContext } from './announcements/CanonicalAnnouncementProvider';
 import { isCelebrationType, isCtaAmbientType } from './announcements/types';
 import { ShellTabBar } from './ShellTabBar';
 
-interface ShellHudChromeProps {
-  /** Legacy/local gameplay announcement plate shown only when the canonical rail is idle. */
-  announcementFallback?: ReactNode;
-}
-
-export function ShellAnnouncementRail({ announcementFallback }: ShellHudChromeProps) {
+export function ShellAnnouncementRail() {
   const ctx = useAnnouncementContext();
   const active = ctx?.active;
   const hasCanonicalRailEvent =
@@ -33,15 +47,15 @@ export function ShellAnnouncementRail({ announcementFallback }: ShellHudChromePr
         paddingInline: 12,
       }}
     >
-      {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : announcementFallback}
+      {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : null}
     </div>
   );
 }
 
-export function ShellHudChrome({ announcementFallback }: ShellHudChromeProps) {
+export function ShellHudChrome() {
   return (
     <>
-      <ShellAnnouncementRail announcementFallback={announcementFallback} />
+      <ShellAnnouncementRail />
       <ShellTabBar />
     </>
   );
