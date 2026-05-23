@@ -70,7 +70,7 @@ describe('PersistentTableShell', () => {
     const column = container.querySelector('[data-canonical-shell-column]') as HTMLElement | null;
     const rail = container.querySelector('[data-canonical-shell-announcement-rail]') as HTMLElement | null;
     const tabbar = container.querySelector('[data-canonical-shell-tabbar]') as HTMLElement | null;
-    expect(column?.style.gridTemplateRows).toBe('auto minmax(0, 1fr) 36px 44px');
+    expect(column?.style.gridTemplateRows).toBe('auto 36px 44px minmax(0, 1fr)');
     expect(container.querySelector('[data-canonical-shell-spacer]')).toBeNull();
     expect(rail).toBeTruthy();
     expect(tabbar).toBeTruthy();
