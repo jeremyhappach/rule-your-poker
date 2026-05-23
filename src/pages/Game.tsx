@@ -8265,7 +8265,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isCanonicalShellFamily(_routeShellGameType) ||
     (game.game_type == null && _isConfiguringContext);
 
-  const _innerBgClass = `${isMobile ? 'h-dvh overflow-hidden' : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
+  // When the canonical shell owns the page column (header + children +
+  // rail + tab bar in a flex column anchored to min-h-screen), the
+  // inner tree must fit the children flex slot — NOT claim 100dvh,
+  // which would push the rail and tab bar below the viewport. Use
+  // `flex-1 min-h-0` so mobile inner content fills the remaining
+  // space above the shell-owned rail and tab bar without overflow.
+  const _innerBgClass = `${isMobile ? (_treatAsCanonicalRoute && enableOuterShell ? 'flex-1 min-h-0 overflow-hidden flex flex-col' : 'h-dvh overflow-hidden') : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
   setLifecycleFact('Game.branch', 'loaded');
   setLifecycleFact('Game.loading', false);
   setLifecycleFact('Game.game_type', game.game_type ?? null);
