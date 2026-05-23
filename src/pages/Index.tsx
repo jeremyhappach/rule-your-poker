@@ -27,7 +27,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings } from "lucide-react";
+import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical } from "lucide-react";
+import { useGlobalDebugMode } from "@/lib/debugHarness/useGlobalDebugMode";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
@@ -65,6 +66,8 @@ const Index = () => {
   const { makeItTakeIt, loading: makeItTakeItLoading, toggleMakeItTakeIt } = useMakeItTakeIt();
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   const [isTogglingMakeItTakeIt, setIsTogglingMakeItTakeIt] = useState(false);
+  const { enabled: debugModeEnabled, loading: debugModeLoading, toggle: toggleDebugMode } = useGlobalDebugMode();
+  const [isTogglingDebugMode, setIsTogglingDebugMode] = useState(false);
   const { isAdmin } = useIsAdmin(user?.id);
   const { balance, refetch: refetchBalance } = usePlayerBalance(user?.id);
   const [showBalanceDialog, setShowBalanceDialog] = useState(false);
@@ -647,6 +650,41 @@ const Index = () => {
                         }}
                         disabled={maintenanceLoading || isTogglingMaintenance}
                         className="data-[state=checked]:bg-amber-600"
+                      />
+                    </div>
+
+                    {/* Global Debug Mode (master gate for all harnesses) */}
+                    <div className="flex items-center justify-between py-2 bg-red-900/20 rounded-lg px-3 border border-red-600/30">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="global-debug-mode" className="flex items-center gap-2">
+                          <FlaskConical className="h-4 w-4 text-red-400" />
+                          Global Debug Mode
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Master gate for all Debug Harnesses. OFF = harness selections are ignored at runtime (selections preserved). Affects new games only.
+                        </p>
+                      </div>
+                      <Switch
+                        id="global-debug-mode"
+                        checked={debugModeEnabled}
+                        onCheckedChange={async (next) => {
+                          setIsTogglingDebugMode(true);
+                          const ok = await toggleDebugMode(next);
+                          setIsTogglingDebugMode(false);
+                          toast({
+                            title: ok
+                              ? next ? "Debug Mode Enabled" : "Debug Mode Disabled"
+                              : "Error",
+                            description: ok
+                              ? next
+                                ? "Configured harnesses are now active for NEW games."
+                                : "Harness selections preserved but inert until re-enabled."
+                              : "Failed to toggle Debug Mode",
+                            variant: ok ? "default" : "destructive",
+                          });
+                        }}
+                        disabled={debugModeLoading || isTogglingDebugMode}
+                        className="data-[state=checked]:bg-red-600"
                       />
                     </div>
 
