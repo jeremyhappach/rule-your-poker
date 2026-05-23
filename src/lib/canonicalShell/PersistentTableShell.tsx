@@ -175,21 +175,23 @@ export function PersistentTableShell({
           </div>
         ) : null}
 
-        {/* Opaque game subtree — gameplay artifacts + tab CONTENT only.
-            The tab BAR itself is shell-owned (rendered below). */}
+        {/* Opaque game subtree. Intrinsic height (no flex-grow) so the
+            announcement rail sits DIRECTLY beneath the visual HUD/
+            game content instead of being pushed to the viewport
+            bottom. The spacer below the rail absorbs remaining
+            vertical space and keeps the tab bar pinned to the
+            bottom edge. */}
         <div
           data-canonical-shell-children=""
-          style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          style={{ flex: '0 0 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
         >
           {children}
         </div>
 
-        {/* Shell-owned canonical announcement rail.
-            Fixed reserved height, transparent when idle, single-line
-            centered messaging. Anchored directly above the shell tab
-            bar so lifecycle/gameplay messages sit between gameplay
-            content and tab nav. Single mount, single geometry, single
-            renderer. Games NEVER mount their own rail. */}
+        {/* Shell-owned canonical announcement rail. Sits immediately
+            below the game content. Transparent container — the plate
+            (LifecycleAnnouncement) owns its own visual styling
+            (gold). Games NEVER mount their own rail. */}
         <div
           data-canonical-shell-announcement-rail=""
           style={{
@@ -199,18 +201,23 @@ export function PersistentTableShell({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '0 12px',
             pointerEvents: 'none',
-            background: 'hsl(var(--background))',
+            background: 'transparent',
             overflow: 'hidden',
           }}
         >
           <CanonicalAnnouncementLayer />
         </div>
 
-        {/* Shell-owned tab bar. Renders nothing unless a game has
-            registered tab state via `useShellTabBar`. Games NEVER
-            render their own tab nav. */}
+        {/* Flex-grow spacer — keeps the tab bar pinned to the bottom
+            while children + rail hug the top of the column. */}
+        <div
+          data-canonical-shell-spacer=""
+          aria-hidden="true"
+          style={{ flex: '1 1 auto', minHeight: 0 }}
+        />
+
+        {/* Shell-owned tab bar. */}
         <ShellTabBar />
       </div>
 
