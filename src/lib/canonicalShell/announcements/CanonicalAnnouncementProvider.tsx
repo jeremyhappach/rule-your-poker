@@ -63,6 +63,13 @@ interface AnnouncementContextValue {
   ambient: ResolvedAnnouncement | null;
   /** Currently visible transient burst, if any. */
   transient: ResolvedAnnouncement | null;
+  /**
+   * Authenticated viewer's user id, threaded by PersistentTableShell.
+   * Used by the rail layer to gate actor-only events (cta_prompt).
+   * Null in unauthenticated / pre-login surfaces and in tests that do
+   * not set it.
+   */
+  viewerUserId: string | null;
   emit: (event: AnnouncementEvent) => void;
   dismiss: (id: string) => void;
   clearScope: (scope: AnnouncementScope) => void;
@@ -75,6 +82,14 @@ const AnnouncementContext = createContext<AnnouncementContextValue | null>(null)
 export interface CanonicalAnnouncementProviderProps {
   dealerGameId?: string | null;
   roundId?: string | null;
+  /**
+   * Authenticated viewer's user id. Threaded so the rail layer can
+   * enforce actor-only visibility on cta_prompt events. Null is safe:
+   * a cta_prompt whose payload carries actorUserId will be suppressed
+   * (defense in depth — emitters are also expected to only fire on
+   * the actor's own client).
+   */
+  viewerUserId?: string | null;
   children: ReactNode;
 }
 
@@ -110,6 +125,7 @@ function resolve(event: AnnouncementEvent): ResolvedAnnouncement {
 export function CanonicalAnnouncementProvider({
   dealerGameId = null,
   roundId = null,
+  viewerUserId = null,
   children,
 }: CanonicalAnnouncementProviderProps) {
   const currentScope = useMemo<AnnouncementScope>(
@@ -299,8 +315,8 @@ export function CanonicalAnnouncementProvider({
   const active = transient ?? ambient;
 
   const value = useMemo<AnnouncementContextValue>(
-    () => ({ active, ambient, transient, emit, dismiss, clearScope, clearAmbient }),
-    [active, ambient, transient, emit, dismiss, clearScope, clearAmbient],
+    () => ({ active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient }),
+    [active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient],
   );
 
   return (

@@ -8189,7 +8189,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setLifecycleFact('Game.innerBgClass', 'min-h-screen(bootstrap)');
     return (
       <SurfaceReadinessProvider>
-        <PersistentTableShell gameId={gameId ?? undefined}>
+        <PersistentTableShell gameId={gameId ?? undefined} viewerUserId={user?.id ?? null}>
           <div
             data-canonical-bootstrap=""
             data-lifecycle-branch="bootstrap"
@@ -9490,6 +9490,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameType={game.game_type}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
+            viewerUserId={user?.id ?? null}
             seats={shellEligibleSeats}
             header={mobileHeader}
           >
