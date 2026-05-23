@@ -2882,6 +2882,142 @@ export const MobileGameTable = ({
     }
   }, [gameId, gameType, lastRoundResult, awaitingNextRound, roundStatus, allDecisionsIn, chuckyActive, gameStatus, currentRound, threeFiveSevenWinTriggerId]);
 
+  // ── Phase 4: Canonical gameplay announcement emits ────────────────────────
+  // Migration of the legacy MobileGameTable gold plate (`announcementFallback`)
+  // to shell-owned semantic emits. Renderer in
+  // `canonicalShell/announcements/renderers.tsx` produces the visible plate;
+  // this surface only emits.
+  //
+  // Scope: dealerGameId/roundId left as gameId/handContextId so events scope
+  // to the active hand and are torn down on hand boundary by the provider.
+  const announcements = useAnnouncements();
+
+  // (A) Horses / SCC turn announcement → peg_notice (transient).
+  const lastEmittedTurnAnnouncementRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isDiceGame || !horsesController.enabled) return;
+    const text = horsesController.turnAnnouncement;
+    if (!text) return;
+    const key = `${gameId ?? 'no-game'}:${horsesController.gamePhase ?? 'unk'}:${text}`;
+    if (lastEmittedTurnAnnouncementRef.current === key) return;
+    lastEmittedTurnAnnouncementRef.current = key;
+    announcements.emit({
+      id: `peg:${key}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { title: text, kind: 'horses_turn' },
+      ttlMs: 2500,
+    });
+  }, [isDiceGame, horsesController.enabled, horsesController.turnAnnouncement, horsesController.gamePhase, gameId, handContextId, announcements]);
+
+  // (B + C) Holm / 3-5-7 round + game-over result plate →
+  //   round_win (transient, mid-hand)
+  //   match_win (transient, game-over, extended TTL to persist through overlays)
+  const lastEmittedResultRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isDiceGame) return; // dice games handled separately below
+    if (!lastRoundResult) return;
+    if (lastRoundResult.startsWith('357_SWEEP:')) return; // sweep overlay owns it
+    // 3-5-7 leg/game-win overlays own these messages — suppress rail.
+    const isLegWin = gameType !== 'holm-game' && !!threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg');
+    const isGameWinViaOverlay = gameType !== 'holm-game' && (
+      threeFiveSevenWinTriggerId ||
+      threeFiveSevenWinPhase !== 'idle' ||
+      lastThreeFiveSevenTriggerRef.current !== null
+    ) && lastRoundResult.includes('won the game');
+    if (isLegWin || isGameWinViaOverlay) return;
+    // Don't surface stale result during setup phases for a new hand.
+    if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
+    // Holm: gate until community card 4 finishes flipping.
+    if (gameType === 'holm-game' && !holmCommunityFullyRevealed) return;
+
+    const isResultEligible =
+      isGameOver ||
+      awaitingNextRound ||
+      roundStatus === 'completed' ||
+      roundStatus === 'showdown' ||
+      allDecisionsIn ||
+      chuckyActive;
+    if (!isResultEligible) return;
+
+    const projectedText =
+      gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky')
+        ? '🏆 Game Complete!'
+        : gameType !== 'holm-game'
+          ? format357ShowdownAnnouncement
+          : lastRoundResult.split('|||')[0];
+    if (!projectedText) return;
+
+    const kind = isGameOver ? 'match' : 'round';
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:${currentRound}:${kind}:${projectedText}`;
+    if (lastEmittedResultRef.current === key) return;
+    lastEmittedResultRef.current = key;
+
+    if (isGameOver) {
+      announcements.clearAmbient();
+      announcements.emit({
+        id: `match_win:${key}`,
+        type: 'match_win',
+        scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+        payload: { text: projectedText, gameType: gameType ?? undefined },
+        // Persist through chip transfer / pot animation overlays.
+        ttlMs: 10000,
+      });
+    } else {
+      announcements.emit({
+        id: `round_win:${key}`,
+        type: 'round_win',
+        scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+        payload: { text: projectedText, gameType: gameType ?? undefined },
+        ttlMs: 3000,
+      });
+    }
+  }, [
+    isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
+    gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
+    allDecisionsIn, chuckyActive, format357ShowdownAnnouncement, gameId, handContextId,
+    currentRound, announcements,
+  ]);
+
+  // Horses / SCC game-over result → match_win.
+  useEffect(() => {
+    if (!isDiceGame) return;
+    if (!isGameOver) return;
+    if (!lastRoundResult) return;
+    const projected = lastRoundResult.split('|||')[0];
+    if (!projected) return;
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:dice-match:${projected}`;
+    if (lastEmittedResultRef.current === key) return;
+    lastEmittedResultRef.current = key;
+    announcements.clearAmbient();
+    announcements.emit({
+      id: `match_win:${key}`,
+      type: 'match_win',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { text: projected, gameType: gameType ?? undefined },
+      ttlMs: 10000,
+    });
+  }, [isDiceGame, isGameOver, lastRoundResult, gameId, handContextId, gameType, announcements]);
+
+  // (D) 3-5-7 re-ante message → peg_notice.
+  const lastEmittedReAnteRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reAnteMessage) return;
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:reante:${reAnteMessage}`;
+    if (lastEmittedReAnteRef.current === key) return;
+    lastEmittedReAnteRef.current = key;
+    announcements.emit({
+      id: `peg:${key}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { title: reAnteMessage, kind: 'reante' },
+      ttlMs: 2000,
+    });
+  }, [reAnteMessage, gameId, handContextId, announcements]);
+  // ── End Phase 4 emits ─────────────────────────────────────────────────────
+
+
+
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
 
