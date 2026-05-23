@@ -13,6 +13,7 @@ import { User } from "@supabase/supabase-js";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { MobileGameTable } from "@/components/MobileGameTable";
 import { PersistentTableShell } from "@/lib/canonicalShell/PersistentTableShell";
+import { SessionLifecycleAnnouncer } from "@/lib/canonicalShell/announcements/SessionLifecycleAnnouncer";
 // AnnouncementRailSlot is mounted by the active gameplay surface
 // (e.g. CribbageMobileGameTable), not at the Game.tsx shell level.
 import { PlayfieldSlotController } from "@/lib/canonicalShell/PlayfieldSlotController";
