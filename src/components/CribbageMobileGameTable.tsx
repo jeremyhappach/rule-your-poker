@@ -3321,7 +3321,11 @@ export const CribbageMobileGameTable = ({
         skunk: skunkPayload,
         amount: totalWinnings,
       },
-      ttlMs: skunkPayload ? 5600 : 1800,
+      // Keep the winner plate alive through the FULL celebration sequence:
+      // announcement window + chip transfer animation (~6s + stagger, 8s safety).
+      // Scope boundary teardown (next hand / dealer game) will clear it earlier
+      // if the match actually advances first.
+      ttlMs: skunkPayload ? 14000 : 10000,
     });
     // Drop into terminal-overlay phase; the timer below gates chips until
     // the shell-owned overlay resolves (or near-immediately for non-skunk).
