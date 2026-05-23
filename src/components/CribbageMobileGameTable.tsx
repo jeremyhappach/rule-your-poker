@@ -23,8 +23,9 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
-import { useAnnouncements, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
+import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
@@ -690,8 +691,6 @@ export const CribbageMobileGameTable = ({
 
 
   const announcements = useAnnouncements();
-  const announcementCtx = useAnnouncementContext();
-  const canonicalAnnouncementActive = !!announcementCtx?.active;
   const announcedDealerResolvedRef = useRef<string | null>(null);
   const lastHighCardAmbientIdRef = useRef<string | null>(null);
 
