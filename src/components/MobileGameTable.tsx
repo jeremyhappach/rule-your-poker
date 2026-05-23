@@ -74,6 +74,7 @@ import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonica
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
