@@ -186,26 +186,29 @@ export function CanonicalAnnouncementProvider({
   const emit = useCallback(
     (event: AnnouncementEvent) => {
       if (!scopeMatches(event.scope, currentScope)) {
-        if (import.meta.env?.DEV) {
-          // eslint-disable-next-line no-console
-          console.warn('[canonical-rail] emit dropped — scope mismatch', {
-            id: event.id,
-            type: event.type,
-            eventScope: event.scope,
-            currentScope,
-          });
-        }
+        persistRailTelemetry({
+          eventName: 'rail-emit-rejected',
+          severity: 'warn',
+          announcementId: event.id,
+          announcementType: event.type,
+          emittedScope: event.scope,
+          providerScope: currentScope,
+          reason: 'scope-mismatch',
+        });
         return;
       }
       const resolved = resolve(event);
-      if (import.meta.env?.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug('[canonical-rail] emit', {
-          id: event.id,
-          type: event.type,
-          behavior: resolved.resolvedBehavior,
-        });
-      }
+      persistRailTelemetry({
+        eventName: 'rail-emit-accepted',
+        announcementId: event.id,
+        announcementType: event.type,
+        behavior: resolved.resolvedBehavior,
+        emittedScope: event.scope,
+        providerScope: currentScope,
+        actorUserId:
+          (event.payload as { actorUserId?: string } | undefined)?.actorUserId ?? null,
+        extra: { priority: resolved.resolvedPriority, ttlMs: resolved.ttlMs ?? null },
+      });
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
