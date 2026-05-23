@@ -37,6 +37,7 @@ export const CANONICAL_SHELL_FAMILY = new Set<string>([
   ...POKER_VARIANT_FAMILY,
   'gin-rummy',
   'cribbage',
+  'yahtzee',
 ]);
 
 export function isCanonicalShellFamily(gameType: string | null | undefined): boolean {
