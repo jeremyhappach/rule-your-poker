@@ -1,338 +1,129 @@
-# Cribbage Canonical Migration — Architectural Plan (v2)
+# Phase 4 — MobileGameTable Gameplay Announcement Migration
 
-Invariant target (same as Gin proved):
+Target file: `src/components/MobileGameTable.tsx` (covers Holm, 3-5-7, Ship Captain Crew, Horses).
+Goal: move every remaining local gameplay announcement into canonical semantic emits and retire the shared local gold plate (`bg-poker-gold/95 ...`) inside the `ShellHudChrome announcementFallback` block (lines ~6336–6444).
 
-> ONE TABLE · ONE FELT · ONE STAGE · NEVER REMOUNTS
-
-PersistentTableShell stays mounted from session start to session end. PlayfieldSlotController owns the stage. Cribbage lifecycle states repopulate slot content; the shell, felt, and seat geometry never snap. All transient/ambient context flows through the canonical announcement system. Observer parity is mandatory at every state.
-
-This is the plan only — no code changes in this wave.
-
-**v2 refinements (locked in):**
-1. Phase order revised so announcement primitives land before dealer-selection migration.
-2. Cribbage progress-vector identity audit is **mandatory**, not conditional.
-3. **Cribbage owns the slot for its entire lifecycle**: no intra-Cribbage neutral fallback.
+Scope guardrails: gameplay announcements only. No shell geometry, no tab bar, no CTA/lifecycle refactors, no telemetry mutations.
 
 ---
 
-## 0. Critical Lifecycle Ownership Rule
+## 1. Inventory — local announcements still rendered in MobileGameTable
 
-Once the dealer selects Cribbage, **Cribbage owns the slot continuously until match end.**
+All inside `<ShellHudChrome announcementFallback={ ... }>` at line 6336:
 
-Acceptable transitions:
-
-```text
-Cribbage(A) ──▶ neutral dwell ──▶ Cribbage(B)        OK (dealerGame boundary)
-Cribbage(A) ──▶ neutral dwell ──▶ Holm(B)            OK (game-type rollover)
-```
-
-Forbidden transitions:
-
-```text
-Cribbage dealer-select ──▶ neutral ──▶ Cribbage discard      FORBIDDEN
-Cribbage discard       ──▶ neutral ──▶ Cribbage pegging      FORBIDDEN
-Cribbage pegging       ──▶ neutral ──▶ Cribbage count        FORBIDDEN
-```
-
-Implications enforced throughout this plan:
-
-- The slot identity for the entire match is `{ gameType: 'cribbage', dealerGameId }`. It does NOT change for dealer-selection / discard / cut / pegging / counting. Those are *internal* slot states represented by Cribbage-owned presentation data, not by slot identity churn.
-- `PlayfieldSlotController.desiredIdentity` is set once Cribbage is chosen and held until dealerGame end. Lifecycle phases drive Cribbage internal rendering only.
-- `SurfaceReadinessContract` for Cribbage reports `ready=true` for the slot at first paintable state (dealer-selection canonical layout) and stays ready for the duration of the match — readiness must not flap on intra-match phase transitions.
-- Any code path that today nulls slot identity mid-Cribbage (returning to neutral or unmounting `CribbageMobileGameTable`) is a defect to fix during migration.
-
----
-
-## 1. Lifecycle Inventory
-
-```text
-S0   session waiting                 (already canonical — out of Cribbage scope)
-S1   dealer setup modal              (shell-overlay; dealer chooses Cribbage)
-S2   dealer-selection: high-card draw — initial cohort
-S2a  high-card reveal
-S2b  high-card tie  → redraw cohort
-S2c  high-card winner resolved → button assigned
-S3   make-it-take-it edge / re-deal  (rules-permitting)
-S4   deal hand (6 cards each)
-S5   discard-to-crib
-S5a  waiting on opponent discard      (ambient)
-S6   cut card reveal (his-heels jack scores 2 to dealer)
-S7   pegging
-S7a  pegging — your turn
-S7b  pegging — opponent turn (ambient)
-S7c  go / 31 / last card events       (chip awards)
-S8   hand scoring — count phase
-S8a  non-dealer counts
-S8b  dealer counts
-S8c  crib counts (dealer)
-S9   hand transition                  (advance handNumber, rotate dealer)
-S10  round transition                 (config-dependent)
-S11  match end                        (skunk / double-skunk + winner)
-S12  next-game selection              (dealer setup, mid-session)
-S13  same-game replay (Cribbage → Cribbage)
-S14  observer-only passive states across all of the above
-```
-
-All of S2–S10 are **internal Cribbage slot states**. None of them release slot ownership.
-
----
-
-## 2. Surface Ownership Audit
-
-| Lifecycle | Current renderer | Disposition |
-|---|---|---|
-| S1 dealer setup | `DealerGameSetup` / `DealerConfig` | Shell modal overlay (interactive) — keep |
-| S2 high-card draw | `HighCardDealerSelection`, `CribbageHighCardSelection` | Bespoke transient surface — **migrate into Cribbage slot content** |
-| S2a/b/c reveals | `CribbageCutCardReveal` (partly), high-card internals | Slot reveal layer + announcement |
-| S4 deal | `CribbageGameTable` / `CribbageMobileGameTable` | Slot content — already canonical-shaped, but currently re-mounts |
-| S5 discard | `CribbageMobileCardsTab` + felt | Slot + seat content |
-| S5a waiting | none / blank felt | **Gap → ambient `waiting_for_player`** |
-| S6 cut reveal | `CribbageCutCardReveal` | Slot reveal + chip_award if his-heels |
-| S7 pegging | `CribbageMobileGameTable`, `CribbagePlayingCard` | Slot content |
-| S7c go/31/last | `CribbageChipTransferAnimation` | Chip transport + canonical `chip_award` |
-| S8 counting | `CribbageCountingPhase` | Slot-internal reveal layer |
-| S8 spotlight | `CribbageTurnSpotlight` | Keep, presentation-state-driven |
-| S9/S10 transitions | implicit | **Gap → ambient `waiting_for_next_round`** |
-| S11 match end | `CribbageWinnerAnnouncement`, `CribbageSkunkOverlay` | **Migrate → `match_win` (skunk via payload)** |
-| S12 next-game | `DealerConfig` modal | Shell overlay + ambient `dealer_configuring` underneath |
-| S13 replay | not explicitly handled | Identity boundary work (see §4) |
-| S14 observer | sparse / blank | Ambient announcements at every state |
-
-Components retired after migration:
-
-- `CribbageWinnerAnnouncement.tsx`
-- `CribbageSkunkOverlay.tsx` (folded into `match_win` payload renderer)
-- `HighCardDealerSelection.tsx` (replaced by canonical Cribbage dealer-selection slot content)
-
-Components retained (presentation-state-driven only):
-
-- `CribbageMobileGameTable`, `CribbageFeltContent`, `CribbagePegBoard`, `CribbageMobileCardsTab`, `CribbageCountingPhase`, `CribbageTurnSpotlight`, `CribbagePlayingCard`, `CribbageChipTransferAnimation`.
-
-Out of scope: hand history, desktop path, rule changes.
-
----
-
-## 3. Canonical Mapping (per state)
-
-Three render channels:
-
-- **Slot content** — owned by `PlayfieldSlotController`, persistent across the Cribbage match.
-- **Canonical announcements** — `CanonicalAnnouncementProvider` (transient + ambient).
-- **Seat content** — per-seat hand / interaction inside shell seat anchors.
-
-| State | Slot content | Announcement | Seat content |
+| # | Block (line) | Render condition | Current text |
 |---|---|---|---|
-| S2 draw | dealer-selection canonical layout (central draw zone) | ambient `dealer_selection_in_progress` `{ cohort }` | drawn card per seat |
-| S2b tie | same slot, tie payload | ambient updated, new cohort id | redraw subset highlight |
-| S2c winner | brief slot reveal | transient `dealer_selected` | button marker |
-| S4 deal | Cribbage table | — | hand fills |
-| S5 discard | Cribbage table + crib zone | ambient `waiting_for_player` when waiting | discard tray |
-| S6 cut | starter card slot reveal | transient `chip_award` if his-heels | — |
-| S7 peg | Cribbage table + peg row | ambient `waiting_for_player` on opponent's turn | active peg cards |
-| S7c | — | transient `chip_award` | — |
-| S8 count | counting overlay (slot-internal) | transient `round_win` for hand winner | — |
-| S9/S10 | felt persists | ambient `waiting_for_next_round` | — |
-| S11 match end | felt persists | transient `match_win` (skunk in payload) | — |
-| S12 next-game | felt persists | ambient `dealer_configuring` | — |
+| A | 6341 — Horses turn announcement | `isDiceGame && horsesController.enabled && horsesController.turnAnnouncement` | `horsesController.turnAnnouncement` (e.g. `"Hap's turn"`, `"Hap rolled a 6 — added to bank"`, dealer roll callouts) |
+| B | 6380 — Game-over result plate | `isGameOver && lastRoundResult && !(357 win-suppression)` | `lastRoundResult.split('|||')[0]` (Holm) or `format357ShowdownAnnouncement` or `🏆 Game Complete!` (Holm "beat Chucky" filter for non-Holm) |
+| C | 6397 — Round result plate (mid-game) | `!isGameOver && lastRoundResult && not sweep/won-the-game/won-a-leg && gameStatus not configuring/ante_decision && (Holm: holmCommunityFullyRevealed) && (awaitingNextRound \|\| showdown \|\| completed \|\| allDecisionsIn \|\| chuckyActive)` | Same projection as B — round outcome string (Holm chop / Chucky beats / 3-5-7 showdown summary) |
+| D | 6422 — Re-ante message | `reAnteMessage` (3-5-7 subsequent-round-1 re-ante prompt) | `reAnteMessage` (e.g. `"Re-ante required"`) |
+| E | 6437 — dealerSelectionAnnouncement | already `null` | (retired stub — confirm prop callsites no longer rely on render) |
+| F | 6416 — `gameStatus === 'ante_decision'` | already `null` | (retired stub) |
+| G | 6429 — `dealerSetupMessage` | already `null` | (retired stub) |
 
-### 3a. Announcement contract additions required (Phase B deliverable)
+Only A–D produce visible UI today; E–G are already retired placeholders kept for prop-shape stability.
 
-Today: `match_win`, `round_win`, `chip_award`, ambient `dealer_configuring`, `dealer_selection_in_progress`, `waiting_for_players`, `waiting_for_player`, `waiting_for_next_round`.
-
-Cribbage adds:
-
-- New transient `dealer_selected` — id `${dealerGameId}:dealer_selected`.
-- `match_win` payload: `{ winnerName, score: { winner, loser }, skunk?: 'single' | 'double' }`.
-- `round_win` payload: `{ winnerName, kind: 'hand' | 'crib', counts: { fifteens, pairs, runs, flush, his_nobs } }`.
-- `dealer_selection_in_progress` ambient payload: `{ cohort: number, tie?: boolean }`.
-
-Additive only — no behavior change for Gin/Holm/Yahtzee/Dice.
+Out of scope (already canonical or non-rail UI):
+- TimerBar (6379), PAUSED badge (6375), horses timer chip (6349) — non-announcement UI, leave alone.
+- Holm/3-5-7 overlays (`HolmWinPotAnimation`, `SweepsPotAnimation`, `ChoppedAnimation`, `LegEarnedAnimation`) — celebration overlays, not rail.
 
 ---
 
-## 4. Identity Boundary Audit (mandatory pre-implementation)
+## 2. Semantic mapping
 
-Cribbage identity stack:
+### A. Horses turn announcement
+- Trigger: `horsesController.turnAnnouncement` transitions to a non-empty string.
+- Canonical event: **`peg_notice`** (transient, priority 55, TTL 1.5–2.5s — match current controller timeout).
+  - Rationale: lightweight non-blocking gameplay notice, identical class to Cribbage "Go" / pegging callouts.
+- Payload: `{ text, kind: 'horses_turn' | 'horses_roll' | 'horses_dealer' }`.
+- Observer behavior: emit unconditionally (no actor gate) — observers should see who is up and what was rolled, exactly like seated players today.
+- Emit site: a small `useEffect` inside `MobileGameTable` keyed on `horsesController.turnAnnouncement` identity; dedupe via `useRef(lastEmittedTurnAnnouncementKey)`.
 
-```text
-sessionId
-  └─ dealerGameId               (one Cribbage match)
-       └─ handNumber            (one deal/peg/count cycle)
-            └─ roundNumber      (Cribbage = 1 round per hand; field still required)
-```
+### B + C. Round / game-over result plate (Holm + 3-5-7)
+Single semantic family. Two emit shapes based on `isGameOver`:
 
-### 4a. Cribbage progress-vector audit
+- **Mid-hand round outcome (C):** canonical `round_win` (transient, priority 80, TTL 3000ms).
+  - Payload: `{ text, gameType, handNumber, winnerName?, summary? }`.
+  - Renderer reuses existing `LifecycleAnnouncement` plate; for 3-5-7 use the already-computed `format357ShowdownAnnouncement` string; for Holm use `lastRoundResult.split('|||')[0]`.
+- **Game-over result (B):** canonical `match_win` (transient, priority 100, extended TTL like Cribbage so it persists through chip-transfer overlays — 10s non-skunk-equivalent, longer if a celebration overlay is active).
+  - Payload: `{ text, winnerName?, gameType }`.
+  - The shell-owned celebration overlay (`CanonicalCelebrationLayer`) already handles confetti-tier; this emit only owns the rail plate text.
+- Observer behavior: identical for active and observer (no actor gating) — round/match results are shared state.
+- Suppression rules preserved: continue to skip when `lastRoundResult.startsWith('357_SWEEP:')`, when `won the game` / `won a leg` is being celebrated by a dedicated win overlay/trigger, and the Holm `holmCommunityFullyRevealed` gate. These gates move into the emit `useEffect`, NOT the renderer.
+- Dedupe: keyed by `${gameId}:${handContextId}:${currentRound}:${isGameOver ? 'match' : 'round'}:${hash(lastRoundResult)}`.
+- Boundary teardown: relies on shell scope (dealerGameId/roundId) — already handled by `CanonicalAnnouncementProvider`.
 
-Required progress dimensions (existing `cribbageProgress.ts` must be verified to include ALL of these — gaps are migration work, not optional):
+### D. Re-ante message (3-5-7)
+- Canonical event: **`peg_notice`** (transient, priority 55, TTL 2000ms) with `payload.kind: 'reante'`.
+  - Rationale: short non-blocking notice; the ante decision itself is already canonical `awaiting_ante` ambient elsewhere — this is the additional "re-ante required" call-out only.
+- Observer behavior: visible to all (everyone needs context that re-ante is occurring).
+- Emit on `reAnteMessage` transition to non-empty; dedupe by identity ref.
 
-| Dim | Purpose | Identity expression |
-|---|---|---|
-| `dealerGameId` | match-level identity | uuid |
-| `handNumber` | hand boundary | int |
-| `roundNumber` | scope key compliance (Triple-Key Scoping) | int |
-| `dealerSelectionCohort` | high-card cohort, increments on each tie redraw | int (0 = initial) |
-| `dealerResolved` | dealer chosen latch | boolean / userId |
-| `phase` | discrete sub-state: `dealer-select` \| `dealing` \| `discard` \| `cut` \| `pegging` \| `count-non-dealer` \| `count-dealer` \| `count-crib` \| `hand-complete` \| `match-complete` | enum |
-| `peggingTurnOwner` | whose turn during pegging | userId |
-| `peggingTurnSeq` | monotonic per-card play index in current pegging segment | int |
-| `peggingSegmentSeq` | increments on go / 31 reset | int |
-| `countOwner` | who is actively counting in S8 | userId |
-| `cribCountOwner` | dealer (resolved separately for clarity) | userId |
-| `handCompleteLatch` | hand fully scored & accounted | boolean |
-| `matchCompleteLatch` | match terminal state reached | boolean |
+### E / F / G — already retired
+- Confirm no consumer relies on rendered output. Remove the dead `null` branches and the matching `dealerSetupMessage`, `dealerSelectionAnnouncement`, and `gameStatus === 'ante_decision'` arms from the fallback JSX entirely. Props remain on the interface (call-site compatibility) but stop participating in render.
 
-Missing dims = pre-implementation migration item, not "if missing." This is a hard gate before Phase C.
-
-Tiebreakers (per existing progress-vector tiebreaker memory): when two clients have equal vectors, content tiebreakers must include `peggingSegmentSeq` and `countOwner` so observers don't lock to a stale presentation.
-
-### 4b. Boundary teardown rules
-
-- **dealerGameId change** → clears all Cribbage slot internal state, ambient, transient, dedupe buckets. Slot identity flips to `{ cribbage, newDealerGameId }` via neutral dwell.
-- **handNumber change within a dealerGame** → clears per-hand discard/peg/count local state. Slot stays mounted. Identity key for hand-bound state is `${dealerGameId}:${handNumber}`.
-- **dealerSelectionCohort change** → clears per-cohort draw state and dedupe bucket for `dealer_selection_in_progress`. Identity key is `${dealerGameId}:dealer-selection:${cohort}`.
-- **phase change** → presentation re-derives; no announcement teardown (ambient state replaces by type).
-- **match end** → `match_win` transient + `matchCompleteLatch`. Slot stays mounted until either same-game replay (S13) or game-type rollover.
-
-### 4c. Risk classes (carried from Gin lessons)
-
-- **Null identity gap** — between dealerGame N teardown and N+1 bootstrap. Provider boundary teardown already handles ambient/transient cleanup. Confirm Cribbage hooks reset on `dealerGameId` flip, not on `gameType`.
-- **Stale presentation hydrate** — Cribbage hooks must NOT replay completed-hand animations on hydrate. `useRef` source-level guards on every animation trigger.
-- **Same-game replay bootstrap** — see §8.
-- **Intra-match slot release** — see §0; any code path that nulls slot identity mid-match is a defect.
+### Renderer additions
+`src/lib/canonicalShell/announcements/renderers.tsx`:
+- Extend the `round_win` renderer to accept a free-form `payload.text` fallback (currently Cribbage-shaped). Holm/3-5-7 will pass `text`.
+- `peg_notice` already exists and is text-driven — no change beyond passing `payload.text`.
+- `match_win` already restored in Phase 3; reuse as-is, with optional `payload.text` override when `winnerName`/`score` cannot be cleanly parsed from Holm/3-5-7 strings.
 
 ---
 
-## 5. Observer-First Plan
+## 3. Retirement plan
 
-| State | Active player | Observer |
-|---|---|---|
-| S2 draw | own draw + reveal | ambient `dealer_selection_in_progress` + per-seat draw cards |
-| S2b tie | redraw prompt | ambient updated `{ tie: true, cohort }` |
-| S2c winner | button assigned | transient `dealer_selected` |
-| S5 discard (mine) | discard tray | ambient `waiting_for_player { name }` |
-| S5 discard (theirs) | ambient `waiting_for_player` | same |
-| S6 cut | reveal | reveal + his-heels chip_award if applicable |
-| S7 my peg | hand UI | ambient `waiting_for_player` |
-| S7 their peg | ambient `waiting_for_player` | same |
-| S8 count | count overlay | count overlay (read-only) + transient `round_win` |
-| S9/S10 | ambient `waiting_for_next_round` | same |
-| S11 match end | `match_win` (with skunk payload) | same |
-| S12 next-game | dealer modal over ambient `dealer_configuring` | ambient `dealer_configuring` only |
+After emits are wired and parity confirmed:
 
-Acceptance check: an observer staring at the felt for 10s at any state knows what is happening. Blank felt is a defect.
+1. Delete the entire JSX subtree passed as `announcementFallback` (lines ~6336–6444).
+2. Replace with `<ShellHudChrome announcementFallback={undefined} />` (or drop the prop — same as `CribbageMobileGameTable`).
+3. Remove now-unused locals: `format357ShowdownAnnouncement` reference inside fallback (the memo itself stays — emit effect uses it), the gold-plate divs, and the `dealerSetupMessage` / `dealerSelectionAnnouncement` render branches.
+4. Keep prop signatures (`lastRoundResult`, `reAnteMessage`, `dealerSetupMessage`, `dealerSelectionAnnouncement`, `horsesController.turnAnnouncement`) — they are now strictly inputs to emit effects, not render.
+5. Audit other surfaces that may also render `lastRoundResult` as a plate (search confirms it is only this fallback + overlays).
 
 ---
 
-## 6. Sync Framework Audit (Phase A deliverable)
+## 4. QA checklist
 
-Audit pass output = checklist of every raw-authoritative read in Cribbage rendering paths (memory rule: derive UI from `viewState`, never raw state).
+### Holm
+- [ ] 1v1 Chucky win — round result appears in canonical rail; observers see same plate.
+- [ ] Chop scenario — chop announcement appears (text via `lastRoundResult.split('|||')[0]`); no double-render with `ChoppedAnimation` overlay.
+- [ ] "Beat Chucky" game-over — match-win plate appears AND persists through `HolmWinPotAnimation` (extended TTL behavior, same pattern as Cribbage Phase 3 fix).
+- [ ] Community-card-4 gate: round plate must NOT appear before card 4 finishes flipping (emit effect respects `holmCommunityFullyRevealed`).
+- [ ] No old gold plate visible in DOM (`data-testid` / class assertion).
 
-Files in scope for read-only audit:
+### 3-5-7
+- [ ] Showdown of R1/R2/R3 — round_win plate shows `format357ShowdownAnnouncement` text.
+- [ ] "Won a leg" event — plate is suppressed (overlay owns it); no flash of leg text in rail.
+- [ ] "Won the game" event — plate is suppressed for round_win path; match_win emits instead and persists through `LegsToPlayerAnimation` / `SweepsPotAnimation`.
+- [ ] Sweep (`357_SWEEP:` prefix) — no rail plate (overlay owns it).
+- [ ] Re-ante prompt — `peg_notice` plate appears for ~2s, dismisses, ambient `awaiting_ante` (already canonical) takes over.
+- [ ] Pussy-tax message — round_win plate carries the text.
+- [ ] Observer sees identical sequence to seated player.
 
-- `src/lib/cribbageGameLogic.ts`, `cribbageRoundLogic.ts`, `cribbageScoring.ts`
-- `src/lib/cribbageBotLogic.ts` (must derive from authoritative DB state per existing rule)
-- `src/lib/gameStateSync/cribbageProgress.ts` — verify §4a dims
-- `src/components/CribbageMobileGameTable.tsx`, `CribbageFeltContent.tsx`
-- `src/components/CribbageCountingPhase.tsx`, `CribbageCutCardReveal.tsx`, `CribbageTurnSpotlight.tsx`
-- `src/lib/cribbageHandoffTrace.ts`, `cribbageSyncDiagnostics.ts` (presentation-side; verify only)
+### Ship Captain Crew
+- [ ] Turn announcements (`horsesController.turnAnnouncement` reused by SCC controller) appear as `peg_notice` for active and observer.
+- [ ] Round/match-end overlays unaffected; rail clean during animation.
 
-The deliverable is a written checklist; remediation lands during Phase C–F as each surface migrates.
+### Horses
+- [ ] Turn-of-player announcement appears in rail.
+- [ ] Roll callout (`"Hap rolled a 6"`) appears, then dismisses by TTL.
+- [ ] Dealer roll callout appears for both seated and observer.
+- [ ] Match win (`isGameOver` + `lastRoundResult`) emits canonical `match_win` and persists through pot transfer.
+- [ ] No 3× flash on game-over transition (current code comments warn about this — emit dedupe must hold).
 
----
-
-## 7. Announcement Ownership (Cribbage day-1)
-
-No bespoke announcement components allowed in Cribbage post-migration:
-
-- Match winner → `match_win`.
-- Skunk / double-skunk → `match_win` payload variant rendered by canonical renderer.
-- Dealer selected → `dealer_selected` transient.
-- Cut / his-heels → slot reveal + `chip_award`.
-- Go / 31 / last card → `chip_award`.
-- Hand winner → `round_win` `{ kind: 'hand' }`.
-- Crib winner → `round_win` `{ kind: 'crib' }`.
-- Waiting on X → ambient `waiting_for_player`.
-- Between hands → ambient `waiting_for_next_round`.
-- Dealer configuring → ambient `dealer_configuring`.
-
----
-
-## 8. Same-Game Replay (Cribbage → Cribbage)
-
-Mirrors Gin replay fix:
-
-1. Old dealerGameId terminal state persisted (round inserted, accounting settled, `matchCompleteLatch` true).
-2. Slot controller: `active(cribbage/A) → neutral(dwell) → active(cribbage/B)` after readiness probe binds B.
-3. New dealerGameId bootstrap must not reuse stale Cribbage state:
-   - All `useEffect` resets keyed on `dealerGameId` AND `handContextId` (`${dealerGameId}:${handNumber}`).
-   - Bot/async controllers re-read authoritative state from DB on new dealerGame mount.
-   - Announcement provider scope teardown drops all ambient/transient/dedupe for old dealerGameId.
-   - `dealerSelectionCohort` resets to 0 in new dealerGame (it's part of the new dealerGameId's progress vector).
-4. Verification: trigger Cribbage → Cribbage twice consecutively; confirm clean cohort id, clean peg/discard/count, observer parity.
+### Cross-cutting (all four games)
+- [ ] No console emit warnings (`[canonical-rail] emit dropped — scope mismatch`).
+- [ ] No double announcements (overlay + rail) for celebration-tier events.
+- [ ] Scope teardown on new hand clears any leftover rail plate within one frame.
+- [ ] `CanonicalAnnouncementProvider` scope already wraps these tables via `PersistentTableShell` — verify before emitting (failure mode is the dev-throw in `useAnnouncements`).
 
 ---
 
-## 9. Migration Sequencing (revised v2)
+## Technical notes (implementation order, for the next loop)
 
-**Phase A — Audit & contract scaffolding** (no game code changes)
-- Mandatory progress-vector audit per §4a; deliver dim checklist with remediation tasks.
-- Sync framework raw-read audit per §6; deliver checklist.
-- No edits to Cribbage rendering code in this phase.
+1. Add emit effects (parallel, no removals yet) — A, B+C, D. Verify all four games in preview while the legacy plate still renders. Duplicate plates during this window are expected.
+2. Once parity is observed for every game, delete the fallback JSX in one focused edit and pass `announcementFallback={undefined}`.
+3. Sweep dead-locals + run QA checklist.
+4. Update `mem://architecture/canonical-shell/consumer-registry-and-onboarding` to record MobileGameTable as a fully migrated consumer.
 
-**Phase B — Canonical announcement primitives readiness**
-- Add `dealer_selected` transient type + renderer payload.
-- Extend `match_win` payload + renderer (skunk variant).
-- Extend `round_win` payload + renderer (`kind`, counts).
-- Verify ambient `dealer_selection_in_progress`, `waiting_for_player`, `waiting_for_next_round`, `dealer_configuring` are fully wired and observer-visible end-to-end.
-- Smoke via shell debug trigger across all 8 announcement types.
-- Phase B exit gate: every announcement primitive Cribbage will use exists, has a renderer, and works with scoped dedupe + boundary teardown.
-
-**Phase C — Cribbage dealer-selection canonical migration**
-- Replace `HighCardDealerSelection` with canonical Cribbage slot content.
-- Slot identity locks to `{ cribbage, dealerGameId }` at game-type selection and stays there for the entire match (§0 rule).
-- Wire ambient `dealer_selection_in_progress { cohort }` and transient `dealer_selected`.
-- Tie redraw spawns `dealerSelectionCohort + 1`.
-- Observer parity verified.
-
-**Phase D — Passive ambient lifecycle coverage**
-- Emit ambient `waiting_for_player` from presentation state during S5a / S7b.
-- Emit ambient `waiting_for_next_round` between hands (S9/S10).
-- Emit ambient `dealer_configuring` while next-game modal is open (S12).
-- Observer felt is never context-less after Phase D.
-
-**Phase E — Match-end migration**
-- Replace `CribbageWinnerAnnouncement` with `match_win` emit at `matchCompleteLatch`.
-- Fold `CribbageSkunkOverlay` into `match_win` payload renderer.
-- Delete `CribbageWinnerAnnouncement.tsx` and `CribbageSkunkOverlay.tsx`.
-- Verify same-game-replay teardown.
-
-**Phase F — Pegging chip_award + round_win wiring + replay validation + polish**
-- His-heels → `chip_award` (2, "his heels").
-- Pegging go/31/last → `chip_award`.
-- Hand/crib count completion → `round_win` `{ kind }`.
-- Same-game replay (S13) verification: Cribbage → Cribbage twice, no contamination.
-- Confirm zero shell remounts and zero felt geometry snaps across full lifecycle.
-- Remove temporary debug triggers and `HighCardDealerSelection.tsx`.
-
-Each phase is independently shippable. No phase deletes a bespoke surface until its canonical replacement is wired and verified.
-
----
-
-## 10. Acceptance Criteria
-
-- `data-canonical-shell-root` is the same DOM node from session start through Cribbage match end through Cribbage replay start (mount-counter telemetry).
-- Slot identity is `{ cribbage, dealerGameId }` continuously from game selection to match end. Zero intra-match slot identity flips. Zero intra-match neutral interstitial.
-- Felt geometry does not snap between Cribbage states.
-- Every passive lifecycle state produces an ambient announcement visible to observers.
-- No Cribbage-bespoke announcement components remain in the import graph.
-- Same-game replay (Cribbage → Cribbage) bootstraps cleanly with fresh dealer-selection cohort.
-- Observer parity audit passes at every state.
-
----
-
-## 11. Out of Scope
-
-- Desktop path (deprecated).
-- Hand history surfaces.
-- Cribbage rule changes (muggins toggle, scoring corrections).
-- Visual redesign — migration is structural; visual tuning is a separate wave.
+No DB migrations, no edge-function changes, no schema work. Pure client-side renderer→emit migration.
