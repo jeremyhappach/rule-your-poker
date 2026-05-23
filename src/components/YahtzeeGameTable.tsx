@@ -52,7 +52,7 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
-import { CanonicalAnnouncementSlot } from "@/lib/canonicalShell/announcements";
+import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
@@ -478,6 +478,14 @@ export function YahtzeeGameTable({
   const stableTurnPlayerId = currentTurnPlayerId || null;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+
+  // Publish tab metadata to the shell-owned tab bar.
+  useShellTabBar({
+    cardsIcon: 'dice',
+    activeTab,
+    setActiveTab,
+    cardsFlashing: (isMyTurn && activeTab !== 'cards' && gamePhase === 'playing') ? 'red' : null,
+  });
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
 
@@ -2084,51 +2092,9 @@ export function YahtzeeGameTable({
           ) : null}
         </div>
 
-        {/* Canonical lifecycle announcement slot — directly above the
-            tab bar. Reserved 36px, transparent when idle. */}
-        <CanonicalAnnouncementSlot />
-
-        {/* Tab navigation */}
-        <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
-          <button
-            onClick={() => setActiveTab('cards')}
-            style={{ flex: '0 0 35%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'cards'
-                ? 'bg-primary/20 text-foreground'
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            } ${isMyTurn && activeTab !== 'cards' && gamePhase === 'playing' ? 'animate-pulse ring-2 ring-red-500' : ''}`}
-          >
-            <DiceIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''}`} />
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            style={{ flex: '0 0 35%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'chat' ? 'bg-primary/20 text-foreground' : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <MessageSquare className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setActiveTab('lobby')}
-            style={{ flex: '0 0 15%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'lobby' ? 'bg-primary/20 text-foreground' : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <User className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            style={{ flex: '0 0 15%' }}
-            className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-              activeTab === 'history' ? 'bg-primary/20 text-foreground' : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <Clock className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Canonical announcement rail + tab bar are shell-owned and
+            rendered by PersistentTableShell. Tab metadata is published
+            via `useShellTabBar` (registered above). */}
 
         {/* CARDS/DICE TAB */}
         {activeTab === 'cards' && (

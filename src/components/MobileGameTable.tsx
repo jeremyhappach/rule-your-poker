@@ -72,7 +72,7 @@ import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, res
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
-import { CanonicalAnnouncementSlot } from "@/lib/canonicalShell/announcements";
+import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -2731,6 +2731,29 @@ export const MobileGameTable = ({
     !hasDecided;
   
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
+
+  // Publish tab metadata to the shell-owned tab bar. Shell owns layout
+  // and geometry; this surface provides only the icon choice and
+  // gameplay-derived indicator state (cards-tab flash on turn, chat
+  // unread/new-message indicators).
+  {
+    const isYourTurnNotOnCardsTab = !isPaused && isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
+    const cardsFlash: 'green' | 'red' | null = (!isPaused && cardsTabFlashing)
+      ? 'green'
+      : isYourTurnNotOnCardsTab
+        ? 'red'
+        : null;
+    useShellTabBar({
+      cardsIcon: isDiceGame ? 'dice' : 'spade',
+      activeTab,
+      setActiveTab,
+      cardsFlashing: cardsFlash,
+      chatFlashing: showGreenChatIndicator ? 'green' : null,
+      chatIndicator: showRedChatIndicator ? 'red' : null,
+      onOpenChat: handleOpenChatTab,
+      isPaused: !!isPaused,
+    });
+  }
 
   // Check if we should be in showdown display mode (hide chipstacks, buck, show larger cards)
   // This is true when: 
@@ -6419,74 +6442,9 @@ export const MobileGameTable = ({
 
         </div>
 
-        {/* Canonical lifecycle announcement slot — directly above the
-            tab bar. Reserved 36px, transparent when idle. */}
-        <CanonicalAnnouncementSlot />
-
-        {/* Tab navigation bar */}
-        {(() => {
-          // Determine if we should pulse the cards tab (it's your turn and you're not on cards tab)
-          // Only flash when game is NOT paused
-          const isYourTurnNotOnCardsTab = !isPaused && isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
-          const showCardsTabFlashing = !isPaused && cardsTabFlashing;
-          
-          return (
-            <div className="flex items-center justify-center gap-1 px-4 py-1.5 border-b border-border/50">
-              {/* Cards/Dice tab - 35% width */}
-              <button 
-                onClick={() => setActiveTab('cards')}
-                style={{ flex: '0 0 35%' }}
-                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-                  activeTab === 'cards' 
-                    ? 'bg-primary/20 text-foreground' 
-                    : 'text-muted-foreground/50 hover:text-muted-foreground'
-                } ${showCardsTabFlashing ? 'animate-pulse ring-2 ring-green-500' : ''} ${isYourTurnNotOnCardsTab && !showCardsTabFlashing ? 'animate-pulse ring-2 ring-red-500' : ''}`}
-              >
-                {isDiceGame ? (
-                  <DiceIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
-                ) : (
-                  <SpadeIcon className={`w-5 h-5 ${activeTab === 'cards' ? 'fill-current' : ''} ${showCardsTabFlashing ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${isYourTurnNotOnCardsTab ? 'text-red-500 fill-red-500 animate-pulse' : ''}`} />
-                )}
-              </button>
-              {/* Chat tab - 35% width */}
-              <button 
-                onClick={handleOpenChatTab}
-                style={{ flex: '0 0 35%' }}
-                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-                  activeTab === 'chat' 
-                    ? 'bg-primary/20 text-foreground' 
-                    : 'text-muted-foreground/50 hover:text-muted-foreground'
-                } ${showGreenChatIndicator ? 'animate-pulse' : ''}`}
-              >
-                <MessageSquare className={`w-5 h-5 ${showGreenChatIndicator ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${showRedChatIndicator ? 'text-red-500 fill-red-500' : ''}`} />
-              </button>
-              {/* Lobby tab - 15% width */}
-              <button 
-                onClick={() => setActiveTab('lobby')}
-                style={{ flex: '0 0 15%' }}
-                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-                  activeTab === 'lobby' 
-                    ? 'bg-primary/20 text-foreground' 
-                    : 'text-muted-foreground/50 hover:text-muted-foreground'
-                }`}
-              >
-                <User className="w-5 h-5" />
-              </button>
-              {/* History tab - 15% width */}
-              <button 
-                onClick={() => setActiveTab('history')}
-                style={{ flex: '0 0 15%' }}
-                className={`flex items-center justify-center py-2 px-3 rounded-md transition-all ${
-                  activeTab === 'history' 
-                    ? 'bg-primary/20 text-foreground' 
-                    : 'text-muted-foreground/50 hover:text-muted-foreground'
-                }`}
-              >
-                <Clock className="w-5 h-5" />
-              </button>
-            </div>
-          );
-        })()}
+        {/* Canonical announcement rail + tab bar are shell-owned and
+            rendered by PersistentTableShell. This game publishes only
+            tab metadata via `useShellTabBar` (registered above). */}
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (

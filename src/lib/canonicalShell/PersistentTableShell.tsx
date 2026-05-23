@@ -36,18 +36,19 @@ import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   CanonicalAnnouncementProvider,
+  CanonicalAnnouncementLayer,
   CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
+import { ShellTabBar, ShellTabBarProvider } from './ShellTabBar';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
 
-// Shell-owned HUD announcement rail dimensions. The shell no longer
-// renders the rail itself — gameplay surfaces mount
-// `CanonicalAnnouncementSlot` directly above their tab bar so the
-// reserved 36px lives between gameplay content and the tab nav, not
-// at the bottom of the shell column.
+// Shell-owned chrome: the canonical announcement rail and the
+// canonical tab bar are now rendered by the shell itself, directly
+// below the opaque game content slot. Games publish tab metadata via
+// `useShellTabBar`; they never render the rail or the tab nav.
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
@@ -173,7 +174,8 @@ export function PersistentTableShell({
           </div>
         ) : null}
 
-        {/* Opaque game subtree. */}
+        {/* Opaque game subtree — gameplay artifacts + tab CONTENT only.
+            The tab BAR itself is shell-owned (rendered below). */}
         <div
           data-canonical-shell-children=""
           style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
@@ -181,12 +183,35 @@ export function PersistentTableShell({
           {children}
         </div>
 
-        {/* Canonical announcement rail is now mounted by gameplay
-            surfaces via `CanonicalAnnouncementSlot`, positioned
-            directly above their tab bar. The shell no longer renders
-            it at the bottom of the column (that placement put it
-            beneath the entire HUD/tab content). */}
+        {/* Shell-owned canonical announcement rail.
+            Fixed reserved height, transparent when idle, single-line
+            centered messaging. Anchored directly above the shell tab
+            bar so lifecycle/gameplay messages sit between gameplay
+            content and tab nav. Single mount, single geometry, single
+            renderer. Games NEVER mount their own rail. */}
+        <div
+          data-canonical-shell-announcement-rail=""
+          style={{
+            flex: '0 0 auto',
+            height: 36,
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 12px',
+            pointerEvents: 'none',
+            background: 'transparent',
+          }}
+        >
+          <CanonicalAnnouncementLayer />
+        </div>
+
+        {/* Shell-owned tab bar. Renders nothing unless a game has
+            registered tab state via `useShellTabBar`. Games NEVER
+            render their own tab nav. */}
+        <ShellTabBar />
       </div>
+
 
       <CanonicalAnnouncementDebugTrigger
         dealerGameId={gameId ?? null}
@@ -240,7 +265,7 @@ export function PersistentTableShell({
         roundId={null}
         viewerUserId={viewerUserId}
       >
-        {body}
+        <ShellTabBarProvider>{body}</ShellTabBarProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );

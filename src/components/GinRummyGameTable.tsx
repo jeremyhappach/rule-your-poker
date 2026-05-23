@@ -68,7 +68,7 @@ import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPla
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
-import { CanonicalAnnouncementSlot } from '@/lib/canonicalShell/announcements';
+import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -402,6 +402,16 @@ export const GinRummyGameTable = ({
       });
     }
   }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
+
+  // Publish tab metadata to the shell-owned tab bar.
+  useShellTabBar({
+    cardsIcon: 'spade',
+    activeTab,
+    setActiveTab,
+    chatFlashing: showGreenChatIndicator ? 'green' : null,
+    chatIndicator: showRedChatIndicator ? 'red' : null,
+    onOpenChat: handleOpenChatTab,
+  });
 
   useEffect(() => {
     return () => {
@@ -1915,57 +1925,9 @@ export const GinRummyGameTable = ({
           })()}
         </div>
 
-        {/* Canonical lifecycle announcement slot — directly above the
-            tab bar. Reserved 36px, transparent when idle. */}
-        <CanonicalAnnouncementSlot />
-
-        {/* Tab navigation bar */}
-        <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
-          <button
-            onClick={() => setActiveTab('cards')}
-            style={{ flex: '0 0 35%' }}
-            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
-              activeTab === 'cards'
-                ? 'bg-primary/20 text-foreground'
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <SpadeIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleOpenChatTab}
-            style={{ flex: '0 0 35%' }}
-            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
-              activeTab === 'chat'
-                ? 'bg-primary/20 text-foreground'
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            } ${showGreenChatIndicator ? 'animate-pulse' : ''}`}
-          >
-            <MessageSquare className={`w-5 h-5 ${showGreenChatIndicator ? 'text-green-500 fill-green-500 animate-pulse' : ''} ${showRedChatIndicator ? 'text-red-500 fill-red-500' : ''}`} />
-          </button>
-          <button
-            onClick={() => setActiveTab('lobby')}
-            style={{ flex: '0 0 15%' }}
-            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
-              activeTab === 'lobby'
-                ? 'bg-primary/20 text-foreground'
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <User className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            style={{ flex: '0 0 15%' }}
-            className={`flex items-center justify-center py-1.5 px-2 rounded-md transition-all ${
-              activeTab === 'history'
-                ? 'bg-primary/20 text-foreground'
-                : 'text-muted-foreground/50 hover:text-muted-foreground'
-            }`}
-          >
-            <Clock className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Canonical announcement rail + tab bar are shell-owned and
+            rendered by PersistentTableShell. Tab metadata is published
+            via `useShellTabBar` (registered above). */}
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
