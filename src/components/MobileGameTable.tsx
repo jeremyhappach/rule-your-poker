@@ -6470,17 +6470,17 @@ export const MobileGameTable = ({
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
-        <ShellHudChrome announcementFallback={
-          <>
-          {/* Phase 4: Local gameplay announcement plates (horses turn,
-              round result, game-over result, re-ante, dealer setup /
-              dealer selection) have been retired. They now emit through
-              the canonical shell announcement rail
-              (renderers.tsx → match_win / round_win / peg_notice).
-              The fallback slot continues to host non-announcement chrome
-              only: dice timer chip, paused badge, and the active
-              player's TimerBar — these share the 36px slot but are NOT
-              semantic announcements. */}
+        {/* Phase 5 architectural finish line: the canonical announcement
+            rail is shell-owned and announcement-only. Operational HUD
+            chrome (dice timer chip, paused badge, active player's
+            TimerBar) is mechanically relocated into a sibling region
+            BETWEEN the rail and the tab bar — same vertical real estate,
+            no semantic-announcement plates left in this surface. */}
+        <ShellAnnouncementRail />
+        <div
+          data-shell-operational-hud=""
+          className="w-full flex items-center justify-center px-3 min-h-[28px]"
+        >
           {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' &&
            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
            horsesController.timeLeft !== null ? (
@@ -6513,8 +6513,8 @@ export const MobileGameTable = ({
           ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
             <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
           ) : null}
-          </>
-        } />
+        </div>
+        <ShellTabBar />
 
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
