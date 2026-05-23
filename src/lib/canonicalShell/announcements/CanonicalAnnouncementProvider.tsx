@@ -185,8 +185,27 @@ export function CanonicalAnnouncementProvider({
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
-      if (!scopeMatches(event.scope, currentScope)) return;
+      if (!scopeMatches(event.scope, currentScope)) {
+        if (import.meta.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('[canonical-rail] emit dropped — scope mismatch', {
+            id: event.id,
+            type: event.type,
+            eventScope: event.scope,
+            currentScope,
+          });
+        }
+        return;
+      }
       const resolved = resolve(event);
+      if (import.meta.env?.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('[canonical-rail] emit', {
+          id: event.id,
+          type: event.type,
+          behavior: resolved.resolvedBehavior,
+        });
+      }
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
