@@ -5646,6 +5646,10 @@ export const CribbageMobileGameTable = ({
           })()}
         </div>
 
+        {/* Canonical lifecycle announcement slot — directly above the
+            tab bar. Reserved 36px, transparent when idle. */}
+        <CanonicalAnnouncementSlot />
+
         {/* Tab navigation bar — always visible */}
         <div className="flex items-center justify-center gap-1 px-3 py-1 border-b border-border/50">
           <button 
