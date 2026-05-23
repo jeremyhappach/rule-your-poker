@@ -44,10 +44,11 @@ import {
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
 
-// Shell-owned HUD announcement rail dimensions. Fixed. Not
-// overridable by games. Sits between the shell-owned header and the
-// opaque game children.
-const SHELL_ANNOUNCEMENT_RAIL_HEIGHT_PX = 36;
+// Shell-owned HUD announcement rail dimensions. The shell no longer
+// renders the rail itself — gameplay surfaces mount
+// `CanonicalAnnouncementSlot` directly above their tab bar so the
+// reserved 36px lives between gameplay content and the tab nav, not
+// at the bottom of the shell column.
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
