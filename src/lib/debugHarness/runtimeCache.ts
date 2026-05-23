@@ -1,55 +1,114 @@
 /**
  * Debug Harness — sync runtime cache.
  *
- * The Game Defaults UI persists a `debug_harness` id per game_type on
- * the `game_defaults` table. Game-logic call sites (deck creation,
- * scoring shortcuts, etc.) are pure synchronous functions and cannot
- * await a DB query, so we mirror the rows into an in-memory cache
- * populated once at app boot and kept fresh via realtime.
+ * Two pieces of state are mirrored here so pure synchronous game-logic
+ * call sites can branch correctly at bootstrap time without awaiting
+ * any DB queries:
  *
- * Contract:
- *   - `getActiveHarnessCached(gameType)` returns 'none' until the cache
- *     is hydrated. Callers MUST treat 'none' as a no-op so a slow first
- *     load can never silently flip behavior mid-session.
- *   - Cache values are stable strings matching profile ids in
- *     `./profiles.ts`. Unknown values surface as their raw text so the
- *     UI/registry remains the single source of truth for legality.
+ *   1. Per-game-type harness selection (game_defaults.debug_harness).
+ *   2. The GLOBAL DEBUG MODE master gate
+ *      (system_settings row key='debug_mode', value.enabled).
+ *
+ * Runtime contract (fail-closed):
+ *   getActiveHarnessCached(gameType) returns 'none' UNLESS BOTH:
+ *     - Global Debug Mode is ON, AND
+ *     - The per-game harness for that game_type is a non-'none' value.
+ *
+ *   This means stale config, late realtime updates, or hydration-in-
+ *   progress can never silently arm a harness.
+ *
+ *   Selections are preserved when Global Debug Mode is toggled OFF —
+ *   only the *execution gate* flips. Turning debug mode back ON
+ *   re-activates the existing selections without reconfiguration.
+ *
+ * Bootstrap-only application:
+ *   Consumers of this module already read harness state at game
+ *   creation / bootstrap call sites (deck creation, initial-state
+ *   seeding, scenario application). Because reads are synchronous and
+ *   one-shot at those sites, mid-session toggles never leak into
+ *   in-flight games — the value was captured at hand setup.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 
-const cache: Record<string, string> = {};
-let loaded = false;
+const harnessCache: Record<string, string> = {};
+let harnessLoaded = false;
+let globalDebugEnabled = false;
+let globalLoaded = false;
 let loadPromise: Promise<void> | null = null;
 let realtimeBound = false;
 
+const globalListeners = new Set<(enabled: boolean) => void>();
+const harnessListeners = new Set<() => void>();
+
+export function isGlobalDebugModeCached(): boolean {
+  return globalDebugEnabled;
+}
+
+export function isGlobalDebugModeLoaded(): boolean {
+  return globalLoaded;
+}
+
+export function subscribeGlobalDebugMode(cb: (enabled: boolean) => void): () => void {
+  globalListeners.add(cb);
+  return () => globalListeners.delete(cb);
+}
+
+export function subscribeHarnessCache(cb: () => void): () => void {
+  harnessListeners.add(cb);
+  return () => harnessListeners.delete(cb);
+}
+
+/**
+ * Raw per-game-type harness selection, IGNORING the global debug gate.
+ * Use ONLY for admin UI surfaces that need to display preserved
+ * selections while debug mode is off.
+ */
+export function getConfiguredHarnessCached(gameType: string): string {
+  return harnessCache[gameType] ?? 'none';
+}
+
+/**
+ * Returns the *active* harness id for a game type.
+ * Fail-closed: returns 'none' whenever Global Debug Mode is off, the
+ * caches haven't hydrated, or no per-game selection exists.
+ */
 export function getActiveHarnessCached(gameType: string): string {
-  return cache[gameType] ?? 'none';
+  if (!globalDebugEnabled) return 'none';
+  return harnessCache[gameType] ?? 'none';
 }
 
 export function isHarnessCacheLoaded(): boolean {
-  return loaded;
+  return harnessLoaded && globalLoaded;
 }
 
 /** Idempotent hydrate + (lazy) realtime bind. Safe to call from many sites. */
 export async function ensureHarnessCacheLoaded(): Promise<void> {
-  if (loaded) return;
+  if (harnessLoaded && globalLoaded) return;
   if (loadPromise) return loadPromise;
   loadPromise = (async () => {
     try {
-      const { data, error } = await supabase
-        .from('game_defaults')
-        .select('game_type, debug_harness');
-      if (!error && data) {
-        for (const row of data as Array<{ game_type: string; debug_harness: string | null }>) {
-          cache[row.game_type] = row.debug_harness ?? 'none';
+      const [defaultsRes, settingsRes] = await Promise.all([
+        supabase.from('game_defaults').select('game_type, debug_harness'),
+        supabase.from('system_settings').select('value').eq('key', 'debug_mode').maybeSingle(),
+      ]);
+      if (!defaultsRes.error && defaultsRes.data) {
+        for (const row of defaultsRes.data as Array<{ game_type: string; debug_harness: string | null }>) {
+          harnessCache[row.game_type] = row.debug_harness ?? 'none';
         }
+      }
+      if (!settingsRes.error && settingsRes.data) {
+        const v = (settingsRes.data as { value?: { enabled?: boolean } }).value;
+        globalDebugEnabled = !!v?.enabled;
       }
     } catch {
       /* swallow — 'none' fallback preserves safety */
     } finally {
-      loaded = true;
+      harnessLoaded = true;
+      globalLoaded = true;
       bindRealtime();
+      globalListeners.forEach((cb) => cb(globalDebugEnabled));
+      harnessListeners.forEach((cb) => cb());
     }
   })();
   return loadPromise;
@@ -69,7 +128,23 @@ function bindRealtime(): void {
             | { game_type?: string; debug_harness?: string | null }
             | undefined;
           if (!row?.game_type) return;
-          cache[row.game_type] = (row.debug_harness ?? 'none') as string;
+          harnessCache[row.game_type] = (row.debug_harness ?? 'none') as string;
+          harnessListeners.forEach((cb) => cb());
+        },
+      )
+      .subscribe();
+
+    supabase
+      .channel('debug-global-mode')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'system_settings', filter: 'key=eq.debug_mode' },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { value?: { enabled?: boolean } } | undefined;
+          const next = !!row?.value?.enabled;
+          if (next === globalDebugEnabled) return;
+          globalDebugEnabled = next;
+          globalListeners.forEach((cb) => cb(globalDebugEnabled));
         },
       )
       .subscribe();
