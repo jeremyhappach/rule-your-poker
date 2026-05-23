@@ -102,21 +102,23 @@ export function initializeCribbageGame(
   }
 
   // ───────────────────────────────────────────────────────────────────────
-  // TEMP SKUNK-VALIDATION HARNESS — REMOVE AFTER TERMINAL-LIFECYCLE TESTING
-  // Forces host=119, opponents=10 so the host can immediately close a
-  // double-skunk match. Validates: match-win detection, skunk classification,
-  // terminal announcement, chip transport, observer parity, replay transition.
-  // To remove: delete this block. No other code depends on it.
+  // Debug Harness: Cribbage "Near Double Skunk"
+  // Controlled by game_defaults.debug_harness (admin Game Defaults UI).
+  // When active, seeds host=119, opponents=10 so the host can immediately
+  // close a double-skunk match — exercises match-win detection, skunk
+  // classification, terminal announcement, chip transport, observer parity,
+  // and replay transition. When 'none' this block is a no-op.
   // ───────────────────────────────────────────────────────────────────────
-  const CRIBBAGE_SKUNK_HARNESS = true;
-  if (CRIBBAGE_SKUNK_HARNESS && playerIds.length >= 2) {
+  if (
+    getActiveHarnessCached('cribbage') === 'near_double_skunk' &&
+    playerIds.length >= 2
+  ) {
     const [hostId, ...rest] = playerIds;
     playerStates[hostId].pegScore = 119;
     for (const otherId of rest) {
       playerStates[otherId].pegScore = 10;
     }
   }
-  // ─────────────────── END TEMP SKUNK-VALIDATION HARNESS ──────────────────
   
   // Determine turn order (non-dealer plays first during pegging)
   const dealerIndex = playerIds.indexOf(dealerPlayerId);
