@@ -262,6 +262,7 @@ export function PersistentTableShell({
       <CanonicalAnnouncementProvider
         dealerGameId={gameId ?? null}
         roundId={null}
+        viewerUserId={viewerUserId}
       >
         {body}
       </CanonicalAnnouncementProvider>
