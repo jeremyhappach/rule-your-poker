@@ -478,6 +478,14 @@ export function YahtzeeGameTable({
   const stableTurnPlayerId = currentTurnPlayerId || null;
   const currentPlayer = players.find(p => p.id === stableTurnPlayerId);
   const isMyTurn = currentPlayer?.user_id === currentUserId && gamePhase === 'playing';
+
+  // Publish tab metadata to the shell-owned tab bar.
+  useShellTabBar({
+    cardsIcon: 'dice',
+    activeTab,
+    setActiveTab,
+    cardsFlashing: (isMyTurn && activeTab !== 'cards' && gamePhase === 'playing') ? 'red' : null,
+  });
   const myPlayer = players.find(p => p.user_id === currentUserId);
   const currentTurnState = stableTurnPlayerId ? viewState?.playerStates?.[stableTurnPlayerId] : null;
 
