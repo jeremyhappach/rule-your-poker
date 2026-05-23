@@ -403,6 +403,16 @@ export const GinRummyGameTable = ({
     }
   }, [chatTabFlashing, eligibleIndicatorMessages, hasUnreadMessages, logChatIndicator]);
 
+  // Publish tab metadata to the shell-owned tab bar.
+  useShellTabBar({
+    cardsIcon: 'spade',
+    activeTab,
+    setActiveTab,
+    chatFlashing: showGreenChatIndicator ? 'green' : null,
+    chatIndicator: showRedChatIndicator ? 'red' : null,
+    onOpenChat: handleOpenChatTab,
+  });
+
   useEffect(() => {
     return () => {
       if (greenClearTimeoutRef.current) {
