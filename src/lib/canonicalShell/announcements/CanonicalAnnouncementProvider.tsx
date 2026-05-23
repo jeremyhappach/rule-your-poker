@@ -49,6 +49,7 @@ import {
   type AnnouncementScope,
   type AnnouncementType,
 } from './types';
+import { persistRailTelemetry } from './railTelemetry';
 
 interface ResolvedAnnouncement extends AnnouncementEvent {
   resolvedPriority: number;
