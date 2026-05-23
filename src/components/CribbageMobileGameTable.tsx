@@ -928,7 +928,7 @@ export const CribbageMobileGameTable = ({
     const targetPlayer = players.find((p) => p.id === intent.targetPlayerId);
     if (!targetPlayer) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
