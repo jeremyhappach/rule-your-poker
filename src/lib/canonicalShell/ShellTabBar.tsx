@@ -179,25 +179,25 @@ export function ShellTabBar() {
   const cardsIconClass = [
     'w-5 h-5',
     activeTab === 'cards' ? 'fill-current' : '',
-    cardsFlash === 'green' ? 'text-green-500 fill-green-500 animate-pulse' : '',
-    cardsFlash === 'red' ? 'text-red-500 fill-red-500 animate-pulse' : '',
+    cardsFlash === 'green' ? 'text-poker-chip-green fill-poker-chip-green animate-pulse' : '',
+    cardsFlash === 'red' ? 'text-poker-chip-red fill-poker-chip-red animate-pulse' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   const chatIconClass = [
     'w-5 h-5',
-    chatFlash === 'green' ? 'text-green-500 fill-green-500 animate-pulse' : '',
-    chatDot === 'red' && !chatFlash ? 'text-red-500 fill-red-500' : '',
+    chatFlash === 'green' ? 'text-poker-chip-green fill-poker-chip-green animate-pulse' : '',
+    chatDot === 'red' && !chatFlash ? 'text-poker-chip-red fill-poker-chip-red' : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   const cardsRing =
     cardsFlash === 'green'
-      ? 'animate-pulse ring-2 ring-green-500'
+      ? 'animate-pulse ring-2 ring-poker-chip-green'
       : cardsFlash === 'red'
-        ? 'animate-pulse ring-2 ring-red-500'
+        ? 'animate-pulse ring-2 ring-poker-chip-red'
         : '';
 
   const handleChatClick = () => {
