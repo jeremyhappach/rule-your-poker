@@ -5478,14 +5478,11 @@ export const CribbageMobileGameTable = ({
               return null;
             }
 
+            // BOOTSTRAP: canonical ambient (`awaiting_ante` /
+            // `waiting_for_next_round`) owns the rail — Phase 2 rail
+            // migration. The legacy gold bootstrap banner is retired.
             if (isBootstrapMode) {
-              return (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...'}
-                  </p>
-                </div>
-              );
+              return null;
             }
 
             // GAMEPLAY banners
