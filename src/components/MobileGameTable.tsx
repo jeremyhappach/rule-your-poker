@@ -6389,12 +6389,11 @@ export const MobileGameTable = ({
               </p>
             </div>
           ) : gameStatus === 'ante_decision' ? (
-            /* Ante decision phase - show waiting for antes message */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
-                Waiting for ante decisions...
-              </p>
-            </div>
+            // Phase 2, Step 4: passive lifecycle messaging (`Awaiting
+            // ante decisions`) is owned by the canonical shell
+            // announcement rail (see SessionLifecycleAnnouncer). The
+            // legacy gold banner is intentionally retired.
+            null
           ) : reAnteMessage ? (
             /* Re-Ante message during 3-5-7 subsequent round 1 */
             <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
@@ -6403,20 +6402,20 @@ export const MobileGameTable = ({
               </p>
             </div>
           ) : dealerSetupMessage ? (
-            /* Dealer setup message */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
-                {dealerSetupMessage}
-              </p>
-            </div>
+            // Phase 2, Step 4: `dealer is configuring next game` is now
+            // owned by the canonical rail (SessionLifecycleAnnouncer
+            // emits `dealer_configuring` ambient). Legacy gold banner
+            // retired; the `dealerSetupMessage` prop remains accepted
+            // for backwards compatibility with existing callsites but
+            // no longer renders here.
+            null
           ) : dealerSelectionAnnouncement ? (
-            /* High card dealer selection announcement - same styling as other dealer messages */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {dealerSelectionAnnouncement}
-              </p>
-            </div>
+            // Phase 2, Step 4: high-card dealer-selection lifecycle
+            // (`Selecting next dealer` / `Dealer selected`) is owned by
+            // the canonical rail. Legacy in-table announcement retired.
+            null
           ) : null}
+
         </div>
         
         {/* Tab navigation bar */}
