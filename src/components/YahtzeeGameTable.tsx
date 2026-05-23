@@ -1732,7 +1732,7 @@ export function YahtzeeGameTable({
   const isPreRound = !viewState || !currentRoundId;
   if (isPreRound) {
     return (
-      <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
         {/* Stable table felt — same geometry as gameplay */}
         <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
           <div
@@ -1796,7 +1796,7 @@ export function YahtzeeGameTable({
   // Build stamp moved to DiceTraceControl component
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-60px)] overflow-hidden bg-background relative">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
 
       {/* DEBUG: visible build verification badge + dice trace controls */}
       <DiceTraceControl />

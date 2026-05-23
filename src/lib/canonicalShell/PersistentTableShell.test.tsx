@@ -16,6 +16,7 @@ vi.mock('./diagnostics', async (importOriginal) => {
 import { PersistentTableShell } from './PersistentTableShell';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { recordShellEvent } from './diagnostics';
+import { useShellTabBar } from './ShellTabBar';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -48,6 +49,33 @@ describe('PersistentTableShell', () => {
     expect(wrapper!.getAttribute('data-canonical-shell-root')).toBe('');
     expect(wrapper!.getAttribute('data-shell-game-type')).toBe('cribbage');
 
+  });
+
+  it('uses deterministic shell rows and renders the shell tab bar when a game registers tabs', () => {
+    function TabProbe() {
+      useShellTabBar({
+        cardsIcon: 'spade',
+        activeTab: 'cards',
+        setActiveTab: () => {},
+      });
+      return <span data-testid="game-content">game</span>;
+    }
+    act(() => {
+      root.render(
+        <PersistentTableShell gameId="g1" gameType="cribbage" header={<div data-testid="header">header</div>}>
+          <TabProbe />
+        </PersistentTableShell>,
+      );
+    });
+    const column = container.querySelector('[data-canonical-shell-column]') as HTMLElement | null;
+    const rail = container.querySelector('[data-canonical-shell-announcement-rail]') as HTMLElement | null;
+    const tabbar = container.querySelector('[data-canonical-shell-tabbar]') as HTMLElement | null;
+    expect(column?.style.gridTemplateRows).toBe('auto minmax(0, 1fr) 36px 44px');
+    expect(container.querySelector('[data-canonical-shell-spacer]')).toBeNull();
+    expect(rail).toBeTruthy();
+    expect(tabbar).toBeTruthy();
+    expect(rail!.nextElementSibling).toBe(tabbar);
+    expect(tabbar!.style.height).toBe('44px');
   });
 
   it('does not mount SeatAnchorLayer when seats are not provided', () => {

@@ -162,28 +162,25 @@ export function PersistentTableShell({
         style={{
           position: 'relative',
           zIndex: 1,
-          display: 'flex',
-          flexDirection: 'column',
+          display: 'grid',
+          gridTemplateRows: header ? 'auto minmax(0, 1fr) 36px 44px' : 'minmax(0, 1fr) 36px 44px',
           height: '100%',
           minHeight: 0,
         }}
       >
         {/* Shell-owned HUD header chrome. Authored by the route. */}
         {header ? (
-          <div data-canonical-shell-header="" style={{ flex: '0 0 auto' }}>
+          <div data-canonical-shell-header="" style={{ minHeight: 0 }}>
             {header}
           </div>
         ) : null}
 
-        {/* Opaque game subtree. Intrinsic height (no flex-grow) so the
-            announcement rail sits DIRECTLY beneath the visual HUD/
-            game content instead of being pushed to the viewport
-            bottom. The spacer below the rail absorbs remaining
-            vertical space and keeps the tab bar pinned to the
-            bottom edge. */}
+        {/* Opaque game subtree. This is the ONLY flexible row in the
+            shell contract: header fixed, game content flex, rail fixed,
+            tab bar fixed. */}
         <div
           data-canonical-shell-children=""
-          style={{ flex: '0 0 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}
+          style={{ minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         >
           {children}
         </div>
@@ -195,7 +192,6 @@ export function PersistentTableShell({
         <div
           data-canonical-shell-announcement-rail=""
           style={{
-            flex: '0 0 auto',
             height: 36,
             width: '100%',
             display: 'flex',
@@ -208,14 +204,6 @@ export function PersistentTableShell({
         >
           <CanonicalAnnouncementLayer />
         </div>
-
-        {/* Flex-grow spacer — keeps the tab bar pinned to the bottom
-            while children + rail hug the top of the column. */}
-        <div
-          data-canonical-shell-spacer=""
-          aria-hidden="true"
-          style={{ flex: '1 1 auto', minHeight: 0 }}
-        />
 
         {/* Shell-owned tab bar. */}
         <ShellTabBar />
