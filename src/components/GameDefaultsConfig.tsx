@@ -243,6 +243,7 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
             per_point_value: defaultConfig.per_point_value,
             gin_bonus: defaultConfig.gin_bonus,
             undercut_bonus: defaultConfig.undercut_bonus,
+            debug_harness: defaultConfig.debug_harness ?? 'none',
           })
           .eq('game_type', defaultConfig.game_type);
 
