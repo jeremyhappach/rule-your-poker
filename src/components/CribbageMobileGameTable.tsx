@@ -1804,9 +1804,66 @@ export const CribbageMobileGameTable = ({
       if (isNew) {
         lastAnnouncementRef.current = { text: announcement, target: targetLabel, key: announcementKey ?? 0 };
         injectDealerMessage(`${targetLabel}: ${announcement}`);
+
+        // Phase 3: emit each scoring event into the canonical rail as a
+        // `peg_notice` transient. The ambient "Scoring {target}..." helper
+        // remains in the content pane; the rail shows the discrete scores.
+        announcements.emit({
+          id: `${gameId}:count:${currentRoundId ?? 'no-round'}:${targetLabel}:${announcementKey ?? 0}:${announcement}`,
+          type: 'peg_notice',
+          scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+          payload: { title: `${targetLabel}: ${announcement}` },
+          ttlMs: 2500,
+        });
       }
     }
-  }, [injectDealerMessage]);
+  }, [injectDealerMessage, announcements, gameId, currentRoundId]);
+
+  // ── Phase 3: emit pegging scoring events into the canonical rail as
+  // `peg_notice` transients. Replaces the local gold-plate fallback for
+  // pegging_points / go_point / his_heels. Dedup is per event.id.
+  const emittedPegEventIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const event = cribbageState?.lastEvent;
+    if (!event) return;
+    const isPeggingEvent =
+      event.type === 'pegging_points' ||
+      event.type === 'go_point' ||
+      event.type === 'his_heels';
+    if (!isPeggingEvent) return;
+    if (emittedPegEventIdRef.current === event.id) return;
+    emittedPegEventIdRef.current = event.id;
+    const name = getPlayerUsername(event.playerId);
+    const title =
+      event.type === 'his_heels'
+        ? `${name}: His Heels (+2)`
+        : `${name}: ${event.label} (+${event.points})`;
+    announcements.emit({
+      id: `${gameId}:peg:${event.id}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: { title },
+      ttlMs: 3000,
+    });
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, gameId, currentRoundId, announcements, getPlayerUsername]);
+
+  // ── Phase 3: emit a brief "Dealing Next Hand…" transient at the
+  // post-counting handoff. Edge-triggered on postCountingTransitionActive.
+  const emittedDealingNextRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!postCountingTransitionActive) return;
+    const id = `${gameId}:dealing-next:${currentRoundId ?? 'no-round'}:${currentHandNumber}`;
+    if (emittedDealingNextRef.current === id) return;
+    emittedDealingNextRef.current = id;
+    announcements.emit({
+      id,
+      type: 'dealing_next_hand',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: {},
+      ttlMs: 1500,
+    });
+  }, [postCountingTransitionActive, gameId, currentRoundId, currentHandNumber, announcements]);
+
 
   // Backend acknowledgement guard: only transition to next game after backend marks game_over.
   const gameOverAckRef = useRef(false);
