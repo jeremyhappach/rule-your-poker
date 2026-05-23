@@ -5677,13 +5677,14 @@ export const CribbageMobileGameTable = ({
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
-          {/* Cards tab: during high-card or bootstrap, show contextual placeholder */}
+          {/* Cards tab during high-card or bootstrap modes intentionally
+              renders nothing. All passive lifecycle messaging
+              ("Drawing for dealer...", "Awaiting ante decisions...",
+              "Preparing next hand...") is owned by the canonical
+              announcement rail. Local placeholders here would split
+              ownership and produce competing surfaces (Phase 2 / Step 4). */}
           {activeTab === 'cards' && (isHighCardMode || isBootstrapMode) && (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-sm">
-                {isHighCardMode ? 'Drawing for dealer...' : (shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...')}
-              </p>
-            </div>
+            <div className="h-full" aria-hidden="true" />
           )}
 
           {/* Cards tab: gameplay mode with guards */}
