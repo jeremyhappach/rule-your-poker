@@ -32,6 +32,7 @@ export type AnnouncementType =
   | 'waiting_for_next_round'
   | 'dealer_selection_in_progress'
   | 'awaiting_ante'
+  | 'awaiting_discards'
   | 'cta_prompt';
 
 /**
