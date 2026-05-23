@@ -36,19 +36,18 @@ import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   CanonicalAnnouncementProvider,
-  CanonicalAnnouncementLayer,
   CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
-import { ShellTabBar, ShellTabBarProvider } from './ShellTabBar';
+import { ShellTabBarProvider } from './ShellTabBar';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
 
-// Shell-owned chrome: the canonical announcement rail and the
-// canonical tab bar are now rendered by the shell itself, directly
-// below the opaque game content slot. Games publish tab metadata via
-// `useShellTabBar`; they never render the rail or the tab nav.
+// Shell-owned chrome: the canonical announcement rail and tab bar are
+// exposed via `ShellHudChrome` and must be mounted by gameplay surfaces
+// at the top of their unified HUD stack, directly below gameplay. Games
+// publish tab metadata via `useShellTabBar`; they never render tab nav.
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
@@ -163,51 +162,25 @@ export function PersistentTableShell({
           position: 'relative',
           zIndex: 1,
           display: 'grid',
-          // Deterministic HUD child ordering (top → bottom):
-          //   1. Header (fixed)            — player chrome / table top
-          //   2. Announcement rail (36px)  — lifecycle + CTA plates
-          //   3. Tab bar (44px)            — spade/chat/people/history
-          //   4. Active content pane (flex) — tab-driven content
-          //      (gameplay, chat, lobby, history). Owned by the game.
-          gridTemplateRows: header
-            ? 'auto 36px 44px minmax(0, 1fr)'
-            : '36px 44px minmax(0, 1fr)',
+          // Deterministic shell ordering (top → bottom):
+          //   1. Header (fixed)
+          //   2. Gameplay surface + its cohesive HUD stack (flex)
+          // The HUD stack itself is mounted inside the game surface via
+          // ShellHudChrome so rail, tab bar, tab content, helper text,
+          // and identity/balance row remain one ordered group.
+          gridTemplateRows: header ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
           height: '100%',
           minHeight: 0,
         }}
       >
-        {/* 1. Shell-owned HUD header chrome. Authored by the route. */}
+        {/* 1. Shell-owned header chrome. Authored by the route. */}
         {header ? (
           <div data-canonical-shell-header="" style={{ minHeight: 0 }}>
             {header}
           </div>
         ) : null}
 
-        {/* 2. Shell-owned canonical announcement rail. Sits directly
-            beneath the header, above the tab bar and active content
-            pane. Transparent container — the plate (LifecycleAnnouncement)
-            owns its own visual styling. Games NEVER mount their own rail. */}
-        <div
-          data-canonical-shell-announcement-rail=""
-          style={{
-            height: 36,
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            background: 'transparent',
-            overflow: 'hidden',
-          }}
-        >
-          <CanonicalAnnouncementLayer />
-        </div>
-
-        {/* 3. Shell-owned tab bar — sits ABOVE the active content pane. */}
-        <ShellTabBar />
-
-        {/* 4. Active content pane. Tab-driven content (gameplay, chat,
-            lobby, history). The ONLY flexible row in the shell contract. */}
+        {/* 2. Gameplay surface + unified HUD stack. The ONLY flexible row. */}
         <div
           data-canonical-shell-children=""
           style={{ minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
