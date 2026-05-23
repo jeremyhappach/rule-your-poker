@@ -6417,7 +6417,11 @@ export const MobileGameTable = ({
           ) : null}
 
         </div>
-        
+
+        {/* Canonical lifecycle announcement slot — directly above the
+            tab bar. Reserved 36px, transparent when idle. */}
+        <CanonicalAnnouncementSlot />
+
         {/* Tab navigation bar */}
         {(() => {
           // Determine if we should pulse the cards tab (it's your turn and you're not on cards tab)
