@@ -74,6 +74,7 @@ import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonica
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -2880,6 +2881,142 @@ export const MobileGameTable = ({
       });
     }
   }, [gameId, gameType, lastRoundResult, awaitingNextRound, roundStatus, allDecisionsIn, chuckyActive, gameStatus, currentRound, threeFiveSevenWinTriggerId]);
+
+  // ── Phase 4: Canonical gameplay announcement emits ────────────────────────
+  // Migration of the legacy MobileGameTable gold plate (`announcementFallback`)
+  // to shell-owned semantic emits. Renderer in
+  // `canonicalShell/announcements/renderers.tsx` produces the visible plate;
+  // this surface only emits.
+  //
+  // Scope: dealerGameId/roundId left as gameId/handContextId so events scope
+  // to the active hand and are torn down on hand boundary by the provider.
+  const announcements = useAnnouncements();
+
+  // (A) Horses / SCC turn announcement → peg_notice (transient).
+  const lastEmittedTurnAnnouncementRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isDiceGame || !horsesController.enabled) return;
+    const text = horsesController.turnAnnouncement;
+    if (!text) return;
+    const key = `${gameId ?? 'no-game'}:${horsesController.gamePhase ?? 'unk'}:${text}`;
+    if (lastEmittedTurnAnnouncementRef.current === key) return;
+    lastEmittedTurnAnnouncementRef.current = key;
+    announcements.emit({
+      id: `peg:${key}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { title: text, kind: 'horses_turn' },
+      ttlMs: 2500,
+    });
+  }, [isDiceGame, horsesController.enabled, horsesController.turnAnnouncement, horsesController.gamePhase, gameId, handContextId, announcements]);
+
+  // (B + C) Holm / 3-5-7 round + game-over result plate →
+  //   round_win (transient, mid-hand)
+  //   match_win (transient, game-over, extended TTL to persist through overlays)
+  const lastEmittedResultRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isDiceGame) return; // dice games handled separately below
+    if (!lastRoundResult) return;
+    if (lastRoundResult.startsWith('357_SWEEP:')) return; // sweep overlay owns it
+    // 3-5-7 leg/game-win overlays own these messages — suppress rail.
+    const isLegWin = gameType !== 'holm-game' && !!threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg');
+    const isGameWinViaOverlay = gameType !== 'holm-game' && (
+      threeFiveSevenWinTriggerId ||
+      threeFiveSevenWinPhase !== 'idle' ||
+      lastThreeFiveSevenTriggerRef.current !== null
+    ) && lastRoundResult.includes('won the game');
+    if (isLegWin || isGameWinViaOverlay) return;
+    // Don't surface stale result during setup phases for a new hand.
+    if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
+    // Holm: gate until community card 4 finishes flipping.
+    if (gameType === 'holm-game' && !holmCommunityFullyRevealed) return;
+
+    const isResultEligible =
+      isGameOver ||
+      awaitingNextRound ||
+      roundStatus === 'completed' ||
+      roundStatus === 'showdown' ||
+      allDecisionsIn ||
+      chuckyActive;
+    if (!isResultEligible) return;
+
+    const projectedText =
+      gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky')
+        ? '🏆 Game Complete!'
+        : gameType !== 'holm-game'
+          ? format357ShowdownAnnouncement
+          : lastRoundResult.split('|||')[0];
+    if (!projectedText) return;
+
+    const kind = isGameOver ? 'match' : 'round';
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:${currentRound}:${kind}:${projectedText}`;
+    if (lastEmittedResultRef.current === key) return;
+    lastEmittedResultRef.current = key;
+
+    if (isGameOver) {
+      announcements.clearAmbient();
+      announcements.emit({
+        id: `match_win:${key}`,
+        type: 'match_win',
+        scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+        payload: { text: projectedText, gameType: gameType ?? undefined },
+        // Persist through chip transfer / pot animation overlays.
+        ttlMs: 10000,
+      });
+    } else {
+      announcements.emit({
+        id: `round_win:${key}`,
+        type: 'round_win',
+        scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+        payload: { text: projectedText, gameType: gameType ?? undefined },
+        ttlMs: 3000,
+      });
+    }
+  }, [
+    isDiceGame, lastRoundResult, gameType, threeFiveSevenWinTriggerId, threeFiveSevenWinPhase,
+    gameStatus, holmCommunityFullyRevealed, isGameOver, awaitingNextRound, roundStatus,
+    allDecisionsIn, chuckyActive, format357ShowdownAnnouncement, gameId, handContextId,
+    currentRound, announcements,
+  ]);
+
+  // Horses / SCC game-over result → match_win.
+  useEffect(() => {
+    if (!isDiceGame) return;
+    if (!isGameOver) return;
+    if (!lastRoundResult) return;
+    const projected = lastRoundResult.split('|||')[0];
+    if (!projected) return;
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:dice-match:${projected}`;
+    if (lastEmittedResultRef.current === key) return;
+    lastEmittedResultRef.current = key;
+    announcements.clearAmbient();
+    announcements.emit({
+      id: `match_win:${key}`,
+      type: 'match_win',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { text: projected, gameType: gameType ?? undefined },
+      ttlMs: 10000,
+    });
+  }, [isDiceGame, isGameOver, lastRoundResult, gameId, handContextId, gameType, announcements]);
+
+  // (D) 3-5-7 re-ante message → peg_notice.
+  const lastEmittedReAnteRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!reAnteMessage) return;
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:reante:${reAnteMessage}`;
+    if (lastEmittedReAnteRef.current === key) return;
+    lastEmittedReAnteRef.current = key;
+    announcements.emit({
+      id: `peg:${key}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { title: reAnteMessage, kind: 'reante' },
+      ttlMs: 2000,
+    });
+  }, [reAnteMessage, gameId, handContextId, announcements]);
+  // ── End Phase 4 emits ─────────────────────────────────────────────────────
+
+
 
   // Check if current player is the winner (for dimming logic)
   const isCurrentPlayerWinner = winnerPlayerId === currentPlayer?.id;
@@ -6335,113 +6472,50 @@ export const MobileGameTable = ({
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         <ShellHudChrome announcementFallback={
           <>
-          {/* Dice games: dealer announcement + countdown timer live here (top of the active player box) */}
-          {/* CRITICAL: Show turnAnnouncement even after gamePhase changes to prevent 3x flash on win.
-              The announcement has its own 2.5s timeout and will clear naturally. */}
-          {isDiceGame && horsesController.enabled && horsesController.turnAnnouncement ? (
-            <div key="horses-turn-announcement" className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {horsesController.turnAnnouncement}
-              </p>
-            </div>
-          ) : isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
-            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot && horsesController.timeLeft !== null ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span
-                    className={cn(
-                      "text-sm font-mono font-bold",
-                      horsesController.timeLeft <= 5
-                        ? "text-destructive"
-                        : horsesController.timeLeft <= 10
-                          ? "text-amber-500"
-                          : "text-foreground",
-                    )}
-                  >
-                    {horsesController.timeLeft}s
-                  </span>
-                  {horsesController.currentTurnPlayerName && (
-                    <span className="text-xs text-muted-foreground">
-                      ({horsesController.currentTurnPlayerName})
-                    </span>
+          {/* Phase 4: Local gameplay announcement plates (horses turn,
+              round result, game-over result, re-ante, dealer setup /
+              dealer selection) have been retired. They now emit through
+              the canonical shell announcement rail
+              (renderers.tsx → match_win / round_win / peg_notice).
+              The fallback slot continues to host non-announcement chrome
+              only: dice timer chip, paused badge, and the active
+              player's TimerBar — these share the 36px slot but are NOT
+              semantic announcements. */}
+          {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' &&
+           horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
+           horsesController.timeLeft !== null ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span
+                  className={cn(
+                    "text-sm font-mono font-bold",
+                    horsesController.timeLeft <= 5
+                      ? "text-destructive"
+                      : horsesController.timeLeft <= 10
+                        ? "text-amber-500"
+                        : "text-foreground",
                   )}
-                </div>
+                >
+                  {horsesController.timeLeft}s
+                </span>
+                {horsesController.currentTurnPlayerName && (
+                  <span className="text-xs text-muted-foreground">
+                    ({horsesController.currentTurnPlayerName})
+                  </span>
+                )}
               </div>
-            ) : null
+            </div>
           ) : isPaused ? (
-            /* Paused badge only - LAST HAND moved to page header */
             <div className="flex items-center justify-center gap-2">
               <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
             </div>
           ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
-            /* Player timer bar - shown when it's player's turn to decide */
             <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
-          ) : isGameOver && lastRoundResult && !(
-            gameType !== 'holm-game' && (
-              threeFiveSevenWinTriggerId || 
-              threeFiveSevenWinPhase !== 'idle' ||
-              lastRoundResult.includes('won the game') ||
-              lastThreeFiveSevenTriggerRef.current !== null
-            )
-          ) ? (
-            /* Game Over state - result message */
-            /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
-                  ? '🏆 Game Complete!' 
-                  : gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0]}
-              </p>
-            </div>
-          ) : !isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
-             !(gameType !== 'holm-game' && lastRoundResult.includes('won the game')) &&
-             !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
-             // CRITICAL FIX: Never show prior round result during configuring or ante_decision phases
-             // These are setup phases for a NEW hand - we should show dealer/ante messages instead
-             gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
-             // HOLM: Gate announcement until community card 4 flip animation has completed
-             // Prevents result banner from appearing before card 4 is visually revealed
-             (gameType !== 'holm-game' || holmCommunityFullyRevealed) &&
-             (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) ? (
-            /* Result message - in bottom section */
-            /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
-                  ? '🏆 Game Complete!' 
-                  : gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0]}
-              </p>
-            </div>
-          ) : gameStatus === 'ante_decision' ? (
-            // Phase 2, Step 4: passive lifecycle messaging (`Awaiting
-            // ante decisions`) is owned by the canonical shell
-            // announcement rail (see SessionLifecycleAnnouncer). The
-            // legacy gold banner is intentionally retired.
-            null
-          ) : reAnteMessage ? (
-            /* Re-Ante message during 3-5-7 subsequent round 1 */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
-                {reAnteMessage}
-              </p>
-            </div>
-          ) : dealerSetupMessage ? (
-            // Phase 2, Step 4: `dealer is configuring next game` is now
-            // owned by the canonical rail (SessionLifecycleAnnouncer
-            // emits `dealer_configuring` ambient). Legacy gold banner
-            // retired; the `dealerSetupMessage` prop remains accepted
-            // for backwards compatibility with existing callsites but
-            // no longer renders here.
-            null
-          ) : dealerSelectionAnnouncement ? (
-            // Phase 2, Step 4: high-card dealer-selection lifecycle
-            // (`Selecting next dealer` / `Dealer selected`) is owned by
-            // the canonical rail. Legacy in-table announcement retired.
-            null
           ) : null}
           </>
         } />
+
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (

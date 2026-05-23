@@ -64,11 +64,16 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       // are rendered IN ADDITION by CanonicalCelebrationLayer; this
       // rail plate is the canonical "who won" announcement.
       const x = p as {
+        text?: string;
         winnerName?: string;
         amount?: number | string;
         score?: { winner?: number; loser?: number };
         skunk?: 'single' | 'double';
       };
+      // Free-form `text` payload (used by Holm / 3-5-7 / Horses) takes
+      // precedence — those games already build a localized result
+      // string we want to render verbatim.
+      if (x.text) return <LifecycleAnnouncement title={x.text} />;
       const skunkPrefix =
         x.skunk === 'double' ? 'DOUBLE SKUNK! ' : x.skunk === 'single' ? 'SKUNK! ' : '';
       const title = x.winnerName
@@ -83,7 +88,10 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       return <LifecycleAnnouncement title={title} subtitle={subtitle} />;
     }
     case 'round_win': {
-      const x = p as RoundWinPayload;
+      const x = p as RoundWinPayload & { text?: string };
+      // Free-form `text` override for non-Cribbage games (Holm chop,
+      // 3-5-7 showdown summary, etc.) — render verbatim.
+      if (x.text) return <LifecycleAnnouncement title={x.text} />;
       const kindLabel =
         x.kind === 'crib'
           ? 'Crib counts'
