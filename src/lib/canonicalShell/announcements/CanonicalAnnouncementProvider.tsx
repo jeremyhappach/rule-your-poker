@@ -49,7 +49,6 @@ import {
   type AnnouncementScope,
   type AnnouncementType,
 } from './types';
-import { persistRailTelemetry } from './railTelemetry';
 
 interface ResolvedAnnouncement extends AnnouncementEvent {
   resolvedPriority: number;
@@ -187,29 +186,26 @@ export function CanonicalAnnouncementProvider({
   const emit = useCallback(
     (event: AnnouncementEvent) => {
       if (!scopeMatches(event.scope, currentScope)) {
-        persistRailTelemetry({
-          eventName: 'rail-emit-rejected',
-          severity: 'warn',
-          announcementId: event.id,
-          announcementType: event.type,
-          emittedScope: event.scope,
-          providerScope: currentScope,
-          reason: 'scope-mismatch',
-        });
+        if (import.meta.env?.DEV) {
+          // eslint-disable-next-line no-console
+          console.warn('[canonical-rail] emit dropped — scope mismatch', {
+            id: event.id,
+            type: event.type,
+            eventScope: event.scope,
+            currentScope,
+          });
+        }
         return;
       }
       const resolved = resolve(event);
-      persistRailTelemetry({
-        eventName: 'rail-emit-accepted',
-        announcementId: event.id,
-        announcementType: event.type,
-        behavior: resolved.resolvedBehavior,
-        emittedScope: event.scope,
-        providerScope: currentScope,
-        actorUserId:
-          (event.payload as { actorUserId?: string } | undefined)?.actorUserId ?? null,
-        extra: { priority: resolved.resolvedPriority, ttlMs: resolved.ttlMs ?? null },
-      });
+      if (import.meta.env?.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('[canonical-rail] emit', {
+          id: event.id,
+          type: event.type,
+          behavior: resolved.resolvedBehavior,
+        });
+      }
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
@@ -265,55 +261,26 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
-      let matchedTransient = false;
-      let matchedAmbient = false;
       setTransient((cur) => {
         if (cur && cur.id === id) {
-          matchedTransient = true;
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
-      setAmbient((cur) => {
-        if (cur && cur.id === id) {
-          matchedAmbient = true;
-          return null;
-        }
-        return cur;
-      });
+      setAmbient((cur) => (cur && cur.id === id ? null : cur));
       queueRef.current = queueRef.current.filter((q) => q.id !== id);
-      persistRailTelemetry({
-        eventName: 'rail-dismiss',
-        announcementId: id,
-        providerScope: currentScope,
-        extra: { matchedTransient, matchedAmbient },
-      });
     },
-    [promoteNextTransient, currentScope],
+    [promoteNextTransient],
   );
 
-  const clearAmbient = useCallback(
-    (type?: AnnouncementType) => {
-      let clearedId: string | null = null;
-      let clearedType: AnnouncementType | null = null;
-      setAmbient((cur) => {
-        if (!cur) return null;
-        if (type && cur.type !== type) return cur;
-        clearedId = cur.id;
-        clearedType = cur.type;
-        return null;
-      });
-      persistRailTelemetry({
-        eventName: 'rail-clear-ambient',
-        announcementId: clearedId,
-        announcementType: clearedType,
-        providerScope: currentScope,
-        reason: type ? `type-scoped:${type}` : 'broad',
-      });
-    },
-    [currentScope],
-  );
+  const clearAmbient = useCallback((type?: AnnouncementType) => {
+    setAmbient((cur) => {
+      if (!cur) return null;
+      if (type && cur.type !== type) return cur;
+      return null;
+    });
+  }, []);
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
