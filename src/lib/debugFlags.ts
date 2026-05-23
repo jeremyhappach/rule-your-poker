@@ -12,6 +12,9 @@
  *   - ptp_debug_disable_safety_polls = "1"
  */
 
+import { getActiveHarnessCached } from '@/lib/debugHarness/runtimeCache';
+
+
 function hasQueryFlag(name: string): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -89,10 +92,6 @@ export function isGinRiggedDealEnabled(): boolean {
  *  Off-path (host passes, etc.): continues legally via the normal Gin engine.
  */
 export function isGinTwoActionHarnessEnabled(): boolean {
-  // Lazy import to avoid circular dep with runtimeCache (which imports supabase).
-  // The cache is sync; returns 'none' until hydrated, which is the safe default.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { getActiveHarnessCached } = require('@/lib/debugHarness/runtimeCache') as typeof import('@/lib/debugHarness/runtimeCache');
   return getActiveHarnessCached('gin-rummy') === 'near_gin';
 }
 
