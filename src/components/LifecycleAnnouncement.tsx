@@ -40,7 +40,7 @@ export const LifecycleAnnouncement = ({
 }: LifecycleAnnouncementProps) => {
   const plate = (
     <div className="w-full h-full flex items-center justify-center bg-poker-gold/95 backdrop-blur-sm px-4 shadow-xl border-y-2 border-poker-gold animate-scale-in overflow-hidden">
-      <p className="text-sm font-bold text-primary-foreground text-center leading-tight truncate">
+      <p className="text-sm font-bold text-background text-center leading-tight truncate">
         {title}
         {subtitle && (
           <span className="text-[11px] font-semibold opacity-80 ml-2">
