@@ -4872,7 +4872,7 @@ export const CribbageMobileGameTable = ({
     if (!gameId) return;
     if (effectiveShowHighCardSelection) {
       if (lastBootstrapAmbientIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastBootstrapAmbientIdRef.current);
         lastBootstrapAmbientIdRef.current = null;
       }
       return;
