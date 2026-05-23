@@ -9490,6 +9490,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameType={game.game_type}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
+            viewerUserId={user?.id ?? null}
             seats={shellEligibleSeats}
             header={mobileHeader}
           >
