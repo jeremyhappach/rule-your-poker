@@ -3298,11 +3298,11 @@ export const CribbageMobileGameTable = ({
       });
     }
 
-    // Emit canonical terminal event. Skunk/double-skunk remains an
-    // overlay-class event; ownership moved to the shell celebration
-    // layer, but the timing/animation contract mirrors the legacy
-    // CribbageSkunkOverlay (3.6s show, 4.1s total). Non-skunk wins do
-    // not get an invented match-win card.
+    // Emit canonical terminal event. Skunk/double-skunk still owns the
+    // centered celebration overlay, but match_win must remain alive long
+    // enough for the lifecycle rail winner plate to be visible after the
+    // overlay clears. Non-skunk wins have no overlay, so the rail gets a
+    // short dedicated presentation window before chip transport starts.
     const skunkPayload: 'single' | 'double' | undefined =
       multiplier >= 3 ? 'double' : multiplier >= 2 ? 'single' : undefined;
     const winnerScoreVal = state.playerStates[winnerId]?.pegScore ?? 0;
@@ -3321,7 +3321,7 @@ export const CribbageMobileGameTable = ({
         skunk: skunkPayload,
         amount: totalWinnings,
       },
-      ttlMs: skunkPayload ? 4100 : 50,
+      ttlMs: skunkPayload ? 5600 : 1800,
     });
     // Drop into terminal-overlay phase; the timer below gates chips until
     // the shell-owned overlay resolves (or near-immediately for non-skunk).
@@ -4776,9 +4776,10 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [ensureBackendGameOverAck, onGameComplete]);
 
-  // Gate chip animation on the shell-owned terminal overlay duration.
-  // Legacy skunk overlay completed at 4100ms; non-skunk wins do not get
-  // a terminal card/plate and should proceed to chips near-immediately.
+  // Gate chip animation on the shell-owned terminal announcement duration.
+  // Skunk overlay occupies the first ~4100ms, then the same match_win event
+  // remains in the lifecycle rail briefly so the winner plate is actually
+  // visible before chips move. Non-skunk wins use the rail-only window.
   //
   // ROOT-CAUSE FIX (match-end freeze): the previous implementation listed
   // `handleAnnouncementComplete` in the dep array. That callback's identity
@@ -4799,7 +4800,7 @@ export const CribbageMobileGameTable = ({
     if (winSequencePhase !== 'announcement') return;
     if (!winSequenceData) return;
 
-    const delayMs = winSequenceData.multiplier >= 2 ? 4100 : 50;
+    const delayMs = winSequenceData.multiplier >= 2 ? 5600 : 1800;
     const timer = setTimeout(() => {
       announcementCompleteRef.current?.();
     }, delayMs);
