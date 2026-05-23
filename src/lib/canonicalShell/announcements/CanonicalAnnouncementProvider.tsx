@@ -265,26 +265,55 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
+      let matchedTransient = false;
+      let matchedAmbient = false;
       setTransient((cur) => {
         if (cur && cur.id === id) {
+          matchedTransient = true;
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
-      setAmbient((cur) => (cur && cur.id === id ? null : cur));
+      setAmbient((cur) => {
+        if (cur && cur.id === id) {
+          matchedAmbient = true;
+          return null;
+        }
+        return cur;
+      });
       queueRef.current = queueRef.current.filter((q) => q.id !== id);
+      persistRailTelemetry({
+        eventName: 'rail-dismiss',
+        announcementId: id,
+        providerScope: currentScope,
+        extra: { matchedTransient, matchedAmbient },
+      });
     },
-    [promoteNextTransient],
+    [promoteNextTransient, currentScope],
   );
 
-  const clearAmbient = useCallback((type?: AnnouncementType) => {
-    setAmbient((cur) => {
-      if (!cur) return null;
-      if (type && cur.type !== type) return cur;
-      return null;
-    });
-  }, []);
+  const clearAmbient = useCallback(
+    (type?: AnnouncementType) => {
+      let clearedId: string | null = null;
+      let clearedType: AnnouncementType | null = null;
+      setAmbient((cur) => {
+        if (!cur) return null;
+        if (type && cur.type !== type) return cur;
+        clearedId = cur.id;
+        clearedType = cur.type;
+        return null;
+      });
+      persistRailTelemetry({
+        eventName: 'rail-clear-ambient',
+        announcementId: clearedId,
+        announcementType: clearedType,
+        providerScope: currentScope,
+        reason: type ? `type-scoped:${type}` : 'broad',
+      });
+    },
+    [currentScope],
+  );
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
