@@ -265,23 +265,17 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
-      let matchedTransient = false;
-      let matchedAmbient = false;
-      setTransient((cur) => {
-        if (cur && cur.id === id) {
-          matchedTransient = true;
-          queueMicrotask(promoteNextTransient);
-          return null;
-        }
-        return cur;
-      });
-      setAmbient((cur) => {
-        if (cur && cur.id === id) {
-          matchedAmbient = true;
-          return null;
-        }
-        return cur;
-      });
+      // Snapshot match decisions from current refs/state without doing
+      // side effects inside setState updaters (strict-mode safe).
+      const matchedTransient = !!(transient && transient.id === id);
+      const matchedAmbient = !!(ambient && ambient.id === id);
+      if (matchedTransient) {
+        setTransient(null);
+        queueMicrotask(promoteNextTransient);
+      }
+      if (matchedAmbient) {
+        setAmbient(null);
+      }
       queueRef.current = queueRef.current.filter((q) => q.id !== id);
       persistRailTelemetry({
         eventName: 'rail-dismiss',
@@ -290,29 +284,34 @@ export function CanonicalAnnouncementProvider({
         extra: { matchedTransient, matchedAmbient },
       });
     },
-    [promoteNextTransient, currentScope],
+    [promoteNextTransient, currentScope, transient, ambient],
   );
 
   const clearAmbient = useCallback(
     (type?: AnnouncementType) => {
-      let clearedId: string | null = null;
-      let clearedType: AnnouncementType | null = null;
-      setAmbient((cur) => {
-        if (!cur) return null;
-        if (type && cur.type !== type) return cur;
-        clearedId = cur.id;
-        clearedType = cur.type;
-        return null;
-      });
+      const cur = ambient;
+      if (!cur) {
+        persistRailTelemetry({
+          eventName: 'rail-clear-ambient',
+          announcementId: null,
+          announcementType: null,
+          providerScope: currentScope,
+          reason: type ? `type-scoped:${type}` : 'broad',
+          extra: { noop: true },
+        });
+        return;
+      }
+      if (type && cur.type !== type) return;
+      setAmbient(null);
       persistRailTelemetry({
         eventName: 'rail-clear-ambient',
-        announcementId: clearedId,
-        announcementType: clearedType,
+        announcementId: cur.id,
+        announcementType: cur.type,
         providerScope: currentScope,
         reason: type ? `type-scoped:${type}` : 'broad',
       });
     },
-    [currentScope],
+    [currentScope, ambient],
   );
 
   const clearScope = useCallback(
