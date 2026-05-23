@@ -1646,6 +1646,9 @@ export const CribbageMobileGameTable = ({
     };
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type]);
 
+
+
+
   // Log cut card event when first revealed (atomic guard prevents duplicates)
   useEffect(() => {
     if (!cribbageState?.cutCard || !eventCtx) return;
@@ -1801,9 +1804,66 @@ export const CribbageMobileGameTable = ({
       if (isNew) {
         lastAnnouncementRef.current = { text: announcement, target: targetLabel, key: announcementKey ?? 0 };
         injectDealerMessage(`${targetLabel}: ${announcement}`);
+
+        // Phase 3: emit each scoring event into the canonical rail as a
+        // `peg_notice` transient. The ambient "Scoring {target}..." helper
+        // remains in the content pane; the rail shows the discrete scores.
+        announcements.emit({
+          id: `${gameId}:count:${currentRoundId ?? 'no-round'}:${targetLabel}:${announcementKey ?? 0}:${announcement}`,
+          type: 'peg_notice',
+          scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+          payload: { title: `${targetLabel}: ${announcement}` },
+          ttlMs: 2500,
+        });
       }
     }
-  }, [injectDealerMessage]);
+  }, [injectDealerMessage, announcements, gameId, currentRoundId]);
+
+  // ── Phase 3: emit pegging scoring events into the canonical rail as
+  // `peg_notice` transients. Replaces the local gold-plate fallback for
+  // pegging_points / go_point / his_heels. Dedup is per event.id.
+  const emittedPegEventIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const event = cribbageState?.lastEvent;
+    if (!event) return;
+    const isPeggingEvent =
+      event.type === 'pegging_points' ||
+      event.type === 'go_point' ||
+      event.type === 'his_heels';
+    if (!isPeggingEvent) return;
+    if (emittedPegEventIdRef.current === event.id) return;
+    emittedPegEventIdRef.current = event.id;
+    const name = getPlayerUsername(event.playerId);
+    const title =
+      event.type === 'his_heels'
+        ? `${name}: His Heels (+2)`
+        : `${name}: ${event.label} (+${event.points})`;
+    announcements.emit({
+      id: `${gameId}:peg:${event.id}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: { title },
+      ttlMs: 3000,
+    });
+  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, gameId, currentRoundId, announcements, getPlayerUsername]);
+
+  // ── Phase 3: emit a brief "Dealing Next Hand…" transient at the
+  // post-counting handoff. Edge-triggered on postCountingTransitionActive.
+  const emittedDealingNextRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!postCountingTransitionActive) return;
+    const id = `${gameId}:dealing-next:${currentRoundId ?? 'no-round'}:${currentHandNumber}`;
+    if (emittedDealingNextRef.current === id) return;
+    emittedDealingNextRef.current = id;
+    announcements.emit({
+      id,
+      type: 'dealing_next_hand',
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: {},
+      ttlMs: 1500,
+    });
+  }, [postCountingTransitionActive, gameId, currentRoundId, currentHandNumber, announcements]);
+
 
   // Backend acknowledgement guard: only transition to next game after backend marks game_over.
   const gameOverAckRef = useRef(false);
@@ -5257,56 +5317,13 @@ export const CribbageMobileGameTable = ({
     prevBannerTextRef.current = derivedBannerText;
   }, [derivedBannerText, gameId, currentHandNumber, currentRoundId, isHighCardMode, isBootstrapMode, viewState?.phase, isTransitioning, postCountingTransitionActive, renderHandKey, currentHandKey, winSequencePhase, countingStateSnapshot]);
 
-  const gameplayAnnouncementFallback = (() => {
-    // Gameplay scoring/result announcements intentionally remain local
-    // pre-migration, but are now injected into the shell-owned HUD rail so
-    // canonical lifecycle plates and legacy gameplay plates share geometry.
-    if (isHighCardMode || isBootstrapMode || !viewState) return null;
+  // Phase 3: local gameplay-announcement fallback retired. All gameplay
+  // announcements (pegging events, counting score events, "Dealing Next
+  // Hand…") now flow through canonical `peg_notice` / `dealing_next_hand`
+  // emits above. "Scoring {target}..." remains as ambient helper text in
+  // the content pane (see counting placeholder below). Cut-card no longer
+  // produces a rail announcement.
 
-    const isCountingAnimActive = !!countingStateSnapshot;
-    const countingOutroActive = isCountingAnimActive && countingDelayActive;
-    const effectivePhase = isCountingAnimActive
-      ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
-      : viewState.phase;
-    const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
-
-    if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
-    if (winSequencePhase === 'announcement' || winSequencePhase === 'chips') return null;
-
-    const isPeggingEvent = effectiveLastEvent && (
-      effectiveLastEvent.type === 'pegging_points' ||
-      effectiveLastEvent.type === 'go_point' ||
-      effectiveLastEvent.type === 'his_heels'
-    );
-    const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
-    const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
-    const shouldShowBanner = (
-      (effectivePhase === 'counting' && !isCountingComplete) ||
-      (effectiveLastEvent && !hideEventAnnouncement) ||
-      effectivePhase === 'cutting' ||
-      isCountingComplete
-    );
-
-    if (!shouldShowBanner) return null;
-
-    return (
-      <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-        <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-          {isCountingComplete
-            ? 'Dealing Next Hand...'
-            : effectivePhase === 'counting'
-              ? countingAnnouncement
-                ? `${countingTargetLabel}: ${countingAnnouncement}`
-                : countingTargetLabel
-                  ? `Scoring ${countingTargetLabel}...`
-                  : 'Scoring hands...'
-              : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
-                ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                : 'Cut Card'}
-        </p>
-      </div>
-    );
-  })();
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
@@ -5602,7 +5619,7 @@ export const CribbageMobileGameTable = ({
 
       {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        <ShellHudChrome announcementFallback={gameplayAnnouncementFallback} />
+        <ShellHudChrome announcementFallback={undefined} />
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
