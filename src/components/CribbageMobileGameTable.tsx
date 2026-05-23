@@ -814,7 +814,7 @@ export const CribbageMobileGameTable = ({
     const semanticState: CribbageState | null = (viewState as CribbageState | null) ?? cribbageState;
     if (!semanticState) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
@@ -830,7 +830,7 @@ export const CribbageMobileGameTable = ({
       phase === 'complete'
     ) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
