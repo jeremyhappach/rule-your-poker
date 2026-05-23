@@ -900,7 +900,7 @@ export const CribbageMobileGameTable = ({
 
     if (!intent) {
       if (lastWaitingIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastWaitingIdRef.current);
         lastWaitingIdRef.current = null;
       }
       return;
