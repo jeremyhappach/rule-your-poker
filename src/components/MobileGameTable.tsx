@@ -72,7 +72,7 @@ import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, res
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
-import { CanonicalAnnouncementSlot } from "@/lib/canonicalShell/announcements";
+import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
