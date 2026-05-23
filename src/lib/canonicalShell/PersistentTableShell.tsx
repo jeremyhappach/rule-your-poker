@@ -201,7 +201,7 @@ export function PersistentTableShell({
             justifyContent: 'center',
             padding: '0 12px',
             pointerEvents: 'none',
-            background: 'transparent',
+            background: 'hsl(var(--background))',
             overflow: 'hidden',
           }}
         >
