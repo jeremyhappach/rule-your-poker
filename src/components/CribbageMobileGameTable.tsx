@@ -23,7 +23,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
-import { useAnnouncements, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
+import { useAnnouncements, useAnnouncementContext, CanonicalAnnouncementSlot } from '@/lib/canonicalShell/announcements';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
