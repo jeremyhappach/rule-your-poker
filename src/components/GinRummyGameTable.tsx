@@ -1655,6 +1655,91 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
+  // ── Phase 5: Canonical gameplay announcement emits ────────────────────
+  // Migrates the retired local Gin Rummy gold plate to shell-owned
+  // semantic emits. Renderer in canonicalShell/announcements/renderers.tsx
+  // produces the visible plate; this surface only emits.
+  const announcements = useAnnouncements();
+  const lastEmittedGinResultRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!viewState) return;
+    if (viewState.phase !== 'complete') return;
+    const r = viewState.knockResult;
+    const winnerId = viewState.winnerPlayerId;
+    const scope = { dealerGameId: dealerGameId ?? null, roundId: roundId ?? null };
+
+    if (winnerId) {
+      // Match win — persist through chip transfer / pot animation.
+      const winnerName = getPlayerUsername(winnerId);
+      const loserId =
+        winnerId === viewState.dealerPlayerId
+          ? viewState.nonDealerPlayerId
+          : viewState.dealerPlayerId;
+      const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
+      const loserScore = viewState.matchScores?.[loserId] ?? 0;
+      const text = `${winnerName} wins · ${winnerScore}–${loserScore} · +${viewState.pot ?? 0}`;
+      const key = `gin-match:${dealerGameId ?? 'no-dg'}:${winnerId}`;
+      if (lastEmittedGinResultRef.current === key) return;
+      lastEmittedGinResultRef.current = key;
+      announcements.clearAmbient();
+      announcements.emit({
+        id: `match_win:${key}`,
+        type: 'match_win',
+        scope,
+        payload: { text },
+        ttlMs: 10000,
+      });
+      return;
+    }
+
+    if (r) {
+      // Round (hand) win — knock / gin / undercut summary.
+      const winnerName = getPlayerUsername(r.winnerId);
+      const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
+      const bonus = r.isGin
+        ? ` (${dwDiff} dw + 25 gin bonus)`
+        : r.isUndercut
+          ? ` (${dwDiff} dw + 25 undercut bonus)`
+          : '';
+      const text = `${winnerName} +${r.pointsAwarded}${bonus}`;
+      const key = `gin-round:${dealerGameId ?? 'no-dg'}:${handNumber}:${r.winnerId}:${r.pointsAwarded}`;
+      if (lastEmittedGinResultRef.current === key) return;
+      lastEmittedGinResultRef.current = key;
+      announcements.emit({
+        id: `round_win:${key}`,
+        type: 'round_win',
+        scope,
+        payload: { text },
+        ttlMs: 3000,
+      });
+      return;
+    }
+
+    // Void hand — stock exhausted, no winner this hand.
+    const key = `gin-void:${dealerGameId ?? 'no-dg'}:${handNumber}`;
+    if (lastEmittedGinResultRef.current === key) return;
+    lastEmittedGinResultRef.current = key;
+    announcements.emit({
+      id: `peg:${key}`,
+      type: 'peg_notice',
+      scope,
+      payload: { title: 'Void Hand — Stock Exhausted' },
+      ttlMs: 2500,
+    });
+  }, [
+    viewState?.phase,
+    viewState?.winnerPlayerId,
+    viewState?.knockResult,
+    viewState?.matchScores,
+    viewState?.pot,
+    viewState?.dealerPlayerId,
+    viewState?.nonDealerPlayerId,
+    dealerGameId,
+    roundId,
+    handNumber,
+    announcements,
+  ]);
+
   // P9.6: pre-viewState rendering — Gin owns the single authoritative
   // table geometry. Render the same layout shell (felt only, no
   // gameplay content) so there is exactly one canonical felt surface
