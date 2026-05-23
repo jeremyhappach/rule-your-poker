@@ -45,11 +45,10 @@ import { ShellTabBar, ShellTabBarProvider } from './ShellTabBar';
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
 
-// Shell-owned HUD announcement rail dimensions. The shell no longer
-// renders the rail itself — gameplay surfaces mount
-// `CanonicalAnnouncementSlot` directly above their tab bar so the
-// reserved 36px lives between gameplay content and the tab nav, not
-// at the bottom of the shell column.
+// Shell-owned chrome: the canonical announcement rail and the
+// canonical tab bar are now rendered by the shell itself, directly
+// below the opaque game content slot. Games publish tab metadata via
+// `useShellTabBar`; they never render the rail or the tab nav.
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
 
