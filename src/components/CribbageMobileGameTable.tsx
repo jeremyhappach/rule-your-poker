@@ -4887,7 +4887,7 @@ export const CribbageMobileGameTable = ({
 
     if (!kind) {
       if (lastBootstrapAmbientIdRef.current) {
-        announcements.clearAmbient();
+        announcements.dismiss(lastBootstrapAmbientIdRef.current);
         lastBootstrapAmbientIdRef.current = null;
       }
       return;
