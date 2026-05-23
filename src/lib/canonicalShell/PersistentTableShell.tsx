@@ -163,32 +163,30 @@ export function PersistentTableShell({
           position: 'relative',
           zIndex: 1,
           display: 'grid',
-          gridTemplateRows: header ? 'auto minmax(0, 1fr) 36px 44px' : 'minmax(0, 1fr) 36px 44px',
+          // Deterministic HUD child ordering (top → bottom):
+          //   1. Header (fixed)            — player chrome / table top
+          //   2. Announcement rail (36px)  — lifecycle + CTA plates
+          //   3. Tab bar (44px)            — spade/chat/people/history
+          //   4. Active content pane (flex) — tab-driven content
+          //      (gameplay, chat, lobby, history). Owned by the game.
+          gridTemplateRows: header
+            ? 'auto 36px 44px minmax(0, 1fr)'
+            : '36px 44px minmax(0, 1fr)',
           height: '100%',
           minHeight: 0,
         }}
       >
-        {/* Shell-owned HUD header chrome. Authored by the route. */}
+        {/* 1. Shell-owned HUD header chrome. Authored by the route. */}
         {header ? (
           <div data-canonical-shell-header="" style={{ minHeight: 0 }}>
             {header}
           </div>
         ) : null}
 
-        {/* Opaque game subtree. This is the ONLY flexible row in the
-            shell contract: header fixed, game content flex, rail fixed,
-            tab bar fixed. */}
-        <div
-          data-canonical-shell-children=""
-          style={{ minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-        >
-          {children}
-        </div>
-
-        {/* Shell-owned canonical announcement rail. Sits immediately
-            below the game content. Transparent container — the plate
-            (LifecycleAnnouncement) owns its own visual styling
-            (gold). Games NEVER mount their own rail. */}
+        {/* 2. Shell-owned canonical announcement rail. Sits directly
+            beneath the header, above the tab bar and active content
+            pane. Transparent container — the plate (LifecycleAnnouncement)
+            owns its own visual styling. Games NEVER mount their own rail. */}
         <div
           data-canonical-shell-announcement-rail=""
           style={{
@@ -205,8 +203,17 @@ export function PersistentTableShell({
           <CanonicalAnnouncementLayer />
         </div>
 
-        {/* Shell-owned tab bar. */}
+        {/* 3. Shell-owned tab bar — sits ABOVE the active content pane. */}
         <ShellTabBar />
+
+        {/* 4. Active content pane. Tab-driven content (gameplay, chat,
+            lobby, history). The ONLY flexible row in the shell contract. */}
+        <div
+          data-canonical-shell-children=""
+          style={{ minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        >
+          {children}
+        </div>
       </div>
 
 
