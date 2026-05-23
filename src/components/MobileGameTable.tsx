@@ -6472,113 +6472,50 @@ export const MobileGameTable = ({
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         <ShellHudChrome announcementFallback={
           <>
-          {/* Dice games: dealer announcement + countdown timer live here (top of the active player box) */}
-          {/* CRITICAL: Show turnAnnouncement even after gamePhase changes to prevent 3x flash on win.
-              The announcement has its own 2.5s timeout and will clear naturally. */}
-          {isDiceGame && horsesController.enabled && horsesController.turnAnnouncement ? (
-            <div key="horses-turn-announcement" className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {horsesController.turnAnnouncement}
-              </p>
-            </div>
-          ) : isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' ? (
-            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot && horsesController.timeLeft !== null ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span
-                    className={cn(
-                      "text-sm font-mono font-bold",
-                      horsesController.timeLeft <= 5
-                        ? "text-destructive"
-                        : horsesController.timeLeft <= 10
-                          ? "text-amber-500"
-                          : "text-foreground",
-                    )}
-                  >
-                    {horsesController.timeLeft}s
-                  </span>
-                  {horsesController.currentTurnPlayerName && (
-                    <span className="text-xs text-muted-foreground">
-                      ({horsesController.currentTurnPlayerName})
-                    </span>
+          {/* Phase 4: Local gameplay announcement plates (horses turn,
+              round result, game-over result, re-ante, dealer setup /
+              dealer selection) have been retired. They now emit through
+              the canonical shell announcement rail
+              (renderers.tsx → match_win / round_win / peg_notice).
+              The fallback slot continues to host non-announcement chrome
+              only: dice timer chip, paused badge, and the active
+              player's TimerBar — these share the 36px slot but are NOT
+              semantic announcements. */}
+          {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' &&
+           horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
+           horsesController.timeLeft !== null ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span
+                  className={cn(
+                    "text-sm font-mono font-bold",
+                    horsesController.timeLeft <= 5
+                      ? "text-destructive"
+                      : horsesController.timeLeft <= 10
+                        ? "text-amber-500"
+                        : "text-foreground",
                   )}
-                </div>
+                >
+                  {horsesController.timeLeft}s
+                </span>
+                {horsesController.currentTurnPlayerName && (
+                  <span className="text-xs text-muted-foreground">
+                    ({horsesController.currentTurnPlayerName})
+                  </span>
+                )}
               </div>
-            ) : null
+            </div>
           ) : isPaused ? (
-            /* Paused badge only - LAST HAND moved to page header */
             <div className="flex items-center justify-center gap-2">
               <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
             </div>
           ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
-            /* Player timer bar - shown when it's player's turn to decide */
             <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
-          ) : isGameOver && lastRoundResult && !(
-            gameType !== 'holm-game' && (
-              threeFiveSevenWinTriggerId || 
-              threeFiveSevenWinPhase !== 'idle' ||
-              lastRoundResult.includes('won the game') ||
-              lastThreeFiveSevenTriggerRef.current !== null
-            )
-          ) ? (
-            /* Game Over state - result message */
-            /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
-                  ? '🏆 Game Complete!' 
-                  : gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0]}
-              </p>
-            </div>
-          ) : !isGameOver && lastRoundResult && !lastRoundResult.startsWith('357_SWEEP:') && 
-             !(gameType !== 'holm-game' && lastRoundResult.includes('won the game')) &&
-             !(gameType !== 'holm-game' && threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg')) &&
-             // CRITICAL FIX: Never show prior round result during configuring or ante_decision phases
-             // These are setup phases for a NEW hand - we should show dealer/ante messages instead
-             gameStatus !== 'configuring' && gameStatus !== 'ante_decision' &&
-             // HOLM: Gate announcement until community card 4 flip animation has completed
-             // Prevents result banner from appearing before card 4 is visually revealed
-             (gameType !== 'holm-game' || holmCommunityFullyRevealed) &&
-             (awaitingNextRound || roundStatus === 'completed' || roundStatus === 'showdown' || allDecisionsIn || chuckyActive) ? (
-            /* Result message - in bottom section */
-            /* CRITICAL: Filter out Holm-specific "beat Chucky" messages for non-Holm games */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate">
-                {gameType !== 'holm-game' && lastRoundResult.includes('beat Chucky') 
-                  ? '🏆 Game Complete!' 
-                  : gameType !== 'holm-game' ? format357ShowdownAnnouncement : lastRoundResult.split('|||')[0]}
-              </p>
-            </div>
-          ) : gameStatus === 'ante_decision' ? (
-            // Phase 2, Step 4: passive lifecycle messaging (`Awaiting
-            // ante decisions`) is owned by the canonical shell
-            // announcement rail (see SessionLifecycleAnnouncer). The
-            // legacy gold banner is intentionally retired.
-            null
-          ) : reAnteMessage ? (
-            /* Re-Ante message during 3-5-7 subsequent round 1 */
-            <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-lg px-4 py-2 shadow-xl border-2 border-amber-900">
-              <p className="text-slate-900 font-bold text-sm text-center truncate animate-pulse">
-                {reAnteMessage}
-              </p>
-            </div>
-          ) : dealerSetupMessage ? (
-            // Phase 2, Step 4: `dealer is configuring next game` is now
-            // owned by the canonical rail (SessionLifecycleAnnouncer
-            // emits `dealer_configuring` ambient). Legacy gold banner
-            // retired; the `dealerSetupMessage` prop remains accepted
-            // for backwards compatibility with existing callsites but
-            // no longer renders here.
-            null
-          ) : dealerSelectionAnnouncement ? (
-            // Phase 2, Step 4: high-card dealer-selection lifecycle
-            // (`Selecting next dealer` / `Dealer selected`) is owned by
-            // the canonical rail. Legacy in-table announcement retired.
-            null
           ) : null}
           </>
         } />
+
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (
