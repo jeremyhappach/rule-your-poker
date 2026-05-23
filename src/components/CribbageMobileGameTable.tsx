@@ -23,8 +23,9 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
-import { useAnnouncements, useAnnouncementContext } from '@/lib/canonicalShell/announcements';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
+import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
@@ -690,8 +691,6 @@ export const CribbageMobileGameTable = ({
 
 
   const announcements = useAnnouncements();
-  const announcementCtx = useAnnouncementContext();
-  const canonicalAnnouncementActive = !!announcementCtx?.active;
   const announcedDealerResolvedRef = useRef<string | null>(null);
   const lastHighCardAmbientIdRef = useRef<string | null>(null);
 
@@ -5281,6 +5280,57 @@ export const CribbageMobileGameTable = ({
     prevBannerTextRef.current = derivedBannerText;
   }, [derivedBannerText, gameId, currentHandNumber, currentRoundId, isHighCardMode, isBootstrapMode, viewState?.phase, isTransitioning, postCountingTransitionActive, renderHandKey, currentHandKey, winSequencePhase, countingStateSnapshot]);
 
+  const gameplayAnnouncementFallback = (() => {
+    // Gameplay scoring/result announcements intentionally remain local
+    // pre-migration, but are now injected into the shell-owned HUD rail so
+    // canonical lifecycle plates and legacy gameplay plates share geometry.
+    if (isHighCardMode || isBootstrapMode || !viewState) return null;
+
+    const isCountingAnimActive = !!countingStateSnapshot;
+    const countingOutroActive = isCountingAnimActive && countingDelayActive;
+    const effectivePhase = isCountingAnimActive
+      ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
+      : viewState.phase;
+    const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
+
+    if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
+    if (winSequencePhase === 'announcement' || winSequencePhase === 'chips') return null;
+
+    const isPeggingEvent = effectiveLastEvent && (
+      effectiveLastEvent.type === 'pegging_points' ||
+      effectiveLastEvent.type === 'go_point' ||
+      effectiveLastEvent.type === 'his_heels'
+    );
+    const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
+    const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
+    const shouldShowBanner = (
+      (effectivePhase === 'counting' && !isCountingComplete) ||
+      (effectiveLastEvent && !hideEventAnnouncement) ||
+      effectivePhase === 'cutting' ||
+      isCountingComplete
+    );
+
+    if (!shouldShowBanner) return null;
+
+    return (
+      <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+        <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+          {isCountingComplete
+            ? 'Dealing Next Hand...'
+            : effectivePhase === 'counting'
+              ? countingAnnouncement
+                ? `${countingTargetLabel}: ${countingAnnouncement}`
+                : countingTargetLabel
+                  ? `Scoring ${countingTargetLabel}...`
+                  : 'Scoring hands...'
+              : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
+                ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
+                : 'Cut Card'}
+        </p>
+      </div>
+    );
+  })();
+
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
@@ -5575,93 +5625,7 @@ export const CribbageMobileGameTable = ({
 
       {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
       <div className="flex-1 flex flex-col bg-background min-h-0">
-        {/* Banner area — legacy gameplay strings ("Discard to Crib",
-            pegging score events). Canonical announcements are owned
-            and rendered by the shell-level announcement rail (above
-            the gameplay surface), NOT here. This strip is suppressed
-            while a canonical announcement is active so observers
-            never see two competing messages. */}
-        <div className="h-[36px] shrink-0 flex items-center justify-center px-3 relative">
-          {!canonicalAnnouncementActive && (() => {
-            // HIGH-CARD: canonical announcements (ambient
-            // `dealer_selection_in_progress` / transient `dealer_selected`)
-            // own all messaging during dealer selection. The legacy gold
-            // banner is suppressed in this mode — Phase C migration.
-            if (isHighCardMode) {
-              return null;
-            }
-
-            // BOOTSTRAP: canonical ambient (`awaiting_ante` /
-            // `waiting_for_next_round`) owns the rail — Phase 2 rail
-            // migration. The legacy gold bootstrap banner is retired.
-            if (isBootstrapMode) {
-              return null;
-            }
-
-            // GAMEPLAY banners
-            if (!viewState) return null;
-
-            const isCountingAnimActive = !!countingStateSnapshot;
-            const countingOutroActive = isCountingAnimActive && countingDelayActive;
-            const effectivePhase = isCountingAnimActive
-              ? (countingOutroActive ? 'pegging' : countingStateSnapshot.phase)
-              : viewState.phase;
-            const effectiveLastEvent = isCountingAnimActive ? countingStateSnapshot.lastEvent : viewState.lastEvent;
-          
-            if (winSequencePhase === 'skunk' || winSequencePhase === 'complete') return null;
-
-            // Phase E: bespoke winner banner retired. Canonical
-            // `match_win` announcement is the SOLE winner UI surface.
-            if (winSequencePhase === 'announcement' || winSequencePhase === 'chips') return null;
-
-            
-            const isPeggingEvent = effectiveLastEvent && (
-              effectiveLastEvent.type === 'pegging_points' || 
-              effectiveLastEvent.type === 'go_point' || 
-              effectiveLastEvent.type === 'his_heels'
-            );
-            const hideEventAnnouncement = isPeggingEvent && peggingAnnouncementHidden;
-            
-            const isCountingComplete = postCountingTransitionActive || (effectivePhase === 'counting' && !countingAnnouncement && !countingTargetLabel && countingAnimationActiveRef.current && !countingStateSnapshot);
-            
-            // Phase 2 / Step 3: 'Discard to Crib' is owned by the
-            // canonical rail (cta_prompt for the actor;
-            // waiting_for_player for observers/opponents). The legacy
-            // string is retired here so it never double-renders. The
-            // 'Cut Card' lifecycle label still renders locally pending
-            // a later step.
-            const shouldShowBanner = (
-              (effectivePhase === 'counting' && !isCountingComplete) ||
-              (effectiveLastEvent && !hideEventAnnouncement) ||
-              effectivePhase === 'cutting' ||
-              isCountingComplete
-            );
-
-            if (!shouldShowBanner) return null;
-
-            return (
-              <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                  {isCountingComplete
-                    ? 'Dealing Next Hand...'
-                    : effectivePhase === 'counting'
-                      ? countingAnnouncement
-                        ? `${countingTargetLabel}: ${countingAnnouncement}`
-                        : countingTargetLabel
-                          ? `Scoring ${countingTargetLabel}...`
-                          : 'Scoring hands...'
-                      : effectiveLastEvent && effectiveLastEvent.type !== 'hand_count' && !hideEventAnnouncement
-                        ? `${getPlayerUsername(effectiveLastEvent.playerId)}: ${effectiveLastEvent.label} (+${effectiveLastEvent.points})`
-                        : 'Cut Card'}
-                </p>
-              </div>
-            );
-          })()}
-        </div>
-
-        {/* Canonical announcement rail + tab bar are shell-owned and
-            rendered by PersistentTableShell. This game publishes only
-            tab metadata via `useShellTabBar` below. */}
+        <ShellHudChrome announcementFallback={gameplayAnnouncementFallback} />
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">

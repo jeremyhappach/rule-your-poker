@@ -53,6 +53,7 @@ import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
@@ -2059,8 +2060,8 @@ export function YahtzeeGameTable({
       {/* ===== BOTTOM SECTION ===== */}
       <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-t from-background via-background to-background/95 border-t border-border overflow-hidden">
 
-        {/* Timer / status area */}
-        <div className="h-[44px] shrink-0 flex items-center justify-center px-4">
+        <ShellHudChrome announcementFallback={
+          <>
           {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
               <Clock className="w-4 h-4 text-muted-foreground" />
@@ -2090,11 +2091,8 @@ export function YahtzeeGameTable({
               </p>
             </div>
           ) : null}
-        </div>
-
-        {/* Canonical announcement rail + tab bar are shell-owned and
-            rendered by PersistentTableShell. Tab metadata is published
-            via `useShellTabBar` (registered above). */}
+          </>
+        } />
 
         {/* CARDS/DICE TAB */}
         {activeTab === 'cards' && (

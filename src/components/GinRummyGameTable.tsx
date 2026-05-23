@@ -69,6 +69,7 @@ import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster'
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
+import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -1878,8 +1879,8 @@ export const GinRummyGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
-        {/* Dealer Announcements Area */}
-        <div className="h-[36px] shrink-0 flex items-center justify-center px-3">
+        <ShellHudChrome announcementFallback={
+          <>
           {(() => {
             if (viewState.phase === 'complete' && viewState.knockResult) {
               const r = viewState.knockResult;
@@ -1923,11 +1924,8 @@ export const GinRummyGameTable = ({
 
             return null;
           })()}
-        </div>
-
-        {/* Canonical announcement rail + tab bar are shell-owned and
-            rendered by PersistentTableShell. Tab metadata is published
-            via `useShellTabBar` (registered above). */}
+          </>
+        } />
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">

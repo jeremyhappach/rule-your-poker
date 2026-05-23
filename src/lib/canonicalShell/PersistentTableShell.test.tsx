@@ -17,6 +17,7 @@ import { PersistentTableShell } from './PersistentTableShell';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { recordShellEvent } from './diagnostics';
 import { useShellTabBar } from './ShellTabBar';
+import { ShellHudChrome } from './ShellHudChrome';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -51,14 +52,22 @@ describe('PersistentTableShell', () => {
 
   });
 
-  it('uses deterministic shell rows and renders the shell tab bar when a game registers tabs', () => {
+  it('uses deterministic shell rows and lets the game mount a unified HUD stack', () => {
     function TabProbe() {
       useShellTabBar({
         cardsIcon: 'spade',
         activeTab: 'cards',
         setActiveTab: () => {},
       });
-      return <span data-testid="game-content">game</span>;
+      return (
+        <>
+          <div data-testid="gameplay">gameplay</div>
+          <div data-testid="hud-stack">
+            <ShellHudChrome />
+            <span data-testid="game-content">game</span>
+          </div>
+        </>
+      );
     }
     act(() => {
       root.render(
@@ -70,8 +79,10 @@ describe('PersistentTableShell', () => {
     const column = container.querySelector('[data-canonical-shell-column]') as HTMLElement | null;
     const rail = container.querySelector('[data-canonical-shell-announcement-rail]') as HTMLElement | null;
     const tabbar = container.querySelector('[data-canonical-shell-tabbar]') as HTMLElement | null;
-    expect(column?.style.gridTemplateRows).toBe('auto 36px 44px minmax(0, 1fr)');
+    const children = container.querySelector('[data-canonical-shell-children]') as HTMLElement | null;
+    expect(column?.style.gridTemplateRows).toBe('auto minmax(0, 1fr)');
     expect(container.querySelector('[data-canonical-shell-spacer]')).toBeNull();
+    expect(children).toBeTruthy();
     expect(rail).toBeTruthy();
     expect(tabbar).toBeTruthy();
     expect(rail!.nextElementSibling).toBe(tabbar);
