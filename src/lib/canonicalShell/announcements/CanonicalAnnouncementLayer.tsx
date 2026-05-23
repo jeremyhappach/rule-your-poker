@@ -21,7 +21,7 @@
 
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderAnnouncement } from './renderers';
-import { isCelebrationType } from './types';
+import { isCelebrationType, isCtaAmbientType } from './types';
 
 export function CanonicalAnnouncementLayer() {
   const ctx = useAnnouncementContext();
