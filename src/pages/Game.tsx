@@ -8346,6 +8346,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   const innerTree = (
     <div data-lifecycle-branch="loaded-inner" className={_innerBgClass}>
+      {/*
+       * Phase 2, Step 4 — session-level passive lifecycle rail ownership.
+       * Emits canonical ambient/transient events for dealer-selection,
+       * dealer-configuring, and awaiting-ante lifecycle states across
+       * all non-Cribbage games. Cribbage owns its own rail emissions
+       * inside CribbageMobileGameTable and is skipped by this component.
+       */}
+      <SessionLifecycleAnnouncer
+        gameId={gameId ?? null}
+        gameType={game.game_type}
+        gameStatus={game.status}
+        configComplete={(game as any).config_complete ?? null}
+        isViewerDealer={isDealer}
+        allowBotDealers={allowBotDealers}
+        dealerPlayer={dealerPlayer as any}
+        players={players as any}
+        dealerSelectionCards={dealerSelectionCards as any}
+        dealerSelectionWinnerPosition={dealerSelectionWinnerPosition}
+      />
+
+
 
 
 
