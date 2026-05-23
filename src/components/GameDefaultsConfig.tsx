@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Settings, Bot, DollarSign, Timer, Spade, Dice5, Anchor, Crown } from 'lucide-react';
+import { Settings, Bot, DollarSign, Timer, Spade, Dice5, Anchor, Crown, FlaskConical } from 'lucide-react';
+import { getHarnessProfiles } from '@/lib/debugHarness/profiles';
 
 interface GameDefaults {
   id: string;
@@ -35,6 +36,8 @@ interface GameDefaults {
   skunk_threshold?: number;
   double_skunk_enabled?: boolean;
   double_skunk_threshold?: number;
+  // Debug Harness — permanent QA selector. 'none' = no-op runtime.
+  debug_harness?: string;
 }
 
 interface GameDefaultsConfigProps {
