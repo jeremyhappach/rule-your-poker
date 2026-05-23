@@ -190,6 +190,10 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       if (!title) return null;
       return <LifecycleAnnouncement title={title} subtitle={x.subtitle} />;
     }
+    case 'dealing_next_hand': {
+      return <LifecycleAnnouncement title="Dealing Next Hand…" />;
+    }
+
     default:
       // Exhaustiveness check — fail loudly in dev if a new
       // AnnouncementType is added without a renderer case.

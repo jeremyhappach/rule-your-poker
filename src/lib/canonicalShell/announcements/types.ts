@@ -25,6 +25,7 @@ export type AnnouncementType =
   | 'chip_award'
   | 'dealer_selected'
   | 'peg_notice'
+  | 'dealing_next_hand'
   // Ambient
   | 'dealer_configuring'
   | 'waiting_for_players'
@@ -34,6 +35,7 @@ export type AnnouncementType =
   | 'awaiting_ante'
   | 'awaiting_discards'
   | 'cta_prompt';
+
 
 /**
  * Phase 2 (Transient UX Platform — rail migration) additions:
@@ -87,6 +89,7 @@ export const DEFAULT_PRIORITY: Record<AnnouncementType, number> = {
   dealer_configuring: 50,
   dealer_selection_in_progress: 50,
   awaiting_ante: 45,
+  dealing_next_hand: 44,
   awaiting_discards: 42,
   waiting_for_players: 40,
   waiting_for_next_round: 40,
@@ -100,6 +103,7 @@ export const DEFAULT_BEHAVIOR: Record<AnnouncementType, AnnouncementBehavior> = 
   chip_award: 'enqueue',
   dealer_selected: 'enqueue',
   peg_notice: 'enqueue',
+  dealing_next_hand: 'enqueue',
   dealer_configuring: 'ambient',
   dealer_selection_in_progress: 'ambient',
   awaiting_ante: 'ambient',
@@ -116,8 +120,10 @@ export const DEFAULT_TTL_MS: Partial<Record<AnnouncementType, number>> = {
   chip_award: 2200,
   dealer_selected: 2500,
   peg_notice: 1500,
+  dealing_next_hand: 1500,
   // Ambient types: no TTL — cleared by supersession or boundary teardown.
 };
+
 
 export function isAmbientBehavior(b: AnnouncementBehavior | undefined): boolean {
   return b === 'ambient' || b === 'replace';
