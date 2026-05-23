@@ -36,9 +36,11 @@ import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   CanonicalAnnouncementProvider,
+  CanonicalAnnouncementLayer,
   CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
+import { ShellTabBar, ShellTabBarProvider } from './ShellTabBar';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
