@@ -18,6 +18,11 @@ import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { AppNetworkSim } from "@/components/AppNetworkSim";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
 import { LifecycleDebugBadge } from "@/lib/canonicalShell/LifecycleDebugBadge";
+import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
+
+// Hydrate the Debug Harness cache once at module load so synchronous
+// game-logic call sites see the active selection without awaiting a query.
+void ensureHarnessCacheLoaded();
 
 
 const queryClient = new QueryClient();
