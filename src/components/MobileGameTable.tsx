@@ -2732,6 +2732,29 @@ export const MobileGameTable = ({
   
   const canDecide = currentPlayer && !hasDecided && currentPlayer.status === 'active' && (!allDecisionsIn || holmPlayerCanDecide) && isPlayerTurn && !isPaused && currentPlayerCards.length > 0;
 
+  // Publish tab metadata to the shell-owned tab bar. Shell owns layout
+  // and geometry; this surface provides only the icon choice and
+  // gameplay-derived indicator state (cards-tab flash on turn, chat
+  // unread/new-message indicators).
+  {
+    const isYourTurnNotOnCardsTab = !isPaused && isPlayerTurn && !hasDecided && activeTab !== 'cards' && roundStatus === 'betting';
+    const cardsFlash: 'green' | 'red' | null = (!isPaused && cardsTabFlashing)
+      ? 'green'
+      : isYourTurnNotOnCardsTab
+        ? 'red'
+        : null;
+    useShellTabBar({
+      cardsIcon: isDiceGame ? 'dice' : 'spade',
+      activeTab,
+      setActiveTab,
+      cardsFlashing: cardsFlash,
+      chatFlashing: showGreenChatIndicator ? 'green' : null,
+      chatIndicator: showRedChatIndicator ? 'red' : null,
+      onOpenChat: handleOpenChatTab,
+      isPaused: !!isPaused,
+    });
+  }
+
   // Check if we should be in showdown display mode (hide chipstacks, buck, show larger cards)
   // This is true when: 
   // 1. Any player has exposed cards during active showdown, OR
