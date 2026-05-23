@@ -3852,6 +3852,18 @@ export const CribbageMobileGameTable = ({
         await new Promise(resolve => setTimeout(resolve, 600 + Math.random() * 400));
 
         try {
+          // P0 concurrency guard — snapshot identity captured at read time.
+          // A stale bot write must not overwrite a newer human Go/play/reset
+          // that landed between our read and write. We enforce optimistic
+          // concurrency via JSONB predicates: if any of (phase,
+          // currentTurnPlayerId, currentCount) has moved, the UPDATE
+          // matches 0 rows and we bail. The bot effect will re-evaluate
+          // on the next authoritative snapshot.
+          const guardCurrentTurnId = cribbageState.pegging.currentTurnPlayerId;
+          const guardCurrentCount = cribbageState.pegging.currentCount;
+          const guardPlayedLen = cribbageState.pegging.playedCards.length;
+          const guardGoLen = cribbageState.pegging.goCalledBy.length;
+
           if (shouldBotCallGo(botState, cribbageState.pegging.currentCount)) {
             traceGoRace(traceCtx, 'bot:callGo:before-write', {
               readSnapshot: peggingSnapshot(cribbageState),
@@ -3862,15 +3874,25 @@ export const CribbageMobileGameTable = ({
             });
             // Fire-and-forget event logging (atomic DB guard prevents duplicates)
             logGoPointEvent(eventCtx, cribbageState, newState);
-            
-            const { error: writeErr } = await supabase
+
+            const { data: writeRows, error: writeErr } = await supabase
               .from('rounds')
               .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-              .eq('id', roundId);
+              .eq('id', roundId)
+              .eq('cribbage_state->>phase', 'pegging')
+              .eq('cribbage_state->pegging->>currentTurnPlayerId', guardCurrentTurnId as string)
+              .eq('cribbage_state->pegging->>currentCount', String(guardCurrentCount))
+              .select('id');
+            const staleGo = !writeErr && (!writeRows || writeRows.length === 0);
             traceGoRace(traceCtx, 'bot:callGo:after-write', {
-              ok: !writeErr,
+              ok: !writeErr && !staleGo,
               error: writeErr?.message ?? null,
+              stale: staleGo,
+              guard: { guardCurrentTurnId, guardCurrentCount, guardPlayedLen, guardGoLen },
             });
+            if (staleGo) {
+              console.warn('[CRIBBAGE BOT] callGo rejected by concurrency predicate — snapshot stale.');
+            }
           } else {
             const cardIndex = getBotPeggingCardIndex(
               botState,
@@ -3894,15 +3916,25 @@ export const CribbageMobileGameTable = ({
               if (newState.lastEvent?.type === 'his_heels') {
                 logHisHeelsEvent(eventCtx, newState);
               }
-              
-              const { error: writeErr } = await supabase
+
+              const { data: writeRows, error: writeErr } = await supabase
                 .from('rounds')
                 .update({ cribbage_state: JSON.parse(JSON.stringify(newState)) })
-                .eq('id', roundId);
+                .eq('id', roundId)
+                .eq('cribbage_state->>phase', 'pegging')
+                .eq('cribbage_state->pegging->>currentTurnPlayerId', guardCurrentTurnId as string)
+                .eq('cribbage_state->pegging->>currentCount', String(guardCurrentCount))
+                .select('id');
+              const stalePlay = !writeErr && (!writeRows || writeRows.length === 0);
               traceGoRace(traceCtx, 'bot:playCard:after-write', {
-                ok: !writeErr,
+                ok: !writeErr && !stalePlay,
                 error: writeErr?.message ?? null,
+                stale: stalePlay,
+                guard: { guardCurrentTurnId, guardCurrentCount, guardPlayedLen, guardGoLen },
               });
+              if (stalePlay) {
+                console.warn('[CRIBBAGE BOT] playPeggingCard rejected by concurrency predicate — snapshot stale.');
+              }
             } else {
               traceGoRace(traceCtx, 'bot:no-action', {
                 reason: 'shouldCallGo=false and getBotPeggingCardIndex=null',
