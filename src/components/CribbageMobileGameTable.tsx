@@ -757,6 +757,11 @@ export const CribbageMobileGameTable = ({
     announcements,
   ]);
 
+  // (Phase 2 bootstrap-lifecycle ambient effect is declared further
+  // below, after isBootstrapMode / shouldShowAwaitingAnteAnnouncement /
+  // shouldShowPreparingNextHand are derived.)
+
+
   // ────────────────────────────────────────────────────────────────────────
   // Phase D — passive ambient lifecycle (waiting-on-opponent states)
   //
@@ -4760,6 +4765,62 @@ export const CribbageMobileGameTable = ({
   );
   const shouldShowPreparingNextHand = isBootstrapMode && !shouldShowAwaitingAnteAnnouncement;
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Phase 2 — passive bootstrap lifecycle ambient (Cribbage).
+  //
+  // Migrates the legacy bootstrap gold banner ("Awaiting ante decisions…"
+  // / "Preparing next hand…") off per-game JSX onto canonical shell
+  // ambient ownership. Dealer-selection ambient owns the rail while
+  // drawing for high card and must not be clobbered.
+  // ────────────────────────────────────────────────────────────────────────
+  const lastBootstrapAmbientIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!gameId) return;
+    if (effectiveShowHighCardSelection) {
+      if (lastBootstrapAmbientIdRef.current) {
+        announcements.clearAmbient();
+        lastBootstrapAmbientIdRef.current = null;
+      }
+      return;
+    }
+
+    let kind: 'awaiting_ante' | 'waiting_for_next_round' | null = null;
+    if (isBootstrapMode && shouldShowAwaitingAnteAnnouncement) {
+      kind = 'awaiting_ante';
+    } else if (shouldShowPreparingNextHand) {
+      kind = 'waiting_for_next_round';
+    }
+
+    if (!kind) {
+      if (lastBootstrapAmbientIdRef.current) {
+        announcements.clearAmbient();
+        lastBootstrapAmbientIdRef.current = null;
+      }
+      return;
+    }
+
+    const id = `${gameId}:${dealerGameId ?? 'no-dg'}:${currentHandNumber}:bootstrap:${kind}`;
+    if (lastBootstrapAmbientIdRef.current === id) return;
+    lastBootstrapAmbientIdRef.current = id;
+    announcements.emit({
+      id,
+      type: kind,
+      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+      payload: {},
+    });
+  }, [
+    gameId,
+    dealerGameId,
+    currentRoundId,
+    currentHandNumber,
+    effectiveShowHighCardSelection,
+    isBootstrapMode,
+    shouldShowAwaitingAnteAnnouncement,
+    shouldShowPreparingNextHand,
+    announcements,
+  ]);
+
+
   // ── STALE-ACTIVE-HAND INVARIANT TRACE ──
   // Log when viewState exists but is blocked from rendering due to round identity mismatch.
   // This proves the stale first-paint source and confirms the guard is working.
@@ -5417,14 +5478,11 @@ export const CribbageMobileGameTable = ({
               return null;
             }
 
+            // BOOTSTRAP: canonical ambient (`awaiting_ante` /
+            // `waiting_for_next_round`) owns the rail — Phase 2 rail
+            // migration. The legacy gold bootstrap banner is retired.
             if (isBootstrapMode) {
-              return (
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {shouldShowAwaitingAnteAnnouncement ? 'Awaiting ante decisions...' : 'Preparing next hand...'}
-                  </p>
-                </div>
-              );
+              return null;
             }
 
             // GAMEPLAY banners
