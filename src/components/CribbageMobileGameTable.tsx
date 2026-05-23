@@ -5520,6 +5520,12 @@ export const CribbageMobileGameTable = ({
           {/* ═══════ PROJECTED SEAT OVERLAY — shell anchors drive all seat chrome ═══════ */}
           <div className="absolute inset-0 z-50 pointer-events-none">
             {projectedSeatPlayers.map((seatPlayer) => {
+              // Active viewer's own seat: identity + bankroll already live
+              // in the HUD; rendering a duplicate chip bubble on the felt
+              // is redundant and visually disruptive. Observers and
+              // opponents continue to render normally.
+              if (!isObserver && seatPlayer.id === currentPlayerId) return null;
+
               // During gameplay, read card data from viewState; otherwise no cards shown
               const seatState = isGameplayMode && viewState ? viewState.playerStates[seatPlayer.id] : null;
               const slot = playerSlotById.get(seatPlayer.id) ?? null;
