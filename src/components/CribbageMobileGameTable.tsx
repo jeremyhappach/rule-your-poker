@@ -1646,34 +1646,7 @@ export const CribbageMobileGameTable = ({
     };
   }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type]);
 
-  // ── Phase 3: emit pegging scoring events into the canonical rail as
-  // `peg_notice` transients. This replaces the local gold-plate fallback
-  // for pegging_points / go_point / his_heels. Dedup is per event.id;
-  // TTL is owned by the announcement provider.
-  const emittedPegEventIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const event = cribbageState?.lastEvent;
-    if (!event) return;
-    const isPeggingEvent =
-      event.type === 'pegging_points' ||
-      event.type === 'go_point' ||
-      event.type === 'his_heels';
-    if (!isPeggingEvent) return;
-    if (emittedPegEventIdRef.current === event.id) return;
-    emittedPegEventIdRef.current = event.id;
-    const name = getPlayerUsername(event.playerId);
-    const title =
-      event.type === 'his_heels'
-        ? `${name}: His Heels (+2)`
-        : `${name}: ${event.label} (+${event.points})`;
-    announcements.emit({
-      id: `${gameId}:peg:${event.id}`,
-      type: 'peg_notice',
-      scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-      payload: { title },
-      ttlMs: 3000,
-    });
-  }, [cribbageState?.lastEvent?.id, cribbageState?.lastEvent?.type, gameId, currentRoundId, announcements, getPlayerUsername]);
+
 
 
   // Log cut card event when first revealed (atomic guard prevents duplicates)
