@@ -536,6 +536,7 @@ export type Database = {
           chucky_last_card_delay_seconds: number
           chucky_second_to_last_delay_seconds: number
           created_at: string
+          debug_harness: string
           decision_timer_seconds: number
           double_skunk_enabled: boolean
           double_skunk_threshold: number
@@ -570,6 +571,7 @@ export type Database = {
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
+          debug_harness?: string
           decision_timer_seconds?: number
           double_skunk_enabled?: boolean
           double_skunk_threshold?: number
@@ -604,6 +606,7 @@ export type Database = {
           chucky_last_card_delay_seconds?: number
           chucky_second_to_last_delay_seconds?: number
           created_at?: string
+          debug_harness?: string
           decision_timer_seconds?: number
           double_skunk_enabled?: boolean
           double_skunk_threshold?: number
