@@ -165,6 +165,15 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
         />
       );
     }
+    case 'awaiting_discards': {
+      const x = p as { context?: string; pending?: number; total?: number };
+      const subtitle =
+        x.context ??
+        (x.pending != null && x.total != null
+          ? `${x.total - x.pending} / ${x.total} discarded`
+          : 'Players are selecting cards for the crib');
+      return <LifecycleAnnouncement title="Waiting on Discards" subtitle={subtitle} />;
+    }
     case 'cta_prompt': {
       // Actor-only CTA plate. Visibility gating on
       // payload.actorUserId === viewerUserId is the responsibility of
