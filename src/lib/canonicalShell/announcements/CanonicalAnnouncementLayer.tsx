@@ -26,8 +26,12 @@ import { isCelebrationType, isCtaAmbientType } from './types';
 export function CanonicalAnnouncementLayer() {
   const ctx = useAnnouncementContext();
   if (!ctx || !ctx.active) return null;
-  // Celebration-tier events render in the dedicated celebration overlay.
-  if (isCelebrationType(ctx.active.type)) return null;
+  // Celebration-tier events ALSO render a centered overlay via
+  // CanonicalCelebrationLayer, but match_win additionally renders a
+  // winner plate in the lifecycle rail so observers and players get a
+  // clear "who won" announcement. Other celebration types (if added)
+  // continue to skip the rail.
+  if (isCelebrationType(ctx.active.type) && ctx.active.type !== 'match_win') return null;
   // Actor-directed CTAs / waiting-on-player prompts render in the
   // ambient helper text area inside the active content pane — not in
   // the shell announcement rail. This keeps the rail focused on
