@@ -69,6 +69,7 @@ import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster'
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { CanonicalAnnouncementSlot } from '@/lib/canonicalShell/announcements';
+import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
