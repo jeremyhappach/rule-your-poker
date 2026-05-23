@@ -52,8 +52,8 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
-import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
-import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
+import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
