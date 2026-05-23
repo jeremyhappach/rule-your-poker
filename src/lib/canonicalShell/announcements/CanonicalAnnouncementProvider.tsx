@@ -125,6 +125,7 @@ function resolve(event: AnnouncementEvent): ResolvedAnnouncement {
 export function CanonicalAnnouncementProvider({
   dealerGameId = null,
   roundId = null,
+  viewerUserId = null,
   children,
 }: CanonicalAnnouncementProviderProps) {
   const currentScope = useMemo<AnnouncementScope>(
