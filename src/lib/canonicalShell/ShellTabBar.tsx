@@ -66,7 +66,9 @@ export interface ShellTabBarState {
 }
 
 const ShellTabBarStateContext = createContext<ShellTabBarState | null>(null);
-const ShellTabBarRegisterContext = createContext<((state: ShellTabBarState | null) => void) | null>(null);
+type ShellTabBarRegister = (registrationId: number, state: ShellTabBarState | null) => void;
+const ShellTabBarRegisterContext = createContext<ShellTabBarRegister | null>(null);
+let nextShellTabBarRegistrationId = 1;
 
 /**
  * Provider mounted inside PersistentTableShell. Holds the single
@@ -75,8 +77,16 @@ const ShellTabBarRegisterContext = createContext<((state: ShellTabBarState | nul
  */
 export function ShellTabBarProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ShellTabBarState | null>(null);
-  const register = useCallback((next: ShellTabBarState | null) => {
-    setState(next);
+  const registrationsRef = useRef<Map<number, ShellTabBarState>>(new Map());
+  const register = useCallback<ShellTabBarRegister>((registrationId, next) => {
+    if (next) {
+      registrationsRef.current.delete(registrationId);
+      registrationsRef.current.set(registrationId, next);
+    } else {
+      registrationsRef.current.delete(registrationId);
+    }
+    const registrations = Array.from(registrationsRef.current.values());
+    setState(registrations[registrations.length - 1] ?? null);
   }, []);
   return (
     <ShellTabBarRegisterContext.Provider value={register}>
@@ -98,6 +108,10 @@ export function ShellTabBarProvider({ children }: { children: React.ReactNode })
  */
 export function useShellTabBar(state: ShellTabBarState | null): void {
   const register = useContext(ShellTabBarRegisterContext);
+  const registrationIdRef = useRef<number | null>(null);
+  if (registrationIdRef.current === null) {
+    registrationIdRef.current = nextShellTabBarRegistrationId++;
+  }
   // Stable signature so we don't thrash on identity-only changes.
   const signature = state
     ? JSON.stringify({
@@ -119,19 +133,22 @@ export function useShellTabBar(state: ShellTabBarState | null): void {
   useEffect(() => {
     if (!register) return;
     if (!state) {
-      register(null);
+      register(registrationIdRef.current!, null);
       return;
     }
-    register({
+    register(registrationIdRef.current!, {
       ...state,
       setActiveTab: (t) => setActiveRef.current?.(t),
       onOpenChat: state.onOpenChat ? () => onOpenChatRef.current?.() : undefined,
     });
-    return () => {
-      register(null);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register, signature]);
+
+  useEffect(() => {
+    return () => {
+      register?.(registrationIdRef.current!, null);
+    };
+  }, [register]);
 }
 
 /** Shell-rendered tab bar. Reads from the provider. */
