@@ -680,6 +680,7 @@ export const CribbageMobileGameTable = ({
   const announcementCtx = useAnnouncementContext();
   const canonicalAnnouncementActive = !!announcementCtx?.active;
   const announcedDealerResolvedRef = useRef<string | null>(null);
+  const lastHighCardAmbientIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!gameId) return;
@@ -700,6 +701,7 @@ export const CribbageMobileGameTable = ({
       announcedDealerResolvedRef.current === null
     ) {
       const id = `${gameId}:dealer-selection:${dealerSelectionCohortDerived}`;
+      lastHighCardAmbientIdRef.current = id;
       announcements.emit({
         id,
         type: 'dealer_selection_in_progress',
@@ -711,9 +713,14 @@ export const CribbageMobileGameTable = ({
       });
       return;
     }
-    // Out of high-card mode → tear down ambient.
+    // Out of high-card mode → tear down ONLY the ambient we emitted.
+    // Scoped dismiss prevents clobbering ambient owned by other effects
+    // (bootstrap awaiting_ante, waiting_for_player, cta_prompt).
     if (!effectiveShowHighCardSelection) {
-      announcements.clearAmbient();
+      if (lastHighCardAmbientIdRef.current) {
+        announcements.dismiss(lastHighCardAmbientIdRef.current);
+        lastHighCardAmbientIdRef.current = null;
+      }
       announcedDealerResolvedRef.current = null;
       return;
     }
@@ -731,7 +738,13 @@ export const CribbageMobileGameTable = ({
       const id = `${gameId}:dealer-selected:${dealerSelectionCohortDerived}:${effectiveHighCardWinnerPosition}`;
       if (announcedDealerResolvedRef.current === id) return;
       announcedDealerResolvedRef.current = id;
-      announcements.clearAmbient();
+      // Scoped dismiss of our own in-progress ambient so the transient
+      // cleanly supersedes the "Selecting next dealer" plate without
+      // wiping ambient owned by adjacent effects.
+      if (lastHighCardAmbientIdRef.current) {
+        announcements.dismiss(lastHighCardAmbientIdRef.current);
+        lastHighCardAmbientIdRef.current = null;
+      }
       announcements.emit({
         id,
         type: 'dealer_selected',
