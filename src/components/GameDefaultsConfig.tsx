@@ -866,25 +866,74 @@ export function GameDefaultsConfig({ open, onOpenChange }: GameDefaultsConfigPro
     );
   };
 
+  const renderDebugHarness = (gameType: string) => {
+    const gameDefaults = getDefaultByType(gameType);
+    if (!gameDefaults) return null;
+    const profiles = getHarnessProfiles(gameType);
+    if (profiles.length <= 1) return null;
+    const current = gameDefaults.debug_harness ?? 'none';
+    const currentProfile = profiles.find((p) => p.id === current) ?? profiles[0];
+    return (
+      <div className="space-y-4 pt-4 border-t border-border">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <FlaskConical className="h-4 w-4" />
+          Debug Harness
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${gameType}-harness`}>Harness Profile</Label>
+          <Select
+            value={current}
+            onValueChange={(value) => updateDefault(gameType, 'debug_harness', value)}
+          >
+            <SelectTrigger id={`${gameType}-harness`} className="w-full">
+              <SelectValue>{currentProfile.label}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {profiles.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <div className="flex flex-col">
+                    <span>{p.label}</span>
+                    <span className="text-xs text-muted-foreground">{p.description}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Internal QA tool. "None" = normal runtime. Other profiles deterministically alter bootstrap/setup for testing overlays, terminal flows, and announcement ownership. Not exposed to end users.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const renderSettingsForGameType = () => {
-    switch (selectedGameType) {
-      case 'holm':
-        return renderHolmSettings();
-      case '3-5-7':
-        return render357Settings();
-      case 'cribbage':
-        return renderCribbageSettings();
-      case 'gin-rummy':
-        return renderGinRummySettings();
-      case 'horses':
-        return renderHorsesSettings();
-      case 'ship-captain-crew':
-        return renderSCCSettings();
-      case 'yahtzee':
-        return renderYahtzeeSettings();
-      default:
-        return null;
-    }
+    const inner = (() => {
+      switch (selectedGameType) {
+        case 'holm':
+          return renderHolmSettings();
+        case '3-5-7':
+          return render357Settings();
+        case 'cribbage':
+          return renderCribbageSettings();
+        case 'gin-rummy':
+          return renderGinRummySettings();
+        case 'horses':
+          return renderHorsesSettings();
+        case 'ship-captain-crew':
+          return renderSCCSettings();
+        case 'yahtzee':
+          return renderYahtzeeSettings();
+        default:
+          return null;
+      }
+    })();
+    return (
+      <>
+        {inner}
+        {renderDebugHarness(selectedGameType)}
+      </>
+    );
   };
 
   const selectedGameInfo = GAME_TYPES.find(g => g.value === selectedGameType);
