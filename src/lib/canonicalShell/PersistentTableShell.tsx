@@ -36,7 +36,6 @@ import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   CanonicalAnnouncementProvider,
-  CanonicalAnnouncementLayer,
   CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
