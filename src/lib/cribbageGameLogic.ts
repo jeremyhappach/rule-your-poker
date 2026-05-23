@@ -16,6 +16,7 @@ import {
 import { evaluateHand, evaluatePegging, checkHisHeels, getCardPointValue, hasPlayableCard } from './cribbageScoring';
 import type { PeggingPoints } from './cribbageTypes';
 import { generateUUID } from '@/lib/uuid';
+import { getActiveHarnessCached } from '@/lib/debugHarness/runtimeCache';
 
 /**
  * Create a standard 52-card deck
