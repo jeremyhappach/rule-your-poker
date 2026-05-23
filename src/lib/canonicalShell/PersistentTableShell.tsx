@@ -56,6 +56,12 @@ export interface PersistentTableShellProps {
   gameType?: string;
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
+  /**
+   * Authenticated viewer's user id. Threaded into the canonical
+   * announcement provider so the rail layer can enforce actor-only
+   * visibility on `cta_prompt` events.
+   */
+  viewerUserId?: string | null;
   seats?: SeatAnchorInput[];
   /**
    * Shell-owned HUD header chrome. Rendered above the canonical
