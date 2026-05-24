@@ -9277,7 +9277,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               chuckyCardsRevealed={renderRoundContext ? chuckyCardsRevealedForPresentation : undefined}
               roundStatus={renderRoundContext ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
-              isPaused={isInProgress ? (game.is_paused || false) : false}
+              isPaused={renderRoundContext ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
@@ -9291,30 +9291,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setPreAnteChips(null);
                 setExpectedPostAnteChips(null);
               }}
-              chipTransferTriggerId={isInProgress ? chipTransferTriggerId : null}
-              chipTransferAmount={isInProgress ? chipTransferAmount : undefined}
-              chipTransferWinnerId={isInProgress ? chipTransferWinnerId : null}
-              chipTransferLoserIds={isInProgress ? chipTransferLoserIds : []}
+              chipTransferTriggerId={renderRoundContext ? chipTransferTriggerId : null}
+              chipTransferAmount={renderRoundContext ? chipTransferAmount : undefined}
+              chipTransferWinnerId={renderRoundContext ? chipTransferWinnerId : null}
+              chipTransferLoserIds={renderRoundContext ? chipTransferLoserIds : []}
               onChipTransferStarted={isInProgress ? () => setChipTransferTriggerId(null) : undefined}
               onChipTransferEnded={isInProgress ? () => {
                 setChipTransferWinnerId(null);
                 setChipTransferLoserIds([]);
                 setChipTransferAmount(0);
               } : undefined}
-              chuckyLossTriggerId={isInProgress ? chuckyLossTriggerId : null}
-              chuckyLossAmount={isInProgress ? chuckyLossAmount : undefined}
-              chuckyLossPlayerIds={isInProgress ? chuckyLossPlayerIds : []}
+              chuckyLossTriggerId={renderRoundContext ? chuckyLossTriggerId : null}
+              chuckyLossAmount={renderRoundContext ? chuckyLossAmount : undefined}
+              chuckyLossPlayerIds={renderRoundContext ? chuckyLossPlayerIds : []}
               onChuckyLossStarted={isInProgress ? () => setChuckyLossTriggerId(null) : undefined}
               onChuckyLossEnded={isInProgress ? () => {
                 setChuckyLossPlayerIds([]);
                 setChuckyLossAmount(0);
               } : undefined}
-              holmShowdownTriggerId={isInProgress ? holmShowdownTriggerId : null}
-              holmShowdownPotAmount={isInProgress ? holmShowdownPotAmount : undefined}
-              holmShowdownMatchAmount={isInProgress ? holmShowdownMatchAmount : undefined}
-              holmShowdownWinnerId={isInProgress ? holmShowdownWinnerId : null}
-              holmShowdownLoserIds={isInProgress ? holmShowdownLoserIds : []}
-              holmShowdownPhase={isInProgress ? holmShowdownPhase : 'idle'}
+              holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}
+              holmShowdownPotAmount={renderRoundContext ? holmShowdownPotAmount : undefined}
+              holmShowdownMatchAmount={renderRoundContext ? holmShowdownMatchAmount : undefined}
+              holmShowdownWinnerId={renderRoundContext ? holmShowdownWinnerId : null}
+              holmShowdownLoserIds={renderRoundContext ? holmShowdownLoserIds : []}
+              holmShowdownPhase={renderRoundContext ? holmShowdownPhase : 'idle'}
               onHolmShowdownPotToWinnerStarted={isInProgress ? () => setHolmShowdownTriggerId(null) : undefined}
               onHolmShowdownPotToWinnerEnded={isInProgress ? () => setHolmShowdownPhase('losers-to-pot') : undefined}
               onHolmShowdownLosersStarted={isInProgress ? () => {} : undefined}
@@ -9325,11 +9325,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setHolmShowdownWinnerId(null);
                 setHolmShowdownLoserIds([]);
               } : undefined}
-              holmWinPotTriggerId={isInProgress ? holmWinPotTriggerId : null}
-              holmWinPotAmount={isInProgress ? holmWinPotAmount : undefined}
-              holmWinWinnerPosition={isInProgress ? holmWinWinnerPosition : undefined}
-              holmWinWinnerPositions={isInProgress ? holmWinWinnerPositions : undefined}
-              onHolmWinPotAnimationComplete={isInProgress ? handleHolmWinPotAnimationComplete : undefined}
+              holmWinPotTriggerId={renderRoundContext ? holmWinPotTriggerId : null}
+              holmWinPotAmount={renderRoundContext ? holmWinPotAmount : undefined}
+              holmWinWinnerPosition={renderRoundContext ? holmWinWinnerPosition : undefined}
+              holmWinWinnerPositions={renderRoundContext ? holmWinWinnerPositions : undefined}
+              onHolmWinPotAnimationComplete={renderRoundContext ? handleHolmWinPotAnimationComplete : undefined}
               threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
               threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
               threeFiveSevenWinnerId={threeFiveSevenWinnerId}
