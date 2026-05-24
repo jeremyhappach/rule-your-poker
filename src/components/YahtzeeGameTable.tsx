@@ -427,7 +427,7 @@ export function YahtzeeGameTable({
       checkYahtzeeRegressiveCategories(gameId, handNum, totalFilled);
 
       // Transition: result-display (fire once when complete)
-      if (viewState.gamePhase === 'complete' && winnerOverlay) {
+      if (viewState.gamePhase === 'complete') {
         logYahtzeeResultDisplay(gameId, handNum, null, null);
       }
     }).catch(() => { /* safe */ });
