@@ -9043,56 +9043,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
 
             return (
-              <>
-                {isCribbageDealerSelection && (
-                  <HighCardDealerSelection
-                    gameId={gameId!}
-                    players={players}
-                    onComplete={handleCribbageDealerSelectionComplete}
-                    isHost={isCreator}
-                    allowBotDealers={true}
-                    selectionVariant="cribbage"
-                    syncedState={(game as any).dealer_selection_state as any}
-                    onCardsUpdate={setDealerSelectionCards}
-                    // Note: onCardsUpdate trace - session-level HighCardDealerSelection cards pushed to parent
-                    onWinnerPositionUpdate={(pos) => {
-                      setDealerSelectionWinnerPosition(pos);
-                      // ── HANDOFF TRACE #3: session-level ds winner position updated ──
-                      emitCribbageHandoffTrace({
-                        gameId: gameId!,
-                        eventType: 'parent_ds_winner_position_update',
-                        userId: user?.id ?? null,
-                        context: { winnerPosition: pos },
-                      });
-                    }}
-                  />
-                )}
-                <CribbageMobileGameTable
-                  gameId={gameId!}
-                  roundId={cribbageRoundId}
-                  dealerGameId={cribbageDealerGameId}
-                  handNumber={cribbageHandNumber}
-                  players={players}
-                  currentUserId={user?.id || ''}
-                  dealerPosition={game.dealer_position || 1}
-                  anteAmount={game.ante_amount || 1}
-                  pot={cribbagePot}
-                  isHost={isCreator}
-                  onGameComplete={handleGameOverComplete}
-                  dealerChatMessages={cribbageDealerChatMessages}
-                  onInjectDealerChatMessage={injectCribbageDealerChatMessage}
-                  gameConfig={{
-                    pointsToWin: game.points_to_win || 121,
-                    skunkEnabled: game.skunk_enabled ?? true,
-                    skunkThreshold: game.skunk_threshold || 91,
-                    doubleSkunkEnabled: game.double_skunk_enabled ?? true,
-                    doubleSkunkThreshold: game.double_skunk_threshold || 61,
-                  }}
-                  isDealerSelection={isCribbageDealerSelection}
-                  dealerSelectionCards={isCribbageDealerSelection ? dealerSelectionCards : undefined}
-                  dealerSelectionWinnerPosition={isCribbageDealerSelection ? dealerSelectionWinnerPosition : undefined}
-                />
-              </>
+              <CribbageMobileGameTable
+                gameId={gameId!}
+                roundId={cribbageRoundId}
+                dealerGameId={cribbageDealerGameId}
+                handNumber={cribbageHandNumber}
+                players={players}
+                currentUserId={user?.id || ''}
+                dealerPosition={game.dealer_position || 1}
+                anteAmount={game.ante_amount || 1}
+                pot={cribbagePot}
+                isHost={isCreator}
+                onGameComplete={handleGameOverComplete}
+                dealerChatMessages={cribbageDealerChatMessages}
+                onInjectDealerChatMessage={injectCribbageDealerChatMessage}
+                gameConfig={{
+                  pointsToWin: game.points_to_win || 121,
+                  skunkEnabled: game.skunk_enabled ?? true,
+                  skunkThreshold: game.skunk_threshold || 91,
+                  doubleSkunkEnabled: game.double_skunk_enabled ?? true,
+                  doubleSkunkThreshold: game.double_skunk_threshold || 61,
+                }}
+                isDealerSelection={isCribbageDealerSelection}
+                dealerSelectionCards={isCribbageDealerSelection ? dealerSelectionCards : undefined}
+                dealerSelectionWinnerPosition={isCribbageDealerSelection ? dealerSelectionWinnerPosition : undefined}
+                // ── Phase 2.1: session-level dealer-selection controller
+                // is now hosted inside the slot child. Parent threads in
+                // the synced state + state-update callbacks; no sibling
+                // JSX mounts above the table.
+                dealerSelectionSyncedState={
+                  isCribbageDealerSelection
+                    ? ((game as any).dealer_selection_state as DealerSelectionState | null)
+                    : null
+                }
+                onDealerSelectionCardsUpdate={setDealerSelectionCards}
+                onDealerSelectionWinnerPositionUpdate={(pos) => {
+                  setDealerSelectionWinnerPosition(pos);
+                  // ── HANDOFF TRACE #3: session-level ds winner position updated ──
+                  emitCribbageHandoffTrace({
+                    gameId: gameId!,
+                    eventType: 'parent_ds_winner_position_update',
+                    userId: user?.id ?? null,
+                    context: { winnerPosition: pos },
+                  });
+                }}
+                onDealerSelectionComplete={handleCribbageDealerSelectionComplete}
+              />
             );
           }
 

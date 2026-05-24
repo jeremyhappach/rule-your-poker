@@ -29,6 +29,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
+import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
@@ -41,7 +42,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
-import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+
 import { MessageSquare, User, Clock } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { 
@@ -118,6 +119,14 @@ interface CribbageMobileGameTableProps {
   dealerSelectionCards?: DealerSelectionCard[];
   dealerSelectionWinnerPosition?: number | null;
   isDealerSelection?: boolean;
+  // ── Phase 2.1: session-level dealer-selection controller now mounts
+  // INSIDE the slot child (no sibling JSX above the table). Parent
+  // passes the session-scoped synced state + callbacks; the table mounts
+  // `CribbageDealerSelectionController` internally and threads them in.
+  dealerSelectionSyncedState?: DealerSelectionState | null;
+  onDealerSelectionCardsUpdate?: (cards: DealerSelectionCard[]) => void;
+  onDealerSelectionWinnerPositionUpdate?: (pos: number | null) => void;
+  onDealerSelectionComplete?: (pos: number) => void;
 
   // Dealer chat announcements (session-persistent, optional)
   dealerChatMessages?: Array<{
@@ -272,6 +281,10 @@ export const CribbageMobileGameTable = ({
   dealerSelectionCards: externalDealerSelectionCards,
   dealerSelectionWinnerPosition: externalDealerSelectionWinnerPosition,
   isDealerSelection = false,
+  dealerSelectionSyncedState = null,
+  onDealerSelectionCardsUpdate,
+  onDealerSelectionWinnerPositionUpdate,
+  onDealerSelectionComplete,
 
   dealerChatMessages: externalDealerChatMessages,
   onInjectDealerChatMessage,
@@ -5383,28 +5396,28 @@ export const CribbageMobileGameTable = ({
             height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
-          {/* Inner circle clipped; outer wrapper is not */}
-          <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-            {/* Felt background inside circle — SAME for all modes */}
-            {tableColors.showBridge ? (
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${peoriaBridgeMobile})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  filter: 'brightness(0.5)',
-                }}
-              />
-            ) : (
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                  filter: 'brightness(0.7)',
-                }}
-              />
-            )}
+          {/* ── Phase 2.2: canonical felt cutover.
+              Shell-owned felt visual (gradient + bridge + circle clip)
+              now comes from CanonicalFeltSurface, parameterized for
+              cribbage's circular geometry. The outer square wrapper
+              remains caller-owned because cribbage's table sizing is
+              specific (square inside a taller container with slate
+              backdrop). The circle clip + felt paint + game-name plate
+              are canonical. */}
+          <div className="relative w-full h-full">
+            <CanonicalFeltSurface
+              gameKind="cribbage"
+              anteAmount={anteAmount}
+              pointsToWin={gameConfig.pointsToWin}
+              cribbageSkunk={{
+                skunkEnabled: gameConfig.skunkEnabled,
+                skunkThreshold: gameConfig.skunkThreshold,
+                doubleSkunkEnabled: gameConfig.doubleSkunkEnabled,
+                doubleSkunkThreshold: gameConfig.doubleSkunkThreshold,
+              }}
+              isWaitingPhase={isBootstrapMode || isHighCardMode}
+            />
+
 
             {/* ── MODE-SPECIFIC FELT CONTENT ── */}
 
@@ -5441,6 +5454,22 @@ export const CribbageMobileGameTable = ({
                       });
                       handleHighCardComplete(pos);
                     }}
+                  />
+                )}
+                {/* ── Phase 2.1: session-level dealer-selection controller
+                    now mounted INSIDE the slot child (previously a sibling
+                    JSX above the table in Game.tsx). Same headless hook,
+                    same callbacks — parent owns the state, the table owns
+                    the surface. */}
+                {isDealerSelection && onDealerSelectionCardsUpdate && onDealerSelectionComplete && (
+                  <CribbageDealerSelectionController
+                    gameId={gameId}
+                    players={players as any}
+                    isHost={isHost}
+                    syncedState={dealerSelectionSyncedState}
+                    onCardsUpdate={onDealerSelectionCardsUpdate}
+                    onWinnerPositionUpdate={onDealerSelectionWinnerPositionUpdate ?? (() => {})}
+                    onComplete={onDealerSelectionComplete}
                   />
                 )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
@@ -5542,17 +5571,7 @@ export const CribbageMobileGameTable = ({
                 />
 
 
-                {/* Game Title */}
-                <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-                  <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                    ${anteAmount} CRIBBAGE
-                  </h2>
-                  <p className="text-[9px] text-white/70">
-                    {viewState.pointsToWin} to win
-                    {viewState.skunkEnabled && ` • Skunk <${viewState.skunkThreshold} (2x)`}
-                    {viewState.doubleSkunkEnabled && ` • Double <${viewState.doubleSkunkThreshold} (3x)`}
-                  </p>
-                </div>
+                {/* Game Title — now rendered by CanonicalFeltSurface plate (Phase 2.2). */}
 
                 {/* Felt Content */}
                 <CribbageFeltContent

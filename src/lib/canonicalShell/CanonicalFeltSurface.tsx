@@ -20,7 +20,8 @@ export type CanonicalFeltGameKind =
   | "horses"
   | "ship-captain-crew"
   | "yahtzee"
-  | "gin-rummy";
+  | "gin-rummy"
+  | "cribbage";
 
 export interface CanonicalFeltSurfaceProps {
   gameKind: CanonicalFeltGameKind;
@@ -28,11 +29,18 @@ export interface CanonicalFeltSurfaceProps {
   potMaxEnabled?: boolean;
   potMaxValue?: number | string;
   legsToWin?: number;
-  /** Additive: points-to-win subtitle for points-based games (Gin Rummy). */
+  /** Additive: points-to-win subtitle for points-based games (Gin Rummy, Cribbage). */
   pointsToWin?: number;
   isWaitingPhase?: boolean;
   isTablet?: boolean;
   isDesktop?: boolean;
+  /** Cribbage-only — appended to the plate subtitle line. */
+  cribbageSkunk?: {
+    skunkEnabled?: boolean;
+    skunkThreshold?: number;
+    doubleSkunkEnabled?: boolean;
+    doubleSkunkThreshold?: number;
+  };
 }
 
 const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
@@ -42,6 +50,7 @@ const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "ship-captain-crew": "SHIP",
   "yahtzee": "YAHTZEE",
   "gin-rummy": "GIN RUMMY",
+  "cribbage": "CRIBBAGE",
 };
 
 // Dice-family games use a compact single-line plate (legacy parity).
@@ -62,22 +71,39 @@ export function CanonicalFeltSurface({
   isWaitingPhase = false,
   isTablet = false,
   isDesktop = false,
+  cribbageSkunk,
 }: CanonicalFeltSurfaceProps) {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
   const isDicePlate = DICE_PLATE_KINDS.has(gameKind);
+  const isCribbage = gameKind === "cribbage";
+
+  // Cribbage uses a circular table inside a pre-sized square wrapper
+  // owned by its caller. Other games stretch an ellipse across the
+  // available table container. Either way, the felt visual (gradient
+  // + bridge overlay + plate chrome) is canonical.
+  const feltClass = isCribbage
+    ? "absolute inset-0 rounded-full border-2 border-white/80 overflow-hidden"
+    : "absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden";
+
+  const feltStyle: React.CSSProperties = isCribbage
+    ? {
+        background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+        filter: tableColors.showBridge ? undefined : "brightness(0.7)",
+      }
+    : {
+        background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+        boxShadow: "inset 0 0 30px rgba(0,0,0,0.4)",
+      };
 
   return (
     <>
-      {/* Table felt — shared ellipse + rail + bridge overlay */}
+      {/* Table felt — shared ellipse/circle + bridge overlay */}
       <div
         data-canonical-felt-surface=""
         data-canonical-felt-game={gameKind}
-        className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-          boxShadow: "inset 0 0 30px rgba(0,0,0,0.4)",
-        }}
+        className={feltClass}
+        style={feltStyle}
       >
         {tableColors.showBridge && (
           <img
@@ -85,10 +111,15 @@ export function CanonicalFeltSurface({
             alt=""
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-            style={{
-              objectPosition: isTablet || isDesktop ? "center 60%" : "center 38%",
-              opacity: isTablet || isDesktop ? 0.36 : 0.28,
-            }}
+            style={
+              isCribbage
+                ? { objectFit: "cover", filter: "brightness(0.5)" }
+                : {
+                    objectPosition:
+                      isTablet || isDesktop ? "center 60%" : "center 38%",
+                    opacity: isTablet || isDesktop ? 0.36 : 0.28,
+                  }
+            }
           />
         )}
       </div>
@@ -97,13 +128,28 @@ export function CanonicalFeltSurface({
       {!isWaitingPhase && (
         <div
           data-canonical-felt-plate=""
-          data-canonical-felt-plate-variant={isDicePlate ? "dice" : "card"}
-          className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center pointer-events-none"
+          data-canonical-felt-plate-variant={
+            isDicePlate ? "dice" : isCribbage ? "cribbage" : "card"
+          }
+          className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none"
         >
           {isDicePlate ? (
             <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
               ${anteAmount} {GAME_NAME_LABEL[gameKind]}
             </span>
+          ) : isCribbage ? (
+            <>
+              <h2 className="text-sm font-bold text-white drop-shadow-lg">
+                ${anteAmount} {GAME_NAME_LABEL[gameKind]}
+              </h2>
+              <p className="text-[9px] text-white/70">
+                {pointsToWin !== undefined ? `${pointsToWin} to win` : null}
+                {cribbageSkunk?.skunkEnabled && cribbageSkunk?.skunkThreshold !== undefined &&
+                  ` • Skunk <${cribbageSkunk.skunkThreshold} (2x)`}
+                {cribbageSkunk?.doubleSkunkEnabled && cribbageSkunk?.doubleSkunkThreshold !== undefined &&
+                  ` • Double <${cribbageSkunk.doubleSkunkThreshold} (3x)`}
+              </p>
+            </>
           ) : gameKind === "gin-rummy" ? (
             <>
               <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
