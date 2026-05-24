@@ -55,6 +55,9 @@ import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface"
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
+import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
@@ -471,6 +474,7 @@ export function YahtzeeGameTable({
   const turnSeededKeyRef = useRef<string | null>(null);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
+  const shellAnchors = useRequiredSeatAnchors('yahtzee');
   // Render-facing derived values use viewState (presentationState) for visual stability
   const gamePhase = viewState?.gamePhase || 'waiting';
   const currentTurnPlayerId = viewState?.currentTurnPlayerId;
@@ -2039,55 +2043,26 @@ export function YahtzeeGameTable({
           onAnimationEnd={() => setChipTransferTriggerId(null)}
         />
 
-        {/* Players arranged around the table (chip stacks) — corner positions to avoid scorecard overlap */}
+        {/* Canonical seat clusters — shell anchors drive all chip positioning.
+            For 2P inherently-two-player games (Yahtzee), seatAnchors
+            canonicalizes the opponent to the ergonomic top slot regardless
+            of absolute seat number, matching Cribbage/Gin. */}
         {(() => {
-          const useCompact = false;
-          return myPlayer ? (
-          <>
-            {/* Slot 0: Bottom-left */}
-            <div className="absolute bottom-0 left-0 z-[105]">
-              {getPlayerAtSlot(1) && renderPlayerChip(getPlayerAtSlot(1)!, useCompact)}
-            </div>
-            {/* Slot 1: Top-left */}
-            <div className="absolute left-0 top-0 z-[105]">
-              {getPlayerAtSlot(2) && renderPlayerChip(getPlayerAtSlot(2)!, useCompact)}
-            </div>
-            {/* Slot 2: Top-left-center */}
-            {getPlayerAtSlot(3) && (
-              <div className="absolute left-[15%] top-0 z-[105]">
-                {renderPlayerChip(getPlayerAtSlot(3)!, useCompact)}
-              </div>
-            )}
-            {/* Slot 3: Top-right-center */}
-            {getPlayerAtSlot(4) && (
-              <div className="absolute right-[15%] top-0 z-[105]">
-                {renderPlayerChip(getPlayerAtSlot(4)!, useCompact)}
-              </div>
-            )}
-            {/* Slot 4: Top-right */}
-            <div className="absolute right-0 top-0 z-[105]">
-              {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, useCompact)}
-            </div>
-            {/* Slot 5: Bottom-right */}
-            <div className="absolute bottom-0 right-0 z-[105]">
-              {getPlayerAtSlot(6) && renderPlayerChip(getPlayerAtSlot(6)!, useCompact)}
-            </div>
-          </>
-        ) : (
-          // Observer mode: extreme corner positions
-          activePlayers.filter(p => p.user_id !== currentUserId).map((player, idx) => {
-            const positions = [
-              'top-0 left-0', 'top-0 right-0',
-              'bottom-0 left-0', 'bottom-0 right-0',
-              'top-0 left-[15%]', 'top-0 right-[15%]',
-            ];
+          const slotByPosition = new Map<number, CanonicalSlot | null>();
+          shellAnchors?.anchors.forEach(a => slotByPosition.set(a.position, a.slot));
+          return activePlayers.map(player => {
+            const slot = slotByPosition.get(player.position) ?? null;
             return (
-              <div key={player.id} className={`absolute z-[105] ${positions[idx % positions.length]}`}>
-                {renderPlayerChip(player)}
-              </div>
+              <CanonicalSeatCluster
+                key={player.id}
+                slot={slot}
+                position={player.position}
+                name={getPlayerUsername(player)}
+                isDealer={dealerPosition === player.position}
+                chipValue={`$${formatChipValue(Math.round(player.chips))}`}
+              />
             );
-          })
-        );
+          });
         })()}
 
         {/* Dealer button on felt for current player */}
