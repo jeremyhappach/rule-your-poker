@@ -2986,7 +2986,12 @@ export const CribbageMobileGameTable = ({
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
       const playerIds = players.map(p => p.id);
+      // Ensure debug-harness cache is hydrated before init so a configured
+      // harness (e.g. cribbage 'near_double_skunk') is honored on the first
+      // game after a fresh page load, instead of fail-closing to 'none'.
+      await ensureHarnessCacheLoaded();
       const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig);
+      
       
       await supabase
         .from('rounds')
