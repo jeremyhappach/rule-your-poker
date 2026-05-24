@@ -11,6 +11,9 @@
  * - Highest cargo sum wins; ties cause re-ante
  */
 
+import { getActiveHarnessCached } from './debugHarness/runtimeCache';
+
+
 export interface SCCDie {
   value: number; // 1-6, or 0 if not rolled yet
   isHeld: boolean;
