@@ -78,7 +78,15 @@ export function initializeCribbageGame(
    * dealer was decided on the first attempt, 1 after one tie redraw, etc.
    */
   identity?: { dealerSelectionCohort?: number; dealerResolved?: boolean },
+  /**
+   * Optional: which player id is the local human "host" for debug harness
+   * seeding purposes. When the Near Double Skunk harness is active, this
+   * player is seeded to 119 and everyone else to 10. Falls back to
+   * playerIds[0] when omitted (legacy behavior).
+   */
+  hostPlayerId?: string,
 ): CribbageState {
+
   const playerCount = playerIds.length;
   const cardsPerPlayer = CARDS_PER_PLAYER[playerCount] || 6;
   
@@ -114,12 +122,14 @@ export function initializeCribbageGame(
     getActiveHarnessCached('cribbage') === 'near_double_skunk' &&
     playerIds.length >= 2
   ) {
-    const [hostId, ...rest] = playerIds;
-    playerStates[hostId].pegScore = 119;
-    for (const otherId of rest) {
-      playerStates[otherId].pegScore = 10;
+    const seedHostId = hostPlayerId && playerIds.includes(hostPlayerId)
+      ? hostPlayerId
+      : playerIds[0];
+    for (const pid of playerIds) {
+      playerStates[pid].pegScore = pid === seedHostId ? 119 : 10;
     }
   }
+
   
   // Determine turn order (non-dealer plays first during pegging)
   const dealerIndex = playerIds.indexOf(dealerPlayerId);

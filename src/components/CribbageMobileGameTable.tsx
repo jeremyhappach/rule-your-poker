@@ -2986,11 +2986,13 @@ export const CribbageMobileGameTable = ({
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
       const playerIds = players.map(p => p.id);
+      const hostPlayerId = players.find(p => p.user_id === currentUserId)?.id;
       // Ensure debug-harness cache is hydrated before init so a configured
       // harness (e.g. cribbage 'near_double_skunk') is honored on the first
       // game after a fresh page load, instead of fail-closing to 'none'.
       await ensureHarnessCacheLoaded();
-      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig);
+      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig, undefined, hostPlayerId);
+
       
       
       await supabase
@@ -3140,6 +3142,7 @@ export const CribbageMobileGameTable = ({
     // Ensure debug-harness cache is hydrated (see note at first init callsite).
     await ensureHarnessCacheLoaded();
     const playerIds = players.map(p => p.id);
+    const hostPlayerId = players.find(p => p.user_id === currentUserId)?.id;
     const newState = initializeCribbageGame(
       playerIds,
       winnerPlayer.id,
@@ -3149,7 +3152,9 @@ export const CribbageMobileGameTable = ({
         dealerSelectionCohort: dealerSelectionCohortDerived,
         dealerResolved: true,
       },
+      hostPlayerId,
     );
+
 
     await supabase
       .from('rounds')
