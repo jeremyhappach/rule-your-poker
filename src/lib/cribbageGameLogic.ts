@@ -122,12 +122,14 @@ export function initializeCribbageGame(
     getActiveHarnessCached('cribbage') === 'near_double_skunk' &&
     playerIds.length >= 2
   ) {
-    const [hostId, ...rest] = playerIds;
-    playerStates[hostId].pegScore = 119;
-    for (const otherId of rest) {
-      playerStates[otherId].pegScore = 10;
+    const seedHostId = hostPlayerId && playerIds.includes(hostPlayerId)
+      ? hostPlayerId
+      : playerIds[0];
+    for (const pid of playerIds) {
+      playerStates[pid].pegScore = pid === seedHostId ? 119 : 10;
     }
   }
+
   
   // Determine turn order (non-dealer plays first during pegging)
   const dealerIndex = playerIds.indexOf(dealerPlayerId);
