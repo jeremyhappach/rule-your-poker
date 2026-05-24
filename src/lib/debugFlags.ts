@@ -198,6 +198,34 @@ export function isCanonicalShellBadgeEnabled(): boolean {
   );
 }
 
+/**
+ * Phase 3.1a — Shell-owned persistent felt.
+ *
+ * Default: OFF. Skeleton only in 3.1a — no runtime cutover.
+ *
+ * When enabled (3.1b):
+ *   - PersistentTableShell mounts a single CanonicalFeltSurface as a
+ *     shell-owned background layer (the ShellOwnedFeltHost).
+ *   - Gameplay surfaces (Cribbage / Gin / Yahtzee, then Holm / 3-5-7 /
+ *     Horses / SCC during 3.2) stop rendering their own
+ *     CanonicalFeltSurface and render as transparent felt-content
+ *     children layered above the shell felt.
+ *   - The waiting surface mounts inside the same shell envelope, so
+ *     the felt geometry survives the waiting → first-hand transition
+ *     without any unmount/remount.
+ *
+ * Enable via:
+ *   - URL:           ?shell_owned_felt=1
+ *   - localStorage:  ptp_shell_owned_felt = "1"
+ */
+export function isShellOwnedFeltEnabled(): boolean {
+  return (
+    hasQueryFlag('shell_owned_felt') ||
+    hasLocalFlag('ptp_shell_owned_felt')
+  );
+}
+
+
 
 
 
