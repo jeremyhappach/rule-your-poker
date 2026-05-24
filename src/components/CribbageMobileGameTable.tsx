@@ -118,6 +118,14 @@ interface CribbageMobileGameTableProps {
   dealerSelectionCards?: DealerSelectionCard[];
   dealerSelectionWinnerPosition?: number | null;
   isDealerSelection?: boolean;
+  // ── Phase 2.1: session-level dealer-selection controller now mounts
+  // INSIDE the slot child (no sibling JSX above the table). Parent
+  // passes the session-scoped synced state + callbacks; the table mounts
+  // `CribbageDealerSelectionController` internally and threads them in.
+  dealerSelectionSyncedState?: DealerSelectionState | null;
+  onDealerSelectionCardsUpdate?: (cards: DealerSelectionCard[]) => void;
+  onDealerSelectionWinnerPositionUpdate?: (pos: number | null) => void;
+  onDealerSelectionComplete?: (pos: number) => void;
 
   // Dealer chat announcements (session-persistent, optional)
   dealerChatMessages?: Array<{
