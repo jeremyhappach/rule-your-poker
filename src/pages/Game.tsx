@@ -23,7 +23,7 @@ import {
 import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessProbe";
 import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
-import { isPokerVariantFamily, isCanonicalShellFamily } from "@/lib/canonicalShell/shellRouting";
+import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -8531,10 +8531,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
           <>
-            {game.status === 'dealer_selection' && game.game_type !== 'gin-rummy' && (
+            {/* Phase 1 (canonical table unification, Bucket 1):
+                A1 dealer-selection background sibling is restricted to
+                non-canonical-seat-consumer families. Canonical-seat
+                consumers (cribbage / gin-rummy / yahtzee) own their
+                own unified persistent table across every phase
+                including dealer-selection — rendering a parallel
+                MobileGameTable backdrop here would violate the single
+                canonical surface invariant. Poker-variant family
+                (holm / 3-5-7 / horses / SCC) still renders the
+                backdrop because the PlayfieldSlotController does not
+                cover their `dealer_selection` status; that gap is
+                Bucket 3/4 of the unification initiative. */}
+            {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && (
               <>
-                {/* Show game table as background during dealer selection (non-gin-rummy) */}
-                <MobileGameTable key={`${gameId ?? 'unknown-game'}-dealer-selection`}
+                {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
+                <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="dealer-selection-bg"
                     gameId={gameId}
                     players={players}
@@ -8598,8 +8610,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                {!_treatAsCanonicalRoute && (
-                  <MobileGameTable key={`${gameId ?? 'unknown-game'}-${game.status}`}
+                {/* Phase 1: A2 status-keyed sibling table. `!_treatAsCanonicalRoute`
+                    is the route-stable gate; `!isCanonicalShellFamily` is a
+                    belt-and-suspenders structural guard so this branch
+                    cannot fire for any registered canonical-shell game,
+                    even if route-resolution changes. Stable `gameId` key
+                    eliminates the per-status forced remount that previously
+                    caused the visible mid-transition table swap. */}
+                {!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (
+                  <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="status-keyed"
                     gameId={gameId}
                     players={players}
@@ -8747,7 +8766,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 )}
               </div>
-            ) : (!_treatAsCanonicalRoute && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && game.game_type !== 'gin-rummy' && game.game_type !== 'horses' && game.game_type !== 'ship-captain-crew' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            /* Phase 1: A3 terminal/win-animation sibling table. The fragile
+               hand-curated game-type denylist (cribbage/gin-rummy/horses/SCC)
+               that previously protected this branch has been replaced with
+               the canonical registry check `!isCanonicalShellFamily(...)`.
+               This prevents the duplicate-table regression class from
+               recurring whenever a new game is added to the canonical
+               shell family — adding it to CANONICAL_SHELL_FAMILY alone is
+               now sufficient to keep this sibling branch from coexisting
+               with the canonical slot. `!_treatAsCanonicalRoute` remains
+               as the primary route-stable gate. */
+            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
