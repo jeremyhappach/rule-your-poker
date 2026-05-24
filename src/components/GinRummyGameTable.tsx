@@ -1671,7 +1671,18 @@ export const GinRummyGameTable = ({
   // arrives.
   const placeholderPaintedRef = useRef(false);
   const playablePaintedRef = useRef(false);
-  if (!viewState) {
+  // Hand-boundary gate: when the monotonic handNumber has advanced past
+  // the presentation's handNumber, the playable subtree below would
+  // render the OLD hand's felt (pegboard, knockResult, prior cards) under
+  // the NEW hand identity. That produces the "double game table /
+  // double mount" symptom at the boundary — old completed-hand surface
+  // visible while the new hand is hydrating. Treat the stale-hand window
+  // identically to a null viewState so exactly ONE felt surface is
+  // mounted at any frame across a hand transition.
+  const viewStateHandNumber = (viewState as { handNumber?: number } | null)?.handNumber ?? 0;
+  const isStaleHandPresentation =
+    !!viewState && handNumber > 0 && viewStateHandNumber > 0 && viewStateHandNumber < handNumber;
+  if (!viewState || isStaleHandPresentation) {
     if (!placeholderPaintedRef.current) {
       placeholderPaintedRef.current = true;
       ginTrace('gin.first painted (placeholder)');
@@ -1680,6 +1691,12 @@ export const GinRummyGameTable = ({
           ginTrace('gin.placeholder visible (rAF)');
         }));
       }
+    }
+    if (isStaleHandPresentation) {
+      ginTrace('gin.placeholder forced (stale-hand at boundary)', {
+        viewStateHandNumber,
+        handNumber,
+      });
     }
     return (
       <div className="h-full flex flex-col bg-background relative">
@@ -1704,6 +1721,7 @@ export const GinRummyGameTable = ({
       </div>
     );
   }
+
 
   if (!playablePaintedRef.current) {
     playablePaintedRef.current = true;
