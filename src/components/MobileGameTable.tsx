@@ -2999,6 +2999,28 @@ export const MobileGameTable = ({
     });
   }, [isDiceGame, isGameOver, lastRoundResult, gameId, handContextId, gameType, announcements]);
 
+  // Horses / SCC tie-rollover → peg_notice ("One tie, all tie").
+  // Tie rollovers don't end the game (no match_win); surface a transient
+  // semantic announcement so players see why the hand re-anted instead
+  // of silently re-dealing.
+  const lastEmittedDiceTieRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isDiceGame) return;
+    if (isGameOver) return;
+    if (!lastRoundResult) return;
+    if (!/tie/i.test(lastRoundResult)) return;
+    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:dice-tie:${lastRoundResult}`;
+    if (lastEmittedDiceTieRef.current === key) return;
+    lastEmittedDiceTieRef.current = key;
+    announcements.emit({
+      id: `peg:${key}`,
+      type: 'peg_notice',
+      scope: { dealerGameId: gameId ?? null, roundId: handContextId ?? null },
+      payload: { title: 'One tie, all tie', kind: 'tie-rollover' },
+      ttlMs: 2500,
+    });
+  }, [isDiceGame, isGameOver, lastRoundResult, gameId, handContextId, announcements]);
+
   // (D) 3-5-7 re-ante message → peg_notice.
   const lastEmittedReAnteRef = useRef<string | null>(null);
   useEffect(() => {
