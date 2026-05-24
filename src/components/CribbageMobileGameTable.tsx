@@ -3137,6 +3137,8 @@ export const CribbageMobileGameTable = ({
     // sync framework progress vector advances cleanly across the
     // dealer-select → discarding boundary (incl. tie redraws).
     hasInitializedRef.current = true;
+    // Ensure debug-harness cache is hydrated (see note at first init callsite).
+    await ensureHarnessCacheLoaded();
     const playerIds = players.map(p => p.id);
     const newState = initializeCribbageGame(
       playerIds,
