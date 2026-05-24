@@ -9102,8 +9102,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // DICE GAMES (Horses and Ship Captain Crew)
           // All users (mobile + desktop) route through MobileGameTable + useHorsesMobileController
           // for unified sync-gated gameplay. Desktop differences are handled by responsive sizing.
-          if ((isInProgress || isAnteDecision) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+          // Terminal win animation is rendered here too. Keeping it inside
+          // PlayfieldSlotController prevents the shared game-over sibling branch
+          // from mounting a second MobileGameTable under the active dice table.
+          if ((isInProgress || isAnteDecision || !!horsesWinPotTriggerId) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+            const isDiceTerminalAnimation = !!horsesWinPotTriggerId && !isInProgress && !isAnteDecision;
 
             return (
               <MobileGameTable
@@ -9114,11 +9118,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 currentUserId={user?.id}
                 pot={potForDisplay}
                 currentRound={game.current_round ?? 0}
-                allDecisionsIn={false}
+                allDecisionsIn={isDiceTerminalAnimation}
                 playerCards={[]}
                 timeLeft={isInProgress ? timeLeft : anteTimeLeft}
                 maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
-                lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
+                lastRoundResult={(isInProgress || isDiceTerminalAnimation) ? ((game as any).last_round_result || null) : null}
                 dealerPosition={game.dealer_position}
                 legValue={game.leg_value ?? 0}
                 legsToWin={game.legs_to_win || 3}
@@ -9156,6 +9160,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 horsesState={horsesState}
                 horsesDealerGameId={(game as any).current_game_uuid ?? null}
                 horsesHandNumber={currentRound?.hand_number ?? null}
+                isGameOver={isDiceTerminalAnimation}
+                isDealer={isDiceTerminalAnimation ? (isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false) : undefined}
+                onNextGame={isDiceTerminalAnimation ? handleDealerConfirmGameOver : undefined}
+                horsesWinPotTriggerId={horsesWinPotTriggerId}
+                horsesWinPotAmount={horsesWinPotAmount || cachedPotForHorsesWinRef.current}
+                horsesWinWinnerPosition={horsesWinWinnerPosition}
+                onHorsesWinPotAnimationComplete={() => {
+                  console.log('[HORSES WIN] Animation complete, transitioning to next game');
+                  setHorsesWinPotTriggerId(null);
+                  cachedPotForHorsesWinRef.current = 0;
+                  handleGameOverComplete();
+                }}
                 // Lifted mobile state
                 activeTab={mobileActiveTab}
                 onActiveTabChange={setMobileActiveTab}
