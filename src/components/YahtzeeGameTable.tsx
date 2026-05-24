@@ -431,7 +431,7 @@ export function YahtzeeGameTable({
         logYahtzeeResultDisplay(gameId, handNum, null, null);
       }
     }).catch(() => { /* safe */ });
-  }, [viewState, gameId, yahtzeeState, winnerOverlay]);
+  }, [viewState, gameId, yahtzeeState]);
 
   useEffect(() => {
     return () => {
