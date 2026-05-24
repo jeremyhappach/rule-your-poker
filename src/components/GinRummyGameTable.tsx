@@ -69,8 +69,8 @@ import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster'
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
-import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
-import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+// ShellHudChrome import removed by Phase 5 Gin diagnostic revert; Gin renders ShellTabBar + local fallback directly.
+import { ShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -1655,90 +1655,12 @@ export const GinRummyGameTable = ({
     return viewState.dealerPlayerId === playerId;
   };
 
-  // ── Phase 5: Canonical gameplay announcement emits ────────────────────
-  // Migrates the retired local Gin Rummy gold plate to shell-owned
-  // semantic emits. Renderer in canonicalShell/announcements/renderers.tsx
-  // produces the visible plate; this surface only emits.
-  const announcements = useAnnouncements();
-  const lastEmittedGinResultRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!viewState) return;
-    if (viewState.phase !== 'complete') return;
-    const r = viewState.knockResult;
-    const winnerId = viewState.winnerPlayerId;
-    const scope = { dealerGameId: dealerGameId ?? null, roundId: roundId ?? null };
+  // ── Phase 5 DIAGNOSTIC REVERT ─────────────────────────────────────────
+  // Gin-only revert of the canonical announcement emit. Restores the
+  // local gold-plate fallback below to isolate whether Phase 5's emit
+  // useEffect was a side-channel into the hand-2 bot stall. Do not
+  // re-add useAnnouncements here without coordinated re-migration.
 
-    if (winnerId) {
-      // Match win — persist through chip transfer / pot animation.
-      const winnerName = getPlayerUsername(winnerId);
-      const loserId =
-        winnerId === viewState.dealerPlayerId
-          ? viewState.nonDealerPlayerId
-          : viewState.dealerPlayerId;
-      const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
-      const loserScore = viewState.matchScores?.[loserId] ?? 0;
-      const text = `${winnerName} wins · ${winnerScore}–${loserScore} · +${viewState.pot ?? 0}`;
-      const key = `gin-match:${dealerGameId ?? 'no-dg'}:${winnerId}`;
-      if (lastEmittedGinResultRef.current === key) return;
-      lastEmittedGinResultRef.current = key;
-      announcements.clearAmbient();
-      announcements.emit({
-        id: `match_win:${key}`,
-        type: 'match_win',
-        scope,
-        payload: { text },
-        ttlMs: 10000,
-      });
-      return;
-    }
-
-    if (r) {
-      // Round (hand) win — knock / gin / undercut summary.
-      const winnerName = getPlayerUsername(r.winnerId);
-      const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
-      const bonus = r.isGin
-        ? ` (${dwDiff} dw + 25 gin bonus)`
-        : r.isUndercut
-          ? ` (${dwDiff} dw + 25 undercut bonus)`
-          : '';
-      const text = `${winnerName} +${r.pointsAwarded}${bonus}`;
-      const key = `gin-round:${dealerGameId ?? 'no-dg'}:${handNumber}:${r.winnerId}:${r.pointsAwarded}`;
-      if (lastEmittedGinResultRef.current === key) return;
-      lastEmittedGinResultRef.current = key;
-      announcements.emit({
-        id: `round_win:${key}`,
-        type: 'round_win',
-        scope,
-        payload: { text },
-        ttlMs: 3000,
-      });
-      return;
-    }
-
-    // Void hand — stock exhausted, no winner this hand.
-    const key = `gin-void:${dealerGameId ?? 'no-dg'}:${handNumber}`;
-    if (lastEmittedGinResultRef.current === key) return;
-    lastEmittedGinResultRef.current = key;
-    announcements.emit({
-      id: `peg:${key}`,
-      type: 'peg_notice',
-      scope,
-      payload: { title: 'Void Hand — Stock Exhausted' },
-      ttlMs: 2500,
-    });
-  }, [
-    viewState?.phase,
-    viewState?.winnerPlayerId,
-    viewState?.knockResult,
-    viewState?.matchScores,
-    viewState?.pot,
-    viewState?.dealerPlayerId,
-    viewState?.nonDealerPlayerId,
-    dealerGameId,
-    roundId,
-    handNumber,
-    announcements,
-  ]);
 
   // P9.6: pre-viewState rendering — Gin owns the single authoritative
   // table geometry. Render the same layout shell (felt only, no
@@ -1965,14 +1887,72 @@ export const GinRummyGameTable = ({
 
       {/* Bottom Section - Tabs and Content */}
       <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
-        {/* Phase 5: shell-owned announcement rail only. Round-win,
-            match-win, and void-hand plates are emitted via
-            useAnnouncements().emit(...) above; no local gameplay
-            announcement renderer here. Knock/Gin notices are
-            intentionally retired from the rail — the centered
-            GinRummyKnockOverlay / GinRummyGinOverlay above already
-            convey that transition. */}
-        <ShellHudChrome />
+        {/* Phase 5 DIAGNOSTIC REVERT (Gin only): bypass canonical rail
+            for Gin and render the original local gold-plate fallback in
+            a 36px region above the ShellTabBar. ShellHudChrome contract
+            is untouched; other surfaces still own the canonical rail. */}
+        <div
+          data-gin-local-announcement-fallback=""
+          style={{
+            height: 36,
+            minHeight: 36,
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingInline: 12,
+            pointerEvents: 'none',
+            background: 'transparent',
+            overflow: 'hidden',
+          }}
+        >
+          {(() => {
+            if (viewState.phase === 'complete' && viewState.knockResult) {
+              const r = viewState.knockResult;
+              const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
+              const bonus = r.isGin
+                ? ` (${dwDiff} dw + 25 gin bonus)`
+                : r.isUndercut
+                  ? ` (${dwDiff} dw + 25 undercut bonus)`
+                  : '';
+              return (
+                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                    {getPlayerUsername(r.winnerId)} +{r.pointsAwarded}{bonus}
+                  </p>
+                </div>
+              );
+            }
+            if (viewState.phase === 'complete' && !viewState.knockResult) {
+              return (
+                <div className="w-full bg-muted/80 backdrop-blur-sm rounded-md px-3 py-1.5">
+                  <p className="text-muted-foreground font-bold text-[11px] text-center">
+                    Void Hand — Stock Exhausted
+                  </p>
+                </div>
+              );
+            }
+            if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
+              const knockerId = Object.entries(viewState.playerStates).find(
+                ([, ps]) => ps.hasKnocked || ps.hasGin,
+              )?.[0];
+              if (knockerId) {
+                const knockerState = viewState.playerStates[knockerId];
+                const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
+                return (
+                  <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
+                    <p className="text-slate-900 font-bold text-[11px] text-center truncate">
+                      {getPlayerUsername(knockerId)} {knockerState?.hasGin ? 'has GIN! 🎉' : `knocked!${dwText}`}
+                    </p>
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
+        </div>
+        <ShellTabBar />
+
 
         {/* Tab content */}
         <div className="flex-1 overflow-hidden">
