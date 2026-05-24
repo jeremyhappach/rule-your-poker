@@ -74,6 +74,20 @@ export function getConfiguredHarnessCached(gameType: string): string {
  * caches haven't hydrated, or no per-game selection exists.
  */
 export function getActiveHarnessCached(gameType: string): string {
+  // Visibility: if a synchronous call site reads the cache before hydration
+  // has completed, we fail-closed to 'none' AND warn loudly. This is the
+  // canonical signature of a "harness configured but not honored" regression
+  // caused by racing game-init against cache bootstrap.
+  if (!harnessLoaded || !globalLoaded) {
+    if (typeof console !== 'undefined') {
+      console.warn(
+        `[DEBUG_HARNESS] getActiveHarnessCached('${gameType}') called before cache hydrated — returning 'none' (fail-closed). If a harness was expected, this is the bug.`,
+      );
+    }
+    // Kick off hydration so subsequent calls succeed. Fire-and-forget.
+    void ensureHarnessCacheLoaded();
+    return 'none';
+  }
   if (!globalDebugEnabled) return 'none';
   return harnessCache[gameType] ?? 'none';
 }
