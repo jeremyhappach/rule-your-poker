@@ -1865,14 +1865,8 @@ export function YahtzeeGameTable({
         visible={!!showYahtzeeBonusOverlay}
         onDone={() => setShowYahtzeeBonusOverlay(null)}
       />
-      {/* Re-enable WinnerOverlay */}
-      <WinnerOverlay
-        winnerName={winnerOverlay?.winnerName || ''}
-        scores={winnerOverlay?.scores || []}
-        isWinnerMe={winnerOverlay?.isWinnerMe || false}
-        visible={!!winnerOverlay}
-        onDone={() => setWinnerOverlay(null)}
-      />
+      {/* Bespoke WinnerOverlay retired — canonical shell announcement
+          rail renders the match_win plate for all viewers. */}
       {/* Zero-score confirmation dialog */}
       <AlertDialog open={!!pendingZeroCategory} onOpenChange={(open) => { if (!open) setPendingZeroCategory(null); }}>
         <AlertDialogContent className="bg-gradient-to-br from-amber-950 to-amber-900 border-2 border-amber-500">
