@@ -55,6 +55,8 @@ import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface"
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 
 // P9.3b: shared visual flag with MobileGameTable. Default ON; flip
 // VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
