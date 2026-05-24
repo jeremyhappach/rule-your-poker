@@ -280,6 +280,10 @@ export const CribbageMobileGameTable = ({
   dealerSelectionCards: externalDealerSelectionCards,
   dealerSelectionWinnerPosition: externalDealerSelectionWinnerPosition,
   isDealerSelection = false,
+  dealerSelectionSyncedState = null,
+  onDealerSelectionCardsUpdate,
+  onDealerSelectionWinnerPositionUpdate,
+  onDealerSelectionComplete,
 
   dealerChatMessages: externalDealerChatMessages,
   onInjectDealerChatMessage,
