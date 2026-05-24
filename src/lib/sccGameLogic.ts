@@ -87,10 +87,14 @@ export function rollSCCDice(hand: SCCHand): SCCHand {
     return hand;
   }
 
+  // Debug harness: force No Qualify by capping rolled values to 1–3 (never 4/5/6).
+  const forceNQ = getActiveHarnessCached('ship-captain-crew') === 'force_no_qualify';
+  const roll = () => (forceNQ ? Math.floor(Math.random() * 3) + 1 : rollDie());
+
   // Roll all non-held dice
   const newDice = hand.dice.map(die => ({
     ...die,
-    value: die.isHeld ? die.value : rollDie(),
+    value: die.isHeld ? die.value : roll(),
   }));
 
   // Track what we have
