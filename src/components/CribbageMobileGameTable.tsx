@@ -5571,17 +5571,7 @@ export const CribbageMobileGameTable = ({
                 />
 
 
-                {/* Game Title */}
-                <div className="absolute top-3 left-0 right-0 z-20 flex flex-col items-center">
-                  <h2 className="text-sm font-bold text-white drop-shadow-lg">
-                    ${anteAmount} CRIBBAGE
-                  </h2>
-                  <p className="text-[9px] text-white/70">
-                    {viewState.pointsToWin} to win
-                    {viewState.skunkEnabled && ` • Skunk <${viewState.skunkThreshold} (2x)`}
-                    {viewState.doubleSkunkEnabled && ` • Double <${viewState.doubleSkunkThreshold} (3x)`}
-                  </p>
-                </div>
+                {/* Game Title — now rendered by CanonicalFeltSurface plate (Phase 2.2). */}
 
                 {/* Felt Content */}
                 <CribbageFeltContent
