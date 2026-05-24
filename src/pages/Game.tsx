@@ -8747,7 +8747,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 )}
               </div>
-            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && game.game_type !== 'gin-rummy' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && game.game_type !== 'gin-rummy' && game.game_type !== 'horses' && game.game_type !== 'ship-captain-crew' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
