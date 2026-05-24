@@ -473,6 +473,7 @@ export function YahtzeeGameTable({
   const turnSeededKeyRef = useRef<string | null>(null);
 
   const activePlayers = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
+  const shellAnchors = useRequiredSeatAnchors('yahtzee');
   // Render-facing derived values use viewState (presentationState) for visual stability
   const gamePhase = viewState?.gamePhase || 'waiting';
   const currentTurnPlayerId = viewState?.currentTurnPlayerId;
