@@ -77,6 +77,14 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: '12 of 13 categories pre-filled — one chance roll triggers real end-of-game.',
     },
   ],
+  'ship-captain-crew': [
+    NONE_HARNESS,
+    {
+      id: 'force_no_qualify',
+      label: 'Force No Qualify',
+      description: 'All dice forced to 1–3 every roll — both players guaranteed NQ, exercises rollover/re-ante.',
+    },
+  ],
   // Game types intentionally absent below have no existing harness to wrap yet.
 };
 
