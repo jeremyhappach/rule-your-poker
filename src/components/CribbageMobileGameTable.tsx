@@ -5455,6 +5455,22 @@ export const CribbageMobileGameTable = ({
                     }}
                   />
                 )}
+                {/* ── Phase 2.1: session-level dealer-selection controller
+                    now mounted INSIDE the slot child (previously a sibling
+                    JSX above the table in Game.tsx). Same headless hook,
+                    same callbacks — parent owns the state, the table owns
+                    the surface. */}
+                {isDealerSelection && onDealerSelectionCardsUpdate && onDealerSelectionComplete && (
+                  <CribbageDealerSelectionController
+                    gameId={gameId}
+                    players={players as any}
+                    isHost={isHost}
+                    syncedState={dealerSelectionSyncedState}
+                    onCardsUpdate={onDealerSelectionCardsUpdate}
+                    onWinnerPositionUpdate={onDealerSelectionWinnerPositionUpdate ?? (() => {})}
+                    onComplete={onDealerSelectionComplete}
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
                   <div className="flex gap-4 items-start">
                     {highCardPositions.map((position) => {
