@@ -8747,7 +8747,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   />
                 )}
               </div>
-            ) : ((game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && game.game_type !== 'gin-rummy' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : (!_treatAsCanonicalRoute && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && game.game_type !== 'cribbage' && game.game_type !== 'gin-rummy' && game.game_type !== 'horses' && game.game_type !== 'ship-captain-crew' && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
@@ -8968,7 +8968,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
-          const hasActiveRound = isInProgress && Boolean(currentRound?.id);
+          const isTerminalSlotPresentation =
+            game.status === 'game_over' ||
+            !!game.game_over_at ||
+            (is357WinAnimationActive && game.game_type !== 'holm-game') ||
+            !!holmWinPotTriggerId ||
+            !!horsesWinPotTriggerId;
+          const renderRoundContext = isInProgress || isTerminalSlotPresentation;
+          const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
           // CRIBBAGE — unified single instance across ALL session phases
@@ -9102,8 +9109,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // DICE GAMES (Horses and Ship Captain Crew)
           // All users (mobile + desktop) route through MobileGameTable + useHorsesMobileController
           // for unified sync-gated gameplay. Desktop differences are handled by responsive sizing.
-          if ((isInProgress || isAnteDecision) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+          // Terminal win animation is rendered here too. Keeping it inside
+          // PlayfieldSlotController prevents the shared game-over sibling branch
+          // from mounting a second MobileGameTable under the active dice table.
+          const isDiceGameOver = game.status === 'game_over' && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
+          if ((isInProgress || isAnteDecision || isDiceGameOver || !!horsesWinPotTriggerId) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
             const horsesState = currentRound?.horses_state as HorsesStateFromDB | null;
+            const isDiceTerminalPresentation = isDiceGameOver || (!!horsesWinPotTriggerId && !isInProgress && !isAnteDecision);
 
             return (
               <MobileGameTable
@@ -9114,11 +9126,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 currentUserId={user?.id}
                 pot={potForDisplay}
                 currentRound={game.current_round ?? 0}
-                allDecisionsIn={false}
+                allDecisionsIn={isDiceTerminalPresentation}
                 playerCards={[]}
-                timeLeft={isInProgress ? timeLeft : anteTimeLeft}
+                timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
                 maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
-                lastRoundResult={isInProgress ? ((game as any).last_round_result || null) : null}
+                lastRoundResult={(isInProgress || isDiceTerminalPresentation) ? ((game as any).last_round_result || null) : null}
                 dealerPosition={game.dealer_position}
                 legValue={game.leg_value ?? 0}
                 legsToWin={game.legs_to_win || 3}
@@ -9156,6 +9168,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 horsesState={horsesState}
                 horsesDealerGameId={(game as any).current_game_uuid ?? null}
                 horsesHandNumber={currentRound?.hand_number ?? null}
+                isGameOver={isDiceTerminalPresentation}
+                isDealer={isDiceTerminalPresentation ? (isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false) : undefined}
+                onNextGame={isDiceTerminalPresentation ? handleDealerConfirmGameOver : undefined}
+                horsesWinPotTriggerId={horsesWinPotTriggerId}
+                horsesWinPotAmount={horsesWinPotAmount || cachedPotForHorsesWinRef.current}
+                horsesWinWinnerPosition={horsesWinWinnerPosition}
+                onHorsesWinPotAnimationComplete={() => {
+                  console.log('[HORSES WIN] Animation complete, transitioning to next game');
+                  setHorsesWinPotTriggerId(null);
+                  cachedPotForHorsesWinRef.current = 0;
+                  handleGameOverComplete();
+                }}
                 // Lifted mobile state
                 activeTab={mobileActiveTab}
                 onActiveTabChange={setMobileActiveTab}
@@ -9230,30 +9254,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
               pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
-              currentRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
-              allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
-              playerCards={isInProgress ? playerCardsForPresentation : []}
-              timeLeft={isInProgress ? timeLeft : anteTimeLeft}
+              currentRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
+              allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
+              playerCards={renderRoundContext ? playerCardsForPresentation : []}
+              timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
               maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
-              lastRoundResult={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
+              lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
               potMaxValue={game.pot_max_value || 10}
               pendingSessionEnd={game.pending_session_end || false}
-              awaitingNextRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
+              awaitingNextRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
               gameType={game.game_type}
-              communityCards={isInProgress ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
-              communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
-              currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
-              chuckyCards={isInProgress ? chuckyCardsForPresentation : undefined}
-              chuckyActive={isInProgress ? chuckyActiveForPresentation : undefined}
-              chuckyCardsRevealed={isInProgress ? chuckyCardsRevealedForPresentation : undefined}
-              roundStatus={isInProgress ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
+              isGameOver={isTerminalSlotPresentation}
+              isDealer={isTerminalSlotPresentation ? (isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false) : undefined}
+              onNextGame={isTerminalSlotPresentation ? handleDealerConfirmGameOver : undefined}
+              communityCards={renderRoundContext ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
+              communityCardsRevealed={renderRoundContext ? effectiveCommunityCardsRevealed : undefined}
+              buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              currentTurnPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
+              chuckyCards={renderRoundContext ? chuckyCardsForPresentation : undefined}
+              chuckyActive={renderRoundContext ? chuckyActiveForPresentation : undefined}
+              chuckyCardsRevealed={renderRoundContext ? chuckyCardsRevealedForPresentation : undefined}
+              roundStatus={renderRoundContext ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
-              isPaused={isInProgress ? (game.is_paused || false) : false}
+              isPaused={renderRoundContext ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
               pussyTaxValue={game.pussy_tax_value || 1}
               gameStatus={game.status}
@@ -9267,30 +9294,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setPreAnteChips(null);
                 setExpectedPostAnteChips(null);
               }}
-              chipTransferTriggerId={isInProgress ? chipTransferTriggerId : null}
-              chipTransferAmount={isInProgress ? chipTransferAmount : undefined}
-              chipTransferWinnerId={isInProgress ? chipTransferWinnerId : null}
-              chipTransferLoserIds={isInProgress ? chipTransferLoserIds : []}
+              chipTransferTriggerId={renderRoundContext ? chipTransferTriggerId : null}
+              chipTransferAmount={renderRoundContext ? chipTransferAmount : undefined}
+              chipTransferWinnerId={renderRoundContext ? chipTransferWinnerId : null}
+              chipTransferLoserIds={renderRoundContext ? chipTransferLoserIds : []}
               onChipTransferStarted={isInProgress ? () => setChipTransferTriggerId(null) : undefined}
               onChipTransferEnded={isInProgress ? () => {
                 setChipTransferWinnerId(null);
                 setChipTransferLoserIds([]);
                 setChipTransferAmount(0);
               } : undefined}
-              chuckyLossTriggerId={isInProgress ? chuckyLossTriggerId : null}
-              chuckyLossAmount={isInProgress ? chuckyLossAmount : undefined}
-              chuckyLossPlayerIds={isInProgress ? chuckyLossPlayerIds : []}
+              chuckyLossTriggerId={renderRoundContext ? chuckyLossTriggerId : null}
+              chuckyLossAmount={renderRoundContext ? chuckyLossAmount : undefined}
+              chuckyLossPlayerIds={renderRoundContext ? chuckyLossPlayerIds : []}
               onChuckyLossStarted={isInProgress ? () => setChuckyLossTriggerId(null) : undefined}
               onChuckyLossEnded={isInProgress ? () => {
                 setChuckyLossPlayerIds([]);
                 setChuckyLossAmount(0);
               } : undefined}
-              holmShowdownTriggerId={isInProgress ? holmShowdownTriggerId : null}
-              holmShowdownPotAmount={isInProgress ? holmShowdownPotAmount : undefined}
-              holmShowdownMatchAmount={isInProgress ? holmShowdownMatchAmount : undefined}
-              holmShowdownWinnerId={isInProgress ? holmShowdownWinnerId : null}
-              holmShowdownLoserIds={isInProgress ? holmShowdownLoserIds : []}
-              holmShowdownPhase={isInProgress ? holmShowdownPhase : 'idle'}
+              holmShowdownTriggerId={renderRoundContext ? holmShowdownTriggerId : null}
+              holmShowdownPotAmount={renderRoundContext ? holmShowdownPotAmount : undefined}
+              holmShowdownMatchAmount={renderRoundContext ? holmShowdownMatchAmount : undefined}
+              holmShowdownWinnerId={renderRoundContext ? holmShowdownWinnerId : null}
+              holmShowdownLoserIds={renderRoundContext ? holmShowdownLoserIds : []}
+              holmShowdownPhase={renderRoundContext ? holmShowdownPhase : 'idle'}
               onHolmShowdownPotToWinnerStarted={isInProgress ? () => setHolmShowdownTriggerId(null) : undefined}
               onHolmShowdownPotToWinnerEnded={isInProgress ? () => setHolmShowdownPhase('losers-to-pot') : undefined}
               onHolmShowdownLosersStarted={isInProgress ? () => {} : undefined}
@@ -9301,11 +9328,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setHolmShowdownWinnerId(null);
                 setHolmShowdownLoserIds([]);
               } : undefined}
-              holmWinPotTriggerId={isInProgress ? holmWinPotTriggerId : null}
-              holmWinPotAmount={isInProgress ? holmWinPotAmount : undefined}
-              holmWinWinnerPosition={isInProgress ? holmWinWinnerPosition : undefined}
-              holmWinWinnerPositions={isInProgress ? holmWinWinnerPositions : undefined}
-              onHolmWinPotAnimationComplete={isInProgress ? handleHolmWinPotAnimationComplete : undefined}
+              holmWinPotTriggerId={renderRoundContext ? holmWinPotTriggerId : null}
+              holmWinPotAmount={renderRoundContext ? holmWinPotAmount : undefined}
+              holmWinWinnerPosition={renderRoundContext ? holmWinWinnerPosition : undefined}
+              holmWinWinnerPositions={renderRoundContext ? holmWinWinnerPositions : undefined}
+              onHolmWinPotAnimationComplete={renderRoundContext ? handleHolmWinPotAnimationComplete : undefined}
               threeFiveSevenWinTriggerId={threeFiveSevenWinTriggerId}
               threeFiveSevenWinPotAmount={threeFiveSevenWinPotAmount}
               threeFiveSevenWinnerId={threeFiveSevenWinnerId}
