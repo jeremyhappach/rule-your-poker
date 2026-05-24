@@ -9268,6 +9268,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               pendingSessionEnd={game.pending_session_end || false}
               awaitingNextRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
               gameType={game.game_type}
+              isGameOver={isTerminalSlotPresentation}
+              isDealer={isTerminalSlotPresentation ? (isDealer || (dealerPlayer?.is_bot && allowBotDealers) || false) : undefined}
+              onNextGame={isTerminalSlotPresentation ? handleDealerConfirmGameOver : undefined}
               communityCards={renderRoundContext ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
               communityCardsRevealed={renderRoundContext ? effectiveCommunityCardsRevealed : undefined}
               buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
