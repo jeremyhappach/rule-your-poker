@@ -2051,6 +2051,9 @@ export function YahtzeeGameTable({
           const slotByPosition = new Map<number, CanonicalSlot | null>();
           shellAnchors?.anchors.forEach(a => slotByPosition.set(a.position, a.slot));
           return activePlayers.map(player => {
+            // Active player should not see their own table chipstack
+            // (identity/bankroll is already in the HUD). Observers see all.
+            if (player.id === myPlayer?.id) return null;
             const slot = slotByPosition.get(player.position) ?? null;
             return (
               <CanonicalSeatCluster
