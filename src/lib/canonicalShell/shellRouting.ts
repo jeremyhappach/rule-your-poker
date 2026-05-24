@@ -70,6 +70,7 @@ export function isCanonicalShellFamily(gameType: string | null | undefined): boo
 export const CANONICAL_SEAT_CONSUMERS = new Set<string>([
   'gin-rummy',
   'cribbage',
+  'yahtzee',
 ]);
 
 /** Whether this game_type is registered as a canonical seat-anchor consumer. */
