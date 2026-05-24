@@ -42,7 +42,7 @@ import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
-import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+
 import { MessageSquare, User, Clock } from 'lucide-react';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { 
