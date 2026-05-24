@@ -20,7 +20,7 @@ import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
-import { YahtzeeRollOverlay, UpperBonusOverlay, WinnerOverlay, YahtzeeBonusOverlay } from "./YahtzeeOverlays";
+import { YahtzeeRollOverlay, UpperBonusOverlay, YahtzeeBonusOverlay } from "./YahtzeeOverlays";
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie, YahtzeePlayerState,
@@ -357,11 +357,8 @@ export function YahtzeeGameTable({
   const [showYahtzeeOverlay, setShowYahtzeeOverlay] = useState<string | null>(null); // playerName
   const [showBonusOverlay, setShowBonusOverlay] = useState<string | null>(null); // playerName
   const [showYahtzeeBonusOverlay, setShowYahtzeeBonusOverlay] = useState<{ playerName: string; count: number } | null>(null);
-  const [winnerOverlay, setWinnerOverlay] = useState<{
-    winnerName: string;
-    scores: { name: string; total: number }[];
-    isWinnerMe: boolean;
-  } | null>(null);
+  // Bespoke WinnerOverlay retired — match_win renders via canonical
+  // shell announcement rail (see Phase 5 emit below).
   // Previous turn ref — used only to detect turn changes for cache clearing
   const prevTurnRef = useRef<string | null>(null);
 
@@ -430,11 +427,11 @@ export function YahtzeeGameTable({
       checkYahtzeeRegressiveCategories(gameId, handNum, totalFilled);
 
       // Transition: result-display (fire once when complete)
-      if (viewState.gamePhase === 'complete' && winnerOverlay) {
+      if (viewState.gamePhase === 'complete') {
         logYahtzeeResultDisplay(gameId, handNum, null, null);
       }
     }).catch(() => { /* safe */ });
-  }, [viewState, gameId, yahtzeeState, winnerOverlay]);
+  }, [viewState, gameId, yahtzeeState]);
 
   useEffect(() => {
     return () => {
@@ -987,7 +984,9 @@ export function YahtzeeGameTable({
         const isWinnerMe = winnerPlayer.user_id === currentUserId;
         const losers = activePlayers.filter(p => p.id !== winnerId);
 
-        setWinnerOverlay({ winnerName, scores: scoreDetails, isWinnerMe });
+        // Canonical match_win announcement is emitted by the rail
+        // effect (Phase 5) keyed on gamePhase === 'complete'.
+        void winnerName; void isWinnerMe; void scoreDetails;
         setChipTransferWinnerPos(winnerPlayer.position);
         setChipTransferLoserPositions(losers.map(p => p.position));
         setChipTransferLoserIds(losers.map(p => p.id));
@@ -1866,14 +1865,8 @@ export function YahtzeeGameTable({
         visible={!!showYahtzeeBonusOverlay}
         onDone={() => setShowYahtzeeBonusOverlay(null)}
       />
-      {/* Re-enable WinnerOverlay */}
-      <WinnerOverlay
-        winnerName={winnerOverlay?.winnerName || ''}
-        scores={winnerOverlay?.scores || []}
-        isWinnerMe={winnerOverlay?.isWinnerMe || false}
-        visible={!!winnerOverlay}
-        onDone={() => setWinnerOverlay(null)}
-      />
+      {/* Bespoke WinnerOverlay retired — canonical shell announcement
+          rail renders the match_win plate for all viewers. */}
       {/* Zero-score confirmation dialog */}
       <AlertDialog open={!!pendingZeroCategory} onOpenChange={(open) => { if (!open) setPendingZeroCategory(null); }}>
         <AlertDialogContent className="bg-gradient-to-br from-amber-950 to-amber-900 border-2 border-amber-500">
