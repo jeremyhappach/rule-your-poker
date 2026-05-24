@@ -69,7 +69,7 @@ import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster'
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
-import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
+// ShellHudChrome import removed by Phase 5 Gin diagnostic revert; Gin renders ShellTabBar + local fallback directly.
 import { ShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
