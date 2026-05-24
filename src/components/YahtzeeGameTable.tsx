@@ -20,7 +20,7 @@ import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { ValueChangeFlash } from "./ValueChangeFlash";
-import { YahtzeeRollOverlay, UpperBonusOverlay, WinnerOverlay, YahtzeeBonusOverlay } from "./YahtzeeOverlays";
+import { YahtzeeRollOverlay, UpperBonusOverlay, YahtzeeBonusOverlay } from "./YahtzeeOverlays";
 import {
   YahtzeeState, YahtzeeCategory, CATEGORY_LABELS,
   UPPER_CATEGORIES, LOWER_CATEGORIES, YahtzeeDie, YahtzeePlayerState,
