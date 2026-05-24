@@ -70,7 +70,7 @@ import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
-import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import { ShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
