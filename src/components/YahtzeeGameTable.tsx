@@ -984,7 +984,9 @@ export function YahtzeeGameTable({
         const isWinnerMe = winnerPlayer.user_id === currentUserId;
         const losers = activePlayers.filter(p => p.id !== winnerId);
 
-        setWinnerOverlay({ winnerName, scores: scoreDetails, isWinnerMe });
+        // Canonical match_win announcement is emitted by the rail
+        // effect (Phase 5) keyed on gamePhase === 'complete'.
+        void winnerName; void isWinnerMe; void scoreDetails;
         setChipTransferWinnerPos(winnerPlayer.position);
         setChipTransferLoserPositions(losers.map(p => p.position));
         setChipTransferLoserIds(losers.map(p => p.id));
