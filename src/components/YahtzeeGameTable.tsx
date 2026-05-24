@@ -357,11 +357,8 @@ export function YahtzeeGameTable({
   const [showYahtzeeOverlay, setShowYahtzeeOverlay] = useState<string | null>(null); // playerName
   const [showBonusOverlay, setShowBonusOverlay] = useState<string | null>(null); // playerName
   const [showYahtzeeBonusOverlay, setShowYahtzeeBonusOverlay] = useState<{ playerName: string; count: number } | null>(null);
-  const [winnerOverlay, setWinnerOverlay] = useState<{
-    winnerName: string;
-    scores: { name: string; total: number }[];
-    isWinnerMe: boolean;
-  } | null>(null);
+  // Bespoke WinnerOverlay retired — match_win renders via canonical
+  // shell announcement rail (see Phase 5 emit below).
   // Previous turn ref — used only to detect turn changes for cache clearing
   const prevTurnRef = useRef<string | null>(null);
 
