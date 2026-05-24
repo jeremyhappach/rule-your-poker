@@ -8968,6 +8968,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
+          const isTerminalGameOver = game.status === 'game_over' || game.status === 'session_ended' || !!game.game_over_at;
           const hasActiveRound = isInProgress && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
