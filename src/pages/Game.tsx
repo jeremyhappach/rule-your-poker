@@ -9254,28 +9254,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
               pot={game.game_type === 'holm-game' && holmView ? holmView.pot : (is357GameType && threeFiveSevenView ? threeFiveSevenView.pot : potForDisplay)}
-              currentRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
-              allDecisionsIn={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
-              playerCards={isInProgress ? playerCardsForPresentation : []}
+              currentRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
+              allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
+              playerCards={renderRoundContext ? playerCardsForPresentation : []}
               timeLeft={isInProgress ? timeLeft : anteTimeLeft}
               maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
-              lastRoundResult={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
+              lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
               legsToWin={game.legs_to_win || 3}
               potMaxEnabled={game.pot_max_enabled ?? true}
               potMaxValue={game.pot_max_value || 10}
               pendingSessionEnd={game.pending_session_end || false}
-              awaitingNextRound={isInProgress ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
+              awaitingNextRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.awaitingNextRound : (game.awaiting_next_round || false)) : false}
               gameType={game.game_type}
-              communityCards={isInProgress ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
-              communityCardsRevealed={isInProgress ? effectiveCommunityCardsRevealed : undefined}
-              buckPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
-              currentTurnPosition={isInProgress ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
-              chuckyCards={isInProgress ? chuckyCardsForPresentation : undefined}
-              chuckyActive={isInProgress ? chuckyActiveForPresentation : undefined}
-              chuckyCardsRevealed={isInProgress ? chuckyCardsRevealedForPresentation : undefined}
-              roundStatus={isInProgress ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
+              communityCards={renderRoundContext ? (game.game_type === 'holm-game' ? ((holmView?.communityCards as CardType[] | undefined) ?? []) : (currentRound?.community_cards as CardType[] | undefined)) : undefined}
+              communityCardsRevealed={renderRoundContext ? effectiveCommunityCardsRevealed : undefined}
+              buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
+              currentTurnPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
+              chuckyCards={renderRoundContext ? chuckyCardsForPresentation : undefined}
+              chuckyActive={renderRoundContext ? chuckyActiveForPresentation : undefined}
+              chuckyCardsRevealed={renderRoundContext ? chuckyCardsRevealedForPresentation : undefined}
+              roundStatus={renderRoundContext ? (game.game_type === 'holm-game' ? holmView?.roundStatus : (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundStatus : currentRound?.status)) : undefined}
               pendingDecision={isInProgress ? pendingDecision : null}
               isPaused={isInProgress ? (game.is_paused || false) : false}
               anteAmount={(() => { console.log('[ANTE_PROP_DEBUG] Passing anteAmount to MobileGameTable:', game.ante_amount); return game.ante_amount; })()}
