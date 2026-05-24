@@ -5395,28 +5395,28 @@ export const CribbageMobileGameTable = ({
             height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
-          {/* Inner circle clipped; outer wrapper is not */}
-          <div className="relative rounded-full overflow-hidden border-2 border-white/80 w-full h-full">
-            {/* Felt background inside circle — SAME for all modes */}
-            {tableColors.showBridge ? (
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: `url(${peoriaBridgeMobile})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  filter: 'brightness(0.5)',
-                }}
-              />
-            ) : (
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                  filter: 'brightness(0.7)',
-                }}
-              />
-            )}
+          {/* ── Phase 2.2: canonical felt cutover.
+              Shell-owned felt visual (gradient + bridge + circle clip)
+              now comes from CanonicalFeltSurface, parameterized for
+              cribbage's circular geometry. The outer square wrapper
+              remains caller-owned because cribbage's table sizing is
+              specific (square inside a taller container with slate
+              backdrop). The circle clip + felt paint + game-name plate
+              are canonical. */}
+          <div className="relative w-full h-full">
+            <CanonicalFeltSurface
+              gameKind="cribbage"
+              anteAmount={anteAmount}
+              pointsToWin={gameConfig.pointsToWin}
+              cribbageSkunk={{
+                skunkEnabled: gameConfig.skunkEnabled,
+                skunkThreshold: gameConfig.skunkThreshold,
+                doubleSkunkEnabled: gameConfig.doubleSkunkEnabled,
+                doubleSkunkThreshold: gameConfig.doubleSkunkThreshold,
+              }}
+              isWaitingPhase={isBootstrapMode || isHighCardMode}
+            />
+
 
             {/* ── MODE-SPECIFIC FELT CONTENT ── */}
 
