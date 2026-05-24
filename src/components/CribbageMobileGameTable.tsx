@@ -12,6 +12,7 @@ import {
   applyHandCountScores,
 } from '@/lib/cribbageGameLogic';
 import { endCribbageGame, startNextCribbageHand } from '@/lib/cribbageRoundLogic';
+import { ensureHarnessCacheLoaded } from '@/lib/debugHarness/runtimeCache';
 import { archiveCribbageHand } from '@/lib/cribbageHandArchive';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
