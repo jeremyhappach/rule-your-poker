@@ -8968,7 +8968,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const isGinRummyDealerSelection = game.status === 'dealer_selection' && game.game_type === 'gin-rummy';
           const isCribbageGameOver = game.status === 'game_over' && game.game_type === 'cribbage';
           const isGinRummyGameOver = game.status === 'game_over' && game.game_type === 'gin-rummy';
-          const hasActiveRound = isInProgress && Boolean(currentRound?.id);
+          const isTerminalSlotPresentation =
+            game.status === 'game_over' ||
+            !!game.game_over_at ||
+            (is357WinAnimationActive && game.game_type !== 'holm-game') ||
+            !!holmWinPotTriggerId ||
+            !!horsesWinPotTriggerId;
+          const renderRoundContext = isInProgress || isTerminalSlotPresentation;
+          const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
           // CRIBBAGE — unified single instance across ALL session phases
