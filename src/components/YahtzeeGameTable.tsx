@@ -2047,7 +2047,7 @@ export function YahtzeeGameTable({
             canonicalizes the opponent to the ergonomic top slot regardless
             of absolute seat number, matching Cribbage/Gin. */}
         {(() => {
-          const slotByPosition = new Map<number, ReturnType<typeof shellAnchors.anchors[number]['slot']> | null>();
+          const slotByPosition = new Map<number, CanonicalSlot | null>();
           shellAnchors?.anchors.forEach(a => slotByPosition.set(a.position, a.slot));
           return activePlayers.map(player => {
             const slot = slotByPosition.get(player.position) ?? null;
