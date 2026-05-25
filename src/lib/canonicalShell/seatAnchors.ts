@@ -51,9 +51,17 @@ export type ProjectionMode = 'observer-absolute' | 'active-canonical';
 export const SLOT = {
   HOME: -1,
   FACE_TO_FACE: -2,
+  /**
+   * BOTTOM_RAIL (-3) — observer-only anchor for the absolute "south"
+   * seat (position 4). Sits flush against the bottom rail OUTSIDE the
+   * active play zone so it never obscures gameplay-critical central
+   * content (pegging count, action lane, dice tray). Never used in
+   * active-canonical projection.
+   */
+  BOTTOM_RAIL: -3,
 } as const;
 
-export type CanonicalSlot = -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5;
+export type CanonicalSlot = -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5;
 
 /**
  * Inherently 2-player game types. Canonicalization is driven by game
@@ -117,7 +125,11 @@ const OBSERVER_POS_TO_SLOT: Record<number, CanonicalSlot> = {
   1: 2,
   2: 1,
   3: 0,
-  4: -1,
+  // Observer pos 4 anchors at BOTTOM_RAIL (a small, rail-hugging anchor
+  // below the felt ellipse). It MUST NOT reuse HOME — HOME sits inside
+  // the active gameplay lane (pegging count, action zone, dice tray)
+  // and observers should never obscure that content.
+  4: -3,
   5: 5,
   6: 4,
   7: 3,
@@ -136,24 +148,31 @@ export function clockwiseDistance(viewerPosition: number, otherPosition: number)
 /**
  * Active-canonical mapping for a seated viewer.
  *
- * Established convention (matches existing MobileGameTable rendering):
- *   distance 1 → slot 0 (bottom-left)
- *   distance 2 → slot 1 (middle-left)
- *   distance 3 → slot 2 (top-left)
- *   distance 4 → slot 3 (top-right)
- *   distance 5 → slot 4 (middle-right)
- *   distance 6 → slot 5 (bottom-right)
+ * Handedness contract: positions advance clockwise around the table
+ * (viewed from above) — the observer-absolute map proves it (pos 4 at
+ * bottom-center, pos 5 to its visual right). When the viewer becomes
+ * HOME and faces center, the next clockwise seat (distance 1) is to
+ * their RIGHT, not their left. Mapping is therefore:
  *
- * Note: "clockwise distance" here is a positional label
- * (playerPos - viewerPos mod 7), not a literal visual direction.
+ *   distance 1 → slot 5 (bottom-right)
+ *   distance 2 → slot 4 (middle-right)
+ *   distance 3 → slot 3 (top-right)
+ *   distance 4 → slot 2 (top-left)
+ *   distance 5 → slot 1 (middle-left)
+ *   distance 6 → slot 0 (bottom-left)
+ *
+ * This preserves real-world spatial relationships across the
+ * observer→active perspective switch: a player who was to the viewer's
+ * right in absolute seating remains to the viewer's right in relative
+ * seating.
  */
 const ACTIVE_DISTANCE_TO_SLOT: Record<number, CanonicalSlot> = {
-  1: 0,
-  2: 1,
-  3: 2,
-  4: 3,
-  5: 4,
-  6: 5,
+  1: 5,
+  2: 4,
+  3: 3,
+  4: 2,
+  5: 1,
+  6: 0,
 };
 
 export function activeSlotForDistance(distance: number): CanonicalSlot | null {

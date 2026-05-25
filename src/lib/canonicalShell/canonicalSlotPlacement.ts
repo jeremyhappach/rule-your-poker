@@ -35,23 +35,33 @@ export interface CanonicalSlotPlacement {
 export function getCanonicalSlotPlacement(
   slot: CanonicalSlot | null | undefined,
 ): CanonicalSlotPlacement {
+  // Percentage-based anchors that hug the elliptical felt rail.
+  // Coordinates are calibrated against the table-surface container so
+  // perimeter clusters land on the rail edge instead of the container
+  // corners. Mirrors the slot percentages MobileGameTable uses for
+  // chip-transport endpoints, so visuals stay consistent across
+  // canonical surfaces.
   switch (slot) {
-    // FACE_TO_FACE — top-center rail
-    case -2: return { className: 'top-1 left-1/2 -translate-x-1/2 items-center' };
-    // HOME — bottom-center rail (NOT inside felt play zone)
-    case -1: return { className: 'bottom-1 left-1/2 -translate-x-1/2 items-center' };
-    // Bottom-left corner
-    case 0:  return { className: 'bottom-2 left-2 items-start' };
+    // FACE_TO_FACE — top-center rail (inherently-2P opponent slot)
+    case -2: return { className: 'top-[4%] left-1/2 -translate-x-1/2 items-center' };
+    // HOME — bottom-center rail (viewer in active-canonical mode)
+    case -1: return { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
+    // BOTTOM_RAIL — observer-only south anchor; flush against the
+    // outside rail, below the play zone, so it never obscures
+    // gameplay-critical central content.
+    case -3: return { className: 'bottom-0 left-1/2 -translate-x-1/2 items-center scale-90' };
+    // Bottom-left corner (hugs ellipse rail)
+    case 0:  return { className: 'top-[78%] left-[10%] items-start' };
     // Middle-left
-    case 1:  return { className: 'top-1/2 left-2 -translate-y-1/2 items-start' };
+    case 1:  return { className: 'top-[50%] left-[4%] -translate-y-1/2 items-start' };
     // Top-left corner
-    case 2:  return { className: 'top-2 left-2 items-start' };
+    case 2:  return { className: 'top-[14%] left-[12%] items-start' };
     // Top-right corner
-    case 3:  return { className: 'top-2 right-2 items-end' };
+    case 3:  return { className: 'top-[14%] right-[12%] items-end' };
     // Middle-right
-    case 4:  return { className: 'top-1/2 right-2 -translate-y-1/2 items-end' };
+    case 4:  return { className: 'top-[50%] right-[4%] -translate-y-1/2 items-end' };
     // Bottom-right corner
-    case 5:  return { className: 'bottom-2 right-2 items-end' };
+    case 5:  return { className: 'top-[78%] right-[10%] items-end' };
     default: return { className: 'top-2 left-2 items-start' };
   }
 }
