@@ -35,6 +35,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { getCanonicalSlotPlacement } from './canonicalSlotPlacement';
 import type { CanonicalSlot } from './seatAnchors';
+import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import {
   getParticipantChipBgClass,
   getParticipantChipFgClass,
