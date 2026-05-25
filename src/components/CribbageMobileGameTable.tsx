@@ -148,19 +148,6 @@ function CribbageFeltAdapter(props: {
       />
     );
   }
-  const feltFrameStyle = shellOwnsFelt
-    ? {
-        width: 'min(94vw, 720px)',
-        height: 'min(52vh, 420px)',
-      }
-    : {
-        width: 'min(90vw, calc(55vh - 32px))',
-        height: 'min(90vw, calc(55vh - 32px))',
-      };
-  const feltGeometryClipPath = shellOwnsFelt
-    ? 'ellipse(50% 45% at 50% 50%)'
-    : 'ellipse(50% 50% at 50% 50%)';
-
   return (
     <CanonicalFeltSurface
       gameKind="cribbage"
@@ -5429,6 +5416,19 @@ export const CribbageMobileGameTable = ({
   // the content pane (see counting placeholder below). Cut-card no longer
   // produces a rail announcement.
 
+
+  const feltFrameStyle = shellOwnsFelt
+    ? {
+        width: 'min(94vw, 720px)',
+        height: 'min(52vh, 420px)',
+      }
+    : {
+        width: 'min(90vw, calc(55vh - 32px))',
+        height: 'min(90vw, calc(55vh - 32px))',
+      };
+  const feltGeometryClipPath = shellOwnsFelt
+    ? 'ellipse(50% 45% at 50% 50%)'
+    : 'ellipse(50% 50% at 50% 50%)';
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
