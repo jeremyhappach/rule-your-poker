@@ -5663,23 +5663,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Log session event
     await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
     
-    // Set all seated players to active (sitting_out=false, waiting=false)
+    // Recovery-waiting hygiene: when starting from a waiting state that
+    // followed an in-progress session (rather than a fresh session), the
+    // games row can still hold stale lifecycle fields from the prior
+    // dealer game — current_game_uuid pinned to the old game, stale
+    // config_deadline / config_complete from a prior configuring pass,
+    // awaiting_next_round latched true, etc. Without clearing them, the
+    // dealer_selection bootstrap reads pre-recovery scaffolding and the
+    // Start Game click hangs. We always clear them on the waiting →
+    // dealer_selection cutover; fresh sessions already have null values
+    // so this is a no-op for them.
+    //
+    // Active players: promote seated, non-observer/left, non-sitting-out
+    // (OR explicitly waiting-to-rejoin) players to active. NEVER blanket
+    // clear sitting_out across observers/left — that resurrects players
+    // who deliberately left.
     await supabase
       .from('players')
-      .update({ 
-        sitting_out: false,
-        waiting: false
-      })
-      .eq('game_id', gameId);
+      .update({ sitting_out: false, waiting: false })
+      .eq('game_id', gameId)
+      .neq('status', 'observer')
+      .neq('status', 'left')
+      .or('waiting.eq.true,sitting_out.eq.false');
 
-    // Move to dealer_selection status - the DealerSelection component will handle the animation
+    // Move to dealer_selection AND clear recovery-waiting scaffolding.
     const { error } = await supabase
       .from('games')
       .update({ 
         status: 'dealer_selection',
-        // Clear any stale dealer_selection_state from a prior selection so observers
-        // and the host do not render the previous draw's cards/winner.
         dealer_selection_state: null,
+        current_game_uuid: null,
+        config_deadline: null,
+        config_complete: false,
+        awaiting_next_round: false,
+        last_round_result: null,
       })
       .eq('id', gameId);
 
