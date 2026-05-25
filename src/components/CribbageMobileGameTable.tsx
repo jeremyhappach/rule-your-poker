@@ -5488,7 +5488,10 @@ export const CribbageMobileGameTable = ({
               shell-mounted CanonicalFeltSurface paints the felt; the
               local render is suppressed so only one canonical felt
               node exists in the DOM. */}
-          <div className="relative w-full h-full">
+          <div
+            className="relative w-full h-full"
+            style={shellOwnsFelt ? { transform: 'translateY(6%)' } : undefined}
+          >
             <CribbageFeltAdapter
               anteAmount={anteAmount}
               pointsToWin={gameConfig.pointsToWin}
