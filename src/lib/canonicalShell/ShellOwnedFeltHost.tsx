@@ -279,14 +279,20 @@ export function ShellOwnedFeltHost({
     effective?.gameKind ?? initialGameKind ?? 'holm-game';
   const anteAmount = effective?.anteAmount ?? initialAnteAmount;
   const isWaitingPhase = effective?.isWaitingPhase ?? initialIsWaitingPhase;
-  const hostTrace = {
-    publisherLabel: effective?.publisherLabel ?? null,
-    gameKind,
-    anteAmount,
-    isWaitingPhase,
-    hasPublished: !!published,
-    hasSticky: !!stickyRef.current,
-  };
+  const hasPublished = !!published;
+  const hasSticky = !!stickyRef.current;
+  const publisherLabel = effective?.publisherLabel ?? null;
+  const hostTrace = useMemo(
+    () => ({
+      publisherLabel,
+      gameKind,
+      anteAmount,
+      isWaitingPhase,
+      hasPublished,
+      hasSticky,
+    }),
+    [publisherLabel, gameKind, anteAmount, isWaitingPhase, hasPublished, hasSticky],
+  );
 
   useEffect(() => {
     if (import.meta.env.PROD) return;
@@ -302,7 +308,7 @@ export function ShellOwnedFeltHost({
     if (import.meta.env.PROD) return;
     // eslint-disable-next-line no-console
     console.info('[ShellOwnedFelt] render context', hostTrace);
-  }, [gameKind, anteAmount, isWaitingPhase, published, effective]);
+  }, [hostTrace]);
 
   // DEV-only, warn-only invariant — never throws.
   useShellFeltInvariant();
