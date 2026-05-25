@@ -198,6 +198,8 @@ export function isCanonicalShellBadgeEnabled(): boolean {
   );
 }
 
+let shellOwnedFeltSessionLatched = false;
+
 /**
  * Phase 3.1a — Shell-owned persistent felt.
  *
@@ -219,8 +221,11 @@ export function isCanonicalShellBadgeEnabled(): boolean {
  *   - localStorage:  ptp_shell_owned_felt = "1"
  */
 export function isShellOwnedFeltEnabled(): boolean {
+  if (hasQueryFlag('shell_owned_felt')) {
+    shellOwnedFeltSessionLatched = true;
+  }
   return (
-    hasQueryFlag('shell_owned_felt') ||
+    shellOwnedFeltSessionLatched ||
     hasLocalFlag('ptp_shell_owned_felt')
   );
 }
