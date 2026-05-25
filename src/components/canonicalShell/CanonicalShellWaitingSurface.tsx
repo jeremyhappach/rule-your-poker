@@ -1,31 +1,23 @@
 /**
- * CanonicalShellWaitingSurface — Phase 3.1c.
+ * CanonicalShellWaitingSurface — Phase 3.1c / 3.1d.
  *
  * Single shared waiting surface for every canonical-shell family
  * (Cribbage / Gin Rummy / Yahtzee). Mounted inside the
  * `PersistentTableShell` children slot when `game.status === 'waiting'`.
  *
- * Architectural invariant satisfied:
- *
- *   - Zero new felt geometry. The shell-owned canonical ellipse is
- *     painted by `ShellOwnedFeltHost` already mounted at the shell
- *     boundary. This surface publishes felt context via
- *     `usePublishShellFelt({ isWaitingPhase: true, ... })` so the
- *     existing ellipse renders the correct title/subtitle from
- *     session entry onward.
- *
- *   - Zero sibling waiting tables. The legacy MobileGameTable-based
- *     `WaitingForPlayersTable` is NOT mounted on this path; only this
- *     thin overlay sits inside the shell slot.
- *
- *   - Single shared overlay behavior across families: the CTA is
- *     `WaitingRoomCTA` and the actions come from
- *     `useWaitingRoomActions`. Same two primitives drive the
- *     poker-variant `WaitingForPlayersTable`, so the surfaces cannot
- *     drift.
+ * 3.1d fixes:
+ *   - CTA is anchored to the SHELL-OWNED ELLIPSE bounds (mirrors the
+ *     ellipse geometry in `ShellOwnedFeltHost`), not to the slot-content
+ *     center, so it visually sits in the table — not below it.
+ *   - Mounts `<ShellHudChrome />` (announcement rail + canonical tab
+ *     bar) and publishes `useShellTabBar(...)` metadata so the lobby
+ *     keeps shell continuity (rail + tab nav + chat panel). Fixes the
+ *     3.1d "missing shell chrome" regression.
+ *   - First-frame layout stability is owned by the bootstrap branch in
+ *     `Game.tsx` (header + tabbar reservations).
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   useWaitingRoomActions,
@@ -37,6 +29,12 @@ import {
   useShellFeltContext,
   deriveFeltGameKind,
 } from "@/lib/canonicalShell/ShellOwnedFeltHost";
+import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
+import {
+  useShellTabBar,
+  type ShellTabId,
+} from "@/lib/canonicalShell/ShellTabBar";
+import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { Button } from "@/components/ui/button";
 
 interface Player extends WaitingRoomActor {
@@ -56,6 +54,10 @@ export interface CanonicalShellWaitingSurfaceProps {
   onGameStart: () => void;
   onBotAdded?: () => void;
   realMoney?: boolean;
+  /** Chat threading — keeps chat accessible during waiting (3.1d). */
+  allMessages?: any[];
+  onSendChat?: (text: string) => void | Promise<void>;
+  isChatSending?: boolean;
 }
 
 const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
@@ -70,10 +72,14 @@ export function CanonicalShellWaitingSurface({
   onGameStart,
   onBotAdded,
   realMoney = false,
+  allMessages = [],
+  onSendChat,
+  isChatSending = false,
 }: CanonicalShellWaitingSurfaceProps) {
   useWakeLock(true);
 
   const { shellOwnsFelt } = useShellFeltContext();
+  const [activeTab, setActiveTab] = useState<ShellTabId>("cards");
 
   // Publish canonical felt context — drives the shell-owned ellipse
   // title ($ante <GameName>) and the "waiting" subtitle treatment.
@@ -87,6 +93,14 @@ export function CanonicalShellWaitingSurface({
         }
       : null,
   );
+
+  // Publish tab-bar metadata so the shell-owned ShellTabBar mounts and
+  // renders the canonical nav. Chat stays accessible from the lobby.
+  useShellTabBar({
+    cardsIcon: "spade",
+    activeTab,
+    setActiveTab,
+  });
 
   const actions = useWaitingRoomActions({
     gameId,
@@ -121,53 +135,120 @@ export function CanonicalShellWaitingSurface({
     <div
       data-canonical-shell-waiting-surface=""
       data-shell-waiting-game-type={gameType}
-      className="relative w-full h-full flex flex-col"
+      className="relative w-full h-full flex flex-col flex-1 min-h-0"
     >
-      {/* Top region overlays the shell-owned ellipse. Pointer-events
-          pass through except for the CTA box itself. */}
-      <div className="relative flex-1 min-h-0">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-          <WaitingRoomCTA
-            isObserver={actions.isObserver}
-            isHost={actions.isHost}
-            hasEnoughPlayers={actions.hasEnoughPlayers}
-            hasOpenSeats={actions.hasOpenSeats}
-            seatedPlayerCount={actions.seatedPlayerCount}
-            realMoney={realMoney}
-            isAddingBot={actions.isAddingBot}
-            onInvite={actions.handleInvite}
-            onAddBot={actions.handleAddBot}
-            onStartGame={actions.handleStartGame}
-          />
-        </div>
+      {/* Tab content region — fills the children row above the shell
+          HUD chrome (rail + tabbar). The CTA overlay lives inside the
+          'cards' tab so chat/lobby/history tabs aren't obscured. */}
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        {activeTab === "cards" && (
+          <>
+            {/* CTA stage — mirrors the shell-owned ellipse geometry
+                (see ShellOwnedFeltHost: top: 24, height: min(86vw,
+                calc(55vh - 64px), 400px)). Centering the CTA inside
+                THIS box puts it visually at the ellipse center, not
+                at the slot-content center. Pointer-events pass through
+                except for the CTA card itself. */}
+            <div
+              data-canonical-shell-waiting-cta-stage=""
+              className="absolute left-0 right-0 flex items-center justify-center pointer-events-none z-30"
+              style={{
+                top: 24,
+                height: "min(86vw, calc(55vh - 64px), 400px)",
+              }}
+            >
+              <WaitingRoomCTA
+                isObserver={actions.isObserver}
+                isHost={actions.isHost}
+                hasEnoughPlayers={actions.hasEnoughPlayers}
+                hasOpenSeats={actions.hasOpenSeats}
+                seatedPlayerCount={actions.seatedPlayerCount}
+                realMoney={realMoney}
+                isAddingBot={actions.isAddingBot}
+                onInvite={actions.handleInvite}
+                onAddBot={actions.handleAddBot}
+                onStartGame={actions.handleStartGame}
+              />
+            </div>
+
+            {/* Observer seat picker — pinned to the bottom of the
+                cards-tab region, beneath the ellipse. */}
+            {actions.isObserver && openPositions.length > 0 && (
+              <div
+                data-canonical-shell-waiting-seat-picker=""
+                className="mt-auto px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm"
+              >
+                <p className="text-xs text-muted-foreground text-center mb-2 uppercase tracking-wider">
+                  Tap a seat to join
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {openPositions.map((pos) => (
+                    <Button
+                      key={pos}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onSelectSeat(pos)}
+                      className="border-amber-600/60 text-amber-300 hover:bg-amber-600/20"
+                    >
+                      Seat {pos}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "chat" && (
+          <div className="px-3 pb-3 flex-1 flex flex-col overflow-hidden min-h-0">
+            {onSendChat ? (
+              <MobileChatPanel
+                messages={allMessages}
+                onSend={onSendChat}
+                isSending={isChatSending}
+              />
+            ) : (
+              <p className="text-muted-foreground text-sm text-center mt-6">
+                Chat not available
+              </p>
+            )}
+          </div>
+        )}
+
+        {activeTab === "lobby" && (
+          <div className="px-4 py-4 flex-1 overflow-y-auto">
+            <h3 className="text-sm font-bold text-foreground mb-3">
+              Players ({players.length})
+            </h3>
+            <ul className="space-y-1">
+              {players.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between text-sm bg-muted/30 rounded px-3 py-2"
+                >
+                  <span className="text-foreground">
+                    {p.profiles?.username ?? "Player"}
+                    {p.is_bot ? " (Bot)" : ""}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    Seat {p.position}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {activeTab === "history" && (
+          <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+            History will appear once the game starts.
+          </div>
+        )}
       </div>
 
-      {/* Bottom region — observer seat picker. Lives in the HUD band
-          beneath the ellipse so it can't visually compete with the
-          felt title. Hidden when the viewer is already seated. */}
-      {actions.isObserver && openPositions.length > 0 && (
-        <div
-          data-canonical-shell-waiting-seat-picker=""
-          className="px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm"
-        >
-          <p className="text-xs text-muted-foreground text-center mb-2 uppercase tracking-wider">
-            Tap a seat to join
-          </p>
-          <div className="flex flex-wrap gap-2 justify-center">
-            {openPositions.map((pos) => (
-              <Button
-                key={pos}
-                size="sm"
-                variant="outline"
-                onClick={() => onSelectSeat(pos)}
-                className="border-amber-600/60 text-amber-300 hover:bg-amber-600/20"
-              >
-                Seat {pos}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Shell-owned HUD chrome — canonical announcement rail + tab
+          bar. Required for shell continuity in waiting (3.1d). */}
+      <ShellHudChrome />
     </div>
   );
 }
