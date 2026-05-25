@@ -348,6 +348,7 @@ export function ShellOwnedFeltHost({
         <CanonicalFeltSurface
           gameKind={gameKind}
           geometryVariant="ellipse"
+          feltOwner="shell-owned-felt-host"
           anteAmount={anteAmount}
           potMaxEnabled={effective?.potMaxEnabled}
           potMaxValue={effective?.potMaxValue}
