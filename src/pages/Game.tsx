@@ -8262,9 +8262,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     game.status === 'game_selection' ||
     game.status === 'configuring' ||
     ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete);
+  // Phase 3.1d: a fresh-session waiting state with no committed family
+  // (no last-known / no previous config to fall back to) is canonical
+  // by construction — the canonical ellipse is the universal neutral
+  // surface and the waiting branch above routes to
+  // CanonicalShellWaitingSurface in that case. Without this, the inner
+  // bg would render the legacy slate gradient and visually fight the
+  // shell-owned ellipse.
+  const _isFreshWaitingNoFamily =
+    game.status === 'waiting' &&
+    game.game_type == null &&
+    lastKnownGameTypeRef.current == null &&
+    (previousGameConfig?.game_type ?? null) == null;
   const _treatAsCanonicalRoute =
     isCanonicalShellFamily(_routeShellGameType) ||
-    (game.game_type == null && _isConfiguringContext);
+    (game.game_type == null && _isConfiguringContext) ||
+    _isFreshWaitingNoFamily;
 
   // When the canonical shell owns the page column (header + children +
   // rail + tab bar in a flex column anchored to min-h-screen), the
