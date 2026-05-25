@@ -182,12 +182,9 @@ export const CribbageFeltContent = ({
 
       {/* Peg Board now rendered by parent (CribbageMobileGameTable) for mount stability */}
 
-      {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own).
-          Shifted from top-[24%] → top-[40%] to (a) leave breathing room beneath the felt
-          title/rules text and (b) occupy the previously unused mid-lower portion of the
-          shared canonical ellipse. Pegging row below was nudged accordingly. */}
+      {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own) */}
       {(showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && (
-        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
+        <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
           {/* Crib */}
           {showCribOnFelt && cribbageState.crib.length > 0 && (
             <div className="flex flex-col items-center">
@@ -214,6 +211,7 @@ export const CribbageFeltContent = ({
           />
         </div>
       )}
+
 
 
       {/* Pegging / Gameplay Area - positioned below peg board but above dealer button */}
