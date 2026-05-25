@@ -4497,11 +4497,24 @@ export const MobileGameTable = ({
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
-      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{
-      maxHeight: '55vh'
-    }}>
+      <div
+        ref={tableContainerRef}
+        data-canonical-table-container=""
+        data-canonical-table-felt-ownership={feltOwnership}
+        className="flex-1 relative overflow-hidden min-h-0"
+        style={{ maxHeight: '55vh' }}
+      >
 
-        {(() => {
+        {/* Phase 3.2a: felt suppression.
+            When `feltOwnership === 'shell'`, the shell-owned
+            `ShellOwnedFeltHost` (inside `PersistentTableShell`) is the
+            sole `data-canonical-felt-surface` for the session. We render
+            no felt here — neither the canonical nor the legacy path —
+            so the single-felt invariant holds for the migrated family.
+            All non-felt slot content below this block (waiting content,
+            turn spotlights, animations, pot pill, seat clusters) is
+            untouched. */}
+        {feltOwnership === 'self' && (() => {
           const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
           if (canonicalFeltKind) {
             // P9.1: Shell-owned canonical felt + game-name plate for Holm + 3-5-7.
