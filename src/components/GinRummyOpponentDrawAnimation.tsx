@@ -55,6 +55,7 @@ export const GinRummyOpponentDrawAnimation = ({
   // End position keyed off the canonical slot identity supplied by the
   // shell's SeatAnchorLayer. No parallel coordinate registry.
   const slotEndpoints: Record<CanonicalSlot, { x: string; y: string }> = {
+    [-3]: { x: '50%', y: '92%' }, // BOTTOM_RAIL (observer-only)
     [-2]: { x: '50%', y: '18%' },
     [-1]: { x: '50%', y: '82%' },
     0: { x: '22%', y: '78%' },
