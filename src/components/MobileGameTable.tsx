@@ -545,14 +545,13 @@ export const MobileGameTable = ({
   dealerSelectionWinnerPosition,
 }: MobileGameTableProps) => {
   const {
-    getTableColors,
     getFourColorSuit,
     getCardBackColors,
     getEffectiveDeckColorMode,
   } = useVisualPreferences();
-  const tableColors = getTableColors();
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
+
   
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
