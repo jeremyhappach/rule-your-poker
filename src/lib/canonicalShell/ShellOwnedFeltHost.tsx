@@ -1,63 +1,40 @@
 /**
- * ShellOwnedFeltHost — Phase 3.1a skeleton (Bucket 3 canonical felt unification).
+ * ShellOwnedFeltHost — Phase 3.1b (Bucket 3 canonical felt unification).
  *
- * STATUS: SKELETON ONLY. NOT MOUNTED BY PersistentTableShell IN 3.1a.
+ * STATUS: Live behind `isShellOwnedFeltEnabled()` (default OFF).
  *
  * Purpose
  * -------
  * Define the single, shell-owned `CanonicalFeltSurface` mount point that
- * will eventually replace every per-surface felt across the platform.
- * In the end-state architecture (Bucket 3 hard invariant):
+ * eventually replaces every per-surface felt across the platform.
+ * Hard invariant: at any instant during a session route, exactly one
+ * `data-canonical-felt-surface` node exists in the DOM, mounted ONCE on
+ * session entry, never unmounted across lifecycle states.
  *
- *   - At any instant during a session route, there is exactly one
- *     `data-canonical-felt-surface` node in the DOM.
- *   - That node is mounted ONCE on session entry and never unmounts
- *     for the duration of the session.
- *   - All lifecycle states (waiting, dealer selection, in-progress,
- *     game-over, configuring, session-ended) appear as content layered
- *     ABOVE the felt — never as a replacement FOR the felt.
+ * 3.1b deltas over 3.1a skeleton:
+ *   - Reactive provider: surfaces' `publish(...)` updates state and the
+ *     host re-renders deterministically (e.g. mid-session ante changes).
+ *   - `initialGameKind` / `initialIsWaitingPhase` / `initialAnteAmount`
+ *     hydrate the first frame so the shell paints the correct family
+ *     identity before any surface mounts — no fallback flash.
+ *   - DEV-only `useShellFeltInvariant()` hook (warn-only) checks at each
+ *     animation frame that exactly one canonical felt node exists.
  *
- * Ownership contract (3.1b cutover, not yet active)
- * -------------------------------------------------
- *   - PersistentTableShell mounts ONE <ShellOwnedFeltHost /> as a
- *     background layer behind the gameplay children column.
- *   - Gameplay surfaces (CribbageMobileGameTable, GinRummyGameTable,
- *     YahtzeeGameTable, then Holm/3-5-7/Horses/SCC during 3.2) STOP
- *     rendering their own <CanonicalFeltSurface /> and instead render
- *     transparent content above it.
- *   - The waiting surface (Phase 3.1b) renders inside the same shell
- *     envelope; its seat-select / share / bot-add overlay sits above
- *     the same shell felt and is removed without unmounting the felt.
- *
- * Geometry resolution
- * -------------------
- * Felt family + ante + skunk/legs/points-to-win subtitle are derived
- * from the active gameplay context via the `ShellFeltContextProvider`
- * (also a 3.1a skeleton — see below). Gameplay surfaces publish their
- * felt context once on mount via `useShellFeltContext().publish(...)`.
- * In 3.1a the provider exists but is a no-op (publish writes to a
- * local ref; the host falls back to default props).
- *
- * Single-felt invariant enforcement
- * ---------------------------------
- * 3.1b lands a DEV-only `useShellFeltInvariant` hook that asserts at
- * every animation frame during a session route that exactly one
- * `data-canonical-felt-surface` node exists. Violations log a loud
- * warning with the duplicate node's owning component (resolved via
- * `data-canonical-felt-game` / `data-canonical-felt-owner`).
- *
- * Rollback
- * --------
- * The 3.1b cutover is gated behind `isShellOwnedFeltEnabled()`
- * (`?shell_owned_felt=1` / `ptp_shell_owned_felt=1`). With the flag
- * OFF the platform behaves exactly as today: gameplay surfaces render
- * their own felts and the shell does not mount one. With the flag ON,
- * gameplay surfaces detect the shell-owned felt via context and skip
- * their local render, while the shell mounts the single canonical
- * felt. Switching the flag at runtime requires a route remount.
+ * Rollback: flag OFF restores prior behavior byte-for-byte. Surfaces
+ * detect the shell-owned felt via `useShellFeltContext().shellOwnsFelt`
+ * and skip their local render only when the flag is ON.
  */
 
-import { createContext, useContext, useMemo, useRef, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   CanonicalFeltSurface,
   type CanonicalFeltGameKind,
@@ -66,45 +43,20 @@ import {
 import { isShellOwnedFeltEnabled } from '@/lib/debugFlags';
 
 // ---------------------------------------------------------------------------
-// Felt context — surfaces publish their felt geometry / subtitle data once.
+// Felt context — surfaces publish their felt geometry / subtitle data.
 // ---------------------------------------------------------------------------
 
-/**
- * Snapshot of every prop the shell-owned CanonicalFeltSurface needs.
- * Surfaces publish this; the host reads the latest published value.
- * `null` means "no surface has claimed the felt yet" — the host falls
- * back to a neutral, plate-less felt.
- */
 export type ShellFeltContextValue = Omit<CanonicalFeltSurfaceProps, 'isWaitingPhase'> & {
-  /**
-   * When true, the host suppresses the game-name plate (used during
-   * waiting / dealer-config phases where no game identity is committed).
-   */
   isWaitingPhase?: boolean;
-  /**
-   * Diagnostic label — name of the surface that published this context.
-   * Surfaces fingerprint themselves so the single-felt invariant can
-   * attribute duplicate renders.
-   */
+  /** Diagnostic label — name of the surface that published this context. */
   publisherLabel?: string;
 };
 
 interface ShellFeltContextApi {
-  /** Surfaces call this on mount/update to publish their felt context. */
   publish: (value: ShellFeltContextValue | null) => void;
-  /**
-   * `true` iff the shell-owned-felt feature flag is ON for this route.
-   * Gameplay surfaces read this to decide whether to suppress their
-   * own local <CanonicalFeltSurface /> render.
-   */
   shellOwnsFelt: boolean;
-  /**
-   * Current published value (ref-backed; reads in render must be
-   * understood as latest-snapshot-only — NOT a reactive subscription).
-   * 3.1b will add a reactive variant if the host needs to re-render
-   * on every publish.
-   */
-  readLatest: () => ShellFeltContextValue | null;
+  /** Latest snapshot, reactive — host re-renders on change. */
+  current: ShellFeltContextValue | null;
 }
 
 const ShellFeltContext = createContext<ShellFeltContextApi | null>(null);
@@ -114,95 +66,159 @@ export interface ShellFeltContextProviderProps {
 }
 
 /**
- * Provider mounted inside PersistentTableShell ABOVE the gameplay
- * children. In 3.1a this is a passive holder — `publish()` writes to
- * a ref, and `shellOwnsFelt` reflects the feature flag so consumers
- * can wire conditional render today without behavior change.
+ * Reactive provider. `publish(...)` stores the latest snapshot in state
+ * so the shell-owned host re-renders when surfaces change their felt
+ * context (ante config, points-to-win, waiting → in-progress, etc.).
+ *
+ * Shallow-equality guard prevents render loops from idempotent publishes.
  */
 export function ShellFeltContextProvider({ children }: ShellFeltContextProviderProps) {
-  const latestRef = useRef<ShellFeltContextValue | null>(null);
+  const [current, setCurrent] = useState<ShellFeltContextValue | null>(null);
   const shellOwnsFelt = isShellOwnedFeltEnabled();
 
+  const publish = useCallback((value: ShellFeltContextValue | null) => {
+    setCurrent((prev) => (shallowFeltEqual(prev, value) ? prev : value));
+  }, []);
+
   const api = useMemo<ShellFeltContextApi>(
-    () => ({
-      publish: (value) => {
-        latestRef.current = value;
-      },
-      shellOwnsFelt,
-      readLatest: () => latestRef.current,
-    }),
-    [shellOwnsFelt],
+    () => ({ publish, shellOwnsFelt, current }),
+    [publish, shellOwnsFelt, current],
   );
 
   return <ShellFeltContext.Provider value={api}>{children}</ShellFeltContext.Provider>;
 }
 
+function shallowFeltEqual(
+  a: ShellFeltContextValue | null,
+  b: ShellFeltContextValue | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (
+    a.gameKind !== b.gameKind ||
+    a.anteAmount !== b.anteAmount ||
+    a.potMaxEnabled !== b.potMaxEnabled ||
+    a.potMaxValue !== b.potMaxValue ||
+    a.legsToWin !== b.legsToWin ||
+    a.pointsToWin !== b.pointsToWin ||
+    a.isWaitingPhase !== b.isWaitingPhase ||
+    a.isTablet !== b.isTablet ||
+    a.isDesktop !== b.isDesktop ||
+    a.publisherLabel !== b.publisherLabel
+  ) {
+    return false;
+  }
+  const sa = a.cribbageSkunk;
+  const sb = b.cribbageSkunk;
+  if (sa === sb) return true;
+  if (!sa || !sb) return false;
+  return (
+    sa.skunkEnabled === sb.skunkEnabled &&
+    sa.skunkThreshold === sb.skunkThreshold &&
+    sa.doubleSkunkEnabled === sb.doubleSkunkEnabled &&
+    sa.doubleSkunkThreshold === sb.doubleSkunkThreshold
+  );
+}
+
 /**
  * Hook used by gameplay surfaces to:
- *   1. Decide whether to suppress their local <CanonicalFeltSurface />
- *      render (`shellOwnsFelt === true`).
- *   2. Publish their felt geometry/subtitle data so the shell-owned
- *      host can render the canonical felt with the correct family
- *      identity, ante, skunk thresholds, etc.
+ *   1. Decide whether to suppress their local <CanonicalFeltSurface />.
+ *   2. Publish their felt geometry/subtitle data.
  *
  * Safe to call outside a provider — returns a stable no-op API with
  * `shellOwnsFelt === false`, matching today's behavior.
  */
 export function useShellFeltContext(): ShellFeltContextApi {
   const ctx = useContext(ShellFeltContext);
-  if (ctx) return ctx;
-  // No provider mounted → behave exactly as today.
-  return NO_OP_API;
+  return ctx ?? NO_OP_API;
 }
 
 const NO_OP_API: ShellFeltContextApi = {
   publish: () => {},
   shellOwnsFelt: false,
-  readLatest: () => null,
+  current: null,
 };
+
+/**
+ * Imperative publish helper for surfaces — wraps `useEffect` so the
+ * published snapshot tracks the surface's render props and clears on
+ * unmount. Suppresses publish entirely when the flag is OFF so the
+ * provider state never churns on legacy paths.
+ */
+export function usePublishShellFelt(value: ShellFeltContextValue | null): void {
+  const ctx = useShellFeltContext();
+  useEffect(() => {
+    if (!ctx.shellOwnsFelt) return;
+    ctx.publish(value);
+    return () => {
+      ctx.publish(null);
+    };
+    // We intentionally re-publish on any field change; shallow guard in
+    // the provider absorbs idempotent calls.
+  }, [ctx, JSON.stringify(value)]);
+}
+
+// ---------------------------------------------------------------------------
+// Single-felt invariant — DEV-only, warn-only.
+// ---------------------------------------------------------------------------
+
+/**
+ * Warn-only: never throws. Polls the DOM (rAF-throttled) and logs a
+ * single console.warn per offending frame when more than one
+ * `data-canonical-felt-surface` node is present. No-op when the flag is
+ * OFF or in production.
+ */
+export function useShellFeltInvariant(): void {
+  useEffect(() => {
+    if (!isShellOwnedFeltEnabled()) return;
+    if (typeof window === 'undefined') return;
+    if (import.meta.env.PROD) return;
+
+    let raf = 0;
+    let lastWarnCount = -1;
+    const tick = () => {
+      const nodes = document.querySelectorAll('[data-canonical-felt-surface]');
+      if (nodes.length > 1 && nodes.length !== lastWarnCount) {
+        lastWarnCount = nodes.length;
+        const owners = Array.from(nodes).map(
+          (n) =>
+            (n as HTMLElement).getAttribute('data-canonical-felt-owner') ??
+            (n as HTMLElement).getAttribute('data-canonical-felt-game') ??
+            '(unknown)',
+        );
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[ShellOwnedFelt] invariant violation: multiple canonical felts mounted',
+          { count: nodes.length, owners },
+        );
+      } else if (nodes.length <= 1 && lastWarnCount !== -1) {
+        lastWarnCount = -1;
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, []);
+}
 
 // ---------------------------------------------------------------------------
 // Shell-owned felt host — the single canonical felt mount point.
 // ---------------------------------------------------------------------------
 
 export interface ShellOwnedFeltHostProps {
-  /**
-   * Optional override — if the route knows the game-kind eagerly
-   * (e.g. from the URL or persisted dealer-game cache) it can pass it
-   * here so the felt paints with the correct family identity on the
-   * very first frame, before any surface has had a chance to publish.
-   */
   initialGameKind?: CanonicalFeltGameKind | null;
-  /**
-   * Optional initial ante for the same first-frame reason as above.
-   */
   initialAnteAmount?: number | string;
-  /**
-   * Optional initial waiting-phase flag — when true on first frame
-   * the host renders without a plate (matches the waiting/cold-start
-   * presentation today).
-   */
   initialIsWaitingPhase?: boolean;
 }
 
 /**
- * 3.1a SKELETON.
- *
  * Renders ONE absolutely-positioned `CanonicalFeltSurface` behind the
- * gameplay column. In 3.1a this component is exported but NOT mounted
- * by PersistentTableShell — Game.tsx and surfaces keep rendering their
- * own felts exactly as today. In 3.1b, PersistentTableShell mounts
- * this host once and gameplay surfaces stop rendering their local
- * <CanonicalFeltSurface /> when `useShellFeltContext().shellOwnsFelt`
- * is true.
+ * gameplay column. Mounted by `PersistentTableShell` only when
+ * `isShellOwnedFeltEnabled()` is true.
  *
- * Geometry note: when mounted by the shell, this host occupies the
- * shell-root's background layer (absolute inset-0 behind the gameplay
- * column). CanonicalFeltSurface internally positions itself absolutely
- * within its parent, so the host's only job is to provide the
- * correctly-sized parent box. Per-family geometry (cribbage circle vs
- * ellipse for everyone else) is handled inside CanonicalFeltSurface
- * via `gameKind`.
+ * First-frame hydration: `initialGameKind` / `initialIsWaitingPhase`
+ * (typically derived from `game.game_type` in the route) ensure the
+ * felt paints the correct family identity before any surface publishes.
  */
 export function ShellOwnedFeltHost({
   initialGameKind = null,
@@ -210,24 +226,24 @@ export function ShellOwnedFeltHost({
   initialIsWaitingPhase = true,
 }: ShellOwnedFeltHostProps) {
   const ctx = useShellFeltContext();
-  // 3.1a: read once at render time. 3.1b will likely promote this to
-  // a state-driven subscription so the host re-renders when surfaces
-  // publish new context (e.g. ante config changes mid-session).
-  const published = ctx.readLatest();
+  const published = ctx.current;
 
-  const gameKind: CanonicalFeltGameKind = (published?.gameKind ?? initialGameKind ?? 'holm-game');
+  const gameKind: CanonicalFeltGameKind =
+    published?.gameKind ?? initialGameKind ?? 'holm-game';
   const anteAmount = published?.anteAmount ?? initialAnteAmount;
   const isWaitingPhase = published?.isWaitingPhase ?? initialIsWaitingPhase;
+
+  // DEV-only, warn-only invariant — never throws.
+  useShellFeltInvariant();
 
   return (
     <div
       data-canonical-shell-felt-host=""
+      data-canonical-felt-owner="shell-owned-felt-host"
       aria-hidden="true"
       style={{
         position: 'absolute',
         inset: 0,
-        // Behind the gameplay column (z-index: 1) and below the
-        // overlay root (z-index: 80) and announcement rail.
         zIndex: 0,
         pointerEvents: 'none',
       }}
@@ -246,4 +262,26 @@ export function ShellOwnedFeltHost({
       />
     </div>
   );
+}
+
+/**
+ * Derive the canonical felt game-kind from a session `game.game_type`
+ * string. Used by `PersistentTableShell` to hydrate the host's first
+ * frame so it doesn't fall back to a neutral family.
+ */
+export function deriveFeltGameKind(
+  gameType: string | null | undefined,
+): CanonicalFeltGameKind | null {
+  switch (gameType) {
+    case 'cribbage':
+    case 'gin-rummy':
+    case 'yahtzee':
+    case 'holm-game':
+    case 'three-five-seven':
+    case 'horses':
+    case 'ship-captain-crew':
+      return gameType;
+    default:
+      return null;
+  }
 }
