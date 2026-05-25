@@ -123,7 +123,7 @@ export function PersistentTableShell({
       data-canonical-shell-root=""
       data-shell-device={geometry?.deviceType ?? undefined}
       data-shell-game-type={gameType ?? undefined}
-      className="min-h-screen bg-shell-neutral"
+      className="min-h-screen bg-background"
       style={{ position: 'relative', height: '100dvh', overflow: 'hidden' }}
     >
       {/* TEMPORARY MIGRATION AID — canonical shell provenance badge.

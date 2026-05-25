@@ -158,16 +158,16 @@ export function CanonicalFeltSurface({
             </span>
           ) : isCribbage ? (
             <>
-              <h2 className="text-sm font-bold text-white drop-shadow-lg">
+              <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
                 ${anteAmount} {GAME_NAME_LABEL[gameKind]}
-              </h2>
-              <p className="text-[9px] text-white/70">
+              </span>
+              <span className="text-white/40 text-xs font-medium whitespace-nowrap">
                 {pointsToWin !== undefined ? `${pointsToWin} to win` : null}
                 {cribbageSkunk?.skunkEnabled && cribbageSkunk?.skunkThreshold !== undefined &&
                   ` • Skunk <${cribbageSkunk.skunkThreshold} (2x)`}
                 {cribbageSkunk?.doubleSkunkEnabled && cribbageSkunk?.doubleSkunkThreshold !== undefined &&
                   ` • Double <${cribbageSkunk.doubleSkunkThreshold} (3x)`}
-              </p>
+              </span>
             </>
           ) : gameKind === "gin-rummy" ? (
             <>

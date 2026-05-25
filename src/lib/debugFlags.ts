@@ -221,13 +221,11 @@ let shellOwnedFeltSessionLatched = false;
  *   - localStorage:  ptp_shell_owned_felt = "1"
  */
 export function isShellOwnedFeltEnabled(): boolean {
-  if (hasQueryFlag('shell_owned_felt')) {
-    shellOwnedFeltSessionLatched = true;
-  }
-  return (
-    shellOwnedFeltSessionLatched ||
-    hasLocalFlag('ptp_shell_owned_felt')
-  );
+  // Phase 3.1b' validated — shell-owned shared-ellipse felt is now the
+  // platform-wide default. Flag retained as a no-op for legacy call
+  // sites; URL / localStorage toggles are no longer consulted.
+  void shellOwnedFeltSessionLatched;
+  return true;
 }
 
 
