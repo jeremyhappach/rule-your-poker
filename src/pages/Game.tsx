@@ -8541,6 +8541,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onGameStart={startGameFromWaiting}
             onBotAdded={fetchGameData}
             realMoney={game.real_money}
+            allMessages={allMessages}
+            onSendChat={sendChatMessage}
+            isChatSending={isChatSending}
           />
         )}
         {game.status === 'waiting' && resolveShellKind(game.game_type) === 'poker-variant' && (
