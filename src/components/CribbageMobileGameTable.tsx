@@ -104,6 +104,54 @@ interface CribbageGameConfig {
   doubleSkunkThreshold: number;
 }
 
+/**
+ * CribbageFeltAdapter — Bucket 3 Phase 3.1b cutover seam.
+ *
+ * Default (shell-owned felt OFF): renders the local CanonicalFeltSurface
+ * exactly as before. Shell-owned felt ON: publishes the same parameters
+ * to the shell-owned host via `usePublishShellFelt` and suppresses the
+ * local render so only one canonical felt node exists in the DOM.
+ *
+ * Isolated as a child so hook ordering inside the parent table component
+ * is unchanged when the flag flips.
+ */
+function CribbageFeltAdapter(props: {
+  anteAmount: number | string;
+  pointsToWin: number;
+  cribbageSkunk: {
+    skunkEnabled?: boolean;
+    skunkThreshold?: number;
+    doubleSkunkEnabled?: boolean;
+    doubleSkunkThreshold?: number;
+  };
+  isWaitingPhase: boolean;
+}) {
+  const { shellOwnsFelt } = useShellFeltContext();
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: 'cribbage',
+          anteAmount: props.anteAmount,
+          pointsToWin: props.pointsToWin,
+          cribbageSkunk: props.cribbageSkunk,
+          isWaitingPhase: props.isWaitingPhase,
+          publisherLabel: 'CribbageMobileGameTable',
+        }
+      : null,
+  );
+  if (shellOwnsFelt) return null;
+  return (
+    <CanonicalFeltSurface
+      gameKind="cribbage"
+      anteAmount={props.anteAmount}
+      pointsToWin={props.pointsToWin}
+      cribbageSkunk={props.cribbageSkunk}
+      isWaitingPhase={props.isWaitingPhase}
+    />
+  );
+}
+
+
 interface CribbageMobileGameTableProps {
   gameId: string;
   roundId: string;
