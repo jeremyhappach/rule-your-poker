@@ -41,6 +41,7 @@ import {
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
 import { isShellOwnedFeltEnabled } from '@/lib/debugFlags';
+import { isFeltlessPokerFamily } from './pokerShellCutover';
 
 // ---------------------------------------------------------------------------
 // Felt context — surfaces publish their felt geometry / subtitle data.
