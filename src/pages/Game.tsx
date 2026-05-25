@@ -8191,13 +8191,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     setLifecycleFact('Game.innerBgClass', 'min-h-screen(bootstrap)');
     return (
       <SurfaceReadinessProvider>
-        <PersistentTableShell gameId={gameId ?? undefined} viewerUserId={user?.id ?? null}>
+        <PersistentTableShell
+          gameId={gameId ?? undefined}
+          viewerUserId={user?.id ?? null}
+          /* Reserve header row + tab-bar space during bootstrap so the
+             shell-owned ellipse (anchored inside the children grid row)
+             does NOT shift vertically when the actual mobileHeader and
+             ShellHudChrome mount on hydration. Root-cause fix for the
+             Phase 3.1d transient first-frame layout settle. */
+          header={isMobile ? (
+            <div
+              data-canonical-shell-header-placeholder=""
+              className="px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border"
+              style={{ minHeight: 34 }}
+              aria-hidden="true"
+            />
+          ) : undefined}
+        >
           <div
             data-canonical-bootstrap=""
             data-lifecycle-branch="bootstrap"
-            className="min-h-screen"
+            className={isMobile ? 'flex-1 min-h-0 flex flex-col' : 'min-h-screen'}
             aria-busy="true"
-          />
+          >
+            {/* Reserve tabbar height at the bottom too, so the children
+                row paints with the same vertical envelope it will have
+                once ShellHudChrome (rail 36 + tabbar 44) mounts. */}
+            {isMobile ? (
+              <>
+                <div className="flex-1 min-h-0" />
+                <div style={{ height: 36 }} aria-hidden="true" />
+                <div style={{ height: 44 }} aria-hidden="true" />
+              </>
+            ) : null}
+          </div>
         </PersistentTableShell>
       </SurfaceReadinessProvider>
     );
