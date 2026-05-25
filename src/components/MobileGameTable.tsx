@@ -57,7 +57,7 @@ import { getAggressionAbbreviation } from "@/lib/botAggression";
 import { getBotAlias } from "@/lib/botAlias";
 import { cn, formatChipValue } from "@/lib/utils";
 import cubsLogo from "@/assets/cubs-logo.png";
-import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
+
 import React, {
   useState,
   useEffect,
