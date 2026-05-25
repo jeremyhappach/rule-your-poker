@@ -8509,8 +8509,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {/* waiting status - show empty table with seat selection */}
-        {game.status === 'waiting' && (
+        {/* waiting status — split by family.
+            Canonical-shell families (Cribbage / Gin / Yahtzee) render
+            the new `CanonicalShellWaitingSurface` inside the shell's
+            children slot. The shell-owned ellipse paints behind it
+            from session entry, so no waiting-specific felt mounts and
+            no geometry swap occurs at session start (Phase 3.1c).
+            Poker-variant family keeps the legacy WaitingForPlayersTable. */}
+        {game.status === 'waiting' && isCanonicalShellFamily(game.game_type) && (
+          <CanonicalShellWaitingSurface
+            gameId={gameId!}
+            gameType={game.game_type!}
+            anteAmount={game.ante_amount ?? 0}
+            players={players as any}
+            currentUserId={user?.id}
+            onSelectSeat={handleSelectSeat}
+            onGameStart={startGameFromWaiting}
+            onBotAdded={fetchGameData}
+            realMoney={game.real_money}
+          />
+        )}
+        {game.status === 'waiting' && !isCanonicalShellFamily(game.game_type) && (
           <WaitingForPlayersTable
             gameId={gameId!}
             players={players}
@@ -8528,6 +8547,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             onBotAdded={fetchGameData}
           />
         )}
+
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
           <>
