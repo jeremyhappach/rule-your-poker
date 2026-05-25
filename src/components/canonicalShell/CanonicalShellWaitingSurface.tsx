@@ -280,7 +280,7 @@ function WaitingSurfaceBody({
                   if (occupied) return null;
                   const slot = observerSlotForPosition(pos);
                   if (slot == null) return null;
-                  const placement = getCanonicalSlotPlacement(slot);
+                  const placement = getCanonicalSlotPlacement(slot, 'open-seat');
                   return (
                     <div
                       key={pos}
