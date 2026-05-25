@@ -337,7 +337,7 @@ export function ShellOwnedFeltHost({
         style={{
           position: 'absolute',
           left: '50%',
-          top: 'calc(50% - 18px)',
+          top: 'calc(50% - 96px)',
           width: 'min(94vw, 720px)',
           height: 'min(52vh, 420px)',
           minWidth: 300,
