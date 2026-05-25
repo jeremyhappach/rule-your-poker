@@ -4505,85 +4505,16 @@ export const MobileGameTable = ({
         style={{ maxHeight: '55vh' }}
       >
 
-        {/* Phase 3.2a: felt suppression.
-            When `feltOwnership === 'shell'`, the shell-owned
-            `ShellOwnedFeltHost` (inside `PersistentTableShell`) is the
-            sole `data-canonical-felt-surface` for the session. We render
-            no felt here — neither the canonical nor the legacy path —
-            so the single-felt invariant holds for the migrated family.
-            All non-felt slot content below this block (waiting content,
-            turn spotlights, animations, pot pill, seat clusters) is
-            untouched. */}
-        {feltOwnership === 'self' && (() => {
-          const canonicalFeltKind = resolveCanonicalFeltKind(gameType);
-          if (canonicalFeltKind) {
-            // P9.1: Shell-owned canonical felt + game-name plate for Holm + 3-5-7.
-            return (
-              <CanonicalFeltSurface
-                gameKind={canonicalFeltKind}
-                anteAmount={anteAmount}
-                potMaxEnabled={potMaxEnabled}
-                potMaxValue={potMaxValue}
-                legsToWin={legsToWin}
-                isWaitingPhase={isWaitingPhase}
-                isTablet={isTablet}
-                isDesktop={isDesktop}
-              />
-            );
-          }
-          return (
-            <>
-              {/* Table felt background - wide horizontal ellipse (legacy path) */}
-              <div className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden" style={{
-                background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)'
-              }}>
-                {/* Bridge overlay on felt - shown when bridge felt is selected */}
-                {tableColors.showBridge && (
-                  <img
-                    src={peoriaBridgeMobile}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-                    style={{
-                      objectPosition: (isTablet || isDesktop) ? 'center 60%' : 'center 38%',
-                      opacity: isWaitingPhase ? 0.45 : (isTablet || isDesktop ? 0.36 : 0.28),
-                    }}
-                  />
-                )}
-              </div>
-
-              {/* Game name on felt - legacy path (non-Holm/357 games or flag-off) */}
-              {!isWaitingPhase && (
-                <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-10 flex flex-col items-center">
-                  {isDiceGame || gameType === 'yahtzee' ? (
-                    <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                      ${anteAmount} {gameType === 'ship-captain-crew' ? 'SHIP' : gameType === 'yahtzee' ? 'YAHTZEE' : 'HORSES'}
-                    </span>
-                  ) : (
-                    <>
-                      <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
-                        {gameType === 'holm-game' ? 'Holm' : gameType === 'cribbage' ? 'Cribbage' : gameType === 'gin-rummy' ? 'Gin Rummy' : '3-5-7'}
-                      </span>
-                      {gameType !== 'cribbage' && gameType !== 'gin-rummy' && (
-                        <>
-                          <span className="text-white/40 text-xs font-medium">
-                            {potMaxEnabled ? `$${potMaxValue} max` : 'No Limit'}
-                          </span>
-                          {gameType !== 'holm-game' && (
-                            <span className="text-white/40 text-xs font-medium">
-                              {legsToWin} legs to win
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          );
-        })()}
+        {/* Phase 3.2 (complete): MobileGameTable no longer owns ANY felt.
+            The shell-owned `ShellOwnedFeltHost` (mounted inside
+            `PersistentTableShell` for every poker-family route) is the
+            sole `data-canonical-felt-surface` for the entire session
+            lifecycle. Both the canonical (CanonicalFeltSurface) and
+            legacy (gradient ellipse + game-name plate) self-owned felt
+            paths have been retired here. The `feltOwnership` prop is
+            retained as a no-op data attribute marker for the
+            single-felt invariant audit; remove once Game.tsx stops
+            passing it. */}
 
         {/* Canonical slot-owned waiting content — lives INSIDE the table
             container (not a wrapper-level floating overlay). Renders during
