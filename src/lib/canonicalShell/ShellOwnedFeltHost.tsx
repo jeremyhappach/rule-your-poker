@@ -52,40 +52,57 @@ export type ShellFeltContextValue = Omit<CanonicalFeltSurfaceProps, 'isWaitingPh
   publisherLabel?: string;
 };
 
-interface ShellFeltContextApi {
+interface ShellFeltApi {
   publish: (value: ShellFeltContextValue | null) => void;
   shellOwnsFelt: boolean;
-  /** Latest snapshot, reactive — host re-renders on change. */
-  current: ShellFeltContextValue | null;
 }
 
-const ShellFeltContext = createContext<ShellFeltContextApi | null>(null);
+/**
+ * Two contexts on purpose:
+ *
+ *   - `ShellFeltApiContext` — STABLE for the lifetime of the provider.
+ *     Publishers consume this; its identity never changes, so
+ *     `usePublishShellFelt`'s effect does not re-fire on every state
+ *     update. (The earlier single-context design caused a
+ *     publish-null / publish-value thrash that briefly cleared the
+ *     felt during transitions — observed as the Cribbage felt
+ *     "disappearing" at the high-card boundary.)
+ *
+ *   - `ShellFeltStateContext` — REACTIVE. Only the host subscribes,
+ *     so renders are confined to the felt host itself.
+ */
+const ShellFeltApiContext = createContext<ShellFeltApi | null>(null);
+const ShellFeltStateContext = createContext<ShellFeltContextValue | null>(null);
 
 export interface ShellFeltContextProviderProps {
   children: ReactNode;
 }
 
-/**
- * Reactive provider. `publish(...)` stores the latest snapshot in state
- * so the shell-owned host re-renders when surfaces change their felt
- * context (ante config, points-to-win, waiting → in-progress, etc.).
- *
- * Shallow-equality guard prevents render loops from idempotent publishes.
- */
 export function ShellFeltContextProvider({ children }: ShellFeltContextProviderProps) {
   const [current, setCurrent] = useState<ShellFeltContextValue | null>(null);
   const shellOwnsFelt = isShellOwnedFeltEnabled();
 
+  // Stable publish — never changes identity. Uses functional setState
+  // with a shallow-equality guard so idempotent publishes don't cause
+  // re-renders.
   const publish = useCallback((value: ShellFeltContextValue | null) => {
     setCurrent((prev) => (shallowFeltEqual(prev, value) ? prev : value));
   }, []);
 
-  const api = useMemo<ShellFeltContextApi>(
-    () => ({ publish, shellOwnsFelt, current }),
-    [publish, shellOwnsFelt, current],
+  // API ref is stable for the provider's lifetime (shellOwnsFelt is
+  // driven by the feature flag and does not flip mid-session).
+  const api = useMemo<ShellFeltApi>(
+    () => ({ publish, shellOwnsFelt }),
+    [publish, shellOwnsFelt],
   );
 
-  return <ShellFeltContext.Provider value={api}>{children}</ShellFeltContext.Provider>;
+  return (
+    <ShellFeltApiContext.Provider value={api}>
+      <ShellFeltStateContext.Provider value={current}>
+        {children}
+      </ShellFeltStateContext.Provider>
+    </ShellFeltApiContext.Provider>
+  );
 }
 
 function shallowFeltEqual(
@@ -120,43 +137,50 @@ function shallowFeltEqual(
   );
 }
 
-/**
- * Hook used by gameplay surfaces to:
- *   1. Decide whether to suppress their local <CanonicalFeltSurface />.
- *   2. Publish their felt geometry/subtitle data.
- *
- * Safe to call outside a provider — returns a stable no-op API with
- * `shellOwnsFelt === false`, matching today's behavior.
- */
-export function useShellFeltContext(): ShellFeltContextApi {
-  const ctx = useContext(ShellFeltContext);
-  return ctx ?? NO_OP_API;
+/** Back-compat shape exposed to surfaces. */
+export interface ShellFeltContextApi extends ShellFeltApi {
+  /** Latest snapshot. Reading this subscribes the caller to felt-state re-renders. */
+  current: ShellFeltContextValue | null;
 }
 
-const NO_OP_API: ShellFeltContextApi = {
+const NO_OP_API: ShellFeltApi = {
   publish: () => {},
   shellOwnsFelt: false,
-  current: null,
 };
 
 /**
- * Imperative publish helper for surfaces — wraps `useEffect` so the
- * published snapshot tracks the surface's render props and clears on
- * unmount. Suppresses publish entirely when the flag is OFF so the
- * provider state never churns on legacy paths.
+ * Hook for gameplay surfaces. Returns the STABLE api plus a `current`
+ * snapshot. Most publishers should ignore `current` and only call
+ * `publish(...)`.
+ */
+export function useShellFeltContext(): ShellFeltContextApi {
+  const api = useContext(ShellFeltApiContext) ?? NO_OP_API;
+  const current = useContext(ShellFeltStateContext);
+  return useMemo(() => ({ ...api, current }), [api, current]);
+}
+
+/** Host-only subscription to the reactive felt state. */
+function useShellFeltState(): ShellFeltContextValue | null {
+  return useContext(ShellFeltStateContext);
+}
+
+/**
+ * Imperative publish helper. Depends only on the STABLE api, so the
+ * effect re-fires only when the published value itself changes —
+ * never as a side-effect of the provider re-rendering. This is the
+ * fix for the Cribbage high-card felt-disappearance regression.
  */
 export function usePublishShellFelt(value: ShellFeltContextValue | null): void {
-  const ctx = useShellFeltContext();
+  const api = useContext(ShellFeltApiContext) ?? NO_OP_API;
   useEffect(() => {
-    if (!ctx.shellOwnsFelt) return;
-    ctx.publish(value);
+    if (!api.shellOwnsFelt) return;
+    api.publish(value);
     return () => {
-      ctx.publish(null);
+      api.publish(null);
     };
-    // We intentionally re-publish on any field change; shallow guard in
-    // the provider absorbs idempotent calls.
-  }, [ctx, JSON.stringify(value)]);
+  }, [api, JSON.stringify(value)]);
 }
+
 
 // ---------------------------------------------------------------------------
 // Single-felt invariant — DEV-only, warn-only.
