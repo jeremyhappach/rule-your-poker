@@ -34,6 +34,15 @@ export interface CanonicalFeltSurfaceProps {
   isWaitingPhase?: boolean;
   isTablet?: boolean;
   isDesktop?: boolean;
+  /**
+   * Phase 3.1b' — geometry override. 'auto' (default) preserves legacy
+   * per-game geometry (Cribbage = circle, others = ellipse). 'ellipse'
+   * forces the shared canonical ellipse regardless of gameKind. Used by
+   * the shell-owned felt host (flag ON) to render all families against
+   * the same canonical geometry. Flag-OFF callers omit this prop and
+   * keep production-identical behavior.
+   */
+  geometryVariant?: 'auto' | 'ellipse';
   /** Cribbage-only — appended to the plate subtitle line. */
   cribbageSkunk?: {
     skunkEnabled?: boolean;
@@ -42,6 +51,7 @@ export interface CanonicalFeltSurfaceProps {
     doubleSkunkThreshold?: number;
   };
 }
+
 
 const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "holm-game": "Holm",
