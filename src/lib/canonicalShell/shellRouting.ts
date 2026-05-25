@@ -101,3 +101,75 @@ if (_missingFamily.length > 0) {
   );
 }
 
+
+// ─── Phase 3.1d: shell-kind resolver ──────────────────────────────────
+//
+// `resolveShellKind` is the SINGLE source of truth for which shell
+// geometry to mount for a given session. Geometry routing call sites
+// (Game.tsx waiting/active/configuring branches, PersistentTableShell
+// gates, waiting-surface selection) MUST use this resolver instead of
+// reading `game.game_type` directly, so that `game_type` can return to
+// meaning only "the family currently committed for the active
+// dealer_game" — with `null` as a first-class state meaning "no family
+// committed yet" (fresh session before the first dealer game).
+//
+// Policy:
+//   - null / undefined / ''  → 'canonical' (neutral universal surface)
+//   - canonical-shell family → 'canonical'
+//   - poker-variant family   → 'poker-variant'
+//   - anything else (unknown future strings, typos, stale data)
+//        DEV: warn once per offending value (visibility — never silent)
+//        PROD: fall back to 'canonical' (the safer neutral surface;
+//              MobileGameTable assumes family-specific code paths and
+//              would crash on an unknown gameType)
+//
+// Unknown values are surfaced because the failure mode we want to
+// prevent is the same class as the consumer-registry divergence: a new
+// game_type slipping into the database without being registered here,
+// silently inheriting routing behavior, and only being noticed via
+// downstream symptoms.
+
+export type ShellKind = 'canonical' | 'poker-variant';
+
+const _unknownGameTypeWarned = new Set<string>();
+
+export function resolveShellKind(
+  gameType: string | null | undefined,
+): ShellKind {
+  // No committed family yet (fresh session, between-games waiting where
+  // game_type was nulled, configuring window before dealer chooses).
+  if (gameType == null || gameType === '') return 'canonical';
+
+  if (CANONICAL_SHELL_FAMILY.has(gameType)) {
+    // Inside CANONICAL_SHELL_FAMILY, poker-variant entries route to the
+    // poker-variant shell (MobileGameTable) — they're registered in the
+    // shell family for identity-tracking purposes but their *geometry*
+    // is the legacy circular felt.
+    if (POKER_VARIANT_FAMILY.has(gameType)) return 'poker-variant';
+    return 'canonical';
+  }
+
+  if (POKER_VARIANT_FAMILY.has(gameType)) return 'poker-variant';
+
+  // Unknown family — never silent.
+  if (import.meta.env?.DEV) {
+    if (!_unknownGameTypeWarned.has(gameType)) {
+      _unknownGameTypeWarned.add(gameType);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[shellRouting] resolveShellKind: unknown game_type "${gameType}". ` +
+          `Falling back to 'canonical'. Register it in CANONICAL_SHELL_FAMILY ` +
+          `or POKER_VARIANT_FAMILY (see ` +
+          `.lovable/canonical-shell-onboarding-checklist.md).`,
+      );
+    }
+  }
+  return 'canonical';
+}
+
+/** Convenience: true iff resolveShellKind === 'canonical'. */
+export function isCanonicalShell(gameType: string | null | undefined): boolean {
+  return resolveShellKind(gameType) === 'canonical';
+}
+
+

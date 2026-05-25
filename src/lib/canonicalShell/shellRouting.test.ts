@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   CANONICAL_SEAT_CONSUMERS,
   CANONICAL_SHELL_FAMILY,
   isCanonicalSeatConsumer,
   isCanonicalShellFamily,
   isPokerVariantFamily,
+  resolveShellKind,
 } from './shellRouting';
 
 describe('isPokerVariantFamily', () => {
@@ -61,5 +62,48 @@ describe('canonical seat consumer registry invariant', () => {
     for (const gt of CANONICAL_SEAT_CONSUMERS) {
       expect(isCanonicalShellFamily(gt)).toBe(true);
     }
+  });
+});
+
+describe('resolveShellKind', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('returns canonical for null / undefined / empty (no committed family)', () => {
+    expect(resolveShellKind(null)).toBe('canonical');
+    expect(resolveShellKind(undefined)).toBe('canonical');
+    expect(resolveShellKind('')).toBe('canonical');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns canonical for canonical-shell families', () => {
+    expect(resolveShellKind('cribbage')).toBe('canonical');
+    expect(resolveShellKind('gin-rummy')).toBe('canonical');
+    expect(resolveShellKind('yahtzee')).toBe('canonical');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns poker-variant for poker-variant families', () => {
+    expect(resolveShellKind('holm-game')).toBe('poker-variant');
+    expect(resolveShellKind('3-5-7')).toBe('poker-variant');
+    expect(resolveShellKind('horses')).toBe('poker-variant');
+    expect(resolveShellKind('ship-captain-crew')).toBe('poker-variant');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('warns once per unknown family in DEV and falls back to canonical', () => {
+    // vitest runs with DEV=true by default
+    expect(resolveShellKind('totally-made-up-game')).toBe('canonical');
+    expect(resolveShellKind('totally-made-up-game')).toBe('canonical');
+    expect(resolveShellKind('another-unknown')).toBe('canonical');
+    // One warn per distinct unknown value, not per call
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    expect(warnSpy.mock.calls[0][0]).toContain('totally-made-up-game');
+    expect(warnSpy.mock.calls[1][0]).toContain('another-unknown');
   });
 });
