@@ -39,6 +39,7 @@ import {
   ShellOwnedFeltHost,
   deriveFeltGameKind,
 } from './ShellOwnedFeltHost';
+import { isFeltlessPokerFamily } from './pokerShellCutover';
 import {
   CanonicalAnnouncementProvider,
   CanonicalCelebrationLayer,
