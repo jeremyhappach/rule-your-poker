@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   CANONICAL_SEAT_CONSUMERS,
   CANONICAL_SHELL_FAMILY,
   isCanonicalSeatConsumer,
   isCanonicalShellFamily,
   isPokerVariantFamily,
+  resolveShellKind,
 } from './shellRouting';
 
 describe('isPokerVariantFamily', () => {
