@@ -8194,7 +8194,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <PersistentTableShell
           gameId={gameId ?? undefined}
           viewerUserId={user?.id ?? null}
-          /* Reserve header row + tab-bar space during bootstrap so the
+          /* Reserve header row + waiting chrome during bootstrap so the
              shell-owned ellipse (anchored inside the children grid row)
              does NOT shift vertically when the actual mobileHeader and
              ShellHudChrome mount on hydration. Root-cause fix for the
@@ -8203,7 +8203,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <div
               data-canonical-shell-header-placeholder=""
               className="px-3 py-1 bg-background/90 backdrop-blur-sm border-b border-border"
-              style={{ minHeight: 34 }}
+              style={{ height: 41, minHeight: 41 }}
               aria-hidden="true"
             />
           ) : undefined}
@@ -8214,14 +8214,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             className={isMobile ? 'flex-1 min-h-0 flex flex-col' : 'min-h-screen'}
             aria-busy="true"
           >
-            {/* Reserve tabbar height at the bottom too, so the children
-                row paints with the same vertical envelope it will have
-                once ShellHudChrome (rail 36 + tabbar 44) mounts. */}
+            {/* Reserve the exact waiting table/HUD/content composition so
+                the shell-owned felt frame is already painted at the same
+                y-coordinate as the hydrated waiting surface. */}
             {isMobile ? (
               <>
-                <div className="flex-1 min-h-0" />
+                <div
+                  data-canonical-bootstrap-table-region=""
+                  className="flex-shrink-0"
+                  style={{
+                    height: 'calc(24px + min(86vw, calc(55vh - 64px), 400px))',
+                    minHeight: 260,
+                  }}
+                />
                 <div style={{ height: 36 }} aria-hidden="true" />
                 <div style={{ height: 44 }} aria-hidden="true" />
+                <div className="flex-1 min-h-0" />
               </>
             ) : null}
           </div>
