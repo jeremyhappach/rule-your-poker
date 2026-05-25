@@ -271,7 +271,7 @@ export function PersistentTableShell({
         viewerUserId={viewerUserId}
       >
         <ShellTabBarProvider>
-          <ShellFeltContextProvider>{body}</ShellFeltContextProvider>
+          <ShellFeltContextProvider gameType={gameType ?? null}>{body}</ShellFeltContextProvider>
         </ShellTabBarProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
