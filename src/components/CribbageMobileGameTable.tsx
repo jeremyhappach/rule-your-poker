@@ -139,7 +139,15 @@ function CribbageFeltAdapter(props: {
         }
       : null,
   );
-  if (shellOwnsFelt) return null;
+  if (shellOwnsFelt) {
+    return (
+      <div
+        data-shell-felt-geometry-anchor="cribbage"
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+      />
+    );
+  }
   return (
     <CanonicalFeltSurface
       gameKind="cribbage"
@@ -342,6 +350,7 @@ export const CribbageMobileGameTable = ({
   onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
+  const { shellOwnsFelt } = useShellFeltContext();
 
   // ── Lifecycle instrumentation ─────────────────────────────────
   // Stable instance ID survives re-renders; changes only on true unmount/remount.
@@ -5412,7 +5421,7 @@ export const CribbageMobileGameTable = ({
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-background">
+    <div className={cn('h-full flex flex-col overflow-hidden', shellOwnsFelt ? 'bg-transparent' : 'bg-background')}>
       {/* Phase E: canonical `match_win` announcement owns winner UI.
           The 'skunk' win-sequence phase is retired — skunk semantics
           ride inside the canonical announcement payload. */}
@@ -5437,8 +5446,10 @@ export const CribbageMobileGameTable = ({
           minHeight: '300px',
         }}
       >
-        {/* Light background behind the circle */}
-        <div className="absolute inset-0 bg-slate-200 z-0" />
+        {/* Light background behind the circle. Suppressed when the shell owns
+            the felt; otherwise this opaque slab hides the shell-mounted
+            CanonicalFeltSurface during ante/dealer lifecycle states. */}
+        {!shellOwnsFelt && <div className="absolute inset-0 bg-slate-200 z-0" />}
 
         {/* Circular table — identical structure across all modes */}
         <div

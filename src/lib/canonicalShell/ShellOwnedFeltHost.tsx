@@ -201,7 +201,19 @@ export function useShellFeltInvariant(): void {
     let raf = 0;
     let lastWarnCount = -1;
     const tick = () => {
+      const host = document.querySelector('[data-canonical-shell-felt-host]') as HTMLElement | null;
       const nodes = document.querySelectorAll('[data-canonical-felt-surface]');
+      if (!host && lastWarnCount !== 0) {
+        lastWarnCount = 0;
+        // eslint-disable-next-line no-console
+        console.warn('[ShellOwnedFelt] invariant violation: host is not mounted');
+      } else if (host && nodes.length === 0 && lastWarnCount !== 0) {
+        lastWarnCount = 0;
+        // eslint-disable-next-line no-console
+        console.warn('[ShellOwnedFelt] invariant violation: host mounted without visible felt node', {
+          context: host.getAttribute('data-shell-felt-context') ?? null,
+        });
+      }
       if (nodes.length > 1 && nodes.length !== lastWarnCount) {
         lastWarnCount = nodes.length;
         const owners = Array.from(nodes).map(
@@ -215,7 +227,7 @@ export function useShellFeltInvariant(): void {
           '[ShellOwnedFelt] invariant violation: multiple canonical felts mounted',
           { count: nodes.length, owners },
         );
-      } else if (nodes.length <= 1 && lastWarnCount !== -1) {
+      } else if (host && nodes.length === 1 && lastWarnCount !== -1) {
         lastWarnCount = -1;
       }
       raf = window.requestAnimationFrame(tick);
@@ -267,6 +279,36 @@ export function ShellOwnedFeltHost({
     effective?.gameKind ?? initialGameKind ?? 'holm-game';
   const anteAmount = effective?.anteAmount ?? initialAnteAmount;
   const isWaitingPhase = effective?.isWaitingPhase ?? initialIsWaitingPhase;
+  const hasPublished = !!published;
+  const hasSticky = !!stickyRef.current;
+  const publisherLabel = effective?.publisherLabel ?? null;
+  const hostTrace = useMemo(
+    () => ({
+      publisherLabel,
+      gameKind,
+      anteAmount,
+      isWaitingPhase,
+      hasPublished,
+      hasSticky,
+    }),
+    [publisherLabel, gameKind, anteAmount, isWaitingPhase, hasPublished, hasSticky],
+  );
+
+  useEffect(() => {
+    if (import.meta.env.PROD) return;
+    // eslint-disable-next-line no-console
+    console.info('[ShellOwnedFelt] host mounted');
+    return () => {
+      // eslint-disable-next-line no-console
+      console.warn('[ShellOwnedFelt] host unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.PROD) return;
+    // eslint-disable-next-line no-console
+    console.info('[ShellOwnedFelt] render context', hostTrace);
+  }, [hostTrace]);
 
   // DEV-only, warn-only invariant — never throws.
   useShellFeltInvariant();
@@ -275,6 +317,8 @@ export function ShellOwnedFeltHost({
     <div
       data-canonical-shell-felt-host=""
       data-canonical-felt-owner="shell-owned-felt-host"
+      data-shell-felt-mounted="true"
+      data-shell-felt-context={JSON.stringify(hostTrace)}
       aria-hidden="true"
       style={{
         position: 'absolute',
@@ -283,18 +327,36 @@ export function ShellOwnedFeltHost({
         pointerEvents: 'none',
       }}
     >
-      <CanonicalFeltSurface
-        gameKind={gameKind}
-        anteAmount={anteAmount}
-        potMaxEnabled={effective?.potMaxEnabled}
-        potMaxValue={effective?.potMaxValue}
-        legsToWin={effective?.legsToWin}
-        pointsToWin={effective?.pointsToWin}
-        isWaitingPhase={isWaitingPhase}
-        isTablet={effective?.isTablet}
-        isDesktop={effective?.isDesktop}
-        cribbageSkunk={effective?.cribbageSkunk}
-      />
+      <div
+        data-canonical-shell-felt-frame=""
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: gameKind === 'cribbage'
+            ? 'calc((min(90vw, calc(55vh - 32px)) + 10px) / 2 + 4px)'
+            : 'calc(50% - 18px)',
+          width: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(94vw, 720px)',
+          height: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(52vh, 420px)',
+          minWidth: gameKind === 'cribbage' ? 300 : 300,
+          minHeight: gameKind === 'cribbage' ? 300 : 220,
+          maxWidth: gameKind === 'cribbage' ? 520 : undefined,
+          maxHeight: gameKind === 'cribbage' ? 520 : undefined,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        <CanonicalFeltSurface
+          gameKind={gameKind}
+          anteAmount={anteAmount}
+          potMaxEnabled={effective?.potMaxEnabled}
+          potMaxValue={effective?.potMaxValue}
+          legsToWin={effective?.legsToWin}
+          pointsToWin={effective?.pointsToWin}
+          isWaitingPhase={isWaitingPhase}
+          isTablet={effective?.isTablet}
+          isDesktop={effective?.isDesktop}
+          cribbageSkunk={effective?.cribbageSkunk}
+        />
+      </div>
     </div>
   );
 }
