@@ -59,21 +59,23 @@ const POKER_VARIANT_GAME_TYPES = new Set<string>([
  * Empty in 3.2a. 3.2b–e each add exactly one entry.
  */
 export const POKER_SHELL_FELTLESS_FAMILIES = new Set<string>([
-  // 3.2b — Holm: REVERTED.
-  //   First flip attempt (cribbage → holm transition) rendered a gray
-  //   void because the `poker-variant` route in Game.tsx does NOT wrap
-  //   with <PersistentTableShell>, so <ShellOwnedFeltHost> never mounts.
-  //   MobileGameTable correctly suppressed its local felt per the
-  //   feltOwnership='shell' contract, but there was no shell felt to
-  //   replace it. Substrate gap: 3.2a must also route poker-variant
-  //   families through PersistentTableShell (and gate ShellOwnedFeltHost
-  //   to mount whenever any registered feltless family is active, not
-  //   only when `isShellOwnedFeltEnabled()` is true) before any family
-  //   may be added to this set.
-  // 'holm-game',
-  // 3.2c: 'three-five-seven', '3-5-7', '3-5-7-game', '357',
-  // 3.2d: 'horses',
-  // 3.2e: 'ship-captain-crew',
+  // Phase 3.2b–e: all poker-family game_types are now feltless.
+  // MobileGameTable suppresses its local CanonicalFeltSurface for these
+  // and the shell-owned felt (mounted by PersistentTableShell via
+  // ShellOwnedFeltHost) is the sole `data-canonical-felt-surface` for
+  // the session lifecycle. Substrate routing through
+  // PersistentTableShell for poker-variant routes is established in 3.2a
+  // (Game.tsx wraps every MobileGameTable mount site beneath the
+  // route-stable shell; ShellOwnedFeltHost mounts whenever
+  // isFeltlessPokerFamily(gameType) is true regardless of the global
+  // shell-owned-felt debug flag).
+  'holm-game',
+  'three-five-seven',
+  '3-5-7',
+  '3-5-7-game',
+  '357',
+  'horses',
+  'ship-captain-crew',
 ]);
 
 function readDebugCutoverFamilies(): Set<string> {
