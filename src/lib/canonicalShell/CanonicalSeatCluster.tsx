@@ -99,7 +99,7 @@ export function CanonicalSeatCluster({
   // bubble hugs the lower rail and card backs / hand region sit in
   // playable space above it. Top/middle slots keep the natural
   // identity → chip → content stack.
-  const isBottomAnchored = slot === -1 || slot === 0 || slot === 5;
+  const isBottomAnchored = slot === -1 || slot === -3 || slot === 0 || slot === 5;
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
