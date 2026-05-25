@@ -83,6 +83,16 @@ export function CanonicalSeatCluster({
 }: CanonicalSeatClusterProps) {
   if (slot === null || slot === undefined) return null;
 
+  // Canonical self-suppression: the local viewer is represented by the
+  // active-player content area (and bottom HUD), NOT by a duplicate
+  // chip cluster on the felt. Hoisted into the primitive so no
+  // consumer needs to remember to suppress self per-render.
+  const anchors = useSeatAnchorsOptional();
+  if (anchors?.viewerPosition != null && anchors.viewerPosition === position) {
+    return null;
+  }
+
+
   const placement = getCanonicalSlotPlacement(slot);
   // Bottom-anchored slots (HOME bottom-center, bottom corners) must
   // render game-owned content ABOVE the identity+chip pill so the chip
