@@ -31,6 +31,11 @@ import {
 } from "@/lib/canonicalShell/ShellTabBar";
 import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { ChipStack } from "@/components/ChipStack";
+import {
+  observerSlotForPosition,
+  activeSlotForDistance,
+  clockwiseDistance,
+} from "@/lib/canonicalShell/seatAnchors";
 
 interface Player extends WaitingRoomActor {
   id: string;
@@ -59,19 +64,21 @@ const SHELL_FELT_FRAME_HEIGHT = "min(86vw, calc(55vh - 64px), 400px)";
 const SHELL_TABLE_REGION_HEIGHT = `calc(24px + ${SHELL_FELT_FRAME_HEIGHT})`;
 
 /**
- * Absolute seat positions around the shell-owned ellipse. Mirrors the
- * mapping used by MobileGameTable so observer seat-selection geometry
- * stays consistent between the legacy poker waiting surface and the
- * canonical shell waiting surface.
+ * Canonical slot → absolute placement. Shared by both projection modes
+ * (observer-absolute and active-canonical) so seat geometry is sourced
+ * from a single map. Slot -1 (HOME) is the viewer's own seat and is
+ * intentionally never rendered as a chipstack — once joined, the
+ * viewer is represented by the active-player content model, not by a
+ * duplicate on-table chipstack of themselves.
  */
-const ABSOLUTE_SEAT_CLASSES: Record<number, string> = {
-  1: "top-2 left-10",
-  2: "top-1/2 -translate-y-1/2 left-1",
-  3: "bottom-2 left-10",
-  4: "bottom-2 left-1/2 -translate-x-1/2",
+const SLOT_CLASSES: Record<number, string> = {
+  [-1]: "bottom-2 left-1/2 -translate-x-1/2",
+  0: "bottom-2 left-10",
+  1: "top-1/2 -translate-y-1/2 left-1",
+  2: "top-2 left-10",
+  3: "top-2 right-10",
+  4: "top-1/2 -translate-y-1/2 right-1",
   5: "bottom-2 right-10",
-  6: "top-1/2 -translate-y-1/2 right-1",
-  7: "top-2 right-10",
 };
 
 export function CanonicalShellWaitingSurface({
