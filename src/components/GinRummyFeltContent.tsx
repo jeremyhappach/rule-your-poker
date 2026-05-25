@@ -36,6 +36,7 @@ const toDisplayCard = (card: GinRummyCard) => ({
 // truth for seat geometry) — this is just the local visual rotation
 // applied to the spotlight cone.
 const SLOT_TO_SPOTLIGHT_ANGLE: Record<CanonicalSlot, number> = {
+  [-3]: 180, // BOTTOM_RAIL (observer-only) — same as HOME
   [-2]: 0,
   [-1]: 180,
   0: -135,
