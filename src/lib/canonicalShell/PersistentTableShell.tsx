@@ -33,7 +33,12 @@ import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
-import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
+import { isCanonicalShellBadgeEnabled, isShellOwnedFeltEnabled } from '@/lib/debugFlags';
+import {
+  ShellFeltContextProvider,
+  ShellOwnedFeltHost,
+  deriveFeltGameKind,
+} from './ShellOwnedFeltHost';
 import {
   CanonicalAnnouncementProvider,
   CanonicalCelebrationLayer,
@@ -153,9 +158,19 @@ export function PersistentTableShell({
           CSHELL · SLOT: {(gameType ?? 'WAITING').toString().toUpperCase()}
         </div>
       )}
-      {/* P9.6: shell-owned pre-hand felt removed. Gameplay surfaces
-          (e.g. GinRummyGameTable) render the single authoritative
-          CanonicalFeltSurface inside their own table region. */}
+      {/* Bucket 3 / Phase 3.1b: shell-owned canonical felt. Mounted ONCE
+          per session route behind the gameplay column, gated by
+          `isShellOwnedFeltEnabled()`. When ON, gameplay surfaces
+          suppress their local <CanonicalFeltSurface /> render and
+          instead publish geometry/identity via `useShellFeltContext()`.
+          When OFF, this is not mounted and surfaces render their own
+          felt exactly as today. */}
+      {isShellOwnedFeltEnabled() && (
+        <ShellOwnedFeltHost
+          initialGameKind={deriveFeltGameKind(gameType)}
+          initialIsWaitingPhase={!gameType}
+        />
+      )}
       <div
         data-canonical-shell-column=""
         style={{
@@ -242,7 +257,9 @@ export function PersistentTableShell({
         roundId={null}
         viewerUserId={viewerUserId}
       >
-        <ShellTabBarProvider>{body}</ShellTabBarProvider>
+        <ShellTabBarProvider>
+          <ShellFeltContextProvider>{body}</ShellFeltContextProvider>
+        </ShellTabBarProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
