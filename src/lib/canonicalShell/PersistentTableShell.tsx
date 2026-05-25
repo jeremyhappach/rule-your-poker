@@ -158,19 +158,6 @@ export function PersistentTableShell({
           CSHELL · SLOT: {(gameType ?? 'WAITING').toString().toUpperCase()}
         </div>
       )}
-      {/* Bucket 3 / Phase 3.1b: shell-owned canonical felt. Mounted ONCE
-          per session route behind the gameplay column, gated by
-          `isShellOwnedFeltEnabled()`. When ON, gameplay surfaces
-          suppress their local <CanonicalFeltSurface /> render and
-          instead publish geometry/identity via `useShellFeltContext()`.
-          When OFF, this is not mounted and surfaces render their own
-          felt exactly as today. */}
-      {isShellOwnedFeltEnabled() && (
-        <ShellOwnedFeltHost
-          initialGameKind={deriveFeltGameKind(gameType)}
-          initialIsWaitingPhase={!gameType}
-        />
-      )}
       <div
         data-canonical-shell-column=""
         style={{
@@ -198,9 +185,25 @@ export function PersistentTableShell({
         {/* 2. Gameplay surface + unified HUD stack. The ONLY flexible row. */}
         <div
           data-canonical-shell-children=""
-          style={{ minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          style={{ position: 'relative', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         >
-          {children}
+          {/* Bucket 3 / Phase 3.1b: shell-owned canonical felt. Mounted ONCE
+              inside the gameplay row (below shell header chrome), behind
+              slot content. When ON, gameplay surfaces suppress their local
+              <CanonicalFeltSurface /> render and publish geometry/identity
+              via `useShellFeltContext()`. */}
+          {isShellOwnedFeltEnabled() && (
+            <ShellOwnedFeltHost
+              initialGameKind={deriveFeltGameKind(gameType)}
+              initialIsWaitingPhase={!gameType}
+            />
+          )}
+          <div
+            data-canonical-shell-slot-content=""
+            style={{ position: 'relative', zIndex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', flex: 1 }}
+          >
+            {children}
+          </div>
         </div>
       </div>
 
