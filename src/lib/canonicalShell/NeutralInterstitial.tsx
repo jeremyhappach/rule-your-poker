@@ -13,6 +13,7 @@ import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFel
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
+import { usePublishShellFelt, useShellFeltContext } from './ShellOwnedFeltHost';
 
 
 export interface NeutralInterstitialProps {
@@ -25,8 +26,21 @@ export interface NeutralInterstitialProps {
 
 export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
+  const { shellOwnsFelt } = useShellFeltContext();
+  const resolvedGameKind = gameKind ?? 'holm-game';
   const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
   useLifecycleMount('NeutralInterstitial', { reason, gameKind });
+
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: resolvedGameKind,
+          anteAmount,
+          isWaitingPhase: true,
+          publisherLabel: `NeutralInterstitial:${reason ?? 'unknown'}`,
+        }
+      : null,
+  );
 
 
   useEffect(() => {
@@ -78,7 +92,7 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
     <div
       data-canonical-shell-neutral=""
       aria-hidden="true"
-      className="h-full flex flex-col bg-background relative"
+      className={`h-full flex flex-col ${shellOwnsFelt ? 'bg-transparent' : 'bg-background'} relative`}
     >
       <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
         {/* Configuring/cold neutral: render felt unconditionally so the
@@ -86,11 +100,13 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
             from first frame. Pass `isWaitingPhase` so no game-name plate
             is shown when the family is a fallback default — preventing
             an incorrect label during pre-submit configuring. */}
-        <CanonicalFeltSurface
-          gameKind={gameKind ?? 'holm-game'}
-          anteAmount={anteAmount}
-          isWaitingPhase={true}
-        />
+        {!shellOwnsFelt && (
+          <CanonicalFeltSurface
+            gameKind={resolvedGameKind}
+            anteAmount={anteAmount}
+            isWaitingPhase={true}
+          />
+        )}
       </div>
       {/* Geometry-parity bottom-panel reservation: mirrors the
           active gameplay layout (felt + bottom panel) so the felt
