@@ -162,22 +162,40 @@ export function CanonicalShellWaitingSurface({
       >
         {activeTab === "cards" && (
           <>
-            {/* Absolute seat-presence layer — restores multiplayer
-                awareness in waiting. Renders occupied seats as
-                chipstacks and (for observers) open seats as + join
-                affordances. Mirrors the geometry MobileGameTable uses
-                for the legacy poker waiting surface. */}
+            {/* Seat-presence layer. Projection mode mirrors gameplay:
+                observers see absolute seating; once joined, the viewer
+                switches to relative seating and is anchored at HOME
+                (suppressed — represented by active-player content).
+                Other participants are remapped to canonical slots by
+                clockwise distance from the viewer. */}
             <div
               data-canonical-shell-waiting-seats=""
+              data-projection-mode={
+                actions.isObserver ? "observer-absolute" : "active-canonical"
+              }
               className="absolute inset-0 z-20 pointer-events-none"
             >
               {ALL_POSITIONS.map((pos) => {
                 const player = players.find((p) => p.position === pos);
-                const positionClass =
-                  ABSOLUTE_SEAT_CLASSES[pos] ?? ABSOLUTE_SEAT_CLASSES[1];
+                const isSelf = player?.user_id === currentUserId;
+                const viewerPos = actions.isObserver
+                  ? null
+                  : players.find((p) => p.user_id === currentUserId)?.position ?? null;
+
+                // Suppress self chipstack entirely — the viewer is
+                // represented by the active-player content model, not
+                // by a duplicate on-table chipstack of themselves.
+                if (isSelf) return null;
+
+                const slot =
+                  viewerPos != null
+                    ? activeSlotForDistance(clockwiseDistance(viewerPos, pos))
+                    : observerSlotForPosition(pos);
+
+                if (slot == null) return null;
+                const positionClass = SLOT_CLASSES[slot] ?? SLOT_CLASSES[0];
 
                 if (player) {
-                  const isSelf = player.user_id === currentUserId;
                   const label =
                     player.profiles?.username ??
                     (player.is_bot ? "Bot" : "Player");
@@ -193,11 +211,7 @@ export function CanonicalShellWaitingSurface({
                         playerStatus="waiting"
                       />
                       <span
-                        className={`text-[10px] font-medium max-w-[68px] truncate px-1.5 py-0.5 rounded ${
-                          isSelf
-                            ? "bg-amber-600/80 text-black"
-                            : "bg-black/60 text-amber-200"
-                        }`}
+                        className="text-[10px] font-medium max-w-[68px] truncate px-1.5 py-0.5 rounded bg-yellow-300 text-black"
                       >
                         {label}
                         {player.is_bot ? " 🤖" : ""}
@@ -206,6 +220,8 @@ export function CanonicalShellWaitingSurface({
                   );
                 }
 
+                // Open-seat + affordance only renders for observers.
+                // Joined viewers cannot re-pick seats from waiting.
                 if (!actions.isObserver) return null;
 
                 return (
@@ -223,6 +239,7 @@ export function CanonicalShellWaitingSurface({
                       <span className="text-amber-300 text-xl leading-none">
                         +
                       </span>
+
                     </button>
                   </div>
                 );
