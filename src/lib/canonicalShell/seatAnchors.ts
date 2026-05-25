@@ -51,9 +51,17 @@ export type ProjectionMode = 'observer-absolute' | 'active-canonical';
 export const SLOT = {
   HOME: -1,
   FACE_TO_FACE: -2,
+  /**
+   * BOTTOM_RAIL (-3) — observer-only anchor for the absolute "south"
+   * seat (position 4). Sits flush against the bottom rail OUTSIDE the
+   * active play zone so it never obscures gameplay-critical central
+   * content (pegging count, action lane, dice tray). Never used in
+   * active-canonical projection.
+   */
+  BOTTOM_RAIL: -3,
 } as const;
 
-export type CanonicalSlot = -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5;
+export type CanonicalSlot = -3 | -2 | -1 | 0 | 1 | 2 | 3 | 4 | 5;
 
 /**
  * Inherently 2-player game types. Canonicalization is driven by game
