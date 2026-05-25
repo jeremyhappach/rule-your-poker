@@ -20,6 +20,12 @@ interface CribbageTurnSpotlightProps {
    * When null/undefined, falls back to the legacy player-count math.
    */
   currentTurnSlot?: CanonicalSlot | null;
+  /**
+   * Geometry mask for the spotlight overlay. Defaults to the legacy
+   * Cribbage circular frame; shell-owned felt passes the shared ellipse
+   * so the spotlight cannot visually recreate the old circular felt.
+   */
+  clipPath?: string;
 }
 
 const SLOT_TO_ANGLE: Record<number, number> = {
@@ -46,6 +52,7 @@ export const CribbageTurnSpotlight = ({
   totalPlayers,
   opponentIds = [],
   currentTurnSlot,
+  clipPath = 'ellipse(50% 50% at 50% 50%)',
 }: CribbageTurnSpotlightProps) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
@@ -99,7 +106,7 @@ export const CribbageTurnSpotlight = ({
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
-          clipPath: 'ellipse(50% 50% at 50% 50%)',
+          clipPath,
         }}
       >
         <div
@@ -119,7 +126,7 @@ export const CribbageTurnSpotlight = ({
         style={{
           opacity,
           transition: 'opacity 0.4s ease-out',
-          clipPath: 'ellipse(50% 50% at 50% 50%)',
+          clipPath,
         }}
       >
         <div

@@ -43,6 +43,8 @@ export interface CanonicalFeltSurfaceProps {
    * keep production-identical behavior.
    */
   geometryVariant?: 'auto' | 'ellipse';
+  /** Diagnostic ownership marker stamped onto the actual felt node. */
+  feltOwner?: string;
   /** Cribbage-only — appended to the plate subtitle line. */
   cribbageSkunk?: {
     skunkEnabled?: boolean;
@@ -82,6 +84,7 @@ export function CanonicalFeltSurface({
   isTablet = false,
   isDesktop = false,
   geometryVariant = 'auto',
+  feltOwner,
   cribbageSkunk,
 }: CanonicalFeltSurfaceProps) {
   const { getTableColors } = useVisualPreferences();
@@ -114,6 +117,7 @@ export function CanonicalFeltSurface({
       {/* Table felt — shared ellipse/circle + bridge overlay */}
       <div
         data-canonical-felt-surface=""
+        data-canonical-felt-owner={feltOwner ?? 'local-felt-surface'}
         data-canonical-felt-game={gameKind}
         data-canonical-felt-geometry={useEllipseGeometry ? 'ellipse' : 'circle'}
         className={feltClass}

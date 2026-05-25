@@ -5417,6 +5417,19 @@ export const CribbageMobileGameTable = ({
   // produces a rail announcement.
 
 
+  const feltFrameStyle = shellOwnsFelt
+    ? {
+        width: 'min(94vw, 720px)',
+        height: 'min(52vh, 420px)',
+      }
+    : {
+        width: 'min(90vw, calc(55vh - 32px))',
+        height: 'min(90vw, calc(55vh - 32px))',
+      };
+  const feltGeometryClipPath = shellOwnsFelt
+    ? 'ellipse(50% 45% at 50% 50%)'
+    : 'ellipse(50% 50% at 50% 50%)';
+
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
@@ -5452,13 +5465,12 @@ export const CribbageMobileGameTable = ({
             we suppress this to avoid double-painting / covering the shell felt. */}
         {!shellOwnsFelt && <div className="absolute inset-0 bg-slate-200 z-0" />}
 
-        {/* Circular table — identical structure across all modes */}
+        {/* Felt-content frame. Flag OFF preserves the legacy square/circle production frame;
+            shell-owned felt ON uses the shared canonical ellipse content frame so Cribbage
+            overlays cannot visually recreate the old circular felt during phase transitions. */}
         <div
           className="relative z-10"
-          style={{
-            width: 'min(90vw, calc(55vh - 32px))',
-            height: 'min(90vw, calc(55vh - 32px))',
-          }}
+          style={feltFrameStyle}
         >
           {/* ── Phase 2.2 / Bucket 3 Phase 3.1b: canonical felt.
               Default path (shell-owned felt OFF): render the local
@@ -5632,6 +5644,7 @@ export const CribbageMobileGameTable = ({
                       ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
                       : null
                   }
+                  clipPath={feltGeometryClipPath}
                 />
 
 
