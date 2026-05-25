@@ -35,6 +35,11 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { getCanonicalSlotPlacement } from './canonicalSlotPlacement';
 import type { CanonicalSlot } from './seatAnchors';
+import {
+  getParticipantChipBgClass,
+  getParticipantChipFgClass,
+  type ParticipantStatus,
+} from './participantStatus';
 
 export interface CanonicalSeatClusterProps {
   /** Canonical slot this cluster anchors to. Null → not rendered. */
@@ -48,6 +53,13 @@ export interface CanonicalSeatClusterProps {
   isDealer?: boolean;
   /** Pre-formatted chip value (caller controls formatting / currency). */
   chipValue: string;
+  /**
+   * Canonical participant status — drives the chip bubble fill color
+   * via the shared `getParticipantChipBgClass` palette. Defaults to
+   * `'active'` (white) so existing consumers that don't yet pass a
+   * status keep their current rendering exactly.
+   */
+  status?: ParticipantStatus;
   /** Optional game-owned seat content rendered below the chip bubble as
    *  part of the same anchored cluster. Fully arbitrary per game — the
    *  shell does not assume card backs, hand layout, or any specific
@@ -64,6 +76,7 @@ export function CanonicalSeatCluster({
   name,
   isDealer = false,
   chipValue,
+  status = 'active',
   children,
   className,
 }: CanonicalSeatClusterProps) {
@@ -77,11 +90,15 @@ export function CanonicalSeatCluster({
   // identity → chip → content stack.
   const isBottomAnchored = slot === -1 || slot === 0 || slot === 5;
 
+  const chipBgClass = getParticipantChipBgClass(status);
+  const chipFgClass = getParticipantChipFgClass(status);
+
   return (
     <div
       data-canonical-seat-cluster=""
       data-seat-position={position}
       data-seat-slot={slot}
+      data-seat-status={status}
       className={cn(
         'absolute pointer-events-none flex gap-1',
         isBottomAnchored ? 'flex-col-reverse' : 'flex-col',
@@ -113,9 +130,12 @@ export function CanonicalSeatCluster({
         </div>
         <div
           data-chip-center={position}
-          className="w-8 h-8 rounded-full flex items-center justify-center border border-white/40 bg-white"
+          className={cn(
+            'w-8 h-8 rounded-full flex items-center justify-center border border-white/40',
+            chipBgClass,
+          )}
         >
-          <span className="text-[10px] font-bold text-slate-900">
+          <span className={cn('text-[10px] font-bold', chipFgClass)}>
             {chipValue}
           </span>
         </div>
@@ -129,3 +149,4 @@ export function CanonicalSeatCluster({
     </div>
   );
 }
+
