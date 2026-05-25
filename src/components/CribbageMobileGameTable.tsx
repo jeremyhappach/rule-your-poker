@@ -5446,10 +5446,13 @@ export const CribbageMobileGameTable = ({
           minHeight: '300px',
         }}
       >
-        {/* Light background behind the circle. Suppressed when the shell owns
-            the felt; otherwise this opaque slab hides the shell-mounted
-            CanonicalFeltSurface during ante/dealer lifecycle states. */}
-        {!shellOwnsFelt && <div className="absolute inset-0 bg-slate-200 z-0" />}
+        {/* Light background behind the circle. ALWAYS rendered — this is just
+            visual paint surrounding the circular felt and is NOT a felt
+            surface itself (no `data-canonical-felt-surface`), so it does
+            not violate the one-felt invariant. With shell-owned felt ON,
+            this preserves the approved Cribbage backdrop instead of letting
+            the dark shell-neutral show through as a gray rectangle. */}
+        <div className="absolute inset-0 bg-slate-200 z-0" />
 
         {/* Circular table — identical structure across all modes */}
         <div
