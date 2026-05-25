@@ -6106,13 +6106,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // status='left' and hide the seat, which conflates passive sit-outs
       // with intentional departures. Sit-outs can opt back in for next game.
 
-      // Revert to waiting status
+      // Revert to waiting status — clear stale per-dealer-game
+      // scaffolding so the next Start Game has a clean bootstrap.
       await supabase
         .from('games')
         .update({
           status: 'waiting',
           awaiting_next_round: false,
-          last_round_result: null
+          last_round_result: null,
+          current_game_uuid: null,
+          config_deadline: null,
+          config_complete: false,
         })
         .eq('id', gameId);
       return;
