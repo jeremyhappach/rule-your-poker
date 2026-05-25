@@ -111,10 +111,12 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
       {/* Geometry-parity bottom-panel reservation: mirrors the
           active gameplay layout (felt + bottom panel) so the felt
           region resolves against the same vertical share in
-          neutral and active. Content is intentionally empty. */}
+          neutral and active. When the shell owns the felt, this
+          reservation must not paint an opaque HUD/backdrop over the
+          shared ellipse during ante-decision neutral frames. */}
       <div
         data-canonical-shell-neutral-bottom-panel=""
-        className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border"
+        className={`flex-1 flex flex-col min-h-0 ${shellOwnsFelt ? 'bg-transparent border-t border-transparent' : 'bg-gradient-to-t from-background via-background to-background/95 border-t border-border'}`}
       />
     </div>
   );
