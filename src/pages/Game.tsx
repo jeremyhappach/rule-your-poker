@@ -25,6 +25,7 @@ import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentit
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import { resolveMobileTableFeltOwnership } from "@/lib/canonicalShell/pokerShellCutover";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 import { CribbageGameTable } from "@/components/CribbageGameTable";
@@ -8641,6 +8642,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="dealer-selection-bg"
+                    feltOwnership={resolveMobileTableFeltOwnership(game?.game_type)}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -8713,6 +8715,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 {!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (
                   <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="status-keyed"
+                    feltOwnership={resolveMobileTableFeltOwnership(game?.game_type)}
                     gameId={gameId}
                     players={players}
                     currentUserId={user?.id}
@@ -8873,6 +8876,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
+                    feltOwnership={resolveMobileTableFeltOwnership(game?.game_type)}
                     gameId={gameId}
                     players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
                     currentUserId={user?.id}
@@ -9239,6 +9243,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <MobileGameTable
                 key={gameId ?? 'unknown-game'}
                 instanceLabel="cribbage-or-special"
+                feltOwnership={resolveMobileTableFeltOwnership(game?.game_type)}
                 gameId={gameId}
                 players={players}
                 currentUserId={user?.id}
@@ -9368,6 +9373,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
+              feltOwnership={resolveMobileTableFeltOwnership(game?.game_type)}
               gameId={gameId}
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
