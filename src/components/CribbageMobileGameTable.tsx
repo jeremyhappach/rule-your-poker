@@ -30,6 +30,10 @@ import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
+import {
+  useShellFeltContext,
+  usePublishShellFelt,
+} from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
@@ -99,6 +103,54 @@ interface CribbageGameConfig {
   doubleSkunkEnabled: boolean;
   doubleSkunkThreshold: number;
 }
+
+/**
+ * CribbageFeltAdapter — Bucket 3 Phase 3.1b cutover seam.
+ *
+ * Default (shell-owned felt OFF): renders the local CanonicalFeltSurface
+ * exactly as before. Shell-owned felt ON: publishes the same parameters
+ * to the shell-owned host via `usePublishShellFelt` and suppresses the
+ * local render so only one canonical felt node exists in the DOM.
+ *
+ * Isolated as a child so hook ordering inside the parent table component
+ * is unchanged when the flag flips.
+ */
+function CribbageFeltAdapter(props: {
+  anteAmount: number | string;
+  pointsToWin: number;
+  cribbageSkunk: {
+    skunkEnabled?: boolean;
+    skunkThreshold?: number;
+    doubleSkunkEnabled?: boolean;
+    doubleSkunkThreshold?: number;
+  };
+  isWaitingPhase: boolean;
+}) {
+  const { shellOwnsFelt } = useShellFeltContext();
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: 'cribbage',
+          anteAmount: props.anteAmount,
+          pointsToWin: props.pointsToWin,
+          cribbageSkunk: props.cribbageSkunk,
+          isWaitingPhase: props.isWaitingPhase,
+          publisherLabel: 'CribbageMobileGameTable',
+        }
+      : null,
+  );
+  if (shellOwnsFelt) return null;
+  return (
+    <CanonicalFeltSurface
+      gameKind="cribbage"
+      anteAmount={props.anteAmount}
+      pointsToWin={props.pointsToWin}
+      cribbageSkunk={props.cribbageSkunk}
+      isWaitingPhase={props.isWaitingPhase}
+    />
+  );
+}
+
 
 interface CribbageMobileGameTableProps {
   gameId: string;
@@ -5396,17 +5448,16 @@ export const CribbageMobileGameTable = ({
             height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
-          {/* ── Phase 2.2: canonical felt cutover.
-              Shell-owned felt visual (gradient + bridge + circle clip)
-              now comes from CanonicalFeltSurface, parameterized for
-              cribbage's circular geometry. The outer square wrapper
-              remains caller-owned because cribbage's table sizing is
-              specific (square inside a taller container with slate
-              backdrop). The circle clip + felt paint + game-name plate
-              are canonical. */}
+          {/* ── Phase 2.2 / Bucket 3 Phase 3.1b: canonical felt.
+              Default path (shell-owned felt OFF): render the local
+              CanonicalFeltSurface inside the square wrapper, exactly
+              as before. Shell-owned felt path (flag ON): publish the
+              same parameters via useShellFeltContext so the single
+              shell-mounted CanonicalFeltSurface paints the felt; the
+              local render is suppressed so only one canonical felt
+              node exists in the DOM. */}
           <div className="relative w-full h-full">
-            <CanonicalFeltSurface
-              gameKind="cribbage"
+            <CribbageFeltAdapter
               anteAmount={anteAmount}
               pointsToWin={gameConfig.pointsToWin}
               cribbageSkunk={{
@@ -5417,6 +5468,7 @@ export const CribbageMobileGameTable = ({
               }}
               isWaitingPhase={isBootstrapMode || isHighCardMode}
             />
+
 
 
             {/* ── MODE-SPECIFIC FELT CONTENT ── */}
