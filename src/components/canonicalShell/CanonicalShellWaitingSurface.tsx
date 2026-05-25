@@ -325,9 +325,13 @@ function WaitingSurfaceBody({
                 seatedPlayerCount={actions.seatedPlayerCount}
                 realMoney={realMoney}
                 isAddingBot={actions.isAddingBot}
+                viewerNeedsRejoin={actions.viewerNeedsRejoin}
+                viewerIsWaitingToRejoin={actions.viewerIsWaitingToRejoin}
+                isRejoining={actions.isRejoining}
                 onInvite={actions.handleInvite}
                 onAddBot={actions.handleAddBot}
                 onStartGame={actions.handleStartGame}
+                onRejoin={actions.handleRejoin}
               />
             </div>
           </>
