@@ -34,6 +34,15 @@ export interface CanonicalFeltSurfaceProps {
   isWaitingPhase?: boolean;
   isTablet?: boolean;
   isDesktop?: boolean;
+  /**
+   * Phase 3.1b' — geometry override. 'auto' (default) preserves legacy
+   * per-game geometry (Cribbage = circle, others = ellipse). 'ellipse'
+   * forces the shared canonical ellipse regardless of gameKind. Used by
+   * the shell-owned felt host (flag ON) to render all families against
+   * the same canonical geometry. Flag-OFF callers omit this prop and
+   * keep production-identical behavior.
+   */
+  geometryVariant?: 'auto' | 'ellipse';
   /** Cribbage-only — appended to the plate subtitle line. */
   cribbageSkunk?: {
     skunkEnabled?: boolean;
@@ -42,6 +51,7 @@ export interface CanonicalFeltSurfaceProps {
     doubleSkunkThreshold?: number;
   };
 }
+
 
 const GAME_NAME_LABEL: Record<CanonicalFeltGameKind, string> = {
   "holm-game": "Holm",
@@ -71,6 +81,7 @@ export function CanonicalFeltSurface({
   isWaitingPhase = false,
   isTablet = false,
   isDesktop = false,
+  geometryVariant = 'auto',
   cribbageSkunk,
 }: CanonicalFeltSurfaceProps) {
   const { getTableColors } = useVisualPreferences();
@@ -78,22 +89,24 @@ export function CanonicalFeltSurface({
   const isDicePlate = DICE_PLATE_KINDS.has(gameKind);
   const isCribbage = gameKind === "cribbage";
 
-  // Cribbage uses a circular table inside a pre-sized square wrapper
-  // owned by its caller. Other games stretch an ellipse across the
-  // available table container. Either way, the felt visual (gradient
-  // + bridge overlay + plate chrome) is canonical.
-  const feltClass = isCribbage
-    ? "absolute inset-0 rounded-full border-2 border-white/80 overflow-hidden"
-    : "absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden";
+  // Geometry selection. When geometryVariant === 'ellipse' we force the
+  // shared canonical ellipse for every family (Phase 3.1b' shell-owned
+  // path). 'auto' preserves the legacy per-game geometry so flag-OFF
+  // production renders identically to today.
+  const useEllipseGeometry = geometryVariant === 'ellipse' || !isCribbage;
 
-  const feltStyle: React.CSSProperties = isCribbage
+  const feltClass = useEllipseGeometry
+    ? "absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
+    : "absolute inset-0 rounded-full border-2 border-white/80 overflow-hidden";
+
+  const feltStyle: React.CSSProperties = useEllipseGeometry
     ? {
-        background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
-        filter: tableColors.showBridge ? undefined : "brightness(0.7)",
-      }
-    : {
         background: `linear-gradient(135deg, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         boxShadow: "inset 0 0 30px rgba(0,0,0,0.4)",
+      }
+    : {
+        background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
+        filter: tableColors.showBridge ? undefined : "brightness(0.7)",
       };
 
   return (
@@ -102,6 +115,7 @@ export function CanonicalFeltSurface({
       <div
         data-canonical-felt-surface=""
         data-canonical-felt-game={gameKind}
+        data-canonical-felt-geometry={useEllipseGeometry ? 'ellipse' : 'circle'}
         className={feltClass}
         style={feltStyle}
       >
@@ -112,17 +126,18 @@ export function CanonicalFeltSurface({
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none w-full h-full object-cover"
             style={
-              isCribbage
-                ? { objectFit: "cover", filter: "brightness(0.5)" }
-                : {
+              useEllipseGeometry
+                ? {
                     objectPosition:
                       isTablet || isDesktop ? "center 60%" : "center 38%",
                     opacity: isTablet || isDesktop ? 0.36 : 0.28,
                   }
+                : { objectFit: "cover", filter: "brightness(0.5)" }
             }
           />
         )}
       </div>
+
 
       {/* Game-name plate — shared chrome */}
       {!isWaitingPhase && (
