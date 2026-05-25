@@ -279,6 +279,30 @@ export function ShellOwnedFeltHost({
     effective?.gameKind ?? initialGameKind ?? 'holm-game';
   const anteAmount = effective?.anteAmount ?? initialAnteAmount;
   const isWaitingPhase = effective?.isWaitingPhase ?? initialIsWaitingPhase;
+  const hostTrace = {
+    publisherLabel: effective?.publisherLabel ?? null,
+    gameKind,
+    anteAmount,
+    isWaitingPhase,
+    hasPublished: !!published,
+    hasSticky: !!stickyRef.current,
+  };
+
+  useEffect(() => {
+    if (import.meta.env.PROD) return;
+    // eslint-disable-next-line no-console
+    console.info('[ShellOwnedFelt] host mounted');
+    return () => {
+      // eslint-disable-next-line no-console
+      console.warn('[ShellOwnedFelt] host unmounted');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.PROD) return;
+    // eslint-disable-next-line no-console
+    console.info('[ShellOwnedFelt] render context', hostTrace);
+  }, [gameKind, anteAmount, isWaitingPhase, published, effective]);
 
   // DEV-only, warn-only invariant — never throws.
   useShellFeltInvariant();
@@ -288,14 +312,7 @@ export function ShellOwnedFeltHost({
       data-canonical-shell-felt-host=""
       data-canonical-felt-owner="shell-owned-felt-host"
       data-shell-felt-mounted="true"
-      data-shell-felt-context={JSON.stringify({
-        publisherLabel: effective?.publisherLabel ?? null,
-        gameKind,
-        anteAmount,
-        isWaitingPhase,
-        hasPublished: !!published,
-        hasSticky: !!stickyRef.current,
-      })}
+      data-shell-felt-context={JSON.stringify(hostTrace)}
       aria-hidden="true"
       style={{
         position: 'absolute',
@@ -309,7 +326,9 @@ export function ShellOwnedFeltHost({
         style={{
           position: 'absolute',
           left: '50%',
-          top: 'calc(50% - 18px)',
+          top: gameKind === 'cribbage'
+            ? 'calc((min(90vw, calc(55vh - 32px)) + 10px) / 2 + 4px)'
+            : 'calc(50% - 18px)',
           width: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(94vw, 720px)',
           height: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(52vh, 420px)',
           minWidth: gameKind === 'cribbage' ? 300 : 300,
