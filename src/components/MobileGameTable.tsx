@@ -3862,25 +3862,22 @@ export const MobileGameTable = ({
   };
   const expectedCardCount = getExpectedCardCount(currentRound);
 
-  // Get player status chip background color based on status
-  // NOTE: "stayed" color is handled separately via playerDecision in renderPlayerChip
+  // Get player status chip background color based on status.
+  // Delegates to the canonical shell shared participant status
+  // palette (src/lib/canonicalShell/participantStatus.ts) so the
+  // legacy poker surface and every canonical-shell consumer (waiting
+  // surface, Cribbage/Gin/Yahtzee seat clusters) stay in lockstep on
+  // the four-state language: active=white, waiting=yellow,
+  // sitting_out=red, stayed=green.
+  // NOTE: dice games (Horses / SCC) have no stay/fold semantics, so
+  // we suppress the 'stayed' resolution via hasStayDecision.
   const getPlayerChipBgColor = (player: Player, playerDecision: string | null) => {
-    // Yellow for waiting (regardless of sitting_out)
-    if (player.waiting) {
-      return 'bg-yellow-300';
-    }
-    // Light red for sitting out OR auto_fold (and not waiting) - pale enough to see negative chip values
-    if (player.sitting_out || player.auto_fold) {
-      return 'bg-red-400';
-    }
-    // Green background for players who stayed (replaces the glow ring)
-    // CRITICAL: Only apply for non-dice games - dice games have no stay/fold decisions
-    if (playerDecision === 'stay' && !isDiceGame) {
-      return 'bg-green-400';
-    }
-    // White for active players who haven't acted yet
-    return 'bg-white';
+    const status = derivePlayerStatus(player, playerDecision, {
+      hasStayDecision: !isDiceGame,
+    });
+    return getParticipantChipBgClass(status);
   };
+
 
   // Render player chip - chipstack in center, name below (or above for bottom positions)
   // For observers (!currentPlayer), slotIndex represents the visual slot matching the absolute position
