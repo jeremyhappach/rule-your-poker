@@ -236,7 +236,9 @@ function WaitingSurfaceBody({
               {players.map((player) => {
                 const anchor = byPosition.get(player.position);
                 if (!anchor) return null;
-                if (player.user_id === currentUserId) return null;
+                // Self-suppression is handled by CanonicalSeatCluster
+                // via the SeatAnchorLayer viewerPosition context.
+
 
                 const label =
                   player.profiles?.username ??
