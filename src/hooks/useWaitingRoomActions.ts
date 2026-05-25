@@ -313,6 +313,22 @@ export function useWaitingRoomActions({
       .catch(() => toast.info(`Share this link: ${gameUrl}`));
   }, []);
 
+  const handleRejoin = useCallback(async () => {
+    if (!currentPlayer?.id || isRejoining) return;
+    setIsRejoining(true);
+    try {
+      const { handlePlayerRejoin } = await import("@/lib/playerStateEvaluation");
+      const ok = await handlePlayerRejoin(currentPlayer.id);
+      if (ok) {
+        onRejoinRequested?.();
+      } else {
+        toast.error("Failed to rejoin");
+      }
+    } finally {
+      setIsRejoining(false);
+    }
+  }, [currentPlayer?.id, isRejoining, onRejoinRequested]);
+
   return {
     isObserver,
     isSeated,
@@ -321,8 +337,12 @@ export function useWaitingRoomActions({
     hasOpenSeats,
     seatedPlayerCount,
     isAddingBot,
+    viewerNeedsRejoin,
+    viewerIsWaitingToRejoin,
+    isRejoining,
     handleInvite,
     handleAddBot,
     handleStartGame,
+    handleRejoin,
   };
 }
