@@ -11,7 +11,7 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { Share2, Users, Bot, Loader2 } from "lucide-react";
+import { Share2, Users, Bot, Loader2, LogIn } from "lucide-react";
 
 export interface WaitingRoomCTAProps {
   isObserver: boolean;
@@ -21,9 +21,13 @@ export interface WaitingRoomCTAProps {
   seatedPlayerCount: number;
   realMoney: boolean;
   isAddingBot: boolean;
+  viewerNeedsRejoin?: boolean;
+  viewerIsWaitingToRejoin?: boolean;
+  isRejoining?: boolean;
   onInvite: () => void;
   onAddBot: () => void;
   onStartGame: () => void;
+  onRejoin?: () => void;
 }
 
 export function WaitingRoomCTA({
