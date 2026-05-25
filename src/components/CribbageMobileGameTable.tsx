@@ -5417,18 +5417,10 @@ export const CribbageMobileGameTable = ({
   // produces a rail announcement.
 
 
-  const feltFrameStyle = shellOwnsFelt
-    ? {
-        width: 'min(94vw, 720px)',
-        height: 'min(52vh, 420px)',
-      }
-    : {
-        width: 'min(90vw, calc(55vh - 32px))',
-        height: 'min(90vw, calc(55vh - 32px))',
-      };
-  const feltGeometryClipPath = shellOwnsFelt
-    ? 'ellipse(50% 45% at 50% 50%)'
-    : 'ellipse(50% 50% at 50% 50%)';
+  const feltFrameStyle = {
+    width: 'min(90vw, calc(55vh - 32px))',
+    height: 'min(90vw, calc(55vh - 32px))',
+  };
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
@@ -5632,20 +5624,22 @@ export const CribbageMobileGameTable = ({
             {/* GAMEPLAY MODE: full game content */}
             {isGameplayMode && viewState && (
               <>
-                {/* Turn Spotlight */}
-                <CribbageTurnSpotlight
-                  currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-                  currentPlayerId={currentPlayerId || ''}
-                  isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                  totalPlayers={activeSeatPlayers.length}
-                  opponentIds={projectedSeatPlayers.map(o => o.id)}
-                  currentTurnSlot={
-                    viewState.pegging.currentTurnPlayerId
-                      ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
-                      : null
-                  }
-                  clipPath={feltGeometryClipPath}
-                />
+                {/* Legacy Cribbage spotlight paints a geometry-shaped mask; suppress it while
+                    shell-owned felt is validating so the shell remains the only visible ellipse. */}
+                {!shellOwnsFelt && (
+                  <CribbageTurnSpotlight
+                    currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
+                    currentPlayerId={currentPlayerId || ''}
+                    isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                    totalPlayers={activeSeatPlayers.length}
+                    opponentIds={projectedSeatPlayers.map(o => o.id)}
+                    currentTurnSlot={
+                      viewState.pegging.currentTurnPlayerId
+                        ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
+                        : null
+                    }
+                  />
+                )}
 
 
                 {/* Game Title — now rendered by CanonicalFeltSurface plate (Phase 2.2). */}
