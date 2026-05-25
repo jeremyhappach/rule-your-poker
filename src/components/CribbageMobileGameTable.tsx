@@ -5630,13 +5630,12 @@ export const CribbageMobileGameTable = ({
               </div>
             )}
 
-            {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount */}
-            {isBootstrapMode && (
+            {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount.
+                Canonical felt title already provides game identity; no transient
+                "Cribbage" label here (was redundant placeholder noise). */}
+            {isBootstrapMode && isTransitioning && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-                <h2 className="text-sm font-bold text-white drop-shadow-lg mb-2">Cribbage</h2>
-                {isTransitioning && (
-                  <p className="text-xs text-white/60 animate-pulse">Preparing next hand…</p>
-                )}
+                <p className="text-xs text-white/60 animate-pulse">Preparing next hand…</p>
               </div>
             )}
 
