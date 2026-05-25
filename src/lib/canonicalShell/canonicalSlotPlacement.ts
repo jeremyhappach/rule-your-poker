@@ -46,10 +46,12 @@ export function getCanonicalSlotPlacement(
     case -2: return { className: 'top-[4%] left-1/2 -translate-x-1/2 items-center' };
     // HOME — bottom-center rail (viewer in active-canonical mode)
     case -1: return { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
-    // BOTTOM_RAIL — observer-only south anchor; flush against the
-    // outside rail, below the play zone, so it never obscures
-    // gameplay-critical central content.
-    case -3: return { className: 'bottom-0 left-1/2 -translate-x-1/2 items-center scale-90' };
+    // BOTTOM_RAIL — observer-only anchor for absolute "south" (pos 4).
+    // Anchored to the bottom-right perimeter rail (offset from the
+    // bottom-right corner cluster at slot 5) so it sits OUTSIDE the
+    // central gameplay action lane — pegging count, played-card row,
+    // dice tray, and other center-column overlays. Never bottom-center.
+    case -3: return { className: 'bottom-[1%] right-[28%] items-end scale-90' };
     // Bottom-left corner (hugs ellipse rail)
     case 0:  return { className: 'top-[78%] left-[10%] items-start' };
     // Middle-left
