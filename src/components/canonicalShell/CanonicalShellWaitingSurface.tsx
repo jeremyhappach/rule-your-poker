@@ -5,14 +5,14 @@
  * (Cribbage / Gin Rummy / Yahtzee). Mounted inside the
  * `PersistentTableShell` children slot when `game.status === 'waiting'`.
  *
- * 3.1d fixes:
+ * 3.1d/3.1e fixes:
  *   - CTA is anchored to the SHELL-OWNED ELLIPSE bounds (mirrors the
  *     ellipse geometry in `ShellOwnedFeltHost`), not to the slot-content
  *     center, so it visually sits in the table — not below it.
- *   - Mounts `<ShellHudChrome />` (announcement rail + canonical tab
- *     bar) and publishes `useShellTabBar(...)` metadata so the lobby
- *     keeps shell continuity (rail + tab nav + chat panel). Fixes the
- *     3.1d "missing shell chrome" regression.
+ *   - Mounts `<ShellHudChrome />` in the same order as canonical gameplay
+ *     surfaces: persistent table region first, then rail/tabbar, then the
+ *     active content pane. Chat/lobby/history swap ONLY in that bottom
+ *     pane and never cover the shell-owned felt.
  *   - First-frame layout stability is owned by the bootstrap branch in
  *     `Game.tsx` (header + tabbar reservations).
  */
@@ -61,6 +61,8 @@ export interface CanonicalShellWaitingSurfaceProps {
 }
 
 const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
+const SHELL_FELT_FRAME_HEIGHT = "min(86vw, calc(55vh - 64px), 400px)";
+const SHELL_TABLE_REGION_HEIGHT = `calc(24px + ${SHELL_FELT_FRAME_HEIGHT})`;
 
 export function CanonicalShellWaitingSurface({
   gameId,
@@ -137,10 +139,17 @@ export function CanonicalShellWaitingSurface({
       data-shell-waiting-game-type={gameType}
       className="relative w-full h-full flex flex-col flex-1 min-h-0"
     >
-      {/* Tab content region — fills the children row above the shell
-          HUD chrome (rail + tabbar). The CTA overlay lives inside the
-          'cards' tab so chat/lobby/history tabs aren't obscured. */}
-      <div className="relative flex-1 min-h-0 flex flex-col">
+      {/* Persistent table region — mirrors canonical gameplay surfaces.
+          The shell-owned felt remains visible for every tab; only the
+          lower player-content pane swaps. */}
+      <div
+        data-canonical-shell-waiting-table-region=""
+        className="relative flex-shrink-0"
+        style={{
+          height: SHELL_TABLE_REGION_HEIGHT,
+          minHeight: 260,
+        }}
+      >
         {activeTab === "cards" && (
           <>
             {/* CTA stage — mirrors the shell-owned ellipse geometry
@@ -154,7 +163,7 @@ export function CanonicalShellWaitingSurface({
               className="absolute left-0 right-0 flex items-center justify-center pointer-events-none z-30"
               style={{
                 top: 24,
-                height: "min(86vw, calc(55vh - 64px), 400px)",
+                height: SHELL_FELT_FRAME_HEIGHT,
               }}
             >
               <WaitingRoomCTA
@@ -171,41 +180,51 @@ export function CanonicalShellWaitingSurface({
               />
             </div>
 
-            {/* Observer seat picker — pinned to the bottom of the
-                cards-tab region, beneath the ellipse. */}
-            {actions.isObserver && openPositions.length > 0 && (
-              <div
-                data-canonical-shell-waiting-seat-picker=""
-                className="mt-auto px-4 py-3 border-t border-border bg-background/95 backdrop-blur-sm"
-              >
-                <p className="text-xs text-muted-foreground text-center mb-2 uppercase tracking-wider">
-                  Tap a seat to join
-                </p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {openPositions.map((pos) => (
-                    <Button
-                      key={pos}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onSelectSeat(pos)}
-                      className="border-amber-600/60 text-amber-300 hover:bg-amber-600/20"
-                    >
-                      Seat {pos}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
           </>
         )}
+      </div>
 
-        {activeTab === "chat" && (
-          <div className="px-3 pb-3 flex-1 flex flex-col overflow-hidden min-h-0">
+      {/* Unified bottom section — same shell-chrome/content-pane order as
+          canonical gameplay tables. */}
+      <div className="flex-1 flex flex-col bg-background min-h-0">
+        <ShellHudChrome />
+
+        <div className="flex-1 overflow-hidden min-h-0">
+          {activeTab === "cards" && (
+            <div className="h-full overflow-y-auto">
+              {actions.isObserver && openPositions.length > 0 ? (
+                <div
+                  data-canonical-shell-waiting-seat-picker=""
+                  className="px-4 py-3"
+                >
+                  <p className="text-xs text-muted-foreground text-center mb-2 uppercase tracking-wider">
+                    Tap a seat to join
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {openPositions.map((pos) => (
+                      <Button
+                        key={pos}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSelectSeat(pos)}
+                      >
+                        Seat {pos}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {activeTab === "chat" && (
+          <div className="h-full p-2">
             {onSendChat ? (
               <MobileChatPanel
                 messages={allMessages}
                 onSend={onSendChat}
                 isSending={isChatSending}
+                currentUserId={currentUserId}
               />
             ) : (
               <p className="text-muted-foreground text-sm text-center mt-6">
@@ -213,10 +232,10 @@ export function CanonicalShellWaitingSurface({
               </p>
             )}
           </div>
-        )}
+          )}
 
-        {activeTab === "lobby" && (
-          <div className="px-4 py-4 flex-1 overflow-y-auto">
+          {activeTab === "lobby" && (
+          <div className="h-full px-4 py-4 overflow-y-auto">
             <h3 className="text-sm font-bold text-foreground mb-3">
               Players ({players.length})
             </h3>
@@ -237,18 +256,15 @@ export function CanonicalShellWaitingSurface({
               ))}
             </ul>
           </div>
-        )}
+          )}
 
-        {activeTab === "history" && (
-          <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+          {activeTab === "history" && (
+          <div className="h-full px-4 py-6 text-center text-muted-foreground text-sm">
             History will appear once the game starts.
           </div>
-        )}
+          )}
+        </div>
       </div>
-
-      {/* Shell-owned HUD chrome — canonical announcement rail + tab
-          bar. Required for shell continuity in waiting (3.1d). */}
-      <ShellHudChrome />
     </div>
   );
 }
