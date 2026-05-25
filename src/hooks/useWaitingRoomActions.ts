@@ -121,11 +121,28 @@ export function useWaitingRoomActions({
   const hostPlayer = sortedByJoinTime[0];
   const isHost = !!currentPlayer && hostPlayer?.user_id === currentUserId;
 
-  const seatedPlayerCount = players.filter(
-    (p) => p.waiting === true || !p.sitting_out,
-  ).length;
+  // Only count seats whose participation intent is actively in/for the next
+  // hand. Recovery waiting (after a session sit-out) leaves players with
+  // status='observer'/'left' or sitting_out=true; those must NOT satisfy
+  // Start Game preconditions until they explicitly rejoin (waiting=true).
+  const seatedPlayerCount = players.filter((p) => {
+    if (p.status === "observer" || p.status === "left") return false;
+    return p.waiting === true || !p.sitting_out;
+  }).length;
   const hasEnoughPlayers = seatedPlayerCount >= 2;
   const hasOpenSeats = players.length < 7;
+
+  // Rejoin affordance — viewer is seated but currently sat out and not
+  // already queued to rejoin. This is the recovery-waiting signal.
+  const viewerNeedsRejoin =
+    !!currentPlayer &&
+    currentPlayer.sitting_out === true &&
+    currentPlayer.waiting !== true;
+  const viewerIsWaitingToRejoin =
+    !!currentPlayer &&
+    currentPlayer.sitting_out === true &&
+    currentPlayer.waiting === true;
+  const [isRejoining, setIsRejoining] = useState(false);
 
   // Doorbell on new human joins
   useEffect(() => {
