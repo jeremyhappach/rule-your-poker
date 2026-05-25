@@ -59,10 +59,18 @@ const POKER_VARIANT_GAME_TYPES = new Set<string>([
  * Empty in 3.2a. 3.2b–e each add exactly one entry.
  */
 export const POKER_SHELL_FELTLESS_FAMILIES = new Set<string>([
-  // 3.2b — Holm migrated. First poker-family canary: validates pot logic,
-  // chip transfer, showdown lifecycle, observer, dealer button, timeout,
-  // and animation rect sourcing against the shell-owned felt.
-  'holm-game',
+  // 3.2b — Holm: REVERTED.
+  //   First flip attempt (cribbage → holm transition) rendered a gray
+  //   void because the `poker-variant` route in Game.tsx does NOT wrap
+  //   with <PersistentTableShell>, so <ShellOwnedFeltHost> never mounts.
+  //   MobileGameTable correctly suppressed its local felt per the
+  //   feltOwnership='shell' contract, but there was no shell felt to
+  //   replace it. Substrate gap: 3.2a must also route poker-variant
+  //   families through PersistentTableShell (and gate ShellOwnedFeltHost
+  //   to mount whenever any registered feltless family is active, not
+  //   only when `isShellOwnedFeltEnabled()` is true) before any family
+  //   may be added to this set.
+  // 'holm-game',
   // 3.2c: 'three-five-seven', '3-5-7', '3-5-7-game', '357',
   // 3.2d: 'horses',
   // 3.2e: 'ship-captain-crew',
