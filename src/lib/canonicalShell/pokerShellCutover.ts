@@ -59,13 +59,11 @@ const POKER_VARIANT_GAME_TYPES = new Set<string>([
  * Empty in 3.2a. 3.2b–e each add exactly one entry.
  */
 export const POKER_SHELL_FELTLESS_FAMILIES = new Set<string>([
-  // 3.2b — Holm migrated.
+  // 3.2b — Holm migrated. First poker-family canary: validates pot logic,
+  // chip transfer, showdown lifecycle, observer, dealer button, timeout,
+  // and animation rect sourcing against the shell-owned felt.
   'holm-game',
-  // 3.2c — 3-5-7 migrated (all known aliases).
-  'three-five-seven',
-  '3-5-7',
-  '3-5-7-game',
-  '357',
+  // 3.2c: 'three-five-seven', '3-5-7', '3-5-7-game', '357',
   // 3.2d: 'horses',
   // 3.2e: 'ship-captain-crew',
 ]);
