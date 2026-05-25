@@ -5400,17 +5400,16 @@ export const CribbageMobileGameTable = ({
             height: 'min(90vw, calc(55vh - 32px))',
           }}
         >
-          {/* ── Phase 2.2: canonical felt cutover.
-              Shell-owned felt visual (gradient + bridge + circle clip)
-              now comes from CanonicalFeltSurface, parameterized for
-              cribbage's circular geometry. The outer square wrapper
-              remains caller-owned because cribbage's table sizing is
-              specific (square inside a taller container with slate
-              backdrop). The circle clip + felt paint + game-name plate
-              are canonical. */}
+          {/* ── Phase 2.2 / Bucket 3 Phase 3.1b: canonical felt.
+              Default path (shell-owned felt OFF): render the local
+              CanonicalFeltSurface inside the square wrapper, exactly
+              as before. Shell-owned felt path (flag ON): publish the
+              same parameters via useShellFeltContext so the single
+              shell-mounted CanonicalFeltSurface paints the felt; the
+              local render is suppressed so only one canonical felt
+              node exists in the DOM. */}
           <div className="relative w-full h-full">
-            <CanonicalFeltSurface
-              gameKind="cribbage"
+            <CribbageFeltAdapter
               anteAmount={anteAmount}
               pointsToWin={gameConfig.pointsToWin}
               cribbageSkunk={{
@@ -5421,6 +5420,7 @@ export const CribbageMobileGameTable = ({
               }}
               isWaitingPhase={isBootstrapMode || isHighCardMode}
             />
+
 
 
             {/* ── MODE-SPECIFIC FELT CONTENT ── */}
