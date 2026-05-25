@@ -41,11 +41,13 @@ function getAggressionLevelForBotId(botId: string): AggressionLevel {
 }
 
 export interface WaitingRoomActor {
+  id?: string;
   user_id: string;
   position: number;
   is_bot: boolean;
   sitting_out: boolean;
   waiting?: boolean;
+  status?: string;
   created_at?: string;
 }
 
@@ -56,6 +58,7 @@ export interface UseWaitingRoomActionsArgs {
   realMoney?: boolean;
   onGameStart: () => void;
   onBotAdded?: () => void;
+  onRejoinRequested?: () => void;
 }
 
 export interface UseWaitingRoomActions {
@@ -66,9 +69,13 @@ export interface UseWaitingRoomActions {
   hasOpenSeats: boolean;
   seatedPlayerCount: number;
   isAddingBot: boolean;
+  viewerNeedsRejoin: boolean;
+  viewerIsWaitingToRejoin: boolean;
+  isRejoining: boolean;
   handleInvite: () => void;
   handleAddBot: () => void;
   handleStartGame: () => void;
+  handleRejoin: () => void;
 }
 
 export function useWaitingRoomActions({
