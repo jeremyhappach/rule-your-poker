@@ -34,26 +34,32 @@ export interface CanonicalSlotPlacement {
  */
 export function getCanonicalSlotPlacement(
   slot: CanonicalSlot | null | undefined,
-  variant: 'occupied' | 'open-seat' = 'occupied',
+  variant: 'occupied' | 'open-seat' | 'occupied-observer' = 'occupied',
 ): CanonicalSlotPlacement {
   // Percentage-based anchors that hug the elliptical felt rail.
   switch (slot) {
     case -2: return { className: 'top-[4%] left-1/2 -translate-x-1/2 items-center' };
-    case -1: return { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
+    case -1:
+      // HOME (-1) is normally the local viewer's seat and is
+      // self-suppressed in active-canonical projection. In observer-2P
+      // canonicalization (Cribbage / Gin / Yahtzee with two seated
+      // players viewed by an unjoined observer), the lower-positioned
+      // opponent is intentionally projected to HOME to mirror the
+      // active-canonical layout. In that case the cluster must NOT sit
+      // at the central bottom rail — it overlaps the pegging count,
+      // played-card row, and other gameplay artifacts. Shift it to the
+      // bottom-left perimeter rail instead.
+      return variant === 'occupied-observer'
+        ? { className: 'bottom-[1%] left-[6%] items-start scale-90' }
+        : { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
     // BOTTOM_RAIL — observer-only anchor for absolute "south" (pos 4).
-    // Two variants:
-    //   - 'open-seat': cleanly centered on the bottom rail. The empty
-    //     join affordance is a small dashed circle and does not
-    //     visually compete with central gameplay content (since there
-    //     IS no central gameplay content while in waiting state).
-    //   - 'occupied': shifted to the bottom-right perimeter rail
-    //     (offset from slot-5 corner cluster) so the participant chip
-    //     bubble never sits in the gameplay action lane (pegging
-    //     count, played-card row, dice tray) during active gameplay.
+    //   - 'open-seat': cleanly centered on the bottom rail.
+    //   - 'occupied' / 'occupied-observer': shifted to the bottom-right
+    //     perimeter rail so the chip never sits in the action lane.
     case -3:
       return variant === 'open-seat'
         ? { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' }
-        : { className: 'bottom-[1%] right-[28%] items-end scale-90' };
+        : { className: 'bottom-[1%] right-[6%] items-end scale-90' };
     case 0:  return { className: 'top-[78%] left-[10%] items-start' };
     case 1:  return { className: 'top-[50%] left-[4%] -translate-y-1/2 items-start' };
     case 2:  return { className: 'top-[14%] left-[12%] items-start' };
