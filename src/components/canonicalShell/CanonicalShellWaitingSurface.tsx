@@ -48,7 +48,7 @@ interface Player extends WaitingRoomActor {
 
 export interface CanonicalShellWaitingSurfaceProps {
   gameId: string;
-  gameType: string;
+  gameType: string | null;
   anteAmount?: number;
   players: Player[];
   currentUserId: string | undefined;
