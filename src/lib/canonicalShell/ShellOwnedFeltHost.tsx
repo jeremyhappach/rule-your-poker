@@ -280,7 +280,7 @@ export function ShellOwnedFeltHost({
   if (published) {
     stickyRef.current = published;
   }
-  const effective = published ?? stickyRef.current;
+  const effective = published ?? stickyRef.current ?? DEFAULT_VISIBLE_FELT_CONTEXT;
 
   const gameKind: CanonicalFeltGameKind =
     effective?.gameKind ?? initialGameKind ?? 'holm-game';
@@ -294,6 +294,15 @@ export function ShellOwnedFeltHost({
     <div
       data-canonical-shell-felt-host=""
       data-canonical-felt-owner="shell-owned-felt-host"
+      data-shell-felt-mounted="true"
+      data-shell-felt-context={JSON.stringify({
+        publisherLabel: effective?.publisherLabel ?? null,
+        gameKind,
+        anteAmount,
+        isWaitingPhase,
+        hasPublished: !!published,
+        hasSticky: !!stickyRef.current,
+      })}
       aria-hidden="true"
       style={{
         position: 'absolute',
@@ -302,18 +311,34 @@ export function ShellOwnedFeltHost({
         pointerEvents: 'none',
       }}
     >
-      <CanonicalFeltSurface
-        gameKind={gameKind}
-        anteAmount={anteAmount}
-        potMaxEnabled={effective?.potMaxEnabled}
-        potMaxValue={effective?.potMaxValue}
-        legsToWin={effective?.legsToWin}
-        pointsToWin={effective?.pointsToWin}
-        isWaitingPhase={isWaitingPhase}
-        isTablet={effective?.isTablet}
-        isDesktop={effective?.isDesktop}
-        cribbageSkunk={effective?.cribbageSkunk}
-      />
+      <div
+        data-canonical-shell-felt-frame=""
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: 'calc(50% - 18px)',
+          width: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(94vw, 720px)',
+          height: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(52vh, 420px)',
+          minWidth: gameKind === 'cribbage' ? 300 : 300,
+          minHeight: gameKind === 'cribbage' ? 300 : 220,
+          maxWidth: gameKind === 'cribbage' ? 520 : undefined,
+          maxHeight: gameKind === 'cribbage' ? 520 : undefined,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        <CanonicalFeltSurface
+          gameKind={gameKind}
+          anteAmount={anteAmount}
+          potMaxEnabled={effective?.potMaxEnabled}
+          potMaxValue={effective?.potMaxValue}
+          legsToWin={effective?.legsToWin}
+          pointsToWin={effective?.pointsToWin}
+          isWaitingPhase={isWaitingPhase}
+          isTablet={effective?.isTablet}
+          isDesktop={effective?.isDesktop}
+          cribbageSkunk={effective?.cribbageSkunk}
+        />
+      </div>
     </div>
   );
 }
