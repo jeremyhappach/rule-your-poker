@@ -335,14 +335,21 @@ export function ShellOwnedFeltHost({
         data-canonical-shell-felt-frame=""
         data-canonical-shell-felt-geometry="ellipse"
         style={{
+          // Top-anchored positioning — independent of parent row height.
+          // Earlier center-based positioning (`top: calc(50% - 132px);
+          // translate(-50%, -50%)`) clipped the bottom of the ellipse
+          // during the transient waiting-for-ante phase, where the
+          // gameplay row height temporarily differs from steady-state.
+          // A fixed top offset paints the canonical position from the
+          // first frame regardless of children-row layout flux.
           position: 'absolute',
           left: '50%',
-          top: 'calc(50% - 132px)',
+          top: 24,
           width: 'min(94vw, 720px)',
           height: 'min(52vh, 420px)',
           minWidth: 300,
           minHeight: 220,
-          transform: 'translate(-50%, -50%)',
+          transform: 'translateX(-50%)',
         }}
       >
         <CanonicalFeltSurface
