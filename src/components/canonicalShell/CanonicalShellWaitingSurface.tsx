@@ -58,7 +58,6 @@ interface Player extends WaitingRoomActor {
   chips: number;
   status: string;
   waiting?: boolean | null;
-  sitting_out?: boolean | null;
   auto_fold?: boolean | null;
   profiles?: { username?: string };
 }
