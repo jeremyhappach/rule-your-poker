@@ -93,7 +93,12 @@ export function CanonicalSeatCluster({
   }
 
 
-  const placement = getCanonicalSlotPlacement(slot);
+  const isObserverProjection =
+    anchors?.projectionMode === 'observer-absolute' || anchors?.viewerPosition == null;
+  const placement = getCanonicalSlotPlacement(
+    slot,
+    isObserverProjection ? 'occupied-observer' : 'occupied',
+  );
   // Bottom-anchored slots (HOME bottom-center, bottom corners) must
   // render game-owned content ABOVE the identity+chip pill so the chip
   // bubble hugs the lower rail and card backs / hand region sit in
