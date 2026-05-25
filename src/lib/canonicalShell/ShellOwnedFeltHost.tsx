@@ -249,13 +249,24 @@ export function ShellOwnedFeltHost({
   initialAnteAmount = 0,
   initialIsWaitingPhase = true,
 }: ShellOwnedFeltHostProps) {
-  const ctx = useShellFeltContext();
-  const published = ctx.current;
+  const published = useShellFeltState();
+
+  // Sticky last-non-null snapshot. Surfaces unmount/remount across
+  // phase boundaries (e.g. high-card → first-deal); each cleanup
+  // momentarily publishes `null` before the next surface's mount
+  // effect re-publishes. Without stickiness, those one-frame nulls
+  // would collapse the felt back to the initial waiting state and
+  // visibly blink. The shell felt MUST stay continuous.
+  const stickyRef = useRef<ShellFeltContextValue | null>(null);
+  if (published) {
+    stickyRef.current = published;
+  }
+  const effective = published ?? stickyRef.current;
 
   const gameKind: CanonicalFeltGameKind =
-    published?.gameKind ?? initialGameKind ?? 'holm-game';
-  const anteAmount = published?.anteAmount ?? initialAnteAmount;
-  const isWaitingPhase = published?.isWaitingPhase ?? initialIsWaitingPhase;
+    effective?.gameKind ?? initialGameKind ?? 'holm-game';
+  const anteAmount = effective?.anteAmount ?? initialAnteAmount;
+  const isWaitingPhase = effective?.isWaitingPhase ?? initialIsWaitingPhase;
 
   // DEV-only, warn-only invariant — never throws.
   useShellFeltInvariant();
@@ -275,14 +286,14 @@ export function ShellOwnedFeltHost({
       <CanonicalFeltSurface
         gameKind={gameKind}
         anteAmount={anteAmount}
-        potMaxEnabled={published?.potMaxEnabled}
-        potMaxValue={published?.potMaxValue}
-        legsToWin={published?.legsToWin}
-        pointsToWin={published?.pointsToWin}
+        potMaxEnabled={effective?.potMaxEnabled}
+        potMaxValue={effective?.potMaxValue}
+        legsToWin={effective?.legsToWin}
+        pointsToWin={effective?.pointsToWin}
         isWaitingPhase={isWaitingPhase}
-        isTablet={published?.isTablet}
-        isDesktop={published?.isDesktop}
-        cribbageSkunk={published?.cribbageSkunk}
+        isTablet={effective?.isTablet}
+        isDesktop={effective?.isDesktop}
+        cribbageSkunk={effective?.cribbageSkunk}
       />
     </div>
   );
