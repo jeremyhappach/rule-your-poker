@@ -139,7 +139,15 @@ function CribbageFeltAdapter(props: {
         }
       : null,
   );
-  if (shellOwnsFelt) return null;
+  if (shellOwnsFelt) {
+    return (
+      <div
+        data-shell-felt-geometry-anchor="cribbage"
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+      />
+    );
+  }
   return (
     <CanonicalFeltSurface
       gameKind="cribbage"
