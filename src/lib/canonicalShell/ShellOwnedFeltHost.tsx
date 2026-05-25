@@ -148,6 +148,13 @@ const NO_OP_API: ShellFeltApi = {
   shellOwnsFelt: false,
 };
 
+const DEFAULT_VISIBLE_FELT_CONTEXT: ShellFeltContextValue = {
+  gameKind: 'holm-game',
+  anteAmount: 0,
+  isWaitingPhase: true,
+  publisherLabel: 'ShellOwnedFeltHost:fallback',
+};
+
 /**
  * Hook for gameplay surfaces. Returns the STABLE api plus a `current`
  * snapshot. Most publishers should ignore `current` and only call
@@ -201,7 +208,19 @@ export function useShellFeltInvariant(): void {
     let raf = 0;
     let lastWarnCount = -1;
     const tick = () => {
+      const host = document.querySelector('[data-canonical-shell-felt-host]') as HTMLElement | null;
       const nodes = document.querySelectorAll('[data-canonical-felt-surface]');
+      if (!host && lastWarnCount !== 0) {
+        lastWarnCount = 0;
+        // eslint-disable-next-line no-console
+        console.warn('[ShellOwnedFelt] invariant violation: host is not mounted');
+      } else if (host && nodes.length === 0 && lastWarnCount !== 0) {
+        lastWarnCount = 0;
+        // eslint-disable-next-line no-console
+        console.warn('[ShellOwnedFelt] invariant violation: host mounted without visible felt node', {
+          context: host.getAttribute('data-shell-felt-context') ?? null,
+        });
+      }
       if (nodes.length > 1 && nodes.length !== lastWarnCount) {
         lastWarnCount = nodes.length;
         const owners = Array.from(nodes).map(
@@ -215,7 +234,7 @@ export function useShellFeltInvariant(): void {
           '[ShellOwnedFelt] invariant violation: multiple canonical felts mounted',
           { count: nodes.length, owners },
         );
-      } else if (nodes.length <= 1 && lastWarnCount !== -1) {
+      } else if (host && nodes.length === 1 && lastWarnCount !== -1) {
         lastWarnCount = -1;
       }
       raf = window.requestAnimationFrame(tick);
