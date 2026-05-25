@@ -41,6 +41,7 @@ import {
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
 import { isShellOwnedFeltEnabled } from '@/lib/debugFlags';
+import { isFeltlessPokerFamily } from './pokerShellCutover';
 
 // ---------------------------------------------------------------------------
 // Felt context — surfaces publish their felt geometry / subtitle data.
@@ -76,11 +77,18 @@ const ShellFeltStateContext = createContext<ShellFeltContextValue | null>(null);
 
 export interface ShellFeltContextProviderProps {
   children: ReactNode;
+  /**
+   * Optional game_type. When provided, also enables shell-owned felt
+   * ownership for poker-variant families registered via
+   * `POKER_SHELL_FELTLESS_FAMILIES` (Phase 3.2 cutover), independent
+   * of the global `isShellOwnedFeltEnabled()` flag.
+   */
+  gameType?: string | null;
 }
 
-export function ShellFeltContextProvider({ children }: ShellFeltContextProviderProps) {
+export function ShellFeltContextProvider({ children, gameType = null }: ShellFeltContextProviderProps) {
   const [current, setCurrent] = useState<ShellFeltContextValue | null>(null);
-  const shellOwnsFelt = isShellOwnedFeltEnabled();
+  const shellOwnsFelt = isShellOwnedFeltEnabled() || isFeltlessPokerFamily(gameType);
 
   // Stable publish — never changes identity. Uses functional setState
   // with a shallow-equality guard so idempotent publishes don't cause

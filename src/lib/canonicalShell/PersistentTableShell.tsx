@@ -39,6 +39,7 @@ import {
   ShellOwnedFeltHost,
   deriveFeltGameKind,
 } from './ShellOwnedFeltHost';
+import { isFeltlessPokerFamily } from './pokerShellCutover';
 import {
   CanonicalAnnouncementProvider,
   CanonicalCelebrationLayer,
@@ -191,8 +192,17 @@ export function PersistentTableShell({
               inside the gameplay row (below shell header chrome), behind
               slot content. When ON, gameplay surfaces suppress their local
               <CanonicalFeltSurface /> render and publish geometry/identity
-              via `useShellFeltContext()`. */}
-          {isShellOwnedFeltEnabled() && (
+              via `useShellFeltContext()`.
+
+              Phase 3.2a substrate: also mount whenever `gameType` is a
+              registered feltless poker-variant family
+              (`isFeltlessPokerFamily`), independent of the global
+              `isShellOwnedFeltEnabled()` flag. Without this, flipping a
+              poker family into `POKER_SHELL_FELTLESS_FAMILIES` would
+              suppress MobileGameTable's local felt without anything
+              replacing it — the symptom that triggered the Holm gray
+              screen on the first 3.2b attempt. */}
+          {(isShellOwnedFeltEnabled() || isFeltlessPokerFamily(gameType)) && (
             <ShellOwnedFeltHost
               initialGameKind={deriveFeltGameKind(gameType)}
               initialIsWaitingPhase={!gameType}
@@ -261,7 +271,7 @@ export function PersistentTableShell({
         viewerUserId={viewerUserId}
       >
         <ShellTabBarProvider>
-          <ShellFeltContextProvider>{body}</ShellFeltContextProvider>
+          <ShellFeltContextProvider gameType={gameType ?? null}>{body}</ShellFeltContextProvider>
         </ShellTabBarProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
