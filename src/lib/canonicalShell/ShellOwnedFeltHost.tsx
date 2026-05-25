@@ -148,13 +148,6 @@ const NO_OP_API: ShellFeltApi = {
   shellOwnsFelt: false,
 };
 
-const DEFAULT_VISIBLE_FELT_CONTEXT: ShellFeltContextValue = {
-  gameKind: 'holm-game',
-  anteAmount: 0,
-  isWaitingPhase: true,
-  publisherLabel: 'ShellOwnedFeltHost:fallback',
-};
-
 /**
  * Hook for gameplay surfaces. Returns the STABLE api plus a `current`
  * snapshot. Most publishers should ignore `current` and only call
@@ -280,7 +273,7 @@ export function ShellOwnedFeltHost({
   if (published) {
     stickyRef.current = published;
   }
-  const effective = published ?? stickyRef.current ?? DEFAULT_VISIBLE_FELT_CONTEXT;
+  const effective = published ?? stickyRef.current;
 
   const gameKind: CanonicalFeltGameKind =
     effective?.gameKind ?? initialGameKind ?? 'holm-game';
