@@ -85,6 +85,7 @@ export function useWaitingRoomActions({
   realMoney = false,
   onGameStart,
   onBotAdded,
+  onRejoinRequested,
 }: UseWaitingRoomActionsArgs): UseWaitingRoomActions {
   const { playDoorbell } = useDoorbellSound();
 
