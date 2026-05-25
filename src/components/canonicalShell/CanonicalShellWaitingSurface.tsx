@@ -165,6 +165,7 @@ function WaitingSurfaceBody({
     realMoney,
     onGameStart,
     onBotAdded,
+    onRejoinRequested: onBotAdded,
   });
 
   // Canonical seat resolver — same one every gameplay surface reads.
@@ -324,9 +325,13 @@ function WaitingSurfaceBody({
                 seatedPlayerCount={actions.seatedPlayerCount}
                 realMoney={realMoney}
                 isAddingBot={actions.isAddingBot}
+                viewerNeedsRejoin={actions.viewerNeedsRejoin}
+                viewerIsWaitingToRejoin={actions.viewerIsWaitingToRejoin}
+                isRejoining={actions.isRejoining}
                 onInvite={actions.handleInvite}
                 onAddBot={actions.handleAddBot}
                 onStartGame={actions.handleStartGame}
+                onRejoin={actions.handleRejoin}
               />
             </div>
           </>

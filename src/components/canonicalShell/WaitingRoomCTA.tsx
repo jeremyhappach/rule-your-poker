@@ -11,7 +11,7 @@
  */
 
 import { Button } from "@/components/ui/button";
-import { Share2, Users, Bot, Loader2 } from "lucide-react";
+import { Share2, Users, Bot, Loader2, LogIn } from "lucide-react";
 
 export interface WaitingRoomCTAProps {
   isObserver: boolean;
@@ -21,9 +21,13 @@ export interface WaitingRoomCTAProps {
   seatedPlayerCount: number;
   realMoney: boolean;
   isAddingBot: boolean;
+  viewerNeedsRejoin?: boolean;
+  viewerIsWaitingToRejoin?: boolean;
+  isRejoining?: boolean;
   onInvite: () => void;
   onAddBot: () => void;
   onStartGame: () => void;
+  onRejoin?: () => void;
 }
 
 export function WaitingRoomCTA({
@@ -34,10 +38,49 @@ export function WaitingRoomCTA({
   seatedPlayerCount,
   realMoney,
   isAddingBot,
+  viewerNeedsRejoin = false,
+  viewerIsWaitingToRejoin = false,
+  isRejoining = false,
   onInvite,
   onAddBot,
   onStartGame,
+  onRejoin,
 }: WaitingRoomCTAProps) {
+  // Recovery-waiting affordance: seated viewer who is sat out needs an
+  // explicit rejoin path before Start Game preconditions can include them.
+  if (viewerNeedsRejoin && onRejoin) {
+    return (
+      <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center pointer-events-auto">
+        <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+        <p className="text-amber-300 font-bold text-lg mb-1">You're Sitting Out</p>
+        <p className="text-amber-300/70 text-sm mb-3">
+          Rejoin to be included when the next game starts.
+        </p>
+        <Button
+          onClick={onRejoin}
+          disabled={isRejoining}
+          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
+        >
+          {isRejoining ? (
+            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Rejoining…</>
+          ) : (
+            <><LogIn className="w-4 h-4 mr-2" />Rejoin Game</>
+          )}
+        </Button>
+      </div>
+    );
+  }
+  if (viewerIsWaitingToRejoin) {
+    return (
+      <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center pointer-events-auto">
+        <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+        <p className="text-amber-300 font-bold text-lg mb-1">Queued to Rejoin</p>
+        <p className="text-green-300 text-sm">
+          You'll be dealt in when the next game starts.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center pointer-events-auto">
       <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />

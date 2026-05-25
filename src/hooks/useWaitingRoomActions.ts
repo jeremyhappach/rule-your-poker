@@ -41,11 +41,13 @@ function getAggressionLevelForBotId(botId: string): AggressionLevel {
 }
 
 export interface WaitingRoomActor {
+  id?: string;
   user_id: string;
   position: number;
   is_bot: boolean;
   sitting_out: boolean;
   waiting?: boolean;
+  status?: string;
   created_at?: string;
 }
 
@@ -56,6 +58,7 @@ export interface UseWaitingRoomActionsArgs {
   realMoney?: boolean;
   onGameStart: () => void;
   onBotAdded?: () => void;
+  onRejoinRequested?: () => void;
 }
 
 export interface UseWaitingRoomActions {
@@ -66,9 +69,13 @@ export interface UseWaitingRoomActions {
   hasOpenSeats: boolean;
   seatedPlayerCount: number;
   isAddingBot: boolean;
+  viewerNeedsRejoin: boolean;
+  viewerIsWaitingToRejoin: boolean;
+  isRejoining: boolean;
   handleInvite: () => void;
   handleAddBot: () => void;
   handleStartGame: () => void;
+  handleRejoin: () => void;
 }
 
 export function useWaitingRoomActions({
@@ -78,6 +85,7 @@ export function useWaitingRoomActions({
   realMoney = false,
   onGameStart,
   onBotAdded,
+  onRejoinRequested,
 }: UseWaitingRoomActionsArgs): UseWaitingRoomActions {
   const { playDoorbell } = useDoorbellSound();
 
@@ -113,11 +121,28 @@ export function useWaitingRoomActions({
   const hostPlayer = sortedByJoinTime[0];
   const isHost = !!currentPlayer && hostPlayer?.user_id === currentUserId;
 
-  const seatedPlayerCount = players.filter(
-    (p) => p.waiting === true || !p.sitting_out,
-  ).length;
+  // Only count seats whose participation intent is actively in/for the next
+  // hand. Recovery waiting (after a session sit-out) leaves players with
+  // status='observer'/'left' or sitting_out=true; those must NOT satisfy
+  // Start Game preconditions until they explicitly rejoin (waiting=true).
+  const seatedPlayerCount = players.filter((p) => {
+    if (p.status === "observer" || p.status === "left") return false;
+    return p.waiting === true || !p.sitting_out;
+  }).length;
   const hasEnoughPlayers = seatedPlayerCount >= 2;
   const hasOpenSeats = players.length < 7;
+
+  // Rejoin affordance — viewer is seated but currently sat out and not
+  // already queued to rejoin. This is the recovery-waiting signal.
+  const viewerNeedsRejoin =
+    !!currentPlayer &&
+    currentPlayer.sitting_out === true &&
+    currentPlayer.waiting !== true;
+  const viewerIsWaitingToRejoin =
+    !!currentPlayer &&
+    currentPlayer.sitting_out === true &&
+    currentPlayer.waiting === true;
+  const [isRejoining, setIsRejoining] = useState(false);
 
   // Doorbell on new human joins
   useEffect(() => {
@@ -288,6 +313,22 @@ export function useWaitingRoomActions({
       .catch(() => toast.info(`Share this link: ${gameUrl}`));
   }, []);
 
+  const handleRejoin = useCallback(async () => {
+    if (!currentPlayer?.id || isRejoining) return;
+    setIsRejoining(true);
+    try {
+      const { handlePlayerRejoin } = await import("@/lib/playerStateEvaluation");
+      const ok = await handlePlayerRejoin(currentPlayer.id);
+      if (ok) {
+        onRejoinRequested?.();
+      } else {
+        toast.error("Failed to rejoin");
+      }
+    } finally {
+      setIsRejoining(false);
+    }
+  }, [currentPlayer?.id, isRejoining, onRejoinRequested]);
+
   return {
     isObserver,
     isSeated,
@@ -296,8 +337,12 @@ export function useWaitingRoomActions({
     hasOpenSeats,
     seatedPlayerCount,
     isAddingBot,
+    viewerNeedsRejoin,
+    viewerIsWaitingToRejoin,
+    isRejoining,
     handleInvite,
     handleAddBot,
     handleStartGame,
+    handleRejoin,
   };
 }
