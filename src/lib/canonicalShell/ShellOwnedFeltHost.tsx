@@ -342,11 +342,21 @@ export function ShellOwnedFeltHost({
           // gameplay row height temporarily differs from steady-state.
           // A fixed top offset paints the canonical position from the
           // first frame regardless of children-row layout flux.
+          //
+          // Height is sized to fit fully INSIDE the gameplay surface's
+          // top section (Cribbage uses `min(90vw, calc(55vh - 32px))
+          // + 10px`). Earlier `min(52vh, 420px)` sat ~26px past that
+          // boundary; in gameplay the surface's own content masked
+          // the seam, but during ante (empty content + opaque
+          // bg-background on the HUD region + visible rail plate) the
+          // overflow was exposed as a "clipped bottom." Bounding the
+          // ellipse to the top-section envelope eliminates the
+          // transient clip without changing steady-state appearance.
           position: 'absolute',
           left: '50%',
           top: 24,
           width: 'min(94vw, 720px)',
-          height: 'min(52vh, 420px)',
+          height: 'min(86vw, calc(55vh - 64px), 400px)',
           minWidth: 300,
           minHeight: 220,
           transform: 'translateX(-50%)',
