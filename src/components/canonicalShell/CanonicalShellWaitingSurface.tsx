@@ -165,6 +165,7 @@ function WaitingSurfaceBody({
     realMoney,
     onGameStart,
     onBotAdded,
+    onRejoinRequested: onBotAdded,
   });
 
   // Canonical seat resolver — same one every gameplay surface reads.
