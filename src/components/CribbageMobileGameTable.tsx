@@ -5417,10 +5417,26 @@ export const CribbageMobileGameTable = ({
   // produces a rail announcement.
 
 
-  const feltFrameStyle = {
-    width: 'min(90vw, calc(55vh - 32px))',
-    height: 'min(90vw, calc(55vh - 32px))',
-  };
+  // Felt-frame + outer top-section sizing.
+  //
+  // Flag OFF (legacy local felt): preserve original square circle envelope.
+  // Flag ON  (shell-owned ellipse): size the top-section to the SHELL
+  // ellipse envelope (top:24 + min(86vw, calc(55vh - 64px), 400px)) so the
+  // announcement rail + tab bar sit tangential to the bottom of the
+  // ellipse — no extra vertical gap below the felt.
+  const feltFrameStyle = shellOwnsFelt
+    ? {
+        width: 'min(94vw, 720px)',
+        height: 'min(86vw, calc(55vh - 64px), 400px)',
+      }
+    : {
+        width: 'min(90vw, calc(55vh - 32px))',
+        height: 'min(90vw, calc(55vh - 32px))',
+      };
+
+  const tableContainerHeight = shellOwnsFelt
+    ? 'calc(24px + min(86vw, calc(55vh - 64px), 400px))'
+    : 'calc(min(90vw, calc(55vh - 32px)) + 10px)';
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
@@ -5447,8 +5463,8 @@ export const CribbageMobileGameTable = ({
         ref={tableContainerRef}
         className="relative flex items-start justify-center pt-1"
         style={{ 
-          height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
-          minHeight: '300px',
+          height: tableContainerHeight,
+          minHeight: shellOwnsFelt ? '260px' : '300px',
         }}
       >
         {/* Light background behind the circle. When shell-owned felt is OFF,
