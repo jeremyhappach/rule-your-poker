@@ -313,6 +313,8 @@ export function ShellOwnedFeltHost({
   // DEV-only, warn-only invariant — never throws.
   useShellFeltInvariant();
 
+  const isCribbage = gameKind === 'cribbage';
+
   return (
     <div
       data-canonical-shell-felt-host=""
@@ -327,20 +329,40 @@ export function ShellOwnedFeltHost({
         pointerEvents: 'none',
       }}
     >
+      {/* Family-identity backdrop. For Cribbage the approved baseline
+          paints a light slate panel surrounding the circular felt; the
+          shell host now owns that backdrop so the dark shell-neutral
+          chrome doesn't show through behind the canonical circle. The
+          backdrop fills only the table-area band (height matches the
+          Cribbage tableContainerRef geometry) so it doesn't bleed into
+          the bottom HUD region. */}
+      {isCribbage && (
+        <div
+          data-canonical-shell-felt-backdrop="cribbage"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 'calc(min(90vw, calc(55vh - 32px)) + 10px)',
+            background: 'hsl(210 16% 88%)', // slate-200 equivalent
+          }}
+        />
+      )}
       <div
         data-canonical-shell-felt-frame=""
         style={{
           position: 'absolute',
           left: '50%',
-          top: gameKind === 'cribbage'
+          top: isCribbage
             ? 'calc((min(90vw, calc(55vh - 32px)) + 10px) / 2 + 4px)'
             : 'calc(50% - 18px)',
-          width: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(94vw, 720px)',
-          height: gameKind === 'cribbage' ? 'min(90vw, calc(55vh - 32px))' : 'min(52vh, 420px)',
-          minWidth: gameKind === 'cribbage' ? 300 : 300,
-          minHeight: gameKind === 'cribbage' ? 300 : 220,
-          maxWidth: gameKind === 'cribbage' ? 520 : undefined,
-          maxHeight: gameKind === 'cribbage' ? 520 : undefined,
+          width: isCribbage ? 'min(90vw, calc(55vh - 32px))' : 'min(94vw, 720px)',
+          height: isCribbage ? 'min(90vw, calc(55vh - 32px))' : 'min(52vh, 420px)',
+          minWidth: 300,
+          minHeight: isCribbage ? 300 : 220,
+          maxWidth: isCribbage ? 520 : undefined,
+          maxHeight: isCribbage ? 520 : undefined,
           transform: 'translate(-50%, -50%)',
         }}
       >
