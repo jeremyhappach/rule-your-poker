@@ -4589,7 +4589,7 @@ export const MobileGameTable = ({
                 !isSoloVsChucky &&
                 !soloVsChuckyTableLocked
               }
-              disabled={shellOwnsFelt}
+              shellOwned={shellOwnsFelt}
             />
           );
         })()}
