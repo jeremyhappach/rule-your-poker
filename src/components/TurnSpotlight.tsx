@@ -109,6 +109,8 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     setOpacity(1);
   }, [isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance]);
 
+  const shellFrame = useShellFeltFrameElement(shellOwned && isVisible && !disabled);
+
   if (!isVisible || currentTurnPosition === null || disabled) {
     return null;
   }
@@ -116,13 +118,17 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   // Narrower beam (25 degrees on each side = 50 degree cone)
   const beamHalfAngle = 25;
 
-  // Clip path - use ellipse for poker table, none for dice games
+  // Clip path - use ellipse for poker table, none for dice games.
+  // In shell-owned mode the spotlight is portaled INTO the canonical
+  // felt frame element whose own box already matches the canonical
+  // ellipse, so the inner ellipse(50% 50%) clip is now anchored to
+  // the actual felt geometry instead of the much larger parent box.
   const clipStyle = useFullCoverage ? undefined : 'ellipse(50% 50% at 50% 50%)';
 
-  return (
+  const overlay = (
     <>
       {/* Golden glow in spotlight area */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
@@ -140,9 +146,9 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
           }}
         />
       </div>
-      
+
       {/* Dim overlay with spotlight cutout */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
@@ -150,7 +156,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
           clipPath: clipStyle,
         }}
       >
-        {/* Dark overlay with cone cutout */}
         <div
           className="absolute inset-0"
           style={{
@@ -163,4 +168,17 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
       </div>
     </>
   );
+
+  // Shell-aware mode: portal into the canonical felt frame so the
+  // ellipse clip uses the true canonical geometry. If the frame
+  // hasn't mounted yet, render nothing this frame (prevents the
+  // legacy giant-circle backing artifact from leaking against the
+  // larger parent box).
+  if (shellOwned) {
+    if (!shellFrame) return null;
+    return createPortal(overlay, shellFrame);
+  }
+
+  return overlay;
+};
 };
