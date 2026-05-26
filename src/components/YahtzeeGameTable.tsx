@@ -52,6 +52,7 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
