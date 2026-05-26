@@ -63,12 +63,7 @@ export const POKER_SHELL_FELTLESS_FAMILIES = new Set<string>([
   // MobileGameTable suppresses its local CanonicalFeltSurface for these
   // and the shell-owned felt (mounted by PersistentTableShell via
   // ShellOwnedFeltHost) is the sole `data-canonical-felt-surface` for
-  // the session lifecycle. Substrate routing through
-  // PersistentTableShell for poker-variant routes is established in 3.2a
-  // (Game.tsx wraps every MobileGameTable mount site beneath the
-  // route-stable shell; ShellOwnedFeltHost mounts whenever
-  // isFeltlessPokerFamily(gameType) is true regardless of the global
-  // shell-owned-felt debug flag).
+  // the session lifecycle.
   'holm-game',
   'three-five-seven',
   '3-5-7',
@@ -76,6 +71,15 @@ export const POKER_SHELL_FELTLESS_FAMILIES = new Set<string>([
   '357',
   'horses',
   'ship-captain-crew',
+  // Phase 3.2f — Yahtzee felt cutover. Yahtzee is NOT a poker-variant
+  // family (no shared betting/round semantics) and stays off the
+  // persistent poker shell routing; but for felt ownership it shares
+  // the same canonical ellipse contract, so the shell-owned felt host
+  // owns its felt and YahtzeeGameTable suppresses its local
+  // CanonicalFeltSurface. Eliminates the visible geometry morph at
+  // game start where the shell ellipse briefly handed off to
+  // YahtzeeGameTable's locally-mounted (different-position) felt.
+  'yahtzee',
 ]);
 
 function readDebugCutoverFamilies(): Set<string> {
@@ -109,8 +113,14 @@ export function isFeltlessPokerFamily(
   gameType: string | null | undefined,
 ): boolean {
   if (!gameType) return false;
-  if (!POKER_VARIANT_GAME_TYPES.has(gameType)) return false;
+  // Registry membership is authoritative for felt ownership. POKER_VARIANT
+  // membership is a separate routing concern (persistent poker shell
+  // routing in Game.tsx) and is intentionally NOT required here — e.g.
+  // Yahtzee is registered as feltless but is not a poker-variant family.
   if (POKER_SHELL_FELTLESS_FAMILIES.has(gameType)) return true;
+  // Debug opt-in still respects the POKER_VARIANT allowlist to avoid
+  // accidentally lifting felt for non-table families via URL toggle.
+  if (!POKER_VARIANT_GAME_TYPES.has(gameType)) return false;
   return readDebugCutoverFamilies().has(gameType);
 }
 

@@ -52,6 +52,7 @@ import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
@@ -181,6 +182,25 @@ export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
+
+  // Phase 3.2f — when the shell owns the canonical felt, suppress the
+  // local CanonicalFeltSurface render and publish our felt-context so
+  // the shell-owned host paints the correct game-name plate / ante.
+  // This eliminates the visible geometry morph at game start where the
+  // shell's canonical ellipse briefly handed off to the locally-mounted
+  // (different-position) felt.
+  const { shellOwnsFelt } = useShellFeltContext();
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: 'yahtzee',
+          anteAmount,
+          isWaitingPhase: false,
+          publisherLabel: 'YahtzeeGameTable',
+        }
+      : null,
+  );
+
 
   // ── Identity wiring (framework cutover) ────────────────────────
   // Yahtzee plays one round per match, so `currentRoundId` is the natural
@@ -1902,13 +1922,19 @@ export function YahtzeeGameTable({
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
 
-        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated). */}
-        {CANONICAL_SHELL_VISUAL_ENABLED ? (
+        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated).
+            Phase 3.2f: when the shell-owned felt host is active (yahtzee is
+            registered in POKER_SHELL_FELTLESS_FAMILIES), skip the local
+            felt render entirely — the host paints the canonical ellipse
+            continuously across the dealer_selection → in_progress
+            boundary, preventing the geometry morph at game start. */}
+        {shellOwnsFelt ? null : CANONICAL_SHELL_VISUAL_ENABLED ? (
           <CanonicalFeltSurface
             gameKind="yahtzee"
             anteAmount={anteAmount}
             isWaitingPhase={false}
           />
+
         ) : (
           <>
             {/* Legacy felt path (flag-off rollback). */}
