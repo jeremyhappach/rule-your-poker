@@ -186,7 +186,6 @@ function WaitingSurfaceBody({
       gameId,
       gameType,
       anteAmount,
-      shellOwnsFelt,
       projectionMode,
     });
     return () => {
