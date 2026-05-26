@@ -1922,13 +1922,19 @@ export function YahtzeeGameTable({
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
 
-        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated). */}
-        {CANONICAL_SHELL_VISUAL_ENABLED ? (
+        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated).
+            Phase 3.2f: when the shell-owned felt host is active (yahtzee is
+            registered in POKER_SHELL_FELTLESS_FAMILIES), skip the local
+            felt render entirely — the host paints the canonical ellipse
+            continuously across the dealer_selection → in_progress
+            boundary, preventing the geometry morph at game start. */}
+        {shellOwnsFelt ? null : CANONICAL_SHELL_VISUAL_ENABLED ? (
           <CanonicalFeltSurface
             gameKind="yahtzee"
             anteAmount={anteAmount}
             isWaitingPhase={false}
           />
+
         ) : (
           <>
             {/* Legacy felt path (flag-off rollback). */}
