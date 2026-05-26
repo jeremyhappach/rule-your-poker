@@ -137,19 +137,14 @@ function WaitingSurfaceBody({
 }: CanonicalShellWaitingSurfaceProps) {
   useWakeLock(true);
 
-  const { shellOwnsFelt } = useShellFeltContext();
   const [activeTab, setActiveTab] = useState<ShellTabId>("cards");
 
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: deriveFeltGameKind(gameType),
-          anteAmount,
-          isWaitingPhase: true,
-          publisherLabel: "CanonicalShellWaitingSurface",
-        }
-      : null,
-  );
+  usePublishShellFelt({
+    gameKind: deriveFeltGameKind(gameType),
+    anteAmount,
+    isWaitingPhase: true,
+    publisherLabel: "CanonicalShellWaitingSurface",
+  });
 
   useShellTabBar({
     cardsIcon: "spade",
