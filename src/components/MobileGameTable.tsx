@@ -20,7 +20,7 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
-import { useLifecycleMount, setLifecycleFact } from "@/lib/canonicalShell/lifecycleDebug";
+import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
