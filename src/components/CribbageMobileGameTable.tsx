@@ -29,9 +29,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
-import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
 import {
-  useShellFeltContext,
   usePublishShellFelt,
 } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
