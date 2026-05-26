@@ -65,6 +65,28 @@ export interface PlayfieldSlotControllerProps {
   readinessScope?: string | null;
   neutralGameKind?: CanonicalFeltGameKind | null;
   neutralAnteAmount?: number | string;
+  /**
+   * Persistent-children mode. When provided, `children` are rendered
+   * continuously at a stable React position keyed by this string —
+   * even when mountedIdentity is null. The pre-game overlay (or, as
+   * fallback, NeutralInterstitial) is rendered ON TOP of children
+   * instead of replacing them. This is what gives the poker-shell
+   * family ONE persistent MobileGameTable instance across the entire
+   * lifecycle (dealer_selection → game_selection → ante_decision →
+   * in_progress → game_over). Without this prop, the legacy
+   * behaviour (children swapped with NeutralInterstitial when
+   * mountedIdentity===null, children re-keyed by slot identity)
+   * is preserved.
+   */
+  persistentChildrenKey?: string | null;
+  /**
+   * Pre-game overlay rendered above persistent children when
+   * mountedIdentity===null. Typically contains DealerGameSetup /
+   * HighCardDealerSelection. When persistentChildrenKey is unset,
+   * this prop is ignored and NeutralInterstitial is rendered as
+   * before.
+   */
+  preGameOverlay?: ReactNode;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
