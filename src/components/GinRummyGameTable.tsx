@@ -1699,24 +1699,20 @@ export const GinRummyGameTable = ({
       });
     }
     return (
-      <div className="h-full flex flex-col bg-background relative">
+      <div className="h-full flex flex-col bg-transparent relative">
         <div
           ref={tableContainerRef}
           className="flex-1 relative overflow-hidden min-h-0"
           style={{ maxHeight: tableSurfaceMaxHeight }}
         >
-          <CanonicalFeltSurface
-            gameKind="gin-rummy"
-            anteAmount={anteAmount}
-            isWaitingPhase={false}
-          />
+          {/* Shell owns canonical felt. */}
         </div>
         {/* Geometry-parity bottom-panel reservation: mirrors the
             playable layout below so the felt region above resolves
             against the same vertical share before viewState is ready. */}
         <div
           data-gin-placeholder-bottom-panel=""
-          className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border"
+          className="flex-1 flex flex-col min-h-0 bg-transparent border-t border-transparent"
         />
       </div>
     );
@@ -1738,7 +1734,7 @@ export const GinRummyGameTable = ({
   const opponentState = viewState.playerStates[opponentId];
 
   return (
-    <div className="h-full flex flex-col bg-background relative">
+    <div className="h-full flex flex-col bg-transparent relative">
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
@@ -1746,13 +1742,9 @@ export const GinRummyGameTable = ({
         style={{ maxHeight: tableSurfaceMaxHeight }}
       >
 
-            {/* P9.6: single authoritative canonical felt surface. */}
-            <CanonicalFeltSurface
-              gameKind="gin-rummy"
-              anteAmount={anteAmount}
-              pointsToWin={viewState.pointsToWin}
-              isWaitingPhase={false}
-            />
+            {/* Shell owns canonical felt. */}
+
+
 
 
             {/* Felt Content */}
