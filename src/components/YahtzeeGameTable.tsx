@@ -1863,7 +1863,17 @@ export function YahtzeeGameTable({
   // Build stamp moved to DiceTraceControl component
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
+    // Shell-owned felt is painted at zIndex 0 inside
+    // `data-canonical-shell-children` (one level above `data-canonical-shell-slot-content`,
+    // where this tree mounts). An opaque outer `bg-background` here
+    // occludes the shell ellipse for the entire children row — exactly
+    // the "zero table" symptom in the Yahtzee startup repro. Match the
+    // NeutralInterstitial contract: when the shell owns the felt, the
+    // outer surface MUST be transparent so the shell ellipse remains
+    // continuously visible across the dealer_selection → ante_decision
+    // → in_progress boundary. Per-region opaque panels (bottom action
+    // panel, dialogs) keep their own backgrounds.
+    <div className={`flex flex-col h-full min-h-0 overflow-hidden relative ${shellOwnsFelt ? 'bg-transparent' : 'bg-background'}`}>
 
       {/* DEBUG: visible build verification badge + dice trace controls */}
       <DiceTraceControl />
