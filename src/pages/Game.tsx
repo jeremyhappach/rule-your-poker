@@ -8749,7 +8749,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               </>
             )}
-            {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
+            {(!is357WinAnimationActive && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
