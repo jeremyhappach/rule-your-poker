@@ -439,7 +439,6 @@ export const MobileGameTable = ({
   pussyTaxValue = 1,
   gameStatus,
   instanceLabel = 'unknown',
-  feltOwnership = 'self',
   handContextId,
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
