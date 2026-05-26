@@ -198,35 +198,14 @@ export function isCanonicalShellBadgeEnabled(): boolean {
   );
 }
 
-let shellOwnedFeltSessionLatched = false;
+// Shell-owned felt is now an unconditional architectural invariant.
+// `isShellOwnedFeltEnabled` and `POKER_SHELL_FELTLESS_FAMILIES` have
+// been deleted — there is no longer a switch to flip. All game-surface
+// substrate (felt, table geometry, HUD chrome) is owned by the
+// PersistentTableShell. Re-introducing a flag here would re-open the
+// dual-ownership window that produced the Yahtzee geometry morph and
+// the Holm gray-screen on 3.2 cutover.
 
-/**
- * Phase 3.1a — Shell-owned persistent felt.
- *
- * Default: OFF. Skeleton only in 3.1a — no runtime cutover.
- *
- * When enabled (3.1b):
- *   - PersistentTableShell mounts a single CanonicalFeltSurface as a
- *     shell-owned background layer (the ShellOwnedFeltHost).
- *   - Gameplay surfaces (Cribbage / Gin / Yahtzee, then Holm / 3-5-7 /
- *     Horses / SCC during 3.2) stop rendering their own
- *     CanonicalFeltSurface and render as transparent felt-content
- *     children layered above the shell felt.
- *   - The waiting surface mounts inside the same shell envelope, so
- *     the felt geometry survives the waiting → first-hand transition
- *     without any unmount/remount.
- *
- * Enable via:
- *   - URL:           ?shell_owned_felt=1
- *   - localStorage:  ptp_shell_owned_felt = "1"
- */
-export function isShellOwnedFeltEnabled(): boolean {
-  // Phase 3.1b' validated — shell-owned shared-ellipse felt is now the
-  // platform-wide default. Flag retained as a no-op for legacy call
-  // sites; URL / localStorage toggles are no longer consulted.
-  void shellOwnedFeltSessionLatched;
-  return true;
-}
 
 
 
