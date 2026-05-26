@@ -5615,7 +5615,7 @@ export const CribbageMobileGameTable = ({
                       ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
                       : null
                   }
-                  shellOwned={shellOwnsFelt}
+                  shellOwned={true}
                 />
 
 
