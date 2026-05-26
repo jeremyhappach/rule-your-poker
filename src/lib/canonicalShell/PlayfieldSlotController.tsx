@@ -334,9 +334,29 @@ export function PlayfieldSlotController({
         data-slot-mode="persistent-children"
         className="w-full h-full min-h-0 flex flex-col relative"
       >
+        {/* Felt continuity during pre-game: when no active gameplay
+            surface is mounted (mountedIdentity===null), the persistent
+            children render nothing for poker-variant families whose
+            gameType is still null. Without a felt publisher, the shell
+            background is blank. Mount NeutralInterstitial as the BASE
+            layer so its CanonicalFeltSurface (local) OR its
+            usePublishShellFelt call (shell-owned) paints the felt
+            beneath the pre-game overlay. It unmounts the moment the
+            slot becomes active, at which point the gameplay tree owns
+            the felt directly. */}
+        {mountedIdentity === null && (
+          <div className="absolute inset-0 flex flex-col">
+            <NeutralInterstitial
+              gameId={gameId ?? null}
+              reason={`poker-shell-pregame:${neutralReason}`}
+              gameKind={neutralGameKind}
+              anteAmount={neutralAnteAmount}
+            />
+          </div>
+        )}
         <div
           key={persistentChildrenKey}
-          className="flex-1 min-h-0 flex flex-col"
+          className="flex-1 min-h-0 flex flex-col relative"
         >
           {children}
         </div>
