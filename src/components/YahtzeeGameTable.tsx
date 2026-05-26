@@ -1903,44 +1903,8 @@ export function YahtzeeGameTable({
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
 
-        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated).
-            Phase 3.2f: when the shell-owned felt host is active (yahtzee is
-            registered in POKER_SHELL_FELTLESS_FAMILIES), skip the local
-            felt render entirely — the host paints the canonical ellipse
-            continuously across the dealer_selection → in_progress
-            boundary, preventing the geometry morph at game start. */}
-        {shellOwnsFelt ? null : CANONICAL_SHELL_VISUAL_ENABLED ? (
-          <CanonicalFeltSurface
-            gameKind="yahtzee"
-            anteAmount={anteAmount}
-            isWaitingPhase={false}
-          />
+        {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
-        ) : (
-          <>
-            {/* Legacy felt path (flag-off rollback). */}
-            <div
-              className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
-                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-              }}
-            >
-              <img
-                src={peoriaBridgeMobile}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-                style={{ objectPosition: 'center 38%', opacity: 0.28 }}
-              />
-            </div>
-            <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
-              <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
-                ${anteAmount} YAHTZEE
-              </span>
-            </div>
-          </>
-        )}
 
         {/* Live per-player score line — sits just under canonical (or legacy) plate. */}
         {gamePhase === 'playing' && (
