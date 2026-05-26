@@ -8862,6 +8862,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     }}
                   />
                 )}
+                {/* Observer lifecycle plate. DealerGameSetup only mounts
+                    for the dealer (or autonomous-bot dealer); without
+                    this, observers on poker-variant families see the
+                    shell-owned felt with no context during the
+                    configuring / game_selection window. Render a
+                    canonical lifecycle plate so the transition feels
+                    intentional instead of blank. */}
+                {!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && dealerPlayer && (
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-30 px-6">
+                    <LifecycleAnnouncement
+                      title={`${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Dealer')} is setting up the next game`}
+                    />
+                  </div>
+                )}
               </div>
             /* Phase 1: A3 terminal/win-animation sibling table. The fragile
                hand-curated game-type denylist (cribbage/gin-rummy/horses/SCC)
