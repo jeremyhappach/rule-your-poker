@@ -9538,7 +9538,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             <MobileGameTable
               key={gameId ?? 'unknown-game'}
               instanceLabel="main-in-progress-gated"
-              feltOwnership={resolveMobileTableFeltOwnership(game?.game_type)}
+              feltOwnership={resolveMobileTableFeltOwnership(game?.game_type ?? (_isPokerShellPersistent ? 'holm-game' : null))}
               gameId={gameId}
               players={is357GameType && threeFiveSevenView ? threeFiveSevenPlayers : holmPlayers}
               currentUserId={user?.id}
