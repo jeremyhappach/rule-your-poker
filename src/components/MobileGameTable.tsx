@@ -20,7 +20,7 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
-import { useLifecycleMount, setLifecycleFact } from "@/lib/canonicalShell/lifecycleDebug";
+import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -591,7 +591,13 @@ export const MobileGameTable = ({
   // "remount with new status" (bad — confirms continuity gap).
   useEffect(() => {
     setLifecycleFact(`MGT:${instanceLabel}:gameStatus`, gameStatus ?? null);
-  }, [gameStatus, instanceLabel]);
+    setLifecycleContext({
+      gameType: gameType ?? null,
+      gameStatus: gameStatus ?? null,
+      feltOwnership,
+      shellRoute: `MGT:${instanceLabel}`,
+    });
+  }, [gameStatus, instanceLabel, gameType, feltOwnership]);
 
   // Prevent screen from dimming during gameplay
   useWakeLock(true);

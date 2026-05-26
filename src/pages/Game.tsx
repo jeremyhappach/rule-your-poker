@@ -24,7 +24,7 @@ import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessPr
 import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
-import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { resolveMobileTableFeltOwnership } from "@/lib/canonicalShell/pokerShellCutover";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -8207,6 +8207,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
 
   if ((loading || !game) && !hasHydratedRef.current) {
+    setLifecycleContext({
+      userId: user?.id ?? null,
+      gameId: gameId ?? null,
+      gameType: game?.game_type ?? null,
+      gameStatus: game?.status ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      shellRoute: 'Game:bootstrap',
+      feltOwnership: 'bootstrap-forced',
+    });
     setLifecycleFact('Game.branch', 'bootstrap');
     setLifecycleFact('Game.loading', loading);
     setLifecycleFact('Game.game', !!game);
@@ -8346,6 +8356,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `flex-1 min-h-0` so mobile inner content fills the remaining
   // space above the shell-owned rail and tab bar without overflow.
   const _innerBgClass = `${isMobile ? (_treatAsCanonicalRoute && enableOuterShell ? 'flex-1 min-h-0 overflow-hidden flex flex-col' : 'h-dvh overflow-hidden') : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
+  setLifecycleContext({
+    userId: user?.id ?? null,
+    gameId: gameId ?? null,
+    gameType: game.game_type ?? null,
+    gameStatus: game.status ?? null,
+    dealerGameId: (game as any).current_game_uuid ?? null,
+    currentGameUuid: (game as any).current_game_uuid ?? null,
+    clientRole: currentPlayer
+      ? (currentPlayer.status === 'observer' ? 'observer' : 'player')
+      : 'observer',
+    shellRoute: _treatAsCanonicalRoute ? 'Game:canonical' : 'Game:legacy',
+    feltOwnership: enableOuterShell && _treatAsCanonicalRoute ? 'shell-owned' : 'inner-owned',
+  });
   setLifecycleFact('Game.branch', 'loaded');
   setLifecycleFact('Game.loading', false);
   setLifecycleFact('Game.game_type', game.game_type ?? null);
