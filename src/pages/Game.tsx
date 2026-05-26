@@ -8749,7 +8749,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
               </>
             )}
-            {(!is357WinAnimationActive && !horsesWinPotTriggerId && (
+            {(!is357WinAnimationActive && !horsesWinPotTriggerId && !_isPokerShellPersistent && (
               game.status === 'game_selection' ||
               game.status === 'configuring' ||
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
@@ -8930,7 +8930,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                now sufficient to keep this sibling branch from coexisting
                with the canonical slot. `!_treatAsCanonicalRoute` remains
                as the primary route-stable gate. */
-            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && !_isPokerShellPersistent && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
@@ -9123,6 +9123,105 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
             persistentChildrenKey={_isPokerShellPersistent ? (gameId ?? null) : null}
+            preGameOverlay={_isPokerShellPersistent ? (
+              <>
+                {/* HighCardDealerSelection overlay — bootstrap dealer
+                    selection for poker-variant family. Excludes cribbage /
+                    gin-rummy which own their own dealer-selection paths
+                    via their canonical-seat-consumer tables. */}
+                {game.status === 'dealer_selection' &&
+                  !isCanonicalSeatConsumer(game.game_type) && (
+                  <HighCardDealerSelection
+                    gameId={gameId!}
+                    players={players}
+                    onComplete={selectDealer}
+                    isHost={isCreator}
+                    allowBotDealers={allowBotDealers}
+                    syncedState={(game as any).dealer_selection_state ?? null}
+                    onCardsUpdate={setDealerSelectionCards}
+                    onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
+                  />
+                )}
+                {/* DealerGameSetup overlay — dealer config modal during
+                    game_selection / configuring / game_over-pre-config.
+                    Mounts on top of the persistent MobileGameTable
+                    without unmounting it. */}
+                {(game.status === 'game_selection' ||
+                  game.status === 'configuring' ||
+                  ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
+                  !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                  (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
+                  <DealerGameSetup
+                    gameId={gameId!}
+                    dealerUsername={dealerPlayer?.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer?.profiles?.username || '')}
+                    isBot={dealerPlayer?.is_bot || false}
+                    dealerPlayerId={dealerPlayer?.id || ''}
+                    dealerPosition={game.dealer_position || 1}
+                    previousGameType={(previousGameConfig?.game_type ?? game.game_type) || undefined}
+                    previousGameConfig={previousGameConfig}
+                    sessionGameConfigs={sessionGameConfigs}
+                    isFirstHand={!hasSessionHistory && !previousGameConfig}
+                    gameSetupTimerSeconds={game.game_setup_timer_seconds || 30}
+                    anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
+                    activePlayerCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left').length}
+                    activeHumanCount={players.filter(p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left' && !p.is_bot).length}
+                    isSuperuser={isSuperuser}
+                    onConfigComplete={handleConfigComplete}
+                    onSessionEnd={() => setShowEndSessionDialog(true)}
+                    onSitOut={async () => {
+                      if (!dealerPlayer?.id || !gameId) return;
+                      await supabase
+                        .from('players')
+                        .update({ sitting_out: true, sit_out_next_hand: false, waiting: false })
+                        .eq('id', dealerPlayer.id);
+                      const { activePlayerCount, activeHumanCount, eligibleDealerCount } =
+                        await evaluatePlayerStatesEndOfGame(gameId);
+                      if (activeHumanCount < 1) {
+                        await supabase
+                          .from('games')
+                          .update({
+                            status: 'session_ended',
+                            session_ended_at: new Date().toISOString(),
+                            pending_session_end: false,
+                            game_over_at: new Date().toISOString(),
+                          })
+                          .eq('id', gameId);
+                        return;
+                      }
+                      if (eligibleDealerCount < 1 || activePlayerCount < 2) {
+                        await sanitizePlayerAutomationStateForSession(gameId);
+                        await clearDealerGameTransientSessionState(gameId);
+                        await supabase
+                          .from('games')
+                          .update({
+                            status: 'waiting',
+                            awaiting_next_round: false,
+                            last_round_result: null,
+                            config_deadline: null,
+                            game_type: null,
+                          })
+                          .eq('id', gameId);
+                        await fetchGameData();
+                        return;
+                      }
+                      const newDealerPosition = await rotateDealerPosition(gameId, game.dealer_position || 1);
+                      const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
+                      const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
+                      await supabase
+                        .from('games')
+                        .update({
+                          dealer_position: newDealerPosition,
+                          config_deadline: configDeadline,
+                          config_complete: false,
+                          game_type: null,
+                        })
+                        .eq('id', gameId);
+                      await fetchGameData();
+                    }}
+                  />
+                )}
+              </>
+            ) : null}
             neutralGameKind={(() => {
               const t = _routeShellGameType;
               if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew') return t;
