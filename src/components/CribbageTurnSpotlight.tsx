@@ -61,9 +61,11 @@ export const CribbageTurnSpotlight = ({
   opponentIds = [],
   currentTurnSlot,
   clipPath = 'ellipse(50% 50% at 50% 50%)',
+  shellOwned = false,
 }: CribbageTurnSpotlightProps) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
+  const shellFrame = useShellFeltFrameElement(shellOwned && isVisible);
 
   useEffect(() => {
     if (!isVisible || !currentTurnPlayerId) {
