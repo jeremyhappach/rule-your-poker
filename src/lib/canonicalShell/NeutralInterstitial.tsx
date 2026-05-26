@@ -28,21 +28,16 @@ export interface NeutralInterstitialProps {
 
 export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
-  const { shellOwnsFelt } = useShellFeltContext();
   const resolvedGameKind = gameKind ?? 'holm-game';
   const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
   useLifecycleMount('NeutralInterstitial', { reason, gameKind });
 
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: resolvedGameKind,
-          anteAmount,
-          isWaitingPhase: true,
-          publisherLabel: `NeutralInterstitial:${reason ?? 'unknown'}`,
-        }
-      : null,
-  );
+  usePublishShellFelt({
+    gameKind: resolvedGameKind,
+    anteAmount,
+    isWaitingPhase: true,
+    publisherLabel: `NeutralInterstitial:${reason ?? 'unknown'}`,
+  });
 
   // Lifecycle continuity baseline: while between gameplay surfaces
   // (between-games rollover, dealer config, pre-game bootstrap) no
