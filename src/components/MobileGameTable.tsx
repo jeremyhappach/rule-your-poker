@@ -4513,7 +4513,7 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
-  return <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
+  return <div className={cn('flex flex-col h-full min-h-0 overflow-hidden relative', shellOwnsFelt ? 'bg-transparent' : 'bg-background')}>
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
