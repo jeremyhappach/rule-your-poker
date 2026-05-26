@@ -75,6 +75,7 @@ import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
+import { usePublishShellFelt, deriveFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
@@ -551,6 +552,26 @@ export const MobileGameTable = ({
   } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
+
+  // Phase 3.2 — when feltOwnership='shell', publish our felt context so
+  // the shell-owned felt host paints the correct family identity,
+  // ante, pot-max, legs, and waiting-phase appearance. Without this
+  // the host falls back to PersistentTableShell's initial hydration
+  // values and never reflects mid-session state changes.
+  const shellOwnsFelt = feltOwnership === 'shell';
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
+          anteAmount,
+          potMaxEnabled,
+          potMaxValue,
+          legsToWin,
+          isWaitingPhase,
+          publisherLabel: `MobileGameTable:${instanceLabel}`,
+        }
+      : null,
+  );
 
   
   // Prevent screen from dimming during gameplay
@@ -4492,7 +4513,7 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
-  return <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
+  return <div className={cn('flex flex-col h-full min-h-0 overflow-hidden relative', shellOwnsFelt ? 'bg-transparent' : 'bg-background')}>
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
