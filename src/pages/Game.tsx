@@ -8356,6 +8356,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // `flex-1 min-h-0` so mobile inner content fills the remaining
   // space above the shell-owned rail and tab bar without overflow.
   const _innerBgClass = `${isMobile ? (_treatAsCanonicalRoute && enableOuterShell ? 'flex-1 min-h-0 overflow-hidden flex flex-col' : 'h-dvh overflow-hidden') : 'min-h-screen p-4'} ${_treatAsCanonicalRoute ? 'bg-transparent' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'}`;
+  setLifecycleContext({
+    userId: user?.id ?? null,
+    gameId: gameId ?? null,
+    gameType: game.game_type ?? null,
+    gameStatus: game.status ?? null,
+    dealerGameId: (game as any).current_game_uuid ?? null,
+    currentGameUuid: (game as any).current_game_uuid ?? null,
+    clientRole: currentPlayer
+      ? (currentPlayer.status === 'observer' ? 'observer' : 'player')
+      : 'observer',
+    shellRoute: _treatAsCanonicalRoute ? 'Game:canonical' : 'Game:legacy',
+    feltOwnership: enableOuterShell && _treatAsCanonicalRoute ? 'shell-owned' : 'inner-owned',
+  });
   setLifecycleFact('Game.branch', 'loaded');
   setLifecycleFact('Game.loading', false);
   setLifecycleFact('Game.game_type', game.game_type ?? null);
