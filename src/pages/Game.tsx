@@ -9666,7 +9666,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <SurfaceReadinessProvider>
           <PersistentTableShell
             gameId={gameId ?? undefined}
-            gameType={game.game_type}
+            /* Sticky shell game type: `game.game_type` is null during the
+               configuring / game_selection window (between Start Game and
+               DealerGameSetup completion). Passing raw null here would
+               unmount ShellOwnedFeltHost for any feltless poker family
+               and blank the shell-owned felt mid-transition. Use the
+               sticky chain (current -> last known -> previous config) so
+               the shell felt stays continuously mounted across lifecycle
+               transitions. */
+            gameType={_routeShellGameType ?? undefined}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}
