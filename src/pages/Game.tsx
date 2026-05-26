@@ -24,7 +24,7 @@ import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessPr
 import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
-import { setLifecycleFact, useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { resolveMobileTableFeltOwnership } from "@/lib/canonicalShell/pokerShellCutover";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
