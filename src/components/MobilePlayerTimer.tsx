@@ -1,5 +1,8 @@
 import { useMemo, useRef, useEffect, useState } from "react";
-import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import {
+  useLifecycleMount,
+  recordLifecycleEvent,
+} from "@/lib/canonicalShell/lifecycleDebug";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
@@ -50,9 +53,17 @@ export const MobilePlayerTimer = ({
       requestAnimationFrame(() => {
         setSuppressTransition(false);
       });
+      recordLifecycleEvent('timer.activate', {
+        component: 'MobilePlayerTimer',
+        instance_id: instanceIdRef.current,
+        time_left_seed: timeLeft,
+        max_time: maxTime,
+        timer_seed_source: timeLeft === null ? 'null-seed' : 'prop-seed',
+      });
     }
     wasActiveRef.current = isActive;
-  }, [isActive]);
+  }, [isActive, timeLeft, maxTime]);
+
   
   const progress = useMemo(() => {
     if (!isActive || timeLeft === null || maxTime <= 0) return 0;
