@@ -135,6 +135,14 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     ginTrace('GinRummyGameTable mounted');
   }, []);
+
+  // Publish canonical felt context to shell-owned host (sole felt mount).
+  usePublishShellFelt({
+    gameKind: 'gin-rummy',
+    anteAmount,
+    isWaitingPhase: false,
+    publisherLabel: 'GinRummyGameTable',
+  });
   const firstRenderRef = useRef(false);
   if (!firstRenderRef.current) {
     firstRenderRef.current = true;
