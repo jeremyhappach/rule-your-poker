@@ -8207,6 +8207,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   });
 
   if ((loading || !game) && !hasHydratedRef.current) {
+    setLifecycleContext({
+      userId: user?.id ?? null,
+      gameId: gameId ?? null,
+      gameType: game?.game_type ?? null,
+      gameStatus: game?.status ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      shellRoute: 'Game:bootstrap',
+      feltOwnership: 'bootstrap-forced',
+    });
     setLifecycleFact('Game.branch', 'bootstrap');
     setLifecycleFact('Game.loading', loading);
     setLifecycleFact('Game.game', !!game);
