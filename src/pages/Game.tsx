@@ -8930,7 +8930,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                now sufficient to keep this sibling branch from coexisting
                with the canonical slot. `!_treatAsCanonicalRoute` remains
                as the primary route-stable gate. */
-            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
+            ) : (!_treatAsCanonicalRoute && !isCanonicalShellFamily(game.game_type) && !_isPokerShellPersistent && (game.status === 'game_over' || game.status === 'session_ended' || (is357WinAnimationActive && game.game_type !== 'holm-game') || horsesWinPotTriggerId) && (!game.last_round_result || !game.last_round_result.includes('Chucky beat'))) ? (
               <div className="relative">
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="game-over-or-win-anim-ungated"
