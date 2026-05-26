@@ -9122,6 +9122,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
+            persistentChildrenKey={_isPokerShellPersistent ? (gameId ?? null) : null}
             neutralGameKind={(() => {
               const t = _routeShellGameType;
               if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew') return t;
