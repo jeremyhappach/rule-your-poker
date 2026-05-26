@@ -1,4 +1,11 @@
 import { useMemo, useRef, useEffect, useState } from "react";
+import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+
+// Monotonically increasing instance counter so we can distinguish a
+// fresh mount (new id) from a re-render of the same mount (same id).
+// Confirms or refutes the "MobilePlayerTimer remounts on every turn
+// transition" hypothesis driving the stale-seed flash.
+let __mptInstanceSeq = 0;
 
 interface MobilePlayerTimerProps {
   timeLeft: number | null;
@@ -18,6 +25,19 @@ export const MobilePlayerTimer = ({
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+
+  // ── DIAGNOSTIC: timer remount audit ─────────────────────────────
+  const instanceIdRef = useRef<number>(0);
+  if (instanceIdRef.current === 0) {
+    __mptInstanceSeq += 1;
+    instanceIdRef.current = __mptInstanceSeq;
+  }
+  useLifecycleMount('MobilePlayerTimer', {
+    id: instanceIdRef.current,
+    initialTimeLeft: timeLeft,
+    initialMaxTime: maxTime,
+    initialIsActive: isActive,
+  });
 
   // Track activation identity to suppress transition on first active frame
   const wasActiveRef = useRef(false);
