@@ -156,8 +156,10 @@ export const MobilePlayerTimer = ({
           stroke="hsl(var(--muted) / 0.3)"
           strokeWidth={strokeWidth}
         />
-        {/* Progress circle */}
-        {isActive && (
+        {/* Progress circle — gated on seedReady so a null-seed activation
+            does not paint a stale full-ring before the real timeLeft
+            commits the following frame. */}
+        {isActive && seedReady && timeLeft !== null && (
           <circle
             cx={size / 2}
             cy={size / 2}
