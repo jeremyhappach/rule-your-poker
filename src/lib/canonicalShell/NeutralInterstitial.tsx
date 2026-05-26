@@ -14,6 +14,7 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt, useShellFeltContext } from './ShellOwnedFeltHost';
+import { ShellHudChrome } from './ShellHudChrome';
 
 
 export interface NeutralInterstitialProps {
@@ -113,11 +114,23 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
           region resolves against the same vertical share in
           neutral and active. When the shell owns the felt, this
           reservation must not paint an opaque HUD/backdrop over the
-          shared ellipse during ante-decision neutral frames. */}
+          shared ellipse during ante-decision neutral frames.
+
+          Lifecycle continuity: mount the canonical ShellHudChrome
+          (announcement rail + tab bar) inside the reservation so the
+          shell chrome remains visible during DealerGameSetup and
+          other transitional states where no gameplay surface has
+          mounted yet. Without this, the rail/tab bar disappear
+          between dealer games, which manifested as the "missing
+          shell chrome during DealerGameSetup" lifecycle regression. */}
       <div
         data-canonical-shell-neutral-bottom-panel=""
         className={`flex-1 flex flex-col min-h-0 ${shellOwnsFelt ? 'bg-transparent border-t border-transparent' : 'bg-gradient-to-t from-background via-background to-background/95 border-t border-border'}`}
-      />
+      >
+        <div className="mt-auto">
+          <ShellHudChrome />
+        </div>
+      </div>
     </div>
   );
 

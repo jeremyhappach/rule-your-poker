@@ -38,7 +38,9 @@ import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/CanonicalShellWaitingSurface";
-import { LifecycleAnnouncement } from "@/components/LifecycleAnnouncement";
+// LifecycleAnnouncement no longer rendered from Game.tsx — observer
+// lifecycle messaging is emitted into the canonical shell announcement
+// rail by `SessionLifecycleAnnouncer` (see `dealer_configuring`).
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
@@ -8862,20 +8864,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     }}
                   />
                 )}
-                {/* Observer lifecycle plate. DealerGameSetup only mounts
-                    for the dealer (or autonomous-bot dealer); without
-                    this, observers on poker-variant families see the
-                    shell-owned felt with no context during the
-                    configuring / game_selection window. Render a
-                    canonical lifecycle plate so the transition feels
-                    intentional instead of blank. */}
-                {!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && dealerPlayer && (
-                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-30 px-6">
-                    <LifecycleAnnouncement
-                      title={`${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Dealer')} is setting up the next game`}
-                    />
-                  </div>
-                )}
+                {/* Observer lifecycle messaging during DealerGameSetup
+                    is owned by `SessionLifecycleAnnouncer` and emitted
+                    into the canonical shell announcement rail (see the
+                    `dealer_configuring` ambient). The earlier
+                    absolute-positioned <LifecycleAnnouncement /> plate
+                    here floated above the shell-owned felt and is
+                    intentionally removed — lifecycle messaging belongs
+                    in the rail, not the table region. */}
               </div>
             /* Phase 1: A3 terminal/win-animation sibling table. The fragile
                hand-curated game-type denylist (cribbage/gin-rummy/horses/SCC)
@@ -9046,7 +9042,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           (_treatAsCanonicalRoute && (
             game.status === 'game_selection' ||
             game.status === 'configuring' ||
-            game.status === 'game_over'
+            game.status === 'game_over' ||
+            // Lifecycle continuity for poker-variant family during
+            // session-start dealer high-card bootstrap. Without this,
+            // the slot controller is unmounted during `dealer_selection`
+            // and the shell loses NeutralInterstitial's bottom-panel
+            // ShellHudChrome (rail + tab bar) — observed as the
+            // dark/no-style transient between waiting and DealerGameSetup.
+            (game.status === 'dealer_selection' && isPokerVariantFamily(game.game_type))
           ))
         ) && (
           // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
