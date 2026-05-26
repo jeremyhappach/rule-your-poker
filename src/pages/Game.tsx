@@ -9040,7 +9040,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           (_treatAsCanonicalRoute && (
             game.status === 'game_selection' ||
             game.status === 'configuring' ||
-            game.status === 'game_over'
+            game.status === 'game_over' ||
+            // Lifecycle continuity for poker-variant family during
+            // session-start dealer high-card bootstrap. Without this,
+            // the slot controller is unmounted during `dealer_selection`
+            // and the shell loses NeutralInterstitial's bottom-panel
+            // ShellHudChrome (rail + tab bar) — observed as the
+            // dark/no-style transient between waiting and DealerGameSetup.
+            (game.status === 'dealer_selection' && isPokerVariantFamily(game.game_type))
           ))
         ) && (
           // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
