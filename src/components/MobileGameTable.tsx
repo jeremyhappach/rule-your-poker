@@ -4589,6 +4589,7 @@ export const MobileGameTable = ({
                 !isSoloVsChucky &&
                 !soloVsChuckyTableLocked
               }
+              disabled={shellOwnsFelt}
             />
           );
         })()}
@@ -4617,6 +4618,7 @@ export const MobileGameTable = ({
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             isVisible={true}
+            disabled={shellOwnsFelt}
           />
         )}
         
