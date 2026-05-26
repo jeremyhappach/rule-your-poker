@@ -9451,6 +9451,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 getPositionForUserId={getPositionForUserId}
                 onStay={() => {}}
                 onFold={() => {}}
+                onSelectSeat={handleSelectSeat}
                 // Horses-specific state
                 horsesRoundId={currentRound?.id || null}
                 horsesState={horsesState}

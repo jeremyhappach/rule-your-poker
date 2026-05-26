@@ -344,27 +344,31 @@ export function ShellOwnedFeltHost({
         data-canonical-shell-felt-geometry="ellipse"
         style={{
           // Top-anchored positioning — independent of parent row height.
-          // Earlier center-based positioning (`top: calc(50% - 132px);
-          // translate(-50%, -50%)`) clipped the bottom of the ellipse
-          // during the transient waiting-for-ante phase, where the
-          // gameplay row height temporarily differs from steady-state.
-          // A fixed top offset paints the canonical position from the
-          // first frame regardless of children-row layout flux.
+          // Earlier center-based positioning clipped the bottom of the
+          // ellipse during transient phase changes.
           //
-          // Height is sized to fit fully INSIDE the gameplay surface's
-          // top section (Cribbage uses `min(90vw, calc(55vh - 32px))
-          // + 10px`). Earlier `min(52vh, 420px)` sat ~26px past that
-          // boundary; in gameplay the surface's own content masked
-          // the seam, but during ante (empty content + opaque
-          // bg-background on the HUD region + visible rail plate) the
-          // overflow was exposed as a "clipped bottom." Bounding the
-          // ellipse to the top-section envelope eliminates the
-          // transient clip without changing steady-state appearance.
+          // Height contract:
+          //   - Waiting phase: shell-children area is dominated by the
+          //     waiting surface; the felt can claim the full top
+          //     envelope (≈ min(86vw, 55vh - 64px, 400px)).
+          //   - Active gameplay: MobileGameTable's bottom action panel
+          //     (chat, actions, tab content) is opaque (bg-background)
+          //     and shares the gameplay row via `flex-1`, so the top
+          //     table-region typically settles below 55vh. Anchoring
+          //     the ellipse to a viewport-fraction that ignores this
+          //     produced the visible bottom clip across every poker
+          //     shell family (Holm only escaped because the
+          //     screenshots happened to land on a phase where the
+          //     bottom panel was shorter). Shrinking the active-phase
+          //     height envelope leaves bottom clearance for the panel
+          //     without per-game compensation.
           position: 'absolute',
           left: '50%',
           top: 24,
           width: 'min(94vw, 720px)',
-          height: 'min(86vw, calc(55vh - 64px), 400px)',
+          height: isWaitingPhase
+            ? 'min(86vw, calc(55vh - 64px), 400px)'
+            : 'min(82vw, calc(48vh - 24px), 360px)',
           minWidth: 300,
           minHeight: 220,
           transform: 'translateX(-50%)',
