@@ -8687,7 +8687,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 backdrop because the PlayfieldSlotController does not
                 cover their `dealer_selection` status; that gap is
                 Bucket 3/4 of the unification initiative. */}
-            {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && (
+            {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && !_isPokerShellPersistent && (
               <>
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
