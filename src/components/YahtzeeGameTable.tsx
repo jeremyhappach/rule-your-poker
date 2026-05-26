@@ -183,6 +183,25 @@ export function YahtzeeGameTable({
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
 
+  // Phase 3.2f — when the shell owns the canonical felt, suppress the
+  // local CanonicalFeltSurface render and publish our felt-context so
+  // the shell-owned host paints the correct game-name plate / ante.
+  // This eliminates the visible geometry morph at game start where the
+  // shell's canonical ellipse briefly handed off to the locally-mounted
+  // (different-position) felt.
+  const { shellOwnsFelt } = useShellFeltContext();
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: 'yahtzee',
+          anteAmount,
+          isWaitingPhase: false,
+          publisherLabel: 'YahtzeeGameTable',
+        }
+      : null,
+  );
+
+
   // ── Identity wiring (framework cutover) ────────────────────────
   // Yahtzee plays one round per match, so `currentRoundId` is the natural
   // identity discriminator across matches. A monotonic round-ord counter
