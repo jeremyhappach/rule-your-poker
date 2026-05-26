@@ -113,39 +113,17 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
     <div
       data-canonical-shell-neutral=""
       aria-hidden="true"
-      className={`h-full flex flex-col ${shellOwnsFelt ? 'bg-transparent' : 'bg-background'} relative`}
+      className="h-full flex flex-col bg-transparent relative"
     >
       <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
-        {/* Configuring/cold neutral: render felt unconditionally so the
-            canonical waiting table sits beneath the dealer setup modal
-            from first frame. Pass `isWaitingPhase` so no game-name plate
-            is shown when the family is a fallback default — preventing
-            an incorrect label during pre-submit configuring. */}
-        {!shellOwnsFelt && (
-          <CanonicalFeltSurface
-            gameKind={resolvedGameKind}
-            anteAmount={anteAmount}
-            isWaitingPhase={true}
-          />
-        )}
+        {/* Shell owns the felt unconditionally — no local mount. */}
       </div>
-      {/* Geometry-parity bottom-panel reservation: mirrors the
-          active gameplay layout (felt + bottom panel) so the felt
-          region resolves against the same vertical share in
-          neutral and active. When the shell owns the felt, this
-          reservation must not paint an opaque HUD/backdrop over the
-          shared ellipse during ante-decision neutral frames.
-
-          Lifecycle continuity: mount the canonical ShellHudChrome
-          (announcement rail + tab bar) inside the reservation so the
-          shell chrome remains visible during DealerGameSetup and
-          other transitional states where no gameplay surface has
-          mounted yet. Without this, the rail/tab bar disappear
-          between dealer games, which manifested as the "missing
-          shell chrome during DealerGameSetup" lifecycle regression. */}
+      {/* Geometry-parity bottom-panel reservation: mirrors the active
+          gameplay layout so the felt region resolves against the same
+          vertical share. Transparent to avoid occluding the shell ellipse. */}
       <div
         data-canonical-shell-neutral-bottom-panel=""
-        className={`flex-1 flex flex-col min-h-0 ${shellOwnsFelt ? 'bg-transparent border-t border-transparent' : 'bg-gradient-to-t from-background via-background to-background/95 border-t border-border'}`}
+        className="flex-1 flex flex-col min-h-0 bg-transparent border-t border-transparent"
       >
         <div className="mt-auto">
           <ShellHudChrome />
