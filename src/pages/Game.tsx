@@ -9148,7 +9148,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     without unmounting it. */}
                 {(game.status === 'game_selection' ||
                   game.status === 'configuring' ||
-                  ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)) &&
+                  ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
                   !is357WinAnimationActive && !horsesWinPotTriggerId &&
                   (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && (
                   <DealerGameSetup
