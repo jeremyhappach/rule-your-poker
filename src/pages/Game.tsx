@@ -9839,7 +9839,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                sticky chain (current -> last known -> previous config) so
                the shell felt stays continuously mounted across lifecycle
                transitions. */
-            gameType={_routeShellGameType ?? undefined}
+            /* Persistent-poker-shell pre-game window: `game.game_type` is
+               null from session start through DealerGameSetup completion.
+               The sticky chain (_routeShellGameType) also resolves null
+               on a fresh session, which collapses the shell-felt gate
+               (`isFeltlessPokerFamily(null)===false`) and leaves
+               ShellOwnedFeltHost unmounted during dealer high-card. The
+               trace confirms PSC publishes `felt_ownership=self` during
+               dealer_selection and only flips to `shell` at ante_decision
+               when game_type finally becomes `holm-game`.
+
+               When the persistent poker shell is active, default the
+               shell-felt family to `holm-game` (a member of
+               POKER_SHELL_FELTLESS_FAMILIES) so the shell-owned felt
+               paints from the first frame. Once the real game_type is
+               written, the sticky chain takes over. */
+            gameType={
+              _routeShellGameType
+                ?? (_isPokerShellPersistent ? 'holm-game' : undefined)
+            }
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}
