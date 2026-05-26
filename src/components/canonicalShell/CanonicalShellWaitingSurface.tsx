@@ -36,7 +36,6 @@ import {
 import { WaitingRoomCTA } from "@/components/canonicalShell/WaitingRoomCTA";
 import {
   usePublishShellFelt,
-  useShellFeltContext,
   deriveFeltGameKind,
 } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
