@@ -44,6 +44,30 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
       : null,
   );
 
+  // Lifecycle continuity baseline: while between gameplay surfaces
+  // (between-games rollover, dealer config, pre-game bootstrap) no
+  // gameplay component has registered ShellTabBar state, so the tab
+  // bar would render nothing and the shell chrome would visually
+  // disappear. Publish a minimal neutral baseline (lobby/history
+  // toggleable, cards/chat inert) so the canonical bottom chrome
+  // remains structurally and visually continuous. The moment a real
+  // gameplay surface mounts and calls useShellTabBar(...), its
+  // registration supersedes this baseline ("most recent wins").
+  const [neutralTab, setNeutralTab] = useState<ShellTabId>('lobby');
+  const handleSetNeutralTab = useCallback((t: ShellTabId) => {
+    setNeutralTab(t);
+  }, []);
+  const baselineTabState = useMemo(
+    () => ({
+      cardsIcon: 'spade' as const,
+      activeTab: neutralTab,
+      setActiveTab: handleSetNeutralTab,
+    }),
+    [neutralTab, handleSetNeutralTab],
+  );
+  useShellTabBar(baselineTabState);
+
+
 
   useEffect(() => {
     ginTrace('NeutralInterstitial mounted', { reason: reason ?? null, gameKind: gameKind ?? null });
