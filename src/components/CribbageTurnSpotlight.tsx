@@ -60,9 +60,15 @@ export const CribbageTurnSpotlight = ({
   totalPlayers,
   opponentIds = [],
   currentTurnSlot,
-  clipPath = 'ellipse(50% 50% at 50% 50%)',
+  clipPath: clipPathProp = 'ellipse(50% 50% at 50% 50%)',
   shellOwned = false,
 }: CribbageTurnSpotlightProps) => {
+  // Shell-owned mode portals into the canonical felt SURFACE node,
+  // which already enforces the exact canonical ellipse via
+  // `overflow: hidden` + `rounded-[50%/45%]`. Drop the approximated
+  // inner clip in that case so the spotlight doesn't paint a second
+  // offset oval against the surface's true geometry.
+  const clipPath = shellOwned ? undefined : clipPathProp;
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
   const shellFrame = useShellFeltFrameElement(shellOwned && isVisible);
