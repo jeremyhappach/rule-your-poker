@@ -5400,31 +5400,20 @@ export const CribbageMobileGameTable = ({
 
 
   // Felt-frame + outer top-section sizing.
-  //
-  // Flag OFF (legacy local felt): preserve original square circle envelope.
-  // Flag ON  (shell-owned ellipse): size the top-section to the SHELL
-  // ellipse envelope (top:24 + min(86vw, calc(55vh - 64px), 400px)) so the
-  // announcement rail + tab bar sit tangential to the bottom of the
-  // ellipse — no extra vertical gap below the felt.
-  const feltFrameStyle = shellOwnsFelt
-    ? {
-        width: 'min(94vw, 720px)',
-        height: 'min(86vw, calc(55vh - 64px), 400px)',
-      }
-    : {
-        width: 'min(90vw, calc(55vh - 32px))',
-        height: 'min(90vw, calc(55vh - 32px))',
-      };
+  // Sized to the SHELL ellipse envelope (top:24 + min(86vw, calc(55vh - 64px), 400px))
+  // so the announcement rail + tab bar sit tangential to the bottom of the ellipse.
+  const feltFrameStyle = {
+    width: 'min(94vw, 720px)',
+    height: 'min(86vw, calc(55vh - 64px), 400px)',
+  };
 
-  const tableContainerHeight = shellOwnsFelt
-    ? 'calc(24px + min(86vw, calc(55vh - 64px), 400px))'
-    : 'calc(min(90vw, calc(55vh - 32px)) + 10px)';
+  const tableContainerHeight = 'calc(24px + min(86vw, calc(55vh - 64px), 400px))';
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
-    <div className={cn('h-full flex flex-col overflow-hidden', shellOwnsFelt ? 'bg-transparent' : 'bg-background')}>
+    <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
       {/* Phase E: canonical `match_win` announcement owns winner UI.
           The 'skunk' win-sequence phase is retired — skunk semantics
           ride inside the canonical announcement payload. */}
@@ -5446,34 +5435,21 @@ export const CribbageMobileGameTable = ({
         className="relative flex items-start justify-center pt-1"
         style={{ 
           height: tableContainerHeight,
-          minHeight: shellOwnsFelt ? '260px' : '300px',
+          minHeight: '260px',
         }}
       >
-        {/* Light background behind the circle. When shell-owned felt is OFF,
-            this is the local backdrop slab. When shell-owned felt is ON, the
-            shell host paints its own backdrop (see ShellOwnedFeltHost) and
-            we suppress this to avoid double-painting / covering the shell felt. */}
-        {!shellOwnsFelt && <div className="absolute inset-0 bg-slate-200 z-0" />}
+        {/* Shell host owns the canonical felt + backdrop. No local floor slab. */}
 
-        {/* Felt-content frame. Flag OFF preserves the legacy square/circle production frame;
-            shell-owned felt ON uses the shared canonical ellipse content frame so Cribbage
-            overlays cannot visually recreate the old circular felt during phase transitions. */}
+        {/* Felt-content frame — shared canonical ellipse envelope. */}
         <div
           className="relative z-10"
           style={feltFrameStyle}
         >
-          {/* ── Phase 2.2 / Bucket 3 Phase 3.1b: canonical felt.
-              Default path (shell-owned felt OFF): render the local
-              CanonicalFeltSurface inside the square wrapper, exactly
-              as before. Shell-owned felt path (flag ON): publish the
-              same parameters via useShellFeltContext so the single
-              shell-mounted CanonicalFeltSurface paints the felt; the
-              local render is suppressed so only one canonical felt
-              node exists in the DOM. */}
           <div
             className="relative w-full h-full"
-            style={shellOwnsFelt ? { transform: 'translateY(6%)' } : undefined}
+            style={{ transform: 'translateY(6%)' }}
           >
+
             <CribbageFeltAdapter
               anteAmount={anteAmount}
               pointsToWin={gameConfig.pointsToWin}
