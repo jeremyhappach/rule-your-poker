@@ -124,35 +124,19 @@ function CribbageFeltAdapter(props: {
   };
   isWaitingPhase: boolean;
 }) {
-  const { shellOwnsFelt } = useShellFeltContext();
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: 'cribbage',
-          anteAmount: props.anteAmount,
-          pointsToWin: props.pointsToWin,
-          cribbageSkunk: props.cribbageSkunk,
-          isWaitingPhase: props.isWaitingPhase,
-          publisherLabel: 'CribbageMobileGameTable',
-        }
-      : null,
-  );
-  if (shellOwnsFelt) {
-    return (
-      <div
-        data-shell-felt-geometry-anchor="cribbage"
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-      />
-    );
-  }
+  usePublishShellFelt({
+    gameKind: 'cribbage',
+    anteAmount: props.anteAmount,
+    pointsToWin: props.pointsToWin,
+    cribbageSkunk: props.cribbageSkunk,
+    isWaitingPhase: props.isWaitingPhase,
+    publisherLabel: 'CribbageMobileGameTable',
+  });
   return (
-    <CanonicalFeltSurface
-      gameKind="cribbage"
-      anteAmount={props.anteAmount}
-      pointsToWin={props.pointsToWin}
-      cribbageSkunk={props.cribbageSkunk}
-      isWaitingPhase={props.isWaitingPhase}
+    <div
+      data-shell-felt-geometry-anchor="cribbage"
+      aria-hidden="true"
+      className="absolute inset-0 pointer-events-none"
     />
   );
 }
