@@ -553,6 +553,26 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
+  // Phase 3.2 — when feltOwnership='shell', publish our felt context so
+  // the shell-owned felt host paints the correct family identity,
+  // ante, pot-max, legs, and waiting-phase appearance. Without this
+  // the host falls back to PersistentTableShell's initial hydration
+  // values and never reflects mid-session state changes.
+  const shellOwnsFelt = feltOwnership === 'shell';
+  usePublishShellFelt(
+    shellOwnsFelt
+      ? {
+          gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
+          anteAmount,
+          potMaxEnabled,
+          potMaxValue,
+          legsToWin,
+          isWaitingPhase,
+          publisherLabel: `MobileGameTable:${instanceLabel}`,
+        }
+      : null,
+  );
+
   
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
