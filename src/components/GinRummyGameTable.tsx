@@ -62,7 +62,7 @@ import { useKnockSound } from '@/hooks/useKnockSound';
 import { useGameChat } from '@/hooks/useGameChat';
 import { cn, formatChipValue } from '@/lib/utils';
 import { getDisplayName } from '@/lib/botAlias';
-import { CanonicalFeltSurface } from '@/lib/canonicalShell/CanonicalFeltSurface';
+// Shell owns canonical felt — no local CanonicalFeltSurface import.
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
