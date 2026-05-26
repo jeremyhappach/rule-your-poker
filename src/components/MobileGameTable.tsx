@@ -4503,14 +4503,14 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
-  return <div className={cn('flex flex-col h-full min-h-0 overflow-hidden relative', shellOwnsFelt ? 'bg-transparent' : 'bg-background')}>
+  return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
       <div
         ref={tableContainerRef}
         data-canonical-table-container=""
-        data-canonical-table-felt-ownership={feltOwnership}
+        data-canonical-table-felt-ownership="shell"
         className="flex-1 relative overflow-hidden min-h-0"
         style={{ maxHeight: '55vh' }}
       >
