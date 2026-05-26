@@ -38,6 +38,7 @@ import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/CanonicalShellWaitingSurface";
+import { LifecycleAnnouncement } from "@/components/LifecycleAnnouncement";
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
@@ -8861,6 +8862,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     }}
                   />
                 )}
+                {/* Observer lifecycle plate. DealerGameSetup only mounts
+                    for the dealer (or autonomous-bot dealer); without
+                    this, observers on poker-variant families see the
+                    shell-owned felt with no context during the
+                    configuring / game_selection window. Render a
+                    canonical lifecycle plate so the transition feels
+                    intentional instead of blank. */}
+                {!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)) && dealerPlayer && (
+                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-30 px-6">
+                    <LifecycleAnnouncement
+                      title={`${dealerPlayer.is_bot ? getBotAlias(players, dealerPlayer.user_id) : (dealerPlayer.profiles?.username || 'Dealer')} is setting up the next game`}
+                    />
+                  </div>
+                )}
               </div>
             /* Phase 1: A3 terminal/win-animation sibling table. The fragile
                hand-curated game-type denylist (cribbage/gin-rummy/horses/SCC)
@@ -9666,7 +9681,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         <SurfaceReadinessProvider>
           <PersistentTableShell
             gameId={gameId ?? undefined}
-            gameType={game.game_type}
+            /* Sticky shell game type: `game.game_type` is null during the
+               configuring / game_selection window (between Start Game and
+               DealerGameSetup completion). Passing raw null here would
+               unmount ShellOwnedFeltHost for any feltless poker family
+               and blank the shell-owned felt mid-transition. Use the
+               sticky chain (current -> last known -> previous config) so
+               the shell felt stays continuously mounted across lifecycle
+               transitions. */
+            gameType={_routeShellGameType ?? undefined}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}
