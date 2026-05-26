@@ -538,50 +538,31 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
-  // Phase 3.2 — when feltOwnership='shell', publish our felt context so
-  // the shell-owned felt host paints the correct family identity,
-  // ante, pot-max, legs, and waiting-phase appearance. Without this
-  // the host falls back to PersistentTableShell's initial hydration
-  // values and never reflects mid-session state changes.
-  const shellOwnsFelt = feltOwnership === 'shell';
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
-          anteAmount,
-          potMaxEnabled,
-          potMaxValue,
-          legsToWin,
-          isWaitingPhase,
-          publisherLabel: `MobileGameTable:${instanceLabel}`,
-        }
-      : null,
-  );
+  // Publish canonical felt context to the shell-owned host (sole felt mount).
+  usePublishShellFelt({
+    gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
+    anteAmount,
+    potMaxEnabled,
+    potMaxValue,
+    legsToWin,
+    isWaitingPhase,
+    publisherLabel: `MobileGameTable:${instanceLabel}`,
+  });
 
   // ── DIAGNOSTIC: poker-shell continuity audit ──────────────────────
-  // Logs once per MobileGameTable mount with the render-site label and
-  // initial gameStatus. A new MOUNT line during a phase transition
-  // (e.g. dealer_selection → configuring → in_progress) is direct
-  // evidence that the gameplay tree is NOT persistent across
-  // lifecycle phases, even if the shell-owned felt is.
   useLifecycleMount('MobileGameTable', {
     instanceLabel,
     gameType: gameType ?? null,
     initialGameStatus: gameStatus ?? null,
-    feltOwnership,
   });
-  // Track gameStatus transitions WITHIN a single mount so we can
-  // distinguish "prop change inside persistent mount" (good) from
-  // "remount with new status" (bad — confirms continuity gap).
   useEffect(() => {
     setLifecycleFact(`MGT:${instanceLabel}:gameStatus`, gameStatus ?? null);
     setLifecycleContext({
       gameType: gameType ?? null,
       gameStatus: gameStatus ?? null,
-      feltOwnership,
       shellRoute: `MGT:${instanceLabel}`,
     });
-  }, [gameStatus, instanceLabel, gameType, feltOwnership]);
+  }, [gameStatus, instanceLabel, gameType]);
 
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
