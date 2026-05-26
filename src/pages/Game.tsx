@@ -38,7 +38,9 @@ import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
 import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/CanonicalShellWaitingSurface";
-import { LifecycleAnnouncement } from "@/components/LifecycleAnnouncement";
+// LifecycleAnnouncement no longer rendered from Game.tsx — observer
+// lifecycle messaging is emitted into the canonical shell announcement
+// rail by `SessionLifecycleAnnouncer` (see `dealer_configuring`).
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
