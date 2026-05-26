@@ -65,6 +65,28 @@ export interface PlayfieldSlotControllerProps {
   readinessScope?: string | null;
   neutralGameKind?: CanonicalFeltGameKind | null;
   neutralAnteAmount?: number | string;
+  /**
+   * Persistent-children mode. When provided, `children` are rendered
+   * continuously at a stable React position keyed by this string —
+   * even when mountedIdentity is null. The pre-game overlay (or, as
+   * fallback, NeutralInterstitial) is rendered ON TOP of children
+   * instead of replacing them. This is what gives the poker-shell
+   * family ONE persistent MobileGameTable instance across the entire
+   * lifecycle (dealer_selection → game_selection → ante_decision →
+   * in_progress → game_over). Without this prop, the legacy
+   * behaviour (children swapped with NeutralInterstitial when
+   * mountedIdentity===null, children re-keyed by slot identity)
+   * is preserved.
+   */
+  persistentChildrenKey?: string | null;
+  /**
+   * Pre-game overlay rendered above persistent children when
+   * mountedIdentity===null. Typically contains DealerGameSetup /
+   * HighCardDealerSelection. When persistentChildrenKey is unset,
+   * this prop is ignored and NeutralInterstitial is rendered as
+   * before.
+   */
+  preGameOverlay?: ReactNode;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
@@ -79,6 +101,8 @@ export function PlayfieldSlotController({
   readinessScope = null,
   neutralGameKind = null,
   neutralAnteAmount = 0,
+  persistentChildrenKey = null,
+  preGameOverlay = null,
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
@@ -285,8 +309,51 @@ export function PlayfieldSlotController({
   // Unified slot frame: identical outer container for neutral and
   // active so the transition is pixel-continuous. Only slot content
   // swaps. Background continuity lives at the shell-root above.
-  // Re-keying the active child by identity gives the gameplay subtree
-  // a fresh lifecycle per dealer game.
+  //
+  // Two render modes:
+  //
+  //   (a) Legacy (default): children are mounted only when
+  //       mountedIdentity is non-null, keyed by slot identity so the
+  //       gameplay subtree gets a fresh lifecycle per dealer game.
+  //       NeutralInterstitial replaces children at null identity.
+  //
+  //   (b) Persistent children (persistentChildrenKey set): children
+  //       are mounted continuously at a stable React position keyed
+  //       by `persistentChildrenKey` (typically session gameId). The
+  //       pre-game overlay (preGameOverlay) is rendered on TOP of
+  //       children when mountedIdentity===null, instead of replacing
+  //       them. This enforces the "ONE persistent MobileGameTable
+  //       instance across the entire poker-shell lifecycle"
+  //       contract from the persistent-poker-shell refactor.
+  if (persistentChildrenKey) {
+    return (
+      <div
+        data-canonical-shell-slot=""
+        data-slot-phase={phase}
+        data-slot-identity={describeSlotIdentity(mountedIdentity)}
+        data-slot-mode="persistent-children"
+        className="w-full h-full min-h-0 flex flex-col relative"
+      >
+        <div
+          key={persistentChildrenKey}
+          className="flex-1 min-h-0 flex flex-col"
+        >
+          {children}
+        </div>
+        {mountedIdentity === null && (
+          <div
+            data-canonical-shell-pregame-overlay=""
+            className="absolute inset-0 flex flex-col pointer-events-none"
+          >
+            <div className="flex-1 min-h-0 relative pointer-events-auto">
+              {preGameOverlay}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       data-canonical-shell-slot=""

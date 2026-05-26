@@ -8331,6 +8331,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _isConfiguringContext =
     game.status === 'game_selection' ||
     game.status === 'configuring' ||
+    // Persistent-poker-shell refactor: dealer_selection is a pre-game
+    // lifecycle phase identical in structural intent to game_selection
+    // / configuring. Including it here keeps the route stable on
+    // `Game:canonical` from session start through in_progress, which
+    // is what eliminates the legacy↔canonical ShellHudChrome teardown
+    // and the MobileGameTable position swap during DealerGameSetup.
+    game.status === 'dealer_selection' ||
     ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete);
   // Phase 3.1d: a fresh-session waiting state with no committed family
   // (no last-known / no previous config to fall back to) is canonical
@@ -8348,6 +8355,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     isCanonicalShellFamily(_routeShellGameType) ||
     (game.game_type == null && _isConfiguringContext) ||
     _isFreshWaitingNoFamily;
+
+  // Persistent-poker-shell scope. When true, the slot mounts a single
+  // MobileGameTable instance keyed by stable gameId across the entire
+  // dealer_selection → game_selection → configuring → ante_decision →
+  // in_progress → game_over lifecycle, with DealerGameSetup /
+  // HighCardDealerSelection rendered as overlays on top (not sibling
+  // teardown/recreation). Bootstrap window (game_type still null) is
+  // included so the slot owns the surface from session start.
+  const _isPokerShellPersistent =
+    enableOuterShell && (
+      isPokerVariantFamily(_routeShellGameType) ||
+      (_routeShellGameType == null && (
+        game.status === 'dealer_selection' ||
+        game.status === 'game_selection' ||
+        game.status === 'configuring'
+      ))
+    );
 
   // When the canonical shell owns the page column (header + children +
   // rail + tab bar in a flex column anchored to min-h-screen), the
@@ -8663,7 +8687,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 backdrop because the PlayfieldSlotController does not
                 cover their `dealer_selection` status; that gap is
                 Bucket 3/4 of the unification initiative. */}
-            {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && (
+            {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && !_isPokerShellPersistent && (
               <>
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
@@ -9072,7 +9096,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // and the shell loses NeutralInterstitial's bottom-panel
             // ShellHudChrome (rail + tab bar) — observed as the
             // dark/no-style transient between waiting and DealerGameSetup.
-            (game.status === 'dealer_selection' && isPokerVariantFamily(game.game_type))
+            (game.status === 'dealer_selection' && (isPokerVariantFamily(game.game_type) || _isPokerShellPersistent))
           ))
         ) && (
           // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
@@ -9098,6 +9122,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
+            persistentChildrenKey={_isPokerShellPersistent ? (gameId ?? null) : null}
             neutralGameKind={(() => {
               const t = _routeShellGameType;
               if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew') return t;
