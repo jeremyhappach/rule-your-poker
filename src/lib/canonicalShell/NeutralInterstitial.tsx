@@ -9,11 +9,11 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { recordShellEvent } from './diagnostics';
-import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFeltSurface';
+import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
-import { usePublishShellFelt, useShellFeltContext } from './ShellOwnedFeltHost';
+import { usePublishShellFelt } from './ShellOwnedFeltHost';
 import { ShellHudChrome } from './ShellHudChrome';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 
