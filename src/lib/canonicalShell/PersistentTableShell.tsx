@@ -188,26 +188,16 @@ export function PersistentTableShell({
           data-canonical-shell-children=""
           style={{ position: 'relative', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         >
-          {/* Bucket 3 / Phase 3.1b: shell-owned canonical felt. Mounted ONCE
-              inside the gameplay row (below shell header chrome), behind
-              slot content. When ON, gameplay surfaces suppress their local
-              <CanonicalFeltSurface /> render and publish geometry/identity
-              via `useShellFeltContext()`.
+          {/* Shell-owned canonical felt — mounted ONCE, unconditionally,
+              for the entire session lifecycle. Game surfaces publish
+              their felt context via `usePublishShellFelt` and NEVER
+              render felt themselves. There is no opt-in or per-family
+              registry: local felt ownership has been retired. */}
+          <ShellOwnedFeltHost
+            initialGameKind={deriveFeltGameKind(gameType)}
+            initialIsWaitingPhase={!gameType}
+          />
 
-              Phase 3.2a substrate: also mount whenever `gameType` is a
-              registered feltless poker-variant family
-              (`isFeltlessPokerFamily`), independent of the global
-              `isShellOwnedFeltEnabled()` flag. Without this, flipping a
-              poker family into `POKER_SHELL_FELTLESS_FAMILIES` would
-              suppress MobileGameTable's local felt without anything
-              replacing it — the symptom that triggered the Holm gray
-              screen on the first 3.2b attempt. */}
-          {(isShellOwnedFeltEnabled() || isFeltlessPokerFamily(gameType)) && (
-            <ShellOwnedFeltHost
-              initialGameKind={deriveFeltGameKind(gameType)}
-              initialIsWaitingPhase={!gameType}
-            />
-          )}
           <div
             data-canonical-shell-slot-content=""
             style={{ position: 'relative', zIndex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', flex: 1 }}
