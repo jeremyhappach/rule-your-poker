@@ -181,4 +181,4 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
   return overlay;
 };
-};
+
