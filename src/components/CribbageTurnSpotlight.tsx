@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 
 interface CribbageTurnSpotlightProps {
   /** Player ID whose turn it is */
@@ -26,6 +28,12 @@ interface CribbageTurnSpotlightProps {
    * so the spotlight cannot visually recreate the old circular felt.
    */
   clipPath?: string;
+  /**
+   * Shell-aware mode. When true, the spotlight portals itself into the
+   * canonical shell felt frame so the ellipse clip aligns with the
+   * actual canonical ellipse geometry instead of the larger parent box.
+   */
+  shellOwned?: boolean;
 }
 
 const SLOT_TO_ANGLE: Record<number, number> = {
@@ -53,9 +61,11 @@ export const CribbageTurnSpotlight = ({
   opponentIds = [],
   currentTurnSlot,
   clipPath = 'ellipse(50% 50% at 50% 50%)',
+  shellOwned = false,
 }: CribbageTurnSpotlightProps) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
+  const shellFrame = useShellFeltFrameElement(shellOwned && isVisible);
 
   useEffect(() => {
     if (!isVisible || !currentTurnPlayerId) {
@@ -98,10 +108,10 @@ export const CribbageTurnSpotlight = ({
 
   const beamHalfAngle = 30;
 
-  return (
+  const overlay = (
     <>
       {/* Golden glow in spotlight area - z-5 to stay behind pegboard (z-10) and count (z-20) */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{
           opacity,
@@ -119,9 +129,9 @@ export const CribbageTurnSpotlight = ({
           }}
         />
       </div>
-      
+
       {/* Dim overlay with spotlight cutout */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{
           opacity,
@@ -141,4 +151,15 @@ export const CribbageTurnSpotlight = ({
       </div>
     </>
   );
+
+  // Shell-aware mode: portal into the canonical felt frame so the
+  // ellipse clip uses the true canonical geometry. Prevents the legacy
+  // giant circular backing artifact from leaking against the larger
+  // parent box.
+  if (shellOwned) {
+    if (!shellFrame) return null;
+    return createPortal(overlay, shellFrame);
+  }
+
+  return overlay;
 };
