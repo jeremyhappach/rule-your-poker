@@ -5642,22 +5642,24 @@ export const CribbageMobileGameTable = ({
             {/* GAMEPLAY MODE: full game content */}
             {isGameplayMode && viewState && (
               <>
-                {/* Legacy Cribbage spotlight paints a geometry-shaped mask; suppress it while
-                    shell-owned felt is validating so the shell remains the only visible ellipse. */}
-                {!shellOwnsFelt && (
-                  <CribbageTurnSpotlight
-                    currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
-                    currentPlayerId={currentPlayerId || ''}
-                    isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
-                    totalPlayers={activeSeatPlayers.length}
-                    opponentIds={projectedSeatPlayers.map(o => o.id)}
-                    currentTurnSlot={
-                      viewState.pegging.currentTurnPlayerId
-                        ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
-                        : null
-                    }
-                  />
-                )}
+                {/* Spotlight is shell-aware: in shell-owned felt mode it
+                    portals itself into the canonical felt frame so the
+                    ellipse clip aligns with the true canonical geometry
+                    (no legacy giant-circle backing artifact). */}
+                <CribbageTurnSpotlight
+                  currentTurnPlayerId={viewState.pegging.currentTurnPlayerId}
+                  currentPlayerId={currentPlayerId || ''}
+                  isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
+                  totalPlayers={activeSeatPlayers.length}
+                  opponentIds={projectedSeatPlayers.map(o => o.id)}
+                  currentTurnSlot={
+                    viewState.pegging.currentTurnPlayerId
+                      ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null
+                      : null
+                  }
+                  shellOwned={shellOwnsFelt}
+                />
+
 
 
                 {/* Game Title — now rendered by CanonicalFeltSurface plate (Phase 2.2). */}
