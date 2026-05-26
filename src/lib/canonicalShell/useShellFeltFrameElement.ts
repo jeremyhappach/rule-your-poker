@@ -2,18 +2,29 @@
  * useShellFeltFrameElement — shell-aware geometry anchor for overlays.
  *
  * Returns the DOM element representing the canonical shell-owned felt
- * frame (`[data-canonical-shell-felt-frame]`). Overlay components
- * (spotlights, dimmers, focus cones) that previously assumed they
- * owned the table geometry can portal themselves into this element so
- * their `absolute inset-0` + `ellipse(50% 50% at 50% 50%)` clip aligns
- * with the actual canonical ellipse instead of leaking against a much
- * larger parent box (which previously produced the giant gray circular
- * backing artifact during the poker shell cutover).
+ * SURFACE (`[data-canonical-felt-surface]`). That node is the actual
+ * elliptical felt with `overflow: hidden` and `rounded-[50%/45%]`, so
+ * overlay components portaled into it (spotlights, dimmers, focus
+ * cones) inherit the exact canonical ellipse via overflow-clip — no
+ * approximated `ellipse(50% 50%)` clip-path against a larger parent
+ * box (which produced the visibly-offset second-ellipse artifact under
+ * the poker shell cutover).
  *
- * Polls briefly on first mount so callers that resolve before the
- * shell host paints still discover the frame on its first frame.
+ * Falls back to the wider `[data-canonical-shell-felt-frame]` wrapper
+ * only if the surface node hasn't mounted yet, then rebinds via the
+ * MutationObserver as soon as the surface appears.
  */
 import { useEffect, useState } from 'react';
+
+const SURFACE_SELECTOR = '[data-canonical-felt-surface]';
+const FRAME_SELECTOR = '[data-canonical-shell-felt-frame]';
+
+function findFrame(): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>(SURFACE_SELECTOR) ??
+    document.querySelector<HTMLElement>(FRAME_SELECTOR)
+  );
+}
 
 export function useShellFeltFrameElement(enabled: boolean): HTMLElement | null {
   const [el, setEl] = useState<HTMLElement | null>(null);
@@ -31,12 +42,9 @@ export function useShellFeltFrameElement(enabled: boolean): HTMLElement | null {
 
     const tick = () => {
       if (cancelled) return;
-      const next = document.querySelector<HTMLElement>(
-        '[data-canonical-shell-felt-frame]',
-      );
+      const next = findFrame();
       if (next) {
         setEl(prev => (prev === next ? prev : next));
-        // Keep polling lightly to handle remounts; back off after found.
         if (attempts > 0) return;
       }
       attempts += 1;
@@ -47,11 +55,8 @@ export function useShellFeltFrameElement(enabled: boolean): HTMLElement | null {
 
     tick();
 
-    // Observe broad DOM changes to rebind across remounts.
     const observer = new MutationObserver(() => {
-      const next = document.querySelector<HTMLElement>(
-        '[data-canonical-shell-felt-frame]',
-      );
+      const next = findFrame();
       setEl(prev => (prev === next ? prev : next));
     });
     observer.observe(document.body, { childList: true, subtree: true });
