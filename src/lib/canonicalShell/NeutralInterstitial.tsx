@@ -7,7 +7,7 @@
  * slot-entered-neutral / slot-left-neutral telemetry.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { recordShellEvent } from './diagnostics';
 import { CanonicalFeltSurface, type CanonicalFeltGameKind } from './CanonicalFeltSurface';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
@@ -15,6 +15,7 @@ import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt, useShellFeltContext } from './ShellOwnedFeltHost';
 import { ShellHudChrome } from './ShellHudChrome';
+import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 
 
 export interface NeutralInterstitialProps {
@@ -42,6 +43,30 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
         }
       : null,
   );
+
+  // Lifecycle continuity baseline: while between gameplay surfaces
+  // (between-games rollover, dealer config, pre-game bootstrap) no
+  // gameplay component has registered ShellTabBar state, so the tab
+  // bar would render nothing and the shell chrome would visually
+  // disappear. Publish a minimal neutral baseline (lobby/history
+  // toggleable, cards/chat inert) so the canonical bottom chrome
+  // remains structurally and visually continuous. The moment a real
+  // gameplay surface mounts and calls useShellTabBar(...), its
+  // registration supersedes this baseline ("most recent wins").
+  const [neutralTab, setNeutralTab] = useState<ShellTabId>('lobby');
+  const handleSetNeutralTab = useCallback((t: ShellTabId) => {
+    setNeutralTab(t);
+  }, []);
+  const baselineTabState = useMemo(
+    () => ({
+      cardsIcon: 'spade' as const,
+      activeTab: neutralTab,
+      setActiveTab: handleSetNeutralTab,
+    }),
+    [neutralTab, handleSetNeutralTab],
+  );
+  useShellTabBar(baselineTabState);
+
 
 
   useEffect(() => {
