@@ -118,12 +118,19 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   // Narrower beam (25 degrees on each side = 50 degree cone)
   const beamHalfAngle = 25;
 
-  // Clip path - use ellipse for poker table, none for dice games.
-  // In shell-owned mode the spotlight is portaled INTO the canonical
-  // felt frame element whose own box already matches the canonical
-  // ellipse, so the inner ellipse(50% 50%) clip is now anchored to
-  // the actual felt geometry instead of the much larger parent box.
-  const clipStyle = useFullCoverage ? undefined : 'ellipse(50% 50% at 50% 50%)';
+  // Clip path. In shell-owned mode the spotlight is portaled INTO the
+  // canonical felt SURFACE node, which already enforces the exact
+  // canonical ellipse via `overflow: hidden` + `rounded-[50%/45%]`.
+  // We therefore drop the approximated `ellipse(50% 50%)` clip — it
+  // doesn't match the canonical 50%/45% radius and visibly produced a
+  // second offset oval. Outside shell-owned mode we keep the legacy
+  // ellipse clip for the standalone poker table; dice games use full
+  // coverage with no clip.
+  const clipStyle = shellOwned
+    ? undefined
+    : useFullCoverage
+      ? undefined
+      : 'ellipse(50% 50% at 50% 50%)';
 
   const overlay = (
     <>
