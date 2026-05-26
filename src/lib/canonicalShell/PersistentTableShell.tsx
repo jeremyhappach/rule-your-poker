@@ -33,13 +33,13 @@ import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
-import { isCanonicalShellBadgeEnabled, isShellOwnedFeltEnabled } from '@/lib/debugFlags';
+import { isCanonicalShellBadgeEnabled } from '@/lib/debugFlags';
 import {
   ShellFeltContextProvider,
   ShellOwnedFeltHost,
   deriveFeltGameKind,
 } from './ShellOwnedFeltHost';
-import { isFeltlessPokerFamily } from './pokerShellCutover';
+
 import {
   CanonicalAnnouncementProvider,
   CanonicalCelebrationLayer,
