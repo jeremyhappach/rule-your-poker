@@ -28,6 +28,12 @@ interface CribbageTurnSpotlightProps {
    * so the spotlight cannot visually recreate the old circular felt.
    */
   clipPath?: string;
+  /**
+   * Shell-aware mode. When true, the spotlight portals itself into the
+   * canonical shell felt frame so the ellipse clip aligns with the
+   * actual canonical ellipse geometry instead of the larger parent box.
+   */
+  shellOwned?: boolean;
 }
 
 const SLOT_TO_ANGLE: Record<number, number> = {
