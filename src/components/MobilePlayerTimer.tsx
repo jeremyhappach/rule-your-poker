@@ -46,13 +46,22 @@ export const MobilePlayerTimer = ({
   const wasActiveRef = useRef(false);
   const [suppressTransition, setSuppressTransition] = useState(false);
 
+  // Null-seed paint guard: when isActive flips true with timeLeft===null
+  // (the "null-seed" source observed in lifecycle traces), the progress
+  // ring would otherwise jump from full→actual in a single 1s ease as
+  // the real seed lands one frame later. Suppress the progress ring
+  // entirely until the first non-null timeLeft commit per activation,
+  // eliminating the visible flash even if the activation happens on a
+  // freshly-mounted instance.
+  const seedReadyRef = useRef(false);
+  const [seedReady, setSeedReady] = useState(false);
+
   useEffect(() => {
     if (isActive && !wasActiveRef.current) {
-      // Just became active — suppress transition for this frame
       setSuppressTransition(true);
-      requestAnimationFrame(() => {
-        setSuppressTransition(false);
-      });
+      requestAnimationFrame(() => setSuppressTransition(false));
+      seedReadyRef.current = timeLeft !== null;
+      setSeedReady(timeLeft !== null);
       recordLifecycleEvent('timer.activate', {
         component: 'MobilePlayerTimer',
         instance_id: instanceIdRef.current,
@@ -60,6 +69,12 @@ export const MobilePlayerTimer = ({
         max_time: maxTime,
         timer_seed_source: timeLeft === null ? 'null-seed' : 'prop-seed',
       });
+    } else if (isActive && !seedReadyRef.current && timeLeft !== null) {
+      seedReadyRef.current = true;
+      setSeedReady(true);
+    } else if (!isActive && wasActiveRef.current) {
+      seedReadyRef.current = false;
+      setSeedReady(false);
     }
     wasActiveRef.current = isActive;
   }, [isActive, timeLeft, maxTime]);
