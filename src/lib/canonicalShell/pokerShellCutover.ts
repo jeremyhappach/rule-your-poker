@@ -113,8 +113,14 @@ export function isFeltlessPokerFamily(
   gameType: string | null | undefined,
 ): boolean {
   if (!gameType) return false;
-  if (!POKER_VARIANT_GAME_TYPES.has(gameType)) return false;
+  // Registry membership is authoritative for felt ownership. POKER_VARIANT
+  // membership is a separate routing concern (persistent poker shell
+  // routing in Game.tsx) and is intentionally NOT required here — e.g.
+  // Yahtzee is registered as feltless but is not a poker-variant family.
   if (POKER_SHELL_FELTLESS_FAMILIES.has(gameType)) return true;
+  // Debug opt-in still respects the POKER_VARIANT allowlist to avoid
+  // accidentally lifting felt for non-table families via URL toggle.
+  if (!POKER_VARIANT_GAME_TYPES.has(gameType)) return false;
   return readDebugCutoverFamilies().has(gameType);
 }
 
