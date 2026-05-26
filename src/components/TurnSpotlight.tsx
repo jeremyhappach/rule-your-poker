@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 
 interface TurnSpotlightProps {
   /** The position of the player whose turn it is (absolute 1-7) */
@@ -17,6 +19,14 @@ interface TurnSpotlightProps {
   useFullCoverage?: boolean;
   /** Disable the spotlight entirely (for dice games) */
   disabled?: boolean;
+  /**
+   * Shell-aware mode. When true, the spotlight portals itself into the
+   * canonical shell felt frame so its `absolute inset-0` + ellipse clip
+   * aligns with the actual canonical ellipse instead of leaking against
+   * the much larger parent box (which produced the legacy giant gray
+   * backing artifact under the poker shell cutover).
+   */
+  shellOwned?: boolean;
 }
 
 /**
@@ -33,6 +43,7 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   isVisible,
   useFullCoverage = false,
   disabled = false,
+  shellOwned = false,
 }) => {
   const [rotation, setRotation] = useState<number>(0);
   const [opacity, setOpacity] = useState<number>(0);
