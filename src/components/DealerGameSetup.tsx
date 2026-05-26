@@ -123,6 +123,15 @@ export const DealerGameSetup = ({
   onSessionEnd,
   onSitOut,
 }: DealerGameSetupProps) => {
+  // ── DIAGNOSTIC: lifecycle continuity audit (Step 1 of poker shell refactor) ──
+  // Confirms which render path actually mounts DealerGameSetup, so we
+  // can prove whether the legacy `configuring` sibling branch is the
+  // runtime path (and therefore why shell chrome appears missing).
+  useLifecycleMount('DealerGameSetup', {
+    gameId,
+    isBot,
+    previousGameType: previousGameType ?? null,
+  });
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)

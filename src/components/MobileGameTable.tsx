@@ -20,6 +20,7 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
+import { useLifecycleMount, setLifecycleFact } from "@/lib/canonicalShell/lifecycleDebug";
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -573,7 +574,25 @@ export const MobileGameTable = ({
       : null,
   );
 
-  
+  // ── DIAGNOSTIC: poker-shell continuity audit ──────────────────────
+  // Logs once per MobileGameTable mount with the render-site label and
+  // initial gameStatus. A new MOUNT line during a phase transition
+  // (e.g. dealer_selection → configuring → in_progress) is direct
+  // evidence that the gameplay tree is NOT persistent across
+  // lifecycle phases, even if the shell-owned felt is.
+  useLifecycleMount('MobileGameTable', {
+    instanceLabel,
+    gameType: gameType ?? null,
+    initialGameStatus: gameStatus ?? null,
+    feltOwnership,
+  });
+  // Track gameStatus transitions WITHIN a single mount so we can
+  // distinguish "prop change inside persistent mount" (good) from
+  // "remount with new status" (bad — confirms continuity gap).
+  useEffect(() => {
+    setLifecycleFact(`MGT:${instanceLabel}:gameStatus`, gameStatus ?? null);
+  }, [gameStatus, instanceLabel]);
+
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
 
