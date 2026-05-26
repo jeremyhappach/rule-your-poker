@@ -1786,28 +1786,13 @@ export function YahtzeeGameTable({
     );
   };
 
-  /* ---- Pre-round: show stable table shell with subtle overlay ---- */
+  /* ---- Pre-round: shell ellipse paints the felt; render chip cluster only ---- */
   const isPreRound = !viewState || !currentRoundId;
   if (isPreRound) {
     return (
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
-        {/* Stable table felt — same geometry as gameplay */}
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
         <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
-          <div
-            className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
-              boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-            }}
-          >
-            <img
-              src={peoriaBridgeMobile}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-              style={{ objectPosition: 'center 38%', opacity: 0.28 }}
-            />
-          </div>
+          {/* Shell owns canonical felt. */}
           {/* Player chip stacks around the felt */}
           {(() => {
             const sorted = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
@@ -1854,17 +1839,12 @@ export function YahtzeeGameTable({
   // Build stamp moved to DiceTraceControl component
 
   return (
-    // Shell-owned felt is painted at zIndex 0 inside
-    // `data-canonical-shell-children` (one level above `data-canonical-shell-slot-content`,
-    // where this tree mounts). An opaque outer `bg-background` here
-    // occludes the shell ellipse for the entire children row — exactly
-    // the "zero table" symptom in the Yahtzee startup repro. Match the
-    // NeutralInterstitial contract: when the shell owns the felt, the
-    // outer surface MUST be transparent so the shell ellipse remains
-    // continuously visible across the dealer_selection → ante_decision
-    // → in_progress boundary. Per-region opaque panels (bottom action
-    // panel, dialogs) keep their own backgrounds.
-    <div className={`flex flex-col h-full min-h-0 overflow-hidden relative ${shellOwnsFelt ? 'bg-transparent' : 'bg-background'}`}>
+    // Shell-owned felt is the sole canonical mount. The outer surface
+    // MUST be transparent so the shell ellipse remains continuously
+    // visible. Per-region opaque panels (bottom action panel, dialogs)
+    // keep their own backgrounds.
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+
 
       {/* DEBUG: visible build verification badge + dice trace controls */}
       <DiceTraceControl />
