@@ -51,7 +51,7 @@ import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
-import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+// Shell owns canonical felt — no local CanonicalFeltSurface import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
