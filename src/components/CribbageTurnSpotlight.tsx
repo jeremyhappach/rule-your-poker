@@ -108,10 +108,10 @@ export const CribbageTurnSpotlight = ({
 
   const beamHalfAngle = 30;
 
-  return (
+  const overlay = (
     <>
       {/* Golden glow in spotlight area - z-5 to stay behind pegboard (z-10) and count (z-20) */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{
           opacity,
@@ -129,9 +129,9 @@ export const CribbageTurnSpotlight = ({
           }}
         />
       </div>
-      
+
       {/* Dim overlay with spotlight cutout */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none z-[5]"
         style={{
           opacity,
@@ -151,4 +151,15 @@ export const CribbageTurnSpotlight = ({
       </div>
     </>
   );
+
+  // Shell-aware mode: portal into the canonical felt frame so the
+  // ellipse clip uses the true canonical geometry. Prevents the legacy
+  // giant circular backing artifact from leaking against the larger
+  // parent box.
+  if (shellOwned) {
+    if (!shellFrame) return null;
+    return createPortal(overlay, shellFrame);
+  }
+
+  return overlay;
 };
