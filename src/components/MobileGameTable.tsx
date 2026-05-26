@@ -398,24 +398,9 @@ interface MobileGameTableProps {
   dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null; // Position of winner for spotlight effect
   /**
-   * Phase 3.2a — felt ownership mode.
-   *
-   *   'self'  (default) — MobileGameTable renders its own
-   *                       `<CanonicalFeltSurface>` inside the table
-   *                       container. Legacy / current behavior.
-   *
-   *   'shell' — MobileGameTable SUPPRESSES its local felt render. The
-   *             shell-owned `ShellOwnedFeltHost` (mounted inside
-   *             `PersistentTableShell`) is the sole canonical felt for
-   *             the session. Required to satisfy the Phase 3.2 hard
-   *             invariant of exactly one `data-canonical-felt-surface`
-   *             node in the DOM.
-   *
-   * Mount sites in Game.tsx derive this from
-   * `resolveMobileTableFeltOwnership(game.game_type)`; per-family opt-in
-   * lives in `pokerShellCutover.ts` and is empty in 3.2a.
+   * Legacy `feltOwnership` prop has been retired. Shell-owned felt is the
+   * sole canonical mount for every family — no local felt branch exists.
    */
-  feltOwnership?: 'self' | 'shell';
 }
 export const MobileGameTable = ({
   gameId,
