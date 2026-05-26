@@ -101,6 +101,8 @@ export function PlayfieldSlotController({
   readinessScope = null,
   neutralGameKind = null,
   neutralAnteAmount = 0,
+  persistentChildrenKey = null,
+  preGameOverlay = null,
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
