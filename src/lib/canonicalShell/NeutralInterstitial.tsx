@@ -14,6 +14,7 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt, useShellFeltContext } from './ShellOwnedFeltHost';
+import { ShellHudChrome } from './ShellHudChrome';
 
 
 export interface NeutralInterstitialProps {
