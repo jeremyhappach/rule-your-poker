@@ -332,7 +332,7 @@ export const CribbageMobileGameTable = ({
   onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
   const { getTableColors, getCardBackColors } = useVisualPreferences();
-  const { shellOwnsFelt } = useShellFeltContext();
+
 
   // ── Lifecycle instrumentation ─────────────────────────────────
   // Stable instance ID survives re-renders; changes only on true unmount/remount.
