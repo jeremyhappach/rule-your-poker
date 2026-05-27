@@ -575,7 +575,7 @@ export function useHorsesMobileController({
 
   // Shadow the parameter: all downstream code reads from presentation state.
   // eslint-disable-next-line no-param-reassign
-  horsesState = syncHandle.presentationState;
+  horsesState = dealerGameScopeChanged ? null : syncHandle.presentationState;
 
   // SYNC COMPLIANCE: single presentation-derived identity for effect gating / stale guards / keys.
   // Equals raw currentRoundId only when presentation has actually advanced to that round's state.
@@ -759,6 +759,7 @@ export function useHorsesMobileController({
   // CRITICAL: Treat state as "waiting" unless the current round has a valid horses_state payload.
   // This prevents showing the previous round's "complete" state / winners while a new hand is spinning up.
   const hasValidState = !!(
+    !dealerGameScopeChanged &&
     currentRoundId &&
     horsesState &&
     Array.isArray(horsesState.turnOrder) &&
