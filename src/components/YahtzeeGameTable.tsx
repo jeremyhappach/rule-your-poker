@@ -2030,14 +2030,10 @@ export function YahtzeeGameTable({
           });
         })()}
 
-        {/* Dealer button on felt for current player */}
-        {myPlayer && dealerPosition === myPlayer.position && (
-          <div className="absolute z-20" style={{ bottom: '8px', left: '45%', transform: 'translateX(-50%)' }}>
-            <div className="w-7 h-7 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xs">D</span>
-            </div>
-          </div>
-        )}
+        {/* Dealer affordance for the local player is inlined into the
+            active-player identity row below — no global vertical
+            reservation on the shell for a control that only applies
+            to the active dealer. */}
       </div>
 
       {/* ===== BOTTOM SECTION ===== */}
