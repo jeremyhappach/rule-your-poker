@@ -290,16 +290,17 @@ export function ShellOwnedFeltHost({
           top: 24,
           width: 'min(94vw, 720px)',
           // Active envelope MUST equal waiting/interstitial envelope.
-          // Live gameplay tables (Gin, Holm, etc.) were visibly
-          // smaller than the between-games interstitial because the
-          // active branch shrank the felt to reserve vertical room
-          // for shell seat clusters. That created a phase-to-phase
-          // geometry jump on every rollover. Use a single canonical
-          // envelope across waiting and active so the felt shape is
-          // stable across the full session lifecycle.
-          height: 'min(84vw, calc(53vh - 40px), 380px)',
+          // Calibration: previous `min(84vw, calc(53vh - 40px), 380px)`
+          // over-corrected and compressed the ellipse vertically; bumped
+          // to give the felt comfortable breathing room without growing
+          // the overall envelope (width cap unchanged). The 86vw and
+          // 57vh-24 terms typically pick the same value, yielding a
+          // visually rounder ellipse that still leaves room for the
+          // player-area panel below.
+          height: 'min(86vw, calc(57vh - 24px), 420px)',
           minWidth: 300,
-          minHeight: 220,
+          minHeight: 260,
+
           transform: 'translateX(-50%)',
         }}
       >
