@@ -357,6 +357,30 @@ export function useHorsesMobileController({
     }
   }, [currentRoundId, dealerGameId]);
 
+  useEffect(() => {
+    if (!dealerGameScopeChanged) return;
+    const prevDealerGameId = latchedDealerGameId;
+    syncHandle.reset(null);
+    setMonotonicRoundId(propRoundId ?? null);
+    setMonotonicHandNumber(propHandNumber ?? 1);
+    lastObservedIdentityRef.current = null;
+    setLatchedDealerGameId(controllerDealerGameId);
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: propHandNumber ?? null,
+      roundId: propRoundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'horses-dealer-game-boundary-reset',
+      payload: {
+        prevDealerGameId: prevDealerGameId?.slice(0, 8) ?? null,
+        nextDealerGameId: controllerDealerGameId?.slice(0, 8) ?? null,
+        nextRoundId: propRoundId?.slice(0, 8) ?? null,
+      },
+    });
+  }, [dealerGameScopeChanged, latchedDealerGameId, controllerDealerGameId, propRoundId, propHandNumber, gameId, resolvedGameType]);
+
   // ── Writer-audit gates (Gin Rummy pattern) ──
   // Single framework-owned predicate covering frozen / contract / identity-stale.
   // Mutation entry points short-circuit when these are not satisfied so stale
@@ -413,6 +437,7 @@ export function useHorsesMobileController({
   // advance before the parent round row hydrates; accepting the old terminal state in that window
   // stamps prior-hand completion as the new hand and makes fresh rollover snapshots regressive.
   const incomingHorsesStateRoundMatches = !!(
+    !dealerGameScopeChanged &&
     propRoundId &&
     currentRoundId &&
     propRoundId === currentRoundId
