@@ -385,10 +385,19 @@ export function YahtzeeGameTable({
   // Keyed on currentRoundId — single-fire per round, on every client.
   const completionLatchRoundIdRef = useRef<string | null>(null);
   // Reset latches when a new round starts.
+  // Identity-boundary invariant: gameplay artifacts (including cached opponent
+  // dice and the scoring-in-progress flag) MUST NOT survive round transitions.
+  // Flush them here so a new round never inherits the prior round's final-turn
+  // dice on the felt.
   useEffect(() => {
     completionLatchRoundIdRef.current = null;
     prevTurnRef.current = null;
     prevOpponentScorecardRef.current = {};
+    lastNonZeroDiceRef.current = null;
+    setCachedOpponentDice(null);
+    setScoringInProgress(false);
+    setLastScoredCategory(null);
+    setLastScoredValue(null);
   }, [currentRoundId]);
 
   // Debounce ref for stale-turn-render: only fire after 2+ consecutive mismatches
