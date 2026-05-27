@@ -695,7 +695,7 @@ export function useHorsesMobileController({
   const lastCompletedTurnKeyRef = useRef<string | null>(null);
 
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
-  const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
+  const lastFeltDiceRef = useRef<{ roundId: string | null; playerId: string | null; value: any } | null>(null);
   const lastFeltDiceAtRef = useRef<number>(0);
 
   // Prevent DB/realtime rehydration from overwriting the local felt while the user is actively tapping.
