@@ -2183,10 +2183,15 @@ export function YahtzeeGameTable({
           </div>
         )}
 
-        {/* CHAT TAB */}
+        {/* CHAT TAB — canonical shared shell chat */}
         {activeTab === 'chat' && (
-          <div className="flex-1 flex flex-col p-2 overflow-hidden">
-            <p className="text-sm text-muted-foreground text-center py-4">Chat coming soon</p>
+          <div className="flex-1 min-h-0 p-2">
+            <MobileChatPanel
+              messages={allMessages}
+              onSend={sendMessage}
+              isSending={isChatSending}
+              currentUserId={currentUserId}
+            />
           </div>
         )}
 
