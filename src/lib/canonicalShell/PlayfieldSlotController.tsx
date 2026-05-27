@@ -339,7 +339,7 @@ export function PlayfieldSlotController({
             children render nothing for poker-variant families whose
             gameType is still null. Without a felt publisher, the shell
             background is blank. Mount NeutralInterstitial as the BASE
-            layer so its CanonicalFeltSurface (local) OR its
+            layer so its canonical felt (local) OR its
             usePublishShellFelt call (shell-owned) paints the felt
             beneath the pre-game overlay. It unmounts the moment the
             slot becomes active, at which point the gameplay tree owns

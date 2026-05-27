@@ -29,7 +29,7 @@ export interface CanonicalSlotPlacement {
 /**
  * Returns Tailwind classes that absolutely-position a seat-anchored
  * element relative to the table-surface container (the same container
- * that hosts CanonicalFeltSurface). Intended for `flex flex-col items-*`
+ * that hosts canonical felt). Intended for `flex flex-col items-*`
  * stacks (name above, chip circle below).
  */
 export function getCanonicalSlotPlacement(

@@ -105,7 +105,7 @@ interface CribbageGameConfig {
 /**
  * CribbageFeltAdapter — Bucket 3 Phase 3.1b cutover seam.
  *
- * Default (shell-owned felt OFF): renders the local CanonicalFeltSurface
+ * Default (shell-owned felt OFF): renders the local canonical felt
  * exactly as before. Shell-owned felt ON: publishes the same parameters
  * to the shell-owned host via `usePublishShellFelt` and suppresses the
  * local render so only one canonical felt node exists in the DOM.
@@ -5620,7 +5620,7 @@ export const CribbageMobileGameTable = ({
 
 
 
-                {/* Game Title — now rendered by CanonicalFeltSurface plate (Phase 2.2). */}
+                {/* Game Title — now rendered by canonical felt plate (Phase 2.2). */}
 
                 {/* Felt Content */}
                 <CribbageFeltContent

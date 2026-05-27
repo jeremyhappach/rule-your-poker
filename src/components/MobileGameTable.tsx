@@ -4518,7 +4518,7 @@ export const MobileGameTable = ({
             The shell-owned `ShellOwnedFeltHost` (mounted inside
             `PersistentTableShell` for every poker-family route) is the
             sole `data-canonical-felt-surface` for the entire session
-            lifecycle. Both the canonical (CanonicalFeltSurface) and
+            lifecycle. Both the canonical (canonical felt) and
             legacy (gradient ellipse + game-name plate) self-owned felt
             paths have been retired here. The `feltOwnership` prop is
             retained as a no-op data attribute marker for the

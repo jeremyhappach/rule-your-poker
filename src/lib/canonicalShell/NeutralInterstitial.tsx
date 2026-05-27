@@ -100,7 +100,7 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
   //      committed, causing the felt area to be invisible while the
   //      wrapper's bg-background still fills the viewport.
   //   2. Render the felt-region container UNCONDITIONALLY so the
-  //      CanonicalFeltSurface (absolute-positioned colored ellipse)
+  //      canonical felt (absolute-positioned colored ellipse)
   //      paints in the same frame as the wrapper. Previously the
   //      `gameKind ? ... : null` gate could leave the wrapper as a
   //      pure white box for any frame in which `gameKind` was falsy.
