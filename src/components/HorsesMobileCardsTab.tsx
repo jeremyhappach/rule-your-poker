@@ -203,6 +203,16 @@ export function HorsesMobileCardsTab({
     playerId: string | null;
     cargoDice?: { value: number; sccType?: 'ship' | 'captain' | 'crew' }[];
   } | null>(null);
+
+  useEffect(() => {
+    stickyResultRef.current = null;
+    heldSnapshotRef.current = null;
+    setUiRolling(false);
+    if (uiRollingTimerRef.current != null) {
+      window.clearTimeout(uiRollingTimerRef.current);
+      uiRollingTimerRef.current = null;
+    }
+  }, [horses.dealerGameId, horses.presentationRoundId]);
   
   // Extract cargo dice from localHand for SCC games (dice without sccType)
   const myCargoDice = isSCC 

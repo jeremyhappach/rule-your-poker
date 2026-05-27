@@ -822,6 +822,7 @@ export const MobileGameTable = ({
   // We reuse the last rendered node for a short grace period.
   const cachedFeltBlockNodeRef = useRef<{
     at: number;
+    dealerGameId: string | null;
     roundId: string | null;
     turnPlayerId: string | null;
     node: any;
@@ -968,7 +969,15 @@ export const MobileGameTable = ({
   // Clear stale pot memory when starting a fresh hand (pot resets to antes only)
   const prevHandContextRef = useRef(handContextId);
   const prevHorsesRoundIdRef = useRef(horsesRoundId);
+  const prevHorsesDealerGameIdRef = useRef(horsesDealerGameId);
   useEffect(() => {
+    if (horsesDealerGameId !== prevHorsesDealerGameIdRef.current) {
+      cachedWinningResultRef.current = null;
+      cachedFeltBlockNodeRef.current = null;
+      turnSnapshotTakenRef.current = false;
+      prevHorsesDealerGameIdRef.current = horsesDealerGameId;
+    }
+
     // Clear on handContextId change (for card games)
     if (handContextId && handContextId !== prevHandContextRef.current) {
       // New hand started - clear any stale memory to use fresh pot value
@@ -998,7 +1007,7 @@ export const MobileGameTable = ({
       turnSnapshotTakenRef.current = false; // Reset turn tracking on round change
       prevHorsesRoundIdRef.current = horsesRoundId;
     }
-  }, [handContextId, horsesRoundId, potMemoryKey, pot]);
+  }, [handContextId, horsesRoundId, horsesDealerGameId, potMemoryKey, pot]);
   
   // CRITICAL FIX: Clear stale pot memory when entering dealer config phases (new game starting)
   // This prevents the $6 pot bug where old pot values carry over to a new game
@@ -5453,19 +5462,22 @@ export const MobileGameTable = ({
 
              const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
              const currentTurnId = horsesController.currentTurnPlayerId ?? null;
+             const currentDealerGameId = horsesDealerGameId ?? null;
              const currentRoundId = horsesRoundId ?? null;
              // Only reuse cached node if we're still on the same turn.
              // If the current turn is briefly null during a transition, do NOT reuse the old node;
              // it can display the previous player's final dice.
              const sameTurn = currentTurnId !== null && currentTurnId === cached.turnPlayerId;
+              const sameDealerGame = currentDealerGameId !== null && currentDealerGameId === cached.dealerGameId;
               const sameRound = currentRoundId !== null && currentRoundId === cached.roundId;
 
-              return withinGrace && sameRound && sameTurn ? cached.node : null;
+              return withinGrace && sameDealerGame && sameRound && sameTurn ? cached.node : null;
           };
 
           const cacheFeltNode = (node: any) => {
             cachedFeltBlockNodeRef.current = {
               at: Date.now(),
+              dealerGameId: horsesDealerGameId ?? null,
               roundId: horsesRoundId ?? null,
               turnPlayerId: horsesController.currentTurnPlayerId ?? null,
               node,
@@ -5787,7 +5799,7 @@ export const MobileGameTable = ({
                 // Observer view - show staggered dice layout
                 <DiceTableLayout
                   // Force a remount when the dice "owner" changes so no internal refs leak between players.
-                  key={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                  key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
                     const showHeldVisual =
                       typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
@@ -5816,7 +5828,7 @@ export const MobileGameTable = ({
                   animationOrigin={getDiceAnimationOrigin()}
                   rollKey={(horsesController.feltDice as any)?.rollKey}
                   isQualified={(horsesController.feltDice as any)?.isQualified}
-                  cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                  cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                 />
               )}
             </div>

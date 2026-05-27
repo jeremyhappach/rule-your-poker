@@ -220,10 +220,15 @@ export function useHorsesMobileController({
   // client cannot become structurally blind to a forward-advanced hand
   // started by a peer client. Falls back to prop-only mode if no
   // dealerGameId is provided (legacy callers / observers without context).
-  const { identity: authIdentity } = useAuthoritativeIdentity({
+  const controllerDealerGameId = dealerGameId ?? null;
+  const [latchedDealerGameId, setLatchedDealerGameId] = useState<string | null>(controllerDealerGameId);
+  const dealerGameScopeChanged = latchedDealerGameId !== controllerDealerGameId;
+
+  const { identity: rawAuthIdentity } = useAuthoritativeIdentity({
     dealerGameId: dealerGameId ?? null,
     enabled: !!dealerGameId,
   });
+  const authIdentity = dealerGameScopeChanged ? null : rawAuthIdentity;
 
   // Monotonic forward-only round/hand identity latch.
   // Parent props are advisory; authoritative identity wins whenever it is
@@ -275,8 +280,8 @@ export function useHorsesMobileController({
 
   // Aliases: keep existing internal references pointing at the live monotonic identity.
   // eslint-disable-next-line no-param-reassign
-  const currentRoundId = monotonicRoundId;
-  const handNumber = monotonicHandNumber;
+  const currentRoundId = dealerGameScopeChanged ? (propRoundId ?? null) : monotonicRoundId;
+  const handNumber = dealerGameScopeChanged ? (propHandNumber ?? 1) : monotonicHandNumber;
 
   // ── Identity-advancement reset (mirror of Cribbage/Gin Phase 2) ──
   // When the dealer-scoped feed detects a forward advance, emit deterministic
@@ -352,6 +357,30 @@ export function useHorsesMobileController({
     }
   }, [currentRoundId, dealerGameId]);
 
+  useEffect(() => {
+    if (!dealerGameScopeChanged) return;
+    const prevDealerGameId = latchedDealerGameId;
+    syncHandle.reset(null);
+    setMonotonicRoundId(propRoundId ?? null);
+    setMonotonicHandNumber(propHandNumber ?? 1);
+    lastObservedIdentityRef.current = null;
+    setLatchedDealerGameId(controllerDealerGameId);
+    persistSyncDebugEvent({
+      gameId: gameId ?? null,
+      gameType: resolvedGameType,
+      handNumber: propHandNumber ?? null,
+      roundId: propRoundId ?? null,
+      eventType: 'transition',
+      severity: 'info',
+      eventName: 'horses-dealer-game-boundary-reset',
+      payload: {
+        prevDealerGameId: prevDealerGameId?.slice(0, 8) ?? null,
+        nextDealerGameId: controllerDealerGameId?.slice(0, 8) ?? null,
+        nextRoundId: propRoundId?.slice(0, 8) ?? null,
+      },
+    });
+  }, [dealerGameScopeChanged, latchedDealerGameId, controllerDealerGameId, propRoundId, propHandNumber, gameId, resolvedGameType]);
+
   // ── Writer-audit gates (Gin Rummy pattern) ──
   // Single framework-owned predicate covering frozen / contract / identity-stale.
   // Mutation entry points short-circuit when these are not satisfied so stale
@@ -408,6 +437,7 @@ export function useHorsesMobileController({
   // advance before the parent round row hydrates; accepting the old terminal state in that window
   // stamps prior-hand completion as the new hand and makes fresh rollover snapshots regressive.
   const incomingHorsesStateRoundMatches = !!(
+    !dealerGameScopeChanged &&
     propRoundId &&
     currentRoundId &&
     propRoundId === currentRoundId
@@ -545,7 +575,7 @@ export function useHorsesMobileController({
 
   // Shadow the parameter: all downstream code reads from presentation state.
   // eslint-disable-next-line no-param-reassign
-  horsesState = syncHandle.presentationState;
+  horsesState = dealerGameScopeChanged ? null : syncHandle.presentationState;
 
   // SYNC COMPLIANCE: single presentation-derived identity for effect gating / stale guards / keys.
   // Equals raw currentRoundId only when presentation has actually advanced to that round's state.
@@ -665,7 +695,7 @@ export function useHorsesMobileController({
   const lastCompletedTurnKeyRef = useRef<string | null>(null);
 
   // Sticky cache for felt dice to prevent flicker when realtime state briefly rehydrates
-  const lastFeltDiceRef = useRef<{ playerId: string | null; value: any } | null>(null);
+  const lastFeltDiceRef = useRef<{ roundId: string | null; playerId: string | null; value: any } | null>(null);
   const lastFeltDiceAtRef = useRef<number>(0);
 
   // Prevent DB/realtime rehydration from overwriting the local felt while the user is actively tapping.
@@ -729,6 +759,7 @@ export function useHorsesMobileController({
   // CRITICAL: Treat state as "waiting" unless the current round has a valid horses_state payload.
   // This prevents showing the previous round's "complete" state / winners while a new hand is spinning up.
   const hasValidState = !!(
+    !dealerGameScopeChanged &&
     currentRoundId &&
     horsesState &&
     Array.isArray(horsesState.turnOrder) &&
@@ -2660,7 +2691,7 @@ export function useHorsesMobileController({
     
     // If we have a completed turn hold for the CURRENT USER, don't show on felt
     // (their dice should stay in their active player area, not on the felt)
-    if (completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
+    if (presentationRoundId && completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
       // If this is the current user's hold, return null - dice shown in player area instead
       if (completedTurnHold.playerId === myPlayer?.id) {
         console.log(`${logPrefix} returning null for my completed hold - shown in player area`);
@@ -2669,6 +2700,7 @@ export function useHorsesMobileController({
       // For OTHER players' completed holds, show their dice on felt
       console.log(`${logPrefix} returning completedTurnHold for other player: playerId=${completedTurnHold.playerId}`);
       return {
+        roundId: presentationRoundId,
         playerId: completedTurnHold.playerId,
         dice: completedTurnHold.dice,
         rollsRemaining: 0,
@@ -2759,6 +2791,7 @@ export function useHorsesMobileController({
       const heldCountForAnimation = heldMaskForAnimation?.filter(Boolean).length;
 
       return {
+        roundId: presentationRoundId,
         dice,
         rollsRemaining,
         isRolling,
@@ -2779,7 +2812,7 @@ export function useHorsesMobileController({
         return null;
       }
       console.log(`${logPrefix} BOT ACTIVE returning botDisplayState: dice=${JSON.stringify(botDisplayState.dice.map(d => d.value))}, isRolling=${botDisplayState.isRolling}`);
-      return botDisplayState;
+      return { ...botDisplayState, roundId: presentationRoundId };
     }
 
     // For non-active bot turns, still prefer botDisplayState if it matches
@@ -2790,7 +2823,7 @@ export function useHorsesMobileController({
         return null;
       }
       console.log(`${logPrefix} BOT NON-ACTIVE returning botDisplayState: dice=${JSON.stringify(botDisplayState.dice.map(d => d.value))}, isRolling=${botDisplayState.isRolling}`);
-      return botDisplayState;
+      return { ...botDisplayState, roundId: presentationRoundId };
     }
 
     // OBSERVER DISPLAY STATE: When observing another human player, use dedicated display state
@@ -2828,6 +2861,7 @@ export function useHorsesMobileController({
           }
           return {
             ...observerDisplayState,
+            roundId: presentationRoundId,
             dice: nextDice,
             rollsRemaining: dbState?.rollsRemaining ?? observerDisplayState.rollsRemaining,
             heldMaskBeforeComplete: (dbState as any)?.heldMaskBeforeComplete ?? observerDisplayState.heldMaskBeforeComplete,
@@ -2839,6 +2873,7 @@ export function useHorsesMobileController({
         // Stale DB update — keep current observerDisplayState
         return {
           ...observerDisplayState,
+          roundId: presentationRoundId,
         };
       }
 
@@ -2858,6 +2893,7 @@ export function useHorsesMobileController({
 
       return {
         ...observerDisplayState,
+        roundId: presentationRoundId,
         dice,
       };
     }
@@ -2887,6 +2923,7 @@ export function useHorsesMobileController({
       : undefined;
     
     return {
+      roundId: presentationRoundId,
       dice: state.dice,
       rollsRemaining: state.rollsRemaining,
       isRolling: false, // Not animating
@@ -2906,6 +2943,7 @@ export function useHorsesMobileController({
     localHand.rollsRemaining,
     isRolling,
     currentTurnPlayer?.is_bot,
+    presentationRoundId,
     botDisplayState,
     botTurnActiveId,
     completedTurnHold,
@@ -2916,12 +2954,13 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (rawFeltDice) {
       lastFeltDiceRef.current = {
+        roundId: (rawFeltDice as any)?.roundId ?? presentationRoundId ?? null,
         playerId: (rawFeltDice as any)?.playerId ?? currentTurnPlayerId ?? null,
         value: rawFeltDice,
       };
       lastFeltDiceAtRef.current = Date.now();
     }
-  }, [rawFeltDice, currentTurnPlayerId]);
+  }, [rawFeltDice, currentTurnPlayerId, presentationRoundId]);
 
   // OBSERVER ROLL DETECTION (HUMAN vs HUMAN):
   // Make observer rolls behave like bot rolls: once we detect a rollKey change, we show a protected
@@ -3330,6 +3369,9 @@ export function useHorsesMobileController({
 
   return {
     enabled,
+    dealerGameId: controllerDealerGameId,
+    currentRoundId,
+    presentationRoundId,
     anteAmount,
     activePlayers,
     gamePhase,
