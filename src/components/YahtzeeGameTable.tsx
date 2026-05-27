@@ -190,6 +190,10 @@ export function YahtzeeGameTable({
     publisherLabel: 'YahtzeeGameTable',
   });
 
+  // Canonical shared chat — same shell experience as Cribbage/Gin.
+  const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
+
+
 
   // ── Identity wiring (framework cutover) ────────────────────────
   // Yahtzee plays one round per match, so `currentRoundId` is the natural
@@ -1789,7 +1793,7 @@ export function YahtzeeGameTable({
   if (isPreRound) {
     return (
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
-        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
           {/* Shell owns canonical felt. */}
           {/* Player chip stacks around the felt */}
           {(() => {
@@ -1899,7 +1903,7 @@ export function YahtzeeGameTable({
       </AlertDialog>
 
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
-      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
@@ -2032,7 +2036,7 @@ export function YahtzeeGameTable({
         <ShellAnnouncementRail />
         <div
           data-shell-operational-hud=""
-          className="w-full flex items-center justify-center px-3 min-h-[28px]"
+          className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-3 py-1 min-h-[28px]"
         >
           {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
@@ -2045,6 +2049,26 @@ export function YahtzeeGameTable({
               </Badge>
             </div>
           ) : null}
+          {gamePhase === 'playing' && (
+            <div className="flex items-center gap-3 text-xs tabular-nums">
+              {activePlayers.map(p => {
+                const ps = viewState?.playerStates?.[p.id];
+                const total = ps ? getTotalScore(ps.scorecard) : 0;
+                const isTurn = p.id === currentTurnPlayerId;
+                return (
+                  <span
+                    key={p.id}
+                    className={cn(
+                      'font-semibold',
+                      isTurn ? 'text-poker-gold' : 'text-muted-foreground'
+                    )}
+                  >
+                    {getPlayerUsername(p)}: {total}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
         <ShellTabBar />
 
@@ -2159,10 +2183,15 @@ export function YahtzeeGameTable({
           </div>
         )}
 
-        {/* CHAT TAB */}
+        {/* CHAT TAB — canonical shared shell chat */}
         {activeTab === 'chat' && (
-          <div className="flex-1 flex flex-col p-2 overflow-hidden">
-            <p className="text-sm text-muted-foreground text-center py-4">Chat coming soon</p>
+          <div className="flex-1 min-h-0 p-2">
+            <MobileChatPanel
+              messages={allMessages}
+              onSend={sendMessage}
+              isSending={isChatSending}
+              currentUserId={currentUserId}
+            />
           </div>
         )}
 
