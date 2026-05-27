@@ -123,11 +123,7 @@ export function SessionLifecycleAnnouncer({
 
   // -- Ambient orchestration --
   useEffect(() => {
-    if (!gameId || isCribbage) {
-      // If we previously owned ambient and we're now Cribbage / no-game,
-      // teardown is owned by scope-boundary in the provider. No-op here.
-      return;
-    }
+    if (!gameId) return;
 
     // Classify which ambient (if any) we should own this frame.
     type AmbientPlan =
@@ -138,24 +134,16 @@ export function SessionLifecycleAnnouncer({
 
     let plan: AmbientPlan = null;
 
-    // Dealer selection (non-cribbage): only fires when generic dealer_selection
-    // is active. Cribbage uses 'cribbage_dealer_selection' — excluded above.
-    if (gameStatus === 'dealer_selection' && dealerSelectionWinnerPosition === null) {
-      plan = {
-        kind: 'dealer_selection_in_progress',
-        id: `${gameId}:session-ds:${dsCohort}`,
-        cohort: dsCohort,
-        tie: !!dsTie,
-      };
-    } else if (gameStatus === 'ante_decision') {
-      plan = {
-        kind: 'awaiting_ante',
-        id: `${gameId}:session-ante`,
-      };
-    } else if (
-      // Dealer-configuring: only when viewer is NOT the dealer and the
-      // dealer is not an autonomous bot. Mirrors the legacy
-      // `dealerSetupMessage` prop condition in Game.tsx.
+    // Dealer-configuring: SHELL-OWNED for every family (Cribbage included).
+    // CribbageMobileGameTable does not emit dealer_configuring, and the
+    // between-games rollover window often still reports game_type='cribbage'
+    // (or null) while the next dealer picks the new game. Skipping the
+    // announcer for cribbage here left observers with no "is setting up
+    // the next game" plate during Cribbage→Gin rollover. Dealer-configuring
+    // is shell-level lifecycle messaging, not gameplay messaging — emit it
+    // regardless of current game_type so the rail contract is uniform
+    // across first-session-setup and between-games-rollover.
+    if (
       (gameStatus === 'game_selection' ||
         gameStatus === 'configuring' ||
         ((gameStatus === 'game_over' || gameStatus === 'session_ended') && !configComplete)) &&
@@ -168,6 +156,18 @@ export function SessionLifecycleAnnouncer({
         kind: 'dealer_configuring',
         id: `${gameId}:session-config:${dealerPlayer.id}`,
         dealerName,
+      };
+    } else if (!isCribbage && gameStatus === 'dealer_selection' && dealerSelectionWinnerPosition === null) {
+      plan = {
+        kind: 'dealer_selection_in_progress',
+        id: `${gameId}:session-ds:${dsCohort}`,
+        cohort: dsCohort,
+        tie: !!dsTie,
+      };
+    } else if (!isCribbage && gameStatus === 'ante_decision') {
+      plan = {
+        kind: 'awaiting_ante',
+        id: `${gameId}:session-ante`,
       };
     }
 
