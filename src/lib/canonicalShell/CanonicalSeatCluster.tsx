@@ -81,6 +81,7 @@ export function CanonicalSeatCluster({
   isDealer = false,
   chipValue,
   status = 'active',
+  scoreLine,
   children,
   className,
 }: CanonicalSeatClusterProps) {
