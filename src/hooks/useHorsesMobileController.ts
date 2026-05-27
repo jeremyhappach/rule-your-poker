@@ -2334,8 +2334,24 @@ export function useHorsesMobileController({
           }
         }
 
-        await new Promise((resolve) => setTimeout(resolve, HORSES_POST_TURN_PAUSE_MS));
-        if (cancelled) return;
+        // OPTIMIZATION: When this bot's completion will be the LAST player to
+        // complete the round, skip the post-turn pause. Holding here adds a
+        // visible 3s "frozen" stall before pot award / round resolution. The
+        // completedTurnHold overlay (3s) still keeps the bot's dice visible
+        // on the felt while gamePhase transitions to 'complete' and the win
+        // flow awards the pot underneath.
+        const playerStatesAfterBot: Record<string, { isComplete?: boolean }> = {
+          ...(latestState?.playerStates ?? {}),
+          [botId]: { ...(latestState?.playerStates?.[botId] ?? {}), isComplete: true },
+        };
+        const willBeLastToComplete =
+          turnOrder.length > 0 &&
+          turnOrder.every((pid) => playerStatesAfterBot[pid]?.isComplete);
+
+        if (!willBeLastToComplete) {
+          await new Promise((resolve) => setTimeout(resolve, HORSES_POST_TURN_PAUSE_MS));
+          if (cancelled) return;
+        }
 
         // Always attempt to advance - the RPC has an atomic guard that prevents duplicate advances
         // Removing the pre-check here fixes a deadlock where both players complete but gamePhase stays "playing"
