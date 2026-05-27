@@ -5799,7 +5799,7 @@ export const MobileGameTable = ({
                 // Observer view - show staggered dice layout
                 <DiceTableLayout
                   // Force a remount when the dice "owner" changes so no internal refs leak between players.
-                  key={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                  key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                   dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
                     const showHeldVisual =
                       typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
@@ -5828,7 +5828,7 @@ export const MobileGameTable = ({
                   animationOrigin={getDiceAnimationOrigin()}
                   rollKey={(horsesController.feltDice as any)?.rollKey}
                   isQualified={(horsesController.feltDice as any)?.isQualified}
-                  cacheKey={(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}
+                  cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
                 />
               )}
             </div>
