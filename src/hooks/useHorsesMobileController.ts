@@ -2942,6 +2942,7 @@ export function useHorsesMobileController({
     localHand.rollsRemaining,
     isRolling,
     currentTurnPlayer?.is_bot,
+    presentationRoundId,
     botDisplayState,
     botTurnActiveId,
     completedTurnHold,
@@ -2952,12 +2953,13 @@ export function useHorsesMobileController({
   useEffect(() => {
     if (rawFeltDice) {
       lastFeltDiceRef.current = {
+        roundId: (rawFeltDice as any)?.roundId ?? presentationRoundId ?? null,
         playerId: (rawFeltDice as any)?.playerId ?? currentTurnPlayerId ?? null,
         value: rawFeltDice,
       };
       lastFeltDiceAtRef.current = Date.now();
     }
-  }, [rawFeltDice, currentTurnPlayerId]);
+  }, [rawFeltDice, currentTurnPlayerId, presentationRoundId]);
 
   // OBSERVER ROLL DETECTION (HUMAN vs HUMAN):
   // Make observer rolls behave like bot rolls: once we detect a rollKey change, we show a protected
