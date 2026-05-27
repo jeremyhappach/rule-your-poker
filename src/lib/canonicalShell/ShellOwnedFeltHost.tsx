@@ -297,7 +297,7 @@ export function ShellOwnedFeltHost({
           // geometry jump on every rollover. Use a single canonical
           // envelope across waiting and active so the felt shape is
           // stable across the full session lifecycle.
-          height: 'min(86vw, calc(55vh - 64px), 400px)',
+          height: 'min(84vw, calc(53vh - 40px), 380px)',
           minWidth: 300,
           minHeight: 220,
           transform: 'translateX(-50%)',
