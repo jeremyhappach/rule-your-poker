@@ -14,7 +14,8 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt } from './ShellOwnedFeltHost';
-import { ShellHudChrome } from './ShellHudChrome';
+import { ShellAnnouncementRail } from './ShellHudChrome';
+import { ShellTabBar } from './ShellTabBar';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 
 
@@ -124,16 +125,19 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
       <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
         {/* Shell owns the felt unconditionally — no local mount. */}
       </div>
-      {/* Geometry-parity bottom-panel reservation: mirrors the active
-          gameplay layout so the felt region resolves against the same
-          vertical share. Transparent to avoid occluding the shell ellipse. */}
+      {/* Geometry-parity bottom panel mirroring active gameplay surfaces:
+          announcement rail sits at the TOP of the HUD stack (directly
+          below the felt region), tab bar pinned to the bottom. This
+          matches MobileGameTable / YahtzeeGameTable / GinRummyGameTable
+          composition so the canonical lifecycle rail never renders
+          below gameplay content during between-games rollovers. */}
       <div
         data-canonical-shell-neutral-bottom-panel=""
         className="flex-1 flex flex-col min-h-0 bg-transparent border-t border-transparent"
       >
-        <div className="mt-auto">
-          <ShellHudChrome />
-        </div>
+        <ShellAnnouncementRail />
+        <div className="flex-1 min-h-0" />
+        <ShellTabBar />
       </div>
     </div>
   );

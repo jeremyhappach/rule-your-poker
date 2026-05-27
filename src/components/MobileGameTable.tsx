@@ -2359,37 +2359,37 @@ export const MobileGameTable = ({
   const prevHandContextForTransitionRef = useRef<string | null>(null);
   
   useEffect(() => {
-    // Only trigger transition guard for Holm games (they have the card flash issue)
-    if (gameType !== 'holm-game') return;
-    
+    // P0 fix: hand-boundary transition guard applied UNIVERSALLY — not
+    // gated on gameType. Stale-card flashes across identity boundaries
+    // are a class invariant, not a Holm-only bug. This also fires when
+    // prevContext is null and newContext becomes non-null (cross-
+    // dealer_game mount, e.g. Gin → Holm) so a fresh MobileGameTable
+    // instance with stale parent `playerCards` prop cannot paint
+    // previous-game cards on the new felt.
     const prevContext = prevHandContextForTransitionRef.current;
     const newContext = handContextId ?? null;
-    
-    // If handContextId changed and we had a previous value (not initial mount)
-    if (prevContext !== null && newContext !== null && prevContext !== newContext) {
-      // Start transition period - hide cards briefly
+
+    if (prevContext !== newContext) {
       setIsHandTransitioning(true);
-      
-      // Clear any existing timeout
+
       if (handTransitionTimeoutRef.current) {
         clearTimeout(handTransitionTimeoutRef.current);
       }
-      
-      // After short delay, allow new cards to show
+
       handTransitionTimeoutRef.current = setTimeout(() => {
         setIsHandTransitioning(false);
         handTransitionTimeoutRef.current = null;
-      }, 150); // 150ms is enough to ensure old cards are gone before new appear
+      }, 200);
     }
-    
+
     prevHandContextForTransitionRef.current = newContext;
-    
+
     return () => {
       if (handTransitionTimeoutRef.current) {
         clearTimeout(handTransitionTimeoutRef.current);
       }
     };
-  }, [handContextId, gameType]);
+  }, [handContextId]);
   
   const rawCurrentPlayerCards = currentPlayer 
     ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
@@ -2457,13 +2457,18 @@ export const MobileGameTable = ({
       const cachedCards = currentPlayerCardsRef.current.cards;
 
       if (handContextId !== cachedHandContextId) {
-        // Case 1: handContextId changed - this is a new hand
+        // Case 1: handContextId changed — new hand boundary.
         if (rawCurrentPlayerCards.length > 0) {
           currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
           chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
         } else {
-          // Wait for real data to arrive — don't wipe cache.
-          chosen = { source: 'cached-new-hand-no-raw-yet', cards: cachedCards };
+          // P0 fix: do NOT return cached previous-hand cards across an
+          // identity boundary. The cached snapshot belongs to the prior
+          // hand; rendering it on the new hand is exactly the stale-
+          // artifact bug. Return empty until raw cards for the new
+          // hand arrive (the 200ms transition guard above bridges any
+          // visible gap).
+          chosen = { source: 'empty-new-hand-no-raw-yet', cards: [] };
         }
       } else if (rawCurrentPlayerCards.length > 0) {
         // Case 2: Same hand - prefer new cards if available

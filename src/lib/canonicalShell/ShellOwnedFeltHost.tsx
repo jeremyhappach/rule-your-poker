@@ -289,9 +289,14 @@ export function ShellOwnedFeltHost({
           left: '50%',
           top: 24,
           width: 'min(94vw, 720px)',
+          // Active-phase envelope must stay within the 50/50 top-half
+          // budget that MobileGameTable allocates so the canonical
+          // ellipse is never clipped by the opaque bottom panel on
+          // short viewports. (Top:24 + height) ≤ ~46vh keeps clearance
+          // even after header chrome reservation.
           height: isWaitingPhase
             ? 'min(86vw, calc(55vh - 64px), 400px)'
-            : 'min(82vw, calc(48vh - 24px), 360px)',
+            : 'min(78vw, calc(46vh - 32px), 320px)',
           minWidth: 300,
           minHeight: 220,
           transform: 'translateX(-50%)',
