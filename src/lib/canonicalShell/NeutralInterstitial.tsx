@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { recordShellEvent } from './diagnostics';
-import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
+import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
