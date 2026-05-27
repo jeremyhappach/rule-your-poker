@@ -1904,24 +1904,9 @@ export function YahtzeeGameTable({
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
 
-        {/* Live per-player score line — sits just under canonical (or legacy) plate. */}
-        {gamePhase === 'playing' && (
-          <div className="absolute top-[34px] left-1/2 transform -translate-x-1/2 z-[120] flex gap-4 leading-tight">
-            {activePlayers.map(p => {
-              const ps = viewState?.playerStates?.[p.id];
-              const total = ps ? getTotalScore(ps.scorecard) : 0;
-              const isTurn = p.id === currentTurnPlayerId;
-              return (
-                <span key={p.id} className={cn(
-                  "text-base font-extrabold tabular-nums",
-                  isTurn ? "text-poker-gold" : "text-white/60"
-                )}>
-                  {getPlayerUsername(p)}: {total}
-                </span>
-              );
-            })}
-          </div>
-        )}
+        {/* Per-player totals are shown inside the scorecard (TOTAL cell)
+            and in each seat cluster — no separate floating overlay on
+            felt to avoid colliding with the opponent chip stack. */}
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
         {gamePhase === 'playing' && currentPlayer && (() => {
