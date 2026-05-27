@@ -3713,8 +3713,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Hand identity is stable across the WHOLE hand. It must NOT include intra-hand
   // reveal progression (communityCardsRevealed, chuckyActive, chuckyCardsRevealed),
   // otherwise downstream caches/animations reset mid-reveal and replay/batch cards.
-  const handContextKey =
-    game?.game_type === 'holm-game' && holmView
+  const currentDealerGameIdForArtifacts = game?.current_game_uuid ?? null;
+  const currentRoundDealerGameIdForArtifacts = (currentRound as any)?.dealer_game_id ?? null;
+  const hasCurrentRoundDealerGameMismatch = !!(
+    currentDealerGameIdForArtifacts &&
+    currentRoundDealerGameIdForArtifacts &&
+    currentRoundDealerGameIdForArtifacts !== currentDealerGameIdForArtifacts
+  );
+
+  const handContextKey = hasCurrentRoundDealerGameMismatch
+    ? null
+    : game?.game_type === 'holm-game' && holmView
       ? `${holmView.roundId}:h${holmView.handNumber}:${holmHandIdentityCards}`
       : (cardStateContext?.roundId ??
         (currentRound?.id
@@ -3772,10 +3781,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? maxRevealedRef.current
     : baseRevealedCount;
 
-  const presentationRoundIdForCards = game?.game_type === 'holm-game' && holmView
+  const presentationRoundIdForCards = hasCurrentRoundDealerGameMismatch
+    ? null
+    : game?.game_type === 'holm-game' && holmView
     ? holmView.roundId
     : (currentRound?.id ?? null);
-  const playerCardsForPresentation = cardStateContext?.roundId && presentationRoundIdForCards && cardStateContext.roundId !== presentationRoundIdForCards
+  const playerCardsForPresentation = hasCurrentRoundDealerGameMismatch
+    ? []
+    : cardStateContext?.roundId && presentationRoundIdForCards && cardStateContext.roundId !== presentationRoundIdForCards
     ? []
     : playerCards;
   const allDecisionsInForPresentation = game?.game_type === 'holm-game' && holmView
