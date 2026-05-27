@@ -54,6 +54,9 @@ export interface CanonicalSeatClusterProps {
   isDealer?: boolean;
   /** Pre-formatted chip value (caller controls formatting / currency). */
   chipValue: string;
+  /** Optional secondary line rendered below the chip bubble (e.g. running
+   *  score for games that track per-player totals). Hidden when null. */
+  scoreLine?: string | null;
   /**
    * Canonical participant status — drives the chip bubble fill color
    * via the shared `getParticipantChipBgClass` palette. Defaults to
