@@ -401,10 +401,20 @@ export function useHorsesMobileController({
     });
   }, [gameId, resolvedGameType, monotonicHandNumber, currentRoundId, currentUserId]);
 
-  // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop
-  const incomingHorsesState = horsesState;
+  // Save original prop BEFORE shadowing so receiveAuthoritativeUpdate always gets the real prop.
+  // Boundary invariant: `horsesState` has no embedded round identity, so it is only safe to
+  // consume while the round row that supplied it (`propRoundId`) matches the controller's
+  // resolved authoritative round (`currentRoundId`). During rollover, authoritative identity can
+  // advance before the parent round row hydrates; accepting the old terminal state in that window
+  // stamps prior-hand completion as the new hand and makes fresh rollover snapshots regressive.
+  const incomingHorsesStateRoundMatches = !!(
+    propRoundId &&
+    currentRoundId &&
+    propRoundId === currentRoundId
+  );
+  const incomingHorsesState = incomingHorsesStateRoundMatches ? horsesState : null;
   const incomingHorsesStateRef = useRef(horsesState);
-  incomingHorsesStateRef.current = horsesState;
+  incomingHorsesStateRef.current = incomingHorsesState;
   const currentRoundIdRef = useRef<string | null>(currentRoundId);
   currentRoundIdRef.current = currentRoundId;
 
@@ -419,7 +429,7 @@ export function useHorsesMobileController({
     // to (sourced from the authoritative identity / monotonic latch) so the
     // sync framework's progress comparator can discriminate cross-hand
     // updates instead of canceling the handNumber dim via a shared closure.
-    const stampedHand = (authIdentity?.handNumber ?? propHandNumber ?? monotonicHandNumber) as number;
+    const stampedHand = (propHandNumber ?? authIdentity?.handNumber ?? monotonicHandNumber) as number;
     const stampedState: HorsesStateFromDB & { __syncHandNumber?: number } = {
       ...incomingHorsesState,
       __syncHandNumber: stampedHand,

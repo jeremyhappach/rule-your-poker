@@ -822,6 +822,7 @@ export const MobileGameTable = ({
   // We reuse the last rendered node for a short grace period.
   const cachedFeltBlockNodeRef = useRef<{
     at: number;
+    roundId: string | null;
     turnPlayerId: string | null;
     node: any;
   } | null>(null);
@@ -993,6 +994,7 @@ export const MobileGameTable = ({
     // The horsesRoundId changes on each dice game rollover, which handContextId may not always track
     if (horsesRoundId && horsesRoundId !== prevHorsesRoundIdRef.current) {
       cachedWinningResultRef.current = null;
+      cachedFeltBlockNodeRef.current = null;
       turnSnapshotTakenRef.current = false; // Reset turn tracking on round change
       prevHorsesRoundIdRef.current = horsesRoundId;
     }
@@ -4389,11 +4391,16 @@ export const MobileGameTable = ({
     );
     
     // Dice games: get player's completed hand result and check if currently winning
-    const horsesStatePlayerData = isDiceGame ? (horsesState as any)?.playerStates?.[player.id] : null;
+    const horsesStatePlayerData = isDiceGame && horsesController.enabled
+      ? (horsesState as any)?.playerStates?.[player.id]
+      : null;
     const horsesPlayerResult = isDiceGame && horsesController.enabled 
       ? horsesController.getPlayerHandResult(player.id) 
       : null;
-    const effectiveHorsesResult = horsesPlayerResult || (horsesStatePlayerData?.isComplete ? horsesStatePlayerData.result : null);
+    // Identity-boundary invariant: seat badges must come only from the sync-scoped
+    // controller presentation. Raw `horsesState` can be a parent hydration lagger
+    // during rollover, so falling back to it leaks prior-hand result badges.
+    const effectiveHorsesResult = horsesPlayerResult;
     const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
@@ -5446,17 +5453,20 @@ export const MobileGameTable = ({
 
              const withinGrace = Date.now() - cached.at < FELT_STICKY_MS;
              const currentTurnId = horsesController.currentTurnPlayerId ?? null;
+             const currentRoundId = horsesRoundId ?? null;
              // Only reuse cached node if we're still on the same turn.
              // If the current turn is briefly null during a transition, do NOT reuse the old node;
              // it can display the previous player's final dice.
              const sameTurn = currentTurnId !== null && currentTurnId === cached.turnPlayerId;
+              const sameRound = currentRoundId !== null && currentRoundId === cached.roundId;
 
-             return withinGrace && sameTurn ? cached.node : null;
+              return withinGrace && sameRound && sameTurn ? cached.node : null;
           };
 
           const cacheFeltNode = (node: any) => {
             cachedFeltBlockNodeRef.current = {
               at: Date.now(),
+              roundId: horsesRoundId ?? null,
               turnPlayerId: horsesController.currentTurnPlayerId ?? null,
               node,
             };
