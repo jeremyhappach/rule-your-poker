@@ -40,12 +40,13 @@ export function HorsesPlayerArea({
   onClick,
   isBot,
 }: HorsesPlayerAreaProps) {
-  // CRITICAL FIX: Cache the last valid handResult to prevent flicker during state transitions.
-  // When handResult briefly becomes null/undefined during rehydration, we show the cached value
-  // instead of unmounting and remounting the component.
+  // Identity-boundary invariant: cached result must NEVER survive a turn boundary.
+  // Cache exists only to smooth a single-frame flicker while handResult briefly
+  // becomes null during rehydration WITHIN the same completed turn. Once the
+  // turn is no longer marked complete (new turn/round/hand), the cache is
+  // flushed so we never paint a prior player's result on a fresh turn.
   const cachedResultRef = useRef<{ description: string; isWinning: boolean } | null>(null);
-  
-  // Update cache when we have valid data
+
   useEffect(() => {
     if (handResult?.description) {
       cachedResultRef.current = {
@@ -54,11 +55,18 @@ export function HorsesPlayerArea({
       };
     }
   }, [handResult?.description, isWinningHand]);
-  
-  // Use cached result if current result is invalid but we have cached data
-  const effectiveResult = handResult?.description 
+
+  // Flush on turn-boundary: when the turn is no longer in a completed state,
+  // any cached prior-turn result must be discarded.
+  useEffect(() => {
+    if (!hasTurnCompleted) {
+      cachedResultRef.current = null;
+    }
+  }, [hasTurnCompleted]);
+
+  const effectiveResult = handResult?.description
     ? { description: handResult.description, isWinning: isWinningHand }
-    : cachedResultRef.current;
+    : (hasTurnCompleted ? cachedResultRef.current : null);
   
   // For Horses: hide username/seat when showing completed hand result to save space
   // CRITICAL: Only show compact result when we have a valid description to prevent flicker
