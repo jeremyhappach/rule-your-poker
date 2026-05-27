@@ -1295,7 +1295,10 @@ export const GinRummyGameTable = ({
 
     const timeout = setTimeout(runBotAction, 300);
     return () => clearTimeout(timeout);
-  }, [ginState, currentPlayerId, isProcessing, players, roundId]);
+  }, [ginState, currentPlayerId, isProcessing, players, roundId,
+      // Wake-up deps: ensure bot loop re-fires when the identity/interactions
+      // gate flips open AFTER ginState was already populated for a new hand.
+      ginSync.isIdentityStale, ginSync.interactionsAllowed]);
   // ─── Scoring Safety Net ────────────────────────────────────────
   // scoreHand is deterministic — both clients can independently compute the same result.
   // If the acting client's inline scoreHand (inside handleKnock) fails or its DB write
