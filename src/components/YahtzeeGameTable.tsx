@@ -2032,7 +2032,7 @@ export function YahtzeeGameTable({
         <ShellAnnouncementRail />
         <div
           data-shell-operational-hud=""
-          className="w-full flex items-center justify-center px-3 min-h-[28px]"
+          className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-3 py-1 min-h-[28px]"
         >
           {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
@@ -2045,6 +2045,26 @@ export function YahtzeeGameTable({
               </Badge>
             </div>
           ) : null}
+          {gamePhase === 'playing' && (
+            <div className="flex items-center gap-3 text-xs tabular-nums">
+              {activePlayers.map(p => {
+                const ps = viewState?.playerStates?.[p.id];
+                const total = ps ? getTotalScore(ps.scorecard) : 0;
+                const isTurn = p.id === currentTurnPlayerId;
+                return (
+                  <span
+                    key={p.id}
+                    className={cn(
+                      'font-semibold',
+                      isTurn ? 'text-poker-gold' : 'text-muted-foreground'
+                    )}
+                  >
+                    {getPlayerUsername(p)}: {total}
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
         <ShellTabBar />
 
