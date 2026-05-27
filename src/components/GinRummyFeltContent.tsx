@@ -2,12 +2,14 @@
 // Shows stock pile, discard pile, match scores, and phase indicators
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
