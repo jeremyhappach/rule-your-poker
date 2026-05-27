@@ -220,10 +220,15 @@ export function useHorsesMobileController({
   // client cannot become structurally blind to a forward-advanced hand
   // started by a peer client. Falls back to prop-only mode if no
   // dealerGameId is provided (legacy callers / observers without context).
-  const { identity: authIdentity } = useAuthoritativeIdentity({
+  const controllerDealerGameId = dealerGameId ?? null;
+  const [latchedDealerGameId, setLatchedDealerGameId] = useState<string | null>(controllerDealerGameId);
+  const dealerGameScopeChanged = latchedDealerGameId !== controllerDealerGameId;
+
+  const { identity: rawAuthIdentity } = useAuthoritativeIdentity({
     dealerGameId: dealerGameId ?? null,
     enabled: !!dealerGameId,
   });
+  const authIdentity = dealerGameScopeChanged ? null : rawAuthIdentity;
 
   // Monotonic forward-only round/hand identity latch.
   // Parent props are advisory; authoritative identity wins whenever it is
@@ -275,8 +280,8 @@ export function useHorsesMobileController({
 
   // Aliases: keep existing internal references pointing at the live monotonic identity.
   // eslint-disable-next-line no-param-reassign
-  const currentRoundId = monotonicRoundId;
-  const handNumber = monotonicHandNumber;
+  const currentRoundId = dealerGameScopeChanged ? (propRoundId ?? null) : monotonicRoundId;
+  const handNumber = dealerGameScopeChanged ? (propHandNumber ?? 1) : monotonicHandNumber;
 
   // ── Identity-advancement reset (mirror of Cribbage/Gin Phase 2) ──
   // When the dealer-scoped feed detects a forward advance, emit deterministic
