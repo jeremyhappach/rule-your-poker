@@ -2006,6 +2006,8 @@ export function YahtzeeGameTable({
             // (identity/bankroll is already in the HUD). Observers see all.
             if (player.id === myPlayer?.id) return null;
             const slot = slotByPosition.get(player.position) ?? null;
+            const ps = viewState?.playerStates?.[player.id];
+            const total = ps ? getTotalScore(ps.scorecard) : 0;
             return (
               <CanonicalSeatCluster
                 key={player.id}
@@ -2014,6 +2016,7 @@ export function YahtzeeGameTable({
                 name={getPlayerUsername(player)}
                 isDealer={dealerPosition === player.position}
                 chipValue={`$${formatChipValue(Math.round(player.chips))}`}
+                scoreLine={`Score: ${total}`}
               />
             );
           });
