@@ -2690,7 +2690,7 @@ export function useHorsesMobileController({
     
     // If we have a completed turn hold for the CURRENT USER, don't show on felt
     // (their dice should stay in their active player area, not on the felt)
-    if (completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
+    if (presentationRoundId && completedTurnHold && Date.now() < completedTurnHold.expiresAt) {
       // If this is the current user's hold, return null - dice shown in player area instead
       if (completedTurnHold.playerId === myPlayer?.id) {
         console.log(`${logPrefix} returning null for my completed hold - shown in player area`);
@@ -2699,6 +2699,7 @@ export function useHorsesMobileController({
       // For OTHER players' completed holds, show their dice on felt
       console.log(`${logPrefix} returning completedTurnHold for other player: playerId=${completedTurnHold.playerId}`);
       return {
+        roundId: presentationRoundId,
         playerId: completedTurnHold.playerId,
         dice: completedTurnHold.dice,
         rollsRemaining: 0,
@@ -2789,6 +2790,7 @@ export function useHorsesMobileController({
       const heldCountForAnimation = heldMaskForAnimation?.filter(Boolean).length;
 
       return {
+        roundId: presentationRoundId,
         dice,
         rollsRemaining,
         isRolling,
@@ -2809,7 +2811,7 @@ export function useHorsesMobileController({
         return null;
       }
       console.log(`${logPrefix} BOT ACTIVE returning botDisplayState: dice=${JSON.stringify(botDisplayState.dice.map(d => d.value))}, isRolling=${botDisplayState.isRolling}`);
-      return botDisplayState;
+      return { ...botDisplayState, roundId: presentationRoundId };
     }
 
     // For non-active bot turns, still prefer botDisplayState if it matches
@@ -2820,7 +2822,7 @@ export function useHorsesMobileController({
         return null;
       }
       console.log(`${logPrefix} BOT NON-ACTIVE returning botDisplayState: dice=${JSON.stringify(botDisplayState.dice.map(d => d.value))}, isRolling=${botDisplayState.isRolling}`);
-      return botDisplayState;
+      return { ...botDisplayState, roundId: presentationRoundId };
     }
 
     // OBSERVER DISPLAY STATE: When observing another human player, use dedicated display state
