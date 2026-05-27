@@ -60,10 +60,8 @@ import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 
-// P9.3b: shared visual flag with MobileGameTable. Default ON; flip
-// VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
-const CANONICAL_SHELL_VISUAL_ENABLED =
-  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
+// Shell-owned felt is the sole canonical mount — no local visual flag.
+
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
