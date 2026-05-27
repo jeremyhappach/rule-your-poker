@@ -10,6 +10,7 @@ import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
@@ -60,15 +61,27 @@ const GinCanonicalTurnSpotlight = ({
   const [rotation, setRotation] = useState(0);
   const enabled = isVisible && currentTurnSlot !== null && currentTurnSlot !== undefined;
   const shellFrame = useShellFeltFrameElement(enabled);
+  const anchors = useSeatAnchorsOptional();
+  // In observer-2P canonicalization, HOME (-1) is projected to the
+  // bottom-LEFT perimeter (not center-bottom), so the default 180°
+  // straight-down cone visibly misses the target cluster. Re-aim to
+  // the bottom-left rail in that projection only.
+  const isObserverProjection =
+    anchors?.projectionMode === 'observer-absolute' || anchors?.viewerPosition == null;
 
   useEffect(() => {
     if (!enabled) {
       setOpacity(0);
       return;
     }
-    setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot as CanonicalSlot]);
+    const slot = currentTurnSlot as CanonicalSlot;
+    let angle = SLOT_TO_SPOTLIGHT_ANGLE[slot];
+    if (slot === -1 && isObserverProjection) {
+      angle = -135; // bottom-left rail
+    }
+    setRotation(angle);
     setOpacity(1);
-  }, [currentTurnSlot, enabled]);
+  }, [currentTurnSlot, enabled, isObserverProjection]);
 
   if (!enabled || !shellFrame) return null;
 
