@@ -1039,7 +1039,31 @@ export const GinRummyGameTable = ({
   useEffect(() => {
     if (!ginState || !currentPlayerId || isProcessing || botActionInProgress.current) return;
     // Writer-audit gate: do not let the bot loop write into a stale identity.
-    if (isIdentityStaleRef.current || !interactionsAllowedRef.current) return;
+    // CRITICAL: both gates are also in the dep array below. Without that, the
+    // bot effect could fire while isIdentityStale=true on the hand boundary,
+    // bail, and then never re-run once the gate cleared (because none of
+    // [ginState, currentPlayerId, isProcessing, players, roundId] would
+    // change again). Symptom: stuck on "Bot deciding on upcard..." on the
+    // 2nd hand. Keeping the refs for the synchronous read; deps wake us.
+    if (isIdentityStaleRef.current || !interactionsAllowedRef.current) {
+      persistSyncDebugEvent({
+        gameId,
+        gameType: 'gin-rummy',
+        handNumber: currentHandNumber ?? null,
+        roundId: roundId ?? null,
+        eventType: 'transition',
+        severity: 'info',
+        eventName: 'gin-bot-loop-skip-gated',
+        payload: {
+          isIdentityStale: isIdentityStaleRef.current,
+          interactionsAllowed: interactionsAllowedRef.current,
+          phase: ginState.phase,
+          turnPhase: ginState.turnPhase,
+          currentTurn: ginState.currentTurnPlayerId?.slice(0, 8) ?? null,
+        },
+      });
+      return;
+    }
 
     const currentTurnId = ginState.currentTurnPlayerId;
     if (!currentTurnId) return;
@@ -1271,7 +1295,10 @@ export const GinRummyGameTable = ({
 
     const timeout = setTimeout(runBotAction, 300);
     return () => clearTimeout(timeout);
-  }, [ginState, currentPlayerId, isProcessing, players, roundId]);
+  }, [ginState, currentPlayerId, isProcessing, players, roundId,
+      // Wake-up deps: ensure bot loop re-fires when the identity/interactions
+      // gate flips open AFTER ginState was already populated for a new hand.
+      ginSync.isIdentityStale, ginSync.interactionsAllowed]);
   // ─── Scoring Safety Net ────────────────────────────────────────
   // scoreHand is deterministic — both clients can independently compute the same result.
   // If the acting client's inline scoreHand (inside handleKnock) fails or its DB write
