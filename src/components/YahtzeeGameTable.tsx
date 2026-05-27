@@ -1902,8 +1902,12 @@ export function YahtzeeGameTable({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ===== TABLE AREA (felt with bridge background) ===== */}
-      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
+      {/* ===== TABLE AREA (felt with bridge background) =====
+          Height hugs the shell-owned ellipse (`min(82vw, 48vh-24, 360)`
+          + 24px top offset + small breathing room). Anything larger
+          reserves dead vertical space below the felt because the
+          ellipse itself is geometrically smaller than 48vh. */}
+      <div ref={tableContainerRef} className="flex-none relative overflow-hidden" style={{ height: 'min(calc(82vw + 36px), calc(48vh + 8px), 360px)' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
