@@ -140,15 +140,20 @@ export function CanonicalSeatCluster({
           stays game-controlled. The pill keeps the cluster legible
           regardless of whether the slot lands on felt or chrome,
           replacing per-projection contrast hacks. */}
+      {/* Fixed canonical nameplate container. Width is constant so
+          shell seat geometry does NOT shift based on player-name
+          length. Long names truncate with ellipsis instead of
+          stretching the pill. */}
       <div
         className={cn(
-          'flex flex-col items-center gap-0.5 rounded-full px-2 py-1',
+          'flex flex-col items-center gap-0.5 rounded-2xl px-2 py-1',
+          'w-[96px]',
           'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
           'backdrop-blur-[2px]',
         )}
       >
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-white/95 font-medium truncate max-w-[100px]">
+        <div className="flex items-center gap-1 w-full justify-center min-w-0">
+          <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
             {name}
           </span>
           {isDealer && (
