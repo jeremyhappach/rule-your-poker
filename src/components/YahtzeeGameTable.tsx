@@ -2150,6 +2150,15 @@ export function YahtzeeGameTable({
             {myPlayer && (
               <div className="flex items-center justify-center gap-2 py-2">
                 <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
+                {dealerPosition === myPlayer.position && (
+                  <span
+                    aria-label="Dealer"
+                    title="Dealer"
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
+                  >
+                    D
+                  </span>
+                )}
                 <p className="text-sm font-semibold text-foreground">
                   {myPlayer.profiles?.username || 'You'}
                   <span className="ml-1 text-green-500">(active)</span>
