@@ -822,6 +822,7 @@ export const MobileGameTable = ({
   // We reuse the last rendered node for a short grace period.
   const cachedFeltBlockNodeRef = useRef<{
     at: number;
+    roundId: string | null;
     turnPlayerId: string | null;
     node: any;
   } | null>(null);
@@ -993,6 +994,7 @@ export const MobileGameTable = ({
     // The horsesRoundId changes on each dice game rollover, which handContextId may not always track
     if (horsesRoundId && horsesRoundId !== prevHorsesRoundIdRef.current) {
       cachedWinningResultRef.current = null;
+      cachedFeltBlockNodeRef.current = null;
       turnSnapshotTakenRef.current = false; // Reset turn tracking on round change
       prevHorsesRoundIdRef.current = horsesRoundId;
     }
