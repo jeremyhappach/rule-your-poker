@@ -190,6 +190,10 @@ export function YahtzeeGameTable({
     publisherLabel: 'YahtzeeGameTable',
   });
 
+  // Canonical shared chat — same shell experience as Cribbage/Gin.
+  const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
+
+
 
   // ── Identity wiring (framework cutover) ────────────────────────
   // Yahtzee plays one round per match, so `currentRoundId` is the natural
