@@ -34,7 +34,7 @@ export interface CanonicalSlotPlacement {
  */
 export function getCanonicalSlotPlacement(
   slot: CanonicalSlot | null | undefined,
-  variant: 'occupied' | 'open-seat' | 'occupied-observer' = 'occupied',
+  variant: 'occupied' | 'open-seat' | 'occupied-observer' | 'occupied-2p-face' = 'occupied',
 ): CanonicalSlotPlacement {
   // Percentage-based anchors that hug the elliptical felt rail.
   switch (slot) {
@@ -53,17 +53,27 @@ export function getCanonicalSlotPlacement(
         ? { className: 'bottom-[1%] left-[6%] items-start scale-90' }
         : { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
     // BOTTOM_RAIL — observer-only anchor for absolute "south" (pos 4).
-    //   - 'open-seat': cleanly centered on the bottom rail.
-    //   - 'occupied' / 'occupied-observer': shifted to the bottom-right
-    //     perimeter rail so the chip never sits in the action lane.
     case -3:
       return variant === 'open-seat'
         ? { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' }
         : { className: 'bottom-[1%] right-[6%] items-end scale-90' };
     case 0:  return { className: 'top-[78%] left-[10%] items-start' };
     case 1:  return { className: 'top-[50%] left-[4%] -translate-y-1/2 items-start' };
-    case 2:  return { className: 'top-[14%] left-[12%] items-start' };
-    case 3:  return { className: 'top-[14%] right-[12%] items-end' };
+    // Slot 2 (upper-left perimeter). For inherently-2P face-to-face
+    // canonicalization the opponent lives here in BOTH active-canonical
+    // (always slot 2 for the single opponent) and observer-absolute
+    // (lower-positioned seat projected to HOME, higher to slot 2).
+    // Default coords (top-[14%] left-[12%]) sit inside the felt and
+    // collide with the top branding band, peg-board score bars, and
+    // any title text. Push the 2P face-to-face cluster out to the
+    // upper-left rail so it clears gameplay HUD. Multi-player observer
+    // projections keep the default in-felt anchor.
+    case 2:  return variant === 'occupied-2p-face'
+      ? { className: 'top-[2%] left-[1%] items-start scale-90' }
+      : { className: 'top-[14%] left-[12%] items-start' };
+    case 3:  return variant === 'occupied-2p-face'
+      ? { className: 'top-[2%] right-[1%] items-end scale-90' }
+      : { className: 'top-[14%] right-[12%] items-end' };
     case 4:  return { className: 'top-[50%] right-[4%] -translate-y-1/2 items-end' };
     case 5:  return { className: 'top-[78%] right-[10%] items-end' };
     default: return { className: 'top-2 left-2 items-start' };

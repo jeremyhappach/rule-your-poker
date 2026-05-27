@@ -2,12 +2,14 @@
 // Shows stock pile, discard pile, match scores, and phase indicators
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
@@ -56,25 +58,30 @@ const GinCanonicalTurnSpotlight = ({
 }) => {
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
+  const enabled = isVisible && currentTurnSlot !== null && currentTurnSlot !== undefined;
+  const shellFrame = useShellFeltFrameElement(enabled);
 
   useEffect(() => {
-    if (!isVisible || currentTurnSlot === null || currentTurnSlot === undefined) {
+    if (!enabled) {
       setOpacity(0);
       return;
     }
-    setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot]);
+    setRotation(SLOT_TO_SPOTLIGHT_ANGLE[currentTurnSlot as CanonicalSlot]);
     setOpacity(1);
-  }, [currentTurnSlot, isVisible]);
+  }, [currentTurnSlot, enabled]);
 
-  if (!isVisible || currentTurnSlot === null || currentTurnSlot === undefined) return null;
+  if (!enabled || !shellFrame) return null;
 
   const beamHalfAngle = 30;
-
-  return (
+  // Portaled into the canonical felt SURFACE node which enforces the
+  // exact canonical ellipse via overflow:hidden + rounded-[50%/45%].
+  // No local clipPath — that produced a visibly-offset second ellipse
+  // because ellipse(50% 50%) doesn't match the canonical 50%/45% radius.
+  const overlay = (
     <>
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
-        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath: 'ellipse(50% 50% at 50% 50%)' }}
+        style={{ opacity, transition: 'opacity 0.4s ease-out' }}
       >
         <div
           className="absolute inset-0"
@@ -88,7 +95,7 @@ const GinCanonicalTurnSpotlight = ({
       </div>
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
-        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath: 'ellipse(50% 50% at 50% 50%)' }}
+        style={{ opacity, transition: 'opacity 0.4s ease-out' }}
       >
         <div
           className="absolute inset-0"
@@ -102,6 +109,8 @@ const GinCanonicalTurnSpotlight = ({
       </div>
     </>
   );
+
+  return createPortal(overlay, shellFrame);
 };
 
 export const GinRummyFeltContent = ({

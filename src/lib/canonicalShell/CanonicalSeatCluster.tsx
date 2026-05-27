@@ -99,9 +99,18 @@ export function CanonicalSeatCluster({
 
   const isObserverProjection =
     anchors?.projectionMode === 'observer-absolute' || anchors?.viewerPosition == null;
+  // 2P face-to-face canonicalization (Cribbage / Gin / Yahtzee): the
+  // opponent slot 2/3 gets pushed to the outer perimeter rail so the
+  // chip cluster clears the top-band branding and score bars. Multi-
+  // player observer projections keep the default in-felt anchor.
+  const canonicalized2p = anchors?.byPosition.get(position)?.canonicalized2p ?? false;
   const placement = getCanonicalSlotPlacement(
     slot,
-    isObserverProjection ? 'occupied-observer' : 'occupied',
+    canonicalized2p && (slot === 2 || slot === 3)
+      ? 'occupied-2p-face'
+      : isObserverProjection
+        ? 'occupied-observer'
+        : 'occupied',
   );
   // Bottom-anchored slots (HOME bottom-center, bottom corners) must
   // render game-owned content ABOVE the identity+chip pill so the chip
