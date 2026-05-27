@@ -28,7 +28,13 @@ export interface NeutralInterstitialProps {
 
 export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
-  const resolvedGameKind = gameKind ?? 'holm-game';
+  // No fake-default game kind. If the caller did not supply one (truly
+  // pre-game, no committed gameType yet), we still need a kind to satisfy
+  // the felt-surface type — but the plate is gated by `isWaitingPhase`
+  // (true here), so no game-name branding ever paints. Use the first
+  // dice-plate kind purely as a structural placeholder; nothing visible
+  // depends on it while waiting.
+  const resolvedGameKind: CanonicalFeltGameKind = gameKind ?? 'yahtzee';
   const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
   useLifecycleMount('NeutralInterstitial', { reason, gameKind });
 

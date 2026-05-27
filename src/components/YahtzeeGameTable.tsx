@@ -1793,7 +1793,7 @@ export function YahtzeeGameTable({
   if (isPreRound) {
     return (
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
-        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
+        <div className="flex-none relative overflow-hidden" style={{ height: 'min(calc(82vw + 36px), calc(48vh + 8px), 360px)' }}>
           {/* Shell owns canonical felt. */}
           {/* Player chip stacks around the felt */}
           {(() => {
@@ -1902,8 +1902,12 @@ export function YahtzeeGameTable({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ===== TABLE AREA (felt with bridge background) ===== */}
-      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
+      {/* ===== TABLE AREA (felt with bridge background) =====
+          Height hugs the shell-owned ellipse (`min(82vw, 48vh-24, 360)`
+          + 24px top offset + small breathing room). Anything larger
+          reserves dead vertical space below the felt because the
+          ellipse itself is geometrically smaller than 48vh. */}
+      <div ref={tableContainerRef} className="flex-none relative overflow-hidden" style={{ height: 'min(calc(82vw + 36px), calc(48vh + 8px), 360px)' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
@@ -2006,6 +2010,8 @@ export function YahtzeeGameTable({
             // (identity/bankroll is already in the HUD). Observers see all.
             if (player.id === myPlayer?.id) return null;
             const slot = slotByPosition.get(player.position) ?? null;
+            const ps = viewState?.playerStates?.[player.id];
+            const total = ps ? getTotalScore(ps.scorecard) : 0;
             return (
               <CanonicalSeatCluster
                 key={player.id}
@@ -2014,6 +2020,7 @@ export function YahtzeeGameTable({
                 name={getPlayerUsername(player)}
                 isDealer={dealerPosition === player.position}
                 chipValue={`$${formatChipValue(Math.round(player.chips))}`}
+                scoreLine={`Score: ${total}`}
               />
             );
           });

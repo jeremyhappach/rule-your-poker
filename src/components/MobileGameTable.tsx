@@ -538,15 +538,25 @@ export const MobileGameTable = ({
   const deckColorMode = getEffectiveDeckColorMode();
 
   // Publish canonical felt context to the shell-owned host (sole felt mount).
-  usePublishShellFelt({
-    gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
-    anteAmount,
-    potMaxEnabled,
-    potMaxValue,
-    legsToWin,
-    isWaitingPhase,
-    publisherLabel: `MobileGameTable:${instanceLabel}`,
-  });
+  // CRITICAL: when no concrete game kind can be derived (pre-first-game in
+  // the persistent poker-shell, gameType still null), we publish `null` so
+  // we do NOT semantically leak a fake 'holm-game' default onto the felt.
+  // NeutralInterstitial's waiting-phase publish then owns the felt and
+  // suppresses the game-name plate.
+  const _derivedFeltKind = deriveFeltGameKind(gameType);
+  usePublishShellFelt(
+    _derivedFeltKind
+      ? {
+          gameKind: _derivedFeltKind,
+          anteAmount,
+          potMaxEnabled,
+          potMaxValue,
+          legsToWin,
+          isWaitingPhase,
+          publisherLabel: `MobileGameTable:${instanceLabel}`,
+        }
+      : null,
+  );
 
   // ── DIAGNOSTIC: poker-shell continuity audit ──────────────────────
   useLifecycleMount('MobileGameTable', {
