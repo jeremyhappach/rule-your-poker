@@ -2860,6 +2860,7 @@ export function useHorsesMobileController({
           }
           return {
             ...observerDisplayState,
+            roundId: presentationRoundId,
             dice: nextDice,
             rollsRemaining: dbState?.rollsRemaining ?? observerDisplayState.rollsRemaining,
             heldMaskBeforeComplete: (dbState as any)?.heldMaskBeforeComplete ?? observerDisplayState.heldMaskBeforeComplete,
@@ -2871,6 +2872,7 @@ export function useHorsesMobileController({
         // Stale DB update — keep current observerDisplayState
         return {
           ...observerDisplayState,
+          roundId: presentationRoundId,
         };
       }
 
@@ -2890,6 +2892,7 @@ export function useHorsesMobileController({
 
       return {
         ...observerDisplayState,
+        roundId: presentationRoundId,
         dice,
       };
     }
@@ -2919,6 +2922,7 @@ export function useHorsesMobileController({
       : undefined;
     
     return {
+      roundId: presentationRoundId,
       dice: state.dice,
       rollsRemaining: state.rollsRemaining,
       isRolling: false, // Not animating
