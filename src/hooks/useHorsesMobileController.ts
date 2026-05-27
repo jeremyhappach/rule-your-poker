@@ -3369,6 +3369,9 @@ export function useHorsesMobileController({
 
   return {
     enabled,
+    dealerGameId: controllerDealerGameId,
+    currentRoundId,
+    presentationRoundId,
     anteAmount,
     activePlayers,
     gamePhase,
