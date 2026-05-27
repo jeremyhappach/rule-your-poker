@@ -4389,11 +4389,16 @@ export const MobileGameTable = ({
     );
     
     // Dice games: get player's completed hand result and check if currently winning
-    const horsesStatePlayerData = isDiceGame ? (horsesState as any)?.playerStates?.[player.id] : null;
+    const horsesStatePlayerData = isDiceGame && horsesController.enabled
+      ? (horsesState as any)?.playerStates?.[player.id]
+      : null;
     const horsesPlayerResult = isDiceGame && horsesController.enabled 
       ? horsesController.getPlayerHandResult(player.id) 
       : null;
-    const effectiveHorsesResult = horsesPlayerResult || (horsesStatePlayerData?.isComplete ? horsesStatePlayerData.result : null);
+    // Identity-boundary invariant: seat badges must come only from the sync-scoped
+    // controller presentation. Raw `horsesState` can be a parent hydration lagger
+    // during rollover, so falling back to it leaks prior-hand result badges.
+    const effectiveHorsesResult = horsesPlayerResult;
     const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
