@@ -159,6 +159,11 @@ export function CanonicalSeatCluster({
             {chipValue}
           </span>
         </div>
+        {scoreLine && (
+          <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
+            {scoreLine}
+          </span>
+        )}
       </div>
 
       {children && (
