@@ -1904,24 +1904,9 @@ export function YahtzeeGameTable({
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
 
-        {/* Live per-player score line — sits just under canonical (or legacy) plate. */}
-        {gamePhase === 'playing' && (
-          <div className="absolute top-[34px] left-1/2 transform -translate-x-1/2 z-[120] flex gap-4 leading-tight">
-            {activePlayers.map(p => {
-              const ps = viewState?.playerStates?.[p.id];
-              const total = ps ? getTotalScore(ps.scorecard) : 0;
-              const isTurn = p.id === currentTurnPlayerId;
-              return (
-                <span key={p.id} className={cn(
-                  "text-base font-extrabold tabular-nums",
-                  isTurn ? "text-poker-gold" : "text-white/60"
-                )}>
-                  {getPlayerUsername(p)}: {total}
-                </span>
-              );
-            })}
-          </div>
-        )}
+        {/* Per-player totals are shown inside the scorecard (TOTAL cell)
+            and in each seat cluster — no separate floating overlay on
+            felt to avoid colliding with the opponent chip stack. */}
 
         {/* Dice on felt (observer view) OR scorecard (my turn) */}
         {gamePhase === 'playing' && currentPlayer && (() => {
@@ -1930,7 +1915,7 @@ export function YahtzeeGameTable({
             // show interactive scorecard ON the felt
             return (
               <>
-                <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[92%] max-w-[400px]">
+                <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[78%] max-w-[340px]">
                   {renderScorecard(myPlayer.id, true)}
                 </div>
                 {/* Cached opponent dice removed — single render path at top-50% handles it */}
@@ -2030,14 +2015,10 @@ export function YahtzeeGameTable({
           });
         })()}
 
-        {/* Dealer button on felt for current player */}
-        {myPlayer && dealerPosition === myPlayer.position && (
-          <div className="absolute z-20" style={{ bottom: '8px', left: '45%', transform: 'translateX(-50%)' }}>
-            <div className="w-7 h-7 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xs">D</span>
-            </div>
-          </div>
-        )}
+        {/* Dealer affordance for the local player is inlined into the
+            active-player identity row below — no global vertical
+            reservation on the shell for a control that only applies
+            to the active dealer. */}
       </div>
 
       {/* ===== BOTTOM SECTION ===== */}
@@ -2154,6 +2135,15 @@ export function YahtzeeGameTable({
             {myPlayer && (
               <div className="flex items-center justify-center gap-2 py-2">
                 <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
+                {dealerPosition === myPlayer.position && (
+                  <span
+                    aria-label="Dealer"
+                    title="Dealer"
+                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
+                  >
+                    D
+                  </span>
+                )}
                 <p className="text-sm font-semibold text-foreground">
                   {myPlayer.profiles?.username || 'You'}
                   <span className="ml-1 text-green-500">(active)</span>
