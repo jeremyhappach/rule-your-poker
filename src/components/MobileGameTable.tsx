@@ -2457,13 +2457,18 @@ export const MobileGameTable = ({
       const cachedCards = currentPlayerCardsRef.current.cards;
 
       if (handContextId !== cachedHandContextId) {
-        // Case 1: handContextId changed - this is a new hand
+        // Case 1: handContextId changed — new hand boundary.
         if (rawCurrentPlayerCards.length > 0) {
           currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
           chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
         } else {
-          // Wait for real data to arrive — don't wipe cache.
-          chosen = { source: 'cached-new-hand-no-raw-yet', cards: cachedCards };
+          // P0 fix: do NOT return cached previous-hand cards across an
+          // identity boundary. The cached snapshot belongs to the prior
+          // hand; rendering it on the new hand is exactly the stale-
+          // artifact bug. Return empty until raw cards for the new
+          // hand arrive (the 200ms transition guard above bridges any
+          // visible gap).
+          chosen = { source: 'empty-new-hand-no-raw-yet', cards: [] };
         }
       } else if (rawCurrentPlayerCards.length > 0) {
         // Case 2: Same hand - prefer new cards if available
