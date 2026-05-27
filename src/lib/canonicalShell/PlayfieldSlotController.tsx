@@ -35,7 +35,7 @@ import {
 } from './PlayfieldSlot';
 import { useSlotIdentityTracker } from './useSlotIdentityTracker';
 import { SLOT_CHOREOGRAPHY } from './slotChoreography';
-import type { CanonicalFeltGameKind } from './CanonicalFeltSurface';
+import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
 
