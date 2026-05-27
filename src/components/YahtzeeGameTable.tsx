@@ -1793,7 +1793,7 @@ export function YahtzeeGameTable({
   if (isPreRound) {
     return (
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
-        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
+        <div className="flex-none relative overflow-hidden" style={{ height: 'min(calc(82vw + 36px), calc(48vh + 8px), 360px)' }}>
           {/* Shell owns canonical felt. */}
           {/* Player chip stacks around the felt */}
           {(() => {
