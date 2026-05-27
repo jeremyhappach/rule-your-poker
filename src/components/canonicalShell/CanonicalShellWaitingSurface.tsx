@@ -36,7 +36,6 @@ import {
 import { WaitingRoomCTA } from "@/components/canonicalShell/WaitingRoomCTA";
 import {
   usePublishShellFelt,
-  useShellFeltContext,
   deriveFeltGameKind,
 } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
@@ -138,19 +137,14 @@ function WaitingSurfaceBody({
 }: CanonicalShellWaitingSurfaceProps) {
   useWakeLock(true);
 
-  const { shellOwnsFelt } = useShellFeltContext();
   const [activeTab, setActiveTab] = useState<ShellTabId>("cards");
 
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: deriveFeltGameKind(gameType),
-          anteAmount,
-          isWaitingPhase: true,
-          publisherLabel: "CanonicalShellWaitingSurface",
-        }
-      : null,
-  );
+  usePublishShellFelt({
+    gameKind: deriveFeltGameKind(gameType),
+    anteAmount,
+    isWaitingPhase: true,
+    publisherLabel: "CanonicalShellWaitingSurface",
+  });
 
   useShellTabBar({
     cardsIcon: "spade",
@@ -192,7 +186,6 @@ function WaitingSurfaceBody({
       gameId,
       gameType,
       anteAmount,
-      shellOwnsFelt,
       projectionMode,
     });
     return () => {

@@ -51,7 +51,7 @@ import { HandHistory } from "./HandHistory";
 import { MobileChatPanel } from "./MobileChatPanel";
 import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
-import { CanonicalFeltSurface } from "@/lib/canonicalShell/CanonicalFeltSurface";
+// Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
@@ -60,10 +60,8 @@ import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 
-// P9.3b: shared visual flag with MobileGameTable. Default ON; flip
-// VITE_CANONICAL_SHELL_VISUAL='off' to revert Yahtzee felt/plate to legacy.
-const CANONICAL_SHELL_VISUAL_ENABLED =
-  import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
+// Shell-owned felt is the sole canonical mount — no local visual flag.
+
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -183,23 +181,14 @@ export function YahtzeeGameTable({
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
 
-  // Phase 3.2f — when the shell owns the canonical felt, suppress the
-  // local CanonicalFeltSurface render and publish our felt-context so
-  // the shell-owned host paints the correct game-name plate / ante.
-  // This eliminates the visible geometry morph at game start where the
-  // shell's canonical ellipse briefly handed off to the locally-mounted
-  // (different-position) felt.
-  const { shellOwnsFelt } = useShellFeltContext();
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: 'yahtzee',
-          anteAmount,
-          isWaitingPhase: false,
-          publisherLabel: 'YahtzeeGameTable',
-        }
-      : null,
-  );
+  // Publish canonical felt context to the shell-owned host. The shell
+  // is the sole canonical felt mount; there is no local felt branch.
+  usePublishShellFelt({
+    gameKind: 'yahtzee',
+    anteAmount,
+    isWaitingPhase: false,
+    publisherLabel: 'YahtzeeGameTable',
+  });
 
 
   // ── Identity wiring (framework cutover) ────────────────────────
@@ -1795,28 +1784,13 @@ export function YahtzeeGameTable({
     );
   };
 
-  /* ---- Pre-round: show stable table shell with subtle overlay ---- */
+  /* ---- Pre-round: shell ellipse paints the felt; render chip cluster only ---- */
   const isPreRound = !viewState || !currentRoundId;
   if (isPreRound) {
     return (
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-background relative">
-        {/* Stable table felt — same geometry as gameplay */}
+      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
         <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
-          <div
-            className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
-              boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-            }}
-          >
-            <img
-              src={peoriaBridgeMobile}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-              style={{ objectPosition: 'center 38%', opacity: 0.28 }}
-            />
-          </div>
+          {/* Shell owns canonical felt. */}
           {/* Player chip stacks around the felt */}
           {(() => {
             const sorted = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
@@ -1863,17 +1837,12 @@ export function YahtzeeGameTable({
   // Build stamp moved to DiceTraceControl component
 
   return (
-    // Shell-owned felt is painted at zIndex 0 inside
-    // `data-canonical-shell-children` (one level above `data-canonical-shell-slot-content`,
-    // where this tree mounts). An opaque outer `bg-background` here
-    // occludes the shell ellipse for the entire children row — exactly
-    // the "zero table" symptom in the Yahtzee startup repro. Match the
-    // NeutralInterstitial contract: when the shell owns the felt, the
-    // outer surface MUST be transparent so the shell ellipse remains
-    // continuously visible across the dealer_selection → ante_decision
-    // → in_progress boundary. Per-region opaque panels (bottom action
-    // panel, dialogs) keep their own backgrounds.
-    <div className={`flex flex-col h-full min-h-0 overflow-hidden relative ${shellOwnsFelt ? 'bg-transparent' : 'bg-background'}`}>
+    // Shell-owned felt is the sole canonical mount. The outer surface
+    // MUST be transparent so the shell ellipse remains continuously
+    // visible. Per-region opaque panels (bottom action panel, dialogs)
+    // keep their own backgrounds.
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+
 
       {/* DEBUG: visible build verification badge + dice trace controls */}
       <DiceTraceControl />
@@ -1932,44 +1901,8 @@ export function YahtzeeGameTable({
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
       <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
 
-        {/* P9.3b: canonical shell owns felt + game-name plate (flag-gated).
-            Phase 3.2f: when the shell-owned felt host is active (yahtzee is
-            registered in POKER_SHELL_FELTLESS_FAMILIES), skip the local
-            felt render entirely — the host paints the canonical ellipse
-            continuously across the dealer_selection → in_progress
-            boundary, preventing the geometry morph at game start. */}
-        {shellOwnsFelt ? null : CANONICAL_SHELL_VISUAL_ENABLED ? (
-          <CanonicalFeltSurface
-            gameKind="yahtzee"
-            anteAmount={anteAmount}
-            isWaitingPhase={false}
-          />
+        {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
-        ) : (
-          <>
-            {/* Legacy felt path (flag-off rollback). */}
-            <div
-              className="absolute inset-x-0 inset-y-2 rounded-[50%/45%] border-2 border-amber-900 shadow-inner overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, hsl(142 40% 18%) 0%, hsl(142 50% 10%) 100%)',
-                boxShadow: 'inset 0 0 30px rgba(0,0,0,0.4)',
-              }}
-            >
-              <img
-                src={peoriaBridgeMobile}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 pointer-events-none w-full h-full object-cover"
-                style={{ objectPosition: 'center 38%', opacity: 0.28 }}
-              />
-            </div>
-            <div className="absolute top-3 left-1/2 transform -translate-x-1/2 z-[120] flex flex-col items-center leading-tight">
-              <span className="text-white/30 font-bold text-sm uppercase tracking-wider">
-                ${anteAmount} YAHTZEE
-              </span>
-            </div>
-          </>
-        )}
 
         {/* Live per-player score line — sits just under canonical (or legacy) plate. */}
         {gamePhase === 'playing' && (

@@ -75,8 +75,7 @@ import { MessageSquare, User, Clock, Target } from "lucide-react";
 import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
-import { CanonicalFeltSurface, type CanonicalFeltGameKind } from "@/lib/canonicalShell/CanonicalFeltSurface";
-import { usePublishShellFelt, deriveFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
+import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
@@ -398,24 +397,9 @@ interface MobileGameTableProps {
   dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null; // Position of winner for spotlight effect
   /**
-   * Phase 3.2a — felt ownership mode.
-   *
-   *   'self'  (default) — MobileGameTable renders its own
-   *                       `<CanonicalFeltSurface>` inside the table
-   *                       container. Legacy / current behavior.
-   *
-   *   'shell' — MobileGameTable SUPPRESSES its local felt render. The
-   *             shell-owned `ShellOwnedFeltHost` (mounted inside
-   *             `PersistentTableShell`) is the sole canonical felt for
-   *             the session. Required to satisfy the Phase 3.2 hard
-   *             invariant of exactly one `data-canonical-felt-surface`
-   *             node in the DOM.
-   *
-   * Mount sites in Game.tsx derive this from
-   * `resolveMobileTableFeltOwnership(game.game_type)`; per-family opt-in
-   * lives in `pokerShellCutover.ts` and is empty in 3.2a.
+   * Legacy `feltOwnership` prop has been retired. Shell-owned felt is the
+   * sole canonical mount for every family — no local felt branch exists.
    */
-  feltOwnership?: 'self' | 'shell';
 }
 export const MobileGameTable = ({
   gameId,
@@ -454,7 +438,6 @@ export const MobileGameTable = ({
   pussyTaxValue = 1,
   gameStatus,
   instanceLabel = 'unknown',
-  feltOwnership = 'self',
   handContextId,
   anteAnimationTriggerId,
   anteAnimationExpectedPot,
@@ -554,50 +537,31 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
-  // Phase 3.2 — when feltOwnership='shell', publish our felt context so
-  // the shell-owned felt host paints the correct family identity,
-  // ante, pot-max, legs, and waiting-phase appearance. Without this
-  // the host falls back to PersistentTableShell's initial hydration
-  // values and never reflects mid-session state changes.
-  const shellOwnsFelt = feltOwnership === 'shell';
-  usePublishShellFelt(
-    shellOwnsFelt
-      ? {
-          gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
-          anteAmount,
-          potMaxEnabled,
-          potMaxValue,
-          legsToWin,
-          isWaitingPhase,
-          publisherLabel: `MobileGameTable:${instanceLabel}`,
-        }
-      : null,
-  );
+  // Publish canonical felt context to the shell-owned host (sole felt mount).
+  usePublishShellFelt({
+    gameKind: deriveFeltGameKind(gameType) ?? 'holm-game',
+    anteAmount,
+    potMaxEnabled,
+    potMaxValue,
+    legsToWin,
+    isWaitingPhase,
+    publisherLabel: `MobileGameTable:${instanceLabel}`,
+  });
 
   // ── DIAGNOSTIC: poker-shell continuity audit ──────────────────────
-  // Logs once per MobileGameTable mount with the render-site label and
-  // initial gameStatus. A new MOUNT line during a phase transition
-  // (e.g. dealer_selection → configuring → in_progress) is direct
-  // evidence that the gameplay tree is NOT persistent across
-  // lifecycle phases, even if the shell-owned felt is.
   useLifecycleMount('MobileGameTable', {
     instanceLabel,
     gameType: gameType ?? null,
     initialGameStatus: gameStatus ?? null,
-    feltOwnership,
   });
-  // Track gameStatus transitions WITHIN a single mount so we can
-  // distinguish "prop change inside persistent mount" (good) from
-  // "remount with new status" (bad — confirms continuity gap).
   useEffect(() => {
     setLifecycleFact(`MGT:${instanceLabel}:gameStatus`, gameStatus ?? null);
     setLifecycleContext({
       gameType: gameType ?? null,
       gameStatus: gameStatus ?? null,
-      feltOwnership,
       shellRoute: `MGT:${instanceLabel}`,
     });
-  }, [gameStatus, instanceLabel, gameType, feltOwnership]);
+  }, [gameStatus, instanceLabel, gameType]);
 
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
@@ -4538,14 +4502,14 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
-  return <div className={cn('flex flex-col h-full min-h-0 overflow-hidden relative', shellOwnsFelt ? 'bg-transparent' : 'bg-background')}>
+  return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
       <div
         ref={tableContainerRef}
         data-canonical-table-container=""
-        data-canonical-table-felt-ownership={feltOwnership}
+        data-canonical-table-felt-ownership="shell"
         className="flex-1 relative overflow-hidden min-h-0"
         style={{ maxHeight: '55vh' }}
       >
@@ -4554,7 +4518,7 @@ export const MobileGameTable = ({
             The shell-owned `ShellOwnedFeltHost` (mounted inside
             `PersistentTableShell` for every poker-family route) is the
             sole `data-canonical-felt-surface` for the entire session
-            lifecycle. Both the canonical (CanonicalFeltSurface) and
+            lifecycle. Both the canonical (canonical felt) and
             legacy (gradient ellipse + game-name plate) self-owned felt
             paths have been retired here. The `feltOwnership` prop is
             retained as a no-op data attribute marker for the
@@ -4614,7 +4578,7 @@ export const MobileGameTable = ({
                 !isSoloVsChucky &&
                 !soloVsChuckyTableLocked
               }
-              shellOwned={shellOwnsFelt}
+              shellOwned={true}
             />
           );
         })()}
@@ -4643,7 +4607,7 @@ export const MobileGameTable = ({
             getClockwiseDistance={getClockwiseDistance}
             containerRef={tableContainerRef}
             isVisible={true}
-            shellOwned={shellOwnsFelt}
+            shellOwned={true}
           />
         )}
         

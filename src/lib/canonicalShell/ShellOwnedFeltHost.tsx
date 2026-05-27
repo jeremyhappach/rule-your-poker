@@ -28,6 +28,11 @@ import {
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
 
+// Re-export so non-shell call sites can reference the type without
+// importing from the canonical felt module directly (preserves the
+// "only shell files import CanonicalFeltSurface" invariant).
+export type { CanonicalFeltGameKind };
+
 // ---------------------------------------------------------------------------
 // Felt context — surfaces publish their felt geometry / subtitle data.
 // ---------------------------------------------------------------------------

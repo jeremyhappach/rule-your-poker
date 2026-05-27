@@ -9812,7 +9812,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
-  // single authoritative CanonicalFeltSurface; the shell no longer
+  // single authoritative canonical felt; the shell no longer
   // renders a second felt floor underneath the slot.
 
   return (
