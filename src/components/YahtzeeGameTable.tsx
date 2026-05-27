@@ -1793,7 +1793,7 @@ export function YahtzeeGameTable({
   if (isPreRound) {
     return (
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
-        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+        <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
           {/* Shell owns canonical felt. */}
           {/* Player chip stacks around the felt */}
           {(() => {
@@ -1903,7 +1903,7 @@ export function YahtzeeGameTable({
       </AlertDialog>
 
       {/* ===== TABLE AREA (felt with bridge background) ===== */}
-      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '55vh' }}>
+      <div ref={tableContainerRef} className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: '48vh' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
