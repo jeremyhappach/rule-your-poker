@@ -14,7 +14,8 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt } from './ShellOwnedFeltHost';
-import { ShellHudChrome } from './ShellHudChrome';
+import { ShellAnnouncementRail } from './ShellHudChrome';
+import { ShellTabBar } from './ShellTabBar';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 
 
