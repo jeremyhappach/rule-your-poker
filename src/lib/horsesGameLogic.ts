@@ -10,6 +10,7 @@
  * - Exception: Five 1s (pure wilds) is the best possible hand
  * - Ties cause everyone to re-ante and restart
  */
+import { getActiveHarnessCached } from './debugHarness/runtimeCache';
 
 export interface DiceValue {
   value: number; // 1-6
@@ -50,9 +51,14 @@ export function createInitialHand(): HorsesHand {
 }
 
 /**
- * Roll a single die (returns 1-6)
+ * Roll a single die (returns 1-6).
+ *
+ * Debug harness: when game_defaults.debug_harness for 'horses' is 'force_tie',
+ * every die rolls 1 (a natural wild). With 5 wilds both players land on the
+ * canonical "Five 1s" hand and tie, exercising the tie/re-roll path.
  */
 export function rollDie(): number {
+  if (getActiveHarnessCached('horses') === 'force_tie') return 1;
   return Math.floor(Math.random() * 6) + 1;
 }
 

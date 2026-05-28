@@ -201,8 +201,18 @@ export function HorsesMobileCardsTab({
   const stickyResultRef = useRef<{ 
     result: typeof myResult; 
     playerId: string | null;
+    dealerGameId: string | null;
     cargoDice?: { value: number; sccType?: 'ship' | 'captain' | 'crew' }[];
   } | null>(null);
+
+  // SYNCHRONOUS dealer-game boundary scrub — runs at the top of render (before any
+  // sticky/cached value is read below) so a prior dealer-game's result badge or
+  // dice-roll mask cannot flash into the new dealer-game's first frame while the
+  // useEffect cleanup waits for commit.
+  if (stickyResultRef.current && stickyResultRef.current.dealerGameId !== (horses.dealerGameId ?? null)) {
+    stickyResultRef.current = null;
+    heldSnapshotRef.current = null;
+  }
 
   useEffect(() => {
     stickyResultRef.current = null;
@@ -224,6 +234,7 @@ export function HorsesMobileCardsTab({
     stickyResultRef.current = { 
       result: myResult, 
       playerId: horses.myPlayer.id,
+      dealerGameId: horses.dealerGameId ?? null,
       cargoDice: myCargoDice,
     };
   }
@@ -233,9 +244,11 @@ export function HorsesMobileCardsTab({
     stickyResultRef.current = null;
   }
   
-  // Use sticky result if available and my result cleared during transition
+  // Use sticky result if available and my result cleared during transition.
+  // Strict dealerGameId match: never fall back to a result from a prior dealer-game.
   const effectiveResult = myResult ?? (
-    stickyResultRef.current?.playerId === horses.myPlayer?.id 
+    stickyResultRef.current?.playerId === horses.myPlayer?.id &&
+    stickyResultRef.current?.dealerGameId === (horses.dealerGameId ?? null)
       ? stickyResultRef.current?.result 
       : null
   );
