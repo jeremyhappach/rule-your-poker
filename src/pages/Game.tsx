@@ -9898,10 +9898,50 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
     : undefined;
 
+  // PR-B.3 instrumentation: hand-1 bootstrap flash diagnostic.
+  // Logs every change to the seat-anchor inputs and the slot routing
+  // gate so we can attribute the flash to a specific dimension
+  // (game_type swing, projection mode flip, seats roster change,
+  // viewerPosition flip, persistent-shell gate). Scoped to first hand.
+  const _seatInputsKey = shellEligibleSeats
+    ? shellEligibleSeats
+        .map(s => `${s.position}:${s.occupied ? 1 : 0}:${s.hidden ? 1 : 0}`)
+        .sort()
+        .join('|')
+    : 'undefined';
+  const _bootstrapDiagKey = `${_shellRoutedGameType ?? 'null'}|${shellProjectionMode ?? 'undef'}|${shellViewerPosition ?? 'null'}|${_seatInputsKey}|persistent=${_isPokerShellPersistent ? 1 : 0}|status=${game.status ?? 'null'}`;
+  const _lastBootstrapDiagRef = useRef<string | null>(null);
+  useEffect(() => {
+    if ((currentRound?.hand_number ?? 0) > 1) return;
+    if (_lastBootstrapDiagRef.current === _bootstrapDiagKey) return;
+    const prev = _lastBootstrapDiagRef.current;
+    _lastBootstrapDiagRef.current = _bootstrapDiagKey;
+    console.log('[BOOTSTRAP_FLASH_DIAG] seat-anchor input change', {
+      from: prev,
+      to: _bootstrapDiagKey,
+      gameId: gameId ?? null,
+      handNumber: currentRound?.hand_number ?? null,
+      status: game.status ?? null,
+      rawGameType: game.game_type ?? null,
+      shellRoutedGameType: _shellRoutedGameType,
+      shellCanonicalFamily,
+      shellProjectionMode,
+      shellViewerPosition,
+      isViewerSeated,
+      currentPlayerStatus: currentPlayer?.status ?? null,
+      currentPlayerWaiting: (currentPlayer as any)?.waiting ?? null,
+      currentPlayerSittingOut: currentPlayer?.sitting_out ?? null,
+      playerCount: players.length,
+      seatedCount: shellEligibleSeats?.length ?? 0,
+      persistentPokerShell: _isPokerShellPersistent,
+      timestamp: performance.now(),
+    });
+  }, [_bootstrapDiagKey, gameId, currentRound?.hand_number, game.status, game.game_type, _shellRoutedGameType, shellCanonicalFamily, shellProjectionMode, shellViewerPosition, isViewerSeated, currentPlayer?.status, (currentPlayer as any)?.waiting, currentPlayer?.sitting_out, players.length, shellEligibleSeats?.length, _isPokerShellPersistent]);
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
   // single authoritative canonical felt; the shell no longer
   // renders a second felt floor underneath the slot.
+
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
