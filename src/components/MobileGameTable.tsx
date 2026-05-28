@@ -5621,6 +5621,9 @@ export const MobileGameTable = ({
               cachedWinningResultRef.current = {
                 description: liveWinningResult.description,
                 dice: liveWinningDice ?? null,
+                dealerGameId: horsesDealerGameScope,
+                roundId: horsesRoundScope,
+                source: 'felt-preroll-live-update',
               };
             }
             
