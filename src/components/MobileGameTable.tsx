@@ -797,6 +797,8 @@ export const MobileGameTable = ({
   const turnSnapshotTakenRef = useRef(false); // True once we've snapshotted at turn start
   const horsesDealerGameScope = horsesDealerGameId ?? null;
   const horsesRoundScope = horsesRoundId ?? null;
+  const renderDealerGameScopeRef = useRef<string | null>(horsesDealerGameScope);
+  const isHorsesDealerBoundaryFirstRender = isDiceGame && renderDealerGameScopeRef.current !== horsesDealerGameScope;
 
   // Synchronous first-frame boundary guard: refs cleared in useEffect are one
   // commit too late. The Beat/result cache can otherwise paint prior dealer-game
@@ -816,6 +818,29 @@ export const MobileGameTable = ({
     });
     cachedWinningResultRef.current = null;
     turnSnapshotTakenRef.current = false;
+  }
+
+  if (isHorsesDealerBoundaryFirstRender) {
+    console.info('[HORSES_BADGE_BOUNDARY] first render after dealerGameId change', {
+      prevDealerGameId: renderDealerGameScopeRef.current?.slice(0, 8) ?? null,
+      nextDealerGameId: horsesDealerGameScope?.slice(0, 8) ?? null,
+      roundId: horsesRoundScope?.slice(0, 8) ?? null,
+      gamePhase: horsesController.gamePhase,
+      currentTurnPlayerId: horsesController.currentTurnPlayerId?.slice(0, 8) ?? null,
+      myStateComplete: !!horsesController.myState?.isComplete,
+      myStateResult: (horsesController.myState?.result as any)?.description ?? null,
+      completedHoldPlayerId: horsesController.completedTurnHold?.playerId?.slice(0, 8) ?? null,
+      currentWinningResult: (horsesController.currentWinningResult as any)?.description ?? null,
+      cachedBeatBadge: cachedWinningResultRef.current
+        ? {
+            dealerGameId: cachedWinningResultRef.current.dealerGameId?.slice(0, 8) ?? null,
+            roundId: cachedWinningResultRef.current.roundId?.slice(0, 8) ?? null,
+            source: cachedWinningResultRef.current.source,
+            description: cachedWinningResultRef.current.description,
+          }
+        : null,
+    });
+    renderDealerGameScopeRef.current = horsesDealerGameScope;
   }
   
   // Detect turn transitions and manage snapshot lifecycle
