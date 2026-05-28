@@ -41,6 +41,8 @@ import {
 } from "@/lib/horsesBotLogic";
 import { shouldSCCBotStopRolling } from "@/lib/sccBotLogic";
 import { getRollNumber } from "@/lib/diceAudit";
+import { startHorsesRound } from "@/lib/horsesRoundLogic";
+import { startSCCRound } from "@/lib/sccRoundLogic";
 
 export interface HorsesPlayerForController {
   id: string;
@@ -1207,7 +1209,7 @@ export function useHorsesMobileController({
         },
       });
 
-      await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
+      return await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
     },
     [enabled, currentRoundId, myPlayer],
   );
@@ -1917,11 +1919,22 @@ export function useHorsesMobileController({
         if (result.isQualified && result.cargoSum === 12) {
           const lockedHand = lockInSCCHand(sccHand);
           setLocalHand(lockedHand);
-          await saveMyState(lockedHand, true, result, heldMaskBeforeRoll);
+          const persistedState = await saveMyState(lockedHand, true, result, heldMaskBeforeRoll);
+          const playerStatesAfterLock = {
+            ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+            ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+          };
+          const willBeLastToComplete =
+            turnOrder.length > 0 &&
+            turnOrder.every((pid) => playerStatesAfterLock[pid]?.isComplete);
 
-          setTimeout(() => {
-            advanceToNextTurn(myPlayer?.id ?? null);
-          }, HORSES_POST_TURN_PAUSE_MS);
+          if (willBeLastToComplete) {
+            void advanceToNextTurn(myPlayer?.id ?? null);
+          } else {
+            setTimeout(() => {
+              advanceToNextTurn(myPlayer?.id ?? null);
+            }, HORSES_POST_TURN_PAUSE_MS);
+          }
           return;
         }
       }
@@ -1930,10 +1943,22 @@ export function useHorsesMobileController({
         // Use appropriate evaluation function based on game type
         const result = isSCC ? evaluateSCCHand(newHand as SCCHand) : evaluateHand((newHand as HorsesHand).dice);
         // Final roll: await to ensure state is saved before advancing turn
-        await saveMyState(newHand, true, result, heldMaskBeforeRoll);
-        setTimeout(() => {
-          advanceToNextTurn(myPlayer?.id ?? null);
-        }, HORSES_POST_TURN_PAUSE_MS);
+        const persistedState = await saveMyState(newHand, true, result, heldMaskBeforeRoll);
+        const playerStatesAfterRoll = {
+          ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+          ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+        };
+        const willBeLastToComplete =
+          turnOrder.length > 0 &&
+          turnOrder.every((pid) => playerStatesAfterRoll[pid]?.isComplete);
+
+        if (willBeLastToComplete) {
+          void advanceToNextTurn(myPlayer?.id ?? null);
+        } else {
+          setTimeout(() => {
+            advanceToNextTurn(myPlayer?.id ?? null);
+          }, HORSES_POST_TURN_PAUSE_MS);
+        }
       }
       // Note: intermediate rolls already saved immediately above, no need to save again here
     }, animationDuration);
@@ -1946,6 +1971,7 @@ export function useHorsesMobileController({
     advanceToNextTurn,
     myPlayer?.id,
     isSCC,
+    turnOrder,
     logDebug,
   ]);
 
@@ -2033,11 +2059,22 @@ export function useHorsesMobileController({
       setLocalHand(lockedHand);
 
       const result = evaluateSCCHand(lockedHand);
-      await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+      const persistedState = await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+      const playerStatesAfterLock = {
+        ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+        ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+      };
+      const willBeLastToComplete =
+        turnOrder.length > 0 &&
+        turnOrder.every((pid) => playerStatesAfterLock[pid]?.isComplete);
 
-      setTimeout(() => {
-        advanceToNextTurn(myPlayer?.id ?? null);
-      }, HORSES_POST_TURN_PAUSE_MS);
+      if (willBeLastToComplete) {
+        void advanceToNextTurn(myPlayer?.id ?? null);
+      } else {
+        setTimeout(() => {
+          advanceToNextTurn(myPlayer?.id ?? null);
+        }, HORSES_POST_TURN_PAUSE_MS);
+      }
       return;
     }
 
@@ -2046,12 +2083,23 @@ export function useHorsesMobileController({
     setLocalHand(lockedHand);
 
     const result = evaluateHand(lockedHand.dice);
-    await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+    const persistedState = await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+    const playerStatesAfterLock = {
+      ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+      ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+    };
+    const willBeLastToComplete =
+      turnOrder.length > 0 &&
+      turnOrder.every((pid) => playerStatesAfterLock[pid]?.isComplete);
 
-    setTimeout(() => {
-      advanceToNextTurn(myPlayer?.id ?? null);
-    }, HORSES_POST_TURN_PAUSE_MS);
-  }, [enabled, isPaused, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
+    if (willBeLastToComplete) {
+      void advanceToNextTurn(myPlayer?.id ?? null);
+    } else {
+      setTimeout(() => {
+        advanceToNextTurn(myPlayer?.id ?? null);
+      }, HORSES_POST_TURN_PAUSE_MS);
+    }
+  }, [enabled, isPaused, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC, turnOrder]);
 
   // Bot auto-play with visible animation (mobile)
   // CRITICAL: This effect should ONLY re-run when the turn identity changes (round + bot/auto-roll player),
@@ -2537,6 +2585,65 @@ export function useHorsesMobileController({
           game_type: gameType === "ship-captain-crew" ? "ship-captain-crew" : "horses",
           dealer_game_id: currentGameUuid,
         });
+
+        // PRIMARY tie rollover path: the client that wins the atomic tie claim
+        // must immediately create the re-ante round. Game.tsx's awaiting_next_round
+        // timer remains a recovery/fallback only; relying on it produced 20s+
+        // visible stalls when realtime/fetch timing missed the primary window.
+        persistSyncDebugEvent({
+          gameId: gameId ?? null,
+          gameType: resolvedGameType,
+          handNumber,
+          roundId: originatingRoundId,
+          eventType: 'invariant', severity: 'info',
+          eventName: 'horses-tie-rollover-primary-start-attempt',
+          payload: {
+            clientUserId: currentUserId?.slice(0, 8) ?? null,
+            currentRoundId: originatingRoundId.slice(0, 8),
+            currentGameUuid: currentGameUuid?.slice(0, 8) ?? null,
+            source: 'useHorsesMobileController:tie-claim-winner',
+            tsClient: Date.now(),
+          },
+        });
+
+        try {
+          const callerContext = {
+            caller: 'useHorsesMobileController:tie-claim-winner',
+            reason: 'tie-rollover-primary-re-ante',
+            trigger: 'atomic tie rollover claim won',
+            prevDealerGameId: currentGameUuid,
+            prevRoundId: originatingRoundId,
+            prevGamePhase: authState.gamePhase,
+            prevCurrentTurnPlayerId: authState.currentTurnPlayerId,
+            prevAllComplete: true,
+            prevAwaitingNextRound: true,
+            extra: {
+              tiedPlayerCount: winningPlayerIds.length,
+              winningPlayerIds: winningPlayerIds.map(p => p.slice(0, 8)),
+            },
+          };
+
+          if (gameType === "ship-captain-crew") {
+            await startSCCRound(gameId, false, callerContext);
+          } else {
+            await startHorsesRound(gameId, false, callerContext);
+          }
+        } catch (error) {
+          persistSyncDebugEvent({
+            gameId: gameId ?? null,
+            gameType: resolvedGameType,
+            handNumber,
+            roundId: originatingRoundId,
+            eventType: 'invariant', severity: 'error',
+            eventName: 'horses-tie-rollover-primary-start-failed',
+            payload: {
+              errorMessage: error instanceof Error ? error.message : String(error),
+              clientUserId: currentUserId?.slice(0, 8) ?? null,
+              tsClient: Date.now(),
+            },
+          });
+          throw error;
+        }
 
         return;
       }
