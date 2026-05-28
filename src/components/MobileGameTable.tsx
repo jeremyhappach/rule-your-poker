@@ -578,6 +578,11 @@ export const MobileGameTable = ({
 
   // Helper: check if this is a dice game (Horses or Ship Captain Crew)
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
+  // Dealer setup/config phases keep the table mounted as a dimmed background.
+  // Dice gameplay/result surfaces must be hard-disabled here; otherwise prior
+  // dealer-game result badges can survive behind the setup modal.
+  const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
+  const diceGameplayUiActive = isDiceGame && !isDealerConfigPhase;
   
   // Z-index for player slots - higher in dice games to stay above spotlight
   // For 3-5-7 games, player cards need to be above the pot (z-20) during showdown
@@ -588,7 +593,7 @@ export const MobileGameTable = ({
 
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
-    enabled: isDiceGame,
+    enabled: diceGameplayUiActive,
     gameId,
     dealerGameId: horsesDealerGameId ?? null,
     currentHandNumber: horsesHandNumber ?? null,
