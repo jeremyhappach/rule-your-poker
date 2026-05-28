@@ -2058,11 +2058,22 @@ export function useHorsesMobileController({
       setLocalHand(lockedHand);
 
       const result = evaluateSCCHand(lockedHand);
-      await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+      const persistedState = await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+      const playerStatesAfterLock = {
+        ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+        ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+      };
+      const willBeLastToComplete =
+        turnOrder.length > 0 &&
+        turnOrder.every((pid) => playerStatesAfterLock[pid]?.isComplete);
 
-      setTimeout(() => {
-        advanceToNextTurn(myPlayer?.id ?? null);
-      }, HORSES_POST_TURN_PAUSE_MS);
+      if (willBeLastToComplete) {
+        void advanceToNextTurn(myPlayer?.id ?? null);
+      } else {
+        setTimeout(() => {
+          advanceToNextTurn(myPlayer?.id ?? null);
+        }, HORSES_POST_TURN_PAUSE_MS);
+      }
       return;
     }
 
@@ -2071,12 +2082,23 @@ export function useHorsesMobileController({
     setLocalHand(lockedHand);
 
     const result = evaluateHand(lockedHand.dice);
-    await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+    const persistedState = await saveMyState(lockedHand, true, result, heldMaskBeforeComplete);
+    const playerStatesAfterLock = {
+      ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+      ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+    };
+    const willBeLastToComplete =
+      turnOrder.length > 0 &&
+      turnOrder.every((pid) => playerStatesAfterLock[pid]?.isComplete);
 
-    setTimeout(() => {
-      advanceToNextTurn(myPlayer?.id ?? null);
-    }, HORSES_POST_TURN_PAUSE_MS);
-  }, [enabled, isPaused, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC]);
+    if (willBeLastToComplete) {
+      void advanceToNextTurn(myPlayer?.id ?? null);
+    } else {
+      setTimeout(() => {
+        advanceToNextTurn(myPlayer?.id ?? null);
+      }, HORSES_POST_TURN_PAUSE_MS);
+    }
+  }, [enabled, isPaused, isMyTurn, localHand, saveMyState, advanceToNextTurn, myPlayer?.id, isSCC, turnOrder]);
 
   // Bot auto-play with visible animation (mobile)
   // CRITICAL: This effect should ONLY re-run when the turn identity changes (round + bot/auto-roll player),
