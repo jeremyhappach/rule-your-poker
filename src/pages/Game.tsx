@@ -766,14 +766,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // before the stale trigger can be consumed; observers run none of those.
   // Clearing on phase transition guarantees no stale trigger can be replayed by
   // a remount, regardless of which client we are.
+  // ROLLOVER ANIMATION FIX: the original observer-replay leak was triggered by
+  // a cross-game-type unmount/remount of MobileGameTable carrying a stale
+  // trigger across `game_over`. Clearing on `game_over` is sufficient to
+  // close that path. The previous broader list (dealer_selection /
+  // game_selection / configuring) was racy for Horses→Horses (and SCC)
+  // dealer-game rollovers: the ante trigger is set in the
+  // ante-decision-complete handler AT THE SAME TICK that the new round
+  // starts and the realtime status update for the prior 'configuring'
+  // phase can land in the same render batch, clobbering a legitimate
+  // freshly-set trigger and silently dropping the chip animation while
+  // chips/pot still updated authoritatively. The cross-game leak class
+  // is already prevented by `game_over` clearing + per-dealer-game
+  // identity-scoped `anteAnimationFiredRef` keys (see line ~7625), so
+  // the additional clears are unnecessary.
   useEffect(() => {
     const status = game?.status;
-    if (
-      status === 'game_over' ||
-      status === 'dealer_selection' ||
-      status === 'game_selection' ||
-      status === 'configuring'
-    ) {
+    if (status === 'game_over') {
       setAnteAnimationTriggerId(null);
       setAnteAnimationExpectedPot(null);
       setPreAnteChips(null);
