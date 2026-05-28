@@ -5142,7 +5142,7 @@ export const MobileGameTable = ({
         <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
         
         {/* No Qualify Animation (Ship Captain Crew only) */}
-        {(gameType === 'ship-captain-crew') && (
+        {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (
           <NoQualifyAnimation 
             show={horsesController.showNoQualifyAnimation} 
             playerName={horsesController.noQualifyPlayerName ?? undefined}
@@ -5151,7 +5151,7 @@ export const MobileGameTable = ({
         )}
         
         {/* Midnight Animation (Ship Captain Crew only - when someone rolls 12) */}
-        {(gameType === 'ship-captain-crew') && (
+        {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (
           <MidnightAnimation 
             show={horsesController.showMidnightAnimation} 
             playerName={horsesController.midnightPlayerName ?? undefined}
