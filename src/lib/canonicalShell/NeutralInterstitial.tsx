@@ -17,7 +17,29 @@ import { usePublishShellFelt } from './ShellOwnedFeltHost';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
+import { SeatAnchorLayer } from './SeatAnchorLayer';
+import { CanonicalSeatCluster } from './CanonicalSeatCluster';
+import { derivePlayerStatus } from './participantStatus';
+import { getDisplayName } from '@/lib/botAlias';
+import { formatChipValue } from '@/lib/utils';
 
+/**
+ * Roster shape consumed by the optional interstitial seat layer.
+ * Intentionally narrow — only the fields the canonical waiting
+ * surface already feeds CanonicalSeatCluster. Callers pass the same
+ * `players` array they use for waiting / gameplay so the projection
+ * is byte-identical with the rest of the lifecycle.
+ */
+export interface InterstitialParticipant {
+  id: string;
+  position: number;
+  user_id?: string | null;
+  chips?: number | null;
+  is_bot?: boolean | null;
+  waiting?: boolean | null;
+  auto_fold?: boolean | null;
+  profiles?: { username?: string };
+}
 
 export interface NeutralInterstitialProps {
   gameId?: string | null;
@@ -36,7 +58,28 @@ export interface NeutralInterstitialProps {
    */
   activeTab?: ShellTabId;
   onActiveTabChange?: (tab: ShellTabId) => void;
+  /**
+   * Optional seated roster + viewer identity. When provided,
+   * NeutralInterstitial mounts a local <SeatAnchorLayer> and renders
+   * each occupied seat through <CanonicalSeatCluster> — the same
+   * primitive CanonicalShellWaitingSurface and MobileGameTable use.
+   * Projection mode mirrors the rest of the lifecycle: viewer seated
+   * → active-canonical (HOME suppressed); viewer not seated →
+   * observer-absolute. This is the seat-continuity surface for
+   * observers across waiting → setup → interstitial → gameplay.
+   *
+   * When `participants` is omitted, no seat layer is mounted (legacy
+   * behaviour, used by callers that don't yet thread a roster).
+   *
+   * Intentionally LIMITED to identity + chip bubble — no dealer pip,
+   * no gameplay decorators, no chip-transport endpoints. Gameplay
+   * artifacts must NOT leak into the interstitial.
+   */
+  participants?: InterstitialParticipant[];
+  currentUserId?: string | null;
+  participantGameType?: string | null;
 }
+
 
 export function NeutralInterstitial({
   gameId,
