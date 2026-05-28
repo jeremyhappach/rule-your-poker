@@ -80,3 +80,54 @@ export function getCanonicalSlotPlacement(
   }
 }
 
+/**
+ * Returns true if the slot lives on the visual right half of the felt
+ * (mid-/top-/bottom-right). Used by `CanonicalSeatCluster` to resolve
+ * inner-vs-outer decorator side without requiring callers to know the
+ * geometry: inner decorations (toward table center) flip side based on
+ * which half of the table the seat sits on; outer decorations
+ * (dealer pip, etc.) sit on the opposite side. This is the SINGLE
+ * source of truth for that mapping.
+ */
+export function isRightSideCanonicalSlot(
+  slot: CanonicalSlot | null | undefined,
+): boolean {
+  return slot === 3 || slot === 4 || slot === 5;
+}
+
+/**
+ * Additional vertical offset applied on top of `getCanonicalSlotPlacement`
+ * when a seat needs to be raised for ergonomic reasons — currently the
+ * Holm multi-player showdown raise that lifts mid-side and top-corner
+ * seats so exposed cards do not overlap the community-card lane.
+ *
+ * Centralizing the raise here keeps the choreography in the projection
+ * layer (per the canonical-shell contract) instead of leaking back into
+ * MobileGameTable. Returns an empty string when no raise is required
+ * for the given slot, so callers can unconditionally concatenate.
+ *
+ * Magnitudes mirror the previous bespoke MGT classes:
+ *   - mid-left (1) / mid-right (4): translate up ~10% of container
+ *   - top-left (2) / top-right (3): shift `top-4` → `top-8`
+ *
+ * Corner perimeter slots (0/5), HOME, FACE_TO_FACE, and BOTTOM_RAIL
+ * never raise: their authoritative MGT geometry does not need it.
+ */
+export function getCanonicalSlotRaiseClass(
+  slot: CanonicalSlot | null | undefined,
+): string {
+  switch (slot) {
+    case 1:
+    case 4:
+      // Override the base `top-1/2` with `top-[40%]` (~10% lift).
+      return '!top-[40%]';
+    case 2:
+    case 3:
+      // Override the base `top-[14%]` with `top-[18%]` (~4% lift).
+      return '!top-[18%]';
+    default:
+      return '';
+  }
+}
+
+
