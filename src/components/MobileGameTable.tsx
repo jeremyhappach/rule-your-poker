@@ -31,7 +31,6 @@ import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
-  observerSlotForPosition as canonicalObserverSlot,
   type CanonicalSlot,
 } from "@/lib/canonicalShell/seatAnchors";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
