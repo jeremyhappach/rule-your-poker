@@ -795,6 +795,28 @@ export const MobileGameTable = ({
     source: string;
   } | null>(null);
   const turnSnapshotTakenRef = useRef(false); // True once we've snapshotted at turn start
+  const horsesDealerGameScope = horsesDealerGameId ?? null;
+  const horsesRoundScope = horsesRoundId ?? null;
+
+  // Synchronous first-frame boundary guard: refs cleared in useEffect are one
+  // commit too late. The Beat/result cache can otherwise paint prior dealer-game
+  // badges for a frame before cleanup runs.
+  if (
+    cachedWinningResultRef.current &&
+    (cachedWinningResultRef.current.dealerGameId !== horsesDealerGameScope ||
+      cachedWinningResultRef.current.roundId !== horsesRoundScope)
+  ) {
+    console.warn('[HORSES_BADGE_BOUNDARY] rejected stale Beat badge cache before paint', {
+      cachedDealerGameId: cachedWinningResultRef.current.dealerGameId?.slice(0, 8) ?? null,
+      currentDealerGameId: horsesDealerGameScope?.slice(0, 8) ?? null,
+      cachedRoundId: cachedWinningResultRef.current.roundId?.slice(0, 8) ?? null,
+      currentRoundId: horsesRoundScope?.slice(0, 8) ?? null,
+      source: cachedWinningResultRef.current.source,
+      description: cachedWinningResultRef.current.description,
+    });
+    cachedWinningResultRef.current = null;
+    turnSnapshotTakenRef.current = false;
+  }
   
   // Detect turn transitions and manage snapshot lifecycle
   const isMyTurn = horsesController.isMyTurn;
@@ -823,7 +845,7 @@ export const MobileGameTable = ({
       turnSnapshotTakenRef.current = false;
       cachedWinningResultRef.current = null;
     }
-  }, [isMyTurn, horsesController.currentWinningResult, horsesController.getWinningPlayerDice]);
+  }, [isMyTurn, horsesController.currentWinningResult, horsesController.getWinningPlayerDice, horsesDealerGameScope, horsesRoundScope]);
 
   // CRITICAL FIX: Sticky cache for the entire felt block content.
   // During brief state gaps (gamePhase flips to waiting/complete, currentTurnPlayerId null, etc.)
