@@ -1,129 +1,114 @@
-# Phase 4 — MobileGameTable Gameplay Announcement Migration
 
-Target file: `src/components/MobileGameTable.tsx` (covers Holm, 3-5-7, Ship Captain Crew, Horses).
-Goal: move every remaining local gameplay announcement into canonical semantic emits and retire the shared local gold plate (`bg-poker-gold/95 ...`) inside the `ShellHudChrome announcementFallback` block (lines ~6336–6444).
+# Phase 1 — Canonical Seat System
 
-Scope guardrails: gameplay announcements only. No shell geometry, no tab bar, no CTA/lifecycle refactors, no telemetry mutations.
+Goal: one seat renderer, one projection system, one styling system across waiting → dealer setup → interstitial → gameplay. After this phase, lifecycle phase changes never move seats within a given projection mode, and there is exactly one seat-rendering code path in the entire app.
 
----
+## Continuity contract (projection-scoped)
 
-## 1. Inventory — local announcements still rendered in MobileGameTable
+Seat coordinates are stable **within a projection mode**, not necessarily across projection modes.
 
-All inside `<ShellHudChrome announcementFallback={ ... }>` at line 6336:
+**Observer projection** (viewer is not seated):
+- Uses absolute seat positioning for multiplayer games.
+- May apply intentional face-to-face ergonomic adjustments for 2P games (Cribbage / Gin / Yahtzee), as already encoded in `canonicalized2p` + `occupied-2p-face` placement.
+- For a given observer, seat coordinates for a given player identity are **identical** across waiting, dealer setup, interstitial, and gameplay. An observer must never see a player jump seats because the lifecycle phase changed.
 
-| # | Block (line) | Render condition | Current text |
-|---|---|---|---|
-| A | 6341 — Horses turn announcement | `isDiceGame && horsesController.enabled && horsesController.turnAnnouncement` | `horsesController.turnAnnouncement` (e.g. `"Hap's turn"`, `"Hap rolled a 6 — added to bank"`, dealer roll callouts) |
-| B | 6380 — Game-over result plate | `isGameOver && lastRoundResult && !(357 win-suppression)` | `lastRoundResult.split('|||')[0]` (Holm) or `format357ShowdownAnnouncement` or `🏆 Game Complete!` (Holm "beat Chucky" filter for non-Holm) |
-| C | 6397 — Round result plate (mid-game) | `!isGameOver && lastRoundResult && not sweep/won-the-game/won-a-leg && gameStatus not configuring/ante_decision && (Holm: holmCommunityFullyRevealed) && (awaitingNextRound \|\| showdown \|\| completed \|\| allDecisionsIn \|\| chuckyActive)` | Same projection as B — round outcome string (Holm chop / Chucky beats / 3-5-7 showdown summary) |
-| D | 6422 — Re-ante message | `reAnteMessage` (3-5-7 subsequent-round-1 re-ante prompt) | `reAnteMessage` (e.g. `"Re-ante required"`) |
-| E | 6437 — dealerSelectionAnnouncement | already `null` | (retired stub — confirm prop callsites no longer rely on render) |
-| F | 6416 — `gameStatus === 'ante_decision'` | already `null` | (retired stub) |
-| G | 6429 — `dealerSetupMessage` | already `null` | (retired stub) |
+**Active-player projection** (viewer is seated):
+- Activated when the user joins/sits; viewer remains in active-player projection for the remainder of the session.
+- Viewer is rendered via the active content area + bottom HUD; their on-felt cluster is self-suppressed.
+- Other seats are projected relative to the viewer (HOME-relative slotting).
+- May legitimately differ from observer projection.
+- May legitimately differ between game families when an intentional ergonomic rule exists (e.g. Holm may position the opponent differently from Cribbage). Family-level differences are a property of the projection, not the lifecycle.
+- For a given seated viewer, seat coordinates for a given player identity are **identical** across waiting, dealer setup, interstitial, and gameplay.
 
-Only A–D produce visible UI today; E–G are already retired placeholders kept for prop-shape stability.
+**What is NOT acceptable, in either mode:**
+- Lifecycle-driven seat movement. Waiting → setup, setup → interstitial, interstitial → gameplay, and gameplay → next dealer-game must not change the rendered coordinate of any player.
 
-Out of scope (already canonical or non-rail UI):
-- TimerBar (6379), PAUSED badge (6375), horses timer chip (6349) — non-announcement UI, leave alone.
-- Holm/3-5-7 overlays (`HolmWinPotAnimation`, `SweepsPotAnimation`, `ChoppedAnimation`, `LegEarnedAnimation`) — celebration overlays, not rail.
+**What IS acceptable:**
+- Coordinate differences driven by projection-mode change (observer → active, or vice versa on join).
+- Coordinate differences driven by an intentional game-family ergonomic rule, encoded in the projection layer (`seatAnchors.ts` / `canonicalSlotPlacement.ts`).
 
----
+## What the audit found
 
-## 2. Semantic mapping
+Five distinct seat renderers exist today. Three gameplay tables (Gin, Cribbage, Yahtzee) already go through `CanonicalSeatCluster` + `SeatAnchorLayer`. Three places diverge:
 
-### A. Horses turn announcement
-- Trigger: `horsesController.turnAnnouncement` transitions to a non-empty string.
-- Canonical event: **`peg_notice`** (transient, priority 55, TTL 1.5–2.5s — match current controller timeout).
-  - Rationale: lightweight non-blocking gameplay notice, identical class to Cribbage "Go" / pegging callouts.
-- Payload: `{ text, kind: 'horses_turn' | 'horses_roll' | 'horses_dealer' }`.
-- Observer behavior: emit unconditionally (no actor gate) — observers should see who is up and what was rolled, exactly like seated players today.
-- Emit site: a small `useEffect` inside `MobileGameTable` keyed on `horsesController.turnAnnouncement` identity; dedupe via `useRef(lastEmittedTurnAnnouncementKey)`.
+1. **`MobileGameTable`** (Holm / 3-5-7 / Horses / SCC, AND the background table during waiting and dealer setup for those families) — hand-rolls its own `slotPositions` map, a separate `getObserverSlotFromPosition` map for observer mode, and a custom `w-12/h-12` chip circle plus a bare `<span>` nameplate. Primary cause of lifecycle-driven divergence for the four dice/poker families.
+2. **`CanonicalShellWaitingSurface`** — already uses `CanonicalSeatCluster`, but bypasses `getBotAlias`, so bots show `"Bot 665153"` (raw DB name) instead of `"Bot 1"`. Also omits the `$` prefix used in gameplay.
+3. **`WaitingForPlayersTable`** add-bot path — writes `"Bot {6-char-hex}"` directly to `profiles.username`, diverging from `botNaming.ts`'s sequential scheme.
 
-### B + C. Round / game-over result plate (Holm + 3-5-7)
-Single semantic family. Two emit shapes based on `isGameOver`:
+`DealerGameSetup` / `DealerConfig` / `NeutralInterstitial` render no seat clusters themselves — they sit on top of `MobileGameTable`. Fixing `MobileGameTable` automatically fixes setup and interstitial.
 
-- **Mid-hand round outcome (C):** canonical `round_win` (transient, priority 80, TTL 3000ms).
-  - Payload: `{ text, gameType, handNumber, winnerName?, summary? }`.
-  - Renderer reuses existing `LifecycleAnnouncement` plate; for 3-5-7 use the already-computed `format357ShowdownAnnouncement` string; for Holm use `lastRoundResult.split('|||')[0]`.
-- **Game-over result (B):** canonical `match_win` (transient, priority 100, extended TTL like Cribbage so it persists through chip-transfer overlays — 10s non-skunk-equivalent, longer if a celebration overlay is active).
-  - Payload: `{ text, winnerName?, gameType }`.
-  - The shell-owned celebration overlay (`CanonicalCelebrationLayer`) already handles confetti-tier; this emit only owns the rail plate text.
-- Observer behavior: identical for active and observer (no actor gating) — round/match results are shared state.
-- Suppression rules preserved: continue to skip when `lastRoundResult.startsWith('357_SWEEP:')`, when `won the game` / `won a leg` is being celebrated by a dedicated win overlay/trigger, and the Holm `holmCommunityFullyRevealed` gate. These gates move into the emit `useEffect`, NOT the renderer.
-- Dedupe: keyed by `${gameId}:${handContextId}:${currentRound}:${isGameOver ? 'match' : 'round'}:${hash(lastRoundResult)}`.
-- Boundary teardown: relies on shell scope (dealerGameId/roundId) — already handled by `CanonicalAnnouncementProvider`.
+## Hard end-state constraint (per user direction)
 
-### D. Re-ante message (3-5-7)
-- Canonical event: **`peg_notice`** (transient, priority 55, TTL 2000ms) with `payload.kind: 'reante'`.
-  - Rationale: short non-blocking notice; the ante decision itself is already canonical `awaiting_ante` ambient elsewhere — this is the additional "re-ante required" call-out only.
-- Observer behavior: visible to all (everyone needs context that re-ante is occurring).
-- Emit on `reAnteMessage` transition to non-empty; dedupe by identity ref.
+When this phase ships, `MobileGameTable` has **exactly one** seat-rendering path. No family flags, no per-family bespoke branches:
 
-### E / F / G — already retired
-- Confirm no consumer relies on rendered output. Remove the dead `null` branches and the matching `dealerSetupMessage`, `dealerSelectionAnnouncement`, and `gameStatus === 'ante_decision'` arms from the fallback JSX entirely. Props remain on the interface (call-site compatibility) but stop participating in render.
+- The local `slotPositions` map is deleted, not gated.
+- `getObserverSlotFromPosition` is deleted, not gated.
+- `renderPlayerChip` is deleted, not gated.
+- Every seat in every family in every phase resolves through `useSeatAnchors().byPosition.get(position)` and renders through `CanonicalSeatCluster`.
+- Observer projection is exclusively `SeatAnchorLayer`'s `'observer-absolute'` mode; active projection is exclusively `'active-canonical'`. Game-family ergonomic rules live inside `seatAnchors.ts` / `canonicalSlotPlacement.ts` (where they already live for the 2P face-to-face case), not inside `MobileGameTable`.
 
-### Renderer additions
-`src/lib/canonicalShell/announcements/renderers.tsx`:
-- Extend the `round_win` renderer to accept a free-form `payload.text` fallback (currently Cribbage-shaped). Holm/3-5-7 will pass `text`.
-- `peg_notice` already exists and is text-driven — no change beyond passing `payload.text`.
-- `match_win` already restored in Phase 3; reuse as-is, with optional `payload.text` override when `winnerName`/`score` cannot be cleanly parsed from Holm/3-5-7 strings.
+If validation surfaces a per-family blocker, the resolution is to extend the canonical projection layer to cover the case, not to reintroduce a bespoke branch. The work ships behind a single PR so no intermediate mixed state ever lands.
 
----
+## Cutover plan
 
-## 3. Retirement plan
+### Step 1 — Single source of truth for display names
+- Migrate `WaitingForPlayersTable`'s add-bot path to call `botNaming.ts:makeBotUsername` so the DB row is `"Bot N"` from insertion.
+- Route every name render site through `getDisplayName` from `botAlias.ts`. Specifically: fix `CanonicalShellWaitingSurface` (currently raw `profiles.username`) and the `MobileGameTable` positional fallback. No render site reads `profiles.username` directly for a seat label after this step.
 
-After emits are wired and parity confirmed:
+### Step 2 — Mount `SeatAnchorLayer` for every `MobileGameTable` family
+- Wrap `MobileGameTable`'s seat region in `<SeatAnchorLayer>` with the same projection-mode resolution Gin/Cribbage/Yahtzee already use: `'active-canonical'` when the viewer is seated, `'observer-absolute'` when not.
+- The provider mounts simultaneously for Holm, 3-5-7, Horses, and SCC since they all flow through `MobileGameTable`.
+- Projection mode is set once on join and persists for the rest of the session — never toggled by lifecycle phase.
 
-1. Delete the entire JSX subtree passed as `announcementFallback` (lines ~6336–6444).
-2. Replace with `<ShellHudChrome announcementFallback={undefined} />` (or drop the prop — same as `CribbageMobileGameTable`).
-3. Remove now-unused locals: `format357ShowdownAnnouncement` reference inside fallback (the memo itself stays — emit effect uses it), the gold-plate divs, and the `dealerSetupMessage` / `dealerSelectionAnnouncement` render branches.
-4. Keep prop signatures (`lastRoundResult`, `reAnteMessage`, `dealerSetupMessage`, `dealerSelectionAnnouncement`, `horsesController.turnAnnouncement`) — they are now strictly inputs to emit effects, not render.
-5. Audit other surfaces that may also render `lastRoundResult` as a plate (search confirms it is only this fallback + overlays).
+### Step 3 — Replace bespoke seat code in one PR
+- Delete `slotPositions`, `getObserverSlotFromPosition`, and `renderPlayerChip` in `MobileGameTable`.
+- Render every seat (active and observer) through `<CanonicalSeatCluster>`, with game-owned decorators (leg indicator, buck indicator, dealer pip, status tints, chip-transfer endpoint markers) moved into the cluster's `children` slot so they ride the canonical anchor.
+- Any family-specific ergonomic difference that needs to survive (e.g. Holm-specific opponent placement, if one exists today and is intentional) is expressed in `seatAnchors.ts` / `canonicalSlotPlacement.ts` keyed on `gameType`, not in `MobileGameTable`.
+- Active-player content area and bottom HUD are untouched.
 
----
+### Step 4 — Waiting / setup / interstitial inherit canonical seats automatically
+- Because `WaitingForPlayersTable` and `DealerGameSetup` render `MobileGameTable` underneath, Step 3 gives them canonical seat geometry with zero additional change. This is what makes lifecycle-driven movement structurally impossible in the new layout.
+- For canonical-shell families (Cribbage / Gin / Yahtzee waiting), update `CanonicalShellWaitingSurface` to use `getDisplayName` and the `$` prefix so waiting matches gameplay verbatim.
+- `NeutralInterstitial` already renders no seats; confirm nothing else paints seat chrome on top of it during dealer rollover.
 
-## 4. QA checklist
+### Step 5 — Lock geometry, truncation, and chip formatting
+- `CanonicalSeatCluster` already pins width to `w-[96px]` and uses `truncate min-w-0` on the name span. Audit all call sites for prop overrides that widen, restyle, or remove the pill — remove them.
+- Standardize `chipValue` everywhere to `` `$${formatChipValue(chips)}` ``.
 
-### Holm
-- [ ] 1v1 Chucky win — round result appears in canonical rail; observers see same plate.
-- [ ] Chop scenario — chop announcement appears (text via `lastRoundResult.split('|||')[0]`); no double-render with `ChoppedAnimation` overlay.
-- [ ] "Beat Chucky" game-over — match-win plate appears AND persists through `HolmWinPotAnimation` (extended TTL behavior, same pattern as Cribbage Phase 3 fix).
-- [ ] Community-card-4 gate: round plate must NOT appear before card 4 finishes flipping (emit effect respects `holmCommunityFullyRevealed`).
-- [ ] No old gold plate visible in DOM (`data-testid` / class assertion).
+### Step 6 — Registry + invariant
+- Add `holm`, `three_five_seven`, `horses`, `scc` to `CANONICAL_SHELL_FAMILY` (as required for the seat provider mount) and `CANONICAL_SEAT_CONSUMERS` so `useRequiredSeatAnchors` throws in dev if any future change tries to render seats outside the provider.
 
-### 3-5-7
-- [ ] Showdown of R1/R2/R3 — round_win plate shows `format357ShowdownAnnouncement` text.
-- [ ] "Won a leg" event — plate is suppressed (overlay owns it); no flash of leg text in rail.
-- [ ] "Won the game" event — plate is suppressed for round_win path; match_win emits instead and persists through `LegsToPlayerAnimation` / `SweepsPotAnimation`.
-- [ ] Sweep (`357_SWEEP:` prefix) — no rail plate (overlay owns it).
-- [ ] Re-ante prompt — `peg_notice` plate appears for ~2s, dismisses, ambient `awaiting_ante` (already canonical) takes over.
-- [ ] Pussy-tax message — round_win plate carries the text.
-- [ ] Observer sees identical sequence to seated player.
+## Acceptance criteria
 
-### Ship Captain Crew
-- [ ] Turn announcements (`horsesController.turnAnnouncement` reused by SCC controller) appear as `peg_notice` for active and observer.
-- [ ] Round/match-end overlays unaffected; rail clean during animation.
+- **Single path:** `MobileGameTable` contains zero family-specific seat branches. `slotPositions`, `getObserverSlotFromPosition`, `renderPlayerChip` are deleted from the codebase.
+- **Projection-scoped continuity:** for a given session, a given viewer, a given player identity, and a fixed projection mode, the seat coordinate (`data-seat-position` element bounding box on screen) is **identical**, pixel-for-pixel, across waiting → dealer setup → interstitial → gameplay → next dealer-game. Verified for both an observer and a seated participant.
+- **Projection-mode transitions are allowed to move seats** (e.g. when a viewer joins mid-session and switches from observer to active-player projection). This is not a regression.
+- **Game-family ergonomic differences are allowed within active-player projection** (e.g. Holm vs Cribbage opponent placement). Those differences live in `seatAnchors.ts` / `canonicalSlotPlacement.ts`, not in family branches inside `MobileGameTable`.
+- Bots are labeled `Bot N` from the moment of insertion in waiting, setup, and gameplay (alias resolved at the DB and confirmed by `getDisplayName` at render).
+- All nameplates render in the same fixed-width pill with `…` truncation; no name pushes layout.
+- Chip bubbles use the same size, palette, and `$` formatting everywhere.
+- No dev-mode `useRequiredSeatAnchors` warning in any phase of any registered family.
 
-### Horses
-- [ ] Turn-of-player announcement appears in rail.
-- [ ] Roll callout (`"Hap rolled a 6"`) appears, then dismisses by TTL.
-- [ ] Dealer roll callout appears for both seated and observer.
-- [ ] Match win (`isGameOver` + `lastRoundResult`) emits canonical `match_win` and persists through pot transfer.
-- [ ] No 3× flash on game-over transition (current code comments warn about this — emit dedupe must hold).
+## Out of scope (Phase 2 / 3)
+- HUD stack height, active-content reservation, announcement/tab rail height.
+- Timer ownership and numeric vs progress-bar divergence.
+- Any change to gameplay logic, sync, or scoring.
 
-### Cross-cutting (all four games)
-- [ ] No console emit warnings (`[canonical-rail] emit dropped — scope mismatch`).
-- [ ] No double announcements (overlay + rail) for celebration-tier events.
-- [ ] Scope teardown on new hand clears any leftover rail plate within one frame.
-- [ ] `CanonicalAnnouncementProvider` scope already wraps these tables via `PersistentTableShell` — verify before emitting (failure mode is the dev-throw in `useAnnouncements`).
+## Files expected to change
+- `src/components/MobileGameTable.tsx` — delete bespoke seat code; mount `SeatAnchorLayer`; render every seat through `CanonicalSeatCluster`; decorators folded into the cluster `children` slot.
+- `src/components/canonicalShell/CanonicalShellWaitingSurface.tsx` — use `getDisplayName`, add `$` prefix.
+- `src/components/WaitingForPlayersTable.tsx` — replace inline `Bot {hex}` username generation with `makeBotUsername`.
+- `src/lib/canonicalShell/shellRouting.ts` — register `holm`, `three_five_seven`, `horses`, `scc` in both registries.
+- `src/lib/canonicalShell/seatAnchors.ts` / `canonicalSlotPlacement.ts` — only if a Holm/3-5-7/Horses/SCC ergonomic rule needs to be ported out of the bespoke branch into the canonical projection layer.
 
----
+No DB migrations. Existing bot rows are unaffected; `getBotAlias` continues to override at render. New bot inserts get the canonical name at write time.
 
-## Technical notes (implementation order, for the next loop)
+## Risk + rollback
 
-1. Add emit effects (parallel, no removals yet) — A, B+C, D. Verify all four games in preview while the legacy plate still renders. Duplicate plates during this window are expected.
-2. Once parity is observed for every game, delete the fallback JSX in one focused edit and pass `announcementFallback={undefined}`.
-3. Sweep dead-locals + run QA checklist.
-4. Update `mem://architecture/canonical-shell/consumer-registry-and-onboarding` to record MobileGameTable as a fully migrated consumer.
+Because the end-state contract is a single path, the work ships as one PR, not incrementally:
 
-No DB migrations, no edge-function changes, no schema work. Pure client-side renderer→emit migration.
+- Validated across all four `MobileGameTable` families (Holm, 3-5-7, Horses, SCC) plus the three already-canonical families (Cribbage, Gin, Yahtzee) before merge.
+- Validation covers the four lifecycle transitions (waiting → setup, setup → gameplay, gameplay → next dealer-game, observer-join during each phase) AND captures element bounding boxes before/after each transition to prove projection-scoped continuity.
+- Rollback is a git-level revert of the single PR. No per-family kill switch — intentional, to preserve the one-path invariant.
+
+Highest residual risk is the leg/buck/dealer-pip decorators currently positioned against `slotPositions`. Mitigation: re-express each as a `children` element of the canonical cluster so it inherits the anchor, with a visual diff against the current production layout before merge.
