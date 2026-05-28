@@ -9862,7 +9862,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // game_type (NOT on shell mount, which is now route-stable). For
   // non-canonical families we pass undefined so PersistentTableShell's
   // `seats && projectionMode` check skips SeatAnchorLayer entirely.
-  const shellCanonicalFamily = isCanonicalShellFamily(game.game_type);
+  // PR-B.3: gate canonical SeatAnchorLayer on the SAME sticky chain used
+  // for the shell-felt gameType prop, not raw `game.game_type`. During
+  // bootstrap (session start → DealerGameSetup completion) raw game_type
+  // is null, which collapsed `isCanonicalShellFamily(...)` to false and
+  // skipped SeatAnchorLayer entirely. PersistentTableShell still mounted
+  // (because gameType falls back to 'holm-game' for the persistent poker
+  // shell), but seats=undefined/projectionMode=undefined meant the
+  // anchor provider never wrapped the slot — so MGT's
+  // useRequiredSeatAnchors returned null and no seat chrome rendered.
+  // Rollover already had game_type populated from the prior dealer game,
+  // which is why between-game setup looked correct. Resolve through the
+  // same chain so bootstrap and rollover go through identical wiring.
+  const _shellRoutedGameType =
+    _routeShellGameType ?? (_isPokerShellPersistent ? 'holm-game' : null);
+  const shellCanonicalFamily = isCanonicalShellFamily(_shellRoutedGameType);
   const shellEligibleSeats = shellCanonicalFamily
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
