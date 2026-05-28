@@ -485,6 +485,15 @@ function buildThreeFiveSevenSnapshot(
 // `if (!game) return null` guard without needing a React hook.
 const __bootstrapFlashDiagCache = new Map<string, string>();
 
+// Stable per-tab mount-instance id so the persisted diag can tell
+// the two clients apart on the next repro without relying on memory.
+// Generated once per page load; survives the early-return guard.
+const __bootstrapFlashClientInstanceId =
+  (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    ? crypto.randomUUID()
+    : `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+
+
 
 const Game = () => {
   const { gameId } = useParams();
