@@ -16,6 +16,7 @@ import { generateUUID } from "@/lib/uuid";
 import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
+import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
@@ -197,8 +198,16 @@ export function useWaitingRoomActions({
     try {
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
-      const suffix = botId.replace(/-/g, "").slice(0, 6);
-      const botName = `Bot ${suffix}`;
+
+      // Single source of truth for bot display names. `getBotAlias` will
+      // override at render anyway, but writing canonical "Bot N" at
+      // insertion eliminates the brief "Bot {hex}" flash on any path
+      // that reads `profiles.username` before the alias resolver runs.
+      const existingUsernames = (playersRef.current ?? [])
+        .filter((p) => p.is_bot)
+        .map((p: any) => p?.profiles?.username ?? null);
+      const nextNumber = getNextBotNumber(existingUsernames);
+      let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
       botNameForToast = botName;
 
       const { error: profileError } = await perf.step("profiles.insert", () =>
@@ -211,13 +220,12 @@ export function useWaitingRoomActions({
 
       if (profileError) {
         if (profileError.code === "23505") {
-          const fullSuffix = botId.replace(/-/g, "").slice(0, 12);
-          const fallbackName = `Bot ${fullSuffix}`;
-          botNameForToast = fallbackName;
+          botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
+          botNameForToast = botName;
           const { error: retryError } = await perf.step("profiles.insert.retry", () =>
             supabase.from("profiles").insert({
               id: botId,
-              username: fallbackName,
+              username: botName,
               aggression_level: aggressionLevel,
             }),
           );

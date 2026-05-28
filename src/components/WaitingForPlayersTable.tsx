@@ -11,6 +11,7 @@ import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
+import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -236,16 +237,20 @@ export const WaitingForPlayersTable = ({
     let botNameForToast = "Bot";
 
     try {
-      // Create bot profile with guaranteed-unique name using UUID suffix first time
       const botId = generateUUID();
       const aggressionLevel = getAggressionLevelForBotId(botId);
 
-      // Use a short unique suffix from the bot ID to avoid collisions during rapid adds
-      const suffix = botId.replace(/-/g, "").slice(0, 6);
-      const botName = `Bot ${suffix}`;
+      // Canonical "Bot N" naming at insertion time — same source of
+      // truth that `botPlayer.ts` and `useWaitingRoomActions` use. Avoids
+      // any window where DB rows carry "Bot {hex}" before `getBotAlias`
+      // overrides at render.
+      const existingUsernames = (playersRef.current ?? [])
+        .filter((p) => p.is_bot)
+        .map((p) => p?.profiles?.username ?? null);
+      const nextNumber = getNextBotNumber(existingUsernames);
+      let botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: false });
       botNameForToast = botName;
 
-      // Insert bot profile
       const { error: profileError } = await perf.step("profiles.insert", () =>
         supabase.from("profiles").insert({
           id: botId,
@@ -255,16 +260,14 @@ export const WaitingForPlayersTable = ({
       );
 
       if (profileError) {
-        // If still collides (extremely rare), try with full suffix
         if (profileError.code === "23505") {
-          const fullSuffix = botId.replace(/-/g, "").slice(0, 12);
-          const fallbackName = `Bot ${fullSuffix}`;
-          botNameForToast = fallbackName;
+          botName = makeBotUsername({ nextNumber, botId, forceUniqueSuffix: true });
+          botNameForToast = botName;
 
           const { error: retryError } = await perf.step("profiles.insert.retry", () =>
             supabase.from("profiles").insert({
               id: botId,
-              username: fallbackName,
+              username: botName,
               aggression_level: aggressionLevel,
             })
           );
