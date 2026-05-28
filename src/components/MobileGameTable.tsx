@@ -31,8 +31,10 @@ import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
-  observerSlotForPosition as canonicalObserverSlot,
+  type CanonicalSlot,
 } from "@/lib/canonicalShell/seatAnchors";
+import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
@@ -3949,15 +3951,28 @@ export const MobileGameTable = ({
     }, 300);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357]);
 
-  // ── Canonical seat contract (Phase 1 wiring) ──────────────────────
-  // Local seat/projection math now delegates to the canonical contract
-  // in @/lib/canonicalShell/seatAnchors. Behavior is preserved exactly
-  // for the games rendered by MobileGameTable (Holm, 3-5-7, Horses,
-  // SCC — all multiplayer-capable), which always use relative seating
-  // semantics regardless of current player count. Inherently-2P games
-  // (Cribbage/Gin/Yahtzee) use their own dedicated tables and will be
-  // wired in later phases; passing gameType here keeps the contract
-  // honest in case routing ever changes.
+  // ── Canonical seat contract (PR-B: single-path collapse) ──────────
+  //
+  // MobileGameTable has exactly ONE seat-rendering path: read every
+  // anchor from the shell-owned SeatAnchorLayer (gated by
+  // CANONICAL_SEAT_CONSUMERS), render each occupied seat through
+  // <CanonicalSeatCluster slot={anchor.slot}>, and let the cluster
+  // resolve placement, observer/active projection, and the Holm
+  // showdown raise.
+  //
+  // No bespoke positioning if-tree, no `getObserverSlotFromPosition`
+  // helper, no per-projection seat branch. Projection mode and slot
+  // identity are owned by `resolveSeatAnchors` in seatAnchors.ts; this
+  // component is a pure consumer.
+  //
+  // Positional helpers retained as TEMPORARY consumers (slotPositions
+  // for dice fly-in origin, getClockwiseDistance for buck/spotlight,
+  // etc.) are NOT seat renderers — they convert authoritative seat
+  // positions to pixel offsets for non-seat overlays. Per the user's
+  // PR-B scope they may stay until a follow-up rewires them through
+  // canonical pixel anchors; seat ownership/projection/continuity is
+  // the milestone for this PR.
+  const shellAnchors = useRequiredSeatAnchors(gameType ?? null);
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
 
@@ -4007,46 +4022,23 @@ export const MobileGameTable = ({
     return getParticipantChipBgClass(status);
   };
 
-
-  // Render player chip - chipstack in center, name below (or above for bottom positions)
-  // For observers (!currentPlayer), slotIndex represents the visual slot matching the absolute position
-  // Map absolute positions to visual slot indices for consistent behavior:
-  // Pos 1 -> slot 2 (top-left), Pos 2 -> slot 1 (middle-left), Pos 3 -> slot 0 (bottom-left)
-  // Pos 4 -> slot -1 (home/bottom-center), Pos 5 -> slot 5 (bottom-right), Pos 6 -> slot 4 (middle-right), Pos 7 -> slot 3 (top-right)
-  // Delegated to canonical contract (matches the established slot map exactly).
-  const getObserverSlotFromPosition = (position: number): number => {
-    const slot = canonicalObserverSlot(position);
-    return slot ?? 0;
-  };
-  
-  // Calculate animation origin for dice fly-in based on current turn player's position
-  // Returns pixel offset from center of the dice area
+  // Calculate animation origin for dice fly-in based on current turn player's position.
+  // Sourced from the same canonical anchor table the seat cluster reads
+  // from, so observer vs active projection cannot drift between the
+  // chip stack and the dice origin.
   const getDiceAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
     const turnPlayerId = horsesController.currentTurnPlayerId;
     if (!turnPlayerId) return undefined;
-    
+
     const turnPlayer = players.find(p => p.id === turnPlayerId);
     if (!turnPlayer) return undefined;
-    
-    // For observers: use absolute position
-    // For seated players: use relative slot
-    let slotIndex: number;
-    if (!currentPlayer) {
-      slotIndex = getObserverSlotFromPosition(turnPlayer.position);
-    } else {
-      slotIndex = getClockwiseDistance(turnPlayer.position) - 1;
-    }
-    
-    // Map slot index to approximate pixel offsets from center
-    // Mobile layout is roughly 300px wide, 200px tall for the dice area
-    // Slot positions based on CSS layout:
-    // Slot 0: Bottom-left -> { x: -80, y: 60 }
-    // Slot 1: Middle-left -> { x: -100, y: 0 }
-    // Slot 2: Top-left -> { x: -80, y: -50 }
-    // Slot 3: Top-right -> { x: 80, y: -50 }
-    // Slot 4: Middle-right -> { x: 100, y: 0 }
-    // Slot 5: Bottom-right -> { x: 80, y: 60 }
-    // Slot -1: Bottom center (current player) -> { x: 0, y: 80 }
+
+    const anchor = shellAnchors?.byPosition.get(turnPlayer.position);
+    const slot = anchor?.slot ?? null;
+    if (slot === null) return undefined;
+
+    // Map CanonicalSlot → approximate pixel offsets from dice-area center.
+    // Mobile layout is roughly 300px wide, 200px tall.
     const slotPositions: Record<number, { x: number; y: number }> = {
       [-1]: { x: 0, y: 80 },
       0: { x: -80, y: 60 },
@@ -4056,19 +4048,19 @@ export const MobileGameTable = ({
       4: { x: 100, y: 0 },
       5: { x: 80, y: 60 },
     };
-    
-    return slotPositions[slotIndex] ?? { x: 0, y: 60 };
-  }, [horsesController.currentTurnPlayerId, players, currentPlayer, getClockwiseDistance]);
-  
+    return slotPositions[slot] ?? { x: 0, y: 60 };
+  }, [horsesController.currentTurnPlayerId, players, shellAnchors]);
+
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
       (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
       (diceGameplayUiActive && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
     const isCurrentUser = player.user_id === currentUserId;
-    
-    // For observers, derive slot from absolute position for consistent behavior
-    const isObserver = !currentPlayer;
-    const effectiveSlotIndex = isObserver ? getObserverSlotFromPosition(player.position) : slotIndex;
+
+    // Slot is now ALWAYS the canonical anchor slot passed by the seat
+    // mapper below. No observer/seated branch, no bespoke override.
+    const effectiveSlotIndex = slotIndex;
+
     
     // CRITICAL: Only show other players' decisions after allDecisionsIn (for 3-5-7)
     // Holm game shows decisions immediately (turn-based), 3-5-7 hides until all in
@@ -6235,150 +6227,48 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Players arranged around table */}
-        {/* CRITICAL: For observers (!currentPlayer), use ABSOLUTE position mapping */}
-        {/* For seated players, use relative slots based on clockwise distance */}
-        {!currentPlayer ? (
-          // OBSERVER MODE: Render players at ABSOLUTE positions
-          <>
-            {/* Position 1: Top-left - move up during showdown */}
-            {(() => {
-              const player = players.find(p => p.position === 1);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return player && (
-                <div className={`absolute left-10 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldMoveUp ? 'top-8' : 'top-4'
-                }`}>
-                  {renderPlayerChip(player, 2)}
-                </div>
-              );
-            })()}
-            {/* Position 2: Left - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
-            {(() => {
-              const player = players.find(p => p.position === 2);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return (
-                <div className={`absolute left-0 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
-                }`}>
-                  {player && renderPlayerChip(player, 1)}
-                </div>
-              );
-            })()}
-            {/* Position 3: Bottom-left */}
-            {players.find(p => p.position === 3) && (
-              <div className={`absolute bottom-2 left-10 ${playerSlotZIndex}`}>
-                {renderPlayerChip(players.find(p => p.position === 3)!, 0)}
-              </div>
-            )}
-            {/* Position 4: Bottom center */}
-            {players.find(p => p.position === 4) && (
-              <div className={`absolute bottom-2 left-1/2 -translate-x-1/2 ${playerSlotZIndex}`}>
-                {renderPlayerChip(players.find(p => p.position === 4)!, -1)}
-              </div>
-            )}
-            {/* Position 5: Bottom-right */}
-            {players.find(p => p.position === 5) && (
-              <div className={`absolute bottom-2 right-10 ${playerSlotZIndex}`}>
-                {renderPlayerChip(players.find(p => p.position === 5)!, 5)}
-              </div>
-            )}
-            {/* Position 6: Right - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
-            {(() => {
-              const player = players.find(p => p.position === 6);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return (
-                <div className={`absolute right-0 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
-                }`}>
-                  {player && renderPlayerChip(player, 4)}
-                </div>
-              );
-            })()}
-            {/* Position 7: Top-right - move up during showdown */}
-            {(() => {
-              const player = players.find(p => p.position === 7);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return player && (
-                <div className={`absolute right-10 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldMoveUp ? 'top-8' : 'top-4'
-                }`}>
-                  {renderPlayerChip(player, 3)}
-                </div>
-              );
-            })()}
-          </>
-        ) : (
-          // SEATED PLAYER MODE: Render players at relative slots (clockwise from current player)
-          <>
-            {/* Slot 0 (1 seat clockwise): Bottom-left */}
-            <div className={`absolute bottom-2 left-10 ${playerSlotZIndex}`}>
-              {getPlayerAtSlot(0) && renderPlayerChip(getPlayerAtSlot(0)!, 0)}
-            </div>
-            {/* Slot 1 (2 seats clockwise): Middle-left - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
-            {/* This prevents cards from overlapping community cards when exposed */}
-            {(() => {
-              const player = getPlayerAtSlot(1);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return (
-                <div className={`absolute left-0 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
-                }`}>
-                  {player && renderPlayerChip(player, 1)}
-                </div>
-              );
-            })()}
-            {/* Slot 2 (3 seats clockwise): Top-left - move up during showdown */}
-            {(() => {
-              const player = getPlayerAtSlot(2);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return player && (
-                <div className={`absolute left-10 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldMoveUp ? 'top-8' : 'top-4'
-                }`}>
-                  {renderPlayerChip(player, 2)}
-                </div>
-              );
-            })()}
-            {/* Slot 3 (4 seats clockwise): Top-right - move up during showdown */}
-            {(() => {
-              const player = getPlayerAtSlot(3);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldMoveUp = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return player && (
-                <div className={`absolute right-10 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldMoveUp ? 'top-8' : 'top-4'
-                }`}>
-                  {renderPlayerChip(player, 3)}
-                </div>
-              );
-            })()}
-            {/* Slot 4 (5 seats clockwise): Middle-right - ONLY raise during Holm MULTI-PLAYER showdown when this player stayed */}
-            {/* This prevents cards from overlapping community cards when exposed */}
-            {(() => {
-              const player = getPlayerAtSlot(4);
-              const playerStayed = player?.current_decision === 'stay';
-              const shouldRaise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && playerStayed;
-              return (
-                <div className={`absolute right-0 ${playerSlotZIndex} transition-all duration-300 ${
-                  shouldRaise ? 'top-[40%] -translate-y-1/2' : 'top-1/2 -translate-y-1/2'
-                }`}>
-                  {player && renderPlayerChip(player, 4)}
-                </div>
-              );
-            })()}
-            {/* Slot 5 (6 seats clockwise): Bottom-right */}
-            <div className={`absolute bottom-2 right-10 ${playerSlotZIndex}`}>
-              {getPlayerAtSlot(5) && renderPlayerChip(getPlayerAtSlot(5)!, 5)}
-            </div>
-          </>
-        )}
+        {/* PR-B: single seat-rendering path.
+            Every occupied seat resolves through the shell-owned
+            SeatAnchorLayer (gated by CANONICAL_SEAT_CONSUMERS) and
+            renders through CanonicalSeatCluster at the projected
+            canonical slot. No observer/seated branch. No bespoke
+            absolute positioning. The Holm multi-player showdown raise
+            lives in `getCanonicalSlotRaiseClass` (driven by
+            `raisePosition`), not in this component.
+
+            `hideChipBubble` is intentional: the cluster's identity
+            pill is not used here yet — chip visuals/decorators
+            (turn-pulse ring, dealer pip, leg indicators, auto-roll,
+            emoticons, ValueChangeFlash, card backs, exposed showdown
+            cards) remain owned by `renderPlayerChip` until the
+            follow-up styling-unification PR. Cluster handles ONLY
+            positioning, projection, and the raise. */}
+        {players.map((player) => {
+          const anchor = shellAnchors?.byPosition.get(player.position);
+          const slot: CanonicalSlot | null = anchor?.slot ?? null;
+          if (slot === null) return null;
+          // Self-suppression is handled inside CanonicalSeatCluster
+          // (returns null when viewerPosition === position), so the
+          // current player never double-renders at HOME on top of the
+          // bottom HUD.
+          const stayed = player.current_decision === 'stay';
+          const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+          return (
+            <CanonicalSeatCluster
+              key={player.id}
+              slot={slot}
+              position={player.position}
+              name=""
+              chipValue=""
+              hideChipBubble
+              raisePosition={raise}
+              className={playerSlotZIndex}
+            >
+              {renderPlayerChip(player, slot)}
+            </CanonicalSeatCluster>
+          );
+        })}
+
         
         {/* Dealer button is now shown on player chip stacks (OUTSIDE position), no separate felt button needed */}
         
