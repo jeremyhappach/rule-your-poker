@@ -49,6 +49,7 @@ import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster"
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { observerSlotForPosition } from "@/lib/canonicalShell/seatAnchors";
 import { derivePlayerStatus } from "@/lib/canonicalShell/participantStatus";
+import { getDisplayName } from "@/lib/botAlias";
 import { formatChipValue } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -234,9 +235,9 @@ function WaitingSurfaceBody({
                 // via the SeatAnchorLayer viewerPosition context.
 
 
-                const label =
-                  player.profiles?.username ??
-                  (player.is_bot ? "Bot" : "Player");
+                const actualUsername =
+                  player.profiles?.username ?? (player.is_bot ? "Bot" : "Player");
+                const label = getDisplayName(players, player, actualUsername);
                 const status = derivePlayerStatus(player, null, {
                   // No stay/fold decisions exist in waiting; the
                   // derivation will resolve to 'waiting' or
@@ -249,9 +250,9 @@ function WaitingSurfaceBody({
                     key={player.id}
                     slot={anchor.slot}
                     position={player.position}
-                    name={`${label}${player.is_bot ? " 🤖" : ""}`}
+                    name={label}
                     isDealer={player.user_id === hostUserId}
-                    chipValue={formatChipValue(player.chips ?? 0)}
+                    chipValue={`$${formatChipValue(player.chips ?? 0)}`}
                     status={status}
                   />
                 );
@@ -376,8 +377,7 @@ function WaitingSurfaceBody({
                     className="flex items-center justify-between text-sm bg-muted/30 rounded px-3 py-2"
                   >
                     <span className="text-foreground">
-                      {p.profiles?.username ?? "Player"}
-                      {p.is_bot ? " (Bot)" : ""}
+                      {getDisplayName(players, p, p.profiles?.username ?? "Player")}
                     </span>
                     <span className="text-muted-foreground text-xs">
                       Seat {p.position}

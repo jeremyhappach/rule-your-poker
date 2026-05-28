@@ -7065,7 +7065,7 @@ export const MobileGameTable = ({
                   `}>
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
-                        {player.profiles?.username || (player.is_bot ? `Bot ${player.position}` : `P${player.position}`)}
+                        {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
                       </span>
                       {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
                       {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
