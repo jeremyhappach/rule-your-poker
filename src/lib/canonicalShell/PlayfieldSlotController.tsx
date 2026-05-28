@@ -366,6 +366,13 @@ export function PlayfieldSlotController({
             beneath the pre-game overlay. It unmounts the moment the
             slot becomes active, at which point the gameplay tree owns
             the felt directly. */}
+        {/* PR-B.2: in persistent-children mode, the underlying
+            MobileGameTable (children below) is the canonical seat
+            renderer and stays mounted across pre-game / interstitial.
+            If we ALSO feed participants here, NeutralInterstitial
+            mounts a SECOND CanonicalSeatCluster layer at the same
+            anchors → two chipstacks render simultaneously. Suppress
+            the interstitial seat layer when children own seats. */}
         {mountedIdentity === null && (
           <div className="absolute inset-0 flex flex-col">
             <NeutralInterstitial
@@ -375,13 +382,6 @@ export function PlayfieldSlotController({
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
-              {/* PR-B.2: in persistent-children mode, the underlying
-                  MobileGameTable (children below) is the canonical seat
-                  renderer and stays mounted across pre-game / interstitial.
-                  If we ALSO feed participants here, NeutralInterstitial
-                  mounts a SECOND CanonicalSeatCluster layer at the same
-                  anchors → two chipstacks render simultaneously. Suppress
-                  the interstitial seat layer when children own seats. */}
             />
           </div>
         )}
