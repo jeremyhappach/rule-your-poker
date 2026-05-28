@@ -9913,30 +9913,52 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _lastBootstrapDiagRef = useRef<string | null>(null);
   useEffect(() => {
     if ((currentRound?.hand_number ?? 0) > 1) return;
+    if (!gameId) return;
     if (_lastBootstrapDiagRef.current === _bootstrapDiagKey) return;
     const prev = _lastBootstrapDiagRef.current;
     _lastBootstrapDiagRef.current = _bootstrapDiagKey;
-    console.log('[BOOTSTRAP_FLASH_DIAG] seat-anchor input change', {
+    const payload = {
       from: prev,
       to: _bootstrapDiagKey,
-      gameId: gameId ?? null,
       handNumber: currentRound?.hand_number ?? null,
       status: game.status ?? null,
       rawGameType: game.game_type ?? null,
       shellRoutedGameType: _shellRoutedGameType,
       shellCanonicalFamily,
-      shellProjectionMode,
+      shellProjectionMode: shellProjectionMode ?? null,
       shellViewerPosition,
       isViewerSeated,
+      currentPlayerId: currentPlayer?.id ?? null,
       currentPlayerStatus: currentPlayer?.status ?? null,
+      currentPlayerPosition: currentPlayer?.position ?? null,
       currentPlayerWaiting: (currentPlayer as any)?.waiting ?? null,
       currentPlayerSittingOut: currentPlayer?.sitting_out ?? null,
       playerCount: players.length,
       seatedCount: shellEligibleSeats?.length ?? 0,
+      seatRoster: shellEligibleSeats
+        ? shellEligibleSeats.map(s => s.position).sort((a, b) => a - b)
+        : null,
       persistentPokerShell: _isPokerShellPersistent,
-      timestamp: performance.now(),
-    });
-  }, [_bootstrapDiagKey, gameId, currentRound?.hand_number, game.status, game.game_type, _shellRoutedGameType, shellCanonicalFamily, shellProjectionMode, shellViewerPosition, isViewerSeated, currentPlayer?.status, (currentPlayer as any)?.waiting, currentPlayer?.sitting_out, players.length, shellEligibleSeats?.length, _isPokerShellPersistent]);
+      dealerGameId: (game as any).current_game_uuid ?? null,
+      configComplete: (game as any).config_complete ?? null,
+      tPerf: performance.now(),
+    };
+    console.log('[BOOTSTRAP_FLASH_DIAG] seat-anchor input change', payload);
+    supabase
+      .from('debug_events' as any)
+      .insert({
+        game_id: gameId,
+        round_id: currentRound?.id ?? null,
+        user_id: user?.id ?? null,
+        client_role: isViewerSeated ? 'actor' : 'observer',
+        event_type: 'bootstrap_flash_diag',
+        payload,
+      } as any)
+      .then(({ error }) => {
+        if (error) console.warn('[BOOTSTRAP_FLASH_DIAG] persist failed:', error.message);
+      });
+  }, [_bootstrapDiagKey, gameId, currentRound?.hand_number, currentRound?.id, game.status, game.game_type, _shellRoutedGameType, shellCanonicalFamily, shellProjectionMode, shellViewerPosition, isViewerSeated, currentPlayer?.id, currentPlayer?.status, currentPlayer?.position, (currentPlayer as any)?.waiting, currentPlayer?.sitting_out, players.length, shellEligibleSeats, _isPokerShellPersistent, user?.id]);
+
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
   // single authoritative canonical felt; the shell no longer
