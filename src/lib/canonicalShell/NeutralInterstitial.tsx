@@ -292,7 +292,6 @@ function CanonicalSeatClusterDeferred(props: {
   chipValue: string;
   status: ReturnType<typeof derivePlayerStatus>;
 }) {
-  const { useSeatAnchors } = require('./SeatAnchorLayer') as typeof import('./SeatAnchorLayer');
   const { byPosition } = useSeatAnchors();
   const anchor = byPosition.get(props.position);
   if (!anchor) return null;
