@@ -1919,11 +1919,22 @@ export function useHorsesMobileController({
         if (result.isQualified && result.cargoSum === 12) {
           const lockedHand = lockInSCCHand(sccHand);
           setLocalHand(lockedHand);
-          await saveMyState(lockedHand, true, result, heldMaskBeforeRoll);
+          const persistedState = await saveMyState(lockedHand, true, result, heldMaskBeforeRoll);
+          const playerStatesAfterLock = {
+            ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+            ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+          };
+          const willBeLastToComplete =
+            turnOrder.length > 0 &&
+            turnOrder.every((pid) => playerStatesAfterLock[pid]?.isComplete);
 
-          setTimeout(() => {
-            advanceToNextTurn(myPlayer?.id ?? null);
-          }, HORSES_POST_TURN_PAUSE_MS);
+          if (willBeLastToComplete) {
+            void advanceToNextTurn(myPlayer?.id ?? null);
+          } else {
+            setTimeout(() => {
+              advanceToNextTurn(myPlayer?.id ?? null);
+            }, HORSES_POST_TURN_PAUSE_MS);
+          }
           return;
         }
       }
@@ -1932,10 +1943,22 @@ export function useHorsesMobileController({
         // Use appropriate evaluation function based on game type
         const result = isSCC ? evaluateSCCHand(newHand as SCCHand) : evaluateHand((newHand as HorsesHand).dice);
         // Final roll: await to ensure state is saved before advancing turn
-        await saveMyState(newHand, true, result, heldMaskBeforeRoll);
-        setTimeout(() => {
-          advanceToNextTurn(myPlayer?.id ?? null);
-        }, HORSES_POST_TURN_PAUSE_MS);
+        const persistedState = await saveMyState(newHand, true, result, heldMaskBeforeRoll);
+        const playerStatesAfterRoll = {
+          ...(persistedState?.playerStates ?? incomingHorsesStateRef.current?.playerStates ?? {}),
+          ...(myPlayer?.id ? { [myPlayer.id]: { ...(persistedState?.playerStates?.[myPlayer.id] ?? {}), isComplete: true } } : {}),
+        };
+        const willBeLastToComplete =
+          turnOrder.length > 0 &&
+          turnOrder.every((pid) => playerStatesAfterRoll[pid]?.isComplete);
+
+        if (willBeLastToComplete) {
+          void advanceToNextTurn(myPlayer?.id ?? null);
+        } else {
+          setTimeout(() => {
+            advanceToNextTurn(myPlayer?.id ?? null);
+          }, HORSES_POST_TURN_PAUSE_MS);
+        }
       }
       // Note: intermediate rolls already saved immediately above, no need to save again here
     }, animationDuration);
