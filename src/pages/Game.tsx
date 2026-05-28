@@ -480,6 +480,12 @@ function buildThreeFiveSevenSnapshot(
   };
 }
 
+// Module-level dedup cache for BOOTSTRAP_FLASH_DIAG (see in-render
+// usage below). Lives outside the component so it survives the early
+// `if (!game) return null` guard without needing a React hook.
+const __bootstrapFlashDiagCache = new Map<string, string>();
+
+
 const Game = () => {
   const { gameId } = useParams();
   const navigate = useNavigate();
