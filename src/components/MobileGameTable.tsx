@@ -787,7 +787,13 @@ export const MobileGameTable = ({
   // This prevents the badge from flickering/updating when the player's roll takes the lead
   // The cache is snapshotted ONCE when isMyTurn transitions from false to true,
   // and is never updated again until the turn ends.
-  const cachedWinningResultRef = useRef<{ description: string; dice: any[] | null } | null>(null);
+  const cachedWinningResultRef = useRef<{
+    description: string;
+    dice: any[] | null;
+    dealerGameId: string | null;
+    roundId: string | null;
+    source: string;
+  } | null>(null);
   const turnSnapshotTakenRef = useRef(false); // True once we've snapshotted at turn start
   
   // Detect turn transitions and manage snapshot lifecycle
@@ -802,6 +808,9 @@ export const MobileGameTable = ({
         cachedWinningResultRef.current = {
           description: liveWinningResult.description,
           dice: liveWinningDice ?? null,
+          dealerGameId: horsesDealerGameId ?? null,
+          roundId: horsesRoundId ?? null,
+          source: 'turn-start-snapshot',
         };
       } else {
         // No hand to beat - explicitly set to null so we don't show any beat badge
