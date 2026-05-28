@@ -6273,72 +6273,33 @@ export const MobileGameTable = ({
         
         {/* Dealer button is now shown on player chip stacks (OUTSIDE position), no separate felt button needed */}
         
-        {/* Buck indicator on felt - Holm games only, hide only during active showdown (not locked) */}
+        {/* Buck indicator on felt - Holm games only, hide only during active showdown (not locked).
+            Positioning is sourced from the canonical seat anchor (same
+            slot the player chip cluster occupies). This guarantees the
+            buck tracks the seat through every projection-mode change
+            (observer-absolute / active-canonical) and lifecycle phase
+            without a parallel pixel map. */}
         {gameType === 'holm-game' && buckPosition !== null && buckPosition !== undefined && !isAnyPlayerInShowdownRaw && (() => {
-        // CRITICAL: For observers (!currentPlayer), use ABSOLUTE position mapping
-        // For seated players, use relative slots based on clockwise distance
-        const isObserver = !currentPlayer;
-        const isCurrentPlayerBuck = currentPlayer?.position === buckPosition;
-        
-        // Calculate pixel positions
-        let positionStyle: React.CSSProperties = {
-          bottom: '8px',
-          left: '55%',
-          transform: 'translateX(-50%)',
-          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-        };
-        
-        if (isObserver) {
-          // OBSERVER MODE: Use absolute position mapping matching player positions
-          // Position 1: Top-left, Position 2: Left, Position 3: Bottom-left
-          // Position 4: Bottom center, Position 5: Bottom-right, Position 6: Right, Position 7: Top-right
-          if (buckPosition === 1) {
-            positionStyle = { top: '44px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckPosition === 2) {
-            positionStyle = { top: '38%', left: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckPosition === 3) {
-            positionStyle = { bottom: '52px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckPosition === 4) {
-            // Bottom center - current player position for seated players
-            positionStyle = { bottom: '8px', left: '55%', transform: 'translateX(-50%)', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckPosition === 5) {
-            positionStyle = { bottom: '52px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckPosition === 6) {
-            positionStyle = { top: '38%', right: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckPosition === 7) {
-            positionStyle = { top: '44px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          }
-        } else if (!isCurrentPlayerBuck) {
-          // SEATED PLAYER MODE: Use relative slots based on clockwise distance
-          const buckSlot = getClockwiseDistance(buckPosition) - 1;
-          // Slot positions match clockwise layout:
-          // 0: Bottom-left, 1: Middle-left, 2: Top-left
-          // 3: Top-right, 4: Middle-right, 5: Bottom-right
-          if (buckSlot === 0) {
-            positionStyle = { bottom: '52px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckSlot === 1) {
-            positionStyle = { top: '38%', left: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckSlot === 2) {
-            positionStyle = { top: '44px', left: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckSlot === 3) {
-            positionStyle = { top: '44px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckSlot === 4) {
-            positionStyle = { top: '38%', right: '52px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          } else if (buckSlot === 5) {
-            positionStyle = { bottom: '52px', right: '80px', transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' };
-          }
-        }
-        // else: isCurrentPlayerBuck - use default bottom center position
-        
-        return <div className="absolute z-30" style={positionStyle}>
+          const buckAnchor = shellAnchors?.byPosition.get(buckPosition);
+          const buckSlot = buckAnchor?.slot ?? null;
+          if (buckSlot === null) return null;
+          const placement = getCanonicalSlotPlacement(buckSlot);
+          return (
+            <div
+              className={`absolute z-30 flex ${placement.className}`}
+              style={{ transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              data-buck-slot={buckSlot}
+            >
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-600 rounded-full blur-sm animate-pulse opacity-75" />
                 <div className="relative bg-white rounded-full p-0.5 shadow-lg border-2 border-blue-800 animate-bounce flex items-center justify-center w-7 h-7">
                   <img alt="Buck" className="w-full h-full rounded-full object-cover" src="/lovable-uploads/7ca746e0-8bcb-4dcd-9d87-407f9457deb8.png" />
                 </div>
               </div>
-            </div>;
-      })()}
+            </div>
+          );
+        })()}
+
         
         {/* Current player's legs indicator on felt - 3-5-7 games only */}
         {/* Use a stable snapshot during the win transition so legs don't disappear/reappear mid-sequence */}
