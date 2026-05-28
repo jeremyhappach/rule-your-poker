@@ -87,6 +87,14 @@ export interface PlayfieldSlotControllerProps {
    * before.
    */
   preGameOverlay?: ReactNode;
+  /**
+   * Externally-owned shell tab state. Forwarded to NeutralInterstitial
+   * so the user's selected tab survives dealer-game rollovers and
+   * setup-phase interstitials. When omitted, NeutralInterstitial falls
+   * back to its internal default (legacy behavior).
+   */
+  neutralActiveTab?: import('./ShellTabBar').ShellTabId;
+  onNeutralActiveTabChange?: (tab: import('./ShellTabBar').ShellTabId) => void;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
@@ -103,6 +111,8 @@ export function PlayfieldSlotController({
   neutralAnteAmount = 0,
   persistentChildrenKey = null,
   preGameOverlay = null,
+  neutralActiveTab,
+  onNeutralActiveTabChange,
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
@@ -351,6 +361,8 @@ export function PlayfieldSlotController({
               reason={`poker-shell-pregame:${neutralReason}`}
               gameKind={neutralGameKind}
               anteAmount={neutralAnteAmount}
+              activeTab={neutralActiveTab}
+              onActiveTabChange={onNeutralActiveTabChange}
             />
           </div>
         )}
@@ -387,6 +399,8 @@ export function PlayfieldSlotController({
           reason={neutralReason}
           gameKind={neutralGameKind}
           anteAmount={neutralAnteAmount}
+          activeTab={neutralActiveTab}
+          onActiveTabChange={onNeutralActiveTabChange}
         />
       ) : (
         <div

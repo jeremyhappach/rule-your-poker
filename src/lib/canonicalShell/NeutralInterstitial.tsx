@@ -25,9 +25,27 @@ export interface NeutralInterstitialProps {
   reason?: string;
   gameKind?: CanonicalFeltGameKind | null;
   anteAmount?: number | string;
+  /**
+   * Externally-owned tab state. When provided, NeutralInterstitial
+   * registers THIS state with ShellTabBar instead of its own internal
+   * default — so the user's selected tab survives dealer-game
+   * rollovers / setup phases / interstitial mounts. The parent
+   * (Game.tsx) holds the persistent `mobileActiveTab` state and
+   * passes it here so the tab bar reads the same source-of-truth
+   * across active gameplay and neutral interstitials.
+   */
+  activeTab?: ShellTabId;
+  onActiveTabChange?: (tab: ShellTabId) => void;
 }
 
-export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }: NeutralInterstitialProps) {
+export function NeutralInterstitial({
+  gameId,
+  reason,
+  gameKind,
+  anteAmount = 0,
+  activeTab: externalActiveTab,
+  onActiveTabChange,
+}: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
   // No fake-default game kind. If the caller did not supply one (truly
   // pre-game, no committed gameType yet), we still need a kind to satisfy
@@ -50,15 +68,24 @@ export function NeutralInterstitial({ gameId, reason, gameKind, anteAmount = 0 }
   // (between-games rollover, dealer config, pre-game bootstrap) no
   // gameplay component has registered ShellTabBar state, so the tab
   // bar would render nothing and the shell chrome would visually
-  // disappear. Publish a minimal neutral baseline (lobby/history
-  // toggleable, cards/chat inert) so the canonical bottom chrome
-  // remains structurally and visually continuous. The moment a real
-  // gameplay surface mounts and calls useShellTabBar(...), its
-  // registration supersedes this baseline ("most recent wins").
-  const [neutralTab, setNeutralTab] = useState<ShellTabId>('lobby');
+  // disappear. Publish a minimal neutral baseline so the canonical
+  // bottom chrome remains structurally and visually continuous. The
+  // moment a real gameplay surface mounts and calls useShellTabBar(...),
+  // its registration supersedes this baseline ("most recent wins").
+  //
+  // Tab selection is user-persistent shell state, NOT gameplay-lifecycle
+  // state. When the parent (Game.tsx) supplies `activeTab` /
+  // `onActiveTabChange`, we register THAT — the same persistent state
+  // the active gameplay surface uses — so the selected tab survives
+  // every dealer-game rollover and setup-phase interstitial. We only
+  // fall back to local state for stand-alone usages (tests, callers
+  // that don't own a persistent tab store).
+  const [internalNeutralTab, setInternalNeutralTab] = useState<ShellTabId>('lobby');
+  const neutralTab = externalActiveTab ?? internalNeutralTab;
   const handleSetNeutralTab = useCallback((t: ShellTabId) => {
-    setNeutralTab(t);
-  }, []);
+    if (onActiveTabChange) onActiveTabChange(t);
+    else setInternalNeutralTab(t);
+  }, [onActiveTabChange]);
   const baselineTabState = useMemo(
     () => ({
       cardsIcon: 'spade' as const,
