@@ -32,7 +32,10 @@ import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
   observerSlotForPosition as canonicalObserverSlot,
+  type CanonicalSlot,
 } from "@/lib/canonicalShell/seatAnchors";
+import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
