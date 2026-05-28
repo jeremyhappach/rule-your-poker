@@ -3534,6 +3534,9 @@ export function useHorsesMobileController({
     midnightPlayerName,
     handleMidnightAnimationComplete,
     // Completed turn hold state (for showing dice before transitioning to badge)
-    completedTurnHold,
+    // Hard-gated by dealerGameScopeChanged so a prior dealer-game's hold can never
+    // bleed into the new dealer-game's first render frame (P0 identity-boundary
+    // invariant: no prior-game gameplay artifacts may survive a dealerGameId change).
+    completedTurnHold: dealerGameScopeChanged ? null : completedTurnHold,
   };
 }
