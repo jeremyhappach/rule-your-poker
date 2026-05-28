@@ -3952,15 +3952,28 @@ export const MobileGameTable = ({
     }, 300);
   }, [onThreeFiveSevenWinAnimationComplete, threeFiveSevenWinnerId, threeFiveSevenWinPotAmount, potToPlayerTriggerId357]);
 
-  // ── Canonical seat contract (Phase 1 wiring) ──────────────────────
-  // Local seat/projection math now delegates to the canonical contract
-  // in @/lib/canonicalShell/seatAnchors. Behavior is preserved exactly
-  // for the games rendered by MobileGameTable (Holm, 3-5-7, Horses,
-  // SCC — all multiplayer-capable), which always use relative seating
-  // semantics regardless of current player count. Inherently-2P games
-  // (Cribbage/Gin/Yahtzee) use their own dedicated tables and will be
-  // wired in later phases; passing gameType here keeps the contract
-  // honest in case routing ever changes.
+  // ── Canonical seat contract (PR-B: single-path collapse) ──────────
+  //
+  // MobileGameTable has exactly ONE seat-rendering path: read every
+  // anchor from the shell-owned SeatAnchorLayer (gated by
+  // CANONICAL_SEAT_CONSUMERS), render each occupied seat through
+  // <CanonicalSeatCluster slot={anchor.slot}>, and let the cluster
+  // resolve placement, observer/active projection, and the Holm
+  // showdown raise.
+  //
+  // No bespoke positioning if-tree, no `getObserverSlotFromPosition`
+  // helper, no per-projection seat branch. Projection mode and slot
+  // identity are owned by `resolveSeatAnchors` in seatAnchors.ts; this
+  // component is a pure consumer.
+  //
+  // Positional helpers retained as TEMPORARY consumers (slotPositions
+  // for dice fly-in origin, getClockwiseDistance for buck/spotlight,
+  // etc.) are NOT seat renderers — they convert authoritative seat
+  // positions to pixel offsets for non-seat overlays. Per the user's
+  // PR-B scope they may stay until a follow-up rewires them through
+  // canonical pixel anchors; seat ownership/projection/continuity is
+  // the milestone for this PR.
+  const shellAnchors = useRequiredSeatAnchors(gameType ?? null);
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
 
@@ -4010,46 +4023,23 @@ export const MobileGameTable = ({
     return getParticipantChipBgClass(status);
   };
 
-
-  // Render player chip - chipstack in center, name below (or above for bottom positions)
-  // For observers (!currentPlayer), slotIndex represents the visual slot matching the absolute position
-  // Map absolute positions to visual slot indices for consistent behavior:
-  // Pos 1 -> slot 2 (top-left), Pos 2 -> slot 1 (middle-left), Pos 3 -> slot 0 (bottom-left)
-  // Pos 4 -> slot -1 (home/bottom-center), Pos 5 -> slot 5 (bottom-right), Pos 6 -> slot 4 (middle-right), Pos 7 -> slot 3 (top-right)
-  // Delegated to canonical contract (matches the established slot map exactly).
-  const getObserverSlotFromPosition = (position: number): number => {
-    const slot = canonicalObserverSlot(position);
-    return slot ?? 0;
-  };
-  
-  // Calculate animation origin for dice fly-in based on current turn player's position
-  // Returns pixel offset from center of the dice area
+  // Calculate animation origin for dice fly-in based on current turn player's position.
+  // Sourced from the same canonical anchor table the seat cluster reads
+  // from, so observer vs active projection cannot drift between the
+  // chip stack and the dice origin.
   const getDiceAnimationOrigin = useCallback((): { x: number; y: number } | undefined => {
     const turnPlayerId = horsesController.currentTurnPlayerId;
     if (!turnPlayerId) return undefined;
-    
+
     const turnPlayer = players.find(p => p.id === turnPlayerId);
     if (!turnPlayer) return undefined;
-    
-    // For observers: use absolute position
-    // For seated players: use relative slot
-    let slotIndex: number;
-    if (!currentPlayer) {
-      slotIndex = getObserverSlotFromPosition(turnPlayer.position);
-    } else {
-      slotIndex = getClockwiseDistance(turnPlayer.position) - 1;
-    }
-    
-    // Map slot index to approximate pixel offsets from center
-    // Mobile layout is roughly 300px wide, 200px tall for the dice area
-    // Slot positions based on CSS layout:
-    // Slot 0: Bottom-left -> { x: -80, y: 60 }
-    // Slot 1: Middle-left -> { x: -100, y: 0 }
-    // Slot 2: Top-left -> { x: -80, y: -50 }
-    // Slot 3: Top-right -> { x: 80, y: -50 }
-    // Slot 4: Middle-right -> { x: 100, y: 0 }
-    // Slot 5: Bottom-right -> { x: 80, y: 60 }
-    // Slot -1: Bottom center (current player) -> { x: 0, y: 80 }
+
+    const anchor = shellAnchors?.byPosition.get(turnPlayer.position);
+    const slot = anchor?.slot ?? null;
+    if (slot === null) return undefined;
+
+    // Map CanonicalSlot → approximate pixel offsets from dice-area center.
+    // Mobile layout is roughly 300px wide, 200px tall.
     const slotPositions: Record<number, { x: number; y: number }> = {
       [-1]: { x: 0, y: 80 },
       0: { x: -80, y: 60 },
@@ -4059,19 +4049,19 @@ export const MobileGameTable = ({
       4: { x: 100, y: 0 },
       5: { x: 80, y: 60 },
     };
-    
-    return slotPositions[slotIndex] ?? { x: 0, y: 60 };
-  }, [horsesController.currentTurnPlayerId, players, currentPlayer, getClockwiseDistance]);
-  
+    return slotPositions[slot] ?? { x: 0, y: 60 };
+  }, [horsesController.currentTurnPlayerId, players, shellAnchors]);
+
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
       (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
       (diceGameplayUiActive && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
     const isCurrentUser = player.user_id === currentUserId;
-    
-    // For observers, derive slot from absolute position for consistent behavior
-    const isObserver = !currentPlayer;
-    const effectiveSlotIndex = isObserver ? getObserverSlotFromPosition(player.position) : slotIndex;
+
+    // Slot is now ALWAYS the canonical anchor slot passed by the seat
+    // mapper below. No observer/seated branch, no bespoke override.
+    const effectiveSlotIndex = slotIndex;
+
     
     // CRITICAL: Only show other players' decisions after allDecisionsIn (for 3-5-7)
     // Holm game shows decisions immediately (turn-based), 3-5-7 hides until all in
