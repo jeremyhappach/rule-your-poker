@@ -3977,8 +3977,35 @@ export const MobileGameTable = ({
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
 
-  const getClockwiseDistance = (playerPos: number): number =>
-    canonicalClockwiseDistance(currentPos, playerPos);
+  // Canonical-anchor-backed clockwise distance.
+  //
+  // PR-B.2 fix: previously this derived distance purely from raw seat
+  // positions via `canonicalClockwiseDistance(currentPos, playerPos)`.
+  // The canonical seat anchor system maps positions to slots through a
+  // mirrored table (ACTIVE_DISTANCE_TO_SLOT: distance 1→slot 5,
+  // distance 6→slot 0) AND can canonicalize 2P face-to-face
+  // arrangements, so a raw distance disagreed with the slot the seat
+  // cluster actually rendered into. Consequence: spotlight, chip
+  // transport, and any other consumer that takes this distance and
+  // converts to `relativeSlot = distance - 1` pointed at the
+  // mirror-image seat for one or more players.
+  //
+  // We now resolve distance from the SAME `shellAnchors.byPosition`
+  // table that drives seat rendering. Slot N is mapped to
+  // `distance = N + 1` so legacy consumers (`relativeSlot = distance -
+  // 1`) land on the canonical slot they actually see on the felt.
+  // HOME slot (-1, viewer's own seat) → distance 0. If an anchor is
+  // missing (defensive: viewer is observer or roster is mid-mutation)
+  // we fall back to the legacy ring math so consumers don't crash.
+  const getClockwiseDistance = (playerPos: number): number => {
+    if (playerPos === currentPos) return 0;
+    const slot = shellAnchors?.byPosition.get(playerPos)?.slot;
+    if (slot === undefined || slot === null) {
+      return canonicalClockwiseDistance(currentPos, playerPos);
+    }
+    if (slot === -1) return 0; // HOME — viewer's own seat
+    return slot + 1;
+  };
 
   const getPlayerAtSlot = (slotIndex: number): Player | undefined => {
     const targetDistance = slotIndex + 1; // slot 0 = 1 seat away, slot 1 = 2 seats away, etc.
@@ -6478,7 +6505,12 @@ export const MobileGameTable = ({
 
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
-        {activeTab === 'cards' && currentPlayer && (
+        {/* PR-B.2: suppress the gameplay cards tab entirely during dealer
+            setup / interstitial phases. Previously the previous hand's
+            currentPlayerCards remained mounted in the cards tab during
+            dealer-game rollover (Holm cards visible on the next-game
+            setup screen). Gameplay artifacts must not leak into pre-game. */}
+        {activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
           diceGameplayUiActive ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
