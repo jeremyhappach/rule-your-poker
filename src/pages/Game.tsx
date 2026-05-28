@@ -9912,7 +9912,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _bootstrapDiagKey = `${_shellRoutedGameType ?? 'null'}|${shellProjectionMode ?? 'undef'}|${shellViewerPosition ?? 'null'}|${_seatInputsKey}|persistent=${_isPokerShellPersistent ? 1 : 0}|status=${game.status ?? 'null'}`;
   const _lastBootstrapDiagRef = useRef<string | null>(null);
   useEffect(() => {
-    if ((game.hand_number ?? 0) > 1) return;
+    if ((currentRound?.hand_number ?? 0) > 1) return;
     if (_lastBootstrapDiagRef.current === _bootstrapDiagKey) return;
     const prev = _lastBootstrapDiagRef.current;
     _lastBootstrapDiagRef.current = _bootstrapDiagKey;
@@ -9920,7 +9920,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       from: prev,
       to: _bootstrapDiagKey,
       gameId: gameId ?? null,
-      handNumber: game.hand_number ?? null,
+      handNumber: currentRound?.hand_number ?? null,
       status: game.status ?? null,
       rawGameType: game.game_type ?? null,
       shellRoutedGameType: _shellRoutedGameType,
@@ -9936,7 +9936,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       persistentPokerShell: _isPokerShellPersistent,
       timestamp: performance.now(),
     });
-  }, [_bootstrapDiagKey, gameId, game.hand_number, game.status, game.game_type, _shellRoutedGameType, shellCanonicalFamily, shellProjectionMode, shellViewerPosition, isViewerSeated, currentPlayer?.status, (currentPlayer as any)?.waiting, currentPlayer?.sitting_out, players.length, shellEligibleSeats?.length, _isPokerShellPersistent]);
+  }, [_bootstrapDiagKey, gameId, currentRound?.hand_number, game.status, game.game_type, _shellRoutedGameType, shellCanonicalFamily, shellProjectionMode, shellViewerPosition, isViewerSeated, currentPlayer?.status, (currentPlayer as any)?.waiting, currentPlayer?.sitting_out, players.length, shellEligibleSeats?.length, _isPokerShellPersistent]);
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
   // single authoritative canonical felt; the shell no longer
