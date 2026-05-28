@@ -122,6 +122,9 @@ export function PlayfieldSlotController({
   preGameOverlay = null,
   neutralActiveTab,
   onNeutralActiveTabChange,
+  neutralParticipants,
+  neutralCurrentUserId,
+  neutralParticipantGameType,
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
