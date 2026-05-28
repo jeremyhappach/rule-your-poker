@@ -17,7 +17,7 @@ import { usePublishShellFelt } from './ShellOwnedFeltHost';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
-import { SeatAnchorLayer } from './SeatAnchorLayer';
+import { SeatAnchorLayer, useSeatAnchors } from './SeatAnchorLayer';
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { derivePlayerStatus } from './participantStatus';
 import { getDisplayName } from '@/lib/botAlias';
