@@ -4721,6 +4721,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               return;
             }
 
+            if (freshGame?.awaiting_next_round !== true) {
+              console.log('[AWAITING_NEXT_ROUND] Awaiting flag already cleared by primary progression path, skipping fallback');
+              return;
+            }
+
             // Horses: proceed by starting a new Horses round (not startRound)
             // NOTE: Do NOT pre-claim awaiting_next_round here — startHorsesRound / startSCCRound
             // have their own atomic rollover claim guards. Pre-consuming the flag here causes
