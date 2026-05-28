@@ -15,10 +15,19 @@
  *     - felt-toned backdrop so the cluster reads on light chrome
  *       without per-game contrast hacks
  *     - vertical cohesion between identity + chip + game-owned content
- *   Game owns (passed as children, fully arbitrary):
+ *     - inner/outer/overlay decorator side-resolution (mid-/top-/
+ *       bottom-right slots flip inner↔outer automatically so games
+ *       never have to know the geometry)
+ *     - ergonomic raise (Holm-stayed multi-player showdown) via
+ *       `raisePosition` driving `getCanonicalSlotRaiseClass`
+ *   Game owns (passed as children / decoration slots, fully arbitrary):
  *     - whatever projected seat content belongs to this game
  *       (Gin: hidden hand backs; Cribbage: dynamic hand region;
- *        Yahtzee: possibly none; future games: anything)
+ *        Yahtzee: possibly none; Holm/3-5-7: card backs + exposed
+ *        cards; Horses/SCC: none)
+ *     - leg pips, auto-roll indicator, dealer pip glyph, turn-pulse
+ *       ring, emoticon overlays — passed via innerDecoration /
+ *       outerDecoration / chipOverlay
  *     - score rails / top HUD composition
  *     - what counts as "the dealer" (caller passes isDealer)
  *
@@ -33,7 +42,11 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { getCanonicalSlotPlacement } from './canonicalSlotPlacement';
+import {
+  getCanonicalSlotPlacement,
+  getCanonicalSlotRaiseClass,
+  isRightSideCanonicalSlot,
+} from './canonicalSlotPlacement';
 import type { CanonicalSlot } from './seatAnchors';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import {
@@ -70,6 +83,47 @@ export interface CanonicalSeatClusterProps {
    *  shape. Omit entirely (e.g. Yahtzee) and the cluster collapses to
    *  identity + chip with no reserved space. */
   children?: ReactNode;
+  /**
+   * Decorator rendered toward the table center (inner side of chip).
+   * The cluster resolves which physical side is "inner" from the slot
+   * (left-side slots → right of chip, right-side slots → left of
+   * chip). Use for leg pips, auto-roll indicators, etc.
+   */
+  innerDecoration?: ReactNode;
+  /**
+   * Decorator rendered away from the table center (outer side of
+   * chip). Use for the dealer pip glyph and similar outward chrome.
+   */
+  outerDecoration?: ReactNode;
+  /**
+   * Absolutely-positioned overlay rendered over the chip bubble itself
+   * (e.g. turn-pulse ring, emoticon). Sits at `inset-0` of the chip
+   * face, above the value/icon text.
+   */
+  chipOverlay?: ReactNode;
+  /**
+   * Optional click handler attached to the chip bubble (e.g. host
+   * tap-to-manage). When provided, the chip face gains
+   * `cursor-pointer` and an `active:scale-95` press affordance.
+   */
+  onChipClick?: () => void;
+  /** Dim the chip face (e.g. folded). */
+  dimChip?: boolean;
+  /**
+   * Ergonomic raise — when true, shifts the cluster vertically toward
+   * the table center via `getCanonicalSlotRaiseClass(slot)`. Used for
+   * Holm multi-player showdown when this seat stayed so exposed cards
+   * do not overlap community cards. The decision to raise is
+   * game-owned; the placement is shell-owned.
+   */
+  raisePosition?: boolean;
+  /**
+   * Suppress the shell's identity pill entirely. Use for rare cases
+   * like Holm multi-player showdown where the chip is hidden to make
+   * room for exposed cards. When true, only `children` are rendered at
+   * the slot anchor.
+   */
+  hideChipBubble?: boolean;
   /** Optional override for the cluster wrapper. */
   className?: string;
 }
@@ -83,6 +137,13 @@ export function CanonicalSeatCluster({
   status = 'active',
   scoreLine,
   children,
+  innerDecoration,
+  outerDecoration,
+  chipOverlay,
+  onChipClick,
+  dimChip = false,
+  raisePosition = false,
+  hideChipBubble = false,
   className,
 }: CanonicalSeatClusterProps) {
   if (slot === null || slot === undefined) return null;
@@ -112,6 +173,7 @@ export function CanonicalSeatCluster({
         ? 'occupied-observer'
         : 'occupied',
   );
+  const raiseClass = raisePosition ? getCanonicalSlotRaiseClass(slot) : '';
   // Bottom-anchored slots (HOME bottom-center, bottom corners) must
   // render game-owned content ABOVE the identity+chip pill so the chip
   // bubble hugs the lower rail and card backs / hand region sit in
@@ -121,6 +183,17 @@ export function CanonicalSeatCluster({
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
+
+  // Inner/outer side resolution. The cluster knows the slot, so games
+  // pass "innerDecoration" / "outerDecoration" without needing to
+  // recompute which physical side that maps to.
+  const isRightSide = isRightSideCanonicalSlot(slot);
+  const innerSideClass = isRightSide
+    ? 'left-0 -translate-x-full'
+    : 'right-0 translate-x-full';
+  const outerSideClass = isRightSide
+    ? 'right-0 translate-x-full'
+    : 'left-0 -translate-x-full';
 
   return (
     <div
@@ -132,6 +205,8 @@ export function CanonicalSeatCluster({
         'absolute pointer-events-none flex gap-1',
         isBottomAnchored ? 'flex-col-reverse' : 'flex-col',
         placement.className,
+        raiseClass,
+        'transition-all duration-300',
         className,
       )}
     >
@@ -139,46 +214,82 @@ export function CanonicalSeatCluster({
           Game-owned children sit OUTSIDE this pill so card geometry
           stays game-controlled. The pill keeps the cluster legible
           regardless of whether the slot lands on felt or chrome,
-          replacing per-projection contrast hacks. */}
-      {/* Fixed canonical nameplate container. Width is constant so
+          replacing per-projection contrast hacks.
+
+          Fixed canonical nameplate container. Width is constant so
           shell seat geometry does NOT shift based on player-name
           length. Long names truncate with ellipsis instead of
           stretching the pill. */}
-      <div
-        className={cn(
-          'flex flex-col items-center gap-0.5 rounded-2xl px-2 py-1',
-          'w-[96px]',
-          'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
-          'backdrop-blur-[2px]',
-        )}
-      >
-        <div className="flex items-center gap-1 w-full justify-center min-w-0">
-          <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
-            {name}
-          </span>
-          {isDealer && (
-            <div className="w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0">
-              <span className="text-white font-bold text-[6px] leading-none">D</span>
-            </div>
-          )}
-        </div>
+      {!hideChipBubble && (
         <div
-          data-chip-center={position}
           className={cn(
-            'w-8 h-8 rounded-full flex items-center justify-center border border-white/40',
-            chipBgClass,
+            'relative flex flex-col items-center gap-0.5 rounded-2xl px-2 py-1',
+            'w-[96px]',
+            'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
+            'backdrop-blur-[2px]',
           )}
         >
-          <span className={cn('text-[10px] font-bold', chipFgClass)}>
-            {chipValue}
-          </span>
+          <div className="flex items-center gap-1 w-full justify-center min-w-0">
+            <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
+              {name}
+            </span>
+            {isDealer && (
+              <div className="w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0">
+                <span className="text-white font-bold text-[6px] leading-none">D</span>
+              </div>
+            )}
+          </div>
+          <div
+            data-chip-center={position}
+            onClick={onChipClick}
+            className={cn(
+              'relative w-8 h-8 rounded-full flex items-center justify-center border border-white/40',
+              chipBgClass,
+              dimChip && 'opacity-50',
+              onChipClick && 'cursor-pointer active:scale-95 pointer-events-auto',
+            )}
+          >
+            <span className={cn('text-[10px] font-bold', chipFgClass)}>
+              {chipValue}
+            </span>
+            {chipOverlay && (
+              <div
+                data-canonical-seat-chip-overlay=""
+                className="absolute inset-0 pointer-events-none"
+              >
+                {chipOverlay}
+              </div>
+            )}
+            {innerDecoration && (
+              <div
+                data-canonical-seat-decoration="inner"
+                className={cn(
+                  'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
+                  innerSideClass,
+                )}
+              >
+                {innerDecoration}
+              </div>
+            )}
+            {outerDecoration && (
+              <div
+                data-canonical-seat-decoration="outer"
+                className={cn(
+                  'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
+                  outerSideClass,
+                )}
+              >
+                {outerDecoration}
+              </div>
+            )}
+          </div>
+          {scoreLine && (
+            <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
+              {scoreLine}
+            </span>
+          )}
         </div>
-        {scoreLine && (
-          <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
-            {scoreLine}
-          </span>
-        )}
-      </div>
+      )}
 
       {children && (
         <div data-canonical-seat-cluster-content="" className="flex flex-col items-center">
@@ -188,4 +299,3 @@ export function CanonicalSeatCluster({
     </div>
   );
 }
-
