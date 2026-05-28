@@ -88,6 +88,9 @@ export function NeutralInterstitial({
   anteAmount = 0,
   activeTab: externalActiveTab,
   onActiveTabChange,
+  participants,
+  currentUserId,
+  participantGameType,
 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
   // No fake-default game kind. If the caller did not supply one (truly
