@@ -35,6 +35,7 @@ import {
 } from "@/lib/canonicalShell/seatAnchors";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
+import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
 import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
