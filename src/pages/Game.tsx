@@ -9190,6 +9190,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             persistentChildrenKey={_isPokerShellPersistent ? (gameId ?? null) : null}
             neutralActiveTab={mobileActiveTab}
             onNeutralActiveTabChange={setMobileActiveTab}
+            neutralParticipants={players as any}
+            neutralCurrentUserId={user?.id ?? null}
+            neutralParticipantGameType={game.game_type ?? null}
             preGameOverlay={_isPokerShellPersistent ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer

@@ -17,7 +17,29 @@ import { usePublishShellFelt } from './ShellOwnedFeltHost';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
+import { SeatAnchorLayer, useSeatAnchors } from './SeatAnchorLayer';
+import { CanonicalSeatCluster } from './CanonicalSeatCluster';
+import { derivePlayerStatus } from './participantStatus';
+import { getDisplayName } from '@/lib/botAlias';
+import { formatChipValue } from '@/lib/utils';
 
+/**
+ * Roster shape consumed by the optional interstitial seat layer.
+ * Intentionally narrow — only the fields the canonical waiting
+ * surface already feeds CanonicalSeatCluster. Callers pass the same
+ * `players` array they use for waiting / gameplay so the projection
+ * is byte-identical with the rest of the lifecycle.
+ */
+export interface InterstitialParticipant {
+  id: string;
+  position: number;
+  user_id?: string | null;
+  chips?: number | null;
+  is_bot?: boolean | null;
+  waiting?: boolean | null;
+  auto_fold?: boolean | null;
+  profiles?: { username?: string };
+}
 
 export interface NeutralInterstitialProps {
   gameId?: string | null;
@@ -36,7 +58,28 @@ export interface NeutralInterstitialProps {
    */
   activeTab?: ShellTabId;
   onActiveTabChange?: (tab: ShellTabId) => void;
+  /**
+   * Optional seated roster + viewer identity. When provided,
+   * NeutralInterstitial mounts a local <SeatAnchorLayer> and renders
+   * each occupied seat through <CanonicalSeatCluster> — the same
+   * primitive CanonicalShellWaitingSurface and MobileGameTable use.
+   * Projection mode mirrors the rest of the lifecycle: viewer seated
+   * → active-canonical (HOME suppressed); viewer not seated →
+   * observer-absolute. This is the seat-continuity surface for
+   * observers across waiting → setup → interstitial → gameplay.
+   *
+   * When `participants` is omitted, no seat layer is mounted (legacy
+   * behaviour, used by callers that don't yet thread a roster).
+   *
+   * Intentionally LIMITED to identity + chip bubble — no dealer pip,
+   * no gameplay decorators, no chip-transport endpoints. Gameplay
+   * artifacts must NOT leak into the interstitial.
+   */
+  participants?: InterstitialParticipant[];
+  currentUserId?: string | null;
+  participantGameType?: string | null;
 }
+
 
 export function NeutralInterstitial({
   gameId,
@@ -45,6 +88,9 @@ export function NeutralInterstitial({
   anteAmount = 0,
   activeTab: externalActiveTab,
   onActiveTabChange,
+  participants,
+  currentUserId,
+  participantGameType,
 }: NeutralInterstitialProps) {
   const geometry = useGeometryTokensOptional();
   // No fake-default game kind. If the caller did not supply one (truly
@@ -143,14 +189,75 @@ export function NeutralInterstitial({
   // NeutralInterstitial contributes only its felt-region content +
   // bottom-panel reservation, geometrically identical to the active
   // GinRummyGameTable placeholder branch.
+  // Observer/interstitial seat continuity: when a roster is supplied,
+  // mount the canonical seat layer using the SAME projection rules as
+  // CanonicalShellWaitingSurface so observers see seat/chip chrome
+  // continuously across waiting → setup → interstitial → gameplay.
+  // Identity + chip bubble only — no dealer pip, no gameplay
+  // decorators, no chip-transport endpoints. Gameplay artifacts must
+  // not leak into the interstitial.
+  const hasParticipants = !!(participants && participants.length > 0);
+  const viewer = hasParticipants
+    ? participants!.find(p => p.user_id === currentUserId)
+    : undefined;
+  const isViewerSeated = !!viewer;
+  const projectionMode = isViewerSeated ? 'active-canonical' : 'observer-absolute';
+  const viewerPosition = isViewerSeated ? viewer!.position : null;
+  const seatInputs = useMemo(
+    () =>
+      hasParticipants
+        ? participants!.map(p => ({
+            position: p.position,
+            occupied: true,
+            hidden: false,
+          }))
+        : [],
+    [hasParticipants, participants],
+  );
+
+  const seatLayer = hasParticipants ? (
+    <SeatAnchorLayer
+      projectionMode={projectionMode}
+      viewerPosition={viewerPosition}
+      seats={seatInputs}
+      gameId={gameId ?? undefined}
+      gameType={participantGameType ?? undefined}
+    >
+      <div
+        data-canonical-shell-interstitial-seats=""
+        data-projection-mode={projectionMode}
+        className="absolute inset-0 z-20 pointer-events-none"
+      >
+        {participants!.map(player => {
+          const actualUsername =
+            player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player');
+          const label = getDisplayName(participants as any, player as any, actualUsername);
+          const status = derivePlayerStatus(player as any, null, {
+            hasStayDecision: false,
+          });
+          return (
+            <CanonicalSeatClusterDeferred
+              key={player.id}
+              position={player.position}
+              name={label}
+              chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+              status={status}
+            />
+          );
+        })}
+      </div>
+    </SeatAnchorLayer>
+  ) : null;
+
   return (
     <div
       data-canonical-shell-neutral=""
-      aria-hidden="true"
+      aria-hidden={hasParticipants ? undefined : 'true'}
       className="h-full flex flex-col bg-transparent relative"
     >
       <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
         {/* Shell owns the felt unconditionally — no local mount. */}
+        {seatLayer}
       </div>
       {/* Geometry-parity bottom panel mirroring active gameplay surfaces:
           announcement rail sits at the TOP of the HUD stack (directly
@@ -170,3 +277,32 @@ export function NeutralInterstitial({
   );
 
 }
+
+/**
+ * Small adapter that reads the canonical seat anchor for `position`
+ * and renders a CanonicalSeatCluster at the resolved slot. Lives here
+ * (not as a shared primitive) because the interstitial is the only
+ * non-game consumer that needs roster→slot lookup without owning its
+ * own SeatAnchorLayer host. Identical projection semantics to
+ * CanonicalShellWaitingSurface.
+ */
+function CanonicalSeatClusterDeferred(props: {
+  position: number;
+  name: string;
+  chipValue: string;
+  status: ReturnType<typeof derivePlayerStatus>;
+}) {
+  const { byPosition } = useSeatAnchors();
+  const anchor = byPosition.get(props.position);
+  if (!anchor) return null;
+  return (
+    <CanonicalSeatCluster
+      slot={anchor.slot}
+      position={props.position}
+      name={props.name}
+      chipValue={props.chipValue}
+      status={props.status}
+    />
+  );
+}
+

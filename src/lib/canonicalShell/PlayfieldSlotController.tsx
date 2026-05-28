@@ -95,6 +95,15 @@ export interface PlayfieldSlotControllerProps {
    */
   neutralActiveTab?: import('./ShellTabBar').ShellTabId;
   onNeutralActiveTabChange?: (tab: import('./ShellTabBar').ShellTabId) => void;
+  /**
+   * Optional seated roster + viewer identity passed through to
+   * NeutralInterstitial so observers see canonical seat/chip chrome
+   * across waiting → setup → interstitial → gameplay. See
+   * NeutralInterstitialProps.participants for the contract.
+   */
+  neutralParticipants?: import('./NeutralInterstitial').InterstitialParticipant[];
+  neutralCurrentUserId?: string | null;
+  neutralParticipantGameType?: string | null;
   /** The active gameplay slot subtree. Re-keyed by mounted identity. */
   children: ReactNode;
 }
@@ -113,6 +122,9 @@ export function PlayfieldSlotController({
   preGameOverlay = null,
   neutralActiveTab,
   onNeutralActiveTabChange,
+  neutralParticipants,
+  neutralCurrentUserId,
+  neutralParticipantGameType,
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
@@ -363,6 +375,9 @@ export function PlayfieldSlotController({
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
+              participants={neutralParticipants}
+              currentUserId={neutralCurrentUserId ?? null}
+              participantGameType={neutralParticipantGameType ?? null}
             />
           </div>
         )}
@@ -401,6 +416,9 @@ export function PlayfieldSlotController({
           anteAmount={neutralAnteAmount}
           activeTab={neutralActiveTab}
           onActiveTabChange={onNeutralActiveTabChange}
+          participants={neutralParticipants}
+          currentUserId={neutralCurrentUserId ?? null}
+          participantGameType={neutralParticipantGameType ?? null}
         />
       ) : (
         <div
