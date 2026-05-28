@@ -4470,22 +4470,22 @@ export const MobileGameTable = ({
     );
     
     // Dice games: get player's completed hand result and check if currently winning
-    const horsesStatePlayerData = isDiceGame && horsesController.enabled
+    const horsesStatePlayerData = diceGameplayUiActive && horsesController.enabled
       ? (horsesState as any)?.playerStates?.[player.id]
       : null;
-    const horsesPlayerResult = isDiceGame && horsesController.enabled 
+    const horsesPlayerResult = diceGameplayUiActive && horsesController.enabled 
       ? horsesController.getPlayerHandResult(player.id) 
       : null;
     // Identity-boundary invariant: seat badges must come only from the sync-scoped
     // controller presentation. Raw `horsesState` can be a parent hydration lagger
     // during rollover, so falling back to it leaks prior-hand result badges.
     const effectiveHorsesResult = horsesPlayerResult;
-    const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
+    const isHorsesCurrentlyWinning = diceGameplayUiActive && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
     // Dice game result element - replaces chip stack for completed players
     // For SCC: show cargo dice with themed background or "NQ"; for Horses: show the result display
-    const horsesResultElement = isDiceGame && effectiveHorsesResult && (() => {
+    const horsesResultElement = diceGameplayUiActive && effectiveHorsesResult && (() => {
       if (gameType === 'ship-captain-crew') {
         // GUARD: Only render SCC result UI when this is genuinely an SCC result.
         // During Horses→SCC dealer-game transitions, stale Horses playerStates may briefly
@@ -4556,7 +4556,7 @@ export const MobileGameTable = ({
     })();
     
     // Hide chip stack when player has a horses/dice result
-    const hideChipForHorses = isDiceGame && effectiveHorsesResult;
+    const hideChipForHorses = diceGameplayUiActive && effectiveHorsesResult;
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
@@ -4686,7 +4686,7 @@ export const MobileGameTable = ({
 
         
         {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
-        {isDiceGame && horsesController.enabled && (
+        {diceGameplayUiActive && horsesController.enabled && (
           <TurnSpotlight
             currentTurnPosition={horsesController.currentTurnPlayer?.position ?? null}
             currentPlayerPosition={currentPlayer?.position ?? null}
@@ -5521,7 +5521,7 @@ export const MobileGameTable = ({
         )}
 
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
-        {isDiceGame && horsesController.enabled && (() => {
+        {diceGameplayUiActive && horsesController.enabled && (() => {
           const logPrefix = `[FELT_BLOCK_DEBUG ${gameType === 'ship-captain-crew' ? 'SCC' : 'HORSES'}]`;
 
           const FELT_STICKY_MS = 1200;
@@ -6589,7 +6589,7 @@ export const MobileGameTable = ({
           data-shell-operational-hud=""
           className="w-full flex items-center justify-center px-3 min-h-[28px]"
         >
-          {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' &&
+          {diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
            horsesController.timeLeft !== null ? (
             <div className="flex items-center justify-center gap-2">
@@ -6627,7 +6627,7 @@ export const MobileGameTable = ({
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (
-          isDiceGame ? (
+          diceGameplayUiActive ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
               horses={horsesController}
