@@ -58,12 +58,7 @@ export function createInitialHand(): HorsesHand {
  * canonical "Five 1s" hand and tie, exercising the tie/re-roll path.
  */
 export function rollDie(): number {
-  try {
-    // Lazy require to keep this pure module dependency-light at import time.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { getActiveHarnessCached } = require('./debugHarness/runtimeCache');
-    if (getActiveHarnessCached('horses') === 'force_tie') return 1;
-  } catch { /* ignore — harness optional */ }
+  if (getActiveHarnessCached('horses') === 'force_tie') return 1;
   return Math.floor(Math.random() * 6) + 1;
 }
 
