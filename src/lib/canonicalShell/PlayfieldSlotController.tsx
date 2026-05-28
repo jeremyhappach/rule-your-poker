@@ -361,6 +361,8 @@ export function PlayfieldSlotController({
               reason={`poker-shell-pregame:${neutralReason}`}
               gameKind={neutralGameKind}
               anteAmount={neutralAnteAmount}
+              activeTab={neutralActiveTab}
+              onActiveTabChange={onNeutralActiveTabChange}
             />
           </div>
         )}
@@ -397,6 +399,8 @@ export function PlayfieldSlotController({
           reason={neutralReason}
           gameKind={neutralGameKind}
           anteAmount={neutralAnteAmount}
+          activeTab={neutralActiveTab}
+          onActiveTabChange={onNeutralActiveTabChange}
         />
       ) : (
         <div
