@@ -2623,6 +2623,48 @@ export function useHorsesMobileController({
             },
           };
 
+          // ── Re-ante chip animation trigger ─────────────────────
+          // The fallback awaiting_next_round path in Game.tsx (which
+          // owns anteAnimationTriggerId) is BYPASSED by this primary
+          // tie-rollover path. Snapshot pre-ante chips & pot from
+          // props BEFORE startHorsesRound/startSCCRound deducts antes,
+          // then dispatch a window event so Game.tsx can publish the
+          // animation trigger. This is the diverge-point between the
+          // (succeeding) state transition and the (missing) animation.
+          try {
+            const perPlayerAmount = anteAmount || 0;
+            if (perPlayerAmount > 0 && gameId) {
+              const activeForAnte = players.filter(p => !p.sitting_out);
+              if (activeForAnte.length > 0) {
+                const preChipsSnapshot: Record<string, number> = {};
+                const expectedChipsSnapshot: Record<string, number> = {};
+                activeForAnte.forEach(p => {
+                  preChipsSnapshot[p.id] = p.chips;
+                  expectedChipsSnapshot[p.id] = p.chips - perPlayerAmount;
+                });
+                const expectedPot = (pot || 0) + perPlayerAmount * activeForAnte.length;
+                console.log('[HORSES_TIE_ROLLOVER] dispatching primary re-ante animation trigger', {
+                  gameId: gameId.slice(0, 8),
+                  perPlayerAmount,
+                  activeCount: activeForAnte.length,
+                  expectedPot,
+                });
+                window.dispatchEvent(new CustomEvent('horses:primary-re-ante', {
+                  detail: {
+                    gameId,
+                    preChipsSnapshot,
+                    expectedChipsSnapshot,
+                    expectedPot,
+                    perPlayerAmount,
+                    activeCount: activeForAnte.length,
+                  },
+                }));
+              }
+            }
+          } catch (dispatchErr) {
+            console.warn('[HORSES_TIE_ROLLOVER] failed to dispatch animation trigger', dispatchErr);
+          }
+
           if (gameType === "ship-captain-crew") {
             await startSCCRound(gameId, false, callerContext);
           } else {

@@ -790,6 +790,48 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
   }, [game?.status]);
 
+  // ── Primary tie-rollover re-ante animation bridge ───────────────
+  // useHorsesMobileController's primary tie-rollover path calls
+  // startHorsesRound/startSCCRound directly and bypasses the
+  // awaiting_next_round fallback effect that normally publishes
+  // anteAnimationTriggerId. Listen for the controller's window event
+  // and publish the trigger here so the chip animation actually
+  // renders. (Without this bridge the state transition occurs but
+  // no trigger reaches AnteUpAnimation, producing the reported
+  // "balances update, no animation" symptom.)
+  useEffect(() => {
+    if (!gameId) return;
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail || {};
+      if (!detail || detail.gameId !== gameId) return;
+      const {
+        preChipsSnapshot,
+        expectedChipsSnapshot,
+        expectedPot,
+        perPlayerAmount,
+        activeCount,
+      } = detail;
+      if (!perPlayerAmount || !activeCount) return;
+      setPreAnteChips(preChipsSnapshot ?? null);
+      setExpectedPostAnteChips(expectedChipsSnapshot ?? null);
+      setAnteAnimationExpectedPot(expectedPot ?? null);
+      const triggerKey = `dice-reante-primary-${expectedPot}-${Date.now()}`;
+      if (anteAnimationFiredRef.current !== triggerKey) {
+        anteAnimationFiredRef.current = triggerKey;
+        setAnteAnimationTriggerId(`ante-${Date.now()}`);
+        console.log('[DICE RE-ANTE PRIMARY] Triggered ante animation from controller event', {
+          perPlayerAmount,
+          activeCount,
+          expectedPot,
+        });
+      }
+    };
+    window.addEventListener('horses:primary-re-ante', handler as EventListener);
+    return () => window.removeEventListener('horses:primary-re-ante', handler as EventListener);
+  }, [gameId]);
+
+
+
   
   // Holm multi-player showdown animation state (pot-to-winner, then losers-to-pot)
   const [holmShowdownTriggerId, setHolmShowdownTriggerId] = useState<string | null>(null);
