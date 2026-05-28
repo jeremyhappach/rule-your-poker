@@ -71,6 +71,16 @@ export const CANONICAL_SEAT_CONSUMERS = new Set<string>([
   'gin-rummy',
   'cribbage',
   'yahtzee',
+  // PR-B: poker-variant family collapsed to canonical seat rendering.
+  // MobileGameTable now reads every seat slot from useRequiredSeatAnchors
+  // and renders through CanonicalSeatCluster — no bespoke if-tree, no
+  // observer slot helper, single source of seat truth.
+  'holm-game',
+  '3-5-7',
+  '3-5-7-game',
+  '357',
+  'horses',
+  'ship-captain-crew',
 ]);
 
 /** Whether this game_type is registered as a canonical seat-anchor consumer. */
