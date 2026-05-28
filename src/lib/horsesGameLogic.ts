@@ -10,6 +10,7 @@
  * - Exception: Five 1s (pure wilds) is the best possible hand
  * - Ties cause everyone to re-ante and restart
  */
+import { getActiveHarnessCached } from './debugHarness/runtimeCache';
 
 export interface DiceValue {
   value: number; // 1-6
