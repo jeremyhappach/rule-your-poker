@@ -51,8 +51,15 @@ describe('canonical seat consumer registry invariant', () => {
   it('isCanonicalSeatConsumer agrees with the registry', () => {
     expect(isCanonicalSeatConsumer('cribbage')).toBe(true);
     expect(isCanonicalSeatConsumer('gin-rummy')).toBe(true);
-    // Not seat consumers (no per-seat anchor cluster ownership today):
-    expect(isCanonicalSeatConsumer('yahtzee')).toBe(false);
+    expect(isCanonicalSeatConsumer('yahtzee')).toBe(true);
+    // PR-B: poker-variant family collapsed to canonical seat rendering.
+    // MobileGameTable now reads every seat through useRequiredSeatAnchors
+    // and renders through CanonicalSeatCluster — registered seat consumers.
+    expect(isCanonicalSeatConsumer('holm-game')).toBe(true);
+    expect(isCanonicalSeatConsumer('3-5-7')).toBe(true);
+    expect(isCanonicalSeatConsumer('horses')).toBe(true);
+    expect(isCanonicalSeatConsumer('ship-captain-crew')).toBe(true);
+    // Not seat consumers:
     expect(isCanonicalSeatConsumer('trivia')).toBe(false);
     expect(isCanonicalSeatConsumer(null)).toBe(false);
     expect(isCanonicalSeatConsumer(undefined)).toBe(false);
