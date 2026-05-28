@@ -416,6 +416,9 @@ export function PlayfieldSlotController({
           anteAmount={neutralAnteAmount}
           activeTab={neutralActiveTab}
           onActiveTabChange={onNeutralActiveTabChange}
+          participants={neutralParticipants}
+          currentUserId={neutralCurrentUserId ?? null}
+          participantGameType={neutralParticipantGameType ?? null}
         />
       ) : (
         <div
