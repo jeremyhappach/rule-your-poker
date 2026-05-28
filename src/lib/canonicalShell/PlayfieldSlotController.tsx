@@ -375,9 +375,13 @@ export function PlayfieldSlotController({
               anteAmount={neutralAnteAmount}
               activeTab={neutralActiveTab}
               onActiveTabChange={onNeutralActiveTabChange}
-              participants={neutralParticipants}
-              currentUserId={neutralCurrentUserId ?? null}
-              participantGameType={neutralParticipantGameType ?? null}
+              {/* PR-B.2: in persistent-children mode, the underlying
+                  MobileGameTable (children below) is the canonical seat
+                  renderer and stays mounted across pre-game / interstitial.
+                  If we ALSO feed participants here, NeutralInterstitial
+                  mounts a SECOND CanonicalSeatCluster layer at the same
+                  anchors → two chipstacks render simultaneously. Suppress
+                  the interstitial seat layer when children own seats. */}
             />
           </div>
         )}
