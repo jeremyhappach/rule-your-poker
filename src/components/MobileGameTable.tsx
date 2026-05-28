@@ -578,17 +578,22 @@ export const MobileGameTable = ({
 
   // Helper: check if this is a dice game (Horses or Ship Captain Crew)
   const isDiceGame = gameType === 'horses' || gameType === 'ship-captain-crew';
+  // Dealer setup/config phases keep the table mounted as a dimmed background.
+  // Dice gameplay/result surfaces must be hard-disabled here; otherwise prior
+  // dealer-game result badges can survive behind the setup modal.
+  const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
+  const diceGameplayUiActive = isDiceGame && !isDealerConfigPhase;
   
   // Z-index for player slots - higher in dice games to stay above spotlight
   // For 3-5-7 games, player cards need to be above the pot (z-20) during showdown
-  const playerSlotZIndex = isDiceGame ? 'z-[105]' : 'z-30';
+  const playerSlotZIndex = diceGameplayUiActive ? 'z-[105]' : 'z-30';
   
   // Device size detection for tablet/desktop responsive sizing
   const { isTablet, isDesktop } = useDeviceSize();
 
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
-    enabled: isDiceGame,
+    enabled: diceGameplayUiActive,
     gameId,
     dealerGameId: horsesDealerGameId ?? null,
     currentHandNumber: horsesHandNumber ?? null,
@@ -805,7 +810,8 @@ export const MobileGameTable = ({
   // badges for a frame before cleanup runs.
   if (
     cachedWinningResultRef.current &&
-    (cachedWinningResultRef.current.dealerGameId !== horsesDealerGameScope ||
+    (isDealerConfigPhase ||
+      cachedWinningResultRef.current.dealerGameId !== horsesDealerGameScope ||
       cachedWinningResultRef.current.roundId !== horsesRoundScope)
   ) {
     console.warn('[HORSES_BADGE_BOUNDARY] rejected stale Beat badge cache before paint', {
@@ -883,6 +889,15 @@ export const MobileGameTable = ({
     turnPlayerId: string | null;
     node: any;
   } | null>(null);
+
+  if (isDealerConfigPhase && cachedFeltBlockNodeRef.current) {
+    console.warn('[HORSES_BADGE_BOUNDARY] rejected stale felt block cache during dealer setup', {
+      gameStatus,
+      cachedDealerGameId: cachedFeltBlockNodeRef.current.dealerGameId?.slice(0, 8) ?? null,
+      cachedRoundId: cachedFeltBlockNodeRef.current.roundId?.slice(0, 8) ?? null,
+    });
+    cachedFeltBlockNodeRef.current = null;
+  }
 
   // Parent-level felt block tracing: track previous branch to detect switches
   const prevFeltBranchRef = useRef<string>("none");
@@ -1571,7 +1586,6 @@ export const MobileGameTable = ({
   const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
 
   // CRITICAL: During dealer config phases, NEVER read from external cache - it may contain stale cards
-  const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
 
   // CRITICAL: If parent clears the external cache, it increments an epoch.
   // If we keep local state from the previous hand, we'd immediately write it back into the external cache.
@@ -4049,7 +4063,7 @@ export const MobileGameTable = ({
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
       (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
-      (isDiceGame && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
+      (diceGameplayUiActive && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
     const isCurrentUser = player.user_id === currentUserId;
     
     // For observers, derive slot from absolute position for consistent behavior
@@ -4456,22 +4470,22 @@ export const MobileGameTable = ({
     );
     
     // Dice games: get player's completed hand result and check if currently winning
-    const horsesStatePlayerData = isDiceGame && horsesController.enabled
+    const horsesStatePlayerData = diceGameplayUiActive && horsesController.enabled
       ? (horsesState as any)?.playerStates?.[player.id]
       : null;
-    const horsesPlayerResult = isDiceGame && horsesController.enabled 
+    const horsesPlayerResult = diceGameplayUiActive && horsesController.enabled 
       ? horsesController.getPlayerHandResult(player.id) 
       : null;
     // Identity-boundary invariant: seat badges must come only from the sync-scoped
     // controller presentation. Raw `horsesState` can be a parent hydration lagger
     // during rollover, so falling back to it leaks prior-hand result badges.
     const effectiveHorsesResult = horsesPlayerResult;
-    const isHorsesCurrentlyWinning = isDiceGame && horsesController.enabled 
+    const isHorsesCurrentlyWinning = diceGameplayUiActive && horsesController.enabled 
       && horsesController.currentlyWinningPlayerIds.includes(player.id);
     
     // Dice game result element - replaces chip stack for completed players
     // For SCC: show cargo dice with themed background or "NQ"; for Horses: show the result display
-    const horsesResultElement = isDiceGame && effectiveHorsesResult && (() => {
+    const horsesResultElement = diceGameplayUiActive && effectiveHorsesResult && (() => {
       if (gameType === 'ship-captain-crew') {
         // GUARD: Only render SCC result UI when this is genuinely an SCC result.
         // During Horses→SCC dealer-game transitions, stale Horses playerStates may briefly
@@ -4542,7 +4556,7 @@ export const MobileGameTable = ({
     })();
     
     // Hide chip stack when player has a horses/dice result
-    const hideChipForHorses = isDiceGame && effectiveHorsesResult;
+    const hideChipForHorses = diceGameplayUiActive && effectiveHorsesResult;
     
     return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
         {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
@@ -4672,7 +4686,7 @@ export const MobileGameTable = ({
 
         
         {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
-        {isDiceGame && horsesController.enabled && (
+        {diceGameplayUiActive && horsesController.enabled && (
           <TurnSpotlight
             currentTurnPosition={horsesController.currentTurnPlayer?.position ?? null}
             currentPlayerPosition={currentPlayer?.position ?? null}
@@ -5128,7 +5142,7 @@ export const MobileGameTable = ({
         <BucksOnYouAnimation show={showBucksOnYou} onComplete={() => setShowBucksOnYou(false)} />
         
         {/* No Qualify Animation (Ship Captain Crew only) */}
-        {(gameType === 'ship-captain-crew') && (
+        {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (
           <NoQualifyAnimation 
             show={horsesController.showNoQualifyAnimation} 
             playerName={horsesController.noQualifyPlayerName ?? undefined}
@@ -5137,7 +5151,7 @@ export const MobileGameTable = ({
         )}
         
         {/* Midnight Animation (Ship Captain Crew only - when someone rolls 12) */}
-        {(gameType === 'ship-captain-crew') && (
+        {diceGameplayUiActive && (gameType === 'ship-captain-crew') && (
           <MidnightAnimation 
             show={horsesController.showMidnightAnimation} 
             playerName={horsesController.midnightPlayerName ?? undefined}
@@ -5507,7 +5521,7 @@ export const MobileGameTable = ({
         )}
 
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
-        {isDiceGame && horsesController.enabled && (() => {
+        {diceGameplayUiActive && horsesController.enabled && (() => {
           const logPrefix = `[FELT_BLOCK_DEBUG ${gameType === 'ship-captain-crew' ? 'SCC' : 'HORSES'}]`;
 
           const FELT_STICKY_MS = 1200;
@@ -6575,7 +6589,7 @@ export const MobileGameTable = ({
           data-shell-operational-hud=""
           className="w-full flex items-center justify-center px-3 min-h-[28px]"
         >
-          {isDiceGame && horsesController.enabled && horsesController.gamePhase === 'playing' &&
+          {diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
            horsesController.timeLeft !== null ? (
             <div className="flex items-center justify-center gap-2">
@@ -6613,7 +6627,7 @@ export const MobileGameTable = ({
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {activeTab === 'cards' && currentPlayer && (
-          isDiceGame ? (
+          diceGameplayUiActive ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
               horses={horsesController}
