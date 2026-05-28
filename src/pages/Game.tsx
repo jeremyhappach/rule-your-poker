@@ -485,6 +485,15 @@ function buildThreeFiveSevenSnapshot(
 // `if (!game) return null` guard without needing a React hook.
 const __bootstrapFlashDiagCache = new Map<string, string>();
 
+// Stable per-tab mount-instance id so the persisted diag can tell
+// the two clients apart on the next repro without relying on memory.
+// Generated once per page load; survives the early-return guard.
+const __bootstrapFlashClientInstanceId =
+  (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    ? crypto.randomUUID()
+    : `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+
+
 
 const Game = () => {
   const { gameId } = useParams();
@@ -9919,11 +9928,68 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .sort()
           .join('|')
       : 'undefined';
-    const _bootstrapDiagKey = `${_shellRoutedGameType ?? 'null'}|${shellProjectionMode ?? 'undef'}|${shellViewerPosition ?? 'null'}|${_seatInputsKey}|persistent=${_isPokerShellPersistent ? 1 : 0}|status=${game.status ?? 'null'}`;
+
+    // ── Extended diagnostic dimensions (PR-B.4) ──────────────────────
+    // None of these introduce hooks — they read existing in-render
+    // values. They feed both the dedup key (so any change fires a new
+    // event) and the persisted payload (so the timeline is self-
+    // describing without relying on memory of which client flashed).
+    const _isHolm = game.game_type === 'holm-game';
+    const _holmRoundId = _isHolm ? (holmView?.roundId ?? null) : null;
+    const _holmRoundStatus = _isHolm ? (holmView?.roundStatus ?? null) : null;
+    const _holmHandNumber = _isHolm ? (holmView?.handNumber ?? null) : null;
+    const _holmCurrentTurnPosition = _isHolm ? (holmView?.currentTurnPosition ?? null) : null;
+    const _holmSyncStampedHand =
+      _isHolm && (holmView as any)?.__syncHandNumber != null
+        ? (holmView as any).__syncHandNumber
+        : null;
+    const _currentRoundId = currentRound?.id ?? null;
+    const _currentRoundStatus = currentRound?.status ?? null;
+    const _hasActiveRound = !!_currentRoundId;
+    // renderRoundContext + identity-stale are computed later in the
+    // render tree; replicate the cheap precursor inputs here so we
+    // can see the gate without restructuring.
+    const _renderRoundContextPrecursor =
+      _currentRoundStatus === 'in_progress'
+      || _currentRoundStatus === 'showdown'
+      || _currentRoundStatus === 'completed'
+      || _currentRoundStatus === 'processing';
+    // Identity-stale heuristic: holmView round id disagrees with the
+    // currentRound row, OR holm stamped hand disagrees with the
+    // currentRound hand_number. Either is a hydration-lag signal.
+    const _isIdentityStale = _isHolm
+      ? (
+          (_holmRoundId != null && _currentRoundId != null && _holmRoundId !== _currentRoundId)
+          || (_holmSyncStampedHand != null
+              && currentRound?.hand_number != null
+              && _holmSyncStampedHand !== currentRound.hand_number)
+        )
+      : false;
+
+    const _bootstrapDiagKey = [
+      _shellRoutedGameType ?? 'null',
+      shellProjectionMode ?? 'undef',
+      shellViewerPosition ?? 'null',
+      _seatInputsKey,
+      `persistent=${_isPokerShellPersistent ? 1 : 0}`,
+      `status=${game.status ?? 'null'}`,
+      `rId=${_currentRoundId ? String(_currentRoundId).slice(-8) : 'null'}`,
+      `rStatus=${_currentRoundStatus ?? 'null'}`,
+      `holmRId=${_holmRoundId ? String(_holmRoundId).slice(-8) : 'null'}`,
+      `holmHand=${_holmHandNumber ?? 'null'}`,
+      `holmStamp=${_holmSyncStampedHand ?? 'null'}`,
+      `holmTurn=${_holmCurrentTurnPosition ?? 'null'}`,
+      `holmRStatus=${_holmRoundStatus ?? 'null'}`,
+      `stale=${_isIdentityStale ? 1 : 0}`,
+      `rrcPre=${_renderRoundContextPrecursor ? 1 : 0}`,
+      `hasRound=${_hasActiveRound ? 1 : 0}`,
+    ].join('|');
+
     const prev = __bootstrapFlashDiagCache.get(gameId) ?? null;
     if (prev !== _bootstrapDiagKey) {
       __bootstrapFlashDiagCache.set(gameId, _bootstrapDiagKey);
       const payload = {
+        clientInstanceId: __bootstrapFlashClientInstanceId,
         from: prev,
         to: _bootstrapDiagKey,
         handNumber: currentRound?.hand_number ?? null,
@@ -9947,6 +10013,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         persistentPokerShell: _isPokerShellPersistent,
         dealerGameId: (game as any).current_game_uuid ?? null,
         configComplete: (game as any).config_complete ?? null,
+        // ── PR-B.4 extended dimensions ──────────────────────────────
+        currentRoundId: _currentRoundId,
+        currentRoundStatus: _currentRoundStatus,
+        hasActiveRound: _hasActiveRound,
+        renderRoundContextPrecursor: _renderRoundContextPrecursor,
+        isIdentityStale: _isIdentityStale,
+        holmRoundId: _holmRoundId,
+        holmRoundStatus: _holmRoundStatus,
+        holmHandNumber: _holmHandNumber,
+        holmSyncStampedHand: _holmSyncStampedHand,
+        holmCurrentTurnPosition: _holmCurrentTurnPosition,
+        holmViewPresent: _isHolm ? !!holmView : null,
         tPerf: performance.now(),
       };
       // Defer to a microtask so we don't perform a side-effect during render.
@@ -9967,6 +10045,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     }
   }
+
 
 
   // P9.6: shell-owned pre-hand felt removed. Gameplay surfaces own the
