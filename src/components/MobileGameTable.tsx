@@ -810,7 +810,8 @@ export const MobileGameTable = ({
   // badges for a frame before cleanup runs.
   if (
     cachedWinningResultRef.current &&
-    (cachedWinningResultRef.current.dealerGameId !== horsesDealerGameScope ||
+    (isDealerConfigPhase ||
+      cachedWinningResultRef.current.dealerGameId !== horsesDealerGameScope ||
       cachedWinningResultRef.current.roundId !== horsesRoundScope)
   ) {
     console.warn('[HORSES_BADGE_BOUNDARY] rejected stale Beat badge cache before paint', {
@@ -888,6 +889,15 @@ export const MobileGameTable = ({
     turnPlayerId: string | null;
     node: any;
   } | null>(null);
+
+  if (isDealerConfigPhase && cachedFeltBlockNodeRef.current) {
+    console.warn('[HORSES_BADGE_BOUNDARY] rejected stale felt block cache during dealer setup', {
+      gameStatus,
+      cachedDealerGameId: cachedFeltBlockNodeRef.current.dealerGameId?.slice(0, 8) ?? null,
+      cachedRoundId: cachedFeltBlockNodeRef.current.roundId?.slice(0, 8) ?? null,
+    });
+    cachedFeltBlockNodeRef.current = null;
+  }
 
   // Parent-level felt block tracing: track previous branch to detect switches
   const prevFeltBranchRef = useRef<string>("none");
@@ -1576,7 +1586,6 @@ export const MobileGameTable = ({
   const communityCardsCache = externalCommunityCardsCache || internalCommunityCardsCache;
 
   // CRITICAL: During dealer config phases, NEVER read from external cache - it may contain stale cards
-  const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
 
   // CRITICAL: If parent clears the external cache, it increments an epoch.
   // If we keep local state from the previous hand, we'd immediately write it back into the external cache.
