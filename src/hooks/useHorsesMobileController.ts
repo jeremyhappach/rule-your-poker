@@ -1209,7 +1209,7 @@ export function useHorsesMobileController({
         },
       });
 
-      await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
+      return await horsesSetPlayerState(currentRoundId, myPlayer.id, newPlayerState);
     },
     [enabled, currentRoundId, myPlayer],
   );
