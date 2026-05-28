@@ -85,6 +85,14 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: 'All dice forced to 1–3 every roll — both players guaranteed NQ, exercises rollover/re-ante.',
     },
   ],
+  horses: [
+    NONE_HARNESS,
+    {
+      id: 'force_tie',
+      label: 'Force Tie',
+      description: 'All dice forced to 1 (wild) every roll — both players land Five 1s, guaranteed tie/re-roll path.',
+    },
+  ],
   // Game types intentionally absent below have no existing harness to wrap yet.
 };
 
