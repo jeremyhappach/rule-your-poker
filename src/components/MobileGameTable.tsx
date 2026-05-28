@@ -586,7 +586,7 @@ export const MobileGameTable = ({
   
   // Z-index for player slots - higher in dice games to stay above spotlight
   // For 3-5-7 games, player cards need to be above the pot (z-20) during showdown
-  const playerSlotZIndex = isDiceGame ? 'z-[105]' : 'z-30';
+  const playerSlotZIndex = diceGameplayUiActive ? 'z-[105]' : 'z-30';
   
   // Device size detection for tablet/desktop responsive sizing
   const { isTablet, isDesktop } = useDeviceSize();
@@ -4063,7 +4063,7 @@ export const MobileGameTable = ({
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
       (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
-      (isDiceGame && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
+      (diceGameplayUiActive && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
     const isCurrentUser = player.user_id === currentUserId;
     
     // For observers, derive slot from absolute position for consistent behavior
