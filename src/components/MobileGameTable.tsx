@@ -6505,7 +6505,12 @@ export const MobileGameTable = ({
 
         
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
-        {activeTab === 'cards' && currentPlayer && (
+        {/* PR-B.2: suppress the gameplay cards tab entirely during dealer
+            setup / interstitial phases. Previously the previous hand's
+            currentPlayerCards remained mounted in the cards tab during
+            dealer-game rollover (Holm cards visible on the next-game
+            setup screen). Gameplay artifacts must not leak into pre-game. */}
+        {activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
           diceGameplayUiActive ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
