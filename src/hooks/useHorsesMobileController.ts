@@ -1971,6 +1971,7 @@ export function useHorsesMobileController({
     advanceToNextTurn,
     myPlayer?.id,
     isSCC,
+    turnOrder,
     logDebug,
   ]);
 
