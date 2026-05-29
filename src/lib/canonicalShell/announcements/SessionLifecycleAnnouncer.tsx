@@ -261,6 +261,18 @@ export function SessionLifecycleAnnouncer({
         cardLabel,
       },
     });
+    // Tracer: dealer-selection lifecycle — announcement was published.
+    // Lazy import so the announcer module stays pure.
+    import('@/lib/dealerSelectionDiag').then(({ recordDealerSelectionDiag }) => {
+      recordDealerSelectionDiag('dealer_selection_announcement_published', {
+        sessionId: gameId,
+        dealerSelectionId: `${gameId}:host`,
+        winnerPosition: dealerSelectionWinnerPosition,
+        cardCount: dealerSelectionCards.length,
+        scope: 'session',
+        extra: { announcementId: id, cardLabel },
+      });
+    });
   }, [
     gameId,
     isCribbage,
