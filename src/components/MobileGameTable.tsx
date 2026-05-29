@@ -2461,6 +2461,8 @@ export const MobileGameTable = ({
   // This is similar to the Cribbage pattern - a short transition period ensures old cards disappear
   // before new cards are shown, avoiding the "switch" visual.
   const [isHandTransitioning, setIsHandTransitioning] = useState(false);
+  // PR-B.4: source label of last currentPlayerCards memo decision (for flash diag).
+  const __mgtCurrentPlayerCardsSourceRef = useRef<string>('init');
   const handTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHandContextForTransitionRef = useRef<string | null>(null);
   
