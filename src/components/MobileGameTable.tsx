@@ -4755,7 +4755,6 @@ export const MobileGameTable = ({
         data-canonical-table-container=""
         data-canonical-table-felt-ownership="shell"
         className="flex-1 relative overflow-hidden min-h-0"
-        style={{ maxHeight: '55vh' }}
       >
 
         {/* Phase 3.2 (complete): MobileGameTable no longer owns ANY felt.
