@@ -444,6 +444,14 @@ export function useHighCardDealerSelection({
 
     deckRef.current = shuffleDeck(createDeck());
 
+    recordDealerSelectionDiag('dealer_selection_created', {
+      sessionId: gameId,
+      dealerSelectionId: `${gameId}:host`,
+      cardCount: 0,
+      scope: isCribbageVariant ? 'cribbage' : 'session',
+      extra: { eligibleDealers: eligibleDealers.length },
+    });
+
     runSelectionRound(eligibleDealers, 1, []);
 
     return () => clearTimeouts();
