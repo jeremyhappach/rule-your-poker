@@ -10074,23 +10074,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                transitions. */
             /* Persistent-poker-shell pre-game window: `game.game_type` is
                null from session start through DealerGameSetup completion.
-               The sticky chain (_routeShellGameType) also resolves null
-               on a fresh session, which collapses the shell-felt gate
-               (`isFeltlessPokerFamily(null)===false`) and leaves
-               ShellOwnedFeltHost unmounted during dealer high-card. The
-               trace confirms PSC publishes `felt_ownership=self` during
-               dealer_selection and only flips to `shell` at ante_decision
-               when game_type finally becomes `holm-game`.
-
-               When the persistent poker shell is active, default the
-               shell-felt family to `holm-game` (a member of
-               POKER_SHELL_FELTLESS_FAMILIES) so the shell-owned felt
-               paints from the first frame. Once the real game_type is
-               written, the sticky chain takes over. */
-            gameType={
-              _routeShellGameType
-                ?? (_isPokerShellPersistent ? 'holm-game' : undefined)
-            }
+               Previously we defaulted to `'holm-game'` here so the shell
+               felt would paint from the first frame, but that branding
+               leaked into the canonical felt plate during bootstrap
+               high-card-for-dealer (visible HOLM label on a fresh
+               session). `CanonicalFeltSurface` now supports a neutral
+               `gameKind: null` render (felt geometry only, no plate),
+               so we pass undefined here and let the neutral surface
+               own bootstrap. The sticky chain (_routeShellGameType)
+               still resolves real families once the dealer commits a
+               game type. */
+            gameType={_routeShellGameType ?? undefined}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}
