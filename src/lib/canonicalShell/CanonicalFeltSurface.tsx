@@ -24,7 +24,7 @@ export type CanonicalFeltGameKind =
   | "cribbage";
 
 export interface CanonicalFeltSurfaceProps {
-  gameKind: CanonicalFeltGameKind;
+  gameKind: CanonicalFeltGameKind | null;
   anteAmount: number | string;
   potMaxEnabled?: boolean;
   potMaxValue?: number | string;
