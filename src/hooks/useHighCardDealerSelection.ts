@@ -341,6 +341,15 @@ export function useHighCardDealerSelection({
 
           hasCompletedRef.current = true;
 
+          recordDealerSelectionDiag('dealer_selection_completed', {
+            sessionId: gameId,
+            dealerSelectionId: `${gameId}:host`,
+            cardCount: updatedCards.length,
+            winnerPosition: winnerPlayer.position,
+            scope: isCribbageVariant ? 'cribbage' : 'session',
+            extra: { round: roundNum },
+          });
+
           addTimeout(() => {
             onComplete(winnerPlayer.position);
           }, WINNER_ANNOUNCE_DELAY);
