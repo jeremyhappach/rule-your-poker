@@ -216,19 +216,28 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * state on the felt instead of profile/chip chrome.
  */
 function cribPipPlacementForSlot(slot: number | null): string | null {
-  // Slot → rail-segment placement. Percentages are intentionally close
-  // to the felt edge; lateral/vertical nudges only choose a clear part
-  // of that rail segment so the pip avoids chips, names, and card backs.
+  // Per-slot tuning. Two distinct goals:
+  //   - HOME (-1): hug the bottom rail tightly so the marker reads as
+  //     belonging to the active player's rail section, not floating in
+  //     gameplay space.
+  //   - Opponent slots: sit at the bottom-right of the owning seat
+  //     cluster (slightly inward from the rail edge, slightly below
+  //     the chip) so the marker reads as associated with that seat's
+  //     section of rail rather than horizontally detached.
+  // Cluster anchor reference (see canonicalSlotPlacement.ts):
+  //   -2 top-[4%] center | 2 top-[14%] left-[12%] | 3 top-[14%] right-[12%]
+  //   1  top-[50%] left-[4%] | 4 top-[50%] right-[4%]
+  //   0  top-[78%] left-[10%] | 5 top-[78%] right-[10%]
   switch (slot) {
-    case -2: return 'top-[5%] left-1/2 -translate-x-1/2';                  // FACE_TO_FACE: top-center rail
-    case -1: return 'bottom-[3%] left-1/2 -translate-x-1/2';               // HOME: bottom-center rail
-    case -3: return 'bottom-[5%] right-[14%]';                             // BOTTOM_RAIL: observer south rail
-    case 0:  return 'bottom-[7%] left-[22%]';                              // bottom-left rail segment
-    case 1:  return 'top-[62%] left-[5%] -translate-y-1/2';                // mid-left rail, below chip lane
-    case 2:  return 'top-[7%] left-[25%]';                                 // top-left rail segment
-    case 3:  return 'top-[7%] right-[25%]';                                // top-right rail segment
-    case 4:  return 'top-[62%] right-[5%] -translate-y-1/2';               // mid-right rail, below chip lane
-    case 5:  return 'bottom-[7%] right-[22%]';                             // bottom-right rail segment
+    case -2: return 'top-[14%] left-[54%]';                                // FACE_TO_FACE: bottom-right of top-center cluster
+    case -1: return 'bottom-[1%] left-1/2 -translate-x-1/2';               // HOME: tight to bottom rail
+    case -3: return 'bottom-[1%] right-[14%]';                             // BOTTOM_RAIL: observer south rail, tight
+    case 0:  return 'top-[90%] left-[20%]';                                // bottom-left: bottom-right of cluster
+    case 1:  return 'top-[60%] left-[12%]';                                // mid-left: bottom-right of cluster
+    case 2:  return 'top-[26%] left-[22%]';                                // top-left: bottom-right of cluster
+    case 3:  return 'top-[26%] right-[22%]';                               // top-right: bottom-left of cluster (mirror)
+    case 4:  return 'top-[60%] right-[12%]';                               // mid-right: bottom-left of cluster (mirror)
+    case 5:  return 'top-[90%] right-[20%]';                               // bottom-right: bottom-left of cluster (mirror)
     default: return null;
   }
 }
