@@ -641,6 +641,26 @@ const Game = () => {
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
 
+  // ── dealer_selection_diag context push ─────────────────────────────
+  // Keep the diag tracer enriched with viewer identity + current status
+  // so every persisted checkpoint carries enough context to reconstruct
+  // who saw (or didn't see) the dealer-selection presentation.
+  useEffect(() => {
+    const me = players.find((p) => p.user_id === user?.id);
+    setDealerSelectionDiagContext({
+      gameId: gameId ?? null,
+      dealerGameId: (game as any)?.current_dealer_game_id ?? null,
+      userId: user?.id ?? null,
+      viewerPosition: me?.position ?? null,
+      currentStatus: (game as any)?.status ?? null,
+      viewerRole: me
+        ? (me.position === 1 ? 'host' : 'player')
+        : (user?.id ? 'observer' : 'unknown'),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, user?.id, players, (game as any)?.status, (game as any)?.current_dealer_game_id]);
+
+
   // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
   // the game back to game_selection (where config_complete becomes false).
   const lastCapturedConfigKeyRef = useRef<string | null>(null);
