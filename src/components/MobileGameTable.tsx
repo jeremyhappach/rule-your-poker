@@ -21,6 +21,28 @@ import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
+
+// ── BOOTSTRAP_FLASH_MGT instrumentation (PR-B.4) ──
+// Module-level dedup + stable per-tab instance id so we can correlate
+// the two clients in SQL without depending on user_id mapping.
+const __mgtFlashClientInstanceId: string =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `mgt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+const __mgtFlashLastKeyByGame = new Map<string, string>();
+function __mgtFlashPersist(row: { game_id: string; event_type: string; payload: Record<string, unknown> }) {
+  // Fire-and-forget; never await.
+  Promise.resolve().then(async () => {
+    try {
+      await __mgtSupabase.from('debug_events').insert({
+        game_id: row.game_id,
+        event_type: row.event_type,
+        payload: { clientInstanceId: __mgtFlashClientInstanceId, ...row.payload },
+      } as any);
+    } catch { /* swallow — diagnostics must never break gameplay */ }
+  });
+}
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
