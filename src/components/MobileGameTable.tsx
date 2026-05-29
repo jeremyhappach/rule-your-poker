@@ -53,6 +53,7 @@ import { LegsToPlayerAnimation } from "./LegsToPlayerAnimation";
 import { SweepsPotAnimation } from "./SweepsPotAnimation";
 import {
   clockwiseDistance as canonicalClockwiseDistance,
+  observerSlotForPosition,
   type CanonicalSlot,
 } from "@/lib/canonicalShell/seatAnchors";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
@@ -6544,29 +6545,40 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Open seats for seat selection - show in ABSOLUTE positions around the table */}
-        {/* CRITICAL: For observers (canSelectSeat), use ABSOLUTE position mapping, not relative */}
-        {/* Observers don't have a position, so seats must be at fixed visual locations */}
+        {/* Open seats for seat selection — observers only.
+            Geometry is single-sourced from the canonical seat map
+            (observerSlotForPosition + getCanonicalSlotPlacement), the
+            SAME map seat clusters use. A `+` is suppressed when EITHER
+            the position is taken OR the resolved canonical slot is
+            already occupied by any seated player — so a `+` can never
+            sit underneath a chipstack. */}
         {canSelectSeat && openSeats.length > 0 && (() => {
-          // ABSOLUTE position → CSS class mapping for observers
-          // Position 4 is conceptually at bottom center, positions arranged clockwise
-          const absolutePositionClasses: Record<number, string> = {
-            1: 'top-2 left-10',           // Top-left
-            2: 'top-1/2 -translate-y-1/2 left-0', // Left
-            3: 'bottom-2 left-10',        // Bottom-left
-            4: 'bottom-2 left-1/2 -translate-x-1/2', // Bottom center
-            5: 'bottom-2 right-10',       // Bottom-right
-            6: 'top-1/2 -translate-y-1/2 right-0', // Right
-            7: 'top-2 right-10',          // Top-right
-          };
-
+          // Resolved-slot occupancy. When a SeatAnchorLayer is mounted
+          // (gameplay families), read from the shared anchor map so
+          // open-seat geometry tracks the same projection the clusters
+          // render at. When no provider is mounted (legacy waiting
+          // path), fall back to the canonical observer-absolute map.
+          const occupiedSlots = new Set<number>();
+          for (const player of players) {
+            const slot =
+              shellAnchors?.byPosition.get(player.position)?.slot
+              ?? observerSlotForPosition(player.position);
+            if (slot != null) occupiedSlots.add(slot);
+          }
           return openSeats.map(pos => {
-            const positionClass = absolutePositionClasses[pos] || absolutePositionClasses[1];
-            
+            const slot = observerSlotForPosition(pos);
+            if (slot == null) return null;
+            if (occupiedSlots.has(slot)) return null;
+            const placement = getCanonicalSlotPlacement(slot, 'open-seat');
             return (
-              <div key={pos} className={`absolute z-20 ${positionClass}`}>
-                <button 
-                  onClick={() => onSelectSeat && onSelectSeat(pos)} 
+              <div
+                key={pos}
+                className={`absolute z-20 pointer-events-auto ${placement.className}`}
+                data-waiting-seat-open={pos}
+                data-waiting-seat-slot={slot}
+              >
+                <button
+                  onClick={() => onSelectSeat && onSelectSeat(pos)}
                   className="w-12 h-12 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-600/70 flex items-center justify-center hover:bg-amber-800/60 hover:border-amber-500 transition-all active:scale-95"
                 >
                   <span className="text-amber-300 text-xl">+</span>

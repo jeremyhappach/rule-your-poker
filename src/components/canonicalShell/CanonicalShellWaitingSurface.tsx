@@ -261,45 +261,61 @@ function WaitingSurfaceBody({
 
             {/* Open-seat join affordance layer — observers only.
                 Placement is sourced from the SAME canonical slot
-                placement map the cluster uses (observerSlotForPosition
-                + getCanonicalSlotPlacement) so the geometry stays
-                single-sourced. Joined viewers cannot re-pick seats
-                from waiting. */}
-            {actions.isObserver && (
-              <div
-                data-canonical-shell-waiting-open-seats=""
-                className="absolute inset-0 z-25"
-              >
-                {ALL_POSITIONS.map((pos) => {
-                  const occupied = players.some((p) => p.position === pos);
-                  if (occupied) return null;
-                  const slot = observerSlotForPosition(pos);
-                  if (slot == null) return null;
-                  const placement = getCanonicalSlotPlacement(slot, 'open-seat');
-                  return (
-                    <div
-                      key={pos}
-                      className={cn(
-                        "absolute pointer-events-auto",
-                        placement.className,
-                      )}
-                      data-waiting-seat-open={pos}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => onSelectSeat(pos)}
-                        aria-label={`Take seat ${pos}`}
-                        className="w-12 h-12 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-600/70 flex items-center justify-center hover:bg-amber-800/60 hover:border-amber-500 transition-all active:scale-95"
+                placement map the cluster uses, AND filtered against
+                the SAME resolved-slot occupancy the cluster reads.
+                A `+` is suppressed when EITHER the position is taken
+                OR the resolved canonical slot already hosts a seat
+                cluster — single-sourcing the geometry so a `+` can
+                never sit underneath an occupied chipstack. */}
+            {actions.isObserver && (() => {
+              // Resolved-slot occupancy from the SAME anchor map the
+              // cluster layer reads. Any slot in this set already has
+              // a player cluster painted on it; the `+` MUST be
+              // suppressed there regardless of which raw position
+              // mapped to it.
+              const occupiedSlots = new Set<number>();
+              for (const player of players) {
+                const slot = byPosition.get(player.position)?.slot;
+                if (slot != null) occupiedSlots.add(slot);
+              }
+              return (
+                <div
+                  data-canonical-shell-waiting-open-seats=""
+                  className="absolute inset-0 z-25"
+                >
+                  {ALL_POSITIONS.map((pos) => {
+                    const occupiedByPosition = players.some((p) => p.position === pos);
+                    if (occupiedByPosition) return null;
+                    const slot = observerSlotForPosition(pos);
+                    if (slot == null) return null;
+                    if (occupiedSlots.has(slot)) return null;
+                    const placement = getCanonicalSlotPlacement(slot, 'open-seat');
+                    return (
+                      <div
+                        key={pos}
+                        className={cn(
+                          "absolute pointer-events-auto",
+                          placement.className,
+                        )}
+                        data-waiting-seat-open={pos}
+                        data-waiting-seat-slot={slot}
                       >
-                        <span className="text-amber-300 text-xl leading-none">
-                          +
-                        </span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                        <button
+                          type="button"
+                          onClick={() => onSelectSeat(pos)}
+                          aria-label={`Take seat ${pos}`}
+                          className="w-12 h-12 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-600/70 flex items-center justify-center hover:bg-amber-800/60 hover:border-amber-500 transition-all active:scale-95"
+                        >
+                          <span className="text-amber-300 text-xl leading-none">
+                            +
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {/* CTA stage — sits on top of the seat layers, centered in
                 the ellipse. */}
