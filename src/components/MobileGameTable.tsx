@@ -22,6 +22,7 @@ import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
+import { recordDealerSelectionDiag } from "@/lib/dealerSelectionDiag";
 
 // ── BOOTSTRAP_FLASH_MGT instrumentation (PR-B.4) ──
 // Module-level dedup + stable per-tab instance id so we can correlate
