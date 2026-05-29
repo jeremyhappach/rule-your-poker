@@ -2478,16 +2478,33 @@ export const MobileGameTable = ({
     const newContext = handContextId ?? null;
 
     if (prevContext !== newContext) {
-      setIsHandTransitioning(true);
+      // PR-B.5 FIX (asymmetric Holm first-hand flash): Do NOT arm the
+      // transition guard on null → non-null bootstrap when raw player_cards
+      // for the new hand are already present. The guard exists to bridge
+      // BETWEEN hands (hide stale cards before fresh ones arrive). On a
+      // fresh MobileGameTable mount with no previous hand, there are no
+      // stale cards to hide — arming the 200ms timer here wipes cards
+      // that already rendered correctly (race-dependent: flashes only on
+      // the client whose raw cards arrive in the same render as
+      // handContextId, not the client where handContextId leads).
+      const isBootstrapFromNull = prevContext === null && newContext !== null;
+      const rawCardsAlreadyPresent =
+        (currentPlayer
+          ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards?.length ?? 0
+          : 0) > 0;
 
-      if (handTransitionTimeoutRef.current) {
-        clearTimeout(handTransitionTimeoutRef.current);
+      if (!(isBootstrapFromNull && rawCardsAlreadyPresent)) {
+        setIsHandTransitioning(true);
+
+        if (handTransitionTimeoutRef.current) {
+          clearTimeout(handTransitionTimeoutRef.current);
+        }
+
+        handTransitionTimeoutRef.current = setTimeout(() => {
+          setIsHandTransitioning(false);
+          handTransitionTimeoutRef.current = null;
+        }, 200);
       }
-
-      handTransitionTimeoutRef.current = setTimeout(() => {
-        setIsHandTransitioning(false);
-        handTransitionTimeoutRef.current = null;
-      }, 200);
     }
 
     prevHandContextForTransitionRef.current = newContext;
