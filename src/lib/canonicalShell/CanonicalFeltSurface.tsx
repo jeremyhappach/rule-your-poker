@@ -89,8 +89,11 @@ export function CanonicalFeltSurface({
 }: CanonicalFeltSurfaceProps) {
   const { getTableColors } = useVisualPreferences();
   const tableColors = getTableColors();
-  const isDicePlate = DICE_PLATE_KINDS.has(gameKind);
+  const isDicePlate = gameKind != null && DICE_PLATE_KINDS.has(gameKind);
   const isCribbage = gameKind === "cribbage";
+  // Neutral mode: no committed game kind yet (bootstrap dealer-selection
+  // before a dealer-game exists). Suppress the game-name plate entirely.
+  const isNeutralKind = gameKind == null;
 
   // Geometry selection. When geometryVariant === 'ellipse' we force the
   // shared canonical ellipse for every family (Phase 3.1b' shell-owned
