@@ -5474,7 +5474,7 @@ export const CribbageMobileGameTable = ({
                 doubleSkunkEnabled: gameConfig.doubleSkunkEnabled,
                 doubleSkunkThreshold: gameConfig.doubleSkunkThreshold,
               }}
-              isWaitingPhase={isBootstrapMode || isHighCardMode}
+              isWaitingPhase={isBootstrapMode}
             />
 
 
