@@ -579,8 +579,16 @@ export const CribbageMobileGameTable = ({
     // fall back to prop only when auth has not yet observed up to prop hand.
     const useAuth = authIdentity?.roundId != null && authHand >= propHand;
     const incomingRoundId = useAuth ? authIdentity!.roundId! : roundId;
-    const incomingHandNumber = Math.max(authHand, propHand, currentHandNumber);
+    // CRITICAL: Use the RAW incoming hand number — NOT floored by
+    // currentHandNumber. Flooring with currentHandNumber inflates a stale
+    // incoming hand number to the local current, which then satisfies the
+    // "equal hand, different round" branch of `isIdentityForward` and lets
+    // a stale roundId regress the local identity. The regression wedges
+    // `initialLoadComplete=false`, which causes the bootstrap branch to
+    // early-return forever and freezes the discard transition.
+    const incomingHandNumber = useAuth ? authHand : propHand;
     if (!incomingRoundId) return;
+    if (incomingHandNumber < 0) return;
 
     setCurrentHandNumber((prev) => (incomingHandNumber > prev ? incomingHandNumber : prev));
     setCurrentRoundId((prev) => {
@@ -596,13 +604,20 @@ export const CribbageMobileGameTable = ({
         handNumber: incomingHandNumber,
         roundId: incomingRoundId,
       };
-      // Strictly forward — equal-hand-different-roundId is only allowed when
-      // the incoming identity comes from the authoritative feed (handles a
-      // race where hand_number hasn't yet been bumped on the new round row).
-      if (isIdentityForward(prevIdent, nextIdent)) return incomingRoundId;
+      // Strictly forward. Equal-hand-different-roundId is only safe when the
+      // incoming identity comes from the AUTHORITATIVE feed — prop-derived
+      // equal-hand swaps are the documented regression vector and must be
+      // rejected here.
+      if (isIdentityForward(prevIdent, nextIdent)) {
+        if (prevIdent.handNumber === nextIdent.handNumber && !useAuth) {
+          return prev;
+        }
+        return incomingRoundId;
+      }
       return prev;
     });
   }, [roundId, handNumber, authIdentity?.roundId, authIdentity?.handNumber, currentHandNumber, dealerGameId]);
+
 
   // ── Identity-advancement reset ─────────────────────────────────
   // When the dealer-game-scoped identity feed detects a forward advance (peer
