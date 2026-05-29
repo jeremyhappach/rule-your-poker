@@ -5695,8 +5695,27 @@ export const CribbageMobileGameTable = ({
                   slot={slot}
                   position={seatPlayer.position}
                   name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                  isDealer={isGameplayMode ? isCribDealer(seatPlayer.id) : false}
+                  /* Red "D" (identity row) — session/dealer-game owner. */
+                  isDealer={seatPlayer.position === dealerPosition}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                  /* Amber "C" — current Cribbage crib owner. Rendered as a
+                     canonical seat-cluster decoration on the rail-facing
+                     side of the chip (NOT in the identity row), so it
+                     reads as a table-state indicator and inherits the
+                     shell's projection / face-to-face / observer geometry
+                     automatically via outerDecoration side-resolution. */
+                  outerDecoration={
+                    isGameplayMode && isCribDealer(seatPlayer.id) ? (
+                      <div
+                        data-canonical-cribbage-crib-pip=""
+                        className="w-3 h-3 rounded-full bg-amber-500 border border-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+                        aria-label="Crib dealer"
+                        title="Crib"
+                      >
+                        <span className="text-white font-bold text-[6px] leading-none">C</span>
+                      </div>
+                    ) : null
+                  }
                 >
                   {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
