@@ -230,8 +230,11 @@ export function ShellOwnedFeltHost({
   }
   const effective = published ?? stickyRef.current;
 
-  const gameKind: CanonicalFeltGameKind =
-    effective?.gameKind ?? initialGameKind ?? 'holm-game';
+  // No fake fallback: when no surface has published and no initial
+  // kind is supplied, render the canonical felt geometry with NO
+  // game-name plate (bootstrap dealer-selection neutrality).
+  const gameKind: CanonicalFeltGameKind | null =
+    effective?.gameKind ?? initialGameKind ?? null;
   const anteAmount = effective?.anteAmount ?? initialAnteAmount;
   const isWaitingPhase = effective?.isWaitingPhase ?? initialIsWaitingPhase;
   const hasPublished = !!published;
