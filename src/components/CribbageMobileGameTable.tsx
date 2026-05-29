@@ -207,29 +207,28 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * so the key doesn't change when cards move from hand → playedCards during pegging.
  */
 /**
- * Felt-level placement for the Cribbage crib pip — anchored just
- * inside the rail adjacent to each canonical seat slot. Independent
- * from chip-bubble placement so the pip never overlaps identity /
- * chip rendering. Follows canonical projection automatically because
- * `slot` is the already-projected anchor.
+ * Felt-level placement for the Cribbage crib pip.
+ *
+ * Anchor model: the canonical seat slot identifies OWNERSHIP only; the
+ * marker itself is placed from that slot's rail segment. Keep these
+ * coordinates rail-adjacent rather than chip-stack-adjacent so active,
+ * observer, face-to-face, and relative projections all read as table
+ * state on the felt instead of profile/chip chrome.
  */
 function cribPipPlacementForSlot(slot: number | null): string | null {
-  // Per-slot tuned placement. Goal is CONSISTENT PROXIMITY TO THE RAIL
-  // (not identical offset from seat center). Non-HOME slots use the
-  // previously-validated "down/right of chip stack" positions that read
-  // cleanly without overlapping chip bubbles, names, or card backs.
-  // HOME is tuned separately because the active-player chip cluster
-  // hugs the bottom rail tightly and the pip needs more clearance.
+  // Slot → rail-segment placement. Percentages are intentionally close
+  // to the felt edge; lateral/vertical nudges only choose a clear part
+  // of that rail segment so the pip avoids chips, names, and card backs.
   switch (slot) {
-    case -2: return 'top-[18%] left-1/2 -translate-x-1/2';                 // FACE_TO_FACE (opponent top-center)
-    case -1: return 'bottom-[6%] left-1/2 -translate-x-1/2';               // HOME (active player rail — tuned for HOME)
-    case -3: return 'bottom-[16%] right-[18%]';                            // BOTTOM_RAIL (observer pos 4)
-    case 0:  return 'bottom-[26%] left-[22%]';                             // bottom-left
-    case 1:  return 'top-1/2 -translate-y-1/2 left-[14%]';                 // mid-left
-    case 2:  return 'top-[26%] left-[22%]';                                // top-left
-    case 3:  return 'top-[26%] right-[22%]';                               // top-right
-    case 4:  return 'top-1/2 -translate-y-1/2 right-[14%]';                // mid-right
-    case 5:  return 'bottom-[26%] right-[22%]';                            // bottom-right
+    case -2: return 'top-[5%] left-1/2 -translate-x-1/2';                  // FACE_TO_FACE: top-center rail
+    case -1: return 'bottom-[3%] left-1/2 -translate-x-1/2';               // HOME: bottom-center rail
+    case -3: return 'bottom-[5%] right-[14%]';                             // BOTTOM_RAIL: observer south rail
+    case 0:  return 'bottom-[7%] left-[22%]';                              // bottom-left rail segment
+    case 1:  return 'top-[62%] left-[5%] -translate-y-1/2';                // mid-left rail, below chip lane
+    case 2:  return 'top-[7%] left-[25%]';                                 // top-left rail segment
+    case 3:  return 'top-[7%] right-[25%]';                                // top-right rail segment
+    case 4:  return 'top-[62%] right-[5%] -translate-y-1/2';               // mid-right rail, below chip lane
+    case 5:  return 'bottom-[7%] right-[22%]';                             // bottom-right rail segment
     default: return null;
   }
 }
