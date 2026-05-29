@@ -5698,24 +5698,6 @@ export const CribbageMobileGameTable = ({
                   /* Red "D" (identity row) — session/dealer-game owner. */
                   isDealer={seatPlayer.position === dealerPosition}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
-                  /* Amber "C" — current Cribbage crib owner. Rendered as a
-                     canonical seat-cluster decoration on the rail-facing
-                     side of the chip (NOT in the identity row), so it
-                     reads as a table-state indicator and inherits the
-                     shell's projection / face-to-face / observer geometry
-                     automatically via outerDecoration side-resolution. */
-                  outerDecoration={
-                    isGameplayMode && isCribDealer(seatPlayer.id) ? (
-                      <div
-                        data-canonical-cribbage-crib-pip=""
-                        className="w-3 h-3 rounded-full bg-amber-500 border border-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
-                        aria-label="Crib dealer"
-                        title="Crib"
-                      >
-                        <span className="text-white font-bold text-[6px] leading-none">C</span>
-                      </div>
-                    ) : null
-                  }
                 >
                   {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
@@ -5731,6 +5713,36 @@ export const CribbageMobileGameTable = ({
                     </div>
                   )}
                 </CanonicalSeatCluster>
+              );
+            })}
+
+            {/* ═══════ FELT-LEVEL CRIB PIP ═══════
+                Amber "C" rendered on the felt itself, just inside the
+                rail adjacent to the current crib owner's seat. Uses the
+                canonical seat-anchor mapping so it follows projection
+                (active-canonical, observer-absolute, 2P face-to-face)
+                automatically. Independent from the chip bubble — never
+                overlaps identity / chip rendering. */}
+            {isGameplayMode && projectedSeatPlayers.map((seatPlayer) => {
+              if (!isCribDealer(seatPlayer.id)) return null;
+              const slot = playerSlotById.get(seatPlayer.id) ?? null;
+              const placement = cribPipPlacementForSlot(slot);
+              if (!placement) return null;
+              return (
+                <div
+                  key={`crib-pip-${seatPlayer.id}`}
+                  data-canonical-cribbage-crib-pip=""
+                  data-crib-pip-slot={String(slot)}
+                  className={`absolute ${placement} pointer-events-none z-40`}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full bg-amber-500 border-2 border-amber-200 flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                    aria-label="Crib dealer"
+                    title="Crib"
+                  >
+                    <span className="text-amber-950 font-extrabold text-sm leading-none">C</span>
+                  </div>
+                </div>
               );
             })}
           </div>
