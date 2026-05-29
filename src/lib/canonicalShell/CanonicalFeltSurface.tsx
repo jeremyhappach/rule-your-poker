@@ -121,7 +121,7 @@ export function CanonicalFeltSurface({
       <div
         data-canonical-felt-surface=""
         data-canonical-felt-owner={feltOwner ?? 'local-felt-surface'}
-        data-canonical-felt-game={gameKind}
+        data-canonical-felt-game={gameKind ?? 'neutral'}
         data-canonical-felt-geometry={useEllipseGeometry ? 'ellipse' : 'circle'}
         className={feltClass}
         style={feltStyle}
@@ -147,7 +147,7 @@ export function CanonicalFeltSurface({
 
 
       {/* Game-name plate — shared chrome */}
-      {!isWaitingPhase && (
+      {!isWaitingPhase && !isNeutralKind && gameKind && (
         <div
           data-canonical-felt-plate=""
           data-canonical-felt-plate-variant={
