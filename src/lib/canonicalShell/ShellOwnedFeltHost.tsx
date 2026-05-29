@@ -288,19 +288,23 @@ export function ShellOwnedFeltHost({
           position: 'absolute',
           left: '50%',
           top: 24,
-          width: 'min(94vw, 720px)',
-          // Active envelope MUST equal waiting/interstitial envelope.
-          // Calibration: previous `min(84vw, calc(53vh - 40px), 380px)`
-          // over-corrected and compressed the ellipse vertically; bumped
-          // to give the felt comfortable breathing room without growing
-          // the overall envelope (width cap unchanged). The 86vw and
-          // 57vh-24 terms typically pick the same value, yielding a
-          // visually rounder ellipse that still leaves room for the
-          // player-area panel below.
-          height: 'min(86vw, calc(57vh - 24px), 420px)',
+          // PR-B.5: felt is the sole flexible region of the shell column.
+          // Bottom HUD stack reserves its intrinsic height first; the
+          // table-container parent then hands the felt host whatever
+          // vertical space remains. The frame fills that allocation
+          // (minus the 24px top inset for breathing room) and derives
+          // its width via aspect-ratio, capped by the existing 94vw /
+          // 720px envelope. Viewport-derived height terms (86vw / 57vh)
+          // are retired here — they ignored the parent's allocation and
+          // caused active-player controls to be pushed off-screen on
+          // shorter phones. Tall phones now grow the felt; short phones
+          // shrink it; the bottom HUD geometry never moves.
+          height: 'calc(100% - 24px)',
+          maxHeight: 420,
+          minHeight: 220,
+          aspectRatio: '94 / 86',
+          maxWidth: 'min(94vw, 720px)',
           minWidth: 300,
-          minHeight: 260,
-
           transform: 'translateX(-50%)',
         }}
       >
