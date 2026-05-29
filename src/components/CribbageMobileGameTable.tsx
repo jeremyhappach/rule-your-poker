@@ -206,6 +206,28 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * Uses the full original deal (hand + discarded + played cards for first player)
  * so the key doesn't change when cards move from hand → playedCards during pegging.
  */
+/**
+ * Felt-level placement for the Cribbage crib pip — anchored just
+ * inside the rail adjacent to each canonical seat slot. Independent
+ * from chip-bubble placement so the pip never overlaps identity /
+ * chip rendering. Follows canonical projection automatically because
+ * `slot` is the already-projected anchor.
+ */
+function cribPipPlacementForSlot(slot: number | null): string | null {
+  switch (slot) {
+    case -2: return 'top-[18%] left-1/2 -translate-x-1/2';                 // FACE_TO_FACE
+    case -1: return 'bottom-[20%] left-1/2 -translate-x-1/2';              // HOME
+    case -3: return 'bottom-[16%] right-[18%]';                            // BOTTOM_RAIL (observer pos 4)
+    case 0:  return 'bottom-[26%] left-[22%]';                             // bottom-left
+    case 1:  return 'top-1/2 -translate-y-1/2 left-[14%]';                 // mid-left
+    case 2:  return 'top-[24%] left-[22%]';                                // top-left
+    case 3:  return 'top-[24%] right-[22%]';                               // top-right
+    case 4:  return 'top-1/2 -translate-y-1/2 right-[14%]';                // mid-right
+    case 5:  return 'bottom-[26%] right-[22%]';                            // bottom-right
+    default: return null;
+  }
+}
+
 function getHandKey(state: CribbageState | null): string {
   if (!state) return '';
   const firstPlayerId = state.turnOrder[0];
