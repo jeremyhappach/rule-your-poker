@@ -255,6 +255,15 @@ export function useHighCardDealerSelection({
           };
         });
 
+        recordDealerSelectionDiag('dealer_selection_animation_triggered', {
+          sessionId: gameId,
+          dealerSelectionId: `${gameId}:host`,
+          animationTriggerId: `${gameId}:round-${roundNum}`,
+          cardCount: newCards.length,
+          scope: isCribbageVariant ? 'cribbage' : 'session',
+          extra: { round: roundNum, playersInRound: playersInRound.length },
+        });
+
         const allCards = [
           ...existingCards.filter((c) => c.roundNumber !== roundNum),
           ...newCards,
