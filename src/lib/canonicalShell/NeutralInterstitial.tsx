@@ -99,6 +99,7 @@ export function NeutralInterstitial({
   // (true here), so no game-name branding ever paints. Use the first
   // dice-plate kind purely as a structural placeholder; nothing visible
   // depends on it while waiting.
+  const hasCommittedGameKind = gameKind != null;
   const resolvedGameKind: CanonicalFeltGameKind = gameKind ?? 'yahtzee';
   const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
   useLifecycleMount('NeutralInterstitial', { reason, gameKind });
@@ -106,7 +107,12 @@ export function NeutralInterstitial({
   usePublishShellFelt({
     gameKind: resolvedGameKind,
     anteAmount,
-    isWaitingPhase: true,
+    // When the dealer-game's game_type is committed (gameKind supplied
+    // by the caller), the felt should immediately adopt that game's
+    // branding plate even though we're in an interstitial phase
+    // (ante_decision, dealer_selection, configuring). Only suppress
+    // the plate when no game kind is known yet (bootstrap neutrality).
+    isWaitingPhase: !hasCommittedGameKind,
     publisherLabel: `NeutralInterstitial:${reason ?? 'unknown'}`,
   });
 
