@@ -206,6 +206,28 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * Uses the full original deal (hand + discarded + played cards for first player)
  * so the key doesn't change when cards move from hand → playedCards during pegging.
  */
+/**
+ * Felt-level placement for the Cribbage crib pip — anchored just
+ * inside the rail adjacent to each canonical seat slot. Independent
+ * from chip-bubble placement so the pip never overlaps identity /
+ * chip rendering. Follows canonical projection automatically because
+ * `slot` is the already-projected anchor.
+ */
+function cribPipPlacementForSlot(slot: number | null): string | null {
+  switch (slot) {
+    case -2: return 'top-[18%] left-1/2 -translate-x-1/2';                 // FACE_TO_FACE
+    case -1: return 'bottom-[20%] left-1/2 -translate-x-1/2';              // HOME
+    case -3: return 'bottom-[16%] right-[18%]';                            // BOTTOM_RAIL (observer pos 4)
+    case 0:  return 'bottom-[26%] left-[22%]';                             // bottom-left
+    case 1:  return 'top-1/2 -translate-y-1/2 left-[14%]';                 // mid-left
+    case 2:  return 'top-[24%] left-[22%]';                                // top-left
+    case 3:  return 'top-[24%] right-[22%]';                               // top-right
+    case 4:  return 'top-1/2 -translate-y-1/2 right-[14%]';                // mid-right
+    case 5:  return 'bottom-[26%] right-[22%]';                            // bottom-right
+    default: return null;
+  }
+}
+
 function getHandKey(state: CribbageState | null): string {
   if (!state) return '';
   const firstPlayerId = state.turnOrder[0];
@@ -5698,24 +5720,6 @@ export const CribbageMobileGameTable = ({
                   /* Red "D" (identity row) — session/dealer-game owner. */
                   isDealer={seatPlayer.position === dealerPosition}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
-                  /* Amber "C" — current Cribbage crib owner. Rendered as a
-                     canonical seat-cluster decoration on the rail-facing
-                     side of the chip (NOT in the identity row), so it
-                     reads as a table-state indicator and inherits the
-                     shell's projection / face-to-face / observer geometry
-                     automatically via outerDecoration side-resolution. */
-                  outerDecoration={
-                    isGameplayMode && isCribDealer(seatPlayer.id) ? (
-                      <div
-                        data-canonical-cribbage-crib-pip=""
-                        className="w-3 h-3 rounded-full bg-amber-500 border border-white flex items-center justify-center shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
-                        aria-label="Crib dealer"
-                        title="Crib"
-                      >
-                        <span className="text-white font-bold text-[6px] leading-none">C</span>
-                      </div>
-                    ) : null
-                  }
                 >
                   {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
@@ -5731,6 +5735,36 @@ export const CribbageMobileGameTable = ({
                     </div>
                   )}
                 </CanonicalSeatCluster>
+              );
+            })}
+
+            {/* ═══════ FELT-LEVEL CRIB PIP ═══════
+                Amber "C" rendered on the felt itself, just inside the
+                rail adjacent to the current crib owner's seat. Uses the
+                canonical seat-anchor mapping so it follows projection
+                (active-canonical, observer-absolute, 2P face-to-face)
+                automatically. Independent from the chip bubble — never
+                overlaps identity / chip rendering. */}
+            {isGameplayMode && projectedSeatPlayers.map((seatPlayer) => {
+              if (!isCribDealer(seatPlayer.id)) return null;
+              const slot = playerSlotById.get(seatPlayer.id) ?? null;
+              const placement = cribPipPlacementForSlot(slot);
+              if (!placement) return null;
+              return (
+                <div
+                  key={`crib-pip-${seatPlayer.id}`}
+                  data-canonical-cribbage-crib-pip=""
+                  data-crib-pip-slot={String(slot)}
+                  className={`absolute ${placement} pointer-events-none z-40`}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full bg-amber-500 border-2 border-amber-200 flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                    aria-label="Crib dealer"
+                    title="Crib"
+                  >
+                    <span className="text-amber-950 font-extrabold text-sm leading-none">C</span>
+                  </div>
+                </div>
               );
             })}
           </div>
