@@ -21,6 +21,28 @@ import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
+
+// ── BOOTSTRAP_FLASH_MGT instrumentation (PR-B.4) ──
+// Module-level dedup + stable per-tab instance id so we can correlate
+// the two clients in SQL without depending on user_id mapping.
+const __mgtFlashClientInstanceId: string =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `mgt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+const __mgtFlashLastKeyByGame = new Map<string, string>();
+function __mgtFlashPersist(row: { game_id: string; event_type: string; payload: Record<string, unknown> }) {
+  // Fire-and-forget; never await.
+  Promise.resolve().then(async () => {
+    try {
+      await __mgtSupabase.from('debug_events').insert({
+        game_id: row.game_id,
+        event_type: row.event_type,
+        payload: { clientInstanceId: __mgtFlashClientInstanceId, ...row.payload },
+      } as any);
+    } catch { /* swallow — diagnostics must never break gameplay */ }
+  });
+}
 
 
 import { BucksOnYouAnimation } from "./BucksOnYouAnimation";
@@ -2439,6 +2461,8 @@ export const MobileGameTable = ({
   // This is similar to the Cribbage pattern - a short transition period ensures old cards disappear
   // before new cards are shown, avoiding the "switch" visual.
   const [isHandTransitioning, setIsHandTransitioning] = useState(false);
+  // PR-B.4: source label of last currentPlayerCards memo decision (for flash diag).
+  const __mgtCurrentPlayerCardsSourceRef = useRef<string>('init');
   const handTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHandContextForTransitionRef = useRef<string | null>(null);
   
@@ -2568,8 +2592,90 @@ export const MobileGameTable = ({
       }
     }
 
+    __mgtCurrentPlayerCardsSourceRef.current = chosen.source;
     return chosen.cards;
   }, [rawCurrentPlayerCards, handContextId, isHandTransitioning, gameType, roundStatus, holmWinPotTriggerId]);
+
+  // ── BOOTSTRAP_FLASH_MGT snapshot effect (Holm hand 1–2 only) ──
+  // Captures every distinct flip across the dimensions most likely to
+  // cause a sub-shell mount→flash→remount on first hand bootstrap.
+  const __mgtFlashEnabled = gameType === 'holm-game' && !!gameId && (currentRound ?? 0) <= 2;
+  useEffect(() => {
+    if (!__mgtFlashEnabled) return;
+    if (!gameId) return;
+
+    const seatedCards: Record<string, number> = {};
+    const seatedRawCards: Record<string, number> = {};
+    try {
+      for (const p of players) {
+        if (p.status === 'active' || p.status === 'folded') {
+          const pc = playerCards.find(x => x.player_id === p.id);
+          const key = `p${p.position}`;
+          seatedRawCards[key] = pc?.cards?.length ?? 0;
+          seatedCards[key] = seatedRawCards[key];
+        }
+      }
+    } catch { /* */ }
+
+    const seatedCardsKey = Object.entries(seatedCards).sort().map(([k, v]) => `${k}=${v}`).join(',');
+
+    const key = [
+      handContextId ?? 'null',
+      `isHT=${isHandTransitioning ? 1 : 0}`,
+      `isDelayCC=${isDelayingCommunityCards ? 1 : 0}`,
+      `showCC=${showCommunityCards ? 1 : 0}`,
+      `approvedHC=${approvedHandContextId ?? 'null'}`,
+      `cpcLen=${currentPlayerCards.length}`,
+      `cpcSrc=${__mgtCurrentPlayerCardsSourceRef.current}`,
+      `seated=${seatedCardsKey}`,
+      `cr=${currentRound ?? 'null'}`,
+      `rs=${roundStatus ?? 'null'}`,
+      `gs=${gameStatus ?? 'null'}`,
+    ].join('|');
+
+    const prev = __mgtFlashLastKeyByGame.get(gameId) ?? '';
+    if (prev === key) return;
+    __mgtFlashLastKeyByGame.set(gameId, key);
+
+    __mgtFlashPersist({
+      game_id: gameId,
+      event_type: 'mgt_bootstrap_flash_snapshot',
+      payload: {
+        from: prev || null,
+        to: key,
+        handContextId: handContextId ?? null,
+        isHandTransitioning,
+        isDelayingCommunityCards,
+        showCommunityCards,
+        approvedHandContextId: approvedHandContextId ?? null,
+        currentPlayerCardsLength: currentPlayerCards.length,
+        currentPlayerCardsSource: __mgtCurrentPlayerCardsSourceRef.current,
+        seatedCards,
+        currentRound: currentRound ?? null,
+        roundStatus: roundStatus ?? null,
+        gameStatus: gameStatus ?? null,
+        gameType,
+        instanceLabel,
+        tPerf: typeof performance !== 'undefined' ? performance.now() : null,
+      },
+    });
+  }, [
+    __mgtFlashEnabled,
+    gameId,
+    handContextId,
+    isHandTransitioning,
+    isDelayingCommunityCards,
+    showCommunityCards,
+    approvedHandContextId,
+    currentPlayerCards.length,
+    players,
+    playerCards,
+    currentRound,
+    roundStatus,
+    gameStatus,
+    gameType,
+    instanceLabel,
+  ]);
 
   // Chip stack emoticon overlays - realtime synced via database
   const { emoticonOverlays, sendEmoticon, isSending: isEmoticonSending } = useChipStackEmoticons(
