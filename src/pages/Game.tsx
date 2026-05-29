@@ -43,6 +43,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
+import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 
 /**
  * HighCardDealerSelection — Phase C.2 retirement shim.
@@ -54,6 +55,11 @@ import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelect
  * Gin Rummy dealer-selection overlay) can keep their JSX shape unchanged
  * while the hook does the work. Behavior-preserving: identical props,
  * identical effects, identical mount/unmount semantics. No render output.
+ *
+ * Instrumentation: emits `dealer_selection_surface_mounted` /
+ * `dealer_selection_surface_unmounted`-shape events to `debug_events` via
+ * `recordDealerSelectionDiag` so the dealer-selection lifecycle tracer can
+ * tell whether the surface ever mounted for a given dealerSelectionId.
  */
 type HighCardDealerSelectionShimProps = {
   gameId: string;
@@ -68,6 +74,27 @@ type HighCardDealerSelectionShimProps = {
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
   useHighCardDealerSelection(props);
+  useEffect(() => {
+    recordDealerSelectionDiag('dealer_selection_surface_mounted', {
+      sessionId: props.gameId,
+      dealerSelectionId: `${props.gameId}:host`,
+      cardCount: props.syncedState?.cards?.length ?? 0,
+      winnerPosition: props.syncedState?.winnerPosition ?? null,
+      scope: props.selectionVariant === 'cribbage' ? 'cribbage' : 'session',
+      presentationVisibilityState: 'mounted-empty',
+      extra: { isHost: props.isHost, surface: 'HighCardDealerSelection-shim', phase: 'mount' },
+    });
+    return () => {
+      recordDealerSelectionDiag('dealer_selection_surface_mounted', {
+        sessionId: props.gameId,
+        dealerSelectionId: `${props.gameId}:host`,
+        scope: props.selectionVariant === 'cribbage' ? 'cribbage' : 'session',
+        presentationVisibilityState: 'unmounted',
+        extra: { surface: 'HighCardDealerSelection-shim', phase: 'unmount' },
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return null;
 };
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
@@ -613,6 +640,26 @@ const Game = () => {
   // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
+
+  // ── dealer_selection_diag context push ─────────────────────────────
+  // Keep the diag tracer enriched with viewer identity + current status
+  // so every persisted checkpoint carries enough context to reconstruct
+  // who saw (or didn't see) the dealer-selection presentation.
+  useEffect(() => {
+    const me = players.find((p) => p.user_id === user?.id);
+    setDealerSelectionDiagContext({
+      gameId: gameId ?? null,
+      dealerGameId: (game as any)?.current_dealer_game_id ?? null,
+      userId: user?.id ?? null,
+      viewerPosition: me?.position ?? null,
+      currentStatus: (game as any)?.status ?? null,
+      viewerRole: me
+        ? (me.position === 1 ? 'host' : 'player')
+        : (user?.id ? 'observer' : 'unknown'),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, user?.id, players, (game as any)?.status, (game as any)?.current_dealer_game_id]);
+
 
   // Capture the *last confirmed* config so Dealer Setup can offer "Run Back" even after we reset
   // the game back to game_selection (where config_complete becomes false).

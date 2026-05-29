@@ -22,6 +22,7 @@ import { getBotAlias } from '@/lib/botAlias';
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from '@/lib/cardUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent } from '@/lib/debugEventLogger';
+import { recordDealerSelectionDiag } from '@/lib/dealerSelectionDiag';
 
 interface Player {
   id: string;
@@ -144,6 +145,25 @@ export function useHighCardDealerSelection({
   const syncToDatabase = useCallback(
     async (state: DealerSelectionState) => {
       if (!isHost) return;
+      const dealerSelectionId = `${gameId}:host`;
+      recordDealerSelectionDiag('dealer_selection_state_published', {
+        sessionId: gameId,
+        dealerSelectionId,
+        cardCount: state.cards?.length ?? 0,
+        winnerPosition: state.winnerPosition ?? null,
+        scope: selectionVariant === 'cribbage' ? 'cribbage' : 'session',
+        extra: { side: 'host-write', isComplete: state.isComplete },
+      });
+      if ((state.cards?.length ?? 0) > 0) {
+        recordDealerSelectionDiag('dealer_selection_cards_published', {
+          sessionId: gameId,
+          dealerSelectionId,
+          cardCount: state.cards.length,
+          winnerPosition: state.winnerPosition ?? null,
+          scope: selectionVariant === 'cribbage' ? 'cribbage' : 'session',
+          extra: { side: 'host-write' },
+        });
+      }
       try {
         const { error } = await supabase
           .from('games')
@@ -156,13 +176,33 @@ export function useHighCardDealerSelection({
         console.error('[HIGH CARD] Error syncing to DB:', err);
       }
     },
-    [isHost, gameId],
+    [isHost, gameId, selectionVariant],
   );
 
   // NON-HOST: react to synced state from database
+  const nonHostCardsSeenRef = useRef(false);
   useEffect(() => {
     if (isHost) return;
     if (!syncedState) return;
+
+    recordDealerSelectionDiag('dealer_selection_state_published', {
+      sessionId: gameId,
+      dealerSelectionId: `${gameId}:host`,
+      cardCount: syncedState.cards?.length ?? 0,
+      winnerPosition: syncedState.winnerPosition ?? null,
+      scope: selectionVariant === 'cribbage' ? 'cribbage' : 'session',
+      extra: { side: 'non-host-recv', isComplete: syncedState.isComplete },
+    });
+    if (!nonHostCardsSeenRef.current && (syncedState.cards?.length ?? 0) > 0) {
+      nonHostCardsSeenRef.current = true;
+      recordDealerSelectionDiag('dealer_selection_cards_published', {
+        sessionId: gameId,
+        dealerSelectionId: `${gameId}:host`,
+        cardCount: syncedState.cards.length,
+        scope: selectionVariant === 'cribbage' ? 'cribbage' : 'session',
+        extra: { side: 'non-host-recv' },
+      });
+    }
 
     lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
     onCardsUpdate(syncedState.cards);
@@ -171,7 +211,7 @@ export function useHighCardDealerSelection({
     if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
     }
-  }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate]);
+  }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate, gameId, selectionVariant]);
 
   // Forward declarations to avoid use-before-declaration in closures.
   const determineWinnerRef = useRef<(roundCards: DealerSelectionCard[], allCards: DealerSelectionCard[], playersInRound: Player[], roundNum: number) => void>(() => {});
@@ -213,6 +253,15 @@ export function useHighCardDealerSelection({
             isDimmed: false,
             roundNumber: roundNum,
           };
+        });
+
+        recordDealerSelectionDiag('dealer_selection_animation_triggered', {
+          sessionId: gameId,
+          dealerSelectionId: `${gameId}:host`,
+          animationTriggerId: `${gameId}:round-${roundNum}`,
+          cardCount: newCards.length,
+          scope: isCribbageVariant ? 'cribbage' : 'session',
+          extra: { round: roundNum, playersInRound: playersInRound.length },
         });
 
         const allCards = [
@@ -291,6 +340,15 @@ export function useHighCardDealerSelection({
           });
 
           hasCompletedRef.current = true;
+
+          recordDealerSelectionDiag('dealer_selection_completed', {
+            sessionId: gameId,
+            dealerSelectionId: `${gameId}:host`,
+            cardCount: updatedCards.length,
+            winnerPosition: winnerPlayer.position,
+            scope: isCribbageVariant ? 'cribbage' : 'session',
+            extra: { round: roundNum },
+          });
 
           addTimeout(() => {
             onComplete(winnerPlayer.position);
@@ -385,6 +443,14 @@ export function useHighCardDealerSelection({
     );
 
     deckRef.current = shuffleDeck(createDeck());
+
+    recordDealerSelectionDiag('dealer_selection_created', {
+      sessionId: gameId,
+      dealerSelectionId: `${gameId}:host`,
+      cardCount: 0,
+      scope: isCribbageVariant ? 'cribbage' : 'session',
+      extra: { eligibleDealers: eligibleDealers.length },
+    });
 
     runSelectionRound(eligibleDealers, 1, []);
 

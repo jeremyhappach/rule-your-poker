@@ -878,6 +878,17 @@ export const CribbageMobileGameTable = ({
           cardLabel,
         },
       });
+      // Tracer: dealer-selection lifecycle — Cribbage announcement published.
+      import('@/lib/dealerSelectionDiag').then(({ recordDealerSelectionDiag }) => {
+        recordDealerSelectionDiag('dealer_selection_announcement_published', {
+          sessionId: gameId,
+          dealerSelectionId: `${gameId}:host`,
+          winnerPosition: effectiveHighCardWinnerPosition,
+          cardCount: effectiveHighCardCards.length,
+          scope: 'cribbage',
+          extra: { announcementId: id, cardLabel, cohort: dealerSelectionCohortDerived },
+        });
+      });
     }
   }, [
     gameId,
