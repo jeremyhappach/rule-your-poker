@@ -4755,6 +4755,7 @@ export const MobileGameTable = ({
         data-canonical-table-container=""
         data-canonical-table-felt-ownership="shell"
         className="flex-1 relative overflow-hidden min-h-0"
+        style={{ maxHeight: '55vh' }}
       >
 
         {/* Phase 3.2 (complete): MobileGameTable no longer owns ANY felt.
@@ -6586,60 +6587,43 @@ export const MobileGameTable = ({
             BETWEEN the rail and the tab bar — same vertical real estate,
             no semantic-announcement plates left in this surface. */}
         <ShellAnnouncementRail />
-        {(() => {
-          // Precompute which (if any) operational HUD chip is active.
-          // PR-B.4: When nothing is active, omit the row entirely so we
-          // don't burn ~28px of vertical budget on an empty container.
-          const horsesChipActive =
-            diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
-            !!horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
-            horsesController.timeLeft !== null;
-          const pausedChipActive = !horsesChipActive && isPaused;
-          const timerBarActive =
-            !horsesChipActive && !pausedChipActive &&
-            !!currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided &&
-            timeLeft !== null && timeLeft > 0 && !!maxTime;
-          const hasOpHud = horsesChipActive || pausedChipActive || timerBarActive;
-          if (!hasOpHud) return null;
-          return (
-            <div
-              data-shell-operational-hud=""
-              className="w-full flex items-center justify-center px-3 min-h-[28px]"
-            >
-              {horsesChipActive ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span
-                      className={cn(
-                        "text-sm font-mono font-bold",
-                        horsesController.timeLeft! <= 5
-                          ? "text-destructive"
-                          : horsesController.timeLeft! <= 10
-                            ? "text-amber-500"
-                            : "text-foreground",
-                      )}
-                    >
-                      {horsesController.timeLeft}s
-                    </span>
-                    {horsesController.currentTurnPlayerName && (
-                      <span className="text-xs text-muted-foreground">
-                        ({horsesController.currentTurnPlayerName})
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ) : pausedChipActive ? (
-                <div className="flex items-center justify-center gap-2">
-                  <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
-                </div>
-              ) : timerBarActive ? (
-                <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft!} maxTime={maxTime!} />
-              ) : null}
+        <div
+          data-shell-operational-hud=""
+          className="w-full flex items-center justify-center px-3 min-h-[28px]"
+        >
+          {diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
+           horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
+           horsesController.timeLeft !== null ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span
+                  className={cn(
+                    "text-sm font-mono font-bold",
+                    horsesController.timeLeft <= 5
+                      ? "text-destructive"
+                      : horsesController.timeLeft <= 10
+                        ? "text-amber-500"
+                        : "text-foreground",
+                  )}
+                >
+                  {horsesController.timeLeft}s
+                </span>
+                {horsesController.currentTurnPlayerName && (
+                  <span className="text-xs text-muted-foreground">
+                    ({horsesController.currentTurnPlayerName})
+                  </span>
+                )}
+              </div>
             </div>
-          );
-        })()}
-
+          ) : isPaused ? (
+            <div className="flex items-center justify-center gap-2">
+              <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+            </div>
+          ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
+            <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
+          ) : null}
+        </div>
         <ShellTabBar />
 
         
