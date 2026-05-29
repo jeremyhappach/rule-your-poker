@@ -214,16 +214,19 @@ const SpadeIcon = ({ className }: { className?: string }) => (
  * `slot` is the already-projected anchor.
  */
 function cribPipPlacementForSlot(slot: number | null): string | null {
+  // Rail-relative anchor. Distance from the felt edge is intentionally
+  // small and approximately equal around the ellipse so the pip reads
+  // as a rail-adjacent ownership marker, NOT a center-felt artifact.
   switch (slot) {
-    case -2: return 'top-[18%] left-1/2 -translate-x-1/2';                 // FACE_TO_FACE
-    case -1: return 'bottom-[20%] left-1/2 -translate-x-1/2';              // HOME
-    case -3: return 'bottom-[16%] right-[18%]';                            // BOTTOM_RAIL (observer pos 4)
-    case 0:  return 'bottom-[26%] left-[22%]';                             // bottom-left
-    case 1:  return 'top-1/2 -translate-y-1/2 left-[14%]';                 // mid-left
-    case 2:  return 'top-[24%] left-[22%]';                                // top-left
-    case 3:  return 'top-[24%] right-[22%]';                               // top-right
-    case 4:  return 'top-1/2 -translate-y-1/2 right-[14%]';                // mid-right
-    case 5:  return 'bottom-[26%] right-[22%]';                            // bottom-right
+    case -2: return 'top-[6%] left-1/2 -translate-x-1/2';                  // FACE_TO_FACE (opponent rail)
+    case -1: return 'bottom-[6%] left-1/2 -translate-x-1/2';               // HOME (active player rail)
+    case -3: return 'bottom-[8%] right-[14%]';                             // BOTTOM_RAIL (observer pos 4)
+    case 0:  return 'bottom-[14%] left-[10%]';                             // bottom-left
+    case 1:  return 'top-1/2 -translate-y-1/2 left-[6%]';                  // mid-left
+    case 2:  return 'top-[14%] left-[10%]';                                // top-left
+    case 3:  return 'top-[14%] right-[10%]';                               // top-right
+    case 4:  return 'top-1/2 -translate-y-1/2 right-[6%]';                 // mid-right
+    case 5:  return 'bottom-[14%] right-[10%]';                            // bottom-right
     default: return null;
   }
 }
