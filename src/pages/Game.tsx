@@ -9308,8 +9308,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               </>
             ) : null}
             neutralGameKind={(() => {
+              // Once the dealer-game's game_type is known (from current,
+              // last-known, or previous config), publish it as the
+              // neutral interstitial's gameKind so the felt adopts the
+              // selected game's branding immediately (ante decisions,
+              // dealer-selection, etc.) — not just at gameplay start.
               const t = _routeShellGameType;
-              if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew') return t;
+              if (t === 'gin-rummy' || t === 'holm-game' || t === 'horses' || t === 'ship-captain-crew' || t === 'yahtzee' || t === 'cribbage') return t;
               if (t === '3-5-7' || t === '3-5-7-game' || t === '357') return 'three-five-seven';
               return null; // NeutralInterstitial falls back to a generic plate-less felt
             })()}
