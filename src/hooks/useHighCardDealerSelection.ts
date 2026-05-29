@@ -22,6 +22,7 @@ import { getBotAlias } from '@/lib/botAlias';
 import { Card, createDeck, shuffleDeck, RANK_VALUES } from '@/lib/cardUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent } from '@/lib/debugEventLogger';
+import { recordDealerSelectionDiag } from '@/lib/dealerSelectionDiag';
 
 interface Player {
   id: string;
