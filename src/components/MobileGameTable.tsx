@@ -453,20 +453,35 @@ const DealerSelectionVisibilityTracker = ({
 }) => {
   const lastCountRef = useRef<number>(0);
   useEffect(() => {
-    recordDealerSelectionDiag('dealer_selection_cards_visible', {
-      sessionId: gameId ?? null,
-      dealerSelectionId: gameId ? `${gameId}:host` : null,
-      cardCount,
-      winnerPosition,
-      presentationVisibilityState: 'visible',
-      extra: {
-        surface: 'MobileGameTable.dealerSelectionOverlay',
-        phase: 'mount',
-        viewerHasCurrentPlayer,
-      },
+    // Defer one frame so child PlayingCard DOM exists before counting.
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const domCount =
+          typeof document !== 'undefined'
+            ? document.querySelectorAll('[data-dsel-card="1"]').length
+            : 0;
+        recordDealerSelectionDiag('dealer_selection_cards_visible', {
+          sessionId: gameId ?? null,
+          dealerSelectionId: gameId ? `${gameId}:host` : null,
+          cardCount: domCount,
+          winnerPosition,
+          presentationVisibilityState: domCount > 0 ? 'visible' : 'mounted-empty',
+          extra: {
+            surface: 'MobileGameTable.dealerSelectionOverlay',
+            phase: 'mount',
+            viewerHasCurrentPlayer,
+            propCardCount: cardCount,
+            domCardCount: domCount,
+          },
+        });
+        lastCountRef.current = domCount;
+      });
     });
-    lastCountRef.current = cardCount;
     return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       recordDealerSelectionDiag('dealer_selection_cards_visible', {
         sessionId: gameId ?? null,
         dealerSelectionId: gameId ? `${gameId}:host` : null,
@@ -476,18 +491,16 @@ const DealerSelectionVisibilityTracker = ({
         extra: {
           surface: 'MobileGameTable.dealerSelectionOverlay',
           phase: 'unmount',
-          priorCount: lastCountRef.current,
+          priorDomCount: lastCountRef.current,
           viewerHasCurrentPlayer,
         },
       });
     };
-    // Mount/unmount only — count updates after first paint are not the
-    // signal we care about (we only need to prove the overlay reached
-    // the DOM at least once per dealer-selection lifecycle).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
 };
+
 
 export const MobileGameTable = ({
   gameId,
