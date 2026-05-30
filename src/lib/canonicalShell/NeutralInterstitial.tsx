@@ -261,19 +261,19 @@ export function NeutralInterstitial({
       aria-hidden={hasParticipants ? undefined : 'true'}
       className="h-full flex flex-col bg-transparent relative"
     >
-      <div className="flex-1 relative overflow-hidden min-h-0" style={{ maxHeight: tableSurfaceMaxHeight }}>
+      <div
+        className="relative overflow-hidden"
+        style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
+      >
         {/* Shell owns the felt unconditionally — no local mount. */}
         {seatLayer}
       </div>
-      {/* Geometry-parity bottom panel mirroring active gameplay surfaces:
-          announcement rail sits at the TOP of the HUD stack (directly
-          below the felt region), tab bar pinned to the bottom. This
-          matches MobileGameTable / YahtzeeGameTable / GinRummyGameTable
-          composition so the canonical lifecycle rail never renders
-          below gameplay content during between-games rollovers. */}
+      {/* HUD region — shell-owned proportional height (--shell-hud-h).
+          Internal rows scale with --hud-scale; layout never grows. */}
       <div
         data-canonical-shell-neutral-bottom-panel=""
-        className="flex-1 flex flex-col min-h-0 bg-transparent border-t border-transparent"
+        className="flex flex-col bg-transparent border-t border-transparent overflow-hidden"
+        style={{ height: 'var(--shell-hud-h)', flex: '0 0 var(--shell-hud-h)' }}
       >
         <ShellAnnouncementRail />
         <div className="flex-1 min-h-0" />

@@ -4837,12 +4837,15 @@ export const MobileGameTable = ({
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
+      {/* Felt region — height owned by the shell via --shell-play-h.
+          The HUD region below naturally consumes --shell-hud-h, so
+          the play/HUD partition is deterministic and proportional. */}
       <div
         ref={tableContainerRef}
         data-canonical-table-container=""
         data-canonical-table-felt-ownership="shell"
-        className="flex-1 relative overflow-hidden min-h-0"
-        style={{ maxHeight: '55vh' }}
+        className="relative overflow-hidden"
+        style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
       >
 
         {/* Phase 3.2 (complete): MobileGameTable no longer owns ANY felt.

@@ -1737,8 +1737,8 @@ export const GinRummyGameTable = ({
       <div className="h-full flex flex-col bg-transparent relative">
         <div
           ref={tableContainerRef}
-          className="flex-1 relative overflow-hidden min-h-0"
-          style={{ maxHeight: tableSurfaceMaxHeight }}
+          className="relative overflow-hidden"
+          style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
         >
           {/* Shell owns canonical felt. */}
         </div>
@@ -1773,8 +1773,8 @@ export const GinRummyGameTable = ({
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="flex-1 relative overflow-hidden min-h-0"
-        style={{ maxHeight: tableSurfaceMaxHeight }}
+        className="relative overflow-hidden"
+        style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
       >
 
             {/* Shell owns canonical felt. */}
