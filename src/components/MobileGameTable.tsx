@@ -565,33 +565,15 @@ export const MobileGameTable = ({
   const deckColorMode = getEffectiveDeckColorMode();
 
   // ── dealer_selection_diag: cards_visible / cleared ──
-  // Fires when the dealer-selection card overlay first has cards to render
-  // and again when it goes back to empty, so the tracer can distinguish
-  // "surface mounted but no cards" from "cards present" from "cards cleared".
-  const __dsCardsLen = dealerSelectionCards?.length ?? 0;
-  const __dsLastLenRef = useRef<number>(0);
-  useEffect(() => {
-    if (__dsCardsLen > 0 && __dsLastLenRef.current === 0) {
-      recordDealerSelectionDiag('dealer_selection_cards_visible', {
-        sessionId: gameId ?? null,
-        dealerSelectionId: gameId ? `${gameId}:host` : null,
-        cardCount: __dsCardsLen,
-        winnerPosition: dealerSelectionWinnerPosition ?? null,
-        presentationVisibilityState: 'visible',
-        extra: { surface: 'MobileGameTable.dealerSelectionCards' },
-      });
-    } else if (__dsCardsLen === 0 && __dsLastLenRef.current > 0) {
-      recordDealerSelectionDiag('dealer_selection_cards_visible', {
-        sessionId: gameId ?? null,
-        dealerSelectionId: gameId ? `${gameId}:host` : null,
-        cardCount: 0,
-        winnerPosition: dealerSelectionWinnerPosition ?? null,
-        presentationVisibilityState: 'cleared',
-        extra: { surface: 'MobileGameTable.dealerSelectionCards', priorCount: __dsLastLenRef.current },
-      });
-    }
-    __dsLastLenRef.current = __dsCardsLen;
-  }, [__dsCardsLen, dealerSelectionWinnerPosition, gameId]);
+  // NOTE: this checkpoint is intentionally NOT fired from a prop-keyed
+  // effect here. Receiving props does not prove the cards reached the
+  // render surface — an ancestor gate, conditional render, or unmount
+  // can keep the overlay from ever mounting. The checkpoint is fired
+  // from <DealerSelectionVisibilityTracker /> mounted INSIDE the actual
+  // `{dealerSelectionCards.length > 0 && (...)}` render branch below,
+  // so "visible" and "cleared" reflect true DOM mount/unmount of the
+  // session dealer-selection overlay.
+
 
   // Publish canonical felt context to the shell-owned host (sole felt mount).
   // CRITICAL: when no concrete game kind can be derived (pre-first-game in
