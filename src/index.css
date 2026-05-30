@@ -49,6 +49,51 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* ─────────────────────────────────────────────────────────────
+       Canonical shell geometry — proportional viewport contract.
+       Ratios are tuning knobs (validate per device class). What is
+       invariant is the partitioning model itself:
+         - 3-region shell (header / play / hud) by ratio
+         - Header has a px floor; play+hud absorb the difference
+           proportionally so their relative ratio is preserved.
+         - HUD internal rows are sized by ratio of the HUD region.
+         - Active pane row never grows: content scales/clips inside.
+       ───────────────────────────────────────────────────────────── */
+
+    /* Shell region ratios (must sum to 1.0). */
+    --shell-r-header: 0.07;
+    --shell-r-play:   0.52;
+    --shell-r-hud:    0.41;
+
+    /* Header pixel floor — guarantees session name + controls fit. */
+    --shell-min-header: 44px;
+
+    /* Derived shell heights. Header = max(floor, ratio*vh).
+       play+hud share the remainder by their relative ratio. */
+    --shell-header-h: max(var(--shell-min-header), calc(var(--shell-r-header) * 100dvh));
+    --shell-flex-h:   calc(100dvh - var(--shell-header-h));
+    --shell-play-sum: calc(var(--shell-r-play) + var(--shell-r-hud));
+    --shell-play-h:   calc(var(--shell-flex-h) * (var(--shell-r-play) / var(--shell-play-sum)));
+    --shell-hud-h:    calc(var(--shell-flex-h) - var(--shell-play-h));
+
+    /* HUD internal row ratios (sum to 1.0). Tuning knobs. */
+    --hud-r-announcement: 0.14;
+    --hud-r-timer:        0.16;
+    --hud-r-tabs:         0.17;
+    --hud-r-pane:         0.31;
+    --hud-r-identity:     0.22;
+
+    /* Computed HUD row heights. Each row is fixed-share + clipped. */
+    --hud-h-announcement: calc(var(--shell-hud-h) * var(--hud-r-announcement));
+    --hud-h-timer:        calc(var(--shell-hud-h) * var(--hud-r-timer));
+    --hud-h-tabs:         calc(var(--shell-hud-h) * var(--hud-r-tabs));
+    --hud-h-pane:         calc(var(--shell-hud-h) * var(--hud-r-pane));
+    --hud-h-identity:     calc(var(--shell-hud-h) * var(--hud-r-identity));
+
+    /* Continuous content scales — clamped so artifacts don't degenerate. */
+    --play-scale: clamp(0.70, calc(var(--shell-play-h) / 420px), 1.20);
+    --hud-scale:  clamp(0.70, calc(var(--shell-hud-h) / 320px), 1.20);
   }
 
   .dark {
