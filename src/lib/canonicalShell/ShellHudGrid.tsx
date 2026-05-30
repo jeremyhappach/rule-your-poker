@@ -17,9 +17,13 @@
  *   - All 5 rows are ALWAYS rendered, even when their content is empty.
  *     Composition is identical across games; deterministic geometry is
  *     more important than reclaiming a small amount of whitespace.
- *   - Game content may not render outside its assigned row. If content
- *     does not fit, scale it, abbreviate it, clip it, or paginate it —
- *     do NOT consume an adjacent row or push the HUD layout.
+ *     No game-specific row collapse, no opt-out, no conditional skip.
+ *   - ACTIVE-PANE ROW 4 CONTAINMENT RULE (explicit):
+ *     Active-pane content (`pane` slot) may not render outside row 4.
+ *     If content does not fit, the pane MUST scale it, abbreviate it,
+ *     clip it, or paginate it. It MAY NOT consume row 5 (identity),
+ *     push the identity row down, or otherwise grow the HUD layout.
+ *     The same containment applies to every other slot for its own row.
  *   - No `flex-1`, `auto`, `fr`, `min-h-0`, or `flex-grow` inside the
  *     grid. Each row's height is exactly `var(--hud-h-*)`.
  *
