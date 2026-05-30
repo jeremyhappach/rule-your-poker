@@ -5729,7 +5729,10 @@ export const MobileGameTable = ({
                       {allCardsForPosition.map((cardData, idx) => (
                         <div 
                           key={`card-${cardData.roundNumber}-${idx}`}
+                          data-dsel-card="1"
+                          data-dsel-position={position}
                           className="transition-all duration-500"
+
                           style={{
                             opacity: cardData.isRevealed ? 1 : 0.9,
                             transform: cardData.isRevealed 
