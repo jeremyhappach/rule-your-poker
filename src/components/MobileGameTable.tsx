@@ -5570,6 +5570,13 @@ export const MobileGameTable = ({
         {/* z-40 to ensure cards appear above player chip stacks (z-30) */}
         {dealerSelectionCards && dealerSelectionCards.length > 0 && (
           <div className="absolute inset-0 z-40 pointer-events-none">
+            <DealerSelectionVisibilityTracker
+              gameId={gameId}
+              cardCount={dealerSelectionCards.length}
+              winnerPosition={dealerSelectionWinnerPosition ?? null}
+              viewerHasCurrentPlayer={!!currentPlayer}
+            />
+
             {/* Cards for each player position arranged around the table (relative to current player) */}
             {(() => {
               // Get unique positions from dealer selection cards
