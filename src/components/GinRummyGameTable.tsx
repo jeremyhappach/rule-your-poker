@@ -69,8 +69,12 @@ import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster'
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
-// ShellHudChrome import removed by Phase 5 Gin diagnostic revert; Gin renders ShellTabBar + local fallback directly.
-import { ShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
+// Phase 2: ShellHudGrid imposes the deterministic 5-row HUD grid.
+// Gin's Phase 5 diagnostic local gold plate is preserved inside the
+// timer row of the grid (semantically still "operational HUD chrome"
+// adjacent to the tab bar) until canonical announcement wiring lands.
+import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
+
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
@@ -1930,140 +1934,142 @@ export const GinRummyGameTable = ({
         </div>
 
 
-      {/* Bottom Section - Tabs and Content */}
-      <div className="flex-1 flex flex-col min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border">
-        {/* Phase 5 DIAGNOSTIC REVERT (Gin only): bypass canonical rail
-            for Gin and render the original local gold-plate fallback in
-            a 36px region above the ShellTabBar. ShellHudChrome contract
-            is untouched; other surfaces still own the canonical rail. */}
-        <div
-          data-gin-local-announcement-fallback=""
-          style={{
-            height: 36,
-            minHeight: 36,
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingInline: 12,
-            pointerEvents: 'none',
-            background: 'transparent',
-            overflow: 'hidden',
-          }}
-        >
-          {(() => {
-            if (viewState.phase === 'complete' && viewState.knockResult) {
-              const r = viewState.knockResult;
-              const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
-              const bonus = r.isGin
-                ? ` (${dwDiff} dw + 25 gin bonus)`
-                : r.isUndercut
-                  ? ` (${dwDiff} dw + 25 undercut bonus)`
-                  : '';
-              return (
+      {/* Bottom Section — shell-owned proportional 5-row HUD grid (Phase 2).
+          Gin has no separate identity row (identity lives inside the
+          canonical seat cluster on the felt), so the identity slot is
+          empty. The Phase 5 diagnostic local gold-plate fallback is
+          mounted in the timer slot so Gin's behaviour is preserved
+          until canonical announcement wiring lands; the shell-owned
+          announcement row (row 1) sits above it. */}
+      <ShellHudGrid
+        timer={(() => {
+          if (viewState.phase === 'complete' && viewState.knockResult) {
+            const r = viewState.knockResult;
+            const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
+            const bonus = r.isGin
+              ? ` (${dwDiff} dw + 25 gin bonus)`
+              : r.isUndercut
+                ? ` (${dwDiff} dw + 25 undercut bonus)`
+                : '';
+            return (
+              <div
+                data-gin-local-announcement-fallback=""
+                className="w-full h-full flex items-center justify-center px-3"
+                style={{ pointerEvents: 'none' }}
+              >
                 <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                   <p className="text-slate-900 font-bold text-[11px] text-center truncate">
                     {getPlayerUsername(r.winnerId)} +{r.pointsAwarded}{bonus}
                   </p>
                 </div>
-              );
-            }
-            if (viewState.phase === 'complete' && !viewState.knockResult) {
-              return (
+              </div>
+            );
+          }
+          if (viewState.phase === 'complete' && !viewState.knockResult) {
+            return (
+              <div
+                data-gin-local-announcement-fallback=""
+                className="w-full h-full flex items-center justify-center px-3"
+                style={{ pointerEvents: 'none' }}
+              >
                 <div className="w-full bg-muted/80 backdrop-blur-sm rounded-md px-3 py-1.5">
                   <p className="text-muted-foreground font-bold text-[11px] text-center">
                     Void Hand — Stock Exhausted
                   </p>
                 </div>
-              );
-            }
-            if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
-              const knockerId = Object.entries(viewState.playerStates).find(
-                ([, ps]) => ps.hasKnocked || ps.hasGin,
-              )?.[0];
-              if (knockerId) {
-                const knockerState = viewState.playerStates[knockerId];
-                const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
-                return (
+              </div>
+            );
+          }
+          if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
+            const knockerId = Object.entries(viewState.playerStates).find(
+              ([, ps]) => ps.hasKnocked || ps.hasGin,
+            )?.[0];
+            if (knockerId) {
+              const knockerState = viewState.playerStates[knockerId];
+              const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
+              return (
+                <div
+                  data-gin-local-announcement-fallback=""
+                  className="w-full h-full flex items-center justify-center px-3"
+                  style={{ pointerEvents: 'none' }}
+                >
                   <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
                     <p className="text-slate-900 font-bold text-[11px] text-center truncate">
                       {getPlayerUsername(knockerId)} {knockerState?.hasGin ? 'has GIN! 🎉' : `knocked!${dwText}`}
                     </p>
                   </div>
-                );
-              }
-            }
-            return null;
-          })()}
-        </div>
-        <ShellTabBar />
-
-
-        {/* Tab content */}
-        <div className="flex-1 overflow-hidden">
-          {activeTab === 'cards' && currentPlayer && (
-            <GinRummyMobileCardsTab
-              ginState={viewState}
-              currentPlayerId={currentPlayerId}
-              isProcessing={isProcessing}
-              onDrawStock={handleDrawStock}
-              onDrawDiscard={handleDrawDiscard}
-              onDiscard={handleDiscard}
-              onKnock={handleKnock}
-              onTakeFirstDraw={handleTakeFirstDraw}
-              onPassFirstDraw={handlePassFirstDraw}
-              onLayOff={handleLayOff}
-              onFinishLayingOff={() => {
-                setLayOffSelectedCardIndex(null);
-                handleFinishLayingOff();
-              }}
-              onLayOffCardSelected={setLayOffSelectedCardIndex}
-              currentPlayer={currentPlayer}
-              gameId={gameId}
-            />
-          )}
-
-          {/* Observer fallback for cards tab — canonical observer HUD message */}
-          {activeTab === 'cards' && !currentPlayer && (
-            <div className="px-4 py-6 flex-1">
-              <p className="text-muted-foreground text-sm text-center">
-                You are observing this game
-              </p>
-            </div>
-          )}
-
-          {activeTab === 'chat' && (
-            <div className="h-full p-2">
-              <MobileChatPanel
-                messages={allMessages}
-                onSend={sendMessage}
-                isSending={isChatSending}
-                currentUserId={currentUserId}
-              />
-            </div>
-          )}
-
-          {activeTab === 'lobby' && (
-            <div className="p-4 space-y-2">
-              {players.map(player => (
-                <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                  <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
-                  <span className="text-sm text-poker-gold">${formatChipValue(player.chips)}</span>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
+          }
+          return null;
+        })()}
+        pane={
+          <div className="w-full h-full overflow-hidden">
+            {activeTab === 'cards' && currentPlayer && (
+              <GinRummyMobileCardsTab
+                ginState={viewState}
+                currentPlayerId={currentPlayerId}
+                isProcessing={isProcessing}
+                onDrawStock={handleDrawStock}
+                onDrawDiscard={handleDrawDiscard}
+                onDiscard={handleDiscard}
+                onKnock={handleKnock}
+                onTakeFirstDraw={handleTakeFirstDraw}
+                onPassFirstDraw={handlePassFirstDraw}
+                onLayOff={handleLayOff}
+                onFinishLayingOff={() => {
+                  setLayOffSelectedCardIndex(null);
+                  handleFinishLayingOff();
+                }}
+                onLayOffCardSelected={setLayOffSelectedCardIndex}
+                currentPlayer={currentPlayer}
+                gameId={gameId}
+              />
+            )}
 
-          {activeTab === 'history' && (
-            <HandHistory
-              gameId={gameId}
-              currentUserId={currentUserId}
-              currentPlayerId={currentPlayerId}
-              gameType="gin-rummy"
-            />
-          )}
-        </div>
-      </div>
+            {activeTab === 'cards' && !currentPlayer && (
+              <div className="px-4 py-6">
+                <p className="text-muted-foreground text-sm text-center">
+                  You are observing this game
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'chat' && (
+              <div className="h-full p-2">
+                <MobileChatPanel
+                  messages={allMessages}
+                  onSend={sendMessage}
+                  isSending={isChatSending}
+                  currentUserId={currentUserId}
+                />
+              </div>
+            )}
+
+            {activeTab === 'lobby' && (
+              <div className="p-4 space-y-2 overflow-y-auto h-full">
+                {players.map(player => (
+                  <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
+                    <span className="text-sm text-poker-gold">${formatChipValue(player.chips)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'history' && (
+              <HandHistory
+                gameId={gameId}
+                currentUserId={currentUserId}
+                currentPlayerId={currentPlayerId}
+                gameType="gin-rummy"
+              />
+            )}
+          </div>
+        }
+      />
     </div>
+
   );
 };

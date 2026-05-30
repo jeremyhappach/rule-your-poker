@@ -14,9 +14,9 @@ import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useLifecycleMount } from './lifecycleDebug';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { usePublishShellFelt } from './ShellOwnedFeltHost';
-import { ShellAnnouncementRail } from './ShellHudChrome';
-import { ShellTabBar } from './ShellTabBar';
+import { ShellHudGrid } from './ShellHudGrid';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
+
 import { SeatAnchorLayer, useSeatAnchors } from './SeatAnchorLayer';
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { derivePlayerStatus } from './participantStatus';
@@ -268,18 +268,13 @@ export function NeutralInterstitial({
         {/* Shell owns the felt unconditionally — no local mount. */}
         {seatLayer}
       </div>
-      {/* HUD region — shell-owned proportional height (--shell-hud-h).
-          Internal rows scale with --hud-scale; layout never grows. */}
-      <div
-        data-canonical-shell-neutral-bottom-panel=""
-        className="flex flex-col bg-transparent border-t border-transparent overflow-hidden"
-        style={{ height: 'var(--shell-hud-h)', flex: '0 0 var(--shell-hud-h)' }}
-      >
-        <ShellAnnouncementRail />
-        <div className="flex-1 min-h-0" />
-        <ShellTabBar />
-      </div>
+      {/* HUD region — shell-owned 5-row proportional grid (Phase 2).
+          Interstitial has no timer / pane / identity content; the rows
+          still render at their token heights so composition matches
+          gameplay surfaces. */}
+      <ShellHudGrid />
     </div>
+
   );
 
 }

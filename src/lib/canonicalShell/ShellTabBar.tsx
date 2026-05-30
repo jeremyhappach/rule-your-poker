@@ -209,8 +209,14 @@ export function ShellTabBar() {
     <div
       data-canonical-shell-tabbar=""
       className="flex items-center justify-center gap-1 px-3 py-1 border-t border-border/50 bg-background"
-      style={{ height: 44, minHeight: 44 }}
+      style={{
+        // Phase 2: token-driven proportional height (--hud-h-tabs).
+        height: 'var(--hud-h-tabs)',
+        minHeight: 'var(--hud-h-tabs)',
+        overflow: 'hidden',
+      }}
     >
+
       <button
         onClick={() => setActiveTab('cards')}
         style={{ flex: '0 0 35%' }}

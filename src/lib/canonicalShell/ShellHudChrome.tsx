@@ -35,8 +35,10 @@ export function ShellAnnouncementRail() {
     <div
       data-canonical-shell-announcement-rail=""
       style={{
-        height: 36,
-        minHeight: 36,
+        // Phase 2: height is shell-token-driven, not a 36px hardcode.
+        // Token = --shell-hud-h × --hud-r-announcement. Row clips overflow.
+        height: 'var(--hud-h-announcement)',
+        minHeight: 'var(--hud-h-announcement)',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
@@ -50,6 +52,7 @@ export function ShellAnnouncementRail() {
       {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : null}
     </div>
   );
+
 }
 
 export function ShellHudChrome() {
