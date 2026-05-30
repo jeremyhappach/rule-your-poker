@@ -374,7 +374,7 @@ export function PlayfieldSlotController({
             anchors → two chipstacks render simultaneously. Suppress
             the interstitial seat layer when children own seats. */}
         {mountedIdentity === null && (
-          <div className="absolute inset-0 flex flex-col">
+          <div className="absolute inset-0 flex flex-col z-0">
             <NeutralInterstitial
               gameId={gameId ?? null}
               reason={`poker-shell-pregame:${neutralReason}`}
@@ -387,14 +387,14 @@ export function PlayfieldSlotController({
         )}
         <div
           key={persistentChildrenKey}
-          className="flex-1 min-h-0 flex flex-col relative"
+          className="flex-1 min-h-0 flex flex-col relative z-10"
         >
           {children}
         </div>
         {mountedIdentity === null && (
           <div
             data-canonical-shell-pregame-overlay=""
-            className="absolute inset-0 flex flex-col pointer-events-none"
+            className="absolute inset-0 flex flex-col pointer-events-none z-20"
           >
             <div className="flex-1 min-h-0 relative pointer-events-auto">
               {preGameOverlay}
