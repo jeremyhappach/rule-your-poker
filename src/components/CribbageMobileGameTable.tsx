@@ -334,6 +334,65 @@ function CribbageDealerSelectionController(props: {
   return null;
 }
 
+/**
+ * Parallel to `DealerSelectionVisibilityTracker` in MobileGameTable —
+ * fires `dealer_selection_cards_visible` on real DOM mount of the
+ * Cribbage felt-content high-card overlay branch, and `cleared` on
+ * unmount. Gives Cribbage repros the same conclusive checkpoint as
+ * session-level dealer-selection.
+ */
+function CribbageDealerSelectionVisibilityTracker({
+  gameId,
+  cardCount,
+  winnerPosition,
+}: {
+  gameId: string;
+  cardCount: number;
+  winnerPosition: number | null;
+}) {
+  const lastCountRef = useRef(0);
+  useEffect(() => {
+    let cancelled = false;
+    import('@/lib/dealerSelectionDiag').then(({ recordDealerSelectionDiag }) => {
+      if (cancelled) return;
+      recordDealerSelectionDiag('dealer_selection_cards_visible', {
+        sessionId: gameId,
+        dealerSelectionId: `${gameId}:host`,
+        cardCount,
+        winnerPosition,
+        presentationVisibilityState: 'visible',
+        scope: 'cribbage',
+        extra: {
+          surface: 'CribbageMobileGameTable.dealerSelectionOverlay',
+          phase: 'mount',
+        },
+      });
+    });
+    lastCountRef.current = cardCount;
+    return () => {
+      cancelled = true;
+      const prior = lastCountRef.current;
+      import('@/lib/dealerSelectionDiag').then(({ recordDealerSelectionDiag }) => {
+        recordDealerSelectionDiag('dealer_selection_cards_visible', {
+          sessionId: gameId,
+          dealerSelectionId: `${gameId}:host`,
+          cardCount: 0,
+          winnerPosition,
+          presentationVisibilityState: 'cleared',
+          scope: 'cribbage',
+          extra: {
+            surface: 'CribbageMobileGameTable.dealerSelectionOverlay',
+            phase: 'unmount',
+            priorCount: prior,
+          },
+        });
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 
 export const CribbageMobileGameTable = ({
   gameId,
@@ -5577,6 +5636,13 @@ export const CribbageMobileGameTable = ({
                     onCardsUpdate={onDealerSelectionCardsUpdate}
                     onWinnerPositionUpdate={onDealerSelectionWinnerPositionUpdate ?? (() => {})}
                     onComplete={onDealerSelectionComplete}
+                  />
+                )}
+                {isDealerSelection && effectiveHighCardCards.length > 0 && (
+                  <CribbageDealerSelectionVisibilityTracker
+                    gameId={gameId}
+                    cardCount={effectiveHighCardCards.length}
+                    winnerPosition={effectiveHighCardWinnerPosition ?? null}
                   />
                 )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
