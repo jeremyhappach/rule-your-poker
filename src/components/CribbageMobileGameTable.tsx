@@ -5579,6 +5579,13 @@ export const CribbageMobileGameTable = ({
                     onComplete={onDealerSelectionComplete}
                   />
                 )}
+                {isDealerSelection && effectiveHighCardCards.length > 0 && (
+                  <CribbageDealerSelectionVisibilityTracker
+                    gameId={gameId}
+                    cardCount={effectiveHighCardCards.length}
+                    winnerPosition={effectiveHighCardWinnerPosition ?? null}
+                  />
+                )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
                   <div className="flex gap-4 items-start">
                     {highCardPositions.map((position) => {
