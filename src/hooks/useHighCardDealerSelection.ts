@@ -295,7 +295,7 @@ export function useHighCardDealerSelection({
         }, pauseAfterDealMs);
       }, dealDelayMs);
     },
-    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, isCribbageVariant],
+    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, isCribbageVariant],
   );
 
   const determineWinner = useCallback(
