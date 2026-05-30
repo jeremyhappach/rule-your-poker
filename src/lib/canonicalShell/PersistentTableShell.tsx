@@ -165,13 +165,16 @@ export function PersistentTableShell({
           position: 'relative',
           zIndex: 1,
           display: 'grid',
-          // Deterministic shell ordering (top → bottom):
-          //   1. Header (fixed)
-          //   2. Gameplay surface + its cohesive HUD stack (flex)
-          // The HUD stack itself is mounted inside the game surface via
-          // ShellHudChrome so rail, tab bar, tab content, helper text,
-          // and identity/balance row remain one ordered group.
-          gridTemplateRows: header ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
+          // Proportional viewport contract (see index.css):
+          //   row 1 — header rail at exactly --shell-header-h
+          //          (max of pixel floor and ratio*100dvh).
+          //   row 2 — gameplay + HUD region, which internally sizes
+          //          felt to --shell-play-h and HUD to --shell-hud-h
+          //          via flex-basis. This makes the play/HUD boundary
+          //          a shell-owned pixel edge on every device.
+          gridTemplateRows: header
+            ? 'var(--shell-header-h) minmax(0, 1fr)'
+            : 'minmax(0, 1fr)',
           height: '100%',
           minHeight: 0,
         }}
