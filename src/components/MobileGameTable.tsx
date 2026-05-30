@@ -428,6 +428,67 @@ interface MobileGameTableProps {
    * sole canonical mount for every family — no local felt branch exists.
    */
 }
+
+/**
+ * DealerSelectionVisibilityTracker — render-tied cards_visible probe.
+ *
+ * Mounted INSIDE the `{dealerSelectionCards.length > 0 && (...)}` branch
+ * of the session dealer-selection overlay. Because it lives inside the
+ * conditional, its mount/unmount actually reflects whether the overlay
+ * reached the DOM — not just whether props arrived at MobileGameTable.
+ * A prop-keyed effect at the component root cannot make that distinction
+ * and was previously firing `cards_visible` even in repros where the
+ * user never saw the cards.
+ */
+const DealerSelectionVisibilityTracker = ({
+  gameId,
+  cardCount,
+  winnerPosition,
+  viewerHasCurrentPlayer,
+}: {
+  gameId: string | undefined;
+  cardCount: number;
+  winnerPosition: number | null;
+  viewerHasCurrentPlayer: boolean;
+}) => {
+  const lastCountRef = useRef<number>(0);
+  useEffect(() => {
+    recordDealerSelectionDiag('dealer_selection_cards_visible', {
+      sessionId: gameId ?? null,
+      dealerSelectionId: gameId ? `${gameId}:host` : null,
+      cardCount,
+      winnerPosition,
+      presentationVisibilityState: 'visible',
+      extra: {
+        surface: 'MobileGameTable.dealerSelectionOverlay',
+        phase: 'mount',
+        viewerHasCurrentPlayer,
+      },
+    });
+    lastCountRef.current = cardCount;
+    return () => {
+      recordDealerSelectionDiag('dealer_selection_cards_visible', {
+        sessionId: gameId ?? null,
+        dealerSelectionId: gameId ? `${gameId}:host` : null,
+        cardCount: 0,
+        winnerPosition,
+        presentationVisibilityState: 'cleared',
+        extra: {
+          surface: 'MobileGameTable.dealerSelectionOverlay',
+          phase: 'unmount',
+          priorCount: lastCountRef.current,
+          viewerHasCurrentPlayer,
+        },
+      });
+    };
+    // Mount/unmount only — count updates after first paint are not the
+    // signal we care about (we only need to prove the overlay reached
+    // the DOM at least once per dealer-selection lifecycle).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+};
+
 export const MobileGameTable = ({
   gameId,
   players,
