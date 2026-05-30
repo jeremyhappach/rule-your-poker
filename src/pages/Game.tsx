@@ -8388,7 +8388,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   data-canonical-bootstrap-table-region=""
                   className="flex-shrink-0"
                   style={{
-                    height: 'calc(24px + min(86vw, calc(55vh - 64px), 400px))',
+                    height: 'calc(24px + min(86vw, calc(var(--shell-play-h) - 24px), 400px))',
                     minHeight: 260,
                   }}
                 />
