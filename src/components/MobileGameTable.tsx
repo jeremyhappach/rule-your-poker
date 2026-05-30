@@ -453,20 +453,35 @@ const DealerSelectionVisibilityTracker = ({
 }) => {
   const lastCountRef = useRef<number>(0);
   useEffect(() => {
-    recordDealerSelectionDiag('dealer_selection_cards_visible', {
-      sessionId: gameId ?? null,
-      dealerSelectionId: gameId ? `${gameId}:host` : null,
-      cardCount,
-      winnerPosition,
-      presentationVisibilityState: 'visible',
-      extra: {
-        surface: 'MobileGameTable.dealerSelectionOverlay',
-        phase: 'mount',
-        viewerHasCurrentPlayer,
-      },
+    // Defer one frame so child PlayingCard DOM exists before counting.
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const domCount =
+          typeof document !== 'undefined'
+            ? document.querySelectorAll('[data-dsel-card="1"]').length
+            : 0;
+        recordDealerSelectionDiag('dealer_selection_cards_visible', {
+          sessionId: gameId ?? null,
+          dealerSelectionId: gameId ? `${gameId}:host` : null,
+          cardCount: domCount,
+          winnerPosition,
+          presentationVisibilityState: domCount > 0 ? 'visible' : 'mounted-empty',
+          extra: {
+            surface: 'MobileGameTable.dealerSelectionOverlay',
+            phase: 'mount',
+            viewerHasCurrentPlayer,
+            propCardCount: cardCount,
+            domCardCount: domCount,
+          },
+        });
+        lastCountRef.current = domCount;
+      });
     });
-    lastCountRef.current = cardCount;
     return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       recordDealerSelectionDiag('dealer_selection_cards_visible', {
         sessionId: gameId ?? null,
         dealerSelectionId: gameId ? `${gameId}:host` : null,
@@ -476,18 +491,16 @@ const DealerSelectionVisibilityTracker = ({
         extra: {
           surface: 'MobileGameTable.dealerSelectionOverlay',
           phase: 'unmount',
-          priorCount: lastCountRef.current,
+          priorDomCount: lastCountRef.current,
           viewerHasCurrentPlayer,
         },
       });
     };
-    // Mount/unmount only — count updates after first paint are not the
-    // signal we care about (we only need to prove the overlay reached
-    // the DOM at least once per dealer-selection lifecycle).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
 };
+
 
 export const MobileGameTable = ({
   gameId,
@@ -5626,9 +5639,10 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* High Card Dealer Selection - Large cards displayed on felt for OTHER players only */}
-        {/* Current player's card is rendered in their bottom card box, not here */}
-        {/* z-40 to ensure cards appear above player chip stacks (z-30) */}
+        {/* High Card Dealer Selection — render every participant's card on the felt,
+            including the current player's. Dealer-selection is not normal gameplay
+            hand rendering; the bottom card area is suppressed during this phase, so
+            the overlay must own complete presentation. */}
         {dealerSelectionCards && dealerSelectionCards.length > 0 && (
           <div className="absolute inset-0 z-40 pointer-events-none">
             <DealerSelectionVisibilityTracker
@@ -5642,9 +5656,11 @@ export const MobileGameTable = ({
             {(() => {
               // Get unique positions from dealer selection cards
               const uniquePositions = [...new Set(dealerSelectionCards.map(c => c.position))];
-              
-              // Slot position mapping for relative positioning (matches animation components)
+
+              // Slot position mapping for relative positioning (matches animation components).
+              // Slot -1 is reserved for the seated viewer themselves (bottom-center).
               const getSlotPercent = (slotIndex: number): { top: number; left: number } => {
+                if (slotIndex < 0) return { top: 82, left: 50 }; // seated viewer (self)
                 const slots: Record<number, { top: number; left: number }> = {
                   0: { top: 85, left: 10 },   // Bottom-left
                   1: { top: 50, left: 5 },    // Middle-left
@@ -5655,7 +5671,7 @@ export const MobileGameTable = ({
                 };
                 return slots[slotIndex] || { top: 50, left: 50 };
               };
-              
+
               // Absolute position mapping for observers (no currentPlayer)
               const getAbsolutePositionPercent = (position: number): { top: number; left: number } => {
                 const positions: Record<number, { top: number; left: number }> = {
@@ -5669,28 +5685,27 @@ export const MobileGameTable = ({
                 };
                 return positions[position] || { top: 50, left: 50 };
               };
-              
+
               return uniquePositions.map((position) => {
-                // Skip current player - their card renders in the bottom card box
-                if (currentPlayer && currentPlayer.position === position) {
-                  return null;
-                }
-                
                 // Get all cards for this position (including tie-breakers)
                 const allCardsForPosition = dealerSelectionCards.filter(c => c.position === position);
                 if (allCardsForPosition.length === 0) return null;
-                
-                // Calculate position - use relative slots for seated players, absolute for observers
+
+                // Calculate position - use relative slots for seated players, absolute for observers.
+                // The current player (viewer's seat) renders at slot -1 (bottom-center self slot).
                 let posPercent: { top: number; left: number };
                 if (currentPlayer) {
-                  // Seated player mode: use clockwise distance
-                  const distance = getClockwiseDistance(position);
-                  const slotIndex = distance - 1; // slot 0 = 1 seat away, etc.
-                  posPercent = getSlotPercent(slotIndex);
+                  if (currentPlayer.position === position) {
+                    posPercent = getSlotPercent(-1);
+                  } else {
+                    const distance = getClockwiseDistance(position);
+                    const slotIndex = distance - 1;
+                    posPercent = getSlotPercent(slotIndex);
+                  }
                 } else {
-                  // Observer mode: use absolute positions
                   posPercent = getAbsolutePositionPercent(position);
                 }
+
                 
                 const player = players.find(p => p.position === position);
                 const playerName = player 
@@ -5714,7 +5729,10 @@ export const MobileGameTable = ({
                       {allCardsForPosition.map((cardData, idx) => (
                         <div 
                           key={`card-${cardData.roundNumber}-${idx}`}
+                          data-dsel-card="1"
+                          data-dsel-position={position}
                           className="transition-all duration-500"
+
                           style={{
                             opacity: cardData.isRevealed ? 1 : 0.9,
                             transform: cardData.isRevealed 
