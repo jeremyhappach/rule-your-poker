@@ -271,6 +271,18 @@ export function useHighCardDealerSelection({
 
         onCardsUpdate(allCards);
 
+        // Persist the reveal-only snapshot so non-host subscribers receive
+        // a "cards revealed, no winner yet" frame BEFORE the completed
+        // frame coalesces winner+cards. Without this write the only DB
+        // frame non-hosts ever see is the terminal "isComplete=true"
+        // snapshot, which causes the reveal animation to be skipped.
+        syncToDatabase({
+          cards: allCards,
+          announcement: lastAnnouncementRef.current,
+          isComplete: false,
+          winnerPosition: null,
+        });
+
         const pauseAfterDealMs =
           roundNum === 1
             ? ROUND_PAUSE
@@ -283,7 +295,7 @@ export function useHighCardDealerSelection({
         }, pauseAfterDealMs);
       }, dealDelayMs);
     },
-    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, isCribbageVariant],
+    [addTimeout, onCardsUpdate, onWinnerPositionUpdate, syncToDatabase, isCribbageVariant],
   );
 
   const determineWinner = useCallback(
