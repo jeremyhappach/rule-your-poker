@@ -78,7 +78,7 @@ export interface CanonicalShellWaitingSurfaceProps {
 }
 
 const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
-const SHELL_FELT_FRAME_HEIGHT = "min(86vw, calc(55vh - 64px), 400px)";
+const SHELL_FELT_FRAME_HEIGHT = "min(86vw, calc(var(--shell-play-h) - 24px), 400px)";
 const SHELL_TABLE_REGION_HEIGHT = `calc(24px + ${SHELL_FELT_FRAME_HEIGHT})`;
 
 export function CanonicalShellWaitingSurface(

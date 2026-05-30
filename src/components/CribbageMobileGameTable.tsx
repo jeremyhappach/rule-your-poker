@@ -5521,14 +5521,14 @@ export const CribbageMobileGameTable = ({
 
 
   // Felt-frame + outer top-section sizing.
-  // Sized to the SHELL ellipse envelope (top:24 + min(86vw, calc(55vh - 64px), 400px))
+  // Sized to the SHELL ellipse envelope (top:24 + min(86vw, calc(var(--shell-play-h) - 24px), 400px))
   // so the announcement rail + tab bar sit tangential to the bottom of the ellipse.
   const feltFrameStyle = {
     width: 'min(94vw, 720px)',
-    height: 'min(86vw, calc(55vh - 64px), 400px)',
+    height: 'min(86vw, calc(var(--shell-play-h) - 24px), 400px)',
   };
 
-  const tableContainerHeight = 'calc(24px + min(86vw, calc(55vh - 64px), 400px))';
+  const tableContainerHeight = 'calc(24px + min(86vw, calc(var(--shell-play-h) - 24px), 400px))';
 
   // NOTE: We no longer early-return a bare div during transitions.
   // The full table shell renders below; bootstrap mode shows a transition placeholder
