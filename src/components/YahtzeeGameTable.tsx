@@ -2041,16 +2041,12 @@ export function YahtzeeGameTable({
             to the active dealer. */}
       </div>
 
-      {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.2) ═══════
-          Mirrors Cribbage 2b.1: ShellHudGrid partitions the HUD into the
-          canonical 5 proportional rows.
-            row 1 announcement (shell), row 2 timer (operational HUD —
-            per-actor turn chip + rolls badge + per-player score line),
-            row 3 tabs (shell), row 4 pane (active tab content),
-            row 5 identity (empty for now; Yahtzee's identity strip stays
-            inside the cards tab per the wedge plan — identity-lift is
-            deferred to a later cleanup, matching Cribbage 2b.1).
-          Pane content MUST fit inside row 4. No flex growth, no row 5 spillover. */}
+      {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.2.5) ═══════
+          Identity-extraction pilot: the active-player identity strip is
+          lifted out of the cards tab into the canonical row 5 (identity)
+          slot. Row 5 is now authoritatively shell-owned across phases
+          (cards / chat / lobby / history). Row 4 (pane) is reserved for
+          tab content only and MUST NOT spill into row 5. */}
       <ShellHudGrid
         timer={
           <div
