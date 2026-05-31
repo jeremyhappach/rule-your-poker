@@ -2170,31 +2170,7 @@ export function YahtzeeGameTable({
                   </div>
                 )}
 
-                {/* Player info (identity strip kept inside cards tab per 2b.2 wedge plan) */}
-                {myPlayer && (
-                  <div className="flex items-center justify-center gap-2 py-2">
-                    <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
-                    {dealerPosition === myPlayer.position && (
-                      <span
-                        aria-label="Dealer"
-                        title="Dealer"
-                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
-                      >
-                        D
-                      </span>
-                    )}
-                    <p className="text-sm font-semibold text-foreground">
-                      {myPlayer.profiles?.username || 'You'}
-                      <span className="ml-1 text-green-500">(active)</span>
-                    </p>
-                    <span className={cn(
-                      "font-bold text-lg",
-                      myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
-                    )}>
-                      {formatChipValue(myPlayer.chips)}
-                    </span>
-                  </div>
-                )}
+                {/* Identity strip lifted to shell row 5 (2b.2.5). */}
               </div>
             )}
 
