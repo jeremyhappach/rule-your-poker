@@ -290,20 +290,16 @@ export function ShellOwnedFeltHost({
         style={{
           position: 'absolute',
           left: '50%',
-          top: 24,
+          // Bind felt frame to the canonical play region. The play
+          // container is `--shell-play-h` tall; the felt MUST fit
+          // inside it exactly so the ellipse is tangent to the
+          // play/HUD boundary with no top/bottom clipping. Width
+          // remains capped so the ellipse is rounder than the
+          // container on wide phones/tablets.
+          top: 0,
+          height: 'var(--shell-play-h)',
           width: 'min(94vw, 720px)',
-          // Active envelope MUST equal waiting/interstitial envelope.
-          // Calibration: previous `min(84vw, calc(53vh - 40px), 380px)`
-          // over-corrected and compressed the ellipse vertically; bumped
-          // to give the felt comfortable breathing room without growing
-          // the overall envelope (width cap unchanged). The 86vw and
-          // 57vh-24 terms typically pick the same value, yielding a
-          // visually rounder ellipse that still leaves room for the
-          // player-area panel below.
-          height: 'min(86vw, calc(57vh - 24px), 420px)',
           minWidth: 300,
-          minHeight: 260,
-
           transform: 'translateX(-50%)',
         }}
       >
