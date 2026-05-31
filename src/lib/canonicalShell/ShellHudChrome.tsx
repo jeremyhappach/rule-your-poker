@@ -34,7 +34,7 @@ export function ShellAnnouncementRail() {
   return (
     <div
       data-canonical-shell-announcement-rail=""
-      className="[&_*]:!rounded-none"
+      className="[&_*]:!rounded-none [&_*]:!border-0 [&_*]:!shadow-none"
       style={{
         // Phase 2: height is shell-token-driven, not a 36px hardcode.
         // Token = --shell-hud-h × --hud-r-announcement. Row clips overflow.
@@ -45,7 +45,12 @@ export function ShellAnnouncementRail() {
         alignItems: 'center',
         justifyContent: 'center',
         pointerEvents: 'none',
-        background: 'transparent',
+        // Rail owns the gold surface so the inner plate can sit flush
+        // edge-to-edge without exposing dark felt strips from its own
+        // rounded corners or border.
+        background: hasCanonicalRailEvent ? 'hsl(var(--poker-gold))' : 'transparent',
+        borderTop: hasCanonicalRailEvent ? '1px solid hsl(30 70% 20%)' : 'none',
+        borderBottom: hasCanonicalRailEvent ? '1px solid hsl(30 70% 20%)' : 'none',
         overflow: 'hidden',
       }}
     >
