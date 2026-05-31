@@ -2218,6 +2218,32 @@ export function YahtzeeGameTable({
             )}
           </div>
         }
+        identity={
+          myPlayer ? (
+            <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+              <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
+              {dealerPosition === myPlayer.position && (
+                <span
+                  aria-label="Dealer"
+                  title="Dealer"
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
+                >
+                  D
+                </span>
+              )}
+              <p className="text-sm font-semibold text-foreground truncate">
+                {myPlayer.profiles?.username || 'You'}
+                <span className="ml-1 text-green-500">(active)</span>
+              </p>
+              <span className={cn(
+                "font-bold text-lg tabular-nums",
+                myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+              )}>
+                {formatChipValue(myPlayer.chips)}
+              </span>
+            </div>
+          ) : null
+        }
       />
     </div>
   );
