@@ -53,8 +53,8 @@ import { useGameChat } from "@/hooks/useGameChat";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 // Shell owns canonical felt — no local canonical felt import.
 import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/ShellOwnedFeltHost";
-import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
-import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
+import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
@@ -2041,207 +2041,212 @@ export function YahtzeeGameTable({
             to the active dealer. */}
       </div>
 
-      {/* ===== BOTTOM SECTION ===== */}
-      <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-t from-background via-background to-background/95 border-t border-border overflow-hidden">
-
-        {/* Phase 5 architectural finish line: shell-owned announcement
-            rail (announcement-only) + sibling operational HUD chrome
-            (per-actor turn chip + rolls badge — NOT a semantic
-            announcement) + tab bar. The match-win plate is emitted
-            via useAnnouncements() above; no local game-over plate. */}
-        <ShellAnnouncementRail />
-        <div
-          data-shell-operational-hud=""
-          className="w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-3 py-1 min-h-[28px]"
-        >
-          {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-foreground font-medium">
-                {isMyTurn ? 'Your turn' : `${getPlayerUsername(currentPlayer)}'s turn`}
-              </span>
-              <Badge variant="secondary" className="text-xs">
-                Rolls: {isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 0)}
-              </Badge>
-            </div>
-          ) : null}
-          {gamePhase === 'playing' && (
-            <div className="flex items-center gap-3 text-xs tabular-nums">
-              {activePlayers.map(p => {
-                const ps = viewState?.playerStates?.[p.id];
-                const total = ps ? getTotalScore(ps.scorecard) : 0;
-                const isTurn = p.id === currentTurnPlayerId;
-                return (
-                  <span
-                    key={p.id}
-                    className={cn(
-                      'font-semibold',
-                      isTurn ? 'text-poker-gold' : 'text-muted-foreground'
-                    )}
-                  >
-                    {getPlayerUsername(p)}: {total}
-                  </span>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <ShellTabBar />
-
-        {/* CARDS/DICE TAB */}
-        {activeTab === 'cards' && (
-          <div className="px-2 flex-1 min-h-0 overflow-y-auto">
-            {/* Dice area */}
-            <div className="flex items-center justify-center gap-1 min-h-[60px] mb-1">
-              {showMyDice ? (
-                localDice.map((die, idx) => {
-                  const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
-                  const shouldAnimate = rolling && !heldAtRollStart;
-                  const showHeldStyling = localRollsRemaining > 0 && die.isHeld && !shouldAnimate;
-
-                  return (
-                    <HorsesDie
-                      key={idx}
-                      value={die.value}
-                      isHeld={showHeldStyling}
-                      isRolling={shouldAnimate}
-                      canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
-                      onToggle={() => handleToggleHold(idx)}
-                      size="lg"
-                      showWildHighlight={false}
-                    />
-                  );
-                })
-              ) : (
-                <div className="h-[52px]" />
-              )}
-            </div>
-
-            {/* Roll button — only shown on my turn */}
-            {gamePhase === 'playing' && isMyTurn && !scoringInProgress && (
-              <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
-                {localRollsRemaining > 0 ? (
-                  <Button
-                    size="default"
-                    onClick={handleRoll}
-                    disabled={rolling}
-                    className="font-bold text-sm h-9 px-6"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
-                    Roll {rollNumber}
-                  </Button>
-                ) : (
-                  <Badge className="text-sm px-3 py-1.5 font-medium">Pick a category</Badge>
-                )}
-              </div>
-            )}
-
-            {/* Opponent scorecard when it's not my turn */}
-            {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
-              <div className="mt-1 px-1 relative">
-                {/* Rolling/turn status message — absolutely positioned so it doesn't push scorecard down */}
-                {(() => {
-                  const oppPlayer = players.find(p => p.id === currentTurnPlayerId);
-                  if (!oppPlayer) return null;
-                  const diceState = getCurrentTurnDice();
-                  const hasRolled = diceState?.dice.some(d => d.value !== 0);
-                  const oppPs = viewState?.playerStates?.[currentTurnPlayerId];
-                  const rollsLeft = oppPs?.rollsRemaining ?? 3;
-                  const statusText = !hasRolled || rollsLeft === 3
-                    ? `${getPlayerUsername(oppPlayer)} is rolling...`
-                    : rollsLeft > 0
-                      ? `${getPlayerUsername(oppPlayer)} — Roll ${4 - rollsLeft}`
-                      : `${getPlayerUsername(oppPlayer)} choosing...`;
-                  return (
-                    <p className="text-amber-400 font-semibold text-xs text-center animate-pulse mb-0.5">
-                      {statusText}
-                    </p>
-                  );
-                })()}
-                <div className="yahtzee-opponent-scorecard">
-                  {renderScorecard(currentTurnPlayerId, false)}
-                </div>
-              </div>
-            )}
-
-            {/* My scorecard (read-only summary) when it IS my turn - interactive one is on felt */}
-            {isMyTurn && myPlayer && (
-              <div className="mt-1 px-1 opacity-60">
-                <span className="text-xs text-muted-foreground">Your scorecard is on the table above</span>
-              </div>
-            )}
-
-            {/* Player info */}
-            {myPlayer && (
-              <div className="flex items-center justify-center gap-2 py-2">
-                <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
-                {dealerPosition === myPlayer.position && (
-                  <span
-                    aria-label="Dealer"
-                    title="Dealer"
-                    className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
-                  >
-                    D
-                  </span>
-                )}
-                <p className="text-sm font-semibold text-foreground">
-                  {myPlayer.profiles?.username || 'You'}
-                  <span className="ml-1 text-green-500">(active)</span>
-                </p>
-                <span className={cn(
-                  "font-bold text-lg",
-                  myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
-                )}>
-                  {formatChipValue(myPlayer.chips)}
+      {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.2) ═══════
+          Mirrors Cribbage 2b.1: ShellHudGrid partitions the HUD into the
+          canonical 5 proportional rows.
+            row 1 announcement (shell), row 2 timer (operational HUD —
+            per-actor turn chip + rolls badge + per-player score line),
+            row 3 tabs (shell), row 4 pane (active tab content),
+            row 5 identity (empty for now; Yahtzee's identity strip stays
+            inside the cards tab per the wedge plan — identity-lift is
+            deferred to a later cleanup, matching Cribbage 2b.1).
+          Pane content MUST fit inside row 4. No flex growth, no row 5 spillover. */}
+      <ShellHudGrid
+        timer={
+          <div
+            data-shell-operational-hud=""
+            className="w-full h-full flex flex-wrap items-center justify-center gap-x-3 gap-y-0 px-3 overflow-hidden"
+          >
+            {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
+              <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-foreground font-medium">
+                  {isMyTurn ? 'Your turn' : `${getPlayerUsername(currentPlayer)}'s turn`}
                 </span>
+                <Badge variant="secondary" className="text-xs">
+                  Rolls: {isMyTurn ? localRollsRemaining : (currentTurnState?.rollsRemaining ?? 0)}
+                </Badge>
+              </div>
+            ) : null}
+            {gamePhase === 'playing' && (
+              <div className="flex items-center gap-3 text-xs tabular-nums">
+                {activePlayers.map(p => {
+                  const ps = viewState?.playerStates?.[p.id];
+                  const total = ps ? getTotalScore(ps.scorecard) : 0;
+                  const isTurn = p.id === currentTurnPlayerId;
+                  return (
+                    <span
+                      key={p.id}
+                      className={cn(
+                        'font-semibold',
+                        isTurn ? 'text-poker-gold' : 'text-muted-foreground'
+                      )}
+                    >
+                      {getPlayerUsername(p)}: {total}
+                    </span>
+                  );
+                })}
               </div>
             )}
           </div>
-        )}
+        }
+        pane={
+          <div className="h-full overflow-hidden">
+            {/* CARDS/DICE TAB */}
+            {activeTab === 'cards' && (
+              <div className="px-2 h-full overflow-y-auto">
+                {/* Dice area */}
+                <div className="flex items-center justify-center gap-1 min-h-[60px] mb-1">
+                  {showMyDice ? (
+                    localDice.map((die, idx) => {
+                      const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
+                      const shouldAnimate = rolling && !heldAtRollStart;
+                      const showHeldStyling = localRollsRemaining > 0 && die.isHeld && !shouldAnimate;
 
-        {/* CHAT TAB — canonical shared shell chat */}
-        {activeTab === 'chat' && (
-          <div className="flex-1 min-h-0 p-2">
-            <MobileChatPanel
-              messages={allMessages}
-              onSend={sendMessage}
-              isSending={isChatSending}
-              currentUserId={currentUserId}
-            />
-          </div>
-        )}
+                      return (
+                        <HorsesDie
+                          key={idx}
+                          value={die.value}
+                          isHeld={showHeldStyling}
+                          isRolling={shouldAnimate}
+                          canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
+                          onToggle={() => handleToggleHold(idx)}
+                          size="lg"
+                          showWildHighlight={false}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="h-[52px]" />
+                  )}
+                </div>
 
-        {/* LOBBY TAB */}
-        {activeTab === 'lobby' && (
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {activePlayers.map(player => {
-              const ps = viewState.playerStates[player.id];
-              const total = ps ? getTotalScore(ps.scorecard) : 0;
-              return (
-                <div key={player.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
-                  <span className="text-sm font-medium text-foreground">{getPlayerUsername(player)}</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">Score: {total}</span>
+                {/* Roll button — only shown on my turn */}
+                {gamePhase === 'playing' && isMyTurn && !scoringInProgress && (
+                  <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
+                    {localRollsRemaining > 0 ? (
+                      <Button
+                        size="default"
+                        onClick={handleRoll}
+                        disabled={rolling}
+                        className="font-bold text-sm h-9 px-6"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
+                        Roll {rollNumber}
+                      </Button>
+                    ) : (
+                      <Badge className="text-sm px-3 py-1.5 font-medium">Pick a category</Badge>
+                    )}
+                  </div>
+                )}
+
+                {/* Opponent scorecard when it's not my turn */}
+                {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
+                  <div className="mt-1 px-1 relative">
+                    {(() => {
+                      const oppPlayer = players.find(p => p.id === currentTurnPlayerId);
+                      if (!oppPlayer) return null;
+                      const diceState = getCurrentTurnDice();
+                      const hasRolled = diceState?.dice.some(d => d.value !== 0);
+                      const oppPs = viewState?.playerStates?.[currentTurnPlayerId];
+                      const rollsLeft = oppPs?.rollsRemaining ?? 3;
+                      const statusText = !hasRolled || rollsLeft === 3
+                        ? `${getPlayerUsername(oppPlayer)} is rolling...`
+                        : rollsLeft > 0
+                          ? `${getPlayerUsername(oppPlayer)} — Roll ${4 - rollsLeft}`
+                          : `${getPlayerUsername(oppPlayer)} choosing...`;
+                      return (
+                        <p className="text-amber-400 font-semibold text-xs text-center animate-pulse mb-0.5">
+                          {statusText}
+                        </p>
+                      );
+                    })()}
+                    <div className="yahtzee-opponent-scorecard">
+                      {renderScorecard(currentTurnPlayerId, false)}
+                    </div>
+                  </div>
+                )}
+
+                {/* My scorecard (read-only summary) when it IS my turn - interactive one is on felt */}
+                {isMyTurn && myPlayer && (
+                  <div className="mt-1 px-1 opacity-60">
+                    <span className="text-xs text-muted-foreground">Your scorecard is on the table above</span>
+                  </div>
+                )}
+
+                {/* Player info (identity strip kept inside cards tab per 2b.2 wedge plan) */}
+                {myPlayer && (
+                  <div className="flex items-center justify-center gap-2 py-2">
+                    <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
+                    {dealerPosition === myPlayer.position && (
+                      <span
+                        aria-label="Dealer"
+                        title="Dealer"
+                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
+                      >
+                        D
+                      </span>
+                    )}
+                    <p className="text-sm font-semibold text-foreground">
+                      {myPlayer.profiles?.username || 'You'}
+                      <span className="ml-1 text-green-500">(active)</span>
+                    </p>
                     <span className={cn(
-                      "text-sm font-bold",
-                      player.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+                      "font-bold text-lg",
+                      myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
                     )}>
-                      {formatChipValue(player.chips)}
+                      {formatChipValue(myPlayer.chips)}
                     </span>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                )}
+              </div>
+            )}
 
-        {/* HISTORY TAB */}
-        {activeTab === 'history' && gameId && (
-          <div className="flex-1 overflow-y-auto">
-            <HandHistory gameId={gameId} />
+            {/* CHAT TAB — canonical shared shell chat */}
+            {activeTab === 'chat' && (
+              <div className="h-full p-2">
+                <MobileChatPanel
+                  messages={allMessages}
+                  onSend={sendMessage}
+                  isSending={isChatSending}
+                  currentUserId={currentUserId}
+                />
+              </div>
+            )}
+
+            {/* LOBBY TAB */}
+            {activeTab === 'lobby' && (
+              <div className="h-full overflow-y-auto p-3 space-y-2">
+                {activePlayers.map(player => {
+                  const ps = viewState.playerStates[player.id];
+                  const total = ps ? getTotalScore(ps.scorecard) : 0;
+                  return (
+                    <div key={player.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">
+                      <span className="text-sm font-medium text-foreground">{getPlayerUsername(player)}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">Score: {total}</span>
+                        <span className={cn(
+                          "text-sm font-bold",
+                          player.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+                        )}>
+                          {formatChipValue(player.chips)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* HISTORY TAB */}
+            {activeTab === 'history' && gameId && (
+              <div className="h-full overflow-y-auto">
+                <HandHistory gameId={gameId} />
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        }
+      />
     </div>
   );
 }
