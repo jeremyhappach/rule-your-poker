@@ -2041,16 +2041,12 @@ export function YahtzeeGameTable({
             to the active dealer. */}
       </div>
 
-      {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.2) ═══════
-          Mirrors Cribbage 2b.1: ShellHudGrid partitions the HUD into the
-          canonical 5 proportional rows.
-            row 1 announcement (shell), row 2 timer (operational HUD —
-            per-actor turn chip + rolls badge + per-player score line),
-            row 3 tabs (shell), row 4 pane (active tab content),
-            row 5 identity (empty for now; Yahtzee's identity strip stays
-            inside the cards tab per the wedge plan — identity-lift is
-            deferred to a later cleanup, matching Cribbage 2b.1).
-          Pane content MUST fit inside row 4. No flex growth, no row 5 spillover. */}
+      {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.2.5) ═══════
+          Identity-extraction pilot: the active-player identity strip is
+          lifted out of the cards tab into the canonical row 5 (identity)
+          slot. Row 5 is now authoritatively shell-owned across phases
+          (cards / chat / lobby / history). Row 4 (pane) is reserved for
+          tab content only and MUST NOT spill into row 5. */}
       <ShellHudGrid
         timer={
           <div
@@ -2174,31 +2170,7 @@ export function YahtzeeGameTable({
                   </div>
                 )}
 
-                {/* Player info (identity strip kept inside cards tab per 2b.2 wedge plan) */}
-                {myPlayer && (
-                  <div className="flex items-center justify-center gap-2 py-2">
-                    <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
-                    {dealerPosition === myPlayer.position && (
-                      <span
-                        aria-label="Dealer"
-                        title="Dealer"
-                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
-                      >
-                        D
-                      </span>
-                    )}
-                    <p className="text-sm font-semibold text-foreground">
-                      {myPlayer.profiles?.username || 'You'}
-                      <span className="ml-1 text-green-500">(active)</span>
-                    </p>
-                    <span className={cn(
-                      "font-bold text-lg",
-                      myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
-                    )}>
-                      {formatChipValue(myPlayer.chips)}
-                    </span>
-                  </div>
-                )}
+                {/* Identity strip lifted to shell row 5 (2b.2.5). */}
               </div>
             )}
 
@@ -2245,6 +2217,32 @@ export function YahtzeeGameTable({
               </div>
             )}
           </div>
+        }
+        identity={
+          myPlayer ? (
+            <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+              <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
+              {dealerPosition === myPlayer.position && (
+                <span
+                  aria-label="Dealer"
+                  title="Dealer"
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
+                >
+                  D
+                </span>
+              )}
+              <p className="text-sm font-semibold text-foreground truncate">
+                {myPlayer.profiles?.username || 'You'}
+                <span className="ml-1 text-green-500">(active)</span>
+              </p>
+              <span className={cn(
+                "font-bold text-lg tabular-nums",
+                myPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+              )}>
+                {formatChipValue(myPlayer.chips)}
+              </span>
+            </div>
+          ) : null
         }
       />
     </div>
