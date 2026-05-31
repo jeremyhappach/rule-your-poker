@@ -78,10 +78,14 @@ All colors MUST be HSL.
     --shell-hud-h:    calc(var(--shell-flex-h) - var(--shell-play-h));
 
     /* HUD internal row ratios (sum to 1.0). Tuning knobs. */
-    --hud-r-announcement: 0.14;
-    --hud-r-timer:        0.16;
-    --hud-r-tabs:         0.17;
-    --hud-r-pane:         0.31;
+    /* Row ratios (sum to 1.0). Retuned in 2b.1 smoke-test:
+       timer row shrunk (was 0.16) to reclaim budget for the active
+       pane, which must hold the full gameplay workflow (e.g.
+       Cribbage cards + "Send to Crib" action button) within row 4. */
+    --hud-r-announcement: 0.12;
+    --hud-r-timer:        0.06;
+    --hud-r-tabs:         0.15;
+    --hud-r-pane:         0.45;
     --hud-r-identity:     0.22;
 
     /* Computed HUD row heights. Each row is fixed-share + clipped. */
