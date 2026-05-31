@@ -2091,10 +2091,14 @@ export function YahtzeeGameTable({
             {/* CARDS/DICE TAB */}
             {activeTab === 'cards' && (
               <div className="px-2 h-full overflow-y-auto">
-                {/* Dice area */}
-                <div className="flex items-center justify-center gap-1 min-h-[60px] mb-1">
-                  {showMyDice ? (
-                    localDice.map((die, idx) => {
+                {/* Dice area — only reserve space when actually rendering
+                    dice for the viewer. When observing an opponent, dice
+                    are shown on the felt above and reserving min-height
+                    here would leave a ~60px empty gap before the
+                    opponent scorecard. */}
+                {showMyDice && (
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    {localDice.map((die, idx) => {
                       const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
                       const shouldAnimate = rolling && !heldAtRollStart;
                       const showHeldStyling = localRollsRemaining > 0 && die.isHeld && !shouldAnimate;
@@ -2111,15 +2115,13 @@ export function YahtzeeGameTable({
                           showWildHighlight={false}
                         />
                       );
-                    })
-                  ) : (
-                    <div className="h-[52px]" />
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
 
                 {/* Roll button — only shown on my turn */}
                 {gamePhase === 'playing' && isMyTurn && !scoringInProgress && (
-                  <div className="flex items-center justify-center min-h-[36px] mt-1 mb-1">
+                  <div className="flex items-center justify-center mt-1 mb-1">
                     {localRollsRemaining > 0 ? (
                       <Button
                         size="default"
