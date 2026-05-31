@@ -46,7 +46,6 @@ export function ShellAnnouncementRail() {
         pointerEvents: 'none',
         background: 'transparent',
         overflow: 'hidden',
-        paddingInline: 12,
       }}
     >
       {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : null}
