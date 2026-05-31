@@ -26,7 +26,7 @@ import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
-import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
+import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import {
