@@ -34,6 +34,7 @@ export function ShellAnnouncementRail() {
   return (
     <div
       data-canonical-shell-announcement-rail=""
+      className="[&_*]:!rounded-none"
       style={{
         // Phase 2: height is shell-token-driven, not a 36px hardcode.
         // Token = --shell-hud-h × --hud-r-announcement. Row clips overflow.
