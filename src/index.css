@@ -82,17 +82,19 @@ All colors MUST be HSL.
        timer row shrunk (was 0.16) to reclaim budget for the active
        pane, which must hold the full gameplay workflow (e.g.
        Cribbage cards + "Send to Crib" action button) within row 4. */
-    /* Retuned (2b.1 round 2): timer further shrunk, announcement and
-       tabs trimmed, identity reduced to a realistic floor, and the
-       active pane expanded to be the dominant share of the HUD so the
-       full Cribbage workflow (6 cards + "Send to Crib" action button)
-       fits inside row 4 without clipping — with headroom reserved for
-       the identity row that will land in row 5 during later wedges. */
-    --hud-r-announcement: 0.10;
-    --hud-r-timer:        0.04;
-    --hud-r-tabs:         0.12;
-    --hud-r-pane:         0.57;
-    --hud-r-identity:     0.17;
+    /* Retuned (2b.2.5): Yahtzee scorecard exposed the pane as
+       under-budgeted. Shrunk announcement, tabs, and identity to
+       realistic floors and reallocated the freed share into the active
+       pane so Yahtzee's 13-category scorecard + roll header fit inside
+       row 4 without clipping. Cribbage's 6 cards + action button
+       continue to fit. Timer row holds at a thin operational strip;
+       per-surface chrome must abbreviate to that budget. */
+    --hud-r-announcement: 0.07;
+    --hud-r-timer:        0.05;
+    --hud-r-tabs:         0.10;
+    --hud-r-pane:         0.66;
+    --hud-r-identity:     0.12;
+
 
     /* Computed HUD row heights. Each row is fixed-share + clipped. */
     --hud-h-announcement: calc(var(--shell-hud-h) * var(--hud-r-announcement));
