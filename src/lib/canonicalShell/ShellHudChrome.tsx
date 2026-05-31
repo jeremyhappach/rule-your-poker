@@ -49,8 +49,9 @@ export function ShellAnnouncementRail() {
         // edge-to-edge without exposing dark felt strips from its own
         // rounded corners or border.
         background: hasCanonicalRailEvent ? 'hsl(var(--poker-gold))' : 'transparent',
-        borderTop: hasCanonicalRailEvent ? '1px solid hsl(30 70% 20%)' : 'none',
-        borderBottom: hasCanonicalRailEvent ? '1px solid hsl(30 70% 20%)' : 'none',
+        // Border treatment: none. The gold fill alone delimits the rail
+        // edge-to-edge; mixed top/bottom borders read as accidental.
+        border: 'none',
         overflow: 'hidden',
       }}
     >
