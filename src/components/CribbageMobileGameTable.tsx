@@ -26,7 +26,7 @@ import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
-import { ShellHudChrome } from '@/lib/canonicalShell/ShellHudChrome';
+import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import {
@@ -5862,117 +5862,121 @@ export const CribbageMobileGameTable = ({
         </div>
       </div>
 
-      {/* ═══════ UNIFIED BOTTOM SECTION — same shell for ALL modes ═══════ */}
-      <div className="flex-1 flex flex-col bg-background min-h-0">
-        <ShellHudChrome />
+      {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.1) ═══════
+          The HUD region is partitioned by ShellHudGrid into 5 proportional rows:
+            row 1 announcement (shell), row 2 timer (empty for Cribbage),
+            row 3 tabs (shell), row 4 pane (tab content), row 5 identity (empty;
+            Cribbage's identity strip remains inside the cards tab pane per the
+            wedge plan — identity-lift is deferred to a later cleanup).
+          Pane content MUST fit inside row 4. No flex growth, no row 5 spillover. */}
+      <ShellHudGrid
+        pane={
+          <div className="h-full overflow-hidden">
+            {/* Cards tab during high-card or bootstrap modes intentionally
+                renders nothing. All passive lifecycle messaging
+                ("Drawing for dealer...", "Awaiting ante decisions...",
+                "Preparing next hand...") is owned by the canonical
+                announcement rail. Local placeholders here would split
+                ownership and produce competing surfaces (Phase 2 / Step 4). */}
+            {activeTab === 'cards' && (isHighCardMode || isBootstrapMode) && (
+              <div className="h-full" aria-hidden="true" />
+            )}
 
-        {/* Tab content */}
-        <div className="flex-1 overflow-hidden">
-          {/* Cards tab during high-card or bootstrap modes intentionally
-              renders nothing. All passive lifecycle messaging
-              ("Drawing for dealer...", "Awaiting ante decisions...",
-              "Preparing next hand...") is owned by the canonical
-              announcement rail. Local placeholders here would split
-              ownership and produce competing surfaces (Phase 2 / Step 4). */}
-          {activeTab === 'cards' && (isHighCardMode || isBootstrapMode) && (
-            <div className="h-full" aria-hidden="true" />
-          )}
-
-          {/* Cards tab: gameplay mode with guards */}
-          {(() => {
-            const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
-            if (activeTab === 'cards' && isGameplayMode && currentPlayer && cardsTabBlocked) {
-              logDebugEvent({
-                gameId,
-                eventType: 'crib:lifecycle:cards_tab_suppressed',
-                payload: {
-                  instanceId: instanceIdRef.current,
-                  isTransitioning,
-                  countingSnapshotActive: !!countingStateSnapshot,
-                  countingAnimationActive: countingAnimationActiveRef.current,
-                  viewStatePhase: viewState?.phase ?? null,
-                  viewStateHandSizes: viewState ? Object.fromEntries(
-                    Object.entries(viewState.playerStates).map(([pid, ps]) => [pid.slice(0, 8), ps.hand?.length ?? 0])
-                  ) : null,
-                  dealerGameId: dealerGameId?.slice(0, 8) ?? null,
-                },
-              });
-            }
-            return null;
-          })()}
-          {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && interactionsAllowed && (
-            <CribbageMobileCardsTab
-              key={renderHandKey}
-              cribbageState={viewState}
-              currentPlayerId={currentPlayerId}
-              playerCount={players.length}
-              isProcessing={isProcessing}
-              onDiscard={handleDiscard}
-              onPlayCard={handlePlayCard}
-              currentPlayer={currentPlayer}
-              gameId={gameId}
-              isDealer={isCribDealer(currentPlayerId)}
-              roundId={roundId}
-              renderTrace={{
-                renderHandKey,
-                currentHandKey,
-                dealerGameId: dealerGameId ?? null,
-                isFrozen: syncHandle.isFrozen,
-                authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
-                renderSource: 'sync-presentation',
-                expectedRoundId: roundId ?? null,
-                sourceRoundId: currentRoundId ?? null,
-                handNumber,
-                isGameplayMode,
-                viewStateIsCurrentRound,
-                interactionsAllowed,
-              }}
-            />
-          )}
-
-          
-          {/* Counting animation placeholder */}
-          {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-sm">
-                {countingTargetLabel ? `Scoring ${countingTargetLabel}...` : 'Scoring hands...'}
-              </p>
-            </div>
-          )}
-
-          {activeTab === 'chat' && (
-            <div className="h-full p-2">
-              <MobileChatPanel
-                messages={allMessages}
-                onSend={sendMessage}
-                isSending={isChatSending}
-                dealerMessages={dealerMessages}
-                currentUserId={currentUserId}
+            {/* Cards tab: gameplay mode with guards */}
+            {(() => {
+              const cardsTabBlocked = isTransitioning || !!countingStateSnapshot || countingAnimationActiveRef.current;
+              if (activeTab === 'cards' && isGameplayMode && currentPlayer && cardsTabBlocked) {
+                logDebugEvent({
+                  gameId,
+                  eventType: 'crib:lifecycle:cards_tab_suppressed',
+                  payload: {
+                    instanceId: instanceIdRef.current,
+                    isTransitioning,
+                    countingSnapshotActive: !!countingStateSnapshot,
+                    countingAnimationActive: countingAnimationActiveRef.current,
+                    viewStatePhase: viewState?.phase ?? null,
+                    viewStateHandSizes: viewState ? Object.fromEntries(
+                      Object.entries(viewState.playerStates).map(([pid, ps]) => [pid.slice(0, 8), ps.hand?.length ?? 0])
+                    ) : null,
+                    dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+                  },
+                });
+              }
+              return null;
+            })()}
+            {activeTab === 'cards' && isGameplayMode && currentPlayer && viewState && !isTransitioning && !countingStateSnapshot && !countingAnimationActiveRef.current && interactionsAllowed && (
+              <CribbageMobileCardsTab
+                key={renderHandKey}
+                cribbageState={viewState}
+                currentPlayerId={currentPlayerId}
+                playerCount={players.length}
+                isProcessing={isProcessing}
+                onDiscard={handleDiscard}
+                onPlayCard={handlePlayCard}
+                currentPlayer={currentPlayer}
+                gameId={gameId}
+                isDealer={isCribDealer(currentPlayerId)}
+                roundId={roundId}
+                renderTrace={{
+                  renderHandKey,
+                  currentHandKey,
+                  dealerGameId: dealerGameId ?? null,
+                  isFrozen: syncHandle.isFrozen,
+                  authoritativeHand: cribbageState?.playerStates[currentPlayerId]?.hand ?? null,
+                  renderSource: 'sync-presentation',
+                  expectedRoundId: roundId ?? null,
+                  sourceRoundId: currentRoundId ?? null,
+                  handNumber,
+                  isGameplayMode,
+                  viewStateIsCurrentRound,
+                  interactionsAllowed,
+                }}
               />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'lobby' && (
-            <div className="p-4 space-y-2">
-              {players.map(player => (
-                <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
-                  <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
-                  <span className="text-sm text-poker-gold">${player.chips}</span>
-                </div>
-              ))}
-            </div>
-          )}
+            {/* Counting animation placeholder */}
+            {activeTab === 'cards' && isGameplayMode && countingStateSnapshot && (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground text-sm">
+                  {countingTargetLabel ? `Scoring ${countingTargetLabel}...` : 'Scoring hands...'}
+                </p>
+              </div>
+            )}
 
-          {activeTab === 'history' && (
-            <HandHistory
-              gameId={gameId}
-              currentUserId={currentUserId}
-              currentPlayerId={currentPlayerId}
-              gameType="cribbage"
-            />
-          )}
-        </div>
-      </div>
+            {activeTab === 'chat' && (
+              <div className="h-full p-2">
+                <MobileChatPanel
+                  messages={allMessages}
+                  onSend={sendMessage}
+                  isSending={isChatSending}
+                  dealerMessages={dealerMessages}
+                  currentUserId={currentUserId}
+                />
+              </div>
+            )}
+
+            {activeTab === 'lobby' && (
+              <div className="h-full overflow-auto p-4 space-y-2">
+                {players.map(player => (
+                  <div key={player.id} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                    <span className="text-sm">{getDisplayName(players, player, player.profiles?.username || 'Player')}</span>
+                    <span className="text-sm text-poker-gold">${player.chips}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'history' && (
+              <HandHistory
+                gameId={gameId}
+                currentUserId={currentUserId}
+                currentPlayerId={currentPlayerId}
+                gameType="cribbage"
+              />
+            )}
+          </div>
+        }
+      />
     </div>
   );
 };
