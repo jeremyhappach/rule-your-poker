@@ -278,8 +278,25 @@ export function ShellOwnedFeltHost({
       data-shell-felt-context={JSON.stringify(hostTrace)}
       aria-hidden="true"
       style={{
+        // STRUCTURAL play/HUD boundary enforcement.
+        //
+        // The host wrapper is constrained to the GAMEPLAY REGION only
+        // (`--shell-play-h`), not the full row-2 (play + HUD). This
+        // means the felt physically cannot render into HUD territory:
+        // anything past the bottom of this box is clipped by
+        // `overflow: hidden`. The play/HUD boundary is therefore a
+        // hard structural edge, not a calculation we have to keep in
+        // sync with `--shell-hud-h`.
+        //
+        // DO NOT change to `inset: 0` — that would re-introduce the
+        // boundary violation where the felt visibly leaks behind the
+        // announcement rail / tabs.
         position: 'absolute',
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 'var(--shell-play-h)',
+        overflow: 'hidden',
         zIndex: 0,
         pointerEvents: 'none',
       }}
@@ -298,23 +315,12 @@ export function ShellOwnedFeltHost({
           // that was approved). Width is unchanged; height is the
           // smaller of (a) the play region and (b) width / 1.09.
           //
-          // Alignment: anchor to the BOTTOM of the play region so the
-          // felt is tangent to the play/HUD boundary. Any leftover
-          // vertical space appears as a single gap ABOVE the felt
-          // (between the header and the felt's top edge), never split
-          // symmetrically — the felt must read as "sitting on" the
-          // HUD, not floating in the middle of the play region.
-          //
-          // Do NOT remove the aspect cap to "fill the play region" —
-          // that change (commit 8c9f2ae3) silently inverted the
-          // ellipse aspect from 1.09 → 0.84 on phones.
-          // The host wraps the ENTIRE row-2 (play + HUD) with
-          // `inset: 0`, so `bottom: 0` would anchor the felt to the
-          // bottom of the HUD stack (below tabs/active-pane). Offset
-          // by `--shell-hud-h` so the felt's bottom edge is tangent
-          // to the play/HUD boundary, keeping the felt INSIDE the
-          // gameplay region as the contract requires.
-          bottom: 'var(--shell-hud-h)',
+          // Alignment: anchor to the BOTTOM of the host (which is
+          // now the play/HUD boundary, since the host itself is
+          // sized to `--shell-play-h`). Any leftover vertical space
+          // appears as a single gap ABOVE the felt — never split
+          // symmetrically, never leaking into HUD territory.
+          bottom: 0,
           height:
             'min(var(--shell-play-h), calc(min(94vw, 720px) / 1.09))',
           width: 'min(94vw, 720px)',
@@ -322,6 +328,7 @@ export function ShellOwnedFeltHost({
           transform: 'translateX(-50%)',
         }}
       >
+
         <CanonicalFeltSurface
           gameKind={gameKind}
           geometryVariant="ellipse"
