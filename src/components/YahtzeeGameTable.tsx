@@ -2017,7 +2017,20 @@ export function YahtzeeGameTable({
           return activePlayers.map(player => {
             // Active player should not see their own table chipstack
             // (identity/bankroll is already in the HUD). Observers see all.
-            if (player.id === myPlayer?.id) return null;
+            // Compare by user_id (stable from props) rather than myPlayer.id
+            // — during initial mount `myPlayer` may briefly be undefined
+            // because `players.find()` hasn't resolved, which previously
+            // let the local viewer's own chip bubble flash on the felt
+            // before the shell's self-suppression kicked in. user_id is
+            // present on every player row from the first render.
+            if (currentUserId && player.user_id === currentUserId) return null;
+            // Additionally: until the shell's seat anchors have resolved
+            // a viewerPosition, defer rendering ANY projected cluster.
+            // The cluster's internal self-suppression keys off
+            // `anchors.viewerPosition`; when it's transiently null at
+            // mount, an opponent-projected cluster can land where the
+            // viewer's seat will eventually be. Gate at the call site.
+            if (shellAnchors?.viewerPosition == null) return null;
             const slot = slotByPosition.get(player.position) ?? null;
             const ps = viewState?.playerStates?.[player.id];
             const total = ps ? getTotalScore(ps.scorecard) : 0;

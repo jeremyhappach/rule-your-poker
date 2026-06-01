@@ -5802,6 +5802,7 @@ export const CribbageMobileGameTable = ({
               const slot = playerSlotById.get(seatPlayer.id) ?? null;
               const showSeatCardBacks = isObserver || seatPlayer.id !== currentPlayerId;
 
+              const ownsCrib = isCribDealer(seatPlayer.id);
               return (
                 <CanonicalSeatCluster
                   key={seatPlayer.id}
@@ -5811,6 +5812,16 @@ export const CribbageMobileGameTable = ({
                   /* Red "D" (identity row) — session/dealer-game owner. */
                   isDealer={seatPlayer.position === dealerPosition}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                  chipOverlay={ownsCrib ? (
+                    <div
+                      data-canonical-cribbage-crib-badge=""
+                      aria-label="Holds the crib"
+                      title="Crib"
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 border border-amber-200 flex items-center justify-center shadow-md pointer-events-none"
+                    >
+                      <span className="text-amber-950 font-extrabold text-[9px] leading-none">C</span>
+                    </div>
+                  ) : undefined}
                 >
                   {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
@@ -5829,35 +5840,14 @@ export const CribbageMobileGameTable = ({
               );
             })}
 
-            {/* ═══════ FELT-LEVEL CRIB PIP ═══════
-                Amber "C" rendered on the felt itself, just inside the
-                rail adjacent to the current crib owner's seat. Uses the
-                canonical seat-anchor mapping so it follows projection
-                (active-canonical, observer-absolute, 2P face-to-face)
-                automatically. Independent from the chip bubble — never
-                overlaps identity / chip rendering. */}
-            {isGameplayMode && projectedSeatPlayers.map((seatPlayer) => {
-              if (!isCribDealer(seatPlayer.id)) return null;
-              const slot = playerSlotById.get(seatPlayer.id) ?? null;
-              const placement = cribPipPlacementForSlot(slot);
-              if (!placement) return null;
-              return (
-                <div
-                  key={`crib-pip-${seatPlayer.id}`}
-                  data-canonical-cribbage-crib-pip=""
-                  data-crib-pip-slot={String(slot)}
-                  className={`absolute ${placement} pointer-events-none z-40`}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full bg-amber-500 border-2 border-amber-200 flex items-center justify-center shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
-                    aria-label="Crib dealer"
-                    title="Crib"
-                  >
-                    <span className="text-amber-950 font-extrabold text-sm leading-none">C</span>
-                  </div>
-                </div>
-              );
-            })}
+            {/* Floating felt-level C-pip retired. Crib ownership is now
+                indicated by:
+                  - opponent owns crib → small "C" badge on the opponent's
+                    canonical chip bubble (chipOverlay above).
+                  - local player owns crib → "Your Crib" pill in the
+                    active-player identity row (CribbageMobileCardsTab).
+                This removes a floating gameplay artifact while keeping
+                crib ownership immediately legible. */}
           </div>
         </div>
       </div>
