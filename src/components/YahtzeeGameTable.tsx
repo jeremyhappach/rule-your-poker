@@ -1912,11 +1912,11 @@ export function YahtzeeGameTable({
       </AlertDialog>
 
       {/* ===== TABLE AREA (felt with bridge background) =====
-          Height hugs the shell-owned ellipse (`min(82vw, 48vh-24, 360)`
-          + 24px top offset + small breathing room). Anything larger
-          reserves dead vertical space below the felt because the
-          ellipse itself is geometrically smaller than 48vh. */}
-      <div ref={tableContainerRef} className="flex-none relative overflow-hidden" style={{ height: 'min(calc(82vw + 36px), calc(48vh + 8px), 360px)' }}>
+          Height is OWNED BY THE SHELL via --shell-play-h. Must match
+          the canonical pattern used by MobileGameTable / GinRummy /
+          NeutralInterstitial — never a bespoke vw/vh formula, which
+          drifts from the shell ellipse and pushes HUD off-screen. */}
+      <div ref={tableContainerRef} className="relative overflow-hidden" style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
