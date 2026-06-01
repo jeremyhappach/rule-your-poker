@@ -81,15 +81,15 @@ All colors MUST be HSL.
     --shell-hud-h:    calc(var(--shell-flex-h) - var(--shell-play-h));
 
     /* HUD internal row ratios (sum to 1.0).
-       Retuned 2026-06-01: announcement rail bumped (0.07 → 0.11) for
-       canonical visual weight on mobile; timer bumped (0.05 → 0.07)
+       Retuned 2026-06-01: announcement rail tightened after typography
+       scale-up (0.11 → 0.085) so the gold rail hugs the larger text
+       instead of reading oversized; timer remains bumped (0.05 → 0.07)
        so per-actor turn chips don't clip into the tab rail on
-       Yahtzee; pane reduced (0.66 → 0.60) to fund both — gameplay
-       panes already fit. */
-    --hud-r-announcement: 0.11;
+       Yahtzee. */
+    --hud-r-announcement: 0.085;
     --hud-r-timer:        0.07;
     --hud-r-tabs:         0.10;
-    --hud-r-pane:         0.60;
+    --hud-r-pane:         0.625;
     --hud-r-identity:     0.12;
 
 
