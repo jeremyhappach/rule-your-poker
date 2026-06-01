@@ -315,18 +315,23 @@ export function ShellOwnedFeltHost({
           // that was approved). Width is unchanged; height is the
           // smaller of (a) the play region and (b) width / 1.09.
           //
-          // Alignment: anchor to the BOTTOM of the host (which is
-          // now the play/HUD boundary, since the host itself is
-          // sized to `--shell-play-h`). Any leftover vertical space
-          // appears as a single gap ABOVE the felt — never split
-          // symmetrically, never leaking into HUD territory.
-          bottom: 0,
+          // Alignment: anchor to the TOP of the host (which is the
+          // top of the gameplay region). Gameplay artifacts (chip
+          // stacks, crib, score rails) are positioned in the upper
+          // portion of the gameplay coordinate space, so the felt
+          // must rise to meet them. Any leftover vertical space
+          // appears as a single gap BELOW the felt, between the
+          // felt's bottom edge and the play/HUD boundary — it never
+          // leaks into HUD territory (host has overflow:hidden) and
+          // never pushes the HUD downward.
+          top: 0,
           height:
             'min(var(--shell-play-h), calc(min(94vw, 720px) / 1.09))',
           width: 'min(94vw, 720px)',
           minWidth: 300,
           transform: 'translateX(-50%)',
         }}
+      
       >
 
         <CanonicalFeltSurface
