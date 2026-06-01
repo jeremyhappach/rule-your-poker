@@ -2141,7 +2141,8 @@ export function YahtzeeGameTable({
 
                 {/* Opponent scorecard when it's not my turn */}
                 {!isMyTurn && currentTurnPlayerId && currentTurnPlayerId !== myPlayer?.id && gamePhase === 'playing' && (
-                  <div className="mt-1 px-1 relative">
+                  <div className="px-1 relative">
+
                     {(() => {
                       const oppPlayer = players.find(p => p.id === currentTurnPlayerId);
                       if (!oppPlayer) return null;
