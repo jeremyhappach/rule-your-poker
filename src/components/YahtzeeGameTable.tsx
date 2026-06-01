@@ -2090,7 +2090,8 @@ export function YahtzeeGameTable({
           <div className="h-full overflow-hidden">
             {/* CARDS/DICE TAB */}
             {activeTab === 'cards' && (
-              <div className="px-2 h-full overflow-y-auto">
+              <div className="px-2 h-full overflow-y-auto flex flex-col justify-center">
+
                 {/* Dice area — only reserve space when actually rendering
                     dice for the viewer. When observing an opponent, dice
                     are shown on the felt above and reserving min-height
