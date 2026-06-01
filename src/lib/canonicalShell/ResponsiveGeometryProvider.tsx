@@ -117,7 +117,7 @@ export function ResponsiveGeometryProvider({ children }: ResponsiveGeometryProvi
       // and let the remaining HUD region (`--shell-hud-h`) consume the
       // balance, yielding deterministic header/play/hud partitioning
       // owned by the shell — see index.css ":root" tokens.
-      tableSurfaceMaxHeight: 'var(--shell-play-h)',
+      tableSurfaceMaxHeight: 'var(--shell-felt-h)',
       resolveCardSize: (base = 'md') => getCardSizeForDevice(deviceType, base),
     };
   }, [deviceType, isPhone, isTablet, isDesktop, screenWidth]);

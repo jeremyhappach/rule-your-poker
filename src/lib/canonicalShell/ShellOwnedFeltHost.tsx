@@ -325,11 +325,11 @@ export function ShellOwnedFeltHost({
           // leaks into HUD territory (host has overflow:hidden) and
           // never pushes the HUD downward.
           top: 0,
-          height:
-            'min(var(--shell-play-h), calc(min(94vw, 720px) / 1.09))',
-          width: 'min(94vw, 720px)',
+          height: 'var(--shell-felt-h)',
+          width: 'var(--shell-felt-w)',
           minWidth: 300,
           transform: 'translateX(-50%)',
+
         }}
       
       >

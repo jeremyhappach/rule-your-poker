@@ -1802,7 +1802,7 @@ export function YahtzeeGameTable({
   if (isPreRound) {
     return (
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
-        <div className="relative overflow-hidden" style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
+        <div className="relative overflow-hidden" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
           {/* Shell owns canonical felt. During DB/auth bootstrap, do not
               render any seat chips here: this branch previously used a
               manual absolute-positioned chip layout that bypassed
@@ -1889,7 +1889,7 @@ export function YahtzeeGameTable({
           the canonical pattern used by MobileGameTable / GinRummy /
           NeutralInterstitial — never a bespoke vw/vh formula, which
           drifts from the shell ellipse and pushes HUD off-screen. */}
-      <div ref={tableContainerRef} className="relative overflow-hidden" style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
+      <div ref={tableContainerRef} className="relative overflow-hidden" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 

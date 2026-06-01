@@ -80,6 +80,18 @@ All colors MUST be HSL.
     --shell-play-h:   calc(var(--shell-flex-h) * (var(--shell-r-play) / var(--shell-play-sum)));
     --shell-hud-h:    calc(var(--shell-flex-h) - var(--shell-play-h));
 
+    /* ─────────────────────────────────────────────────────────────
+       Canonical FELT geometry — single source of truth.
+       The visible felt ellipse is width-bounded and aspect-capped.
+       Game artifact containers MUST consume these vars so Frame A
+       (visible felt) and Frame B (artifact coordinate space) are
+       identical by construction. Aspect ≈ 1.09 W/H matches the
+       pre-shell-migration geometry approved 2026-06-01.
+       ───────────────────────────────────────────────────────────── */
+    --shell-felt-w:   min(94vw, 720px);
+    --shell-felt-h:   min(var(--shell-play-h), calc(var(--shell-felt-w) / 1.09));
+
+
     /* HUD internal row ratios (sum to 1.0).
        Retuned 2026-06-01: announcement rail tightened after typography
        scale-up (0.11 → 0.085) so the gold rail hugs the larger text

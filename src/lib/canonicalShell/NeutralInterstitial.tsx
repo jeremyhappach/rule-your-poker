@@ -265,7 +265,7 @@ export function NeutralInterstitial({
     >
       <div
         className="relative overflow-hidden"
-        style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
+        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
       >
         {/* Shell owns the felt unconditionally — no local mount. */}
         {seatLayer}
