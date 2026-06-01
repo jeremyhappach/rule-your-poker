@@ -296,19 +296,24 @@ export function ShellOwnedFeltHost({
           // when the play region is taller than the felt's natural
           // shape. Target aspect ≈ 1.09 W/H (the pre-May-31 geometry
           // that was approved). Width is unchanged; height is the
-          // smaller of (a) the play region and (b) width / 1.09. Any
-          // leftover vertical space sits as gap inside the play region
-          // and the felt is vertically centered within it.
+          // smaller of (a) the play region and (b) width / 1.09.
+          //
+          // Alignment: anchor to the BOTTOM of the play region so the
+          // felt is tangent to the play/HUD boundary. Any leftover
+          // vertical space appears as a single gap ABOVE the felt
+          // (between the header and the felt's top edge), never split
+          // symmetrically — the felt must read as "sitting on" the
+          // HUD, not floating in the middle of the play region.
           //
           // Do NOT remove the aspect cap to "fill the play region" —
           // that change (commit 8c9f2ae3) silently inverted the
           // ellipse aspect from 1.09 → 0.84 on phones.
-          top: '50%',
+          bottom: 0,
           height:
             'min(var(--shell-play-h), calc(min(94vw, 720px) / 1.09))',
           width: 'min(94vw, 720px)',
           minWidth: 300,
-          transform: 'translate(-50%, -50%)',
+          transform: 'translateX(-50%)',
         }}
       >
         <CanonicalFeltSurface
