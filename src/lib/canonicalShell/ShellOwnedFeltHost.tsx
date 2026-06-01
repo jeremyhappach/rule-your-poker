@@ -290,17 +290,25 @@ export function ShellOwnedFeltHost({
         style={{
           position: 'absolute',
           left: '50%',
-          // Bind felt frame to the canonical play region. The play
-          // container is `--shell-play-h` tall; the felt MUST fit
-          // inside it exactly so the ellipse is tangent to the
-          // play/HUD boundary with no top/bottom clipping. Width
-          // remains capped so the ellipse is rounder than the
-          // container on wide phones/tablets.
-          top: 0,
-          height: 'var(--shell-play-h)',
+          // Contract B (canonical, restored 2026-06-01): shell still
+          // owns the play region (`--shell-play-h`), but the felt is
+          // ASPECT-CAPPED so it cannot stretch into a vertical oval
+          // when the play region is taller than the felt's natural
+          // shape. Target aspect ≈ 1.09 W/H (the pre-May-31 geometry
+          // that was approved). Width is unchanged; height is the
+          // smaller of (a) the play region and (b) width / 1.09. Any
+          // leftover vertical space sits as gap inside the play region
+          // and the felt is vertically centered within it.
+          //
+          // Do NOT remove the aspect cap to "fill the play region" —
+          // that change (commit 8c9f2ae3) silently inverted the
+          // ellipse aspect from 1.09 → 0.84 on phones.
+          top: '50%',
+          height:
+            'min(var(--shell-play-h), calc(min(94vw, 720px) / 1.09))',
           width: 'min(94vw, 720px)',
           minWidth: 300,
-          transform: 'translateX(-50%)',
+          transform: 'translate(-50%, -50%)',
         }}
       >
         <CanonicalFeltSurface
