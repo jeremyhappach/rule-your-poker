@@ -328,6 +328,16 @@ export const CribbageMobileCardsTab = ({
       <span className="font-bold text-lg text-poker-gold">
         ${formatChipValue(currentPlayer.chips)}
       </span>
+      {isDealer && (
+        <span
+          data-canonical-cribbage-your-crib=""
+          aria-label="You hold the crib"
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500 border border-amber-200 text-amber-950 font-bold text-[10px] leading-none shadow-sm"
+        >
+          <span className="w-3 h-3 rounded-full bg-amber-200/80 flex items-center justify-center text-[8px] font-extrabold">C</span>
+          Your Crib
+        </span>
+      )}
     </div>
   );
 
