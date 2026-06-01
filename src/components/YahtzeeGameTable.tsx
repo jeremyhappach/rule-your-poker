@@ -1797,44 +1797,17 @@ export function YahtzeeGameTable({
     );
   };
 
-  /* ---- Pre-round: shell ellipse paints the felt; render chip cluster only ---- */
+  /* ---- Pre-round: shell ellipse paints the felt; no seat clusters yet ---- */
   const isPreRound = !viewState || !currentRoundId;
   if (isPreRound) {
     return (
       <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
         <div className="relative overflow-hidden" style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}>
-          {/* Shell owns canonical felt. */}
-          {/* Player chip stacks around the felt */}
-          {(() => {
-            const sorted = players.filter(p => !p.sitting_out).sort((a, b) => a.position - b.position);
-            const meIndex = sorted.findIndex(p => p.user_id === currentUserId);
-            const others = meIndex >= 0
-              ? [...sorted.slice(meIndex + 1), ...sorted.slice(0, meIndex)]
-              : sorted.slice(1);
-            const positions = [
-              'top-4 left-4',
-              'top-4 right-4',
-              'top-1/3 left-2',
-              'top-1/3 right-2',
-              'bottom-4 left-4',
-              'bottom-4 right-4',
-            ];
-            return others.map((player, idx) => (
-              <div key={player.id} className={`absolute z-[105] ${positions[idx % positions.length]}`}>
-                {renderPlayerChip(player)}
-              </div>
-            ));
-          })()}
-          {/* My chip at bottom center */}
-          {(() => {
-            const me = players.find(p => p.user_id === currentUserId && !p.sitting_out);
-            if (!me) return null;
-            return (
-              <div className="absolute z-[105] bottom-2 left-1/2 -translate-x-1/2">
-                {renderPlayerChip(me)}
-              </div>
-            );
-          })()}
+          {/* Shell owns canonical felt. During DB/auth bootstrap, do not
+              render any seat chips here: this branch previously used a
+              manual absolute-positioned chip layout that bypassed
+              CanonicalSeatCluster self-suppression and caused the local
+              viewer bubble to flash in a non-canonical location. */}
         </div>
         {/* Bottom area placeholder */}
         <div className="flex-none flex items-center justify-center py-8">
@@ -2012,6 +1985,10 @@ export function YahtzeeGameTable({
             canonicalizes the opponent to the ergonomic top slot regardless
             of absolute seat number, matching Cribbage/Gin. */}
         {(() => {
+          // If auth identity is not threaded yet, treat seat projection as
+          // not ready. Rendering as an observer for one frame can show the
+          // seated viewer's own chip before self-suppression can resolve.
+          if (!currentUserId) return null;
           const slotByPosition = new Map<number, CanonicalSlot | null>();
           shellAnchors?.anchors.forEach(a => slotByPosition.set(a.position, a.slot));
           // Resolve whether the viewer is themselves a seated active
