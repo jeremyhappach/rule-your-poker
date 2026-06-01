@@ -107,12 +107,14 @@ export function NeutralInterstitial({
   usePublishShellFelt({
     gameKind: resolvedGameKind,
     anteAmount,
-    // When the dealer-game's game_type is committed (gameKind supplied
-    // by the caller), the felt should immediately adopt that game's
-    // branding plate even though we're in an interstitial phase
-    // (ante_decision, dealer_selection, configuring). Only suppress
-    // the plate when no game kind is known yet (bootstrap neutrality).
-    isWaitingPhase: !hasCommittedGameKind,
+    // 2026-06-01: ALWAYS suppress the game-name plate during
+    // interstitial states (ante_decision, dealer_selection,
+    // configuring). Showing the previous game's plate ("$10 CRIBBAGE")
+    // on the "Dealer configuring next game" surface reads as stale
+    // branding. The interstitial is conceptually between games — no
+    // plate is the correct neutral state, regardless of whether the
+    // dealer-game's game_type has been committed.
+    isWaitingPhase: true,
     publisherLabel: `NeutralInterstitial:${reason ?? 'unknown'}`,
   });
 

@@ -2051,7 +2051,7 @@ export function YahtzeeGameTable({
         timer={
           <div
             data-shell-operational-hud=""
-            className="w-full h-full flex flex-wrap items-center justify-center gap-x-3 gap-y-0 px-3 overflow-hidden"
+            className="w-full h-full flex items-center justify-center gap-x-3 px-3 overflow-hidden whitespace-nowrap"
           >
             {gamePhase === 'playing' && currentPlayer && !currentPlayer.is_bot ? (
               <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
@@ -2090,7 +2090,8 @@ export function YahtzeeGameTable({
           <div className="h-full overflow-hidden">
             {/* CARDS/DICE TAB */}
             {activeTab === 'cards' && (
-              <div className="px-2 h-full overflow-y-auto flex flex-col justify-center">
+              <div className="px-2 h-full overflow-y-auto flex flex-col justify-start pt-2">
+
 
                 {/* Dice area — only reserve space when actually rendering
                     dice for the viewer. When observing an opponent, dice

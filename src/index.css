@@ -61,38 +61,35 @@ All colors MUST be HSL.
          - Active pane row never grows: content scales/clips inside.
        ───────────────────────────────────────────────────────────── */
 
-    /* Shell region ratios (must sum to 1.0). */
+    /* Shell region ratios (must sum to 1.0).
+       Retuned 2026-06-01: play region shrunk so its bottom edge sits
+       at (or just above) the felt's natural aspect-capped height —
+       eliminating the visible gap between the felt's bottom and the
+       announcement rail on tall phones. Reclaimed share goes to HUD. */
     --shell-r-header: 0.07;
-    --shell-r-play:   0.52;
-    --shell-r-hud:    0.41;
+    --shell-r-play:   0.40;
+    --shell-r-hud:    0.53;
 
     /* Header pixel floor — guarantees session name + controls fit. */
     --shell-min-header: 44px;
 
-    /* Derived shell heights. Header = max(floor, ratio*vh).
-       play+hud share the remainder by their relative ratio. */
+    /* Derived shell heights. */
     --shell-header-h: max(var(--shell-min-header), calc(var(--shell-r-header) * 100dvh));
     --shell-flex-h:   calc(100dvh - var(--shell-header-h));
     --shell-play-sum: calc(var(--shell-r-play) + var(--shell-r-hud));
     --shell-play-h:   calc(var(--shell-flex-h) * (var(--shell-r-play) / var(--shell-play-sum)));
     --shell-hud-h:    calc(var(--shell-flex-h) - var(--shell-play-h));
 
-    /* HUD internal row ratios (sum to 1.0). Tuning knobs. */
-    /* Row ratios (sum to 1.0). Retuned in 2b.1 smoke-test:
-       timer row shrunk (was 0.16) to reclaim budget for the active
-       pane, which must hold the full gameplay workflow (e.g.
-       Cribbage cards + "Send to Crib" action button) within row 4. */
-    /* Retuned (2b.2.5): Yahtzee scorecard exposed the pane as
-       under-budgeted. Shrunk announcement, tabs, and identity to
-       realistic floors and reallocated the freed share into the active
-       pane so Yahtzee's 13-category scorecard + roll header fit inside
-       row 4 without clipping. Cribbage's 6 cards + action button
-       continue to fit. Timer row holds at a thin operational strip;
-       per-surface chrome must abbreviate to that budget. */
-    --hud-r-announcement: 0.07;
-    --hud-r-timer:        0.05;
+    /* HUD internal row ratios (sum to 1.0).
+       Retuned 2026-06-01: announcement rail bumped (0.07 → 0.11) for
+       canonical visual weight on mobile; timer bumped (0.05 → 0.07)
+       so per-actor turn chips don't clip into the tab rail on
+       Yahtzee; pane reduced (0.66 → 0.60) to fund both — gameplay
+       panes already fit. */
+    --hud-r-announcement: 0.11;
+    --hud-r-timer:        0.07;
     --hud-r-tabs:         0.10;
-    --hud-r-pane:         0.66;
+    --hud-r-pane:         0.60;
     --hud-r-identity:     0.12;
 
 
