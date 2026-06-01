@@ -308,7 +308,13 @@ export function ShellOwnedFeltHost({
           // Do NOT remove the aspect cap to "fill the play region" —
           // that change (commit 8c9f2ae3) silently inverted the
           // ellipse aspect from 1.09 → 0.84 on phones.
-          bottom: 0,
+          // The host wraps the ENTIRE row-2 (play + HUD) with
+          // `inset: 0`, so `bottom: 0` would anchor the felt to the
+          // bottom of the HUD stack (below tabs/active-pane). Offset
+          // by `--shell-hud-h` so the felt's bottom edge is tangent
+          // to the play/HUD boundary, keeping the felt INSIDE the
+          // gameplay region as the contract requires.
+          bottom: 'var(--shell-hud-h)',
           height:
             'min(var(--shell-play-h), calc(min(94vw, 720px) / 1.09))',
           width: 'min(94vw, 720px)',
