@@ -1742,7 +1742,8 @@ export const GinRummyGameTable = ({
         <div
           ref={tableContainerRef}
           className="relative overflow-hidden"
-          style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
+          style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
+
         >
           {/* Shell owns canonical felt. */}
         </div>
@@ -1778,7 +1779,7 @@ export const GinRummyGameTable = ({
       <div
         ref={tableContainerRef}
         className="relative overflow-hidden"
-        style={{ height: 'var(--shell-play-h)', flex: '0 0 var(--shell-play-h)' }}
+        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
       >
 
             {/* Shell owns canonical felt. */}
