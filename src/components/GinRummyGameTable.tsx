@@ -74,6 +74,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 // timer row of the grid (semantically still "operational HUD chrome"
 // adjacent to the tab bar) until canonical announcement wiring lands.
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
+import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
@@ -2005,6 +2006,34 @@ export const GinRummyGameTable = ({
           }
           return null;
         })()}
+        identity={
+          currentPlayer ? (
+            <div className="flex items-center justify-center gap-2 h-full">
+              <QuickEmoticonPicker
+                onSelect={async (emoticon: string) => {
+                  try {
+                    const expiresAt = new Date(Date.now() + 4000).toISOString();
+                    await supabase.from('chip_stack_emoticons').insert({
+                      game_id: gameId,
+                      player_id: currentPlayer.id,
+                      emoticon,
+                      expires_at: expiresAt,
+                    });
+                  } catch (err) {
+                    console.error('Failed to send emoticon:', err);
+                  }
+                }}
+                disabled={false}
+              />
+              <p className="font-semibold text-sm text-foreground">
+                {currentPlayer.profiles?.username || 'You'}
+              </p>
+              <span className="font-bold text-lg text-poker-gold">
+                ${formatChipValue(currentPlayer.chips)}
+              </span>
+            </div>
+          ) : null
+        }
         pane={
           <div className="w-full h-full overflow-hidden">
             {activeTab === 'cards' && currentPlayer && (

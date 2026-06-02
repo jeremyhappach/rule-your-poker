@@ -4,12 +4,10 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { cn, formatChipValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { QuickEmoticonPicker } from './QuickEmoticonPicker';
-import { supabase } from '@/integrations/supabase/client';
 
 interface Player {
   id: string;
@@ -78,7 +76,7 @@ export const GinRummyMobileCardsTab = ({
   gameId,
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
-  const [isEmoticonSending, setIsEmoticonSending] = useState(false);
+  
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
@@ -214,23 +212,8 @@ export const GinRummyMobileCardsTab = ({
     setSelectedCardIndex(null);
   };
 
-  const handleQuickEmoticon = async (emoticon: string) => {
-    if (isEmoticonSending || !currentPlayer) return;
-    setIsEmoticonSending(true);
-    try {
-      const expiresAt = new Date(Date.now() + 4000).toISOString();
-      await supabase.from('chip_stack_emoticons').insert({
-        game_id: gameId,
-        player_id: currentPlayer.id,
-        emoticon,
-        expires_at: expiresAt,
-      });
-    } catch (err) {
-      console.error('Failed to send emoticon:', err);
-    } finally {
-      setIsEmoticonSending(false);
-    }
-  };
+
+
 
   if (!myState) {
     return (
@@ -427,19 +410,6 @@ export const GinRummyMobileCardsTab = ({
           </p>
         )}
       </div>
-
-      {/* Player info row — hidden during layoff to save space */}
-      {!isLayingOff && (
-        <div className="flex items-center justify-center gap-2 py-0.5">
-          <QuickEmoticonPicker onSelect={handleQuickEmoticon} disabled={isEmoticonSending || !currentPlayer} />
-          <p className="font-semibold text-sm text-foreground">
-            {currentPlayer.profiles?.username || 'You'}
-          </p>
-          <span className="font-bold text-lg text-poker-gold">
-            ${formatChipValue(currentPlayer.chips)}
-          </span>
-        </div>
-      )}
     </div>
   );
 };
