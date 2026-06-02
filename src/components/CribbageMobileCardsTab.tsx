@@ -413,8 +413,7 @@ export const CribbageMobileCardsTab = ({
         )}
       </div>
 
-      {/* Player info row - same styling as MobileGameTable, below action buttons */}
-      {renderPlayerInfoRow()}
+      {/* Identity row is rendered by ShellHudGrid (shell-owned row 5). */}
 
       {/* Crib is shown on the felt during counting - no duplicate display here */}
     </div>
