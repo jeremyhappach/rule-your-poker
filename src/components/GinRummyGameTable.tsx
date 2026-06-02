@@ -851,6 +851,13 @@ export const GinRummyGameTable = ({
       if (result.accepted) {
         setGinState(state);
         if (state.phase === 'complete' && state.winnerPlayerId) {
+          traceGinAnnouncement('applyState:onGameComplete:immediate', {
+            source,
+            winnerPlayerId: state.winnerPlayerId,
+            roundId,
+            dealerGameId,
+            handNumber: state.handNumber ?? handNumber,
+          });
           onGameCompleteRef.current();
         }
       }
@@ -1483,6 +1490,13 @@ export const GinRummyGameTable = ({
 
     const processCompletion = async () => {
       try {
+        traceGinAnnouncement('completion:start', {
+          phase: viewState.phase,
+          winnerPlayerId: viewState.winnerPlayerId ?? null,
+          roundId: currentRoundId,
+          dealerGameId,
+          handNumber,
+        });
         // Record hand result (history only, no chip transfer per-hand)
         if (viewState.knockResult) {
           await recordGinRummyHandResult(gameId, dealerGameId, handNumber, viewState);
@@ -1506,6 +1520,11 @@ export const GinRummyGameTable = ({
             : r.isUndercut
               ? ` (${dwDiff} dw + 25 undercut bonus)`
               : ` (${dwDiff} dw)`;
+          traceGinAnnouncement('round_win:emit:callsite', {
+            id: handResultId,
+            scope: handResultScope,
+            text: `${winnerName} +${r.pointsAwarded}${bonus}`,
+          });
           announcements.emit({
             id: handResultId,
             type: 'round_win',
@@ -1526,7 +1545,9 @@ export const GinRummyGameTable = ({
         if (viewState.winnerPlayerId) {
           // Gate match-win sequence on the hand-result actually leaving
           // the rail. Single source of truth = announcement lifecycle.
+          traceGinAnnouncement('waitForDismiss:start', { id: handResultId });
           await announcements.waitForDismiss(handResultId);
+          traceGinAnnouncement('waitForDismiss:resolved', { id: handResultId });
 
           const winnerId = viewState.winnerPlayerId;
           const loserId =
@@ -1552,8 +1573,17 @@ export const GinRummyGameTable = ({
             const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
             const loserScore = viewState.matchScores?.[loserId] ?? 0;
             announcements.clearAmbient();
+            const matchWinId = `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`;
+            traceGinAnnouncement('match_win:emit:callsite', {
+              id: matchWinId,
+              scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+              winnerName,
+              winnerScore,
+              loserScore,
+              amount: anteAmount,
+            });
             announcements.emit({
-              id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+              id: matchWinId,
               type: 'match_win',
               scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
               payload: {
@@ -1578,9 +1608,11 @@ export const GinRummyGameTable = ({
                 setTimeout(resolve, 16);
               }
             });
+            traceGinAnnouncement('match_win:post-paint-frame', { id: matchWinId });
 
             // Winner-only confetti
             if (winnerPlayer.user_id === currentUserId) {
+              traceGinAnnouncement('confetti:start', { id: matchWinId, winnerOnly: true });
               confetti({
                 particleCount: 150,
                 spread: 70,
@@ -1616,6 +1648,10 @@ export const GinRummyGameTable = ({
             setStoredChipPositions({
               winner: winnerPos,
               losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
+            });
+            traceGinAnnouncement('chip-transfer:start', {
+              triggerId: `gin-win-${dealerGameId}-${winnerId}`,
+              amount: anteAmount,
             });
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
