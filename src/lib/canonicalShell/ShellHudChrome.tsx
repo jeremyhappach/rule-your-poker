@@ -18,10 +18,27 @@
  *     using `<ShellHudChrome />`.
  */
 
+import { useEffect } from 'react';
 import { CanonicalAnnouncementLayer } from './announcements';
 import { useAnnouncementContext } from './announcements/CanonicalAnnouncementProvider';
 import { isCelebrationType, isCtaAmbientType } from './announcements/types';
 import { ShellTabBar } from './ShellTabBar';
+
+const traceRailRuntime = (event: string, payload: Record<string, unknown> = {}) => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const enabled =
+      params.get('trace_gin_announcements') === '1' ||
+      window.localStorage.getItem('ptp_trace_gin_announcements') === '1';
+    if (!enabled) return;
+    console.log('[RAIL_RUNTIME_TRACE]', event, {
+      t: Math.round(performance.now()),
+      ...payload,
+    });
+  } catch {
+    // no-op: diagnostic only
+  }
+};
 
 export function ShellAnnouncementRail() {
   const ctx = useAnnouncementContext();
@@ -30,6 +47,21 @@ export function ShellAnnouncementRail() {
     !!active &&
     (active.type === 'match_win' || !isCelebrationType(active.type)) &&
     !isCtaAmbientType(active.type);
+
+  useEffect(() => {
+    traceRailRuntime('gate:evaluated', {
+      activeId: active?.id ?? null,
+      activeType: active?.type ?? null,
+      hasCanonicalRailEvent,
+    });
+    if (!hasCanonicalRailEvent || !active) return;
+    requestAnimationFrame(() => {
+      traceRailRuntime('paint-frame', {
+        activeId: active.id,
+        activeType: active.type,
+      });
+    });
+  }, [active?.id, active?.type, hasCanonicalRailEvent]);
 
   return (
     <div
