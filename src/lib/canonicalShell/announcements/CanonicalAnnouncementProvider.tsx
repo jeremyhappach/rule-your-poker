@@ -300,16 +300,24 @@ export function CanonicalAnnouncementProvider({
     (id: string) => {
       setTransient((cur) => {
         if (cur && cur.id === id) {
+          transientIdRef.current = null;
+          drainDismiss(id);
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
       setAmbient((cur) => (cur && cur.id === id ? null : cur));
-      queueRef.current = queueRef.current.filter((q) => q.id !== id);
+      const filtered: ResolvedAnnouncement[] = [];
+      for (const q of queueRef.current) {
+        if (q.id === id) drainDismiss(q.id);
+        else filtered.push(q);
+      }
+      queueRef.current = filtered;
     },
-    [promoteNextTransient],
+    [promoteNextTransient, drainDismiss],
   );
+
 
   const clearAmbient = useCallback((type?: AnnouncementType) => {
     setAmbient((cur) => {
