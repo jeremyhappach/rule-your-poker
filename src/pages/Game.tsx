@@ -27,7 +27,7 @@ import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, 
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
-import { CribbageGameTable } from "@/components/CribbageGameTable";
+
 import { CribbageMobileGameTable } from "@/components/CribbageMobileGameTable";
 import { TriviaGameTable } from "@/components/TriviaGameTable";
 import { GinRummyGameTable } from "@/components/GinRummyGameTable";

@@ -5718,13 +5718,10 @@ export const CribbageMobileGameTable = ({
             )}
 
             {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount.
-                Canonical felt title already provides game identity; no transient
-                "Cribbage" label here (was redundant placeholder noise). */}
-            {isBootstrapMode && isTransitioning && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-xs text-white/60 animate-pulse">Preparing next hand…</p>
-              </div>
-            )}
+                Canonical felt title provides game identity; lifecycle messaging
+                ("Preparing next hand...", "Awaiting ante decisions...") is owned
+                entirely by the canonical announcement rail (derivedBannerText).
+                No felt-level placeholder text — would split ownership. */}
 
             {/* GAMEPLAY MODE: full game content */}
             {isGameplayMode && viewState && (
