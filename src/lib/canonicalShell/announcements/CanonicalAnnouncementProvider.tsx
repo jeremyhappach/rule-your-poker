@@ -75,7 +75,16 @@ interface AnnouncementContextValue {
   clearScope: (scope: AnnouncementScope) => void;
   /** Explicitly clear ambient (e.g. game leaves a passive phase). */
   clearAmbient: (type?: AnnouncementType) => void;
+  /**
+   * Resolve when the transient with `id` leaves the active slot (TTL,
+   * dismissal, preemption, or scope teardown). If the event is not
+   * active and not queued at call time, resolves immediately. Intended
+   * for sequencing a follow-up action behind an announcement's actual
+   * lifecycle — avoids duplicating TTL constants at call sites.
+   */
+  waitForDismiss: (id: string) => Promise<void>;
 }
+
 
 const AnnouncementContext = createContext<AnnouncementContextValue | null>(null);
 
@@ -144,6 +153,25 @@ export function CanonicalAnnouncementProvider({
   // --- Scoped dedupe (transient only) ---
   const seenRef = useRef<Map<string, Set<string>>>(new Map());
 
+  // --- waitForDismiss support ---
+  // Resolvers waiting for a specific transient id to leave the active slot.
+  // Drained whenever a transient with that id is removed for any reason
+  // (TTL, dismiss, preemption, scope teardown). Minimal: no public broadcast,
+  // no per-event lifecycle bus — just enough to gate one follow-up action.
+  const pendingDismissRef = useRef<Map<string, Array<() => void>>>(new Map());
+  // Synchronous mirror of current transient id, so waitForDismiss called
+  // immediately after emit() can see the post-emit state without waiting
+  // for React to flush.
+  const transientIdRef = useRef<string | null>(null);
+
+  const drainDismiss = useCallback((id: string) => {
+    const list = pendingDismissRef.current.get(id);
+    if (!list) return;
+    pendingDismissRef.current.delete(id);
+    for (const resolve of list) resolve();
+  }, []);
+
+
   const scopeKey = useCallback(
     (s: AnnouncementScope) => `${s.dealerGameId ?? 'null'}::${s.roundId ?? 'null'}`,
     [],
@@ -163,6 +191,8 @@ export function CanonicalAnnouncementProvider({
       ttlTimerRef.current = null;
       setTransient((cur) => {
         if (cur && cur.id === id) {
+          transientIdRef.current = null;
+          drainDismiss(id);
           queueMicrotask(promoteNextTransient);
           return null;
         }
@@ -170,18 +200,21 @@ export function CanonicalAnnouncementProvider({
       });
     }, next.ttlMs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [drainDismiss]);
 
   const promoteNextTransient = useCallback(() => {
     clearTtl();
     const queue = queueRef.current;
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
-      queue.shift();
+      const dropped = queue.shift()!;
+      drainDismiss(dropped.id);
     }
     const next = queue.shift() ?? null;
+    transientIdRef.current = next?.id ?? null;
     setTransient(next);
     if (next) armTtl(next);
-  }, [clearTtl, currentScope, armTtl]);
+  }, [clearTtl, currentScope, armTtl, drainDismiss]);
+
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
@@ -233,6 +266,8 @@ export function CanonicalAnnouncementProvider({
       // Preempt current transient if higher priority.
       if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
         clearTtl();
+        drainDismiss(transient.id);
+        transientIdRef.current = resolved.id;
         setTransient(resolved);
         armTtl(resolved);
         return;
@@ -240,10 +275,12 @@ export function CanonicalAnnouncementProvider({
 
       // No active transient → become active.
       if (!transient) {
+        transientIdRef.current = resolved.id;
         setTransient(resolved);
         armTtl(resolved);
         return;
       }
+
 
       // Otherwise enqueue priority-desc, FIFO within tie.
       const q = queueRef.current;
@@ -263,16 +300,24 @@ export function CanonicalAnnouncementProvider({
     (id: string) => {
       setTransient((cur) => {
         if (cur && cur.id === id) {
+          transientIdRef.current = null;
+          drainDismiss(id);
           queueMicrotask(promoteNextTransient);
           return null;
         }
         return cur;
       });
       setAmbient((cur) => (cur && cur.id === id ? null : cur));
-      queueRef.current = queueRef.current.filter((q) => q.id !== id);
+      const filtered: ResolvedAnnouncement[] = [];
+      for (const q of queueRef.current) {
+        if (q.id === id) drainDismiss(q.id);
+        else filtered.push(q);
+      }
+      queueRef.current = filtered;
     },
-    [promoteNextTransient],
+    [promoteNextTransient, drainDismiss],
   );
+
 
   const clearAmbient = useCallback((type?: AnnouncementType) => {
     setAmbient((cur) => {
@@ -284,10 +329,17 @@ export function CanonicalAnnouncementProvider({
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
-      queueRef.current = queueRef.current.filter((q) => !scopeMatches(q.scope, scope));
+      const kept: ResolvedAnnouncement[] = [];
+      for (const q of queueRef.current) {
+        if (scopeMatches(q.scope, scope)) drainDismiss(q.id);
+        else kept.push(q);
+      }
+      queueRef.current = kept;
       seenRef.current.delete(scopeKey(scope));
       setTransient((cur) => {
         if (cur && scopeMatches(cur.scope, scope)) {
+          transientIdRef.current = null;
+          drainDismiss(cur.id);
           queueMicrotask(promoteNextTransient);
           return null;
         }
@@ -295,8 +347,9 @@ export function CanonicalAnnouncementProvider({
       });
       setAmbient((cur) => (cur && scopeMatches(cur.scope, scope) ? null : cur));
     },
-    [promoteNextTransient, scopeKey],
+    [promoteNextTransient, scopeKey, drainDismiss],
   );
+
 
   // Boundary teardown.
   const prevScopeRef = useRef<AnnouncementScope>(currentScope);
@@ -309,10 +362,17 @@ export function CanonicalAnnouncementProvider({
       return;
     }
 
-    queueRef.current = queueRef.current.filter((q) => scopeMatches(q.scope, currentScope));
+    const keptQueue: ResolvedAnnouncement[] = [];
+    for (const q of queueRef.current) {
+      if (scopeMatches(q.scope, currentScope)) keptQueue.push(q);
+      else drainDismiss(q.id);
+    }
+    queueRef.current = keptQueue;
     setTransient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
         clearTtl();
+        transientIdRef.current = null;
+        drainDismiss(cur.id);
         queueMicrotask(promoteNextTransient);
         return null;
       }
@@ -326,17 +386,56 @@ export function CanonicalAnnouncementProvider({
     }
 
     prevScopeRef.current = currentScope;
-  }, [currentScope, clearTtl, promoteNextTransient, scopeKey]);
+  }, [currentScope, clearTtl, promoteNextTransient, scopeKey, drainDismiss]);
 
   useEffect(() => () => clearTtl(), [clearTtl]);
+
+  const waitForDismiss = useCallback((id: string): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      // Synchronously inspect: if not active and not queued, the event
+      // either already drained or was never accepted — resolve now to
+      // avoid a hang. This makes the helper safe to call after emit()
+      // even for events that were preempted/deduped before render.
+      const isActive = transientIdRef.current === id;
+      const isQueued = queueRef.current.some((q) => q.id === id);
+      if (!isActive && !isQueued) {
+        resolve();
+        return;
+      }
+      const list = pendingDismissRef.current.get(id) ?? [];
+      list.push(resolve);
+      pendingDismissRef.current.set(id, list);
+    });
+  }, []);
 
   // Active = transient if present, else ambient.
   const active = transient ?? ambient;
 
   const value = useMemo<AnnouncementContextValue>(
-    () => ({ active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient }),
-    [active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient],
+    () => ({
+      active,
+      ambient,
+      transient,
+      viewerUserId,
+      emit,
+      dismiss,
+      clearScope,
+      clearAmbient,
+      waitForDismiss,
+    }),
+    [
+      active,
+      ambient,
+      transient,
+      viewerUserId,
+      emit,
+      dismiss,
+      clearScope,
+      clearAmbient,
+      waitForDismiss,
+    ],
   );
+
 
   return (
     <AnnouncementContext.Provider value={value}>{children}</AnnouncementContext.Provider>
@@ -375,6 +474,7 @@ export function useAnnouncements() {
       dismiss: () => {},
       clearScope: () => {},
       clearAmbient: () => {},
+      waitForDismiss: () => Promise.resolve(),
     };
   }
   return {
@@ -382,7 +482,9 @@ export function useAnnouncements() {
     dismiss: ctx.dismiss,
     clearScope: ctx.clearScope,
     clearAmbient: ctx.clearAmbient,
+    waitForDismiss: ctx.waitForDismiss,
   };
 }
+
 
 export type { AnnouncementType };
