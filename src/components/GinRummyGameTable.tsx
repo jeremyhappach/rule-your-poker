@@ -1477,46 +1477,15 @@ export const GinRummyGameTable = ({
               : viewState.dealerPlayerId;
           const winnerPlayer = players.find(p => p.id === winnerId);
           const loserPlayer = players.find(p => p.id === loserId);
-          const container = tableContainerRef.current;
 
-          if (container && winnerPlayer && loserPlayer) {
-            const rect = container.getBoundingClientRect();
-
-            // Resolve via canonical chip endpoints (data-chip-center).
-            // Works for active AND observer because the SeatAnchorLayer
-            // anchors place the markers at the correct projected seats.
-            const resolveSeat = (position: number, isLocal: boolean) => {
-              const resolved = resolveChipEndpoint({
-                ref: { kind: 'seat', position },
-                container,
-                debugLabel: 'gin-match-end',
-              });
-              if (resolved) {
-                return { x: rect.left + resolved.x, y: rect.top + resolved.y };
-              }
-              // Fallback: local seat (active player) has no chip-center marker
-              // in Gin → use bottom-center; otherwise use top-left as last resort.
-              return isLocal
-                ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
-                : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
-            };
-
-            const winnerIsLocal = winnerPlayer.user_id === currentUserId;
-            const loserIsLocal = loserPlayer.user_id === currentUserId;
-            const winnerPos = resolveSeat(winnerPlayer.position, winnerIsLocal);
-            const loserPos = resolveSeat(loserPlayer.position, loserIsLocal);
-
-            setChipAnimAmount(anteAmount);
-            setStoredChipPositions({
-              winner: winnerPos,
-              losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
-            });
-
-            // Canonical match_win: emit BEFORE chip transfer so the
-            // shell rail winner plate is on-screen when chips fly, and
-            // remains visible through the full chip-transfer window via
-            // ttlMs. Mirrors Cribbage's terminal lifecycle. Winner-only
-            // confetti. No bespoke Gin terminal surface.
+          // ── Canonical match_win FIRST — unconditional ──
+          // Emit on every client (winner / loser / observer) regardless
+          // of whether the chip-transfer animation can resolve seat
+          // endpoints. The rail plate is the canonical terminal surface;
+          // chip-transfer is decorative and may be skipped on observers
+          // whose container/seat refs aren't ready, but the rail must
+          // still paint. Mirrors Cribbage's terminal lifecycle.
+          if (winnerPlayer) {
             const winnerName = getDisplayName(
               players,
               winnerPlayer,
@@ -1524,14 +1493,6 @@ export const GinRummyGameTable = ({
             );
             const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
             const loserScore = viewState.matchScores?.[loserId] ?? 0;
-            if (winnerPlayer.user_id === currentUserId) {
-              confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
-              });
-            }
             announcements.clearAmbient();
             announcements.emit({
               id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
@@ -1548,8 +1509,59 @@ export const GinRummyGameTable = ({
               ttlMs: 10000,
             });
 
+            // Give the rail one paint frame so the match_win plate is
+            // on-screen before confetti / chip animation kick in. Avoids
+            // the visual race where chip-transfer setState triggers a
+            // re-render path that competes with the announcement paint.
+            await new Promise<void>((resolve) => {
+              if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => resolve());
+              } else {
+                setTimeout(resolve, 16);
+              }
+            });
+
+            // Winner-only confetti
+            if (winnerPlayer.user_id === currentUserId) {
+              confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
+              });
+            }
+          }
+
+          // Chip-transfer animation — decorative; skip silently if seat
+          // endpoints can't be resolved (rail still painted above).
+          const container = tableContainerRef.current;
+          if (container && winnerPlayer && loserPlayer) {
+            const rect = container.getBoundingClientRect();
+            const resolveSeat = (position: number, isLocal: boolean) => {
+              const resolved = resolveChipEndpoint({
+                ref: { kind: 'seat', position },
+                container,
+                debugLabel: 'gin-match-end',
+              });
+              if (resolved) {
+                return { x: rect.left + resolved.x, y: rect.top + resolved.y };
+              }
+              return isLocal
+                ? { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 }
+                : { x: rect.left + rect.width * 0.15, y: rect.top + rect.height * 0.25 };
+            };
+            const winnerIsLocal = winnerPlayer.user_id === currentUserId;
+            const loserIsLocal = loserPlayer.user_id === currentUserId;
+            const winnerPos = resolveSeat(winnerPlayer.position, winnerIsLocal);
+            const loserPos = resolveSeat(loserPlayer.position, loserIsLocal);
+            setChipAnimAmount(anteAmount);
+            setStoredChipPositions({
+              winner: winnerPos,
+              losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
+            });
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
+
           // Wait for animation to play
           await new Promise(resolve => setTimeout(resolve, 4500));
           await endGinRummyGame(gameId, roundId, viewState);
