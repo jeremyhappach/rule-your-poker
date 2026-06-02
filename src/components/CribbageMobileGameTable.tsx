@@ -5853,12 +5853,53 @@ export const CribbageMobileGameTable = ({
 
       {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.1) ═══════
           The HUD region is partitioned by ShellHudGrid into 5 proportional rows:
-            row 1 announcement (shell), row 2 timer (empty for Cribbage),
-            row 3 tabs (shell), row 4 pane (tab content), row 5 identity (empty;
-            Cribbage's identity strip remains inside the cards tab pane per the
-            wedge plan — identity-lift is deferred to a later cleanup).
+            row 1 announcement (shell), row 2 timer (empty for Cribbage — no
+            turn-clock chips; `derivedBannerText` rail covers all phase
+            messaging), row 3 tabs (shell), row 4 pane (tab content),
+            row 5 identity (shell-owned active-player strip, mirrors Yahtzee).
           Pane content MUST fit inside row 4. No flex growth, no row 5 spillover. */}
       <ShellHudGrid
+        identity={
+          currentPlayer ? (
+            <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+              <QuickEmoticonPicker
+                onSelect={async (emoticon) => {
+                  try {
+                    const expiresAt = new Date(Date.now() + 4000).toISOString();
+                    await supabase.from('chip_stack_emoticons').insert({
+                      game_id: gameId,
+                      player_id: currentPlayer.id,
+                      emoticon,
+                      expires_at: expiresAt,
+                    });
+                  } catch (err) {
+                    console.error('Failed to send emoticon:', err);
+                  }
+                }}
+                disabled={false}
+              />
+              <p className="text-sm font-semibold text-foreground truncate">
+                {currentPlayer.profiles?.username || 'You'}
+              </p>
+              <span className={cn(
+                "font-bold text-lg tabular-nums",
+                currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+              )}>
+                ${formatChipValue(currentPlayer.chips)}
+              </span>
+              {isCribDealer(currentPlayerId) && (
+                <span
+                  data-canonical-cribbage-your-crib=""
+                  aria-label="You hold the crib"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500 border border-amber-200 text-amber-950 font-bold text-[10px] leading-none shadow-sm"
+                >
+                  <span className="w-3 h-3 rounded-full bg-amber-200/80 flex items-center justify-center text-[8px] font-extrabold">C</span>
+                  Your Crib
+                </span>
+              )}
+            </div>
+          ) : null
+        }
         pane={
           <div className="h-full overflow-hidden">
             {/* Cards tab during high-card or bootstrap modes intentionally
