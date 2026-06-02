@@ -164,6 +164,7 @@ export const GinRummyGameTable = ({
   useWakeLock(true);
 
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
+  const announcements = useAnnouncements();
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
