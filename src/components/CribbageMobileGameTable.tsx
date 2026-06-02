@@ -39,6 +39,7 @@ import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
+import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { RoundHandDebugOverlay } from './RoundHandDebugOverlay';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { useGameChat } from '@/hooks/useGameChat';
