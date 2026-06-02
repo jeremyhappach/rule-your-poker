@@ -1454,7 +1454,7 @@ export const GinRummyGameTable = ({
             );
             const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
             const loserScore = viewState.matchScores?.[loserId] ?? 0;
-            if (currentUserId === winnerId || winnerPlayer.user_id === currentUserId) {
+            if (winnerPlayer.user_id === currentUserId) {
               confetti({
                 particleCount: 150,
                 spread: 70,
