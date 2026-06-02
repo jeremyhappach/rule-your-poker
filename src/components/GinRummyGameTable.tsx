@@ -55,6 +55,8 @@ import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import confetti from 'canvas-confetti';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
