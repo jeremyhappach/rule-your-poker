@@ -75,7 +75,16 @@ interface AnnouncementContextValue {
   clearScope: (scope: AnnouncementScope) => void;
   /** Explicitly clear ambient (e.g. game leaves a passive phase). */
   clearAmbient: (type?: AnnouncementType) => void;
+  /**
+   * Resolve when the transient with `id` leaves the active slot (TTL,
+   * dismissal, preemption, or scope teardown). If the event is not
+   * active and not queued at call time, resolves immediately. Intended
+   * for sequencing a follow-up action behind an announcement's actual
+   * lifecycle — avoids duplicating TTL constants at call sites.
+   */
+  waitForDismiss: (id: string) => Promise<void>;
 }
+
 
 const AnnouncementContext = createContext<AnnouncementContextValue | null>(null);
 
