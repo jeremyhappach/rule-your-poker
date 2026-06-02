@@ -74,6 +74,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 // timer row of the grid (semantically still "operational HUD chrome"
 // adjacent to the tab bar) until canonical announcement wiring lands.
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
+import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
