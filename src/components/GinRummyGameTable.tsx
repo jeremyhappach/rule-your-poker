@@ -1899,15 +1899,11 @@ export const GinRummyGameTable = ({
               );
             })()}
 
-            {/* Match Winner announcement intentionally NOT rendered here.
-                A bespoke Gin-owned celebration surface caused duplicated
-                terminal lifecycle replay (announcement → chip jump →
-                announcement again) and persisted across the dealer-game
-                identity boundary into the next game's setup. Long-term
-                this belongs under the canonical dealer announcement
-                contract; until then the chip-transfer animation is the
-                terminal visual and we let the canonical end-of-game
-                surfaces (Celebration / Settlement) own everything else. */}
+            {/* Match-win winner UI is owned by the canonical shell rail
+                (CanonicalAnnouncementLayer renders the `match_win`
+                plate emitted from processCompletion above). Winner-only
+                confetti fires there as well. No bespoke Gin terminal
+                surface — mirrors Cribbage's terminal lifecycle. */}
 
 
             {/* Player-to-player chip transfer animation at match end */}
