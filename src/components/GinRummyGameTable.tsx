@@ -1441,6 +1441,43 @@ export const GinRummyGameTable = ({
               winner: winnerPos,
               losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
             });
+
+            // Canonical match_win: emit BEFORE chip transfer so the
+            // shell rail winner plate is on-screen when chips fly, and
+            // remains visible through the full chip-transfer window via
+            // ttlMs. Mirrors Cribbage's terminal lifecycle. Winner-only
+            // confetti. No bespoke Gin terminal surface.
+            const winnerName = getDisplayName(
+              players,
+              winnerPlayer,
+              winnerPlayer.profiles?.username || 'Player',
+            );
+            const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
+            const loserScore = viewState.matchScores?.[loserId] ?? 0;
+            if (currentUserId === winnerId || winnerPlayer.user_id === currentUserId) {
+              confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
+              });
+            }
+            announcements.clearAmbient();
+            announcements.emit({
+              id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+              type: 'match_win',
+              scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+              payload: {
+                winnerName,
+                score: { winner: winnerScore, loser: loserScore },
+                amount: anteAmount,
+              },
+              // Keep the rail plate alive across the full chip-transfer
+              // sequence (~4500ms + teardown). Scope boundary teardown
+              // clears it when the dealer-game advances.
+              ttlMs: 10000,
+            });
+
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
           // Wait for animation to play
