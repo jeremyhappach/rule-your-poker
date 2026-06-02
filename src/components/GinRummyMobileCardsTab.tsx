@@ -427,19 +427,6 @@ export const GinRummyMobileCardsTab = ({
           </p>
         )}
       </div>
-
-      {/* Player info row — hidden during layoff to save space */}
-      {!isLayingOff && (
-        <div className="flex items-center justify-center gap-2 py-0.5">
-          <QuickEmoticonPicker onSelect={handleQuickEmoticon} disabled={isEmoticonSending || !currentPlayer} />
-          <p className="font-semibold text-sm text-foreground">
-            {currentPlayer.profiles?.username || 'You'}
-          </p>
-          <span className="font-bold text-lg text-poker-gold">
-            ${formatChipValue(currentPlayer.chips)}
-          </span>
-        </div>
-      )}
     </div>
   );
 };
