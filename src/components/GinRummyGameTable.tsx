@@ -1398,8 +1398,46 @@ export const GinRummyGameTable = ({
           await recordGinRummyHandResult(gameId, dealerGameId, handNumber, viewState);
         }
 
+        // ---- Canonical HAND-RESULT announcement ----
+        // Emit a single round_win plate describing the hand outcome
+        // (scored knock/gin/undercut OR void hand). The canonical
+        // provider owns its TTL; match-win sequencing below waits for
+        // this announcement to actually leave the rail via
+        // waitForDismiss — no duplicated timeout constant.
+        const handResultId = `${gameId}:${dealerGameId}:gin-hand-result:${handNumber}`;
+        const handResultScope = { dealerGameId: gameId, roundId: currentRoundId ?? null };
+        announcements.clearAmbient('waiting_for_player');
+        if (viewState.knockResult) {
+          const r = viewState.knockResult;
+          const winnerName = getPlayerUsername(r.winnerId);
+          const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
+          const bonus = r.isGin
+            ? ` (${dwDiff} dw + 25 gin bonus)`
+            : r.isUndercut
+              ? ` (${dwDiff} dw + 25 undercut bonus)`
+              : ` (${dwDiff} dw)`;
+          announcements.emit({
+            id: handResultId,
+            type: 'round_win',
+            scope: handResultScope,
+            payload: { text: `${winnerName} +${r.pointsAwarded}${bonus}` },
+          });
+        } else {
+          announcements.emit({
+            id: handResultId,
+            type: 'round_win',
+            scope: handResultScope,
+            payload: { text: 'Void Hand — Stock Exhausted' },
+            ttlMs: 2500,
+          });
+        }
+
         // Match-win path
         if (viewState.winnerPlayerId) {
+          // Gate match-win sequence on the hand-result actually leaving
+          // the rail. Single source of truth = announcement lifecycle.
+          await announcements.waitForDismiss(handResultId);
+
           const winnerId = viewState.winnerPlayerId;
           const loserId =
             winnerId === viewState.dealerPlayerId
@@ -1509,6 +1547,7 @@ export const GinRummyGameTable = ({
 
     processCompletion();
   }, [viewState?.phase, viewState?.winnerPlayerId, dealerGameId]);
+
 
 
   const updateState = async (newState: GinRummyState, traceId?: string) => {
