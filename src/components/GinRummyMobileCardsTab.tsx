@@ -214,23 +214,8 @@ export const GinRummyMobileCardsTab = ({
     setSelectedCardIndex(null);
   };
 
-  const handleQuickEmoticon = async (emoticon: string) => {
-    if (isEmoticonSending || !currentPlayer) return;
-    setIsEmoticonSending(true);
-    try {
-      const expiresAt = new Date(Date.now() + 4000).toISOString();
-      await supabase.from('chip_stack_emoticons').insert({
-        game_id: gameId,
-        player_id: currentPlayer.id,
-        emoticon,
-        expires_at: expiresAt,
-      });
-    } catch (err) {
-      console.error('Failed to send emoticon:', err);
-    } finally {
-      setIsEmoticonSending(false);
-    }
-  };
+
+
 
   if (!myState) {
     return (
