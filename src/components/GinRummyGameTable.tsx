@@ -81,6 +81,22 @@ import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
+const traceGinAnnouncement = (event: string, payload: Record<string, unknown> = {}) => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const enabled =
+      params.get('trace_gin_announcements') === '1' ||
+      window.localStorage.getItem('ptp_trace_gin_announcements') === '1';
+    if (!enabled) return;
+    console.log('[GIN_ANN_TRACE]', event, {
+      t: Math.round(performance.now()),
+      ...payload,
+    });
+  } catch {
+    // no-op: diagnostic only
+  }
+};
+
 interface Player {
   id: string;
   user_id: string;
