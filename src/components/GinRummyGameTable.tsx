@@ -469,6 +469,20 @@ export const GinRummyGameTable = ({
   const [showKnockOverlay, setShowKnockOverlay] = useState(false);
   const [showGinOverlay, setShowGinOverlay] = useState(false);
 
+  useEffect(() => {
+    if (!showKnockOverlay && !showGinOverlay) return;
+    const overlay = showGinOverlay ? 'gin' : 'knock';
+    requestAnimationFrame(() => {
+      traceGinAnnouncement('overlay:paint', {
+        overlay,
+        phase: viewState?.phase ?? ginState?.phase ?? null,
+        roundId: currentRoundId?.slice(0, 8) ?? null,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        handNumber,
+      });
+    });
+  }, [showKnockOverlay, showGinOverlay, viewState?.phase, ginState?.phase, currentRoundId, dealerGameId, handNumber]);
+
   // Opponent draw animation state
   const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
   const [opponentDrawSource, setOpponentDrawSource] = useState<'stock' | 'discard'>('stock');
@@ -630,6 +644,15 @@ export const GinRummyGameTable = ({
     const currentPhase = ginState.phase;
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
+      traceGinAnnouncement('overlay:trigger', {
+        overlay: 'knock',
+        phase: currentPhase,
+        prevPhase: prevPhaseRef.current,
+        scopeDealerGameId: gameId,
+        propDealerGameId: dealerGameId,
+        roundId: currentRoundId,
+        handNumber: ginState.handNumber ?? handNumber,
+      });
       knockOverlayFiredRef.current = true;
       setTimeout(() => playKnock(), 100);
       setShowKnockOverlay(true);
@@ -645,6 +668,15 @@ export const GinRummyGameTable = ({
       (ginState.knockResult?.isGin || anyPlayerHasGin)
     ) {
       console.log('[GIN] GIN detected, showing gin overlay');
+      traceGinAnnouncement('overlay:trigger', {
+        overlay: 'gin',
+        phase: currentPhase,
+        prevPhase: prevPhaseRef.current,
+        scopeDealerGameId: gameId,
+        propDealerGameId: dealerGameId,
+        roundId: currentRoundId,
+        handNumber: ginState.handNumber ?? handNumber,
+      });
       ginOverlayFiredRef.current = true;
       setShowGinOverlay(true);
     }
@@ -670,8 +702,18 @@ export const GinRummyGameTable = ({
         const ctx = knockerState?.hasGin
           ? 'GIN!'
           : `knocked (${knockerState?.deadwoodValue ?? 0} dw)`;
+        const ambientId = `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`;
+        traceGinAnnouncement('waiting_for_player:emit:callsite', {
+          id: ambientId,
+          phase: currentPhase,
+          overlayPhase: showOverlayPhase,
+          scopeDealerGameId: gameId,
+          propDealerGameId: dealerGameId,
+          roundId: currentRoundId,
+          context: ctx,
+        });
         announcements.emit({
-          id: `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`,
+          id: ambientId,
           type: 'waiting_for_player',
           scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
           payload: { playerName: knockerName, context: ctx },
