@@ -153,6 +153,25 @@ export function CanonicalAnnouncementProvider({
   // --- Scoped dedupe (transient only) ---
   const seenRef = useRef<Map<string, Set<string>>>(new Map());
 
+  // --- waitForDismiss support ---
+  // Resolvers waiting for a specific transient id to leave the active slot.
+  // Drained whenever a transient with that id is removed for any reason
+  // (TTL, dismiss, preemption, scope teardown). Minimal: no public broadcast,
+  // no per-event lifecycle bus — just enough to gate one follow-up action.
+  const pendingDismissRef = useRef<Map<string, Array<() => void>>>(new Map());
+  // Synchronous mirror of current transient id, so waitForDismiss called
+  // immediately after emit() can see the post-emit state without waiting
+  // for React to flush.
+  const transientIdRef = useRef<string | null>(null);
+
+  const drainDismiss = useCallback((id: string) => {
+    const list = pendingDismissRef.current.get(id);
+    if (!list) return;
+    pendingDismissRef.current.delete(id);
+    for (const resolve of list) resolve();
+  }, []);
+
+
   const scopeKey = useCallback(
     (s: AnnouncementScope) => `${s.dealerGameId ?? 'null'}::${s.roundId ?? 'null'}`,
     [],
