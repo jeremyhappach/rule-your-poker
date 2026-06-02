@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { cn, formatChipValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 interface Player {
