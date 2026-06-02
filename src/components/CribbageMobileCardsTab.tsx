@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { cn, formatChipValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
 import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
-import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 
 interface Player {
@@ -70,7 +68,6 @@ export const CribbageMobileCardsTab = ({
   renderTrace,
 }: CribbageMobileCardsTabProps) => {
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
-  const [isEmoticonSending, setIsEmoticonSending] = useState(false);
 
   // Reset selectedCards on hand boundary (roundId change) to prevent stale selections
   const prevRoundIdRef = useRef<string | undefined>(roundId);
@@ -290,23 +287,8 @@ export const CribbageMobileCardsTab = ({
     setSelectedCards([]);
   };
 
-  const handleQuickEmoticon = async (emoticon: string) => {
-    if (isEmoticonSending || !currentPlayer) return;
-    setIsEmoticonSending(true);
-    try {
-      const expiresAt = new Date(Date.now() + 4000).toISOString();
-      await supabase.from('chip_stack_emoticons').insert({
-        game_id: gameId,
-        player_id: currentPlayer.id,
-        emoticon,
-        expires_at: expiresAt,
-      });
-    } catch (err) {
-      console.error('Failed to send emoticon:', err);
-    } finally {
-      setIsEmoticonSending(false);
-    }
-  };
+
+
 
   if (!myPlayerState) {
     return (
@@ -316,37 +298,15 @@ export const CribbageMobileCardsTab = ({
     );
   }
 
-  const renderPlayerInfoRow = () => (
-    <div className="flex items-center justify-center gap-2 py-0.5">
-      <QuickEmoticonPicker 
-        onSelect={handleQuickEmoticon} 
-        disabled={isEmoticonSending || !currentPlayer}
-      />
-      <p className="font-semibold text-sm text-foreground">
-        {currentPlayer.profiles?.username || 'You'}
-      </p>
-      <span className="font-bold text-lg text-poker-gold">
-        ${formatChipValue(currentPlayer.chips)}
-      </span>
-      {isDealer && (
-        <span
-          data-canonical-cribbage-your-crib=""
-          aria-label="You hold the crib"
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500 border border-amber-200 text-amber-950 font-bold text-[10px] leading-none shadow-sm"
-        >
-          <span className="w-3 h-3 rounded-full bg-amber-200/80 flex items-center justify-center text-[8px] font-extrabold">C</span>
-          Your Crib
-        </span>
-      )}
-    </div>
-  );
+  // Identity row (name / chips / emoticon / "Your Crib") is now
+  // shell-owned: rendered by CribbageMobileGameTable in ShellHudGrid's
+  // `identity` slot so it persists across all tabs, matching Yahtzee.
 
   if (activeHandBlocked) {
     return (
       <div className="h-full px-2 flex flex-col">
         <div className="flex items-center justify-center min-h-[92px] py-0" />
         <div className="flex items-center justify-center min-h-[28px]" />
-        {renderPlayerInfoRow()}
       </div>
     );
   }
@@ -435,8 +395,7 @@ export const CribbageMobileCardsTab = ({
         )}
       </div>
 
-      {/* Player info row - same styling as MobileGameTable, below action buttons */}
-      {renderPlayerInfoRow()}
+      {/* Identity row is rendered by ShellHudGrid (shell-owned row 5). */}
 
       {/* Crib is shown on the felt during counting - no duplicate display here */}
     </div>
