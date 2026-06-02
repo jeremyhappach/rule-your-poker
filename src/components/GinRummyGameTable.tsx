@@ -2039,76 +2039,15 @@ export const GinRummyGameTable = ({
         </div>
 
 
-      {/* Bottom Section — shell-owned proportional 5-row HUD grid (Phase 2).
-          Gin has no separate identity row (identity lives inside the
-          canonical seat cluster on the felt), so the identity slot is
-          empty. The Phase 5 diagnostic local gold-plate fallback is
-          mounted in the timer slot so Gin's behaviour is preserved
-          until canonical announcement wiring lands; the shell-owned
-          announcement row (row 1) sits above it. */}
+      {/* Bottom Section — shell-owned proportional 5-row HUD grid.
+          Hand-result and in-progress (knocking/laying_off) messaging is
+          now owned by the canonical announcement rail (round_win +
+          waiting_for_player ambient emitted from this component). The
+          row-2 local gold-plate fallback has been removed; the timer
+          slot stays empty for Gin. */}
       <ShellHudGrid
-        timer={(() => {
-          if (viewState.phase === 'complete' && viewState.knockResult) {
-            const r = viewState.knockResult;
-            const dwDiff = Math.abs(r.opponentDeadwood - r.knockerDeadwood);
-            const bonus = r.isGin
-              ? ` (${dwDiff} dw + 25 gin bonus)`
-              : r.isUndercut
-                ? ` (${dwDiff} dw + 25 undercut bonus)`
-                : '';
-            return (
-              <div
-                data-gin-local-announcement-fallback=""
-                className="w-full h-full flex items-center justify-center px-3"
-                style={{ pointerEvents: 'none' }}
-              >
-                <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                  <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                    {getPlayerUsername(r.winnerId)} +{r.pointsAwarded}{bonus}
-                  </p>
-                </div>
-              </div>
-            );
-          }
-          if (viewState.phase === 'complete' && !viewState.knockResult) {
-            return (
-              <div
-                data-gin-local-announcement-fallback=""
-                className="w-full h-full flex items-center justify-center px-3"
-                style={{ pointerEvents: 'none' }}
-              >
-                <div className="w-full bg-muted/80 backdrop-blur-sm rounded-md px-3 py-1.5">
-                  <p className="text-muted-foreground font-bold text-[11px] text-center">
-                    Void Hand — Stock Exhausted
-                  </p>
-                </div>
-              </div>
-            );
-          }
-          if (viewState.phase === 'knocking' || viewState.phase === 'laying_off') {
-            const knockerId = Object.entries(viewState.playerStates).find(
-              ([, ps]) => ps.hasKnocked || ps.hasGin,
-            )?.[0];
-            if (knockerId) {
-              const knockerState = viewState.playerStates[knockerId];
-              const dwText = knockerState?.hasGin ? '' : ` (${knockerState?.deadwoodValue ?? 0} dw)`;
-              return (
-                <div
-                  data-gin-local-announcement-fallback=""
-                  className="w-full h-full flex items-center justify-center px-3"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1.5 shadow-xl border-2 border-amber-900">
-                    <p className="text-slate-900 font-bold text-[11px] text-center truncate">
-                      {getPlayerUsername(knockerId)} {knockerState?.hasGin ? 'has GIN! 🎉' : `knocked!${dwText}`}
-                    </p>
-                  </div>
-                </div>
-              );
-            }
-          }
-          return null;
-        })()}
+        timer={null}
+
         identity={
           currentPlayer ? (
             <div className="flex items-center justify-center gap-2 h-full">
