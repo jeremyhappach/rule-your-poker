@@ -266,6 +266,8 @@ export function CanonicalAnnouncementProvider({
       // Preempt current transient if higher priority.
       if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
         clearTtl();
+        drainDismiss(transient.id);
+        transientIdRef.current = resolved.id;
         setTransient(resolved);
         armTtl(resolved);
         return;
@@ -273,10 +275,12 @@ export function CanonicalAnnouncementProvider({
 
       // No active transient → become active.
       if (!transient) {
+        transientIdRef.current = resolved.id;
         setTransient(resolved);
         armTtl(resolved);
         return;
       }
+
 
       // Otherwise enqueue priority-desc, FIFO within tie.
       const q = queueRef.current;
