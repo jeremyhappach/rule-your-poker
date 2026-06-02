@@ -191,6 +191,8 @@ export function CanonicalAnnouncementProvider({
       ttlTimerRef.current = null;
       setTransient((cur) => {
         if (cur && cur.id === id) {
+          transientIdRef.current = null;
+          drainDismiss(id);
           queueMicrotask(promoteNextTransient);
           return null;
         }
@@ -198,18 +200,21 @@ export function CanonicalAnnouncementProvider({
       });
     }, next.ttlMs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [drainDismiss]);
 
   const promoteNextTransient = useCallback(() => {
     clearTtl();
     const queue = queueRef.current;
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
-      queue.shift();
+      const dropped = queue.shift()!;
+      drainDismiss(dropped.id);
     }
     const next = queue.shift() ?? null;
+    transientIdRef.current = next?.id ?? null;
     setTransient(next);
     if (next) armTtl(next);
-  }, [clearTtl, currentScope, armTtl]);
+  }, [clearTtl, currentScope, armTtl, drainDismiss]);
+
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
