@@ -1905,7 +1905,7 @@ export function YahtzeeGameTable({
             // show interactive scorecard ON the felt
             return (
               <>
-                <div className="absolute left-1/2 top-[55%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[78%] max-w-[340px]">
+                <div className="absolute left-1/2 top-[62%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[78%] max-w-[340px]">
                   {renderScorecard(myPlayer.id, true)}
                 </div>
                 {/* Cached opponent dice removed — single render path at top-50% handles it */}

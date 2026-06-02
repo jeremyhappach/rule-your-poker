@@ -184,7 +184,7 @@ export const CribbageFeltContent = ({
 
       {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own) */}
       {(showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && (
-        <div className="absolute top-[24%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
+        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
           {/* Crib */}
           {showCribOnFelt && cribbageState.crib.length > 0 && (
             <div className="flex flex-col items-center">
