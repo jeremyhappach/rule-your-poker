@@ -55,6 +55,8 @@ import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import confetti from 'canvas-confetti';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
@@ -162,6 +164,7 @@ export const GinRummyGameTable = ({
   useWakeLock(true);
 
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
+  const announcements = useAnnouncements();
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
@@ -1438,6 +1441,43 @@ export const GinRummyGameTable = ({
               winner: winnerPos,
               losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
             });
+
+            // Canonical match_win: emit BEFORE chip transfer so the
+            // shell rail winner plate is on-screen when chips fly, and
+            // remains visible through the full chip-transfer window via
+            // ttlMs. Mirrors Cribbage's terminal lifecycle. Winner-only
+            // confetti. No bespoke Gin terminal surface.
+            const winnerName = getDisplayName(
+              players,
+              winnerPlayer,
+              winnerPlayer.profiles?.username || 'Player',
+            );
+            const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
+            const loserScore = viewState.matchScores?.[loserId] ?? 0;
+            if (winnerPlayer.user_id === currentUserId) {
+              confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
+              });
+            }
+            announcements.clearAmbient();
+            announcements.emit({
+              id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+              type: 'match_win',
+              scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+              payload: {
+                winnerName,
+                score: { winner: winnerScore, loser: loserScore },
+                amount: anteAmount,
+              },
+              // Keep the rail plate alive across the full chip-transfer
+              // sequence (~4500ms + teardown). Scope boundary teardown
+              // clears it when the dealer-game advances.
+              ttlMs: 10000,
+            });
+
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
           // Wait for animation to play
@@ -1859,15 +1899,11 @@ export const GinRummyGameTable = ({
               );
             })()}
 
-            {/* Match Winner announcement intentionally NOT rendered here.
-                A bespoke Gin-owned celebration surface caused duplicated
-                terminal lifecycle replay (announcement → chip jump →
-                announcement again) and persisted across the dealer-game
-                identity boundary into the next game's setup. Long-term
-                this belongs under the canonical dealer announcement
-                contract; until then the chip-transfer animation is the
-                terminal visual and we let the canonical end-of-game
-                surfaces (Celebration / Settlement) own everything else. */}
+            {/* Match-win winner UI is owned by the canonical shell rail
+                (CanonicalAnnouncementLayer renders the `match_win`
+                plate emitted from processCompletion above). Winner-only
+                confetti fires there as well. No bespoke Gin terminal
+                surface — mirrors Cribbage's terminal lifecycle. */}
 
 
             {/* Player-to-player chip transfer animation at match end */}
