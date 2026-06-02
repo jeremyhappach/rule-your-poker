@@ -362,10 +362,17 @@ export function CanonicalAnnouncementProvider({
       return;
     }
 
-    queueRef.current = queueRef.current.filter((q) => scopeMatches(q.scope, currentScope));
+    const keptQueue: ResolvedAnnouncement[] = [];
+    for (const q of queueRef.current) {
+      if (scopeMatches(q.scope, currentScope)) keptQueue.push(q);
+      else drainDismiss(q.id);
+    }
+    queueRef.current = keptQueue;
     setTransient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
         clearTtl();
+        transientIdRef.current = null;
+        drainDismiss(cur.id);
         queueMicrotask(promoteNextTransient);
         return null;
       }
@@ -379,17 +386,56 @@ export function CanonicalAnnouncementProvider({
     }
 
     prevScopeRef.current = currentScope;
-  }, [currentScope, clearTtl, promoteNextTransient, scopeKey]);
+  }, [currentScope, clearTtl, promoteNextTransient, scopeKey, drainDismiss]);
 
   useEffect(() => () => clearTtl(), [clearTtl]);
+
+  const waitForDismiss = useCallback((id: string): Promise<void> => {
+    return new Promise<void>((resolve) => {
+      // Synchronously inspect: if not active and not queued, the event
+      // either already drained or was never accepted — resolve now to
+      // avoid a hang. This makes the helper safe to call after emit()
+      // even for events that were preempted/deduped before render.
+      const isActive = transientIdRef.current === id;
+      const isQueued = queueRef.current.some((q) => q.id === id);
+      if (!isActive && !isQueued) {
+        resolve();
+        return;
+      }
+      const list = pendingDismissRef.current.get(id) ?? [];
+      list.push(resolve);
+      pendingDismissRef.current.set(id, list);
+    });
+  }, []);
 
   // Active = transient if present, else ambient.
   const active = transient ?? ambient;
 
   const value = useMemo<AnnouncementContextValue>(
-    () => ({ active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient }),
-    [active, ambient, transient, viewerUserId, emit, dismiss, clearScope, clearAmbient],
+    () => ({
+      active,
+      ambient,
+      transient,
+      viewerUserId,
+      emit,
+      dismiss,
+      clearScope,
+      clearAmbient,
+      waitForDismiss,
+    }),
+    [
+      active,
+      ambient,
+      transient,
+      viewerUserId,
+      emit,
+      dismiss,
+      clearScope,
+      clearAmbient,
+      waitForDismiss,
+    ],
   );
+
 
   return (
     <AnnouncementContext.Provider value={value}>{children}</AnnouncementContext.Provider>
