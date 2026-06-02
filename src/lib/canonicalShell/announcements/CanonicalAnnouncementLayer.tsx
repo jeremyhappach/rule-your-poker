@@ -23,6 +23,22 @@ import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderAnnouncement } from './renderers';
 import { isCelebrationType, isCtaAmbientType } from './types';
 
+const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> = {}) => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const enabled =
+      params.get('trace_gin_announcements') === '1' ||
+      window.localStorage.getItem('ptp_trace_gin_announcements') === '1';
+    if (!enabled) return;
+    console.log('[ANN_PAINT_TRACE]', event, {
+      t: Math.round(performance.now()),
+      ...payload,
+    });
+  } catch {
+    // no-op: diagnostic only
+  }
+};
+
 export function CanonicalAnnouncementLayer() {
   const ctx = useAnnouncementContext();
   if (!ctx) return null;
@@ -55,12 +71,18 @@ export function CanonicalAnnouncementLayer() {
   // winner plate in the lifecycle rail so observers and players get a
   // clear "who won" announcement. Other celebration types (if added)
   // continue to skip the rail.
-  if (isCelebrationType(railActive.type) && railActive.type !== 'match_win') return null;
+  if (isCelebrationType(railActive.type) && railActive.type !== 'match_win') {
+    traceAnnouncementPaint('rail:filtered:celebration', { id: railActive.id, type: railActive.type });
+    return null;
+  }
   // Actor-directed CTAs / waiting-on-player prompts render in the
   // ambient helper text area inside the active content pane — not in
   // the shell announcement rail. This keeps the rail focused on
   // shared gameplay/lifecycle state and avoids per-action churn.
-  if (isCtaAmbientType(railActive.type)) return null;
+  if (isCtaAmbientType(railActive.type)) {
+    traceAnnouncementPaint('rail:filtered:cta-ambient', { id: railActive.id, type: railActive.type });
+    return null;
+  }
 
   // Actor-only visibility gate for cta_prompt.
   if (railActive.type === 'cta_prompt') {
@@ -79,6 +101,7 @@ export function CanonicalAnnouncementLayer() {
 
   const node = renderAnnouncement(railActive);
   if (!node) return null;
+  traceAnnouncementPaint('rail:render', { id: railActive.id, type: railActive.type });
   return (
     <div
       data-canonical-announcement-content=""
