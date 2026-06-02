@@ -474,6 +474,7 @@ export function useAnnouncements() {
       dismiss: () => {},
       clearScope: () => {},
       clearAmbient: () => {},
+      waitForDismiss: () => Promise.resolve(),
     };
   }
   return {
@@ -481,7 +482,9 @@ export function useAnnouncements() {
     dismiss: ctx.dismiss,
     clearScope: ctx.clearScope,
     clearAmbient: ctx.clearAmbient,
+    waitForDismiss: ctx.waitForDismiss,
   };
 }
+
 
 export type { AnnouncementType };
