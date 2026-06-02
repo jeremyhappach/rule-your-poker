@@ -78,7 +78,7 @@ export const GinRummyMobileCardsTab = ({
   gameId,
 }: GinRummyMobileCardsTabProps) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
-  const [isEmoticonSending, setIsEmoticonSending] = useState(false);
+  
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
