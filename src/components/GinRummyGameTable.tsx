@@ -81,6 +81,22 @@ import { QuickEmoticonPicker } from './QuickEmoticonPicker';
 
 import { MessageSquare, User, Clock } from 'lucide-react';
 
+const traceGinAnnouncement = (event: string, payload: Record<string, unknown> = {}) => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const enabled =
+      params.get('trace_gin_announcements') === '1' ||
+      window.localStorage.getItem('ptp_trace_gin_announcements') === '1';
+    if (!enabled) return;
+    console.log('[GIN_ANN_TRACE]', event, {
+      t: Math.round(performance.now()),
+      ...payload,
+    });
+  } catch {
+    // no-op: diagnostic only
+  }
+};
+
 interface Player {
   id: string;
   user_id: string;
@@ -453,6 +469,20 @@ export const GinRummyGameTable = ({
   const [showKnockOverlay, setShowKnockOverlay] = useState(false);
   const [showGinOverlay, setShowGinOverlay] = useState(false);
 
+  useEffect(() => {
+    if (!showKnockOverlay && !showGinOverlay) return;
+    const overlay = showGinOverlay ? 'gin' : 'knock';
+    requestAnimationFrame(() => {
+      traceGinAnnouncement('overlay:paint', {
+        overlay,
+        phase: viewState?.phase ?? ginState?.phase ?? null,
+        roundId: currentRoundId?.slice(0, 8) ?? null,
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+        handNumber,
+      });
+    });
+  }, [showKnockOverlay, showGinOverlay, viewState?.phase, ginState?.phase, currentRoundId, dealerGameId, handNumber]);
+
   // Opponent draw animation state
   const [opponentDrawTriggerId, setOpponentDrawTriggerId] = useState<string | null>(null);
   const [opponentDrawSource, setOpponentDrawSource] = useState<'stock' | 'discard'>('stock');
@@ -614,6 +644,15 @@ export const GinRummyGameTable = ({
     const currentPhase = ginState.phase;
     if (currentPhase === 'knocking' && prevPhaseRef.current !== 'knocking' && !showKnockOverlay && !knockOverlayFiredRef.current) {
       console.log('[GIN] Phase → knocking, showing knock overlay');
+      traceGinAnnouncement('overlay:trigger', {
+        overlay: 'knock',
+        phase: currentPhase,
+        prevPhase: prevPhaseRef.current,
+        scopeDealerGameId: gameId,
+        propDealerGameId: dealerGameId,
+        roundId: currentRoundId,
+        handNumber: ginState.handNumber ?? handNumber,
+      });
       knockOverlayFiredRef.current = true;
       setTimeout(() => playKnock(), 100);
       setShowKnockOverlay(true);
@@ -629,6 +668,15 @@ export const GinRummyGameTable = ({
       (ginState.knockResult?.isGin || anyPlayerHasGin)
     ) {
       console.log('[GIN] GIN detected, showing gin overlay');
+      traceGinAnnouncement('overlay:trigger', {
+        overlay: 'gin',
+        phase: currentPhase,
+        prevPhase: prevPhaseRef.current,
+        scopeDealerGameId: gameId,
+        propDealerGameId: dealerGameId,
+        roundId: currentRoundId,
+        handNumber: ginState.handNumber ?? handNumber,
+      });
       ginOverlayFiredRef.current = true;
       setShowGinOverlay(true);
     }
@@ -654,8 +702,18 @@ export const GinRummyGameTable = ({
         const ctx = knockerState?.hasGin
           ? 'GIN!'
           : `knocked (${knockerState?.deadwoodValue ?? 0} dw)`;
+        const ambientId = `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`;
+        traceGinAnnouncement('waiting_for_player:emit:callsite', {
+          id: ambientId,
+          phase: currentPhase,
+          overlayPhase: showOverlayPhase,
+          scopeDealerGameId: gameId,
+          propDealerGameId: dealerGameId,
+          roundId: currentRoundId,
+          context: ctx,
+        });
         announcements.emit({
-          id: `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`,
+          id: ambientId,
           type: 'waiting_for_player',
           scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
           payload: { playerName: knockerName, context: ctx },
@@ -793,6 +851,13 @@ export const GinRummyGameTable = ({
       if (result.accepted) {
         setGinState(state);
         if (state.phase === 'complete' && state.winnerPlayerId) {
+          traceGinAnnouncement('applyState:onGameComplete:immediate', {
+            source,
+            winnerPlayerId: state.winnerPlayerId,
+            roundId,
+            dealerGameId,
+            handNumber: state.handNumber ?? handNumber,
+          });
           onGameCompleteRef.current();
         }
       }
@@ -1425,6 +1490,13 @@ export const GinRummyGameTable = ({
 
     const processCompletion = async () => {
       try {
+        traceGinAnnouncement('completion:start', {
+          phase: viewState.phase,
+          winnerPlayerId: viewState.winnerPlayerId ?? null,
+          roundId: currentRoundId,
+          dealerGameId,
+          handNumber,
+        });
         // Record hand result (history only, no chip transfer per-hand)
         if (viewState.knockResult) {
           await recordGinRummyHandResult(gameId, dealerGameId, handNumber, viewState);
@@ -1448,6 +1520,11 @@ export const GinRummyGameTable = ({
             : r.isUndercut
               ? ` (${dwDiff} dw + 25 undercut bonus)`
               : ` (${dwDiff} dw)`;
+          traceGinAnnouncement('round_win:emit:callsite', {
+            id: handResultId,
+            scope: handResultScope,
+            text: `${winnerName} +${r.pointsAwarded}${bonus}`,
+          });
           announcements.emit({
             id: handResultId,
             type: 'round_win',
@@ -1468,7 +1545,9 @@ export const GinRummyGameTable = ({
         if (viewState.winnerPlayerId) {
           // Gate match-win sequence on the hand-result actually leaving
           // the rail. Single source of truth = announcement lifecycle.
+          traceGinAnnouncement('waitForDismiss:start', { id: handResultId });
           await announcements.waitForDismiss(handResultId);
+          traceGinAnnouncement('waitForDismiss:resolved', { id: handResultId });
 
           const winnerId = viewState.winnerPlayerId;
           const loserId =
@@ -1494,8 +1573,17 @@ export const GinRummyGameTable = ({
             const winnerScore = viewState.matchScores?.[winnerId] ?? 0;
             const loserScore = viewState.matchScores?.[loserId] ?? 0;
             announcements.clearAmbient();
+            const matchWinId = `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`;
+            traceGinAnnouncement('match_win:emit:callsite', {
+              id: matchWinId,
+              scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+              winnerName,
+              winnerScore,
+              loserScore,
+              amount: anteAmount,
+            });
             announcements.emit({
-              id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+              id: matchWinId,
               type: 'match_win',
               scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
               payload: {
@@ -1520,9 +1608,11 @@ export const GinRummyGameTable = ({
                 setTimeout(resolve, 16);
               }
             });
+            traceGinAnnouncement('match_win:post-paint-frame', { id: matchWinId });
 
             // Winner-only confetti
             if (winnerPlayer.user_id === currentUserId) {
+              traceGinAnnouncement('confetti:start', { id: matchWinId, winnerOnly: true });
               confetti({
                 particleCount: 150,
                 spread: 70,
@@ -1558,6 +1648,10 @@ export const GinRummyGameTable = ({
             setStoredChipPositions({
               winner: winnerPos,
               losers: [{ playerId: loserId, x: loserPos.x, y: loserPos.y }],
+            });
+            traceGinAnnouncement('chip-transfer:start', {
+              triggerId: `gin-win-${dealerGameId}-${winnerId}`,
+              amount: anteAmount,
             });
             setChipAnimTriggerId(`gin-win-${dealerGameId}-${winnerId}`);
           }
@@ -1725,10 +1819,23 @@ export const GinRummyGameTable = ({
       let newState = declareKnock(ginState, currentPlayerId, card);
       if (newState.phase === 'scoring') {
         // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        traceGinAnnouncement('overlay:trigger:local-action', {
+          overlay: 'gin',
+          phase: newState.phase,
+          scopeDealerGameId: gameId,
+          propDealerGameId: dealerGameId,
+          roundId: currentRoundId,
+          handNumber: newState.handNumber ?? handNumber,
+        });
         ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
         // Write scoring state to DB so opponent sees gin phase and gets overlay too
         await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        traceGinAnnouncement('local-action:scoring-state-written', {
+          overlay: 'gin',
+          phase: newState.phase,
+          roundId: currentRoundId,
+        });
         ginSync.applyOptimistic(newState);
         setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
@@ -1736,11 +1843,24 @@ export const GinRummyGameTable = ({
         newState = scoreHand(newState);
       } else if (newState.phase === 'knocking') {
         // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        traceGinAnnouncement('overlay:trigger:local-action', {
+          overlay: 'knock',
+          phase: newState.phase,
+          scopeDealerGameId: gameId,
+          propDealerGameId: dealerGameId,
+          roundId: currentRoundId,
+          handNumber: newState.handNumber ?? handNumber,
+        });
         setTimeout(() => playKnock(), 100);
         knockOverlayFiredRef.current = true;
         setShowKnockOverlay(true);
         // Write knocking state to DB so opponent sees overlay too
         await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        traceGinAnnouncement('local-action:knocking-state-written', {
+          overlay: 'knock',
+          phase: newState.phase,
+          roundId: currentRoundId,
+        });
         ginSync.applyOptimistic(newState);
         setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));

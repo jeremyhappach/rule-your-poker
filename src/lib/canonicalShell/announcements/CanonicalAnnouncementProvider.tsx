@@ -50,6 +50,22 @@ import {
   type AnnouncementType,
 } from './types';
 
+const traceAnnouncementRuntime = (event: string, payload: Record<string, unknown> = {}) => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const enabled =
+      params.get('trace_gin_announcements') === '1' ||
+      window.localStorage.getItem('ptp_trace_gin_announcements') === '1';
+    if (!enabled) return;
+    console.log('[ANN_RUNTIME_TRACE]', event, {
+      t: Math.round(performance.now()),
+      ...payload,
+    });
+  } catch {
+    // no-op: diagnostic only
+  }
+};
+
 interface ResolvedAnnouncement extends AnnouncementEvent {
   resolvedPriority: number;
   resolvedBehavior: AnnouncementBehavior;
@@ -219,6 +235,12 @@ export function CanonicalAnnouncementProvider({
   const emit = useCallback(
     (event: AnnouncementEvent) => {
       if (!scopeMatches(event.scope, currentScope)) {
+        traceAnnouncementRuntime('emit:dropped:scope-mismatch', {
+          id: event.id,
+          type: event.type,
+          eventScope: event.scope,
+          currentScope,
+        });
         if (import.meta.env?.DEV) {
           // eslint-disable-next-line no-console
           console.warn('[canonical-rail] emit dropped — scope mismatch', {
@@ -242,6 +264,11 @@ export function CanonicalAnnouncementProvider({
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
+        traceAnnouncementRuntime('emit:accepted:ambient', {
+          id: resolved.id,
+          type: resolved.type,
+          scope: resolved.scope,
+        });
         setAmbient((prev) => {
           // Same id refresh → keep existing (idempotent no-op for identity).
           if (prev && prev.id === resolved.id && prev.type === resolved.type) {
@@ -263,9 +290,22 @@ export function CanonicalAnnouncementProvider({
       if (bucket.has(event.id)) return; // idempotent
       bucket.add(event.id);
 
+      traceAnnouncementRuntime('emit:accepted:transient', {
+        id: resolved.id,
+        type: resolved.type,
+        scope: resolved.scope,
+        priority: resolved.resolvedPriority,
+        hasActiveTransient: !!transient,
+        activeTransientId: transient?.id ?? null,
+      });
+
       // Preempt current transient if higher priority.
       if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
         clearTtl();
+        traceAnnouncementRuntime('transient:preempt', {
+          droppedId: transient.id,
+          nextId: resolved.id,
+        });
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
         setTransient(resolved);
@@ -398,7 +438,9 @@ export function CanonicalAnnouncementProvider({
       // even for events that were preempted/deduped before render.
       const isActive = transientIdRef.current === id;
       const isQueued = queueRef.current.some((q) => q.id === id);
+      traceAnnouncementRuntime('waitForDismiss:registered', { id, isActive, isQueued });
       if (!isActive && !isQueued) {
+        traceAnnouncementRuntime('waitForDismiss:resolved-immediate', { id });
         resolve();
         return;
       }
@@ -410,6 +452,17 @@ export function CanonicalAnnouncementProvider({
 
   // Active = transient if present, else ambient.
   const active = transient ?? ambient;
+
+  useEffect(() => {
+    traceAnnouncementRuntime('active-slot:changed', {
+      activeId: active?.id ?? null,
+      activeType: active?.type ?? null,
+      transientId: transient?.id ?? null,
+      transientType: transient?.type ?? null,
+      ambientId: ambient?.id ?? null,
+      ambientType: ambient?.type ?? null,
+    });
+  }, [active?.id, active?.type, transient?.id, transient?.type, ambient?.id, ambient?.type]);
 
   const value = useMemo<AnnouncementContextValue>(
     () => ({
