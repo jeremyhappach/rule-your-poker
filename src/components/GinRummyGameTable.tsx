@@ -632,8 +632,36 @@ export const GinRummyGameTable = ({
       ginOverlayFiredRef.current = true;
       setShowGinOverlay(true);
     }
+
+    // Canonical IN-PROGRESS ambient: knocking / laying_off status plate.
+    // Replaces the deleted row-2 local gold-plate fallback. Ambient slot
+    // is cleared by the hand-result emit in processCompletion (which
+    // calls clearAmbient('waiting_for_player') before emitting round_win).
+    if (
+      (currentPhase === 'knocking' || currentPhase === 'laying_off') &&
+      dealerGameId
+    ) {
+      const knockerEntry = Object.entries(ginState.playerStates).find(
+        ([, ps]) => ps.hasKnocked || ps.hasGin,
+      );
+      if (knockerEntry) {
+        const [knockerId, knockerState] = knockerEntry;
+        const knockerName = getPlayerUsername(knockerId);
+        const ctx = knockerState?.hasGin
+          ? 'GIN!'
+          : `knocked (${knockerState?.deadwoodValue ?? 0} dw)`;
+        announcements.emit({
+          id: `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`,
+          type: 'waiting_for_player',
+          scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
+          payload: { playerName: knockerName, context: ctx },
+        });
+      }
+    }
+
     prevPhaseRef.current = currentPhase;
   }, [ginState?.phase, playKnock]);
+
 
   // Detect visible draw actions and trigger an overlay animation.
   // Do not freeze presentation here: observers must continue receiving turn/pile updates underneath.
