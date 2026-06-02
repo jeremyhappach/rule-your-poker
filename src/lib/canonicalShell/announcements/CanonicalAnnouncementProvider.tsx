@@ -329,10 +329,17 @@ export function CanonicalAnnouncementProvider({
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
-      queueRef.current = queueRef.current.filter((q) => !scopeMatches(q.scope, scope));
+      const kept: ResolvedAnnouncement[] = [];
+      for (const q of queueRef.current) {
+        if (scopeMatches(q.scope, scope)) drainDismiss(q.id);
+        else kept.push(q);
+      }
+      queueRef.current = kept;
       seenRef.current.delete(scopeKey(scope));
       setTransient((cur) => {
         if (cur && scopeMatches(cur.scope, scope)) {
+          transientIdRef.current = null;
+          drainDismiss(cur.id);
           queueMicrotask(promoteNextTransient);
           return null;
         }
@@ -340,8 +347,9 @@ export function CanonicalAnnouncementProvider({
       });
       setAmbient((cur) => (cur && scopeMatches(cur.scope, scope) ? null : cur));
     },
-    [promoteNextTransient, scopeKey],
+    [promoteNextTransient, scopeKey, drainDismiss],
   );
+
 
   // Boundary teardown.
   const prevScopeRef = useRef<AnnouncementScope>(currentScope);
