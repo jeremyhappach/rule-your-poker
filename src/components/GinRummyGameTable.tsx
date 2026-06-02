@@ -633,14 +633,18 @@ export const GinRummyGameTable = ({
       setShowGinOverlay(true);
     }
 
-    // Canonical IN-PROGRESS ambient: knocking / laying_off status plate.
-    // Replaces the deleted row-2 local gold-plate fallback. Ambient slot
-    // is cleared by the hand-result emit in processCompletion (which
-    // calls clearAmbient('waiting_for_player') before emitting round_win).
-    if (
-      (currentPhase === 'knocking' || currentPhase === 'laying_off') &&
-      dealerGameId
-    ) {
+    // Canonical IN-PROGRESS ambient: knocking / laying_off / gin status
+    // plate. Fires simultaneously with the centered overlay (knock at
+    // `knocking`, gin at `scoring`/`complete` with hasGin) so the rail
+    // and overlay land in the same frame instead of the rail catching
+    // up later via the hand-result round_win. Ambient is cleared by
+    // processCompletion before the hand-result round_win is emitted.
+    const showOverlayPhase =
+      currentPhase === 'knocking' ||
+      currentPhase === 'laying_off' ||
+      ((currentPhase === 'scoring' || currentPhase === 'complete') &&
+        (ginState.knockResult?.isGin || anyPlayerHasGin));
+    if (showOverlayPhase && dealerGameId) {
       const knockerEntry = Object.entries(ginState.playerStates).find(
         ([, ps]) => ps.hasKnocked || ps.hasGin,
       );
