@@ -1783,10 +1783,23 @@ export const GinRummyGameTable = ({
       let newState = declareKnock(ginState, currentPlayerId, card);
       if (newState.phase === 'scoring') {
         // Gin! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        traceGinAnnouncement('overlay:trigger:local-action', {
+          overlay: 'gin',
+          phase: newState.phase,
+          scopeDealerGameId: gameId,
+          propDealerGameId: dealerGameId,
+          roundId: currentRoundId,
+          handNumber: newState.handNumber ?? handNumber,
+        });
         ginOverlayFiredRef.current = true;
         setShowGinOverlay(true);
         // Write scoring state to DB so opponent sees gin phase and gets overlay too
         await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        traceGinAnnouncement('local-action:scoring-state-written', {
+          overlay: 'gin',
+          phase: newState.phase,
+          roundId: currentRoundId,
+        });
         ginSync.applyOptimistic(newState);
         setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 3500));
@@ -1794,11 +1807,24 @@ export const GinRummyGameTable = ({
         newState = scoreHand(newState);
       } else if (newState.phase === 'knocking') {
         // Knock! Show overlay FIRST locally, write to DB for opponent, then delay before tabling
+        traceGinAnnouncement('overlay:trigger:local-action', {
+          overlay: 'knock',
+          phase: newState.phase,
+          scopeDealerGameId: gameId,
+          propDealerGameId: dealerGameId,
+          roundId: currentRoundId,
+          handNumber: newState.handNumber ?? handNumber,
+        });
         setTimeout(() => playKnock(), 100);
         knockOverlayFiredRef.current = true;
         setShowKnockOverlay(true);
         // Write knocking state to DB so opponent sees overlay too
         await supabase.from('rounds').update({ gin_rummy_state: JSON.parse(JSON.stringify(newState)) }).eq('id', roundId);
+        traceGinAnnouncement('local-action:knocking-state-written', {
+          overlay: 'knock',
+          phase: newState.phase,
+          roundId: currentRoundId,
+        });
         ginSync.applyOptimistic(newState);
         setGinState(newState);
         await new Promise(resolve => setTimeout(resolve, 2800));
