@@ -55,7 +55,8 @@ import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
-import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import { useAnnouncements, useAnnouncementContext, isCelebrationType } from '@/lib/canonicalShell/announcements';
+import { isCtaAmbientType } from '@/lib/canonicalShell/announcements/types';
 import confetti from 'canvas-confetti';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
@@ -181,6 +182,27 @@ export const GinRummyGameTable = ({
 
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   const announcements = useAnnouncements();
+  const announcementContext = useAnnouncementContext();
+  const announcementActive = announcementContext?.active ?? null;
+  const announcementAmbient = announcementContext?.ambient ?? null;
+  const hasCanonicalRailEvent =
+    !!announcementActive &&
+    (announcementActive.type === 'match_win' || !isCelebrationType(announcementActive.type)) &&
+    !isCtaAmbientType(announcementActive.type);
+  const announcementRailActive =
+    announcementActive?.type === 'match_win'
+      ? announcementActive
+      : announcementAmbient?.type === 'dealer_configuring'
+        ? announcementAmbient
+        : announcementActive;
+  const announcementProofText = [
+    'GIN ANNOUNCEMENT RUNTIME PROOF',
+    `active.type: ${announcementActive?.type ?? 'null'}`,
+    `ambient.type: ${announcementAmbient?.type ?? 'null'}`,
+    `railActive.type: ${announcementRailActive?.type ?? 'null'}`,
+    `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
+    `CanonicalAnnouncementLayer mounted: ${String(hasCanonicalRailEvent)}`,
+  ].join('\n');
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
