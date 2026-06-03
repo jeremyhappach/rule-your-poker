@@ -262,6 +262,13 @@ export function CanonicalAnnouncementProvider({
           behavior: resolved.resolvedBehavior,
         });
       }
+      recordAnnouncementDebugEvent('emit', `${event.type} id=${event.id.slice(0,8)} (${resolved.resolvedBehavior})`, {
+        type: event.type,
+        id: event.id,
+        behavior: resolved.resolvedBehavior,
+        priority: resolved.resolvedPriority,
+        scope: resolved.scope,
+      });
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
