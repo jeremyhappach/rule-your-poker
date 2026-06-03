@@ -377,19 +377,10 @@ export function CanonicalAnnouncementProvider({
         recordAnnouncementDebugEvent(
           'lifecycle',
           `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
-          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority, transientIdRefBefore: transientIdRef.current },
+          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
         );
         transientIdRef.current = resolved.id;
-        setTransient((prev) => {
-          if (prev) {
-            recordAnnouncementDebugEvent(
-              'lifecycle',
-              `promote-immediate-stale-closure prev=${prev.type}(${prev.id.slice(0,8)}) — closure said null`,
-              { stage: 'promote-immediate-stale-closure', prev: { id: prev.id, type: prev.type } },
-            );
-          }
-          return resolved;
-        });
+        setTransient(() => resolved);
         armTtl(resolved);
         return;
       }
