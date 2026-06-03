@@ -2103,6 +2103,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended' || newStatus === 'cribbage_dealer_selection' || newStatus === 'dealer_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
+              if (newStatus === 'in_progress' || newStatus === 'ante_decision') {
+                console.log('[GIN_RUNTIME_TIMELINE] realtime:games.status observed', { t: Date.now(), newStatus, oldStatus: game?.status ?? null });
+              }
 
               // ── HANDOFF TRACE #4: game status transition ──
               emitCribbageHandoffTrace({
