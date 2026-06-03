@@ -97,6 +97,18 @@ export function PersistentTableShell({
   const shellRootRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
   useLifecycleMount('PersistentTableShell', { gameType });
+  useUnmountSnapshot('PersistentTableShell', {
+    parent: 'Game.tsx (bootstrap-branch OR post-hydration-branch)',
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+    hasProjectionMode: projectionMode != null,
+    hasSeats: seats != null,
+    seatAnchorLayerWrapped: !!(projectionMode && seats),
+    hasHeader: header != null,
+  });
+  useChangeTracker('PersistentTableShell', 'gameType', gameType ?? '(none)');
+  useChangeTracker('PersistentTableShell', 'seatAnchorWrapped', !!(projectionMode && seats));
+  useChangeTracker('PersistentTableShell', 'projectionMode', projectionMode ?? '(none)');
   setLifecycleFact('Shell.bgClass', 'min-h-screen bg-shell-neutral');
 
 
