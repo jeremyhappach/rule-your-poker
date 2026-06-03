@@ -30,11 +30,14 @@ export type AnnouncementDebugEventKind =
   | 'layer-mount'
   | 'layer-unmount'
   | 'scope-change'
-  | 'scope-teardown';
+  | 'scope-teardown'
+  | 'lifecycle';
 
 export interface AnnouncementDebugEvent {
   seq: number;
   tMs: number; // ms since page load
+  /** ms since previous recorded event (0 for first). */
+  dPrevMs: number;
   kind: AnnouncementDebugEventKind;
   summary: string;
   detail?: Record<string, unknown>;
