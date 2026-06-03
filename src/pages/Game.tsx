@@ -9437,6 +9437,41 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
 
+          // SHELL LC: comparative branch-selector instrumentation.
+          // Pre-compute which IIFE return branch will win so we can prove
+          // the Gin-specific delta vs Cribbage/Yahtzee at the
+          // dealer_selection → ante_decision transition.
+          {
+            const _isDiceGameOverProbe = game.status === 'game_over' && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew');
+            const _isGinRummyConfiguringProbe = (game.status === 'configuring' || game.status === 'game_selection') && effectiveRenderGameType === 'gin-rummy';
+            let _selectedBranch = 'fallback:MobileGameTable(main-in-progress-gated)';
+            if (game.game_type === 'cribbage' && (isCribbageDealerSelection || isAnteDecision || isInProgress || isCribbageGameOver)) {
+              _selectedBranch = 'cribbage:CribbageMobileGameTable';
+            } else if (effectiveRenderGameType === 'gin-rummy' && (_isGinRummyConfiguringProbe || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
+              _selectedBranch = 'gin:GinRummyGameTable';
+            } else if ((isInProgress || isAnteDecision || _isDiceGameOverProbe || !!horsesWinPotTriggerId) && (game.game_type === 'horses' || game.game_type === 'ship-captain-crew')) {
+              _selectedBranch = 'dice:MobileGameTable(cribbage-or-special)';
+            } else if (game.game_type === 'yahtzee' && (isAnteDecision || isInProgress || isYahtzeeGameOver)) {
+              _selectedBranch = 'yahtzee:YahtzeeGameTable';
+            } else if (isInProgress && game.game_type === 'trivia') {
+              _selectedBranch = 'trivia:TriviaGameTable';
+            }
+            shellLogIfChanged('Game.IIFE.branch', _selectedBranch, {
+              gameStatus: game.status,
+              gameType: game.game_type,
+              effectiveRenderGameType,
+              lastKnownGameType: lastKnownGameTypeRef.current,
+              previousConfigGameType: previousGameConfig?.game_type ?? null,
+              isAnteDecision,
+              isInProgress,
+              isGinRummyDealerSelection,
+              isCribbageDealerSelection,
+              hasCurrentRound: Boolean(currentRound?.id),
+              currentRoundDealerGameId: (currentRound as any)?.dealer_game_id ?? null,
+              currentDealerGameId: (game as any).current_game_uuid ?? null,
+            });
+          }
+
           // CRIBBAGE — unified single instance across ALL session phases
           // One persistent CribbageMobileGameTable prevents physical unmount/remount during
           // bootstrap transitions (ante_decision → dealer_selection → in_progress → game_over)
