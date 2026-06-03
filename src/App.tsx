@@ -87,6 +87,7 @@ const App = () => {
             <LifecycleDebugBadge />
             <DebugModeIndicator />
             <AnnouncementDebugPanel />
+            <ShellLifecyclePanel />
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>
