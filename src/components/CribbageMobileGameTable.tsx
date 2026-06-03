@@ -66,6 +66,7 @@ import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { traceGoRace, peggingSnapshot } from '@/lib/cribbageGoRaceTrace';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
+import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import {
   checkStaleDealerGameRender,
   checkCribbagePhaseRenderMismatch,
