@@ -337,12 +337,27 @@ export const GinRummyGameTable = ({
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
 
+  const bootstrapAppliedRef = useRef(false);
   useEffect(() => {
-    if (!bootstrapState || !roundId) return;
+    if (!bootstrapState || !roundId) {
+      ginTrace('gin.receiveAuthoritativeUpdate gated', {
+        hasBootstrapState: !!bootstrapState,
+        hasRoundId: !!roundId,
+      });
+      return;
+    }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
     if (result.accepted) setGinState(bootstrapState);
+    if (!bootstrapAppliedRef.current && result.accepted) {
+      bootstrapAppliedRef.current = true;
+      ginTrace('gin.receiveAuthoritativeUpdate first-accepted', {
+        roundId,
+        phase: bootstrapState.phase,
+      });
+    }
     ginTrace('gin.bootstrapState applied', { accepted: result.accepted, phase: bootstrapState.phase });
   }, [bootstrapState, roundId]);
+
 
   // First non-null viewState (presentation ready) — the gate that
   // unblocks the playable subtree render path at line ~1589.
