@@ -12,11 +12,15 @@
  * can render a unified timeline. Pure observability — no behavior.
  */
 
+import { useEffect, useRef } from 'react';
 import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHarness/runtimeCache';
 
 export type ShellLifecycleEventKind =
   | 'mount'
   | 'unmount'
+  | 'unmount-detail'
+  | 'render-decision'
+  | 'key-change'
   | 'slot-phase'
   | 'neutral-shown'
   | 'neutral-hidden'
