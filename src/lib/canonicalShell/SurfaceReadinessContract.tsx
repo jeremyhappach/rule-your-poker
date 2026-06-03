@@ -170,6 +170,13 @@ export function useReportSurfaceReady(
   const ctx = useContext(ReadinessContext);
   const prevIdentityRef = useRef<SurfaceReadinessIdentity | null>(null);
   const prevDealerGameIdRef = useRef<string | null>(null);
+  // Track latest `ready` value so the identity-change layout effect
+  // can seed the new identity with the caller's current readiness,
+  // rather than always seeding false (which would force a needless
+  // cold/awaiting-surface-ready window when the caller already has a
+  // valid frame at bind time).
+  const readyRef = useRef(ready);
+  readyRef.current = ready;
 
   // Synchronous reset on identity change — runs before paint so the
   // consumer never observes a stale `true` for the new identity.
@@ -181,7 +188,11 @@ export function useReportSurfaceReady(
 
     if (prevKey !== nextKey) {
       if (prev) ctx.clearReport(prev);
-      if (identity) ctx.setReport(identity, false);
+      // Seed with the caller's CURRENT readiness. If the caller already
+      // has a valid frame for this identity (e.g. parent passed it in
+      // synchronously), we must not force a false → true window that
+      // would unmount shell chrome.
+      if (identity) ctx.setReport(identity, readyRef.current === true);
       prevIdentityRef.current = identity;
     }
 
@@ -194,6 +205,7 @@ export function useReportSurfaceReady(
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx, identity?.dealerGameId, identity?.scope]);
+
 
   // Report current readiness value.
   useEffect(() => {

@@ -30,7 +30,7 @@ interface Props {
 }
 
 export function GinRummyReadinessProbe({ dealerGameId, roundId, parentHasGinState }: Props) {
-  const [hasFrame, setHasFrame] = useState(false);
+  const [hasFrame, setHasFrame] = useState(Boolean(parentHasGinState));
 
   const identity: SurfaceReadinessIdentity | null =
     dealerGameId && roundId ? { dealerGameId, scope: roundId } : null;
@@ -76,34 +76,48 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId, parentHasGinStat
       firstBindAtRef.current = performance.now();
       parentHadFrameAtMountRef.current = Boolean(parentHasGinState);
     }
-    setHasFrame(false);
+    // If the parent already has gin_rummy_state for this round, we can
+    // report ready immediately. Otherwise reset to false and wait for
+    // fetch/realtime to provide the frame.
+    const parentHasNow = Boolean(parentHasGinState);
+    setHasFrame(parentHasNow);
+    if (parentHasNow && readySourceRef.current == null) {
+      readySourceRef.current = 'parent-hint';
+    }
     const detail = {
       dealerGameId: dealerGameId?.slice(0, 8) ?? null,
       roundId: roundId?.slice(0, 8) ?? null,
       bindCount: bindCountRef.current,
       isRebind,
-      parentHasGinState: Boolean(parentHasGinState),
+      parentHasGinState: parentHasNow,
+      seededReady: parentHasNow,
     };
     ginTrace('readiness probe: identity bound', detail);
     recordShellLifecycleEvent(
       'gin-identity',
-      `bind#${bindCountRef.current} ${isRebind ? 'REBIND' : 'first'} round=${roundId?.slice(0, 8) ?? '-'} parentHad=${Boolean(parentHasGinState)}`,
-      { ...detail, reason: 'identity-bind (resets hasFrame=false)' },
+      `bind#${bindCountRef.current} ${isRebind ? 'REBIND' : 'first'} round=${roundId?.slice(0, 8) ?? '-'} parentHad=${parentHasNow} seeded=${parentHasNow}`,
+      { ...detail, reason: parentHasNow ? 'identity-bind (seeded ready=true from parent)' : 'identity-bind (resets hasFrame=false)' },
     );
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dealerGameId, roundId]);
 
-  // Track parent-hint transitions (does parent already have gin state, and when?)
+  // Parent-hint upgrade: if parent gains gin_rummy_state after probe
+  // mount (identity stable, hasFrame still false), promote to ready
+  // without waiting for the redundant DB fetch.
   useEffect(() => {
-    if (parentHasGinState && !hasFrame && readySourceRef.current == null) {
-      ginTrace('readiness probe: parent-hint indicates gin_rummy_state present', {
+    if (parentHasGinState && !hasFrame) {
+      ginTrace('readiness probe: parent-hint upgrade to ready', {
         roundId: roundId?.slice(0, 8) ?? null,
         msSinceFirstBind:
           firstBindAtRef.current != null ? Math.round(performance.now() - firstBindAtRef.current) : null,
         bindCount: bindCountRef.current,
       });
+      if (readySourceRef.current == null) readySourceRef.current = 'parent-hint';
+      setHasFrame(true);
     }
   }, [parentHasGinState, hasFrame, roundId]);
+
 
   // Initial fetch — with timing.
   useEffect(() => {
