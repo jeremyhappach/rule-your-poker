@@ -855,15 +855,24 @@ export const GinRummyGameTable = ({
       });
       if (result.accepted) {
         setGinState(state);
+        // NOTE: Match-win ownership inversion — we intentionally do NOT
+        // call onGameCompleteRef.current() here when reaching
+        // phase === 'complete' with a winnerPlayerId. The presentation
+        // lifecycle in processCompletion (driven off viewState) owns
+        // the terminal sequence end-to-end:
+        //   hand_result → waitForDismiss → match_win → paint frame →
+        //   confetti → chip transfer → onGameComplete.
+        // Firing onGameComplete here races dealer-game teardown against
+        // the canonical match_win paint, so the rail plate gets preempted
+        // before observers/winner ever see it.
         if (state.phase === 'complete' && state.winnerPlayerId) {
-          traceGinAnnouncement('applyState:onGameComplete:immediate', {
+          traceGinAnnouncement('applyState:onGameComplete:deferred-to-lifecycle', {
             source,
             winnerPlayerId: state.winnerPlayerId,
             roundId,
             dealerGameId,
             handNumber: state.handNumber ?? handNumber,
           });
-          onGameCompleteRef.current();
         }
       }
     };
