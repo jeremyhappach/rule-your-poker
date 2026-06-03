@@ -6,6 +6,8 @@
  * investigation. Safe to delete wholesale once resolved.
  */
 
+import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHarness/runtimeCache';
+
 export type AnnouncementDebugEventKind =
   | 'emit'
   | 'dismiss'
@@ -31,6 +33,7 @@ export interface AnnouncementDebugEvent {
 
 const MAX_EVENTS = 40;
 const buffer: AnnouncementDebugEvent[] = [];
+let snapshot: AnnouncementDebugEvent[] = [];
 const listeners = new Set<() => void>();
 let seq = 0;
 const t0 =
@@ -49,7 +52,13 @@ export function isAnnouncementDebugEnabled(): boolean {
   } catch {
     /* no-op */
   }
-  // Default-on in dev so investigation works without setup; off in prod.
+  // Visible in the same condition the user is actually testing: global
+  // debug mode. This matters on the published app, where import.meta.env.DEV
+  // is false but the in-game red Debug Mode banner is active.
+  if (isGlobalDebugModeLoaded() && isGlobalDebugModeCached()) return true;
+
+  // Default-on in dev so investigation works without setup; off in prod
+  // unless global debug mode / explicit URL or localStorage flags are active.
   try {
     return Boolean(import.meta.env?.DEV);
   } catch {
@@ -75,6 +84,7 @@ export function recordAnnouncementDebugEvent(
     detail,
   });
   while (buffer.length > MAX_EVENTS) buffer.shift();
+  snapshot = buffer.slice();
   for (const l of listeners) {
     try {
       l();
@@ -85,7 +95,7 @@ export function recordAnnouncementDebugEvent(
 }
 
 export function getAnnouncementDebugEvents(): AnnouncementDebugEvent[] {
-  return buffer.slice();
+  return snapshot;
 }
 
 export function subscribeAnnouncementDebug(fn: () => void): () => void {
@@ -95,6 +105,7 @@ export function subscribeAnnouncementDebug(fn: () => void): () => void {
 
 export function clearAnnouncementDebugEvents(): void {
   buffer.length = 0;
+  snapshot = [];
   for (const l of listeners) {
     try {
       l();
