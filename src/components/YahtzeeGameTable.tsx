@@ -59,6 +59,7 @@ import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
+import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 
 // Shell-owned felt is the sole canonical mount — no local visual flag.
 
@@ -180,6 +181,9 @@ export function YahtzeeGameTable({
   gameId, players, currentUserId, pot, anteAmount, dealerPosition,
   currentRoundId, dealerGameId, yahtzeeState, onRefetch, isHost = false, onPlayerClick,
 }: YahtzeeGameTableProps) {
+  // SHELL LC: mount marker for comparative branch-swap evidence.
+  useLifecycleMount('YahtzeeGameTable');
+
 
   // Publish canonical felt context to the shell-owned host. The shell
   // is the sole canonical felt mount; there is no local felt branch.
