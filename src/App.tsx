@@ -89,6 +89,7 @@ const App = () => {
             <DebugModeIndicator />
             <AnnouncementDebugPanel />
             <ShellLifecyclePanel />
+            <StartupFlightRecorderOverlay />
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>
