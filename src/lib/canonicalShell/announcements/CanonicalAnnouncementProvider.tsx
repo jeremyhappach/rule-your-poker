@@ -484,6 +484,9 @@ export function CanonicalAnnouncementProvider({
   // Active = transient if present, else ambient.
   const active = transient ?? ambient;
 
+  const prevActiveRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
+  const prevAmbientRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
+  const prevTransientRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
   useEffect(() => {
     traceAnnouncementRuntime('active-slot:changed', {
       activeId: active?.id ?? null,
@@ -493,6 +496,21 @@ export function CanonicalAnnouncementProvider({
       ambientId: ambient?.id ?? null,
       ambientType: ambient?.type ?? null,
     });
+    const a = { id: active?.id ?? null, type: active?.type ?? null };
+    if (a.id !== prevActiveRef.current.id || a.type !== prevActiveRef.current.type) {
+      recordAnnouncementDebugEvent('active-change', `${prevActiveRef.current.type ?? 'null'} → ${a.type ?? 'null'}`, { from: prevActiveRef.current, to: a });
+      prevActiveRef.current = a;
+    }
+    const am = { id: ambient?.id ?? null, type: ambient?.type ?? null };
+    if (am.id !== prevAmbientRef.current.id || am.type !== prevAmbientRef.current.type) {
+      recordAnnouncementDebugEvent('ambient-change', `${prevAmbientRef.current.type ?? 'null'} → ${am.type ?? 'null'}`, { from: prevAmbientRef.current, to: am });
+      prevAmbientRef.current = am;
+    }
+    const tr = { id: transient?.id ?? null, type: transient?.type ?? null };
+    if (tr.id !== prevTransientRef.current.id || tr.type !== prevTransientRef.current.type) {
+      recordAnnouncementDebugEvent('transient-change', `${prevTransientRef.current.type ?? 'null'} → ${tr.type ?? 'null'}`, { from: prevTransientRef.current, to: tr });
+      prevTransientRef.current = tr;
+    }
   }, [active?.id, active?.type, transient?.id, transient?.type, ambient?.id, ambient?.type]);
 
   const value = useMemo<AnnouncementContextValue>(
