@@ -116,7 +116,6 @@ import {
   StartupFlightRecorderOverlay,
   recordStartupFlight,
   recordStartupValue,
-  resetStartupFlight,
   useStartupRenderTrace,
 } from "@/lib/startupFlightRecorder";
 import type { GinRummyState } from "@/lib/ginRummyTypes";
