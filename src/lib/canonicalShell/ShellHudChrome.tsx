@@ -43,15 +43,20 @@ const traceRailRuntime = (event: string, payload: Record<string, unknown> = {}) 
 export function ShellAnnouncementRail() {
   const ctx = useAnnouncementContext();
   const active = ctx?.active;
+  const ambient = ctx?.ambient;
   const hasCanonicalRailEvent =
     !!active &&
     (active.type === 'match_win' || !isCelebrationType(active.type)) &&
     !isCtaAmbientType(active.type);
 
+  const showAnnouncementDebug = import.meta.env.DEV;
+
   useEffect(() => {
     traceRailRuntime('gate:evaluated', {
       activeId: active?.id ?? null,
       activeType: active?.type ?? null,
+      ambientId: ambient?.id ?? null,
+      ambientType: ambient?.type ?? null,
       hasCanonicalRailEvent,
     });
     if (!hasCanonicalRailEvent || !active) return;
@@ -61,7 +66,7 @@ export function ShellAnnouncementRail() {
         activeType: active.type,
       });
     });
-  }, [active?.id, active?.type, hasCanonicalRailEvent]);
+  }, [active?.id, active?.type, ambient?.id, ambient?.type, hasCanonicalRailEvent]);
 
   return (
     <div
@@ -88,6 +93,37 @@ export function ShellAnnouncementRail() {
       }}
     >
       {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : null}
+      {showAnnouncementDebug ? (
+        <div
+          data-announcement-runtime-debug=""
+          style={{
+            position: 'fixed',
+            left: 8,
+            top: 8,
+            zIndex: 2147483647,
+            maxWidth: 360,
+            padding: '6px 8px',
+            background: 'hsl(var(--background) / 0.92)',
+            color: 'hsl(var(--foreground))',
+            border: '1px solid hsl(var(--poker-gold))',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            fontSize: 10,
+            lineHeight: 1.25,
+            textAlign: 'left',
+            pointerEvents: 'none',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {[
+            'ANN DEBUG',
+            `ShellAnnouncementRail mounted: yes`,
+            `active.type: ${active?.type ?? 'null'}`,
+            `ambient.type: ${ambient?.type ?? 'null'}`,
+            `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
+            `CanonicalAnnouncementLayer mounted: ${hasCanonicalRailEvent ? 'yes' : 'no'}`,
+          ].join('\n')}
+        </div>
+      ) : null}
     </div>
   );
 
