@@ -8504,6 +8504,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       ))
     );
 
+  // Sibling persistence concept scoped ONLY to PSC persistentChildrenKey.
+  // Keeps canonical-shell-family consumers (gin-rummy, cribbage, yahtzee, etc.)
+  // mounted across lifecycle transitions without broadening
+  // _isPokerShellPersistent (whose other call sites — dealer selection
+  // overlays, observer overlays, terminal animation gates — must remain
+  // poker-variant-only).
+  const _isCanonicalShellPersistent =
+    enableOuterShell && _treatAsCanonicalRoute && gameId != null;
+
   // Hook-free transition instrumentation. Logged only when the value
   // actually changes; safe at render time (no hooks, no state).
   _shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
@@ -9271,7 +9280,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
-            persistentChildrenKey={_isPokerShellPersistent ? (gameId ?? null) : null}
+            persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
             neutralActiveTab={mobileActiveTab}
             onNeutralActiveTabChange={setMobileActiveTab}
             neutralParticipants={players as any}
