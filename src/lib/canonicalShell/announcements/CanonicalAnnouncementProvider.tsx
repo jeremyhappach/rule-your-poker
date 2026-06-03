@@ -438,8 +438,6 @@ export function CanonicalAnnouncementProvider({
             curAtUpdate: cur ? { id: cur.id, type: cur.type } : null,
             targetId: id,
             matched: matches,
-            wouldClobberMatchWin: !!(cur && cur.type === 'match_win' && cur.id === id),
-            staleDismissAfterPreempt: !!(cur && cur.id !== id),
           },
         );
         if (matches) {
