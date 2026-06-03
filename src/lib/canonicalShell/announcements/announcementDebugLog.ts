@@ -6,6 +6,8 @@
  * investigation. Safe to delete wholesale once resolved.
  */
 
+import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHarness/runtimeCache';
+
 export type AnnouncementDebugEventKind =
   | 'emit'
   | 'dismiss'
@@ -28,8 +30,6 @@ export interface AnnouncementDebugEvent {
   summary: string;
   detail?: Record<string, unknown>;
 }
-
-import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHarness/runtimeCache';
 
 const MAX_EVENTS = 40;
 const buffer: AnnouncementDebugEvent[] = [];
