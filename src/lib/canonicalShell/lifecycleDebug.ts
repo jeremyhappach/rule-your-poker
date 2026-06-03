@@ -17,6 +17,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 type Snapshot = Record<string, string | number | boolean | null | undefined>;
 
