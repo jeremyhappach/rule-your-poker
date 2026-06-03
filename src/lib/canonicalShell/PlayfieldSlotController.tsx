@@ -154,6 +154,9 @@ export function PlayfieldSlotController({
       ? 'pre-session'
       : (!readyToMount ? 'awaiting-surface-ready' : 'pre-session'),
   );
+  logIfChanged('PSC.state.mountedIdentity', describeSlotIdentity(mountedIdentity), { gameId });
+
+
 
   // Dwell-elapsed latch: once the visible dwell minimum has passed
   // for the current neutral interval, we are free to mount as soon as
