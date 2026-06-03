@@ -403,6 +403,12 @@ export const GinRummyGameTable = ({
   // unblocks the playable subtree render path at line ~1589.
   const viewStateReadyRef = useRef(false);
   useEffect(() => {
+    recordStartupValue('SYNC TIMELINE', 'GinRummyGameTable.presentationState', ginSync.presentationState ? {
+      phase: (ginSync.presentationState as any)?.phase ?? null,
+      handNumber: (ginSync.presentationState as any)?.handNumber ?? null,
+      currentPlayerId: (ginSync.presentationState as any)?.currentPlayerId ?? null,
+      turnIndex: (ginSync.presentationState as any)?.turnIndex ?? null,
+    } : null, { file: 'src/components/GinRummyGameTable.tsx', roundId: roundId ?? null });
     if (viewStateReadyRef.current) return;
     if (!ginSync.presentationState) return;
     viewStateReadyRef.current = true;
