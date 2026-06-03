@@ -21,6 +21,7 @@ import { recordShellEvent } from './diagnostics';
 import { isCanonicalSeatConsumer } from './shellRouting';
 import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 interface SeatAnchorContextValue {
   projectionMode: ProjectionMode;
@@ -49,6 +50,15 @@ export function SeatAnchorLayer({
   children,
 }: SeatAnchorLayerProps) {
   useLifecycleMount('SeatAnchorLayer', { gameType: gameType ?? null });
+  useStartupMountTrace('SeatAnchorLayer', { gameId: gameId ?? null, gameType: gameType ?? null, projectionMode, viewerPosition });
+  useStartupRenderTrace('SeatAnchorLayer', {
+    projectionMode,
+    viewerPosition,
+    seatCount: seats.length,
+    seats: seats.map(s => ({ position: s.position, occupied: s.occupied, hidden: s.hidden })),
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+  }, { file: 'src/lib/canonicalShell/SeatAnchorLayer.tsx' });
   useUnmountSnapshot('SeatAnchorLayer', {
     parent: 'PersistentTableShell (mounted only when projectionMode && seats)',
     projectionMode,
