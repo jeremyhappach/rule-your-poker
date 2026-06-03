@@ -30,7 +30,7 @@ interface Props {
 }
 
 export function GinRummyReadinessProbe({ dealerGameId, roundId, parentHasGinState }: Props) {
-  const [hasFrame, setHasFrame] = useState(false);
+  const [hasFrame, setHasFrame] = useState(Boolean(parentHasGinState));
 
   const identity: SurfaceReadinessIdentity | null =
     dealerGameId && roundId ? { dealerGameId, scope: roundId } : null;
