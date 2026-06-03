@@ -23,6 +23,7 @@ import {
   type ResolvedSeatAnchor,
   type SeatAnchorInput,
 } from './seatAnchors';
+import { useLifecycleMount } from './lifecycleDebug';
 
 export interface ChatBubbleDatum {
   id: string;
