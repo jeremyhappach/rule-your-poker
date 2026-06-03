@@ -21,6 +21,7 @@ import { MobilePlayerTimer } from '@/components/MobilePlayerTimer';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
+import { useUnmountSnapshot } from './shellLifecycleLog';
 
 
 export interface ActivePlayerHUDProps {
@@ -55,6 +56,15 @@ export function ActivePlayerHUD({
   children,
 }: ActivePlayerHUDProps) {
   useLifecycleMount('ActivePlayerHUD');
+  useUnmountSnapshot('ActivePlayerHUD', {
+    parent: 'MobileGameTable seat render (chip stack wrapper)',
+    seatPosition: seatPosition ?? null,
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+    isActive,
+    timeLeft,
+    maxTime,
+  });
   // Diagnostic: record active-handoff transitions per seat for the
   // canonical-shell telemetry stream. No-op outside dev.
   const wasActiveRef = useRef(false);

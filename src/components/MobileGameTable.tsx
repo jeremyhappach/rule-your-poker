@@ -21,6 +21,7 @@ import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
 import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
 import { recordDealerSelectionDiag } from "@/lib/dealerSelectionDiag";
 
@@ -675,6 +676,14 @@ export const MobileGameTable = ({
     instanceLabel,
     gameType: gameType ?? null,
     initialGameStatus: gameStatus ?? null,
+  });
+  useShellChangeTracker('MobileGameTable', 'instanceLabel', instanceLabel);
+  useShellChangeTracker('MobileGameTable', 'gameType', gameType ?? '(none)');
+  useShellUnmountSnapshot('MobileGameTable', {
+    parent: 'Game.tsx (varies by branch) — key={gameId} so remounts only on gameId change',
+    instanceLabel,
+    gameType: gameType ?? null,
+    gameStatus: gameStatus ?? null,
   });
   useEffect(() => {
     setLifecycleFact(`MGT:${instanceLabel}:gameStatus`, gameStatus ?? null);

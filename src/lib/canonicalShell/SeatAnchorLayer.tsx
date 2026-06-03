@@ -20,6 +20,7 @@ import {
 import { recordShellEvent } from './diagnostics';
 import { isCanonicalSeatConsumer } from './shellRouting';
 import { useLifecycleMount } from './lifecycleDebug';
+import { useUnmountSnapshot } from './shellLifecycleLog';
 
 interface SeatAnchorContextValue {
   projectionMode: ProjectionMode;
@@ -48,6 +49,14 @@ export function SeatAnchorLayer({
   children,
 }: SeatAnchorLayerProps) {
   useLifecycleMount('SeatAnchorLayer', { gameType: gameType ?? null });
+  useUnmountSnapshot('SeatAnchorLayer', {
+    parent: 'PersistentTableShell (mounted only when projectionMode && seats)',
+    projectionMode,
+    viewerPosition,
+    seatCount: seats?.length ?? null,
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+  });
   // Stable seat-key string so anchor recomputation is keyed on actual
   // changes (positions, occupancy, hidden flags) instead of array identity.
   const seatKey = useMemo(

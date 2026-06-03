@@ -33,6 +33,7 @@ import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
+import { useChangeTracker, useUnmountSnapshot, recordRenderDecision } from './shellLifecycleLog';
 
 import {
   ShellFeltContextProvider,
@@ -96,6 +97,18 @@ export function PersistentTableShell({
   const shellRootRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
   useLifecycleMount('PersistentTableShell', { gameType });
+  useUnmountSnapshot('PersistentTableShell', {
+    parent: 'Game.tsx (bootstrap-branch OR post-hydration-branch)',
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+    hasProjectionMode: projectionMode != null,
+    hasSeats: seats != null,
+    seatAnchorLayerWrapped: !!(projectionMode && seats),
+    hasHeader: header != null,
+  });
+  useChangeTracker('PersistentTableShell', 'gameType', gameType ?? '(none)');
+  useChangeTracker('PersistentTableShell', 'seatAnchorWrapped', !!(projectionMode && seats));
+  useChangeTracker('PersistentTableShell', 'projectionMode', projectionMode ?? '(none)');
   setLifecycleFact('Shell.bgClass', 'min-h-screen bg-shell-neutral');
 
 
@@ -240,6 +253,9 @@ export function PersistentTableShell({
   );
 
   if (projectionMode && seats) {
+    recordRenderDecision('PersistentTableShell', 'wrapped-with-SeatAnchorLayer', {
+      projectionMode, viewerPosition, seatCount: seats.length, gameType: gameType ?? null,
+    });
     return (
       <SeatAnchorLayer
         projectionMode={projectionMode}
@@ -253,5 +269,10 @@ export function PersistentTableShell({
     );
   }
 
+  recordRenderDecision('PersistentTableShell', 'no-SeatAnchorLayer-wrap', {
+    hasProjectionMode: projectionMode != null,
+    hasSeats: seats != null,
+    gameType: gameType ?? null,
+  });
   return wrapped;
 }

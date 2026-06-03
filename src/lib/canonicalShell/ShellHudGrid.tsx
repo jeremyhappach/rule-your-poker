@@ -36,6 +36,8 @@ import type { ReactNode } from 'react';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
 import { useLifecycleMount } from './lifecycleDebug';
+import { useUnmountSnapshot } from './shellLifecycleLog';
+import { getLifecycleContext } from './lifecycleDebug';
 
 export interface ShellHudGridProps {
   /** Row 2 — operational HUD chrome (timer chips, paused badge). */
@@ -54,6 +56,18 @@ const ROW_STYLE: React.CSSProperties = {
 
 export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
   useLifecycleMount('ShellHudGrid');
+  const _ctx = getLifecycleContext();
+  useUnmountSnapshot('ShellHudGrid', {
+    parent: 'gameplay-surface(GinRummyGameTable/CribbageMobileGameTable/MobileGameTable)',
+    gameType: _ctx.gameType,
+    gameStatus: _ctx.gameStatus,
+    dealerGameId: _ctx.dealerGameId,
+    roundId: _ctx.roundId,
+    feltOwnership: _ctx.feltOwnership,
+    hasTimerSlot: timer != null,
+    hasPaneSlot: pane != null,
+    hasIdentitySlot: identity != null,
+  });
   return (
     <div
       data-canonical-shell-hud-grid=""

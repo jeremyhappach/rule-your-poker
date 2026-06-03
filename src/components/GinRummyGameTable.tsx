@@ -19,6 +19,7 @@ import { logDebugEvent, ginStateSummary, newTraceId } from '@/lib/debugEventLogg
 import { toast } from 'sonner';
 import { useWakeLock } from '@/hooks/useWakeLock';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
+import { useChangeTracker, useUnmountSnapshot } from '@/lib/canonicalShell/shellLifecycleLog';
 import { ginTrace } from '@/lib/ginStartupTrace';
 
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
@@ -155,6 +156,12 @@ export const GinRummyGameTable = ({
   bootstrapState = null,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
+  useChangeTracker('GinRummyGameTable', 'identity', `${dealerGameId ?? '-'}|${propRoundId ?? '-'}|h${propHandNumber}`);
+  useUnmountSnapshot('GinRummyGameTable', {
+    parent: 'PlayfieldSlotController children (gin-rummy gameplay branch in Game.tsx)',
+    gameId, dealerGameId, propRoundId, propHandNumber,
+    keyedByParent: 'no explicit key on this element (parent: PlayfieldSlotController slot div keyed by mountedIdentity)',
+  });
   useEffect(() => {
     ginTrace('GinRummyGameTable mounted');
   }, []);
