@@ -36,6 +36,8 @@ import type { ReactNode } from 'react';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
 import { useLifecycleMount } from './lifecycleDebug';
+import { useUnmountSnapshot } from './shellLifecycleLog';
+import { getLifecycleContext } from './lifecycleDebug';
 
 export interface ShellHudGridProps {
   /** Row 2 — operational HUD chrome (timer chips, paused badge). */
