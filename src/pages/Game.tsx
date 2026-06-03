@@ -8504,6 +8504,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       ))
     );
 
+  // Hook-free transition instrumentation. Logged only when the value
+  // actually changes; safe at render time (no hooks, no state).
+  _shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
+    enableOuterShell,
+    _routeShellGameType,
+    gameStatus: game.status ?? null,
+    gameType: game.game_type ?? null,
+    branch: isPokerVariantFamily(_routeShellGameType)
+      ? 'poker-variant-family'
+      : (_routeShellGameType == null
+        ? `route-type-null/${game.status ?? 'unknown'}`
+        : 'not-persistent'),
+  });
+  _shellLogIfChanged('Game._routeShellGameType', _routeShellGameType, {
+    gameType: game.game_type ?? null,
+    lastKnown: lastKnownGameTypeRef.current ?? null,
+    prevConfig: previousGameConfig?.game_type ?? null,
+  });
+  _shellLogIfChanged('Game.enableOuterShell.value', enableOuterShell);
+
+
   // When the canonical shell owns the page column (header + children +
   // rail + tab bar in a flex column anchored to min-h-screen), the
   // inner tree must fit the children flex slot — NOT claim 100dvh,
