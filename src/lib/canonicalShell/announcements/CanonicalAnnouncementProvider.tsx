@@ -369,6 +369,7 @@ export function CanonicalAnnouncementProvider({
 
 
   const clearAmbient = useCallback((type?: AnnouncementType) => {
+    recordAnnouncementDebugEvent('clearAmbient', type ?? '(any)', { type: type ?? null });
     setAmbient((cur) => {
       if (!cur) return null;
       if (type && cur.type !== type) return cur;
@@ -378,6 +379,11 @@ export function CanonicalAnnouncementProvider({
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
+      recordAnnouncementDebugEvent(
+        'clearScope',
+        `dg=${scope.dealerGameId?.slice(0, 8) ?? 'null'} r=${scope.roundId?.slice(0, 8) ?? 'null'}`,
+        { scope },
+      );
       const kept: ResolvedAnnouncement[] = [];
       for (const q of queueRef.current) {
         if (scopeMatches(q.scope, scope)) drainDismiss(q.id);
