@@ -112,6 +112,13 @@ import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
+import {
+  StartupFlightRecorderOverlay,
+  recordStartupFlight,
+  recordStartupValue,
+  resetStartupFlight,
+  useStartupRenderTrace,
+} from "@/lib/startupFlightRecorder";
 import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
