@@ -163,8 +163,34 @@ export const GinRummyGameTable = ({
     keyedByParent: 'no explicit key on this element (parent: PlayfieldSlotController slot div keyed by mountedIdentity)',
   });
   useEffect(() => {
-    ginTrace('GinRummyGameTable mounted');
+    ginTrace('GinRummyGameTable mounted', {
+      hasPropRoundId: !!propRoundId,
+      propHandNumber,
+      hasBootstrap: !!bootstrapState,
+      hasBootstrapPhase: bootstrapState?.phase ?? null,
+      dealerGameId: dealerGameId ?? null,
+    });
   }, []);
+
+  // ── Identity/bootstrap arrival traces (one-time edges) ──
+  const propRoundIdSeenRef = useRef(false);
+  useEffect(() => {
+    if (!propRoundIdSeenRef.current && propRoundId) {
+      propRoundIdSeenRef.current = true;
+      ginTrace('gin.propRoundId arrived', { propRoundId, propHandNumber });
+    }
+  }, [propRoundId, propHandNumber]);
+
+  const bootstrapSeenRef = useRef(false);
+  useEffect(() => {
+    if (!bootstrapSeenRef.current && bootstrapState) {
+      bootstrapSeenRef.current = true;
+      ginTrace('gin.bootstrapState arrived', {
+        phase: bootstrapState.phase,
+        handNumber: (bootstrapState as any)?.handNumber ?? null,
+      });
+    }
+  }, [bootstrapState]);
 
   // Publish canonical felt context to shell-owned host (sole felt mount).
   usePublishShellFelt({
