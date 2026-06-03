@@ -1523,7 +1523,11 @@ export const GinRummyGameTable = ({
         // this announcement to actually leave the rail via
         // waitForDismiss — no duplicated timeout constant.
         const handResultId = `${gameId}:${dealerGameId}:gin-hand-result:${handNumber}`;
+        const interimId = `${gameId}:${dealerGameId}:gin-interim-hand-result:${handNumber}`;
         const handResultScope = { dealerGameId: gameId, roundId: currentRoundId ?? null };
+        // Supersede the interim plate emitted at knock/gin moment so the
+        // final scored hand_result takes over the same rail slot.
+        announcements.dismiss(interimId);
         announcements.clearAmbient('waiting_for_player');
         if (viewState.knockResult) {
           const r = viewState.knockResult;
