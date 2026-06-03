@@ -25,6 +25,7 @@ import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentit
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { useChangeTracker as useShellChangeTracker, recordShellLifecycleEvent } from "@/lib/canonicalShell/shellLifecycleLog";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 
