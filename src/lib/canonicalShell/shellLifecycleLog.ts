@@ -30,6 +30,7 @@ export type ShellLifecycleEventKind =
   | 'readiness-clear'
   | 'gin-identity'
   | 'gin-ready'
+  | 'gin-fetch'
   | 'gating'
   | 'fact';
 
