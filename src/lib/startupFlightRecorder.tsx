@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 export type StartupFlightCategory =
   | 'PHASE TIMELINE'
@@ -191,6 +191,7 @@ export function StartupFlightRecorderOverlay() {
   const snapshot = useSyncExternalStore(subscribeStartupFlight, getStartupFlightSnapshot, getStartupFlightSnapshot);
   const text = useMemo(() => formatStartupFlightText(snapshot), [snapshot]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const shellStyle: CSSProperties = {
     position: 'fixed',
@@ -198,9 +199,9 @@ export function StartupFlightRecorderOverlay() {
     right: 8,
     bottom: 8,
     zIndex: 2147483647,
-    maxHeight: '44dvh',
+    maxHeight: expanded ? '44dvh' : 'auto',
     display: 'grid',
-    gridTemplateRows: 'auto minmax(0, 1fr)',
+    gridTemplateRows: expanded ? 'auto minmax(0, 1fr)' : 'auto',
     borderRadius: 8,
     boxShadow: '0 12px 30px hsl(var(--foreground) / 0.22)',
   };
@@ -213,42 +214,54 @@ export function StartupFlightRecorderOverlay() {
       aria-label="Startup flight recorder"
     >
       <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1">
-        <div className="min-w-0">
-          <div className="text-xs font-semibold">STARTUP FLIGHT RECORDER</div>
-          <div className="text-[10px] text-muted-foreground">{snapshot.length} events · visible, selectable, copyable · temporary</div>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(text);
-                copiedAt = Date.now();
-                emit();
-              } catch {
-                areaRef.current?.select();
-                document.execCommand('copy');
-              }
-            }}
-          >
-            {copiedAt ? 'Copied' : 'Copy'}
-          </button>
-          <button
-            type="button"
-            className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
-            onClick={() => resetStartupFlight('overlay clear')}
-          >
-            Clear
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="min-w-0 flex-1 text-left"
+        >
+          <div className="text-xs font-semibold">
+            {expanded ? '▼' : '▶'} STARTUP FLIGHT RECORDER ({snapshot.length})
+          </div>
+          {expanded ? (
+            <div className="text-[10px] text-muted-foreground">visible, selectable, copyable · temporary</div>
+          ) : null}
+        </button>
+        {expanded ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(text);
+                  copiedAt = Date.now();
+                  emit();
+                } catch {
+                  areaRef.current?.select();
+                  document.execCommand('copy');
+                }
+              }}
+            >
+              {copiedAt ? 'Copied' : 'Copy'}
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
+              onClick={() => resetStartupFlight('overlay clear')}
+            >
+              Clear
+            </button>
+          </div>
+        ) : null}
       </div>
-      <textarea
-        ref={areaRef}
-        readOnly
-        value={text || '(waiting for startup events)'}
-        className="h-full min-h-[220px] w-full resize-none bg-background p-2 font-mono text-[10px] leading-snug text-foreground outline-none"
-      />
+      {expanded ? (
+        <textarea
+          ref={areaRef}
+          readOnly
+          value={text || '(waiting for startup events)'}
+          className="h-full min-h-[220px] w-full resize-none bg-background p-2 font-mono text-[10px] leading-snug text-foreground outline-none"
+        />
+      ) : null}
     </section>
   );
 }

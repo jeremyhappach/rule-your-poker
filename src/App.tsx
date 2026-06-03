@@ -87,8 +87,9 @@ const App = () => {
             </AppNetworkSim>
             <LifecycleDebugBadge />
             <DebugModeIndicator />
-            <AnnouncementDebugPanel />
-            <ShellLifecyclePanel />
+            {/* Temporarily hidden while STARTUP FLIGHT RECORDER is in use */}
+            {/* <AnnouncementDebugPanel /> */}
+            {/* <ShellLifecyclePanel /> */}
             <StartupFlightRecorderOverlay />
           </BrowserRouter>
 
