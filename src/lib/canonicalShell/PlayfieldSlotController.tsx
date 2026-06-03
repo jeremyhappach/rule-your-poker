@@ -131,6 +131,9 @@ export function PlayfieldSlotController({
   useLifecycleMount('PlayfieldSlotController');
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
   useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
+  // Hook-free input-prop transition logging (no new hooks; safe at render).
+  logIfChanged('PSC.input.persistentChildrenKey', persistentChildrenKey ?? '(none)', { gameId });
+  logIfChanged('PSC.input.desiredIdentity', describeSlotIdentity(desiredIdentity), { gameId });
 
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
