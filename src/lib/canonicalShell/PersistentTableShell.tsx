@@ -253,6 +253,9 @@ export function PersistentTableShell({
   );
 
   if (projectionMode && seats) {
+    recordRenderDecision('PersistentTableShell', 'wrapped-with-SeatAnchorLayer', {
+      projectionMode, viewerPosition, seatCount: seats.length, gameType: gameType ?? null,
+    });
     return (
       <SeatAnchorLayer
         projectionMode={projectionMode}
@@ -266,5 +269,10 @@ export function PersistentTableShell({
     );
   }
 
+  recordRenderDecision('PersistentTableShell', 'no-SeatAnchorLayer-wrap', {
+    hasProjectionMode: projectionMode != null,
+    hasSeats: seats != null,
+    gameType: gameType ?? null,
+  });
   return wrapped;
 }
