@@ -940,6 +940,14 @@ export const GinRummyGameTable = ({
     let isActive = true;
 
     const applyState = (state: GinRummyState, source: string) => {
+      recordStartupFlight('SYNC TIMELINE', 'Gin applyState entered', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        function: 'applyState',
+        source,
+        roundId,
+        phase: state.phase,
+        handNumber: (state as any)?.handNumber ?? null,
+      });
       if (!isActive) return;
       // ── Identity latch guard ──
       // If the roundId for this handler no longer matches the live latch,
@@ -963,6 +971,15 @@ export const GinRummyGameTable = ({
       });
       // Route ALL external updates through the sync framework's progress-vector gate.
       const result = ginSync.receiveAuthoritativeUpdate(state);
+      recordStartupFlight('SYNC TIMELINE', 'Gin receiveAuthoritativeUpdate from applyState returned', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        function: 'applyState',
+        source,
+        roundId,
+        oldValue: null,
+        newValue: { phase: state.phase, handNumber: (state as any)?.handNumber ?? null },
+        result,
+      });
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: result.accepted ? 'gin:snapshot_accepted' : 'gin:snapshot_rejected',
@@ -1010,6 +1027,19 @@ export const GinRummyGameTable = ({
           filter: `id=eq.${roundId}`,
         },
         (payload) => {
+          recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable rounds callback fired / payload received', {
+            file: 'src/components/GinRummyGameTable.tsx',
+            function: 'round-specific realtime callback',
+            table: 'rounds',
+            row: (payload.new as any)?.id ?? roundId,
+            eventType: payload.eventType,
+            oldValue: null,
+            newValue: {
+              roundId: (payload.new as any)?.id ?? null,
+              hasGinRummyState: !!(payload.new as any)?.gin_rummy_state,
+              phase: ((payload.new as any)?.gin_rummy_state as any)?.phase ?? null,
+            },
+          });
           const newData = payload.new as { gin_rummy_state?: GinRummyState };
           if (newData.gin_rummy_state) {
             applyState(newData.gin_rummy_state, 'realtime');
@@ -1018,6 +1048,13 @@ export const GinRummyGameTable = ({
       )
       .subscribe((status) => {
         console.log('[GIN-RUMMY] Realtime subscription status:', status);
+        recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable subscription status', {
+          file: 'src/components/GinRummyGameTable.tsx',
+          function: 'round-specific subscription status callback',
+          channel: `gin-rummy-${roundId}`,
+          oldValue: null,
+          newValue: status,
+        });
       });
 
     // Fallback polling — unconditional, always applies fresh DB state.
