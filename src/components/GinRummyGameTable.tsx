@@ -1688,7 +1688,20 @@ export const GinRummyGameTable = ({
           // bleeding into the next-game / dealer-setup surface.
           setStoredChipPositions(null);
           setChipAnimTriggerId(null);
-          onGameComplete();
+          // Stale-scope guard: only fire the dealer-game transition if
+          // we're still on the dealer-game that started this lifecycle.
+          if (dealerGameIdAtStart === dealerGameId) {
+            traceGinAnnouncement('onGameComplete:fire', {
+              dealerGameId,
+              winnerPlayerId: viewState.winnerPlayerId,
+            });
+            onGameCompleteRef.current();
+          } else {
+            traceGinAnnouncement('onGameComplete:skipped:stale-dealer-game', {
+              dealerGameIdAtStart,
+              dealerGameIdNow: dealerGameId,
+            });
+          }
           return;
         }
 
