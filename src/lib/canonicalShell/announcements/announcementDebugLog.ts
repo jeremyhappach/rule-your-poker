@@ -105,9 +105,12 @@ export function recordAnnouncementDebugEvent(
     return;
   }
 
+  const prev = buffer[buffer.length - 1];
+  const dPrevMs = prev ? Math.max(0, tMs - prev.tMs) : 0;
   buffer.push({
     seq: ++seq,
     tMs,
+    dPrevMs,
     tLastMs: tMs,
     kind,
     summary,
