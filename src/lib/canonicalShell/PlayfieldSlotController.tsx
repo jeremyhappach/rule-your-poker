@@ -462,6 +462,14 @@ export function PlayfieldSlotController({
     );
   }
 
+  recordRenderDecision('PlayfieldSlotController', mountedIdentity === null ? 'neutral' : 'gameplay', {
+    mode: 'legacy',
+    mountedIdentity: describeSlotIdentity(mountedIdentity),
+    desiredIdentity: describeSlotIdentity(desiredIdentity),
+    phase, readyToMount, surfaceReady, readyToMountProp, neutralReason,
+    childrenKey: mountedIdentity !== null ? describeSlotIdentity(mountedIdentity) : null,
+  });
+
   return (
     <div
       data-canonical-shell-slot=""
