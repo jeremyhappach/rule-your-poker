@@ -9789,6 +9789,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+          Promise.resolve().then(() => {
+            recordStartupValue('IDENTITY TIMELINE', 'effectiveRenderGameType', effectiveRenderGameType, { file: 'src/pages/Game.tsx' });
+            recordStartupValue('IDENTITY TIMELINE', 'render propRoundId precursor', currentRound?.id ?? null, { file: 'src/pages/Game.tsx', renderRoundContext, hasActiveRound });
+            recordStartupValue('READINESS TIMELINE', 'render hasActiveRound', hasActiveRound, { file: 'src/pages/Game.tsx', renderRoundContext });
+          });
 
           // SHELL LC: comparative branch-selector instrumentation.
           // Pre-compute which IIFE return branch will win so we can prove
