@@ -1965,9 +1965,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.game_type]);
 
   useEffect(() => {
-    if (!gameId || !user) return;
+    if (!gameId || !user) {
+      recordStartupFlight('EFFECT TIMELINE', 'realtime subscription effect skipped', {
+        file: 'src/pages/Game.tsx',
+        skipReason: !gameId ? 'no gameId' : 'no user',
+        gameId: gameId ?? null,
+      });
+      return;
+    }
 
     console.log('[SUBSCRIPTION] Setting up real-time subscriptions for game:', gameId);
+    recordStartupFlight('REALTIME TIMELINE', 'subscription establishing', {
+      file: 'src/pages/Game.tsx',
+      function: 'realtime subscription effect',
+      channel: `game-${gameId}`,
+      gameId,
+    });
     fetchGameData();
 
     // Debounce fetch to batch rapid updates during transitions
@@ -2010,6 +2023,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
+          recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
+            file: 'src/pages/Game.tsx',
+            function: 'games realtime callback',
+            table: 'games',
+            row: newData?.id ?? gameId,
+            eventType: payload.eventType,
+            oldValue: {
+              status: game?.status ?? oldData?.status ?? null,
+              game_type: game?.game_type ?? oldData?.game_type ?? null,
+              current_game_uuid: (game as any)?.current_game_uuid ?? oldData?.current_game_uuid ?? null,
+              current_round: game?.current_round ?? oldData?.current_round ?? null,
+            },
+            newValue: {
+              status: newData?.status ?? null,
+              game_type: newData?.game_type ?? null,
+              current_game_uuid: newData?.current_game_uuid ?? null,
+              current_round: newData?.current_round ?? null,
+              total_hands: newData?.total_hands ?? null,
+            },
+            statusBefore: game?.status ?? null,
+            statusAfter: newData?.status ?? null,
+          });
           ginTrace('realtime.games payload received', {
             status: newData?.status ?? null,
             current_game_uuid: newData?.current_game_uuid?.slice(0, 8) ?? null,
@@ -2258,6 +2293,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         simulateRealtime('players', (payload) => {
+          recordStartupFlight('REALTIME TIMELINE', 'players callback fired / payload received', {
+            file: 'src/pages/Game.tsx',
+            function: 'players realtime callback',
+            table: 'players',
+            row: (payload.new as any)?.id ?? (payload.old as any)?.id ?? null,
+            eventType: payload.eventType,
+            oldValue: {
+              ante_decision: (payload.old as any)?.ante_decision ?? null,
+              sitting_out: (payload.old as any)?.sitting_out ?? null,
+              status: (payload.old as any)?.status ?? null,
+            },
+            newValue: {
+              ante_decision: (payload.new as any)?.ante_decision ?? null,
+              sitting_out: (payload.new as any)?.sitting_out ?? null,
+              status: (payload.new as any)?.status ?? null,
+              is_bot: (payload.new as any)?.is_bot ?? null,
+              position: (payload.new as any)?.position ?? null,
+            },
+            statusBefore: game?.status ?? null,
+            statusAfter: game?.status ?? null,
+          });
           console.log('[REALTIME] Players table changed:', payload.eventType, payload);
           
           // CRITICAL: Immediate fetch for INSERT (new player joined) - essential for PreGameLobby
@@ -2305,6 +2361,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         simulateRealtime('rounds', (payload) => {
+          recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
+            file: 'src/pages/Game.tsx',
+            function: 'rounds realtime callback',
+            table: 'rounds',
+            row: (payload.new as any)?.id ?? (payload.old as any)?.id ?? null,
+            eventType: payload.eventType,
+            oldValue: {
+              roundId: (payload.old as any)?.id ?? null,
+              dealer_game_id: (payload.old as any)?.dealer_game_id ?? null,
+              hand_number: (payload.old as any)?.hand_number ?? null,
+              hasGinRummyState: !!(payload.old as any)?.gin_rummy_state,
+            },
+            newValue: {
+              roundId: (payload.new as any)?.id ?? null,
+              dealer_game_id: (payload.new as any)?.dealer_game_id ?? null,
+              hand_number: (payload.new as any)?.hand_number ?? null,
+              round_number: (payload.new as any)?.round_number ?? null,
+              status: (payload.new as any)?.status ?? null,
+              hasGinRummyState: !!(payload.new as any)?.gin_rummy_state,
+            },
+            statusBefore: game?.status ?? null,
+            statusAfter: game?.status ?? null,
+          });
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
           ginTrace('realtime.rounds payload received', {
             eventType: payload.eventType,
@@ -2355,6 +2434,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
+        recordStartupFlight('REALTIME TIMELINE', 'subscription status', {
+          file: 'src/pages/Game.tsx',
+          function: 'realtime subscription status callback',
+          channel: `game-${gameId}`,
+          oldValue: null,
+          newValue: status,
+        });
 
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
