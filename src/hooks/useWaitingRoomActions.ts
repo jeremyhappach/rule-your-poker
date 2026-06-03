@@ -151,7 +151,12 @@ export function useWaitingRoomActions({
     if (previousPlayerCountRef.current > 0 && players.length > previousPlayerCountRef.current) {
       const prevCount = previousPlayerCountRef.current;
       const newPlayers = players.slice(-Math.max(0, players.length - prevCount));
-      if (newPlayers.some((p) => !p.is_bot)) playDoorbell();
+      const newBots = newPlayers.filter((p) => p.is_bot).length;
+      const newHumans = newPlayers.filter((p) => !p.is_bot).length;
+      recordLifecycleTimelineEvent("waiting:players-count-change", {
+        prev: prevCount, next: players.length, newBots, newHumans,
+      });
+      if (newHumans > 0) playDoorbell();
     }
     previousPlayerCountRef.current = players.length;
   }, [players.length, players, playDoorbell]);
