@@ -206,6 +206,7 @@ export function CanonicalAnnouncementProvider({
     const id = next.id;
     ttlTimerRef.current = setTimeout(() => {
       ttlTimerRef.current = null;
+      recordAnnouncementDebugEvent('transient-ttl-expired', `${next.type} id=${id.slice(0, 8)}`, { id, type: next.type, ttlMs: next.ttlMs });
       setTransient((cur) => {
         if (cur && cur.id === id) {
           transientIdRef.current = null;
@@ -228,6 +229,9 @@ export function CanonicalAnnouncementProvider({
     }
     const next = queue.shift() ?? null;
     transientIdRef.current = next?.id ?? null;
+    if (next) {
+      recordAnnouncementDebugEvent('transient-promoted', `${next.type} id=${next.id.slice(0, 8)}`, { id: next.id, type: next.type });
+    }
     setTransient(next);
     if (next) armTtl(next);
   }, [clearTtl, currentScope, armTtl, drainDismiss]);
