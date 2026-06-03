@@ -33,6 +33,7 @@ import { recordShellEvent } from './diagnostics';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
+import { useChangeTracker, useUnmountSnapshot, recordRenderDecision } from './shellLifecycleLog';
 
 import {
   ShellFeltContextProvider,
