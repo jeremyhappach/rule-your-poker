@@ -45,8 +45,11 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
       ginTrace('readiness probe: reporting ready=true', {
         roundId: roundId?.slice(0, 8) ?? null,
       });
+      recordShellLifecycleEvent('gin-ready', `hasFrame=true round=${roundId?.slice(0, 8) ?? '-'}`, {
+        dealerGameId: dealerGameId?.slice(0, 8) ?? null,
+      });
     }
-  }, [hasFrame, roundId]);
+  }, [hasFrame, roundId, dealerGameId]);
 
   // Reset readiness when identity changes.
   useEffect(() => {
@@ -54,6 +57,9 @@ export function GinRummyReadinessProbe({ dealerGameId, roundId }: Props) {
     ginTrace('readiness probe: identity bound', {
       dealerGameId: dealerGameId?.slice(0, 8) ?? null,
       roundId: roundId?.slice(0, 8) ?? null,
+    });
+    recordShellLifecycleEvent('gin-identity', `dealer=${dealerGameId?.slice(0, 8) ?? '-'} round=${roundId?.slice(0, 8) ?? '-'}`, {
+      reason: 'identity-bind (resets hasFrame=false)',
     });
   }, [dealerGameId, roundId]);
 
