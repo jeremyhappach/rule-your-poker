@@ -22,6 +22,7 @@ import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
 import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
+import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 
 // Hydrate the Debug Harness cache once at module load so synchronous
 // game-logic call sites see the active selection without awaiting a query.
