@@ -8515,7 +8515,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Hook-free transition instrumentation. Logged only when the value
   // actually changes; safe at render time (no hooks, no state).
-  __shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
+  _shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
     enableOuterShell,
     _routeShellGameType,
     gameStatus: game.status ?? null,
@@ -8526,12 +8526,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ? `route-type-null/${game.status ?? 'unknown'}`
         : 'not-persistent'),
   });
-  __shellLogIfChanged('Game._routeShellGameType', _routeShellGameType, {
+  _shellLogIfChanged('Game._routeShellGameType', _routeShellGameType, {
     gameType: game.game_type ?? null,
     lastKnown: lastKnownGameTypeRef.current ?? null,
     prevConfig: previousGameConfig?.game_type ?? null,
   });
-  __shellLogIfChanged('Game.enableOuterShell.value', enableOuterShell);
+  _shellLogIfChanged('Game.enableOuterShell.value', enableOuterShell);
 
 
   // When the canonical shell owns the page column (header + children +
