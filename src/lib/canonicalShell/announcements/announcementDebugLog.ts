@@ -33,6 +33,7 @@ import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHar
 
 const MAX_EVENTS = 40;
 const buffer: AnnouncementDebugEvent[] = [];
+let snapshot: AnnouncementDebugEvent[] = [];
 const listeners = new Set<() => void>();
 let seq = 0;
 const t0 =
@@ -83,6 +84,7 @@ export function recordAnnouncementDebugEvent(
     detail,
   });
   while (buffer.length > MAX_EVENTS) buffer.shift();
+  snapshot = buffer.slice();
   for (const l of listeners) {
     try {
       l();
@@ -93,7 +95,7 @@ export function recordAnnouncementDebugEvent(
 }
 
 export function getAnnouncementDebugEvents(): AnnouncementDebugEvent[] {
-  return buffer.slice();
+  return snapshot;
 }
 
 export function subscribeAnnouncementDebug(fn: () => void): () => void {
@@ -103,6 +105,7 @@ export function subscribeAnnouncementDebug(fn: () => void): () => void {
 
 export function clearAnnouncementDebugEvents(): void {
   buffer.length = 0;
+  snapshot = [];
   for (const l of listeners) {
     try {
       l();
