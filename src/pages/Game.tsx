@@ -2103,6 +2103,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended' || newStatus === 'cribbage_dealer_selection' || newStatus === 'dealer_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
+              if (newStatus === 'in_progress' || newStatus === 'ante_decision') {
+                console.log('[GIN_RUNTIME_TIMELINE] realtime:games.status observed', { t: Date.now(), newStatus, oldStatus: game?.status ?? null });
+              }
 
               // ── HANDOFF TRACE #4: game status transition ──
               emitCribbageHandoffTrace({
@@ -2840,11 +2843,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Call immediately - no delay needed for bots. Then re-check ante
       // completion directly; otherwise human-vs-bot waits for the 3s
       // ante polling fallback before Gin can bootstrap.
+      const tMakeBotStart = Date.now();
+      console.log('[GIN_RUNTIME_TIMELINE] effect:calling-makeBotAnteDecisions', { t: tMakeBotStart });
       makeBotAnteDecisions(gameId!).then(async () => {
+        const tBotReturned = Date.now();
+        console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart });
+        const tRefetchStart = Date.now();
         const { data: freshPlayers } = await supabase
           .from('players')
           .select('id, ante_decision, sitting_out, status')
           .eq('game_id', gameId);
+        console.log('[GIN_RUNTIME_TIMELINE] effect:post-bot-refetch-complete', { t: Date.now(), deltaMs: Date.now() - tRefetchStart });
         const activePlayers = (freshPlayers ?? []).filter(
           p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
         );
@@ -2858,9 +2867,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           decisions: activePlayers.map(p => p.ante_decision),
         });
         if (allDecided && !anteProcessingRef.current) {
+          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → calling handleAllAnteDecisionsIn', { t: Date.now() });
           anteProcessingRef.current = true;
           handleAllAnteDecisionsIn();
         } else {
+          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=false → fetchGameData fallback', { t: Date.now(), allDecided, anteProcessingRef: anteProcessingRef.current });
           fetchGameData();
         }
       });

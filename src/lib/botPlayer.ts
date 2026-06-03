@@ -536,14 +536,17 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 }
 
 export async function makeBotAnteDecisions(gameId: string) {
+  console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:entered', { t: Date.now(), gameId });
   console.log('[BOT ANTE] Making ante decisions for bots in game:', gameId);
   
   // Check if game is paused before processing bot ante decisions
+  const tPauseCheckStart = Date.now();
   const { data: gameData } = await supabase
     .from('games')
     .select('is_paused')
     .eq('id', gameId)
     .single();
+  console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:pause-check-complete', { t: Date.now(), deltaMs: Date.now() - tPauseCheckStart });
   
   if (gameData?.is_paused) {
     console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
@@ -552,12 +555,14 @@ export async function makeBotAnteDecisions(gameId: string) {
   
   // Get bot players who haven't made ante decision yet AND are not sitting out
   // CRITICAL: Respect sitting_out status - don't force bots back into the game if they're set to sit out
+  const tSelectStart = Date.now();
   const { data: botsToAnte } = await supabase
     .from('players')
     .select('id, sitting_out')
     .eq('game_id', gameId)
     .eq('is_bot', true)
     .is('ante_decision', null);
+  console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:select-bots-complete', { t: Date.now(), deltaMs: Date.now() - tSelectStart, count: botsToAnte?.length ?? 0 });
   
   if (!botsToAnte || botsToAnte.length === 0) {
     console.log('[BOT ANTE] No bots need ante decision');
@@ -574,21 +579,27 @@ export async function makeBotAnteDecisions(gameId: string) {
   if (anteUpBots.length > 0) {
     const anteUpIds = anteUpBots.map(b => b.id);
     console.log('[BOT ANTE] Batch anteing up', anteUpIds.length, 'bots');
+    const tUpdateStart = Date.now();
+    console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:update-ante-up:issued', { t: tUpdateStart, ids: anteUpIds.length });
     await supabase
       .from('players')
       .update({ ante_decision: 'ante_up' })
       .in('id', anteUpIds);
+    console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:update-ante-up:completed', { t: Date.now(), deltaMs: Date.now() - tUpdateStart });
   }
   
   // Batch update all sitting out bots
   if (sitOutBots.length > 0) {
     const sitOutIds = sitOutBots.map(b => b.id);
     console.log('[BOT ANTE] Batch sitting out', sitOutIds.length, 'bots');
+    const tSitOutStart = Date.now();
     await supabase
       .from('players')
       .update({ ante_decision: 'sit_out' })
       .in('id', sitOutIds);
+    console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:update-sit-out:completed', { t: Date.now(), deltaMs: Date.now() - tSitOutStart });
   }
 
   console.log('[BOT ANTE] All bot ante decisions made');
+  console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:returning', { t: Date.now() });
 }
