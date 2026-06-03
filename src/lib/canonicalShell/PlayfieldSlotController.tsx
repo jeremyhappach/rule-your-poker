@@ -129,6 +129,8 @@ export function PlayfieldSlotController({
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
+  useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
+  useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
 
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
