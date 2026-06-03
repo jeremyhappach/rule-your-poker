@@ -9562,12 +9562,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // One persistent GinRummyGameTable prevents table surface changes across phases
           const isGinRummyConfiguring = (game.status === 'configuring' || game.status === 'game_selection') && effectiveRenderGameType === 'gin-rummy';
           if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyConfiguring || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
+            const _ginEffRoundId = (isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : '';
+            const _ginEffDealerGameId = (isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null;
             return (
               <>
+                <GinIdentityGateTracer
+                  gameStatus={game.status ?? null}
+                  gameType={game.game_type ?? null}
+                  currentGameUuid={(game as any).current_game_uuid ?? null}
+                  currentRoundId={currentRound?.id ?? null}
+                  currentRoundDealerGameId={(currentRound as any)?.dealer_game_id ?? null}
+                  currentRoundHandNumber={currentRound?.hand_number ?? null}
+                  hasGinRummyState={!!((currentRound as any)?.gin_rummy_state)}
+                  isInProgress={isInProgress}
+                  isAnteDecision={isAnteDecision}
+                  isGinRummyDealerSelection={isGinRummyDealerSelection}
+                  isGinRummyGameOver={isGinRummyGameOver}
+                  effectivePropRoundId={_ginEffRoundId}
+                  effectivePropDealerGameId={_ginEffDealerGameId}
+                />
                 <GinRummyGameTable
                   gameId={gameId!}
-                  roundId={(isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : ''}
-                  dealerGameId={(isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null}
+                  roundId={_ginEffRoundId}
+                  dealerGameId={_ginEffDealerGameId}
                   handNumber={(isInProgress || isGinRummyGameOver) ? (currentRound?.hand_number ?? 1) : 0}
                   players={players}
                   currentUserId={user?.id || ''}
