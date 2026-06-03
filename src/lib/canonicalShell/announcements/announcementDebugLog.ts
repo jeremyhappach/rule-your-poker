@@ -10,6 +10,15 @@ import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHar
 
 export type AnnouncementDebugEventKind =
   | 'emit'
+  | 'emit-dropped'
+  | 'emit-dedupe-skip'
+  | 'emit-ambient-refresh'
+  | 'emit-ambient-replace'
+  | 'emit-transient-preempt'
+  | 'emit-transient-set-active'
+  | 'emit-transient-enqueued'
+  | 'transient-promoted'
+  | 'transient-ttl-expired'
   | 'dismiss'
   | 'clearAmbient'
   | 'clearScope'

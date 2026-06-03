@@ -206,6 +206,7 @@ export function CanonicalAnnouncementProvider({
     const id = next.id;
     ttlTimerRef.current = setTimeout(() => {
       ttlTimerRef.current = null;
+      recordAnnouncementDebugEvent('transient-ttl-expired', `${next.type} id=${id.slice(0, 8)}`, { id, type: next.type, ttlMs: next.ttlMs });
       setTransient((cur) => {
         if (cur && cur.id === id) {
           transientIdRef.current = null;
@@ -228,6 +229,9 @@ export function CanonicalAnnouncementProvider({
     }
     const next = queue.shift() ?? null;
     transientIdRef.current = next?.id ?? null;
+    if (next) {
+      recordAnnouncementDebugEvent('transient-promoted', `${next.type} id=${next.id.slice(0, 8)}`, { id: next.id, type: next.type });
+    }
     setTransient(next);
     if (next) armTtl(next);
   }, [clearTtl, currentScope, armTtl, drainDismiss]);
@@ -242,6 +246,11 @@ export function CanonicalAnnouncementProvider({
           eventScope: event.scope,
           currentScope,
         });
+        recordAnnouncementDebugEvent(
+          'emit-dropped',
+          `${event.type} id=${event.id.slice(0, 8)} SCOPE MISMATCH`,
+          { id: event.id, type: event.type, eventScope: event.scope, currentScope },
+        );
         if (import.meta.env?.DEV) {
           // eslint-disable-next-line no-console
           console.warn('[canonical-rail] emit dropped — scope mismatch', {
@@ -278,11 +287,33 @@ export function CanonicalAnnouncementProvider({
           scope: resolved.scope,
         });
         setAmbient((prev) => {
-          // Same id refresh → keep existing (idempotent no-op for identity).
+          // Same id + same type refresh → keep prior reference to avoid
+          // gratuitous state-identity churn. Re-emits of the same ambient
+          // (which happen every render of stable lifecycle drivers) MUST
+          // NOT trigger a re-render loop in consumers that depend on
+          // ctx.ambient identity.
           if (prev && prev.id === resolved.id && prev.type === resolved.type) {
-            // Update payload if changed.
-            return { ...prev, ...resolved };
+            // Only adopt new payload if it actually differs structurally;
+            // otherwise return prev (no-op state update, React bails).
+            try {
+              if (JSON.stringify(prev.payload ?? null) === JSON.stringify(resolved.payload ?? null)) {
+                return prev;
+              }
+            } catch {
+              return prev;
+            }
+            recordAnnouncementDebugEvent(
+              'emit-ambient-refresh',
+              `${resolved.type} id=${resolved.id.slice(0, 8)} (payload changed)`,
+              { id: resolved.id },
+            );
+            return { ...prev, payload: resolved.payload };
           }
+          recordAnnouncementDebugEvent(
+            'emit-ambient-replace',
+            `${prev?.type ?? 'null'} → ${resolved.type} id=${resolved.id.slice(0, 8)}`,
+            { from: prev?.id ?? null, to: resolved.id },
+          );
           return resolved;
         });
         return;
@@ -295,7 +326,14 @@ export function CanonicalAnnouncementProvider({
         bucket = new Set();
         seenRef.current.set(bucketKey, bucket);
       }
-      if (bucket.has(event.id)) return; // idempotent
+      if (bucket.has(event.id)) {
+        recordAnnouncementDebugEvent(
+          'emit-dedupe-skip',
+          `${event.type} id=${event.id.slice(0, 8)} (already seen in bucket ${bucketKey})`,
+          { id: event.id, bucketKey },
+        );
+        return; // idempotent
+      }
       bucket.add(event.id);
 
       traceAnnouncementRuntime('emit:accepted:transient', {
@@ -314,6 +352,11 @@ export function CanonicalAnnouncementProvider({
           droppedId: transient.id,
           nextId: resolved.id,
         });
+        recordAnnouncementDebugEvent(
+          'emit-transient-preempt',
+          `${transient.type} (p${transient.resolvedPriority}) → ${resolved.type} (p${resolved.resolvedPriority}) id=${resolved.id.slice(0, 8)}`,
+          { droppedId: transient.id, nextId: resolved.id },
+        );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
         setTransient(resolved);
@@ -323,6 +366,11 @@ export function CanonicalAnnouncementProvider({
 
       // No active transient → become active.
       if (!transient) {
+        recordAnnouncementDebugEvent(
+          'emit-transient-set-active',
+          `${resolved.type} id=${resolved.id.slice(0, 8)} (no prior transient)`,
+          { id: resolved.id, type: resolved.type },
+        );
         transientIdRef.current = resolved.id;
         setTransient(resolved);
         armTtl(resolved);
@@ -340,8 +388,13 @@ export function CanonicalAnnouncementProvider({
         }
       }
       q.splice(insertAt, 0, resolved);
+      recordAnnouncementDebugEvent(
+        'emit-transient-enqueued',
+        `${resolved.type} id=${resolved.id.slice(0, 8)} behind ${transient.type} (queueLen=${q.length})`,
+        { id: resolved.id, type: resolved.type, queueLen: q.length, activeId: transient.id, activeType: transient.type },
+      );
     },
-    [currentScope, transient, clearTtl, armTtl, scopeKey],
+    [currentScope, transient, clearTtl, armTtl, scopeKey, drainDismiss],
   );
 
   const dismiss = useCallback(
@@ -548,13 +601,37 @@ export function useAnnouncementContext(): AnnouncementContextValue | null {
   return useContext(AnnouncementContext);
 }
 
+const NOOP_ANNOUNCEMENTS = {
+  emit: () => {},
+  dismiss: () => {},
+  clearScope: () => {},
+  clearAmbient: () => {},
+  waitForDismiss: () => Promise.resolve(),
+};
+
 export function useAnnouncements() {
   const ctx = useContext(AnnouncementContext);
+  // Stable callbacks: ctx.{emit,dismiss,...} are themselves useCallback-
+  // memoized in the provider, so returning a useMemo'd record keeps the
+  // public `useAnnouncements()` return identity stable across renders.
+  // Critical for consumer effects that include `announcements` in their
+  // deps — without this, every provider re-render (e.g. ambient/transient
+  // state change) caused those effects to re-run and re-emit, producing
+  // the awaiting_ante×17774 flood seen in the debug log.
+  const memo = useMemo(
+    () =>
+      ctx
+        ? {
+            emit: ctx.emit,
+            dismiss: ctx.dismiss,
+            clearScope: ctx.clearScope,
+            clearAmbient: ctx.clearAmbient,
+            waitForDismiss: ctx.waitForDismiss,
+          }
+        : NOOP_ANNOUNCEMENTS,
+    [ctx?.emit, ctx?.dismiss, ctx?.clearScope, ctx?.clearAmbient, ctx?.waitForDismiss, ctx],
+  );
   if (!ctx) {
-    // Fail loudly: a rail semantic event was emitted without canonical
-    // shell rail ownership. In dev this throws so the wiring gap is
-    // caught at the call site. In production we degrade to no-ops to
-    // avoid bricking the surface, but warn once per session.
     if (import.meta.env?.DEV) {
       throw new Error(
         '[canonical-rail] useAnnouncements() called outside CanonicalAnnouncementProvider. ' +
@@ -571,21 +648,8 @@ export function useAnnouncements() {
         );
       }
     }
-    return {
-      emit: () => {},
-      dismiss: () => {},
-      clearScope: () => {},
-      clearAmbient: () => {},
-      waitForDismiss: () => Promise.resolve(),
-    };
   }
-  return {
-    emit: ctx.emit,
-    dismiss: ctx.dismiss,
-    clearScope: ctx.clearScope,
-    clearAmbient: ctx.clearAmbient,
-    waitForDismiss: ctx.waitForDismiss,
-  };
+  return memo;
 }
 
 

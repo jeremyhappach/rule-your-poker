@@ -55,7 +55,14 @@ function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string
       e.kind !== 'layer-mount' &&
       e.kind !== 'layer-unmount' &&
       e.kind !== 'scope-change' &&
-      e.kind !== 'scope-teardown'
+      e.kind !== 'scope-teardown' &&
+      e.kind !== 'emit-dropped' &&
+      e.kind !== 'emit-ambient-replace' &&
+      e.kind !== 'emit-transient-preempt' &&
+      e.kind !== 'emit-transient-set-active' &&
+      e.kind !== 'emit-transient-enqueued' &&
+      e.kind !== 'transient-promoted' &&
+      e.kind !== 'transient-ttl-expired'
     ) return false;
   }
   if (text.trim()) {
