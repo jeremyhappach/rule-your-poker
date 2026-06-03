@@ -9762,14 +9762,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // to the current dealer game — otherwise the surface
               // would mount with stale or empty round state.
               const dgid = (game as any).current_game_uuid ?? null;
-              if (!dgid) return true;
+              if (!dgid) {
+                Promise.resolve().then(() => recordStartupValue('READINESS TIMELINE', 'PlayfieldSlotController readyToMount prop', true, {
+                  file: 'src/pages/Game.tsx',
+                  reason: 'no dealer game id',
+                  gameStatus: game.status,
+                }));
+                return true;
+              }
               const status = game.status;
               if (status === 'in_progress') {
-                return Boolean(
+                const ready = Boolean(
                   currentRound?.id &&
                   (currentRound as any).dealer_game_id === dgid
                 );
+                Promise.resolve().then(() => recordStartupValue('READINESS TIMELINE', 'PlayfieldSlotController readyToMount prop', ready, {
+                  file: 'src/pages/Game.tsx',
+                  reason: 'in_progress requires scoped currentRound',
+                  currentRoundId: currentRound?.id ?? null,
+                  currentRoundDealerGameId: (currentRound as any)?.dealer_game_id ?? null,
+                  dealerGameId: dgid,
+                }));
+                return ready;
               }
+              Promise.resolve().then(() => recordStartupValue('READINESS TIMELINE', 'PlayfieldSlotController readyToMount prop', true, {
+                file: 'src/pages/Game.tsx',
+                reason: 'pre-round status defaults ready',
+                gameStatus: status,
+                dealerGameId: dgid,
+              }));
               return true;
             })()}
           >
