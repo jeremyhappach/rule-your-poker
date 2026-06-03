@@ -26,6 +26,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLifecycleMount, setLifecycleFact } from './lifecycleDebug';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 import { NeutralInterstitial } from './NeutralInterstitial';
 import {
