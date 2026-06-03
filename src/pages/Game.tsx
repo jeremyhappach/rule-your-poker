@@ -5124,13 +5124,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
+    const fetchStartedAt = Date.now();
 
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
     if (!gameId || !user) {
+      recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'fetchGameData',
+        fetchSeq,
+        skipReason: !gameId ? 'no gameId' : 'no user',
+      });
       fetchSpan.end({ skipped: 'no gameId or user' });
       return;
     }
 
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData start', {
+      file: 'src/pages/Game.tsx',
+      function: 'fetchGameData',
+      fetchSeq,
+      gameId,
+      statusBefore: game?.status ?? null,
+      gameTypeBefore: game?.game_type ?? null,
+      currentRoundBefore: currentRound?.id ?? null,
+    });
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
     // PARALLEL FETCH: Get game, players, and defaults all at once for speed
@@ -5143,6 +5159,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const { data: gameData, error: gameError } = gameResult;
     const { data: playersData, error: playersError } = playersResult;
     const { data: gameDefaults } = defaultsResult;
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData parallel queries complete', {
+      file: 'src/pages/Game.tsx',
+      function: 'fetchGameData',
+      fetchSeq,
+      elapsedMs: Date.now() - fetchStartedAt,
+      oldValue: {
+        status: game?.status ?? null,
+        game_type: game?.game_type ?? null,
+        current_game_uuid: (game as any)?.current_game_uuid ?? null,
+        current_round: game?.current_round ?? null,
+        roundId: currentRound?.id ?? null,
+      },
+      newValue: {
+        status: (gameData as any)?.status ?? null,
+        game_type: (gameData as any)?.game_type ?? null,
+        current_game_uuid: (gameData as any)?.current_game_uuid ?? null,
+        current_round: (gameData as any)?.current_round ?? null,
+        total_hands: (gameData as any)?.total_hands ?? null,
+        rounds: (gameData as any)?.rounds?.map((r: any) => ({ id: r.id, dealer_game_id: r.dealer_game_id, hand_number: r.hand_number, round_number: r.round_number, hasGinRummyState: !!r.gin_rummy_state })) ?? null,
+        players: playersData?.map((p: any) => ({ id: p.id, position: p.position, is_bot: p.is_bot, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: p.status })) ?? null,
+      },
+      errors: { game: gameError?.message ?? null, players: playersError?.message ?? null },
+    });
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
@@ -5439,6 +5478,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     setGame(gameData);
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData setGame applied', {
+      file: 'src/pages/Game.tsx',
+      function: 'fetchGameData',
+      fetchSeq,
+      elapsedMs: Date.now() - fetchStartedAt,
+      oldValue: {
+        status: game?.status ?? null,
+        game_type: game?.game_type ?? null,
+        current_game_uuid: (game as any)?.current_game_uuid ?? null,
+        roundId: currentRound?.id ?? null,
+      },
+      newValue: {
+        status: (gameData as any)?.status ?? null,
+        game_type: (gameData as any)?.game_type ?? null,
+        current_game_uuid: (gameData as any)?.current_game_uuid ?? null,
+        current_round: (gameData as any)?.current_round ?? null,
+        total_hands: (gameData as any)?.total_hands ?? null,
+      },
+    });
     ginTrace('reducer.setGame applied (fetchGameData)', {
       current_game_uuid: gameData?.current_game_uuid?.slice(0, 8) ?? null,
       status: gameData?.status ?? null,
