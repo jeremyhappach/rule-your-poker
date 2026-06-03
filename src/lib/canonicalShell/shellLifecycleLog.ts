@@ -184,3 +184,27 @@ export function recordRenderDecision(
   recordShellLifecycleEvent('render-decision', `${component} → ${decision}`, gating);
 }
 
+// ── Hook-free transition logger ───────────────────────────────────
+// Compares `value` against the last-seen value stored under `key` in
+// a module-scoped Map. Safe to call during render: no hooks, no React
+// state, no useEffect. Use when you need to observe value transitions
+// at an assignment point without adding hook ordering.
+const lastSeenByKey = new Map<string, unknown>();
+const UNINIT = Symbol('shellLifecycle.logIfChanged.uninit');
+
+export function logIfChanged(
+  key: string,
+  value: unknown,
+  detail?: Record<string, unknown>,
+): void {
+  if (!isShellLifecycleDebugEnabled()) return;
+  const prev = lastSeenByKey.has(key) ? lastSeenByKey.get(key) : UNINIT;
+  if (prev === value) return;
+  lastSeenByKey.set(key, value);
+  const from = prev === UNINIT ? null : prev;
+  recordShellLifecycleEvent('key-change', `${key}: ${String(from ?? '(init)')} → ${String(value)}`, {
+    key, from, to: value, ...(detail ?? {}),
+  });
+}
+
+

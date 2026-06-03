@@ -25,6 +25,7 @@ import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentit
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
+import { logIfChanged as _shellLogIfChanged } from "@/lib/canonicalShell/shellLifecycleLog";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 
@@ -8502,6 +8503,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         game.status === 'configuring'
       ))
     );
+
+  // Hook-free transition instrumentation. Logged only when the value
+  // actually changes; safe at render time (no hooks, no state).
+  _shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
+    enableOuterShell,
+    _routeShellGameType,
+    gameStatus: game.status ?? null,
+    gameType: game.game_type ?? null,
+    branch: isPokerVariantFamily(_routeShellGameType)
+      ? 'poker-variant-family'
+      : (_routeShellGameType == null
+        ? `route-type-null/${game.status ?? 'unknown'}`
+        : 'not-persistent'),
+  });
+  _shellLogIfChanged('Game._routeShellGameType', _routeShellGameType, {
+    gameType: game.game_type ?? null,
+    lastKnown: lastKnownGameTypeRef.current ?? null,
+    prevConfig: previousGameConfig?.game_type ?? null,
+  });
+  _shellLogIfChanged('Game.enableOuterShell.value', enableOuterShell);
+
 
   // When the canonical shell owns the page column (header + children +
   // rail + tab bar in a flex column anchored to min-h-screen), the

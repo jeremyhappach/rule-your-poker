@@ -26,7 +26,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLifecycleMount, setLifecycleFact } from './lifecycleDebug';
-import { recordShellLifecycleEvent, recordRenderDecision, useChangeTracker } from './shellLifecycleLog';
+import { recordShellLifecycleEvent, recordRenderDecision, useChangeTracker, logIfChanged } from './shellLifecycleLog';
 
 import { NeutralInterstitial } from './NeutralInterstitial';
 import {
@@ -131,6 +131,10 @@ export function PlayfieldSlotController({
   useLifecycleMount('PlayfieldSlotController');
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
   useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
+  // Hook-free input-prop transition logging (no new hooks; safe at render).
+  // Hook-free input-prop transition logging (no new hooks; safe at render).
+  logIfChanged('PSC.input.persistentChildrenKey', persistentChildrenKey ?? '(none)', { gameId });
+  logIfChanged('PSC.input.desiredIdentity', describeSlotIdentity(desiredIdentity), { gameId });
 
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
@@ -150,6 +154,9 @@ export function PlayfieldSlotController({
       ? 'pre-session'
       : (!readyToMount ? 'awaiting-surface-ready' : 'pre-session'),
   );
+  logIfChanged('PSC.state.mountedIdentity', describeSlotIdentity(mountedIdentity), { gameId });
+
+
 
   // Dwell-elapsed latch: once the visible dwell minimum has passed
   // for the current neutral interval, we are free to mount as soon as
