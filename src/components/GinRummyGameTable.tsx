@@ -681,12 +681,13 @@ export const GinRummyGameTable = ({
       setShowGinOverlay(true);
     }
 
-    // Canonical IN-PROGRESS ambient: knocking / laying_off / gin status
-    // plate. Fires simultaneously with the centered overlay (knock at
-    // `knocking`, gin at `scoring`/`complete` with hasGin) so the rail
-    // and overlay land in the same frame instead of the rail catching
-    // up later via the hand-result round_win. Ambient is cleared by
-    // processCompletion before the hand-result round_win is emitted.
+    // Canonical INTERIM hand-result plate. Fires simultaneously with the
+    // centered overlay (knock at `knocking`, gin at `scoring`/`complete`
+    // with hasGin) so the rail and overlay land in the same frame. The
+    // interim emission uses the rail-visible `round_win` type (not the
+    // CTA-ambient `waiting_for_player`, which the rail intentionally
+    // suppresses). A long TTL keeps it sticky until processCompletion
+    // dismisses it and emits the final scored hand_result on the rail.
     const showOverlayPhase =
       currentPhase === 'knocking' ||
       currentPhase === 'laying_off' ||
@@ -699,24 +700,28 @@ export const GinRummyGameTable = ({
       if (knockerEntry) {
         const [knockerId, knockerState] = knockerEntry;
         const knockerName = getPlayerUsername(knockerId);
-        const ctx = knockerState?.hasGin
-          ? 'GIN!'
-          : `knocked (${knockerState?.deadwoodValue ?? 0} dw)`;
-        const ambientId = `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`;
-        traceGinAnnouncement('waiting_for_player:emit:callsite', {
-          id: ambientId,
+        const text = knockerState?.hasGin
+          ? `${knockerName} went gin!`
+          : `${knockerName} knocked! (${knockerState?.deadwoodValue ?? 0} dw)`;
+        const interimId = `${gameId}:${dealerGameId}:gin-interim-hand-result:${ginState.handNumber ?? handNumber}`;
+        traceGinAnnouncement('interim_hand_result:emit:callsite', {
+          id: interimId,
           phase: currentPhase,
           overlayPhase: showOverlayPhase,
           scopeDealerGameId: gameId,
           propDealerGameId: dealerGameId,
           roundId: currentRoundId,
-          context: ctx,
+          text,
         });
         announcements.emit({
-          id: ambientId,
-          type: 'waiting_for_player',
+          id: interimId,
+          type: 'round_win',
           scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-          payload: { playerName: knockerName, context: ctx },
+          payload: { text },
+          // Sticky: hold the rail until processCompletion supersedes
+          // with the final scored hand_result. Cleared explicitly by
+          // dismiss(interimId) below; this TTL is just a safety net.
+          ttlMs: 60000,
         });
       }
     }
@@ -850,15 +855,24 @@ export const GinRummyGameTable = ({
       });
       if (result.accepted) {
         setGinState(state);
+        // NOTE: Match-win ownership inversion — we intentionally do NOT
+        // call onGameCompleteRef.current() here when reaching
+        // phase === 'complete' with a winnerPlayerId. The presentation
+        // lifecycle in processCompletion (driven off viewState) owns
+        // the terminal sequence end-to-end:
+        //   hand_result → waitForDismiss → match_win → paint frame →
+        //   confetti → chip transfer → onGameComplete.
+        // Firing onGameComplete here races dealer-game teardown against
+        // the canonical match_win paint, so the rail plate gets preempted
+        // before observers/winner ever see it.
         if (state.phase === 'complete' && state.winnerPlayerId) {
-          traceGinAnnouncement('applyState:onGameComplete:immediate', {
+          traceGinAnnouncement('applyState:onGameComplete:deferred-to-lifecycle', {
             source,
             winnerPlayerId: state.winnerPlayerId,
             roundId,
             dealerGameId,
             handNumber: state.handNumber ?? handNumber,
           });
-          onGameCompleteRef.current();
         }
       }
     };
@@ -1488,6 +1502,12 @@ export const GinRummyGameTable = ({
     handCompletionInProgress.current = true;
     if (matchKey) matchEndKeyRef.current = matchKey;
 
+    // Snapshot the dealerGameId at the moment we entered the terminal
+    // lifecycle. Used as a stale-scope guard before firing the final
+    // onGameComplete — if the parent advanced to a new dealer-game
+    // (external teardown, reconnect, etc.) we must not double-fire the
+    // transition for the prior game.
+    const dealerGameIdAtStart = dealerGameId;
     const processCompletion = async () => {
       try {
         traceGinAnnouncement('completion:start', {
@@ -1509,7 +1529,11 @@ export const GinRummyGameTable = ({
         // this announcement to actually leave the rail via
         // waitForDismiss — no duplicated timeout constant.
         const handResultId = `${gameId}:${dealerGameId}:gin-hand-result:${handNumber}`;
+        const interimId = `${gameId}:${dealerGameId}:gin-interim-hand-result:${handNumber}`;
         const handResultScope = { dealerGameId: gameId, roundId: currentRoundId ?? null };
+        // Supersede the interim plate emitted at knock/gin moment so the
+        // final scored hand_result takes over the same rail slot.
+        announcements.dismiss(interimId);
         announcements.clearAmbient('waiting_for_player');
         if (viewState.knockResult) {
           const r = viewState.knockResult;
@@ -1664,7 +1688,20 @@ export const GinRummyGameTable = ({
           // bleeding into the next-game / dealer-setup surface.
           setStoredChipPositions(null);
           setChipAnimTriggerId(null);
-          onGameComplete();
+          // Stale-scope guard: only fire the dealer-game transition if
+          // we're still on the dealer-game that started this lifecycle.
+          if (dealerGameIdAtStart === dealerGameId) {
+            traceGinAnnouncement('onGameComplete:fire', {
+              dealerGameId,
+              winnerPlayerId: viewState.winnerPlayerId,
+            });
+            onGameCompleteRef.current();
+          } else {
+            traceGinAnnouncement('onGameComplete:skipped:stale-dealer-game', {
+              dealerGameIdAtStart,
+              dealerGameIdNow: dealerGameId,
+            });
+          }
           return;
         }
 
