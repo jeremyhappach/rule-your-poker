@@ -681,12 +681,13 @@ export const GinRummyGameTable = ({
       setShowGinOverlay(true);
     }
 
-    // Canonical IN-PROGRESS ambient: knocking / laying_off / gin status
-    // plate. Fires simultaneously with the centered overlay (knock at
-    // `knocking`, gin at `scoring`/`complete` with hasGin) so the rail
-    // and overlay land in the same frame instead of the rail catching
-    // up later via the hand-result round_win. Ambient is cleared by
-    // processCompletion before the hand-result round_win is emitted.
+    // Canonical INTERIM hand-result plate. Fires simultaneously with the
+    // centered overlay (knock at `knocking`, gin at `scoring`/`complete`
+    // with hasGin) so the rail and overlay land in the same frame. The
+    // interim emission uses the rail-visible `round_win` type (not the
+    // CTA-ambient `waiting_for_player`, which the rail intentionally
+    // suppresses). A long TTL keeps it sticky until processCompletion
+    // dismisses it and emits the final scored hand_result on the rail.
     const showOverlayPhase =
       currentPhase === 'knocking' ||
       currentPhase === 'laying_off' ||
@@ -699,24 +700,28 @@ export const GinRummyGameTable = ({
       if (knockerEntry) {
         const [knockerId, knockerState] = knockerEntry;
         const knockerName = getPlayerUsername(knockerId);
-        const ctx = knockerState?.hasGin
-          ? 'GIN!'
-          : `knocked (${knockerState?.deadwoodValue ?? 0} dw)`;
-        const ambientId = `${gameId}:${dealerGameId}:gin-in-progress:${ginState.handNumber ?? handNumber}`;
-        traceGinAnnouncement('waiting_for_player:emit:callsite', {
-          id: ambientId,
+        const text = knockerState?.hasGin
+          ? `${knockerName} went gin!`
+          : `${knockerName} knocked! (${knockerState?.deadwoodValue ?? 0} dw)`;
+        const interimId = `${gameId}:${dealerGameId}:gin-interim-hand-result:${ginState.handNumber ?? handNumber}`;
+        traceGinAnnouncement('interim_hand_result:emit:callsite', {
+          id: interimId,
           phase: currentPhase,
           overlayPhase: showOverlayPhase,
           scopeDealerGameId: gameId,
           propDealerGameId: dealerGameId,
           roundId: currentRoundId,
-          context: ctx,
+          text,
         });
         announcements.emit({
-          id: ambientId,
-          type: 'waiting_for_player',
+          id: interimId,
+          type: 'round_win',
           scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
-          payload: { playerName: knockerName, context: ctx },
+          payload: { text },
+          // Sticky: hold the rail until processCompletion supersedes
+          // with the final scored hand_result. Cleared explicitly by
+          // dismiss(interimId) below; this TTL is just a safety net.
+          ttlMs: 60000,
         });
       }
     }
