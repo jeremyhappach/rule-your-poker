@@ -294,6 +294,7 @@ export function useWaitingRoomActions({
     const tQueueStart = performance.now();
     // eslint-disable-next-line no-console
     console.warn("[ADD_BOT_TRACE] processAddBotQueue:enter", { queueLen: addBotQueueRef.current });
+    recordLifecycleTimelineEvent("add_bot:queue:enter", { queueLen: addBotQueueRef.current });
     addBotProcessingRef.current = true;
     setIsAddingBot(true);
     try {
@@ -305,10 +306,10 @@ export function useWaitingRoomActions({
     } finally {
       addBotProcessingRef.current = false;
       setIsAddingBot(false);
+      const totalMs = Math.round(performance.now() - tQueueStart);
       // eslint-disable-next-line no-console
-      console.warn(
-        `[ADD_BOT_TRACE] processAddBotQueue:exit total=${Math.round(performance.now() - tQueueStart)}ms`,
-      );
+      console.warn(`[ADD_BOT_TRACE] processAddBotQueue:exit total=${totalMs}ms`);
+      recordLifecycleTimelineEvent("add_bot:queue:exit", { totalMs });
     }
   }, [addSingleBot]);
 
