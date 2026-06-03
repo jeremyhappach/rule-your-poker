@@ -271,6 +271,19 @@ export const GinRummyGameTable = ({
   const roundId = currentRoundId;
   const handNumber = currentHandNumber;
 
+  const roundIdSeenRef = useRef(false);
+  useEffect(() => {
+    if (!roundIdSeenRef.current && roundId) {
+      roundIdSeenRef.current = true;
+      ginTrace('gin.roundId established', {
+        roundId,
+        handNumber,
+        source: authIdentitySeenRef.current ? 'authIdentity-or-prop' : 'prop-only',
+      });
+    }
+  }, [roundId, handNumber]);
+
+
   // ── Identity-advancement reset (mirror of Cribbage Phase 2) ─────
   // When the dealer-scoped feed detects a forward advance, drop the local
   // ginState mirror so the felt collapses to the "Preparing next hand" shell
