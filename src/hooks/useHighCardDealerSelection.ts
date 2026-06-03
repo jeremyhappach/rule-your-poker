@@ -464,6 +464,9 @@ export function useHighCardDealerSelection({
       scope: isCribbageVariant ? 'cribbage' : 'session',
       extra: { eligibleDealers: eligibleDealers.length },
     });
+    recordLifecycleTimelineEvent('dealer-selection:started', {
+      gameId: gameId?.slice(0, 8), eligible: eligibleDealers.length, isHost,
+    });
 
     runSelectionRound(eligibleDealers, 1, []);
 
