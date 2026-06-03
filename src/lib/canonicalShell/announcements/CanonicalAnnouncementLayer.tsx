@@ -62,8 +62,19 @@ export function CanonicalAnnouncementLayer() {
   // The celebration overlay (CanonicalCelebrationLayer) continues to
   // render the prior-game `match_win` independently — the rail does
   // not own celebration; it owns "what is the shell doing now".
+  // Ownership inversion: while the terminal match-win lifecycle is
+  // active (hand_result → match_win → confetti → chip transfer →
+  // onGameComplete → scope teardown), match_win temporarily outranks
+  // the dealer_configuring ambient so the winner plate gets its paint
+  // window. Once match_win leaves the active slot (TTL, dismiss, or
+  // scope teardown on the next dealer-game), dealer_configuring
+  // resumes its normal between-games precedence described above.
   const railActive =
-    ctx.ambient?.type === 'dealer_configuring' ? ctx.ambient : ctx.active;
+    ctx.active?.type === 'match_win'
+      ? ctx.active
+      : ctx.ambient?.type === 'dealer_configuring'
+        ? ctx.ambient
+        : ctx.active;
   if (!railActive) return null;
 
   // Celebration-tier events ALSO render a centered overlay via
