@@ -24,7 +24,8 @@ import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderAnnouncement } from './renderers';
 import { isCelebrationType, isCtaAmbientType } from './types';
 import { recordAnnouncementDebugEvent } from './announcementDebugLog';
-import { useLifecycleMount } from '../lifecycleDebug';
+import { useLifecycleMount, getLifecycleContext } from '../lifecycleDebug';
+import { useUnmountSnapshot } from '../shellLifecycleLog';
 
 const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> = {}) => {
   try {
