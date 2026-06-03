@@ -37,14 +37,17 @@ const KIND_COLOR: Record<string, string> = {
   'layer-unmount': '#FF8C8C',
   'scope-change': '#9FE2BF',
   'scope-teardown': '#FF6B6B',
+  lifecycle: '#00E5FF',
 };
 
-type FilterMode = 'all' | 'wins' | 'transitions';
+type FilterMode = 'all' | 'wins' | 'transitions' | 'lifecycle';
 
 function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string): boolean {
   if (mode === 'wins') {
     const hay = `${e.summary} ${JSON.stringify(e.detail ?? {})}`.toLowerCase();
     if (!/match_win|round_win|chip_award/.test(hay)) return false;
+  } else if (mode === 'lifecycle') {
+    if (e.kind !== 'lifecycle') return false;
   } else if (mode === 'transitions') {
     if (
       e.kind !== 'active-change' &&
@@ -62,7 +65,8 @@ function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string
       e.kind !== 'emit-transient-set-active' &&
       e.kind !== 'emit-transient-enqueued' &&
       e.kind !== 'transient-promoted' &&
-      e.kind !== 'transient-ttl-expired'
+      e.kind !== 'transient-ttl-expired' &&
+      e.kind !== 'lifecycle'
     ) return false;
   }
   if (text.trim()) {
@@ -186,6 +190,7 @@ export function AnnouncementDebugPanel() {
             <button type="button" style={chipStyle(filter === 'all')} onClick={() => setFilter('all')}>All</button>
             <button type="button" style={chipStyle(filter === 'wins')} onClick={() => setFilter('wins')}>Wins</button>
             <button type="button" style={chipStyle(filter === 'transitions')} onClick={() => setFilter('transitions')}>Transitions</button>
+            <button type="button" style={chipStyle(filter === 'lifecycle')} onClick={() => setFilter('lifecycle')}>Lifecycle</button>
             <input
               type="text"
               value={text}
@@ -205,6 +210,7 @@ export function AnnouncementDebugPanel() {
               newest.map((e) => (
                 <div key={e.seq} style={{ marginBottom: 2 }}>
                   <span style={{ opacity: 0.7 }}>+{e.tMs}ms </span>
+                  <span style={{ opacity: 0.5 }}>(+{e.dPrevMs}) </span>
                   <span style={{ color: KIND_COLOR[e.kind] ?? '#fff', fontWeight: 700 }}>{e.kind}</span>{' '}
                   <span>{e.summary}</span>
                   {e.repeat > 1 ? (

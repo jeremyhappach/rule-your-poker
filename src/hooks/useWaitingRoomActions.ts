@@ -17,6 +17,7 @@ import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import { recordLifecycleTimelineEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
@@ -150,7 +151,12 @@ export function useWaitingRoomActions({
     if (previousPlayerCountRef.current > 0 && players.length > previousPlayerCountRef.current) {
       const prevCount = previousPlayerCountRef.current;
       const newPlayers = players.slice(-Math.max(0, players.length - prevCount));
-      if (newPlayers.some((p) => !p.is_bot)) playDoorbell();
+      const newBots = newPlayers.filter((p) => p.is_bot).length;
+      const newHumans = newPlayers.filter((p) => !p.is_bot).length;
+      recordLifecycleTimelineEvent("waiting:players-count-change", {
+        prev: prevCount, next: players.length, newBots, newHumans,
+      });
+      if (newHumans > 0) playDoorbell();
     }
     previousPlayerCountRef.current = players.length;
   }, [players.length, players, playDoorbell]);
@@ -163,8 +169,10 @@ export function useWaitingRoomActions({
     const tStart = performance.now();
     const tag = `[ADD_BOT_TRACE ${Math.random().toString(36).slice(2, 6)}]`;
     const mark = (phase: string, extra?: Record<string, unknown>) => {
+      const dt = Math.round(performance.now() - tStart);
       // eslint-disable-next-line no-console
-      console.warn(`${tag} +${Math.round(performance.now() - tStart)}ms ${phase}`, extra ?? {});
+      console.warn(`${tag} +${dt}ms ${phase}`, extra ?? {});
+      recordLifecycleTimelineEvent(`add_bot:${phase}`, { tag, dtMs: dt, gameId: gameId?.slice(0, 8), ...(extra ?? {}) });
     };
     mark("addSingleBot:enter", { gameId });
     const perf = new PerfSession("WaitingRoom.addSingleBot", 0);
@@ -291,6 +299,7 @@ export function useWaitingRoomActions({
     const tQueueStart = performance.now();
     // eslint-disable-next-line no-console
     console.warn("[ADD_BOT_TRACE] processAddBotQueue:enter", { queueLen: addBotQueueRef.current });
+    recordLifecycleTimelineEvent("add_bot:queue:enter", { queueLen: addBotQueueRef.current });
     addBotProcessingRef.current = true;
     setIsAddingBot(true);
     try {
@@ -302,15 +311,19 @@ export function useWaitingRoomActions({
     } finally {
       addBotProcessingRef.current = false;
       setIsAddingBot(false);
+      const totalMs = Math.round(performance.now() - tQueueStart);
       // eslint-disable-next-line no-console
-      console.warn(
-        `[ADD_BOT_TRACE] processAddBotQueue:exit total=${Math.round(performance.now() - tQueueStart)}ms`,
-      );
+      console.warn(`[ADD_BOT_TRACE] processAddBotQueue:exit total=${totalMs}ms`);
+      recordLifecycleTimelineEvent("add_bot:queue:exit", { totalMs });
     }
   }, [addSingleBot]);
 
 
   const handleAddBot = useCallback(() => {
+    recordLifecycleTimelineEvent("add_bot:click", {
+      seated: isSeated, host: isHost, isAddingBot, queueLen: addBotQueueRef.current,
+      playerCount: playersRef.current.length,
+    });
     if (addBotProcessingRef.current || isAddingBot) return;
     if (realMoney) {
       toast.error("Bots are disabled for real money sessions");
@@ -333,11 +346,18 @@ export function useWaitingRoomActions({
   }, [isAddingBot, isSeated, isHost, realMoney, processAddBotQueue]);
 
   const handleStartGame = useCallback(() => {
+    recordLifecycleTimelineEvent("start_game:click", {
+      hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current, seatedPlayerCount,
+    });
     if (!hasEnoughPlayers || gameStartTriggeredRef.current) return;
     gameStartTriggeredRef.current = true;
     console.log("🃏 SHUFFLE UP AND DEAL! 🃏");
-    setTimeout(() => onGameStart(), 500);
-  }, [hasEnoughPlayers, onGameStart]);
+    recordLifecycleTimelineEvent("start_game:onGameStart-scheduled", { delayMs: 500 });
+    setTimeout(() => {
+      recordLifecycleTimelineEvent("start_game:onGameStart-fired");
+      onGameStart();
+    }, 500);
+  }, [hasEnoughPlayers, seatedPlayerCount, onGameStart]);
 
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;

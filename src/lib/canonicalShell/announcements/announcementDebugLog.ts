@@ -30,11 +30,14 @@ export type AnnouncementDebugEventKind =
   | 'layer-mount'
   | 'layer-unmount'
   | 'scope-change'
-  | 'scope-teardown';
+  | 'scope-teardown'
+  | 'lifecycle';
 
 export interface AnnouncementDebugEvent {
   seq: number;
   tMs: number; // ms since page load
+  /** ms since previous recorded event (0 for first). */
+  dPrevMs: number;
   kind: AnnouncementDebugEventKind;
   summary: string;
   detail?: Record<string, unknown>;
@@ -102,9 +105,12 @@ export function recordAnnouncementDebugEvent(
     return;
   }
 
+  const prev = buffer[buffer.length - 1];
+  const dPrevMs = prev ? Math.max(0, tMs - prev.tMs) : 0;
   buffer.push({
     seq: ++seq,
     tMs,
+    dPrevMs,
     tLastMs: tMs,
     kind,
     summary,
@@ -130,12 +136,25 @@ export function clearAnnouncementDebugEvents(): void {
 }
 
 export function formatAnnouncementDebugEventsAsText(): string {
-  const lines = ['# Announcement debug log (newest first)'];
+  const lines = ['# Announcement + lifecycle debug log (newest first)'];
   const events = buffer.slice().reverse();
   for (const e of events) {
     const detail = e.detail ? ` ${JSON.stringify(e.detail)}` : '';
     const rep = e.repeat > 1 ? `  ×${e.repeat} (last +${e.tLastMs}ms)` : '';
-    lines.push(`+${e.tMs}ms  ${e.kind}  ${e.summary}${rep}${detail}`);
+    lines.push(`+${e.tMs}ms (+${e.dPrevMs}ms)  ${e.kind}  ${e.summary}${rep}${detail}`);
   }
   return lines.join('\n');
+}
+
+/**
+ * Convenience wrapper for non-announcement lifecycle events
+ * (Add Bot, Start Game, dealer selection, ante, bootstrap, …).
+ * Routed through the same ring buffer so the panel shows ONE
+ * persistent timeline. Detail is free-form JSON.
+ */
+export function recordLifecycleTimelineEvent(
+  label: string,
+  detail?: Record<string, unknown>,
+): void {
+  recordAnnouncementDebugEvent('lifecycle', label, detail);
 }

@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { logDebugEvent } from "@/lib/debugEventLogger";
+import { recordLifecycleTimelineEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 
 interface AnteUpDialogProps {
   gameId: string;
@@ -120,15 +121,15 @@ export const AnteUpDialog = ({
 
   const handleAnteUp = async () => {
     if (hasDecided) return;
+    const t0 = performance.now();
+    recordLifecycleTimelineEvent('ante:ante_up:click', {
+      gameId: gameId?.slice(0, 8), playerId: playerId?.slice(0, 8), timeLeft,
+    });
     logDebugEvent({
       gameId,
       userId: playerId,
       eventType: 'ante_modal_confirm_click',
-      payload: {
-        instanceId: instanceId.current,
-        action: 'ante_up',
-        timeLeft,
-      },
+      payload: { instanceId: instanceId.current, action: 'ante_up', timeLeft },
     });
     setHasDecided(true);
 
@@ -141,6 +142,10 @@ export const AnteUpDialog = ({
         auto_ante_runback: localAutoAnteRunback,
       })
       .eq('id', playerId);
+
+    recordLifecycleTimelineEvent('ante:ante_up:update-done', {
+      ms: Math.round(performance.now() - t0), error: error?.message ?? null,
+    });
 
     if (error) {
       console.error('Failed to ante up:', error);

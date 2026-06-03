@@ -41,6 +41,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useAnnouncements, useAnnouncementContext } from './CanonicalAnnouncementProvider';
+import { recordLifecycleTimelineEvent } from './announcementDebugLog';
 import { getBotAlias } from '@/lib/botAlias';
 
 interface Player {
@@ -101,6 +102,35 @@ export function SessionLifecycleAnnouncer({
   const ctx = useAnnouncementContext();
   const lastAmbientIdRef = useRef<string | null>(null);
   const lastDealerSelectedTransientRef = useRef<string | null>(null);
+
+  // Lifecycle timeline: persistent status transition tracing.
+  const prevStatusRef = useRef<string | null | undefined>(undefined);
+  const prevDealerWinnerRef = useRef<number | null | undefined>(undefined);
+  const prevConfigCompleteRef = useRef<boolean | null | undefined>(undefined);
+  useEffect(() => {
+    if (prevStatusRef.current !== gameStatus) {
+      recordLifecycleTimelineEvent('session:gameStatus-change', {
+        from: prevStatusRef.current ?? null,
+        to: gameStatus ?? null,
+        gameId: gameId?.slice(0, 8),
+      });
+      prevStatusRef.current = gameStatus;
+    }
+    if (prevDealerWinnerRef.current !== dealerSelectionWinnerPosition) {
+      recordLifecycleTimelineEvent('session:dealer-winner-change', {
+        from: prevDealerWinnerRef.current ?? null,
+        to: dealerSelectionWinnerPosition ?? null,
+      });
+      prevDealerWinnerRef.current = dealerSelectionWinnerPosition;
+    }
+    if (prevConfigCompleteRef.current !== configComplete) {
+      recordLifecycleTimelineEvent('session:config-complete-change', {
+        from: prevConfigCompleteRef.current ?? null,
+        to: configComplete ?? null,
+      });
+      prevConfigCompleteRef.current = configComplete;
+    }
+  }, [gameStatus, dealerSelectionWinnerPosition, configComplete, gameId]);
 
   // Cribbage owns its own passive lifecycle rail (see CribbageMobileGameTable).
   // Hard-skip to prevent double-emission / ownership ambiguity.
