@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { logDebugEvent } from "@/lib/debugEventLogger";
+import { recordLifecycleTimelineEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 
 interface AnteUpDialogProps {
   gameId: string;
