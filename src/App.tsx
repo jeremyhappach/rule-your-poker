@@ -20,6 +20,7 @@ import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeome
 import { LifecycleDebugBadge } from "@/lib/canonicalShell/LifecycleDebugBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
+import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
 
 // Hydrate the Debug Harness cache once at module load so synchronous
 // game-logic call sites see the active selection without awaiting a query.
