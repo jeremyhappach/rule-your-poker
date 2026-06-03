@@ -29,9 +29,13 @@ export interface AnnouncementDebugEvent {
   kind: AnnouncementDebugEventKind;
   summary: string;
   detail?: Record<string, unknown>;
+  /** Number of consecutive identical events collapsed into this entry. */
+  repeat: number;
+  /** tMs of the most recent occurrence (== tMs when repeat === 1). */
+  tLastMs: number;
 }
 
-const MAX_EVENTS = 40;
+const MAX_EVENTS = 200;
 const buffer: AnnouncementDebugEvent[] = [];
 let snapshot: AnnouncementDebugEvent[] = [];
 const listeners = new Set<() => void>();
@@ -52,17 +56,18 @@ export function isAnnouncementDebugEnabled(): boolean {
   } catch {
     /* no-op */
   }
-  // Visible in the same condition the user is actually testing: global
-  // debug mode. This matters on the published app, where import.meta.env.DEV
-  // is false but the in-game red Debug Mode banner is active.
   if (isGlobalDebugModeLoaded() && isGlobalDebugModeCached()) return true;
-
-  // Default-on in dev so investigation works without setup; off in prod
-  // unless global debug mode / explicit URL or localStorage flags are active.
   try {
     return Boolean(import.meta.env?.DEV);
   } catch {
     return false;
+  }
+}
+
+function notify() {
+  snapshot = buffer.slice();
+  for (const l of listeners) {
+    try { l(); } catch { /* */ }
   }
 }
 
@@ -76,22 +81,29 @@ export function recordAnnouncementDebugEvent(
     typeof performance !== 'undefined' && performance.now
       ? performance.now()
       : Date.now();
+  const tMs = Math.round(now - t0);
+
+  // Collapse consecutive identical entries (same kind + summary).
+  const last = buffer[buffer.length - 1];
+  if (last && last.kind === kind && last.summary === summary) {
+    last.repeat += 1;
+    last.tLastMs = tMs;
+    last.detail = detail ?? last.detail;
+    notify();
+    return;
+  }
+
   buffer.push({
     seq: ++seq,
-    tMs: Math.round(now - t0),
+    tMs,
+    tLastMs: tMs,
     kind,
     summary,
     detail,
+    repeat: 1,
   });
   while (buffer.length > MAX_EVENTS) buffer.shift();
-  snapshot = buffer.slice();
-  for (const l of listeners) {
-    try {
-      l();
-    } catch {
-      /* */
-    }
-  }
+  notify();
 }
 
 export function getAnnouncementDebugEvents(): AnnouncementDebugEvent[] {
@@ -105,14 +117,7 @@ export function subscribeAnnouncementDebug(fn: () => void): () => void {
 
 export function clearAnnouncementDebugEvents(): void {
   buffer.length = 0;
-  snapshot = [];
-  for (const l of listeners) {
-    try {
-      l();
-    } catch {
-      /* */
-    }
-  }
+  notify();
 }
 
 export function formatAnnouncementDebugEventsAsText(): string {
@@ -120,7 +125,8 @@ export function formatAnnouncementDebugEventsAsText(): string {
   const events = buffer.slice().reverse();
   for (const e of events) {
     const detail = e.detail ? ` ${JSON.stringify(e.detail)}` : '';
-    lines.push(`+${e.tMs}ms  ${e.kind}  ${e.summary}${detail}`);
+    const rep = e.repeat > 1 ? `  ×${e.repeat} (last +${e.tLastMs}ms)` : '';
+    lines.push(`+${e.tMs}ms  ${e.kind}  ${e.summary}${rep}${detail}`);
   }
   return lines.join('\n');
 }
