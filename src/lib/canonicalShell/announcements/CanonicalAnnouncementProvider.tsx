@@ -632,12 +632,21 @@ export function useAnnouncements() {
       waitForDismiss: () => Promise.resolve(),
     };
   }
-  return {
-    emit: ctx.emit,
-    dismiss: ctx.dismiss,
-    clearScope: ctx.clearScope,
-    clearAmbient: ctx.clearAmbient,
-    waitForDismiss: ctx.waitForDismiss,
+  // Stable callbacks: ctx.{emit,dismiss,clearScope,clearAmbient,waitForDismiss}
+  // are themselves useCallback-memoized in the provider, so returning a
+  // useMemo'd record keeps the public `useAnnouncements()` return identity
+  // stable across renders. Critical for consumer effects that include
+  // `announcements` in their deps — without this, every provider re-render
+  // (e.g. ambient/transient state change) caused those effects to re-run
+  // and re-emit, producing the awaiting_ante×17774 flood seen in the
+  // debug log.
+  return useMemo(
+    () => ({
+      emit: ctx.emit,
+      dismiss: ctx.dismiss,
+      clearScope: ctx.clearScope,
+      clearAmbient: ctx.clearAmbient,
+      waitForDismiss: ctx.waitForDismiss,
   };
 }
 
