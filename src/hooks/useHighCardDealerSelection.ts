@@ -23,7 +23,6 @@ import { Card, createDeck, shuffleDeck, RANK_VALUES } from '@/lib/cardUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { recordDealerSelectionDiag } from '@/lib/dealerSelectionDiag';
-import { recordLifecycleTimelineEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 
 interface Player {
   id: string;
@@ -362,14 +361,8 @@ export function useHighCardDealerSelection({
             scope: isCribbageVariant ? 'cribbage' : 'session',
             extra: { round: roundNum },
           });
-          recordLifecycleTimelineEvent('dealer-selection:winner', {
-            winnerPosition: winnerPlayer.position, round: roundNum,
-          });
 
           addTimeout(() => {
-            recordLifecycleTimelineEvent('dealer-selection:onComplete-fired', {
-              winnerPosition: winnerPlayer.position,
-            });
             onComplete(winnerPlayer.position);
           }, WINNER_ANNOUNCE_DELAY);
         }
@@ -469,9 +462,6 @@ export function useHighCardDealerSelection({
       cardCount: 0,
       scope: isCribbageVariant ? 'cribbage' : 'session',
       extra: { eligibleDealers: eligibleDealers.length },
-    });
-    recordLifecycleTimelineEvent('dealer-selection:started', {
-      gameId: gameId?.slice(0, 8), eligible: eligibleDealers.length, isHost,
     });
 
     runSelectionRound(eligibleDealers, 1, []);
