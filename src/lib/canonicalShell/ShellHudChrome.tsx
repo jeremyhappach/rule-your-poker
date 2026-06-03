@@ -93,6 +93,7 @@ export function ShellAnnouncementRail() {
         height: 'var(--hud-h-announcement)',
         minHeight: 'var(--hud-h-announcement)',
         width: '100%',
+        position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
