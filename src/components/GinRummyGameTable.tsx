@@ -163,8 +163,34 @@ export const GinRummyGameTable = ({
     keyedByParent: 'no explicit key on this element (parent: PlayfieldSlotController slot div keyed by mountedIdentity)',
   });
   useEffect(() => {
-    ginTrace('GinRummyGameTable mounted');
+    ginTrace('GinRummyGameTable mounted', {
+      hasPropRoundId: !!propRoundId,
+      propHandNumber,
+      hasBootstrap: !!bootstrapState,
+      hasBootstrapPhase: bootstrapState?.phase ?? null,
+      dealerGameId: dealerGameId ?? null,
+    });
   }, []);
+
+  // ── Identity/bootstrap arrival traces (one-time edges) ──
+  const propRoundIdSeenRef = useRef(false);
+  useEffect(() => {
+    if (!propRoundIdSeenRef.current && propRoundId) {
+      propRoundIdSeenRef.current = true;
+      ginTrace('gin.propRoundId arrived', { propRoundId, propHandNumber });
+    }
+  }, [propRoundId, propHandNumber]);
+
+  const bootstrapSeenRef = useRef(false);
+  useEffect(() => {
+    if (!bootstrapSeenRef.current && bootstrapState) {
+      bootstrapSeenRef.current = true;
+      ginTrace('gin.bootstrapState arrived', {
+        phase: bootstrapState.phase,
+        handNumber: (bootstrapState as any)?.handNumber ?? null,
+      });
+    }
+  }, [bootstrapState]);
 
   // Publish canonical felt context to shell-owned host (sole felt mount).
   usePublishShellFelt({
@@ -197,6 +223,19 @@ export const GinRummyGameTable = ({
   // client cannot become structurally blind to a forward-advanced hand
   // started by a peer client.
   const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
+
+  const authIdentitySeenRef = useRef(false);
+  useEffect(() => {
+    if (!authIdentitySeenRef.current && authIdentity?.roundId) {
+      authIdentitySeenRef.current = true;
+      ginTrace('gin.authIdentity arrived', {
+        roundId: authIdentity.roundId,
+        handNumber: authIdentity.handNumber ?? null,
+        dealerGameId: authIdentity.dealerGameId ?? null,
+      });
+    }
+  }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId]);
+
 
   // Monotonic forward-only round/hand identity. Parent props are advisory;
   // authoritative identity wins whenever it is forward-of-or-equal.
@@ -231,6 +270,19 @@ export const GinRummyGameTable = ({
   // Aliases — keep existing internal references pointing at the live monotonic identity.
   const roundId = currentRoundId;
   const handNumber = currentHandNumber;
+
+  const roundIdSeenRef = useRef(false);
+  useEffect(() => {
+    if (!roundIdSeenRef.current && roundId) {
+      roundIdSeenRef.current = true;
+      ginTrace('gin.roundId established', {
+        roundId,
+        handNumber,
+        source: authIdentitySeenRef.current ? 'authIdentity-or-prop' : 'prop-only',
+      });
+    }
+  }, [roundId, handNumber]);
+
 
   // ── Identity-advancement reset (mirror of Cribbage Phase 2) ─────
   // When the dealer-scoped feed detects a forward advance, drop the local
@@ -285,12 +337,27 @@ export const GinRummyGameTable = ({
   // Alias: all RENDER paths use viewState (presentationState); mutations use ginState
   const viewState = ginSync.presentationState;
 
+  const bootstrapAppliedRef = useRef(false);
   useEffect(() => {
-    if (!bootstrapState || !roundId) return;
+    if (!bootstrapState || !roundId) {
+      ginTrace('gin.receiveAuthoritativeUpdate gated', {
+        hasBootstrapState: !!bootstrapState,
+        hasRoundId: !!roundId,
+      });
+      return;
+    }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
     if (result.accepted) setGinState(bootstrapState);
+    if (!bootstrapAppliedRef.current && result.accepted) {
+      bootstrapAppliedRef.current = true;
+      ginTrace('gin.receiveAuthoritativeUpdate first-accepted', {
+        roundId,
+        phase: bootstrapState.phase,
+      });
+    }
     ginTrace('gin.bootstrapState applied', { accepted: result.accepted, phase: bootstrapState.phase });
   }, [bootstrapState, roundId]);
+
 
   // First non-null viewState (presentation ready) — the gate that
   // unblocks the playable subtree render path at line ~1589.
