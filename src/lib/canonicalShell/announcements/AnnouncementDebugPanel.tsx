@@ -37,9 +37,10 @@ const KIND_COLOR: Record<string, string> = {
   'layer-unmount': '#FF8C8C',
   'scope-change': '#9FE2BF',
   'scope-teardown': '#FF6B6B',
+  lifecycle: '#00E5FF',
 };
 
-type FilterMode = 'all' | 'wins' | 'transitions';
+type FilterMode = 'all' | 'wins' | 'transitions' | 'lifecycle';
 
 function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string): boolean {
   if (mode === 'wins') {
