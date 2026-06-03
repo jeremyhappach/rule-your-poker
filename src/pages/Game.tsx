@@ -8515,7 +8515,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Hook-free transition instrumentation. Logged only when the value
   // actually changes; safe at render time (no hooks, no state).
-  _shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
+  __shellLogIfChanged('Game._isPokerShellPersistent', _isPokerShellPersistent, {
     enableOuterShell,
     _routeShellGameType,
     gameStatus: game.status ?? null,
@@ -8526,12 +8526,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         ? `route-type-null/${game.status ?? 'unknown'}`
         : 'not-persistent'),
   });
-  _shellLogIfChanged('Game._routeShellGameType', _routeShellGameType, {
+  __shellLogIfChanged('Game._routeShellGameType', _routeShellGameType, {
     gameType: game.game_type ?? null,
     lastKnown: lastKnownGameTypeRef.current ?? null,
     prevConfig: previousGameConfig?.game_type ?? null,
   });
-  _shellLogIfChanged('Game.enableOuterShell.value', enableOuterShell);
+  __shellLogIfChanged('Game.enableOuterShell.value', enableOuterShell);
 
 
   // When the canonical shell owns the page column (header + children +
@@ -9456,7 +9456,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             } else if (isInProgress && game.game_type === 'trivia') {
               _selectedBranch = 'trivia:TriviaGameTable';
             }
-            shellLogIfChanged('Game.IIFE.branch', _selectedBranch, {
+            _shellLogIfChanged('Game.IIFE.branch', _selectedBranch, {
               gameStatus: game.status,
               gameType: game.game_type,
               effectiveRenderGameType,
