@@ -204,10 +204,17 @@ export function CanonicalAnnouncementProvider({
   const armTtl = useCallback((next: ResolvedAnnouncement) => {
     if (!next.ttlMs || next.ttlMs <= 0) return;
     const id = next.id;
+    const type = next.type;
+    const ttlMs = next.ttlMs;
     ttlTimerRef.current = setTimeout(() => {
       ttlTimerRef.current = null;
       setTransient((cur) => {
         if (cur && cur.id === id) {
+          recordAnnouncementDebugEvent(
+            'lifecycle',
+            `ttl-expired ${type} id=${id.slice(0, 8)}`,
+            { stage: 'ttl-expired', id, type, ttlMs },
+          );
           transientIdRef.current = null;
           drainDismiss(id);
           queueMicrotask(promoteNextTransient);
@@ -222,11 +229,38 @@ export function CanonicalAnnouncementProvider({
   const promoteNextTransient = useCallback(() => {
     clearTtl();
     const queue = queueRef.current;
+    const beforeLen = queue.length;
+    const candidates = queue.map((q) => ({
+      id: q.id.slice(0, 8), type: q.type, priority: q.resolvedPriority,
+    }));
+    recordAnnouncementDebugEvent(
+      'lifecycle',
+      `promotion-pass-start qlen=${beforeLen}`,
+      { stage: 'promotion-pass-start', queueLen: beforeLen, candidates },
+    );
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `promotion-drop-scope ${dropped.type} id=${dropped.id.slice(0, 8)}`,
+        { stage: 'promotion-drop-scope', id: dropped.id, type: dropped.type, scope: dropped.scope, currentScope },
+      );
       drainDismiss(dropped.id);
     }
     const next = queue.shift() ?? null;
+    if (next) {
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `promotion-selected ${next.type} id=${next.id.slice(0, 8)}`,
+        { stage: 'promotion-selected', id: next.id, type: next.type, priority: next.resolvedPriority },
+      );
+    } else {
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        'promotion-none',
+        { stage: 'promotion-none' },
+      );
+    }
     transientIdRef.current = next?.id ?? null;
     setTransient(next);
     if (next) armTtl(next);
