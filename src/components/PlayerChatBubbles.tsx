@@ -1,5 +1,6 @@
 import { ChatBubble } from './ChatBubble';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 interface ChatBubbleData {
   id: string;
@@ -24,8 +25,15 @@ export const PlayerChatBubbles = ({
   isMobile = false
 }: PlayerChatBubblesProps) => {
   useLifecycleMount(`PlayerChatBubbles:pos${position}`);
+  useStartupMountTrace('PlayerChatBubbles', { position, isMobile });
   // Filter bubbles for this player position
   const playerBubbles = bubbles.filter(b => getPositionForUserId(b.user_id) === position);
+  useStartupRenderTrace('PlayerChatBubbles', {
+    position,
+    isMobile,
+    bubbleCount: playerBubbles.length,
+    bubbleIds: playerBubbles.map(b => b.id),
+  }, { file: 'src/components/PlayerChatBubbles.tsx' });
 
   if (playerBubbles.length === 0) return null;
 
