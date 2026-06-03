@@ -601,13 +601,37 @@ export function useAnnouncementContext(): AnnouncementContextValue | null {
   return useContext(AnnouncementContext);
 }
 
+const NOOP_ANNOUNCEMENTS = {
+  emit: () => {},
+  dismiss: () => {},
+  clearScope: () => {},
+  clearAmbient: () => {},
+  waitForDismiss: () => Promise.resolve(),
+};
+
 export function useAnnouncements() {
   const ctx = useContext(AnnouncementContext);
+  // Stable callbacks: ctx.{emit,dismiss,...} are themselves useCallback-
+  // memoized in the provider, so returning a useMemo'd record keeps the
+  // public `useAnnouncements()` return identity stable across renders.
+  // Critical for consumer effects that include `announcements` in their
+  // deps — without this, every provider re-render (e.g. ambient/transient
+  // state change) caused those effects to re-run and re-emit, producing
+  // the awaiting_ante×17774 flood seen in the debug log.
+  const memo = useMemo(
+    () =>
+      ctx
+        ? {
+            emit: ctx.emit,
+            dismiss: ctx.dismiss,
+            clearScope: ctx.clearScope,
+            clearAmbient: ctx.clearAmbient,
+            waitForDismiss: ctx.waitForDismiss,
+          }
+        : NOOP_ANNOUNCEMENTS,
+    [ctx?.emit, ctx?.dismiss, ctx?.clearScope, ctx?.clearAmbient, ctx?.waitForDismiss, ctx],
+  );
   if (!ctx) {
-    // Fail loudly: a rail semantic event was emitted without canonical
-    // shell rail ownership. In dev this throws so the wiring gap is
-    // caught at the call site. In production we degrade to no-ops to
-    // avoid bricking the surface, but warn once per session.
     if (import.meta.env?.DEV) {
       throw new Error(
         '[canonical-rail] useAnnouncements() called outside CanonicalAnnouncementProvider. ' +
@@ -624,32 +648,8 @@ export function useAnnouncements() {
         );
       }
     }
-    return {
-      emit: () => {},
-      dismiss: () => {},
-      clearScope: () => {},
-      clearAmbient: () => {},
-      waitForDismiss: () => Promise.resolve(),
-    };
   }
-  // Stable callbacks: ctx.{emit,dismiss,clearScope,clearAmbient,waitForDismiss}
-  // are themselves useCallback-memoized in the provider, so returning a
-  // useMemo'd record keeps the public `useAnnouncements()` return identity
-  // stable across renders. Critical for consumer effects that include
-  // `announcements` in their deps — without this, every provider re-render
-  // (e.g. ambient/transient state change) caused those effects to re-run
-  // and re-emit, producing the awaiting_ante×17774 flood seen in the
-  // debug log.
-  return useMemo(
-    () => ({
-      emit: ctx.emit,
-      dismiss: ctx.dismiss,
-      clearScope: ctx.clearScope,
-      clearAmbient: ctx.clearAmbient,
-      waitForDismiss: ctx.waitForDismiss,
-    }),
-    [ctx.emit, ctx.dismiss, ctx.clearScope, ctx.clearAmbient, ctx.waitForDismiss],
-  );
+  return memo;
 }
 
 
