@@ -367,19 +367,7 @@ export function CanonicalAnnouncementProvider({
         );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
-        setTransient((prev) => {
-          recordAnnouncementDebugEvent(
-            'lifecycle',
-            `preempt-apply prev=${prev?.type ?? 'null'}(${prev?.id.slice(0,8) ?? '-'}) → ${resolved.type}(${resolved.id.slice(0,8)})`,
-            {
-              stage: 'preempt-apply',
-              prevAtUpdate: prev ? { id: prev.id, type: prev.type, priority: prev.resolvedPriority } : null,
-              next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
-              transientIdRefAfter: transientIdRef.current,
-            },
-          );
-          return resolved;
-        });
+        setTransient(() => resolved);
         armTtl(resolved);
         return;
       }
