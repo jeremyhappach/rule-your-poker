@@ -10222,6 +10222,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               <GinRummyReadinessProbe
                 dealerGameId={game.current_game_uuid}
                 roundId={currentRound.id}
+                parentHasGinState={Boolean((currentRound as any)?.gin_rummy_state)}
               />
               <GinStartupIdentityTracer
                 currentGameUuid={game.current_game_uuid}
