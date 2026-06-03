@@ -31,6 +31,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 export interface SurfaceReadinessIdentity {
   dealerGameId: string;
