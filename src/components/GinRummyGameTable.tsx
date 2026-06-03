@@ -156,6 +156,12 @@ export const GinRummyGameTable = ({
   bootstrapState = null,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
+  useChangeTracker('GinRummyGameTable', 'identity', `${dealerGameId ?? '-'}|${propRoundId ?? '-'}|h${propHandNumber}`);
+  useUnmountSnapshot('GinRummyGameTable', {
+    parent: 'PlayfieldSlotController children (gin-rummy gameplay branch in Game.tsx)',
+    gameId, dealerGameId, propRoundId, propHandNumber,
+    keyedByParent: 'no explicit key on this element (parent: PlayfieldSlotController slot div keyed by mountedIdentity)',
+  });
   useEffect(() => {
     ginTrace('GinRummyGameTable mounted');
   }, []);
