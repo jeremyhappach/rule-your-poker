@@ -224,6 +224,19 @@ export const GinRummyGameTable = ({
   // started by a peer client.
   const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
 
+  const authIdentitySeenRef = useRef(false);
+  useEffect(() => {
+    if (!authIdentitySeenRef.current && authIdentity?.roundId) {
+      authIdentitySeenRef.current = true;
+      ginTrace('gin.authIdentity arrived', {
+        roundId: authIdentity.roundId,
+        handNumber: authIdentity.handNumber ?? null,
+        dealerGameId: authIdentity.dealerGameId ?? null,
+      });
+    }
+  }, [authIdentity?.roundId, authIdentity?.handNumber, authIdentity?.dealerGameId]);
+
+
   // Monotonic forward-only round/hand identity. Parent props are advisory;
   // authoritative identity wins whenever it is forward-of-or-equal.
   const [currentRoundId, setCurrentRoundId] = useState<string>(propRoundId);
