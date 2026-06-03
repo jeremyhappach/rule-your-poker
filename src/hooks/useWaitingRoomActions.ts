@@ -315,6 +315,10 @@ export function useWaitingRoomActions({
 
 
   const handleAddBot = useCallback(() => {
+    recordLifecycleTimelineEvent("add_bot:click", {
+      seated: isSeated, host: isHost, isAddingBot, queueLen: addBotQueueRef.current,
+      playerCount: playersRef.current.length,
+    });
     if (addBotProcessingRef.current || isAddingBot) return;
     if (realMoney) {
       toast.error("Bots are disabled for real money sessions");
@@ -337,11 +341,18 @@ export function useWaitingRoomActions({
   }, [isAddingBot, isSeated, isHost, realMoney, processAddBotQueue]);
 
   const handleStartGame = useCallback(() => {
+    recordLifecycleTimelineEvent("start_game:click", {
+      hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current, seatedPlayerCount,
+    });
     if (!hasEnoughPlayers || gameStartTriggeredRef.current) return;
     gameStartTriggeredRef.current = true;
     console.log("🃏 SHUFFLE UP AND DEAL! 🃏");
-    setTimeout(() => onGameStart(), 500);
-  }, [hasEnoughPlayers, onGameStart]);
+    recordLifecycleTimelineEvent("start_game:onGameStart-scheduled", { delayMs: 500 });
+    setTimeout(() => {
+      recordLifecycleTimelineEvent("start_game:onGameStart-fired");
+      onGameStart();
+    }, 500);
+  }, [hasEnoughPlayers, seatedPlayerCount, onGameStart]);
 
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;
