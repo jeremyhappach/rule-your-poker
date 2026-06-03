@@ -29,6 +29,8 @@ export interface AnnouncementDebugEvent {
   detail?: Record<string, unknown>;
 }
 
+import { isGlobalDebugModeCached, isGlobalDebugModeLoaded } from '@/lib/debugHarness/runtimeCache';
+
 const MAX_EVENTS = 40;
 const buffer: AnnouncementDebugEvent[] = [];
 const listeners = new Set<() => void>();
@@ -49,7 +51,13 @@ export function isAnnouncementDebugEnabled(): boolean {
   } catch {
     /* no-op */
   }
-  // Default-on in dev so investigation works without setup; off in prod.
+  // Visible in the same condition the user is actually testing: global
+  // debug mode. This matters on the published app, where import.meta.env.DEV
+  // is false but the in-game red Debug Mode banner is active.
+  if (isGlobalDebugModeLoaded() && isGlobalDebugModeCached()) return true;
+
+  // Default-on in dev so investigation works without setup; off in prod
+  // unless global debug mode / explicit URL or localStorage flags are active.
   try {
     return Boolean(import.meta.env?.DEV);
   } catch {
