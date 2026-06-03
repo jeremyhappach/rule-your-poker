@@ -1312,6 +1312,14 @@ export const DealerGameSetup = ({
       dealerGameConfig.per_point_value = ginRummyPerPointValue;
       dealerGameConfig.gin_bonus = ginRummyGinBonus;
       dealerGameConfig.undercut_bonus = ginRummyUndercutBonus;
+      recordStartupFlight('PHASE TIMELINE', 'dealer_selected / Gin config submit start', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        gameId,
+        gameType: gameTypeToSubmit,
+        dealerPlayerId,
+      });
       console.log('[GIN_RUNTIME_TIMELINE] game selection submit:start', {
         t: Date.now(),
         gameId,
@@ -1321,6 +1329,17 @@ export const DealerGameSetup = ({
     }
     
     // Insert into dealer_games table first
+    if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'dealer_games INSERT issued', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'dealer_games',
+        row: null,
+        oldValue: null,
+        newValue: { session_id: gameId, game_type: gameTypeToSubmit, dealer_user_id: dealerUserId },
+      });
+    }
     const { data: dealerGame, error: dealerGameError } = await supabase
       .from('dealer_games')
       .insert({
@@ -1343,6 +1362,15 @@ export const DealerGameSetup = ({
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
     await sanitizePlayersForNewDealerGame(gameId);
     if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'dealer_games INSERT completed', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'dealer_games',
+        row: dealerGameId,
+        oldValue: null,
+        newValue: { dealerGameId, gameType: gameTypeToSubmit },
+      });
       console.log('[GIN_RUNTIME_TIMELINE] dealer game creation:inserted', {
         t: Date.now(),
         gameId,
