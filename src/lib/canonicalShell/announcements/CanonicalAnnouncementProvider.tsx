@@ -614,10 +614,16 @@ export function useAnnouncements() {
   // Stable callbacks: ctx.{emit,dismiss,...} are themselves useCallback-
   // memoized in the provider, so returning a useMemo'd record keeps the
   // public `useAnnouncements()` return identity stable across renders.
-  // Critical for consumer effects that include `announcements` in their
-  // deps — without this, every provider re-render (e.g. ambient/transient
-  // state change) caused those effects to re-run and re-emit, producing
-  // the awaiting_ante×17774 flood seen in the debug log.
+  // NOTE: do NOT include `ctx` itself in deps — `ctx` is the provider
+  // value object that changes whenever `active`/`ambient`/`transient`
+  // change. Including it here would invalidate this memo on every
+  // emit and cascade through every consumer effect that lists
+  // `announcements` in its deps (re-run → re-emit → re-render → ...).
+  // That cascade is the regression introduced alongside the
+  // ambient-refresh dedupe and is the suspected cause of the post-click
+  // Add Bot stall: SessionLifecycleAnnouncer's ambient effect re-runs
+  // on every poll tick while react renders are queued behind a long
+  // chain of cascaded provider updates.
   const memo = useMemo(
     () =>
       ctx
@@ -629,8 +635,22 @@ export function useAnnouncements() {
             waitForDismiss: ctx.waitForDismiss,
           }
         : NOOP_ANNOUNCEMENTS,
-    [ctx?.emit, ctx?.dismiss, ctx?.clearScope, ctx?.clearAmbient, ctx?.waitForDismiss, ctx],
+    [ctx?.emit, ctx?.dismiss, ctx?.clearScope, ctx?.clearAmbient, ctx?.waitForDismiss],
   );
+
+  // [ADD_BOT_TRACE] churn counter — increment whenever this memo
+  // produces a new identity. If this number rises rapidly during the
+  // Add Bot window it confirms a re-render cascade through useAnnouncements.
+  const churnRef = useRef({ id: memo, count: 0 });
+  if (churnRef.current.id !== memo) {
+    churnRef.current.id = memo;
+    churnRef.current.count += 1;
+    try {
+      const w = window as unknown as { __ann_memo_churn?: number };
+      w.__ann_memo_churn = (w.__ann_memo_churn ?? 0) + 1;
+    } catch { /* */ }
+  }
+
   if (!ctx) {
     if (import.meta.env?.DEV) {
       throw new Error(
