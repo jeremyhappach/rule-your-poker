@@ -100,6 +100,7 @@ export interface ChatBubbleOverlayProps extends ChatBubbleOverlayInputs {
  * may pass a custom renderGroup to integrate with their geometry.
  */
 export function ChatBubbleOverlay(props: ChatBubbleOverlayProps) {
+  useLifecycleMount('ChatBubbleOverlay');
   const groups = routeChatBubbles(props);
   const render = props.renderGroup ?? defaultRenderGroup;
   return <>{groups.map(g => <span key={g.position}>{render(g)}</span>)}</>;
