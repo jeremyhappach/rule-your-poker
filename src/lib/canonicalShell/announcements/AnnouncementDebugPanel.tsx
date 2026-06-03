@@ -190,6 +190,7 @@ export function AnnouncementDebugPanel() {
             <button type="button" style={chipStyle(filter === 'all')} onClick={() => setFilter('all')}>All</button>
             <button type="button" style={chipStyle(filter === 'wins')} onClick={() => setFilter('wins')}>Wins</button>
             <button type="button" style={chipStyle(filter === 'transitions')} onClick={() => setFilter('transitions')}>Transitions</button>
+            <button type="button" style={chipStyle(filter === 'lifecycle')} onClick={() => setFilter('lifecycle')}>Lifecycle</button>
             <input
               type="text"
               value={text}
