@@ -39,6 +39,7 @@ import { SLOT_CHOREOGRAPHY } from './slotChoreography';
 import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
+import { recordStartupFlight, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -129,6 +130,7 @@ export function PlayfieldSlotController({
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
+  useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
   useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
   // Hook-free input-prop transition logging (no new hooks; safe at render).
@@ -154,6 +156,17 @@ export function PlayfieldSlotController({
       ? 'pre-session'
       : (!readyToMount ? 'awaiting-surface-ready' : 'pre-session'),
   );
+  useStartupRenderTrace('PlayfieldSlotController', {
+    desiredIdentity: describeSlotIdentity(desiredIdentity),
+    mountedIdentity: describeSlotIdentity(mountedIdentity),
+    phase,
+    neutralReason,
+    readyToMountProp,
+    surfaceReady,
+    readyToMount,
+    readinessScope: readinessScope ?? null,
+    persistentChildrenKey: persistentChildrenKey ?? null,
+  }, { file: 'src/lib/canonicalShell/PlayfieldSlotController.tsx', gameId: gameId ?? null });
   logIfChanged('PSC.state.mountedIdentity', describeSlotIdentity(mountedIdentity), { gameId });
 
 
@@ -191,6 +204,11 @@ export function PlayfieldSlotController({
       pendingIdentity: describeSlotIdentity(pendingIdentityRef.current),
     };
     console.log('[GIN_RUNTIME_TIMELINE] slot controller state', snapshot);
+    recordStartupFlight('READINESS TIMELINE', 'PlayfieldSlotController state snapshot', {
+      file: 'src/lib/canonicalShell/PlayfieldSlotController.tsx',
+      oldValue: null,
+      newValue: snapshot,
+    });
     ginTrace('slot.state', snapshot);
   }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp, readinessScope]);
 
