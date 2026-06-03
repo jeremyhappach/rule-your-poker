@@ -548,18 +548,6 @@ const Game = () => {
   const hasHydratedRef = useRef(false);
   if (_game) hasHydratedRef.current = true;
   const game: GameData | null = _game ?? (hasHydratedRef.current ? lastGameRef.current : null);
-  useStartupRenderTrace('Game', {
-    routeGameId: gameId ?? null,
-    loading,
-    authReady,
-    hasGame: !!game,
-    gameStatus: game?.status ?? null,
-    gameType: game?.game_type ?? null,
-    currentGameUuid: (game as any)?.current_game_uuid ?? null,
-    currentRoundNumber: game?.current_round ?? null,
-    totalHands: game?.total_hands ?? null,
-    playersCount: players.length,
-  });
 
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
@@ -596,6 +584,18 @@ const Game = () => {
   const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  useStartupRenderTrace('Game', {
+    routeGameId: gameId ?? null,
+    loading,
+    authReady,
+    hasGame: !!game,
+    gameStatus: game?.status ?? null,
+    gameType: game?.game_type ?? null,
+    currentGameUuid: (game as any)?.current_game_uuid ?? null,
+    currentRoundNumber: game?.current_round ?? null,
+    totalHands: game?.total_hands ?? null,
+    playersCount: players.length,
+  });
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
