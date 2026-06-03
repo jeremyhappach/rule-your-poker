@@ -9280,7 +9280,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             })()}
             gameId={gameId ?? null}
             readinessScope={game.game_type === 'gin-rummy' ? (currentRound?.id ?? null) : null}
-            persistentChildrenKey={_isPokerShellPersistent ? (gameId ?? null) : null}
+            persistentChildrenKey={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (gameId ?? null) : null}
             neutralActiveTab={mobileActiveTab}
             onNeutralActiveTabChange={setMobileActiveTab}
             neutralParticipants={players as any}
