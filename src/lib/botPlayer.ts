@@ -4,6 +4,7 @@ import { getBotFoldProbability, AggressionLevel } from "./botHandStrength";
 import { Card } from "./cardUtils";
 import { generateUUID } from "./uuid";
 import { getNextBotNumber, makeBotUsername } from "./botNaming";
+import { recordStartupFlight } from "./startupFlightRecorder";
 
 // Weighted aggression levels - extreme levels are rare
 const AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -536,6 +537,12 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
 }
 
 export async function makeBotAnteDecisions(gameId: string) {
+  recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions entered', {
+    file: 'src/lib/botPlayer.ts',
+    function: 'makeBotAnteDecisions',
+    caller: 'Game.tsx bot ante effect',
+    gameId,
+  });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:entered', { t: Date.now(), gameId });
   console.log('[BOT ANTE] Making ante decisions for bots in game:', gameId);
   
@@ -546,9 +553,23 @@ export async function makeBotAnteDecisions(gameId: string) {
     .select('is_paused')
     .eq('id', gameId)
     .single();
+  recordStartupFlight('FETCH TIMELINE', 'makeBotAnteDecisions pause check complete', {
+    file: 'src/lib/botPlayer.ts',
+    function: 'makeBotAnteDecisions',
+    gameId,
+    oldValue: null,
+    newValue: gameData?.is_paused ?? null,
+    elapsedMs: Date.now() - tPauseCheckStart,
+  });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:pause-check-complete', { t: Date.now(), deltaMs: Date.now() - tPauseCheckStart });
   
   if (gameData?.is_paused) {
+    recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions skipped', {
+      file: 'src/lib/botPlayer.ts',
+      function: 'makeBotAnteDecisions',
+      skipReason: 'game is paused',
+      gameId,
+    });
     console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
     return;
   }
@@ -562,9 +583,23 @@ export async function makeBotAnteDecisions(gameId: string) {
     .eq('game_id', gameId)
     .eq('is_bot', true)
     .is('ante_decision', null);
+  recordStartupFlight('FETCH TIMELINE', 'makeBotAnteDecisions select bots complete', {
+    file: 'src/lib/botPlayer.ts',
+    function: 'makeBotAnteDecisions',
+    gameId,
+    oldValue: null,
+    newValue: botsToAnte?.map((b) => ({ id: b.id, sitting_out: b.sitting_out })) ?? [],
+    elapsedMs: Date.now() - tSelectStart,
+  });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:select-bots-complete', { t: Date.now(), deltaMs: Date.now() - tSelectStart, count: botsToAnte?.length ?? 0 });
   
   if (!botsToAnte || botsToAnte.length === 0) {
+    recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions skipped', {
+      file: 'src/lib/botPlayer.ts',
+      function: 'makeBotAnteDecisions',
+      skipReason: 'no bot players need ante decision',
+      gameId,
+    });
     console.log('[BOT ANTE] No bots need ante decision');
     return;
   }
@@ -580,11 +615,30 @@ export async function makeBotAnteDecisions(gameId: string) {
     const anteUpIds = anteUpBots.map(b => b.id);
     console.log('[BOT ANTE] Batch anteing up', anteUpIds.length, 'bots');
     const tUpdateStart = Date.now();
+    recordStartupFlight('WRITE TIMELINE', 'bot ante_decision UPDATE issued', {
+      file: 'src/lib/botPlayer.ts',
+      function: 'makeBotAnteDecisions',
+      caller: 'Game.tsx bot ante effect',
+      table: 'players',
+      row: anteUpIds,
+      oldValue: null,
+      newValue: 'ante_up',
+    });
     console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:update-ante-up:issued', { t: tUpdateStart, ids: anteUpIds.length });
     await supabase
       .from('players')
       .update({ ante_decision: 'ante_up' })
       .in('id', anteUpIds);
+    recordStartupFlight('WRITE TIMELINE', 'bot ante_decision UPDATE completed', {
+      file: 'src/lib/botPlayer.ts',
+      function: 'makeBotAnteDecisions',
+      caller: 'Game.tsx bot ante effect',
+      table: 'players',
+      row: anteUpIds,
+      oldValue: null,
+      newValue: 'ante_up',
+      elapsedMs: Date.now() - tUpdateStart,
+    });
     console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:update-ante-up:completed', { t: Date.now(), deltaMs: Date.now() - tUpdateStart });
   }
   
@@ -597,9 +651,24 @@ export async function makeBotAnteDecisions(gameId: string) {
       .from('players')
       .update({ ante_decision: 'sit_out' })
       .in('id', sitOutIds);
+    recordStartupFlight('WRITE TIMELINE', 'bot ante_decision sit_out UPDATE completed', {
+      file: 'src/lib/botPlayer.ts',
+      function: 'makeBotAnteDecisions',
+      caller: 'Game.tsx bot ante effect',
+      table: 'players',
+      row: sitOutIds,
+      oldValue: null,
+      newValue: 'sit_out',
+      elapsedMs: Date.now() - tSitOutStart,
+    });
     console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:update-sit-out:completed', { t: Date.now(), deltaMs: Date.now() - tSitOutStart });
   }
 
   console.log('[BOT ANTE] All bot ante decisions made');
+  recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions exited', {
+    file: 'src/lib/botPlayer.ts',
+    function: 'makeBotAnteDecisions',
+    gameId,
+  });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:returning', { t: Date.now() });
 }
