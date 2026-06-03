@@ -427,6 +427,8 @@ export const CribbageMobileGameTable = ({
   dealerChatMessages: externalDealerChatMessages,
   onInjectDealerChatMessage,
 }: CribbageMobileGameTableProps) => {
+  // SHELL LC: mount marker for comparative branch-swap evidence.
+  useLifecycleMount('CribbageMobileGameTable');
   const { getTableColors, getCardBackColors } = useVisualPreferences();
 
 
