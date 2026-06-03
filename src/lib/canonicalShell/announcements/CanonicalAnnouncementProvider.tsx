@@ -407,13 +407,32 @@ export function CanonicalAnnouncementProvider({
           `preempt ${transient.type}→${resolved.type} id=${resolved.id.slice(0, 8)}`,
           {
             stage: 'preempt',
+            beforeState: {
+              transientId: transientIdRef.current,
+              transientClosureType: transient.type,
+              transientClosurePri: transient.resolvedPriority,
+              queueLen: queueRef.current.length,
+              queue: queueRef.current.map((q) => ({ id: q.id.slice(0,8), type: q.type, pri: q.resolvedPriority })),
+            },
             dropped: { id: transient.id, type: transient.type, priority: transient.resolvedPriority },
             next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
           },
         );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
-        setTransient(resolved);
+        setTransient((prev) => {
+          recordAnnouncementDebugEvent(
+            'lifecycle',
+            `preempt-apply prev=${prev?.type ?? 'null'}(${prev?.id.slice(0,8) ?? '-'}) → ${resolved.type}(${resolved.id.slice(0,8)})`,
+            {
+              stage: 'preempt-apply',
+              prevAtUpdate: prev ? { id: prev.id, type: prev.type, priority: prev.resolvedPriority } : null,
+              next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+              transientIdRefAfter: transientIdRef.current,
+            },
+          );
+          return resolved;
+        });
         armTtl(resolved);
         return;
       }
@@ -423,10 +442,19 @@ export function CanonicalAnnouncementProvider({
         recordAnnouncementDebugEvent(
           'lifecycle',
           `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
-          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority, transientIdRefBefore: transientIdRef.current },
         );
         transientIdRef.current = resolved.id;
-        setTransient(resolved);
+        setTransient((prev) => {
+          if (prev) {
+            recordAnnouncementDebugEvent(
+              'lifecycle',
+              `promote-immediate-stale-closure prev=${prev.type}(${prev.id.slice(0,8)}) — closure said null`,
+              { stage: 'promote-immediate-stale-closure', prev: { id: prev.id, type: prev.type } },
+            );
+          }
+          return resolved;
+        });
         armTtl(resolved);
         return;
       }
