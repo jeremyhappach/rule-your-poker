@@ -41,6 +41,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useAnnouncements, useAnnouncementContext } from './CanonicalAnnouncementProvider';
+import { recordLifecycleTimelineEvent } from './announcementDebugLog';
 import { getBotAlias } from '@/lib/botAlias';
 
 interface Player {
