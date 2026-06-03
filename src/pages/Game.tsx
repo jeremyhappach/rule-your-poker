@@ -25,7 +25,6 @@ import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentit
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
-import { useChangeTracker as useShellChangeTracker, recordShellLifecycleEvent } from "@/lib/canonicalShell/shellLifecycleLog";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 
@@ -8503,54 +8502,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         game.status === 'configuring'
       ))
     );
-
-  // SHELL LC instrumentation: persistentChildrenKey ownership boundary.
-  // `_isPokerShellPersistent` is the SOLE input that decides whether
-  // PlayfieldSlotController runs in persistent-children mode (stable
-  // gameId key) or legacy mode (re-keyed by slot identity). When it
-  // flips from true → false, the slot drops the persistent wrapper
-  // and remounts the entire children subtree (MobileGameTable +
-  // ShellHudGrid + SeatAnchorLayer + ActivePlayerHUD). This change-
-  // tracker logs every transition with the exact input conditions.
-  useShellChangeTracker(
-    'Game',
-    '_isPokerShellPersistent',
-    _isPokerShellPersistent ? '1' : '0',
-    {
-      owner: 'Game.tsx',
-      reason: 'controls PlayfieldSlotController persistentChildrenKey',
-      enableOuterShell,
-      routeShellGameType: _routeShellGameType ?? '(null)',
-      gameStatus: game.status,
-      gameType: game.game_type ?? '(null)',
-      pokerVariantBranch: isPokerVariantFamily(_routeShellGameType),
-      bootstrapBranch:
-        _routeShellGameType == null &&
-        (game.status === 'dealer_selection' ||
-          game.status === 'game_selection' ||
-          game.status === 'configuring'),
-    },
-  );
-  useShellChangeTracker(
-    'Game',
-    '_routeShellGameType',
-    _routeShellGameType ?? '(null)',
-    { gameStatus: game.status, gameType: game.game_type ?? '(null)' },
-  );
-  useShellChangeTracker(
-    'Game',
-    'persistentChildrenKey',
-    _isPokerShellPersistent ? (gameId ?? '(null-gameId)') : '(none)',
-    {
-      owner: 'Game.tsx → PlayfieldSlotController prop',
-      derivedFrom: '_isPokerShellPersistent ? gameId : null',
-      isPokerShellPersistent: _isPokerShellPersistent,
-      gameId: gameId ?? null,
-      gameStatus: game.status,
-      gameType: game.game_type ?? '(null)',
-    },
-  );
-
 
   // When the canonical shell owns the page column (header + children +
   // rail + tab bar in a flex column anchored to min-h-screen), the
