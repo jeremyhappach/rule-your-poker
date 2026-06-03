@@ -362,8 +362,14 @@ export function useHighCardDealerSelection({
             scope: isCribbageVariant ? 'cribbage' : 'session',
             extra: { round: roundNum },
           });
+          recordLifecycleTimelineEvent('dealer-selection:winner', {
+            winnerPosition: winnerPlayer.position, round: roundNum,
+          });
 
           addTimeout(() => {
+            recordLifecycleTimelineEvent('dealer-selection:onComplete-fired', {
+              winnerPosition: winnerPlayer.position,
+            });
             onComplete(winnerPlayer.position);
           }, WINNER_ANNOUNCE_DELAY);
         }
