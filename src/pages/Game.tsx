@@ -9922,6 +9922,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyConfiguring || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
             const _ginEffRoundId = (isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : '';
             const _ginEffDealerGameId = (isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null;
+            Promise.resolve().then(() => {
+              recordStartupValue('IDENTITY TIMELINE', 'propRoundId available', _ginEffRoundId, {
+                file: 'src/pages/Game.tsx',
+                isInProgress,
+                isGinRummyGameOver,
+                gameStatus: game.status,
+              });
+              recordStartupValue('IDENTITY TIMELINE', 'dealerGameId prop available', _ginEffDealerGameId, {
+                file: 'src/pages/Game.tsx',
+                isInProgress,
+                isGinRummyGameOver,
+                gameStatus: game.status,
+              });
+            });
             return (
               <>
                 <GinIdentityGateTracer
