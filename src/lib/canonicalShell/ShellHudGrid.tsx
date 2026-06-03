@@ -53,6 +53,7 @@ const ROW_STYLE: React.CSSProperties = {
 };
 
 export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
+  useLifecycleMount('ShellHudGrid');
   return (
     <div
       data-canonical-shell-hud-grid=""
