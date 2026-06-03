@@ -1502,6 +1502,12 @@ export const GinRummyGameTable = ({
     handCompletionInProgress.current = true;
     if (matchKey) matchEndKeyRef.current = matchKey;
 
+    // Snapshot the dealerGameId at the moment we entered the terminal
+    // lifecycle. Used as a stale-scope guard before firing the final
+    // onGameComplete — if the parent advanced to a new dealer-game
+    // (external teardown, reconnect, etc.) we must not double-fire the
+    // transition for the prior game.
+    const dealerGameIdAtStart = dealerGameId;
     const processCompletion = async () => {
       try {
         traceGinAnnouncement('completion:start', {
