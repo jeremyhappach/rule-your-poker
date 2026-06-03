@@ -229,6 +229,7 @@ export function useWaitingRoomActions({
           aggression_level: aggressionLevel,
         }),
       );
+      mark("profiles.insert:done", { err: profileError?.message });
 
       if (profileError) {
         if (profileError.code === "23505") {
@@ -241,6 +242,7 @@ export function useWaitingRoomActions({
               aggression_level: aggressionLevel,
             }),
           );
+          mark("profiles.insert.retry:done", { err: retryError?.message });
           if (retryError) throw new Error(`Failed to create bot profile: ${retryError.message}`);
         } else {
           throw new Error(`Failed to create bot profile: ${profileError.message}`);
@@ -259,21 +261,25 @@ export function useWaitingRoomActions({
           waiting: true,
         }),
       );
+      mark("players.insert:done", { err: playerError?.message });
 
       if (playerError) throw new Error(`Failed to add bot: ${playerError.message}`);
 
       await perf.step("session_events.insert", () =>
         logBotAdded(gameId, currentUserId, nextPosition, botNameForToast),
       );
+      mark("session_events.insert:done");
 
       succeeded = true;
       onBotAdded?.();
       perf.done({ ok: true, nextPosition });
+      mark("addSingleBot:exit-ok");
       return true;
     } catch (error: any) {
       console.error("Error adding bot:", error);
       toast.error(error?.message ? `Bot add failed: ${error.message}` : "Bot add failed");
       perf.done({ error: error?.message ?? "unknown" });
+      mark("addSingleBot:exit-error", { err: error?.message });
       return true;
     } finally {
       if (!succeeded) reservedBotPositionsRef.current.delete(nextPosition);
@@ -282,6 +288,9 @@ export function useWaitingRoomActions({
 
   const processAddBotQueue = useCallback(async () => {
     if (addBotProcessingRef.current) return;
+    const tQueueStart = performance.now();
+    // eslint-disable-next-line no-console
+    console.warn("[ADD_BOT_TRACE] processAddBotQueue:enter", { queueLen: addBotQueueRef.current });
     addBotProcessingRef.current = true;
     setIsAddingBot(true);
     try {
@@ -293,8 +302,13 @@ export function useWaitingRoomActions({
     } finally {
       addBotProcessingRef.current = false;
       setIsAddingBot(false);
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ADD_BOT_TRACE] processAddBotQueue:exit total=${Math.round(performance.now() - tQueueStart)}ms`,
+      );
     }
   }, [addSingleBot]);
+
 
   const handleAddBot = useCallback(() => {
     if (addBotProcessingRef.current || isAddingBot) return;
