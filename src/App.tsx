@@ -85,6 +85,7 @@ const App = () => {
             </AppNetworkSim>
             <LifecycleDebugBadge />
             <DebugModeIndicator />
+            <AnnouncementDebugPanel />
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>
