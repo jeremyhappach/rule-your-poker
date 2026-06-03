@@ -43,6 +43,7 @@ const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> 
 };
 
 export function CanonicalAnnouncementLayer() {
+  useLifecycleMount('CanonicalAnnouncementLayer');
   // Layer mount/unmount instrumentation (always while component is alive).
   useEffect(() => {
     recordAnnouncementDebugEvent('layer-mount', 'CanonicalAnnouncementLayer');
