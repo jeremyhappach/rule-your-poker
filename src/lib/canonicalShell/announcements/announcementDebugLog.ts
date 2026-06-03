@@ -21,7 +21,8 @@ export type AnnouncementDebugEventKind =
   | 'layer-mount'
   | 'layer-unmount'
   | 'scope-change'
-  | 'scope-teardown';
+  | 'scope-teardown'
+  | 'lifecycle';
 
 export interface AnnouncementDebugEvent {
   seq: number;

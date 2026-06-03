@@ -17,6 +17,7 @@ import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
@@ -156,7 +157,10 @@ export function useWaitingRoomActions({
   }, [players.length, players, playDoorbell]);
 
   const addSingleBot = useCallback(async (): Promise<boolean> => {
+    const t0 = performance.now();
+    recordAnnouncementDebugEvent('lifecycle', 'addSingleBot:start', { gameId });
     const perf = new PerfSession("WaitingRoom.addSingleBot", 300);
+
 
     const { data: dbPlayers, error: fetchError } = await perf.step(
       "players.selectPositions",
@@ -257,11 +261,13 @@ export function useWaitingRoomActions({
       succeeded = true;
       onBotAdded?.();
       perf.done({ ok: true, nextPosition });
+      recordAnnouncementDebugEvent('lifecycle', `addSingleBot:ok pos=${nextPosition} dt=${Math.round(performance.now() - t0)}ms`, { nextPosition, name: botNameForToast });
       return true;
     } catch (error: any) {
       console.error("Error adding bot:", error);
       toast.error(error?.message ? `Bot add failed: ${error.message}` : "Bot add failed");
       perf.done({ error: error?.message ?? "unknown" });
+      recordAnnouncementDebugEvent('lifecycle', `addSingleBot:error dt=${Math.round(performance.now() - t0)}ms`, { error: String(error?.message ?? error) });
       return true;
     } finally {
       if (!succeeded) reservedBotPositionsRef.current.delete(nextPosition);
@@ -272,6 +278,8 @@ export function useWaitingRoomActions({
     if (addBotProcessingRef.current) return;
     addBotProcessingRef.current = true;
     setIsAddingBot(true);
+    const tq = performance.now();
+    recordAnnouncementDebugEvent('lifecycle', 'processAddBotQueue:start', { queued: addBotQueueRef.current });
     try {
       while (addBotQueueRef.current > 0) {
         addBotQueueRef.current -= 1;
@@ -281,25 +289,38 @@ export function useWaitingRoomActions({
     } finally {
       addBotProcessingRef.current = false;
       setIsAddingBot(false);
+      recordAnnouncementDebugEvent('lifecycle', `processAddBotQueue:end dt=${Math.round(performance.now() - tq)}ms`);
     }
   }, [addSingleBot]);
 
   const handleAddBot = useCallback(() => {
-    if (addBotProcessingRef.current || isAddingBot) return;
+    recordAnnouncementDebugEvent('lifecycle', 'handleAddBot:click', {
+      isAddingBot, isSeated, isHost, realMoney,
+      processing: addBotProcessingRef.current,
+      seatCount: playersRef.current.length,
+    });
+    if (addBotProcessingRef.current || isAddingBot) {
+      recordAnnouncementDebugEvent('lifecycle', 'handleAddBot:skipped busy');
+      return;
+    }
     if (realMoney) {
       toast.error("Bots are disabled for real money sessions");
+      recordAnnouncementDebugEvent('lifecycle', 'handleAddBot:skipped realMoney');
       return;
     }
     if (!isSeated) {
       toast.error("Sit down first, then add a bot");
+      recordAnnouncementDebugEvent('lifecycle', 'handleAddBot:skipped notSeated');
       return;
     }
     if (!isHost) {
       toast.error("Only the host can add bots");
+      recordAnnouncementDebugEvent('lifecycle', 'handleAddBot:skipped notHost');
       return;
     }
     if (playersRef.current.length >= 7) {
       toast.error("Table is full");
+      recordAnnouncementDebugEvent('lifecycle', 'handleAddBot:skipped tableFull');
       return;
     }
     addBotQueueRef.current += 1;
@@ -307,10 +328,21 @@ export function useWaitingRoomActions({
   }, [isAddingBot, isSeated, isHost, realMoney, processAddBotQueue]);
 
   const handleStartGame = useCallback(() => {
-    if (!hasEnoughPlayers || gameStartTriggeredRef.current) return;
+    recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:click', {
+      hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
+    });
+    if (!hasEnoughPlayers || gameStartTriggeredRef.current) {
+      recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:skipped', {
+        hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
+      });
+      return;
+    }
     gameStartTriggeredRef.current = true;
     console.log("🃏 SHUFFLE UP AND DEAL! 🃏");
-    setTimeout(() => onGameStart(), 500);
+    setTimeout(() => {
+      recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:fire');
+      onGameStart();
+    }, 500);
   }, [hasEnoughPlayers, onGameStart]);
 
   const handleInvite = useCallback(() => {

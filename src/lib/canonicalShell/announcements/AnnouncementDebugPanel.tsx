@@ -37,9 +37,10 @@ const KIND_COLOR: Record<string, string> = {
   'layer-unmount': '#FF8C8C',
   'scope-change': '#9FE2BF',
   'scope-teardown': '#FF6B6B',
+  'lifecycle': '#FFFACD',
 };
 
-type FilterMode = 'all' | 'wins' | 'transitions';
+type FilterMode = 'all' | 'wins' | 'transitions' | 'lifecycle';
 
 function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string): boolean {
   if (mode === 'wins') {
@@ -57,6 +58,8 @@ function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string
       e.kind !== 'scope-change' &&
       e.kind !== 'scope-teardown'
     ) return false;
+  } else if (mode === 'lifecycle') {
+    if (e.kind !== 'lifecycle') return false;
   }
   if (text.trim()) {
     const needle = text.trim().toLowerCase();
@@ -179,6 +182,7 @@ export function AnnouncementDebugPanel() {
             <button type="button" style={chipStyle(filter === 'all')} onClick={() => setFilter('all')}>All</button>
             <button type="button" style={chipStyle(filter === 'wins')} onClick={() => setFilter('wins')}>Wins</button>
             <button type="button" style={chipStyle(filter === 'transitions')} onClick={() => setFilter('transitions')}>Transitions</button>
+            <button type="button" style={chipStyle(filter === 'lifecycle')} onClick={() => setFilter('lifecycle')}>Lifecycle</button>
             <input
               type="text"
               value={text}
