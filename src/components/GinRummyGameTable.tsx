@@ -2010,6 +2010,17 @@ export const GinRummyGameTable = ({
   const viewStateHandNumber = (viewState as { handNumber?: number } | null)?.handNumber ?? 0;
   const isStaleHandPresentation =
     !!viewState && handNumber > 0 && viewStateHandNumber > 0 && viewStateHandNumber < handNumber;
+  ginTrace('gin.placeholder gate', {
+    hasViewState: !!viewState,
+    hasBootstrapState: !!bootstrapState,
+    hasRoundId: !!roundId,
+    viewStateHandNumber,
+    handNumber,
+    isStaleHandPresentation,
+    presentationStateNull: ginSync.presentationState == null,
+    interactionsAllowed: ginSync.interactionsAllowed,
+    isIdentityStale: ginSync.isIdentityStale,
+  });
   if (!viewState || isStaleHandPresentation) {
     if (!placeholderPaintedRef.current) {
       placeholderPaintedRef.current = true;
@@ -2051,6 +2062,14 @@ export const GinRummyGameTable = ({
   if (!playablePaintedRef.current) {
     playablePaintedRef.current = true;
     ginTrace('gin.first painted (playable)');
+    ginTrace('gin.playable gate', {
+      hasViewState: !!viewState,
+      hasBootstrapState: !!bootstrapState,
+      hasRoundId: !!roundId,
+      viewStateHandNumber,
+      handNumber,
+      isStaleHandPresentation,
+    });
     if (typeof requestAnimationFrame !== 'undefined') {
       requestAnimationFrame(() => requestAnimationFrame(() => {
         ginTrace('first active gameplay visible');
