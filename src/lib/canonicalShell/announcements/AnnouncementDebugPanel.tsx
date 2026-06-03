@@ -17,6 +17,10 @@ import {
   isAnnouncementDebugEnabled,
   subscribeAnnouncementDebug,
 } from './announcementDebugLog';
+import {
+  ensureHarnessCacheLoaded,
+  subscribeGlobalDebugMode,
+} from '@/lib/debugHarness/runtimeCache';
 
 const KIND_COLOR: Record<string, string> = {
   emit: '#7CFC00',
@@ -35,8 +39,7 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 export function AnnouncementDebugPanel() {
-  if (!isAnnouncementDebugEnabled()) return null;
-
+  const [, forceVisibilityCheck] = useState(0);
   const events = useSyncExternalStore(
     subscribeAnnouncementDebug,
     getAnnouncementDebugEvents,
@@ -44,6 +47,13 @@ export function AnnouncementDebugPanel() {
   );
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    void ensureHarnessCacheLoaded().finally(() => forceVisibilityCheck((n) => n + 1));
+    return subscribeGlobalDebugMode(() => forceVisibilityCheck((n) => n + 1));
+  }, []);
+
+  if (!isAnnouncementDebugEnabled()) return null;
 
   useEffect(() => {
     if (!copied) return;
@@ -76,7 +86,7 @@ export function AnnouncementDebugPanel() {
         right: 4,
         bottom: 4,
         zIndex: 2147483646,
-        maxWidth: expanded ? 420 : 260,
+        width: expanded ? 'min(92vw, 420px)' : 'min(78vw, 260px)',
         background: 'rgba(0,0,0,0.82)',
         color: '#fff',
         border: '1px solid #444',
@@ -112,7 +122,7 @@ export function AnnouncementDebugPanel() {
           }}
           title={expanded ? 'Collapse' : 'Expand'}
         >
-          {expanded ? '▼' : '▶'} ANN ({events.length})
+          {expanded ? '▼' : '▶'} ANN DEBUG ({events.length})
           {!expanded && recent ? (
             <span style={{ fontWeight: 400, opacity: 0.8 }}>
               {' '}· {recent.kind} {recent.summary.slice(0, 28)}
