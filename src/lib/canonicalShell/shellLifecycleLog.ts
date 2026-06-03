@@ -131,3 +131,56 @@ export function formatShellLifecycleEventsAsText(): string {
   }
   return lines.join('\n');
 }
+
+// ── Investigation helpers ──────────────────────────────────────────
+// Capture an up-to-date snapshot of arbitrary props/state every render
+// and log it with the component's UNMOUNT event. Use this on shell-
+// owned surfaces that might be unmounted by a parent identity/key
+// transition or by a readiness gate flipping false — the snapshot
+// reveals the exact state at the moment the surface left the tree.
+export function useUnmountSnapshot(
+  component: string,
+  snapshot: Record<string, unknown>,
+): void {
+  const ref = useRef<Record<string, unknown>>(snapshot);
+  ref.current = snapshot;
+  useEffect(() => {
+    return () => {
+      recordShellLifecycleEvent('unmount-detail', component, ref.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
+// Log when an externally-meaningful value changes (e.g. a React key,
+// a readiness flag, a presence-of-wrapper flag). Logs once on mount
+// (with `from: '(init)'`) and again on every subsequent change.
+export function useChangeTracker(
+  component: string,
+  label: string,
+  value: unknown,
+  extra?: Record<string, unknown>,
+): void {
+  const lastRef = useRef<unknown>(Symbol.for('shellLifecycle.uninit'));
+  useEffect(() => {
+    if (lastRef.current === value) return;
+    const from = lastRef.current === Symbol.for('shellLifecycle.uninit')
+      ? '(init)'
+      : lastRef.current;
+    recordShellLifecycleEvent('key-change', `${component}.${label}: ${String(from)} → ${String(value)}`, {
+      component, label, from, to: value, ...(extra ?? {}),
+    });
+    lastRef.current = value;
+  }, [component, label, value, extra]);
+}
+
+// Log which render branch a component chose, with the gating
+// condition responsible. Coalesced server-side by recordShellLifecycleEvent.
+export function recordRenderDecision(
+  component: string,
+  decision: 'null' | 'neutral' | 'gameplay' | string,
+  gating: Record<string, unknown>,
+): void {
+  recordShellLifecycleEvent('render-decision', `${component} → ${decision}`, gating);
+}
+
