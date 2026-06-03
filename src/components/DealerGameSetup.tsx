@@ -17,7 +17,7 @@ import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
 import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
-import { recordStartupFlight } from "@/lib/startupFlightRecorder";
+import { recordStartupFlight, resetStartupFlight } from "@/lib/startupFlightRecorder";
 
 // P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
 // This identifies which client/code-path creates new dealer_games mid-session
@@ -1312,6 +1312,7 @@ export const DealerGameSetup = ({
       dealerGameConfig.per_point_value = ginRummyPerPointValue;
       dealerGameConfig.gin_bonus = ginRummyGinBonus;
       dealerGameConfig.undercut_bonus = ginRummyUndercutBonus;
+      resetStartupFlight('Gin config submit start');
       recordStartupFlight('PHASE TIMELINE', 'dealer_selected / Gin config submit start', {
         file: 'src/components/DealerGameSetup.tsx',
         function: 'handleCardGameSubmit',
