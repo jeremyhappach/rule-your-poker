@@ -78,6 +78,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 // adjacent to the tab bar) until canonical announcement wiring lands.
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
+import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
@@ -156,6 +157,16 @@ export const GinRummyGameTable = ({
   bootstrapState = null,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
+  useStartupMountTrace('GinRummyGameTable', { gameId, dealerGameId: dealerGameId ?? null, propRoundId: propRoundId ?? null });
+  useStartupRenderTrace('GinRummyGameTable', {
+    gameId,
+    propRoundId: propRoundId ?? null,
+    dealerGameId: dealerGameId ?? null,
+    propHandNumber,
+    bootstrapState: bootstrapState ? { phase: bootstrapState.phase, handNumber: (bootstrapState as any).handNumber ?? null } : null,
+    playersCount: players.length,
+    pot,
+  }, { file: 'src/components/GinRummyGameTable.tsx' });
   useChangeTracker('GinRummyGameTable', 'identity', `${dealerGameId ?? '-'}|${propRoundId ?? '-'}|h${propHandNumber}`);
   useUnmountSnapshot('GinRummyGameTable', {
     parent: 'PlayfieldSlotController children (gin-rummy gameplay branch in Game.tsx)',
@@ -223,6 +234,13 @@ export const GinRummyGameTable = ({
   // client cannot become structurally blind to a forward-advanced hand
   // started by a peer client.
   const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
+  useEffect(() => {
+    recordStartupValue('IDENTITY TIMELINE', 'authIdentity available', authIdentity ? {
+      dealerGameId: authIdentity.dealerGameId ?? null,
+      roundId: authIdentity.roundId ?? null,
+      handNumber: authIdentity.handNumber ?? null,
+    } : null, { file: 'src/components/GinRummyGameTable.tsx', gameId });
+  }, [authIdentity?.dealerGameId, authIdentity?.roundId, authIdentity?.handNumber, gameId]);
 
   const authIdentitySeenRef = useRef(false);
   useEffect(() => {
@@ -270,6 +288,13 @@ export const GinRummyGameTable = ({
   // Aliases — keep existing internal references pointing at the live monotonic identity.
   const roundId = currentRoundId;
   const handNumber = currentHandNumber;
+  useEffect(() => {
+    recordStartupValue('IDENTITY TIMELINE', 'GinRummyGameTable.identity', `${dealerGameId ?? '-'}|${roundId ?? '-'}|h${handNumber}`, {
+      file: 'src/components/GinRummyGameTable.tsx',
+      propRoundId: propRoundId ?? null,
+      authRoundId: authIdentity?.roundId ?? null,
+    });
+  }, [dealerGameId, roundId, handNumber, propRoundId, authIdentity?.roundId]);
 
   const roundIdSeenRef = useRef(false);
   useEffect(() => {
@@ -340,6 +365,13 @@ export const GinRummyGameTable = ({
   const bootstrapAppliedRef = useRef(false);
   useEffect(() => {
     if (!bootstrapState || !roundId) {
+      recordStartupFlight('EFFECT TIMELINE', 'bootstrapState apply effect skipped', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        function: 'bootstrapState apply useEffect',
+        skipReason: !bootstrapState ? 'no bootstrapState' : 'no roundId',
+        hasBootstrapState: !!bootstrapState,
+        hasRoundId: !!roundId,
+      });
       ginTrace('gin.receiveAuthoritativeUpdate gated', {
         hasBootstrapState: !!bootstrapState,
         hasRoundId: !!roundId,
@@ -347,6 +379,14 @@ export const GinRummyGameTable = ({
       return;
     }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
+    recordStartupFlight('SYNC TIMELINE', 'bootstrapState receiveAuthoritativeUpdate returned', {
+      file: 'src/components/GinRummyGameTable.tsx',
+      function: 'bootstrapState apply useEffect',
+      roundId,
+      oldValue: null,
+      newValue: { phase: bootstrapState.phase, handNumber: (bootstrapState as any)?.handNumber ?? null },
+      result,
+    });
     if (result.accepted) setGinState(bootstrapState);
     if (!bootstrapAppliedRef.current && result.accepted) {
       bootstrapAppliedRef.current = true;
