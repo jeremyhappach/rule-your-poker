@@ -59,6 +59,7 @@ import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
+import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 
 // Shell-owned felt is the sole canonical mount — no local visual flag.
 
