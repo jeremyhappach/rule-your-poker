@@ -10617,6 +10617,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         </>
       )}
 
+      <StartupFlightRecorderOverlay />
     </VisualPreferencesProvider>
   );
 };
