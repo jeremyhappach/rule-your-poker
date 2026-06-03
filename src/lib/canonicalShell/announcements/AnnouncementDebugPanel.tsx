@@ -210,6 +210,7 @@ export function AnnouncementDebugPanel() {
               newest.map((e) => (
                 <div key={e.seq} style={{ marginBottom: 2 }}>
                   <span style={{ opacity: 0.7 }}>+{e.tMs}ms </span>
+                  <span style={{ opacity: 0.5 }}>(+{e.dPrevMs}) </span>
                   <span style={{ color: KIND_COLOR[e.kind] ?? '#fff', fontWeight: 700 }}>{e.kind}</span>{' '}
                   <span>{e.summary}</span>
                   {e.repeat > 1 ? (
