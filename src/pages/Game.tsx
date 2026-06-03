@@ -548,6 +548,18 @@ const Game = () => {
   const hasHydratedRef = useRef(false);
   if (_game) hasHydratedRef.current = true;
   const game: GameData | null = _game ?? (hasHydratedRef.current ? lastGameRef.current : null);
+  useStartupRenderTrace('Game', {
+    routeGameId: gameId ?? null,
+    loading,
+    authReady,
+    hasGame: !!game,
+    gameStatus: game?.status ?? null,
+    gameType: game?.game_type ?? null,
+    currentGameUuid: (game as any)?.current_game_uuid ?? null,
+    currentRoundNumber: game?.current_round ?? null,
+    totalHands: game?.total_hands ?? null,
+    playersCount: players.length,
+  });
 
   // Push game context into network simulation runtime for log enrichment
   useEffect(() => {
