@@ -253,13 +253,12 @@ export function CanonicalAnnouncementProvider({
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
-      const isMW = event.type === 'match_win';
       recordAnnouncementDebugEvent(
         'lifecycle',
         `emit-requested ${event.type} id=${event.id.slice(0, 8)}`,
         {
           stage: 'emit-requested', type: event.type, id: event.id,
-          scope: event.scope, currentScope, isMatchWin: isMW,
+          scope: event.scope, currentScope,
         },
       );
       if (!scopeMatches(event.scope, currentScope)) {
