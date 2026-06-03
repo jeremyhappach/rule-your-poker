@@ -2134,9 +2134,29 @@ export const GinRummyGameTable = ({
     interactionsAllowed: ginSync.interactionsAllowed,
     isIdentityStale: ginSync.isIdentityStale,
   });
+  Promise.resolve().then(() => {
+    recordStartupValue('PLACEHOLDER TIMELINE', 'Gin placeholder gate', {
+      hasViewState: !!viewState,
+      hasBootstrapState: !!bootstrapState,
+      hasRoundId: !!roundId,
+      viewStateHandNumber,
+      handNumber,
+      isStaleHandPresentation,
+      presentationStateNull: ginSync.presentationState == null,
+      interactionsAllowed: ginSync.interactionsAllowed,
+      isIdentityStale: ginSync.isIdentityStale,
+    }, { file: 'src/components/GinRummyGameTable.tsx' });
+  });
   if (!viewState || isStaleHandPresentation) {
     if (!placeholderPaintedRef.current) {
       placeholderPaintedRef.current = true;
+      recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        oldValue: 'not-painted',
+        newValue: 'placeholder',
+        hasViewState: !!viewState,
+        isStaleHandPresentation,
+      });
       ginTrace('gin.first painted (placeholder)');
       if (typeof requestAnimationFrame !== 'undefined') {
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -2174,6 +2194,14 @@ export const GinRummyGameTable = ({
 
   if (!playablePaintedRef.current) {
     playablePaintedRef.current = true;
+    recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder exit / first playable frame', {
+      file: 'src/components/GinRummyGameTable.tsx',
+      oldValue: 'placeholder',
+      newValue: 'playable',
+      hasViewState: !!viewState,
+      handNumber,
+      viewStateHandNumber,
+    });
     ginTrace('gin.first painted (playable)');
     ginTrace('gin.playable gate', {
       hasViewState: !!viewState,
