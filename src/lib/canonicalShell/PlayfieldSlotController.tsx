@@ -398,6 +398,13 @@ export function PlayfieldSlotController({
   //       instance across the entire poker-shell lifecycle"
   //       contract from the persistent-poker-shell refactor.
   if (persistentChildrenKey) {
+    recordRenderDecision('PlayfieldSlotController', mountedIdentity === null ? 'neutral+persistent-children' : 'gameplay+persistent-children', {
+      mode: 'persistent-children',
+      persistentChildrenKey,
+      mountedIdentity: describeSlotIdentity(mountedIdentity),
+      desiredIdentity: describeSlotIdentity(desiredIdentity),
+      phase, readyToMount, surfaceReady, readyToMountProp, neutralReason,
+    });
     return (
       <div
         data-canonical-shell-slot=""
