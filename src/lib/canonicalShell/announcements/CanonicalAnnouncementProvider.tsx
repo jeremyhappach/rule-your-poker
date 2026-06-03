@@ -647,7 +647,9 @@ export function useAnnouncements() {
       clearScope: ctx.clearScope,
       clearAmbient: ctx.clearAmbient,
       waitForDismiss: ctx.waitForDismiss,
-  };
+    }),
+    [ctx.emit, ctx.dismiss, ctx.clearScope, ctx.clearAmbient, ctx.waitForDismiss],
+  );
 }
 
 
