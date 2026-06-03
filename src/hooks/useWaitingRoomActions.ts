@@ -164,8 +164,10 @@ export function useWaitingRoomActions({
     const tStart = performance.now();
     const tag = `[ADD_BOT_TRACE ${Math.random().toString(36).slice(2, 6)}]`;
     const mark = (phase: string, extra?: Record<string, unknown>) => {
+      const dt = Math.round(performance.now() - tStart);
       // eslint-disable-next-line no-console
-      console.warn(`${tag} +${Math.round(performance.now() - tStart)}ms ${phase}`, extra ?? {});
+      console.warn(`${tag} +${dt}ms ${phase}`, extra ?? {});
+      recordLifecycleTimelineEvent(`add_bot:${phase}`, { tag, dtMs: dt, gameId: gameId?.slice(0, 8), ...(extra ?? {}) });
     };
     mark("addSingleBot:enter", { gameId });
     const perf = new PerfSession("WaitingRoom.addSingleBot", 0);
