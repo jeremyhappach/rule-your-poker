@@ -8753,6 +8753,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ) : null}
           </div>
         </PersistentTableShell>
+        <StartupFlightRecorderOverlay />
       </SurfaceReadinessProvider>
     );
   }
