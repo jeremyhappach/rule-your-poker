@@ -48,8 +48,23 @@ export function ShellAnnouncementRail() {
     !!active &&
     (active.type === 'match_win' || !isCelebrationType(active.type)) &&
     !isCtaAmbientType(active.type);
+  const railActive =
+    active?.type === 'match_win'
+      ? active
+      : ambient?.type === 'dealer_configuring'
+        ? ambient
+        : active;
+  const canonicalLayerMounted = hasCanonicalRailEvent;
 
-  const showAnnouncementDebug = import.meta.env.DEV;
+  const showAnnouncementDebug = true;
+  const debugText = [
+    'ANNOUNCEMENT RUNTIME PROOF',
+    `active.type: ${active?.type ?? 'null'}`,
+    `ambient.type: ${ambient?.type ?? 'null'}`,
+    `railActive.type: ${railActive?.type ?? 'null'}`,
+    `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
+    `CanonicalAnnouncementLayer mounted: ${String(canonicalLayerMounted)}`,
+  ].join('\n');
 
   useEffect(() => {
     traceRailRuntime('gate:evaluated', {
@@ -94,35 +109,54 @@ export function ShellAnnouncementRail() {
     >
       {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : null}
       {showAnnouncementDebug ? (
-        <div
-          data-announcement-runtime-debug=""
-          style={{
-            position: 'fixed',
-            left: 8,
-            top: 8,
-            zIndex: 2147483647,
-            maxWidth: 360,
-            padding: '6px 8px',
-            background: 'hsl(var(--background) / 0.92)',
-            color: 'hsl(var(--foreground))',
-            border: '1px solid hsl(var(--poker-gold))',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            fontSize: 10,
-            lineHeight: 1.25,
-            textAlign: 'left',
-            pointerEvents: 'none',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          {[
-            'ANN DEBUG',
-            `ShellAnnouncementRail mounted: yes`,
-            `active.type: ${active?.type ?? 'null'}`,
-            `ambient.type: ${ambient?.type ?? 'null'}`,
-            `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
-            `CanonicalAnnouncementLayer mounted: ${hasCanonicalRailEvent ? 'yes' : 'no'}`,
-          ].join('\n')}
-        </div>
+        <>
+          <div
+            data-announcement-runtime-debug-rail=""
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 2147483646,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              background: 'hsl(var(--destructive))',
+              color: 'hsl(var(--destructive-foreground))',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontSize: 10,
+              fontWeight: 800,
+              lineHeight: 1,
+              textAlign: 'center',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {`ANN PROOF active=${active?.type ?? 'null'} ambient=${ambient?.type ?? 'null'} rail=${railActive?.type ?? 'null'} event=${String(hasCanonicalRailEvent)} layer=${String(canonicalLayerMounted)}`}
+          </div>
+          <div
+            data-announcement-runtime-debug=""
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              top: 0,
+              zIndex: 2147483647,
+              padding: '10px 12px',
+              background: 'hsl(var(--destructive))',
+              color: 'hsl(var(--destructive-foreground))',
+              borderBottom: '4px solid hsl(var(--poker-gold))',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontSize: 14,
+              fontWeight: 800,
+              lineHeight: 1.25,
+              textAlign: 'left',
+              pointerEvents: 'none',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {debugText}
+          </div>
+        </>
       ) : null}
     </div>
   );
