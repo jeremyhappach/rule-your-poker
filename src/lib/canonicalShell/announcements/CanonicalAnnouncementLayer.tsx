@@ -19,9 +19,11 @@
  *     own client.
  */
 
+import { useEffect } from 'react';
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderAnnouncement } from './renderers';
 import { isCelebrationType, isCtaAmbientType } from './types';
+import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 
 const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> = {}) => {
   try {
@@ -40,92 +42,43 @@ const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> 
 };
 
 export function CanonicalAnnouncementLayer() {
+  // Layer mount/unmount instrumentation (always while component is alive).
+  useEffect(() => {
+    recordAnnouncementDebugEvent('layer-mount', 'CanonicalAnnouncementLayer');
+    return () => recordAnnouncementDebugEvent('layer-unmount', 'CanonicalAnnouncementLayer');
+  }, []);
+
   const ctx = useAnnouncementContext();
   if (!ctx) return null;
 
   // ── Global between-games lifecycle precedence ──────────────────
-  // A `dealer_configuring` ambient represents a session-level
-  // between-games boundary: the next dealer is configuring the next
-  // game, and the shell rail's job is to surface that fact to every
-  // client (including observers) the moment the boundary opens.
-  //
-  // Without this precedence, a prior-game transient still in its TTL
-  // window (most notably `match_win`, which renders in BOTH the
-  // celebration overlay AND the rail) would occupy the rail for the
-  // full TTL — and by the time it expired, the next dealer would
-  // often have already completed setup, so observers never saw the
-  // "is setting up the next game" plate. This made the global
-  // between-games interstitial lifecycle contract diverge from the
-  // initial-session bootstrap path (where no prior transient exists),
-  // which is exactly the divergence this unifies.
-  //
-  // The celebration overlay (CanonicalCelebrationLayer) continues to
-  // render the prior-game `match_win` independently — the rail does
-  // not own celebration; it owns "what is the shell doing now".
-  // Ownership inversion: while the terminal match-win lifecycle is
-  // active (hand_result → match_win → confetti → chip transfer →
-  // onGameComplete → scope teardown), match_win temporarily outranks
-  // the dealer_configuring ambient so the winner plate gets its paint
-  // window. Once match_win leaves the active slot (TTL, dismiss, or
-  // scope teardown on the next dealer-game), dealer_configuring
-  // resumes its normal between-games precedence described above.
+  // See CanonicalAnnouncementProvider for the longer ownership note.
+  // Ownership inversion: while a terminal match_win is active, it
+  // outranks the dealer_configuring ambient so the winner plate gets
+  // its paint window. Once match_win leaves the active slot,
+  // dealer_configuring resumes between-games precedence.
   const railActive =
     ctx.active?.type === 'match_win'
       ? ctx.active
       : ctx.ambient?.type === 'dealer_configuring'
         ? ctx.ambient
         : ctx.active;
-  const showAnnouncementDebug = import.meta.env.DEV;
-  const renderDebug = (extra: Record<string, string | boolean | null> = {}) => (
-    <div
-      data-announcement-layer-runtime-debug=""
-      style={{
-        position: 'fixed',
-        left: 8,
-        top: 92,
-        zIndex: 2147483647,
-        maxWidth: 360,
-        padding: '6px 8px',
-        background: 'hsl(var(--background) / 0.92)',
-        color: 'hsl(var(--foreground))',
-        border: '1px solid hsl(var(--poker-gold))',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-        fontSize: 10,
-        lineHeight: 1.25,
-        textAlign: 'left',
-        pointerEvents: 'none',
-        whiteSpace: 'pre-wrap',
-      }}
-    >
-      {[
-        'ANN LAYER DEBUG',
-        'CanonicalAnnouncementLayer mounted: yes',
-        `active.type: ${ctx.active?.type ?? 'null'}`,
-        `ambient.type: ${ctx.ambient?.type ?? 'null'}`,
-        `railActive.type: ${railActive?.type ?? 'null'}`,
-        `match_win renderer selected: ${String(extra.matchWinRendererSelected ?? false)}`,
-        extra.filtered ? `filtered: ${extra.filtered}` : null,
-      ].filter(Boolean).join('\n')}
-    </div>
-  );
-  if (!railActive) return showAnnouncementDebug ? renderDebug() : null;
+  if (!railActive) return null;
 
   // Celebration-tier events ALSO render a centered overlay via
   // CanonicalCelebrationLayer, but match_win additionally renders a
   // winner plate in the lifecycle rail so observers and players get a
-  // clear "who won" announcement. Other celebration types (if added)
-  // continue to skip the rail.
+  // clear "who won" announcement. Other celebration types skip the rail.
   if (isCelebrationType(railActive.type) && railActive.type !== 'match_win') {
     traceAnnouncementPaint('rail:filtered:celebration', { id: railActive.id, type: railActive.type });
-    return showAnnouncementDebug ? renderDebug({ filtered: 'celebration' }) : null;
+    return null;
   }
   // Actor-directed CTAs / waiting-on-player prompts render in the
   // ambient helper text area inside the active content pane — not in
-  // the shell announcement rail. This keeps the rail focused on
-  // shared gameplay/lifecycle state and avoids per-action churn.
+  // the shell announcement rail.
   if (isCtaAmbientType(railActive.type)) {
     traceAnnouncementPaint('rail:filtered:cta-ambient', { id: railActive.id, type: railActive.type });
-    return showAnnouncementDebug ? renderDebug({ filtered: 'cta-ambient' }) : null;
+    return null;
   }
 
   // Actor-only visibility gate for cta_prompt.
@@ -144,7 +97,7 @@ export function CanonicalAnnouncementLayer() {
   }
 
   const node = renderAnnouncement(railActive);
-  if (!node) return showAnnouncementDebug ? renderDebug({ filtered: 'no-renderer' }) : null;
+  if (!node) return null;
   traceAnnouncementPaint('rail:render', { id: railActive.id, type: railActive.type });
   return (
     <div
@@ -159,7 +112,6 @@ export function CanonicalAnnouncementLayer() {
       }}
     >
       {node}
-      {showAnnouncementDebug ? renderDebug({ matchWinRendererSelected: railActive.type === 'match_win' }) : null}
     </div>
   );
 }

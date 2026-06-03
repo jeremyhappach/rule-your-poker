@@ -55,8 +55,7 @@ import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
-import { useAnnouncements, useAnnouncementContext, isCelebrationType } from '@/lib/canonicalShell/announcements';
-import { isCtaAmbientType } from '@/lib/canonicalShell/announcements/types';
+import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import confetti from 'canvas-confetti';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
@@ -182,27 +181,7 @@ export const GinRummyGameTable = ({
 
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   const announcements = useAnnouncements();
-  const announcementContext = useAnnouncementContext();
-  const announcementActive = announcementContext?.active ?? null;
-  const announcementAmbient = announcementContext?.ambient ?? null;
-  const hasCanonicalRailEvent =
-    !!announcementActive &&
-    (announcementActive.type === 'match_win' || !isCelebrationType(announcementActive.type)) &&
-    !isCtaAmbientType(announcementActive.type);
-  const announcementRailActive =
-    announcementActive?.type === 'match_win'
-      ? announcementActive
-      : announcementAmbient?.type === 'dealer_configuring'
-        ? announcementAmbient
-        : announcementActive;
-  const announcementProofText = [
-    'GIN ANNOUNCEMENT RUNTIME PROOF',
-    `active.type: ${announcementActive?.type ?? 'null'}`,
-    `ambient.type: ${announcementAmbient?.type ?? 'null'}`,
-    `railActive.type: ${announcementRailActive?.type ?? 'null'}`,
-    `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
-    `CanonicalAnnouncementLayer mounted: ${String(hasCanonicalRailEvent)}`,
-  ].join('\n');
+  // (debug instrumentation moved to AnnouncementDebugPanel)
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
@@ -2336,31 +2315,6 @@ export const GinRummyGameTable = ({
           </div>
         }
       />
-      {viewState.phase === 'complete' && viewState.winnerPlayerId ? (
-        <div
-          data-gin-announcement-runtime-proof=""
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            top: 0,
-            zIndex: 2147483647,
-            padding: '12px 14px',
-            background: 'hsl(var(--destructive))',
-            color: 'hsl(var(--destructive-foreground))',
-            borderBottom: '6px solid hsl(var(--poker-gold))',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-            fontSize: 15,
-            fontWeight: 900,
-            lineHeight: 1.25,
-            textAlign: 'left',
-            pointerEvents: 'none',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          {announcementProofText}
-        </div>
-      ) : null}
     </div>
 
   );

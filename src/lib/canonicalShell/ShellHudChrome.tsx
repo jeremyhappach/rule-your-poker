@@ -18,10 +18,11 @@
  *     using `<ShellHudChrome />`.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { CanonicalAnnouncementLayer } from './announcements';
 import { useAnnouncementContext } from './announcements/CanonicalAnnouncementProvider';
 import { isCelebrationType, isCtaAmbientType } from './announcements/types';
+import { recordAnnouncementDebugEvent } from './announcements/announcementDebugLog';
 import { ShellTabBar } from './ShellTabBar';
 
 const traceRailRuntime = (event: string, payload: Record<string, unknown> = {}) => {
@@ -56,15 +57,28 @@ export function ShellAnnouncementRail() {
         : active;
   const canonicalLayerMounted = hasCanonicalRailEvent;
 
-  const showAnnouncementDebug = true;
-  const debugText = [
-    'ANNOUNCEMENT RUNTIME PROOF',
-    `active.type: ${active?.type ?? 'null'}`,
-    `ambient.type: ${ambient?.type ?? 'null'}`,
-    `railActive.type: ${railActive?.type ?? 'null'}`,
-    `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
-    `CanonicalAnnouncementLayer mounted: ${String(canonicalLayerMounted)}`,
-  ].join('\n');
+  // ── Debug instrumentation: track rail-level derivations ──
+  const prevRailRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
+  const prevFlagRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    const r = { id: railActive?.id ?? null, type: railActive?.type ?? null };
+    if (r.id !== prevRailRef.current.id || r.type !== prevRailRef.current.type) {
+      recordAnnouncementDebugEvent(
+        'rail-active-change',
+        `${prevRailRef.current.type ?? 'null'} → ${r.type ?? 'null'}`,
+        { from: prevRailRef.current, to: r, activeType: active?.type ?? null, ambientType: ambient?.type ?? null },
+      );
+      prevRailRef.current = r;
+    }
+    if (prevFlagRef.current !== hasCanonicalRailEvent) {
+      recordAnnouncementDebugEvent(
+        'rail-event-flag-change',
+        `${String(prevFlagRef.current)} → ${String(hasCanonicalRailEvent)}`,
+        { hasCanonicalRailEvent, activeType: active?.type ?? null, railType: railActive?.type ?? null },
+      );
+      prevFlagRef.current = hasCanonicalRailEvent;
+    }
+  }, [railActive?.id, railActive?.type, hasCanonicalRailEvent, active?.type, ambient?.type]);
 
   useEffect(() => {
     traceRailRuntime('gate:evaluated', {
@@ -109,56 +123,6 @@ export function ShellAnnouncementRail() {
       }}
     >
       {hasCanonicalRailEvent ? <CanonicalAnnouncementLayer /> : null}
-      {showAnnouncementDebug ? (
-        <>
-          <div
-            data-announcement-runtime-debug-rail=""
-            style={{
-              position: 'absolute',
-              inset: 0,
-              zIndex: 2147483646,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 4px',
-              background: 'hsl(var(--destructive))',
-              color: 'hsl(var(--destructive-foreground))',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: 10,
-              fontWeight: 800,
-              lineHeight: 1,
-              textAlign: 'center',
-              pointerEvents: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {`ANN PROOF active=${active?.type ?? 'null'} ambient=${ambient?.type ?? 'null'} rail=${railActive?.type ?? 'null'} event=${String(hasCanonicalRailEvent)} layer=${String(canonicalLayerMounted)}`}
-          </div>
-          <div
-            data-announcement-runtime-debug=""
-            style={{
-              position: 'fixed',
-              left: 0,
-              right: 0,
-              top: 0,
-              zIndex: 2147483647,
-              padding: '10px 12px',
-              background: 'hsl(var(--destructive))',
-              color: 'hsl(var(--destructive-foreground))',
-              borderBottom: '4px solid hsl(var(--poker-gold))',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-              fontSize: 14,
-              fontWeight: 800,
-              lineHeight: 1.25,
-              textAlign: 'left',
-              pointerEvents: 'none',
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {debugText}
-          </div>
-        </>
-      ) : null}
     </div>
   );
 

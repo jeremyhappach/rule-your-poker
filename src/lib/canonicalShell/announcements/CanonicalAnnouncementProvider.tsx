@@ -49,6 +49,7 @@ import {
   type AnnouncementScope,
   type AnnouncementType,
 } from './types';
+import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 
 const traceAnnouncementRuntime = (event: string, payload: Record<string, unknown> = {}) => {
   try {
@@ -261,6 +262,13 @@ export function CanonicalAnnouncementProvider({
           behavior: resolved.resolvedBehavior,
         });
       }
+      recordAnnouncementDebugEvent('emit', `${event.type} id=${event.id.slice(0,8)} (${resolved.resolvedBehavior})`, {
+        type: event.type,
+        id: event.id,
+        behavior: resolved.resolvedBehavior,
+        priority: resolved.resolvedPriority,
+        scope: resolved.scope,
+      });
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
@@ -338,6 +346,7 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
+      recordAnnouncementDebugEvent('dismiss', `id=${id.slice(0, 8)}`, { id });
       setTransient((cur) => {
         if (cur && cur.id === id) {
           transientIdRef.current = null;
@@ -360,6 +369,7 @@ export function CanonicalAnnouncementProvider({
 
 
   const clearAmbient = useCallback((type?: AnnouncementType) => {
+    recordAnnouncementDebugEvent('clearAmbient', type ?? '(any)', { type: type ?? null });
     setAmbient((cur) => {
       if (!cur) return null;
       if (type && cur.type !== type) return cur;
@@ -369,6 +379,11 @@ export function CanonicalAnnouncementProvider({
 
   const clearScope = useCallback(
     (scope: AnnouncementScope) => {
+      recordAnnouncementDebugEvent(
+        'clearScope',
+        `dg=${scope.dealerGameId?.slice(0, 8) ?? 'null'} r=${scope.roundId?.slice(0, 8) ?? 'null'}`,
+        { scope },
+      );
       const kept: ResolvedAnnouncement[] = [];
       for (const q of queueRef.current) {
         if (scopeMatches(q.scope, scope)) drainDismiss(q.id);
@@ -401,15 +416,22 @@ export function CanonicalAnnouncementProvider({
     ) {
       return;
     }
+    recordAnnouncementDebugEvent(
+      'scope-change',
+      `dg ${prev.dealerGameId?.slice(0,8) ?? 'null'} → ${currentScope.dealerGameId?.slice(0,8) ?? 'null'} / r ${prev.roundId?.slice(0,8) ?? 'null'} → ${currentScope.roundId?.slice(0,8) ?? 'null'}`,
+      { prev, next: currentScope },
+    );
 
     const keptQueue: ResolvedAnnouncement[] = [];
+    let droppedQueueCount = 0;
     for (const q of queueRef.current) {
       if (scopeMatches(q.scope, currentScope)) keptQueue.push(q);
-      else drainDismiss(q.id);
+      else { drainDismiss(q.id); droppedQueueCount++; }
     }
     queueRef.current = keptQueue;
     setTransient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
+        recordAnnouncementDebugEvent('scope-teardown', `transient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
         clearTtl();
         transientIdRef.current = null;
         drainDismiss(cur.id);
@@ -418,7 +440,16 @@ export function CanonicalAnnouncementProvider({
       }
       return cur;
     });
-    setAmbient((cur) => (cur && !scopeMatches(cur.scope, currentScope) ? null : cur));
+    setAmbient((cur) => {
+      if (cur && !scopeMatches(cur.scope, currentScope)) {
+        recordAnnouncementDebugEvent('scope-teardown', `ambient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
+        return null;
+      }
+      return cur;
+    });
+    if (droppedQueueCount > 0) {
+      recordAnnouncementDebugEvent('scope-teardown', `queue dropped ${droppedQueueCount}`, { count: droppedQueueCount });
+    }
 
     const keepKey = scopeKey(currentScope);
     for (const k of Array.from(seenRef.current.keys())) {
@@ -453,6 +484,9 @@ export function CanonicalAnnouncementProvider({
   // Active = transient if present, else ambient.
   const active = transient ?? ambient;
 
+  const prevActiveRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
+  const prevAmbientRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
+  const prevTransientRef = useRef<{ id: string | null; type: string | null }>({ id: null, type: null });
   useEffect(() => {
     traceAnnouncementRuntime('active-slot:changed', {
       activeId: active?.id ?? null,
@@ -462,6 +496,21 @@ export function CanonicalAnnouncementProvider({
       ambientId: ambient?.id ?? null,
       ambientType: ambient?.type ?? null,
     });
+    const a = { id: active?.id ?? null, type: active?.type ?? null };
+    if (a.id !== prevActiveRef.current.id || a.type !== prevActiveRef.current.type) {
+      recordAnnouncementDebugEvent('active-change', `${prevActiveRef.current.type ?? 'null'} → ${a.type ?? 'null'}`, { from: prevActiveRef.current, to: a });
+      prevActiveRef.current = a;
+    }
+    const am = { id: ambient?.id ?? null, type: ambient?.type ?? null };
+    if (am.id !== prevAmbientRef.current.id || am.type !== prevAmbientRef.current.type) {
+      recordAnnouncementDebugEvent('ambient-change', `${prevAmbientRef.current.type ?? 'null'} → ${am.type ?? 'null'}`, { from: prevAmbientRef.current, to: am });
+      prevAmbientRef.current = am;
+    }
+    const tr = { id: transient?.id ?? null, type: transient?.type ?? null };
+    if (tr.id !== prevTransientRef.current.id || tr.type !== prevTransientRef.current.type) {
+      recordAnnouncementDebugEvent('transient-change', `${prevTransientRef.current.type ?? 'null'} → ${tr.type ?? 'null'}`, { from: prevTransientRef.current, to: tr });
+      prevTransientRef.current = tr;
+    }
   }, [active?.id, active?.type, transient?.id, transient?.type, ambient?.id, ambient?.type]);
 
   const value = useMemo<AnnouncementContextValue>(
