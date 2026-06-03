@@ -25,6 +25,7 @@ import {
   type SurfaceReadinessIdentity,
 } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 interface Props {
   dealerGameId: string | null;
