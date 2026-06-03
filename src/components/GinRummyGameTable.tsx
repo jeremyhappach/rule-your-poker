@@ -182,27 +182,7 @@ export const GinRummyGameTable = ({
 
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   const announcements = useAnnouncements();
-  const announcementContext = useAnnouncementContext();
-  const announcementActive = announcementContext?.active ?? null;
-  const announcementAmbient = announcementContext?.ambient ?? null;
-  const hasCanonicalRailEvent =
-    !!announcementActive &&
-    (announcementActive.type === 'match_win' || !isCelebrationType(announcementActive.type)) &&
-    !isCtaAmbientType(announcementActive.type);
-  const announcementRailActive =
-    announcementActive?.type === 'match_win'
-      ? announcementActive
-      : announcementAmbient?.type === 'dealer_configuring'
-        ? announcementAmbient
-        : announcementActive;
-  const announcementProofText = [
-    'GIN ANNOUNCEMENT RUNTIME PROOF',
-    `active.type: ${announcementActive?.type ?? 'null'}`,
-    `ambient.type: ${announcementAmbient?.type ?? 'null'}`,
-    `railActive.type: ${announcementRailActive?.type ?? 'null'}`,
-    `hasCanonicalRailEvent: ${String(hasCanonicalRailEvent)}`,
-    `CanonicalAnnouncementLayer mounted: ${String(hasCanonicalRailEvent)}`,
-  ].join('\n');
+  // (debug instrumentation moved to AnnouncementDebugPanel)
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
 
