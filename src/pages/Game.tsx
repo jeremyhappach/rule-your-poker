@@ -3821,6 +3821,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
 
+  useEffect(() => {
+    recordStartupValue('STATUS TIMELINE', 'Game.status', game?.status ?? null, {
+      file: 'src/pages/Game.tsx',
+      gameId,
+      gameType: game?.game_type ?? null,
+    });
+    recordStartupValue('IDENTITY TIMELINE', 'game.game_type', game?.game_type ?? null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('IDENTITY TIMELINE', 'game.current_game_uuid', (game as any)?.current_game_uuid ?? null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('ROUND TIMELINE', 'currentRound populated', currentRound ? {
+      id: currentRound.id ?? null,
+      dealer_game_id: (currentRound as any)?.dealer_game_id ?? null,
+      hand_number: currentRound.hand_number ?? null,
+      round_number: currentRound.round_number ?? null,
+      hasGinRummyState: !!((currentRound as any)?.gin_rummy_state),
+    } : null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('ROUND TIMELINE', 'currentRound.id available', currentRound?.id ?? null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('ROUND TIMELINE', 'currentRound.dealer_game_id available', (currentRound as any)?.dealer_game_id ?? null, { file: 'src/pages/Game.tsx', gameId });
+  }, [game?.status, game?.game_type, (game as any)?.current_game_uuid, currentRound?.id, (currentRound as any)?.dealer_game_id, currentRound?.hand_number, currentRound?.round_number, gameId]);
+
   // F5.1/F4.2: identity-scoped all_decisions_in. Raw `game.all_decisions_in` can
   // persist across hand/round transitions and is the systemic source of the
   // stale-progression-flag bug class. Always consume this scoped value for
