@@ -227,7 +227,6 @@ export function CanonicalAnnouncementProvider({
   }, [drainDismiss]);
 
   const promoteNextTransient = useCallback(() => {
-    clearTtl();
     const queue = queueRef.current;
     const beforeLen = queue.length;
     const candidates = queue.map((q) => ({
@@ -246,6 +245,28 @@ export function CanonicalAnnouncementProvider({
         currentScope,
       },
     );
+
+    // Ownership guard: a promotion task is "owned" by the slot state
+    // it was scheduled to follow up on. If the slot has since been
+    // taken by a newer transient (e.g. a preempt that ran between
+    // the scheduling of this microtask and its execution), we must
+    // not touch the slot or the TTL timer — both belong to the new
+    // owner. Bail before clearTtl/setTransient so we don't clobber
+    // the in-flight transient or cancel its TTL.
+    if (transientIdRef.current != null && queue.length === 0) {
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `promotion-skip-stale transientRef=${transientIdRef.current.slice(0,8)}`,
+        {
+          stage: 'promotion-skip-stale',
+          reason: 'slot-owned-by-newer-transient',
+          transientIdRef: transientIdRef.current,
+        },
+      );
+      return;
+    }
+
+    clearTtl();
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
       recordAnnouncementDebugEvent(
@@ -269,20 +290,23 @@ export function CanonicalAnnouncementProvider({
         {
           stage: 'promotion-none',
           transientIdRef: transientIdRef.current,
-          willClobberInFlight: transientIdRef.current != null,
         },
       );
     }
     transientIdRef.current = next?.id ?? null;
     setTransient((prev) => {
+      // Second-line ownership guard at update time: if the slot has
+      // a value but the queue produced no successor, only clear if
+      // the slot is still the one we expected. Otherwise a newer
+      // transient was installed between scheduling and apply — leave
+      // it alone.
       if (prev && !next) {
         recordAnnouncementDebugEvent(
           'lifecycle',
-          `promotion-clobber ${prev.type}→null id=${prev.id.slice(0,8)}${prev.type === 'match_win' ? ' [MATCH_WIN]' : ''}`,
+          `promotion-clear ${prev.type}→null id=${prev.id.slice(0,8)}`,
           {
-            stage: 'promotion-clobber',
+            stage: 'promotion-clear',
             prev: { id: prev.id, type: prev.type, priority: prev.resolvedPriority },
-            isMatchWin: prev.type === 'match_win',
           },
         );
       } else if (prev && next && prev.id !== next.id) {
@@ -293,7 +317,6 @@ export function CanonicalAnnouncementProvider({
             stage: 'promotion-replace',
             prev: { id: prev.id, type: prev.type },
             next: { id: next.id, type: next.type },
-            prevWasMatchWin: prev.type === 'match_win',
           },
         );
       }
