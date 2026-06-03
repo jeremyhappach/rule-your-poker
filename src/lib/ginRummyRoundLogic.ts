@@ -262,10 +262,25 @@ export async function startGinRummyRound(
     void Promise.all(offCriticalWrites.map((p) => Promise.resolve(p)));
 
     console.log('[GIN-RUMMY] Round started', { roundId: round.id, handNumber: insertedHandNumber });
+    recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound exited', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      roundId: round.id,
+      handNumber: insertedHandNumber,
+      success: true,
+    });
     return { success: true, roundId: round.id, handNumber: insertedHandNumber };
 
   } catch (error: any) {
     console.error('[GIN-RUMMY] Error starting round:', error);
+    recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound exited', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      success: false,
+      error: error.message,
+    });
     return { success: false, error: error.message };
   }
 }
