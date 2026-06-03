@@ -233,10 +233,18 @@ export function CanonicalAnnouncementProvider({
     const candidates = queue.map((q) => ({
       id: q.id.slice(0, 8), type: q.type, priority: q.resolvedPriority,
     }));
+    const mwInQueue = queue.find((q) => q.type === 'match_win') ?? null;
     recordAnnouncementDebugEvent(
       'lifecycle',
-      `promotion-pass-start qlen=${beforeLen}`,
-      { stage: 'promotion-pass-start', queueLen: beforeLen, candidates },
+      `promotion-pass-start qlen=${beforeLen} transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'}`,
+      {
+        stage: 'promotion-pass-start',
+        queueLen: beforeLen,
+        candidates,
+        transientIdRef: transientIdRef.current,
+        matchWinInQueue: mwInQueue ? { id: mwInQueue.id } : null,
+        currentScope,
+      },
     );
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
@@ -257,12 +265,40 @@ export function CanonicalAnnouncementProvider({
     } else {
       recordAnnouncementDebugEvent(
         'lifecycle',
-        'promotion-none',
-        { stage: 'promotion-none' },
+        `promotion-none transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'}`,
+        {
+          stage: 'promotion-none',
+          transientIdRef: transientIdRef.current,
+          willClobberInFlight: transientIdRef.current != null,
+        },
       );
     }
     transientIdRef.current = next?.id ?? null;
-    setTransient(next);
+    setTransient((prev) => {
+      if (prev && !next) {
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `promotion-clobber ${prev.type}→null id=${prev.id.slice(0,8)}${prev.type === 'match_win' ? ' [MATCH_WIN]' : ''}`,
+          {
+            stage: 'promotion-clobber',
+            prev: { id: prev.id, type: prev.type, priority: prev.resolvedPriority },
+            isMatchWin: prev.type === 'match_win',
+          },
+        );
+      } else if (prev && next && prev.id !== next.id) {
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `promotion-replace ${prev.type}→${next.type}`,
+          {
+            stage: 'promotion-replace',
+            prev: { id: prev.id, type: prev.type },
+            next: { id: next.id, type: next.type },
+            prevWasMatchWin: prev.type === 'match_win',
+          },
+        );
+      }
+      return next;
+    });
     if (next) armTtl(next);
   }, [clearTtl, currentScope, armTtl, drainDismiss]);
 
