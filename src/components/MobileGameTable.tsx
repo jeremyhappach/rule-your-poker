@@ -677,6 +677,14 @@ export const MobileGameTable = ({
     gameType: gameType ?? null,
     initialGameStatus: gameStatus ?? null,
   });
+  useShellChangeTracker('MobileGameTable', 'instanceLabel', instanceLabel);
+  useShellChangeTracker('MobileGameTable', 'gameType', gameType ?? '(none)');
+  useShellUnmountSnapshot('MobileGameTable', {
+    parent: 'Game.tsx (varies by branch) — key={gameId} so remounts only on gameId change',
+    instanceLabel,
+    gameType: gameType ?? null,
+    gameStatus: gameStatus ?? null,
+  });
   useEffect(() => {
     setLifecycleFact(`MGT:${instanceLabel}:gameStatus`, gameStatus ?? null);
     setLifecycleContext({
