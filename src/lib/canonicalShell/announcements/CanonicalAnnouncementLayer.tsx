@@ -45,6 +45,15 @@ const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> 
 
 export function CanonicalAnnouncementLayer() {
   useLifecycleMount('CanonicalAnnouncementLayer');
+  const _ctx = getLifecycleContext();
+  useUnmountSnapshot('CanonicalAnnouncementLayer', {
+    parent: 'ShellAnnouncementRail → ShellHudGrid row 1 → gameplay-surface',
+    gameType: _ctx.gameType,
+    gameStatus: _ctx.gameStatus,
+    dealerGameId: _ctx.dealerGameId,
+    roundId: _ctx.roundId,
+    shellRoute: _ctx.shellRoute,
+  });
   // Layer mount/unmount instrumentation (always while component is alive).
   useEffect(() => {
     recordAnnouncementDebugEvent('layer-mount', 'CanonicalAnnouncementLayer');
