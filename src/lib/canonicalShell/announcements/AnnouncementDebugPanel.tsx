@@ -53,13 +53,13 @@ export function AnnouncementDebugPanel() {
     return subscribeGlobalDebugMode(() => forceVisibilityCheck((n) => n + 1));
   }, []);
 
-  if (!isAnnouncementDebugEnabled()) return null;
-
   useEffect(() => {
     if (!copied) return;
     const t = setTimeout(() => setCopied(false), 1200);
     return () => clearTimeout(t);
   }, [copied]);
+
+  if (!isAnnouncementDebugEnabled()) return null;
 
   const handleCopy = async () => {
     const text = formatAnnouncementDebugEventsAsText();
