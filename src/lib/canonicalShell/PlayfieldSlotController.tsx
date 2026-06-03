@@ -131,6 +131,22 @@ export function PlayfieldSlotController({
   useLifecycleMount('PlayfieldSlotController');
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
   useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
+  // The render-mode flip (persistent-children ↔ legacy) IS the unmount
+  // cause when persistentChildrenKey toggles between a value and null:
+  // the two branches return different JSX subtrees with different
+  // wrapper keys, so React tears down the entire gameplay subtree
+  // (MobileGameTable + ShellHudGrid + SeatAnchorLayer + ActivePlayerHUD).
+  useChangeTracker(
+    'PlayfieldSlotController',
+    'renderMode',
+    persistentChildrenKey ? 'persistent-children' : 'legacy',
+    {
+      owner: 'PlayfieldSlotController (driven by persistentChildrenKey prop)',
+      consequence:
+        'flip forces full remount of gameplay subtree because branches return different JSX with different wrapper keys',
+      persistentChildrenKey: persistentChildrenKey ?? null,
+    },
+  );
 
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
