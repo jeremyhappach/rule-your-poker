@@ -2336,6 +2336,31 @@ export const GinRummyGameTable = ({
           </div>
         }
       />
+      {viewState.phase === 'complete' && viewState.winnerPlayerId ? (
+        <div
+          data-gin-announcement-runtime-proof=""
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            top: 0,
+            zIndex: 2147483647,
+            padding: '12px 14px',
+            background: 'hsl(var(--destructive))',
+            color: 'hsl(var(--destructive-foreground))',
+            borderBottom: '6px solid hsl(var(--poker-gold))',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            fontSize: 15,
+            fontWeight: 900,
+            lineHeight: 1.25,
+            textAlign: 'left',
+            pointerEvents: 'none',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {announcementProofText}
+        </div>
+      ) : null}
     </div>
 
   );
