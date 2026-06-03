@@ -346,6 +346,7 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
+      recordAnnouncementDebugEvent('dismiss', `id=${id.slice(0, 8)}`, { id });
       setTransient((cur) => {
         if (cur && cur.id === id) {
           transientIdRef.current = null;
