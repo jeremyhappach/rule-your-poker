@@ -1,4 +1,5 @@
 import { ChatBubble } from './ChatBubble';
+import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 
 interface ChatBubbleData {
   id: string;
@@ -22,6 +23,7 @@ export const PlayerChatBubbles = ({
   getPositionForUserId,
   isMobile = false
 }: PlayerChatBubblesProps) => {
+  useLifecycleMount(`PlayerChatBubbles:pos${position}`);
   // Filter bubbles for this player position
   const playerBubbles = bubbles.filter(b => getPositionForUserId(b.user_id) === position);
 
