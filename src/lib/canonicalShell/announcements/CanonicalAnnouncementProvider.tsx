@@ -416,15 +416,22 @@ export function CanonicalAnnouncementProvider({
     ) {
       return;
     }
+    recordAnnouncementDebugEvent(
+      'scope-change',
+      `dg ${prev.dealerGameId?.slice(0,8) ?? 'null'} → ${currentScope.dealerGameId?.slice(0,8) ?? 'null'} / r ${prev.roundId?.slice(0,8) ?? 'null'} → ${currentScope.roundId?.slice(0,8) ?? 'null'}`,
+      { prev, next: currentScope },
+    );
 
     const keptQueue: ResolvedAnnouncement[] = [];
+    let droppedQueueCount = 0;
     for (const q of queueRef.current) {
       if (scopeMatches(q.scope, currentScope)) keptQueue.push(q);
-      else drainDismiss(q.id);
+      else { drainDismiss(q.id); droppedQueueCount++; }
     }
     queueRef.current = keptQueue;
     setTransient((cur) => {
       if (cur && !scopeMatches(cur.scope, currentScope)) {
+        recordAnnouncementDebugEvent('scope-teardown', `transient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
         clearTtl();
         transientIdRef.current = null;
         drainDismiss(cur.id);
@@ -433,7 +440,16 @@ export function CanonicalAnnouncementProvider({
       }
       return cur;
     });
-    setAmbient((cur) => (cur && !scopeMatches(cur.scope, currentScope) ? null : cur));
+    setAmbient((cur) => {
+      if (cur && !scopeMatches(cur.scope, currentScope)) {
+        recordAnnouncementDebugEvent('scope-teardown', `ambient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
+        return null;
+      }
+      return cur;
+    });
+    if (droppedQueueCount > 0) {
+      recordAnnouncementDebugEvent('scope-teardown', `queue dropped ${droppedQueueCount}`, { count: droppedQueueCount });
+    }
 
     const keepKey = scopeKey(currentScope);
     for (const k of Array.from(seenRef.current.keys())) {
