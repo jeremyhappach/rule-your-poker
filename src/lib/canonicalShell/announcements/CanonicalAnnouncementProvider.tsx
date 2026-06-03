@@ -233,10 +233,18 @@ export function CanonicalAnnouncementProvider({
     const candidates = queue.map((q) => ({
       id: q.id.slice(0, 8), type: q.type, priority: q.resolvedPriority,
     }));
+    const mwInQueue = queue.find((q) => q.type === 'match_win') ?? null;
     recordAnnouncementDebugEvent(
       'lifecycle',
-      `promotion-pass-start qlen=${beforeLen}`,
-      { stage: 'promotion-pass-start', queueLen: beforeLen, candidates },
+      `promotion-pass-start qlen=${beforeLen} transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'}`,
+      {
+        stage: 'promotion-pass-start',
+        queueLen: beforeLen,
+        candidates,
+        transientIdRef: transientIdRef.current,
+        matchWinInQueue: mwInQueue ? { id: mwInQueue.id } : null,
+        currentScope,
+      },
     );
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
@@ -257,12 +265,40 @@ export function CanonicalAnnouncementProvider({
     } else {
       recordAnnouncementDebugEvent(
         'lifecycle',
-        'promotion-none',
-        { stage: 'promotion-none' },
+        `promotion-none transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'}`,
+        {
+          stage: 'promotion-none',
+          transientIdRef: transientIdRef.current,
+          willClobberInFlight: transientIdRef.current != null,
+        },
       );
     }
     transientIdRef.current = next?.id ?? null;
-    setTransient(next);
+    setTransient((prev) => {
+      if (prev && !next) {
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `promotion-clobber ${prev.type}→null id=${prev.id.slice(0,8)}${prev.type === 'match_win' ? ' [MATCH_WIN]' : ''}`,
+          {
+            stage: 'promotion-clobber',
+            prev: { id: prev.id, type: prev.type, priority: prev.resolvedPriority },
+            isMatchWin: prev.type === 'match_win',
+          },
+        );
+      } else if (prev && next && prev.id !== next.id) {
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `promotion-replace ${prev.type}→${next.type}`,
+          {
+            stage: 'promotion-replace',
+            prev: { id: prev.id, type: prev.type },
+            next: { id: next.id, type: next.type },
+            prevWasMatchWin: prev.type === 'match_win',
+          },
+        );
+      }
+      return next;
+    });
     if (next) armTtl(next);
   }, [clearTtl, currentScope, armTtl, drainDismiss]);
 
@@ -371,13 +407,32 @@ export function CanonicalAnnouncementProvider({
           `preempt ${transient.type}→${resolved.type} id=${resolved.id.slice(0, 8)}`,
           {
             stage: 'preempt',
+            beforeState: {
+              transientId: transientIdRef.current,
+              transientClosureType: transient.type,
+              transientClosurePri: transient.resolvedPriority,
+              queueLen: queueRef.current.length,
+              queue: queueRef.current.map((q) => ({ id: q.id.slice(0,8), type: q.type, pri: q.resolvedPriority })),
+            },
             dropped: { id: transient.id, type: transient.type, priority: transient.resolvedPriority },
             next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
           },
         );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
-        setTransient(resolved);
+        setTransient((prev) => {
+          recordAnnouncementDebugEvent(
+            'lifecycle',
+            `preempt-apply prev=${prev?.type ?? 'null'}(${prev?.id.slice(0,8) ?? '-'}) → ${resolved.type}(${resolved.id.slice(0,8)})`,
+            {
+              stage: 'preempt-apply',
+              prevAtUpdate: prev ? { id: prev.id, type: prev.type, priority: prev.resolvedPriority } : null,
+              next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+              transientIdRefAfter: transientIdRef.current,
+            },
+          );
+          return resolved;
+        });
         armTtl(resolved);
         return;
       }
@@ -387,10 +442,19 @@ export function CanonicalAnnouncementProvider({
         recordAnnouncementDebugEvent(
           'lifecycle',
           `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
-          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority, transientIdRefBefore: transientIdRef.current },
         );
         transientIdRef.current = resolved.id;
-        setTransient(resolved);
+        setTransient((prev) => {
+          if (prev) {
+            recordAnnouncementDebugEvent(
+              'lifecycle',
+              `promote-immediate-stale-closure prev=${prev.type}(${prev.id.slice(0,8)}) — closure said null`,
+              { stage: 'promote-immediate-stale-closure', prev: { id: prev.id, type: prev.type } },
+            );
+          }
+          return resolved;
+        });
         armTtl(resolved);
         return;
       }
@@ -428,9 +492,31 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
-      recordAnnouncementDebugEvent('dismiss', `id=${id.slice(0, 8)}`, { id });
+      recordAnnouncementDebugEvent(
+        'dismiss',
+        `id=${id.slice(0, 8)} transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'} qlen=${queueRef.current.length}`,
+        {
+          id,
+          transientIdRefAtCall: transientIdRef.current,
+          queueLenAtCall: queueRef.current.length,
+          matchesTransientRef: transientIdRef.current === id,
+        },
+      );
       setTransient((cur) => {
-        if (cur && cur.id === id) {
+        const matches = !!(cur && cur.id === id);
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `dismiss-setTransient cur=${cur?.type ?? 'null'}(${cur?.id.slice(0,8) ?? '-'}) target=${id.slice(0,8)} match=${matches}`,
+          {
+            stage: 'dismiss-setTransient',
+            curAtUpdate: cur ? { id: cur.id, type: cur.type } : null,
+            targetId: id,
+            matched: matches,
+            wouldClobberMatchWin: !!(cur && cur.type === 'match_win' && cur.id === id),
+            staleDismissAfterPreempt: !!(cur && cur.id !== id),
+          },
+        );
+        if (matches) {
           transientIdRef.current = null;
           drainDismiss(id);
           queueMicrotask(promoteNextTransient);
