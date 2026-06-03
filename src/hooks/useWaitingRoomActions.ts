@@ -17,6 +17,7 @@ import { logBotAdded } from "@/lib/sessionEventLog";
 import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import { recordLifecycleTimelineEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
