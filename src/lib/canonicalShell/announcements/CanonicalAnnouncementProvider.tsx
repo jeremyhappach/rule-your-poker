@@ -492,9 +492,31 @@ export function CanonicalAnnouncementProvider({
 
   const dismiss = useCallback(
     (id: string) => {
-      recordAnnouncementDebugEvent('dismiss', `id=${id.slice(0, 8)}`, { id });
+      recordAnnouncementDebugEvent(
+        'dismiss',
+        `id=${id.slice(0, 8)} transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'} qlen=${queueRef.current.length}`,
+        {
+          id,
+          transientIdRefAtCall: transientIdRef.current,
+          queueLenAtCall: queueRef.current.length,
+          matchesTransientRef: transientIdRef.current === id,
+        },
+      );
       setTransient((cur) => {
-        if (cur && cur.id === id) {
+        const matches = !!(cur && cur.id === id);
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `dismiss-setTransient cur=${cur?.type ?? 'null'}(${cur?.id.slice(0,8) ?? '-'}) target=${id.slice(0,8)} match=${matches}`,
+          {
+            stage: 'dismiss-setTransient',
+            curAtUpdate: cur ? { id: cur.id, type: cur.type } : null,
+            targetId: id,
+            matched: matches,
+            wouldClobberMatchWin: !!(cur && cur.type === 'match_win' && cur.id === id),
+            staleDismissAfterPreempt: !!(cur && cur.id !== id),
+          },
+        );
+        if (matches) {
           transientIdRef.current = null;
           drainDismiss(id);
           queueMicrotask(promoteNextTransient);
