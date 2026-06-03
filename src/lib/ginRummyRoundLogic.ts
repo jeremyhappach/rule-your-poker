@@ -142,6 +142,8 @@ export async function startGinRummyRound(
     // player_cards upserts in parallel, off the awaited critical path, so the
     // caller can return as soon as the authoritative frame is queryable.
     ginTrace('off-critical writes dispatched (games + player_cards)');
+    const tStatusWriteIssued = Date.now();
+    console.log('[GIN_RUNTIME_TIMELINE] startGinRummyRound:status=in_progress write issued', { t: tStatusWriteIssued, gameId, roundId: round.id });
     const offCriticalWrites: PromiseLike<unknown>[] = [
       supabase
         .from('games')
@@ -154,6 +156,7 @@ export async function startGinRummyRound(
         })
         .eq('id', gameId)
         .then(({ error }) => {
+          console.log('[GIN_RUNTIME_TIMELINE] startGinRummyRound:status=in_progress write completed', { t: Date.now(), deltaMs: Date.now() - tStatusWriteIssued, error: error?.message ?? null });
           if (error) console.warn('[GIN-RUMMY] games status update failed:', error.message);
         }),
     ];
