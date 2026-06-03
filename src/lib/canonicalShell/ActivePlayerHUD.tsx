@@ -22,6 +22,7 @@ import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 
 export interface ActivePlayerHUDProps {
@@ -56,6 +57,16 @@ export function ActivePlayerHUD({
   children,
 }: ActivePlayerHUDProps) {
   useLifecycleMount('ActivePlayerHUD');
+  useStartupMountTrace('ActivePlayerHUD', { gameId: gameId ?? null, gameType: gameType ?? null, seatPosition: seatPosition ?? null });
+  useStartupRenderTrace('ActivePlayerHUD', {
+    timeLeft,
+    maxTime,
+    isActive,
+    size,
+    seatPosition: seatPosition ?? null,
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+  }, { file: 'src/lib/canonicalShell/ActivePlayerHUD.tsx' });
   useUnmountSnapshot('ActivePlayerHUD', {
     parent: 'MobileGameTable seat render (chip stack wrapper)',
     seatPosition: seatPosition ?? null,
