@@ -157,7 +157,10 @@ export function useWaitingRoomActions({
   }, [players.length, players, playDoorbell]);
 
   const addSingleBot = useCallback(async (): Promise<boolean> => {
+    const t0 = performance.now();
+    recordAnnouncementDebugEvent('lifecycle', 'addSingleBot:start', { gameId });
     const perf = new PerfSession("WaitingRoom.addSingleBot", 300);
+
 
     const { data: dbPlayers, error: fetchError } = await perf.step(
       "players.selectPositions",
