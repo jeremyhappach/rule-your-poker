@@ -156,12 +156,24 @@ export function useWaitingRoomActions({
   }, [players.length, players, playDoorbell]);
 
   const addSingleBot = useCallback(async (): Promise<boolean> => {
-    const perf = new PerfSession("WaitingRoom.addSingleBot", 300);
+    // [ADD_BOT_TRACE] Force-on instrumentation while investigating the
+    // 30s post-announcement-provider regression. Every phase logs with
+    // a wall-clock delta so we can see exactly where the delay sits
+    // (network round-trip vs React render churn vs realtime callback).
+    const tStart = performance.now();
+    const tag = `[ADD_BOT_TRACE ${Math.random().toString(36).slice(2, 6)}]`;
+    const mark = (phase: string, extra?: Record<string, unknown>) => {
+      // eslint-disable-next-line no-console
+      console.warn(`${tag} +${Math.round(performance.now() - tStart)}ms ${phase}`, extra ?? {});
+    };
+    mark("addSingleBot:enter", { gameId });
+    const perf = new PerfSession("WaitingRoom.addSingleBot", 0);
 
     const { data: dbPlayers, error: fetchError } = await perf.step(
       "players.selectPositions",
       () => supabase.from("players").select("position").eq("game_id", gameId),
     );
+    mark("players.selectPositions:done", { count: dbPlayers?.length, err: fetchError?.message });
 
     if (fetchError) {
       console.error("Error fetching players for bot add:", fetchError);
