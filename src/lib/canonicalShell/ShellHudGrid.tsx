@@ -56,6 +56,18 @@ const ROW_STYLE: React.CSSProperties = {
 
 export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
   useLifecycleMount('ShellHudGrid');
+  const _ctx = getLifecycleContext();
+  useUnmountSnapshot('ShellHudGrid', {
+    parent: 'gameplay-surface(GinRummyGameTable/CribbageMobileGameTable/MobileGameTable)',
+    gameType: _ctx.gameType,
+    gameStatus: _ctx.gameStatus,
+    dealerGameId: _ctx.dealerGameId,
+    roundId: _ctx.roundId,
+    feltOwnership: _ctx.feltOwnership,
+    hasTimerSlot: timer != null,
+    hasPaneSlot: pane != null,
+    hasIdentitySlot: identity != null,
+  });
   return (
     <div
       data-canonical-shell-hud-grid=""
