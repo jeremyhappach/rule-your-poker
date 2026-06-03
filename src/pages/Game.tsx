@@ -2934,11 +2934,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Trigger bot ante decisions - INSTANT for bots
   // SKIP if game is paused
   useEffect(() => {
+    recordStartupFlight('EFFECT TIMELINE', 'bot ante effect entered', {
+      file: 'src/pages/Game.tsx',
+      function: 'bot ante useEffect',
+      gameId,
+      status: game?.status ?? null,
+      isPaused: game?.is_paused ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+    });
     if (game?.is_paused) {
+      recordStartupFlight('EFFECT TIMELINE', 'bot ante effect skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        skipReason: 'game is paused',
+        gameId,
+      });
       console.log('[ANTE PHASE] Skipping bot ante decisions - game is paused');
       return;
     }
+    if (game?.status !== 'ante_decision') {
+      recordStartupFlight('EFFECT TIMELINE', 'bot ante effect skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        skipReason: 'status is not ante_decision',
+        gameId,
+        status: game?.status ?? null,
+      });
+    }
     if (game?.status === 'ante_decision') {
+      recordStartupFlight('PHASE TIMELINE', 'status=ante_decision observed by bot effect', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        gameId,
+        dealerGameId: game?.current_game_uuid ?? null,
+      });
       console.log('[GIN_RUNTIME_TIMELINE] ante phase observed:bot-bootstrap-start', {
         t: Date.now(),
         gameId,
@@ -2949,20 +2978,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // completion directly; otherwise human-vs-bot waits for the 3s
       // ante polling fallback before Gin can bootstrap.
       const tMakeBotStart = Date.now();
+      recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions call issued', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        caller: 'React effect status=ante_decision',
+        gameId,
+      });
       console.log('[GIN_RUNTIME_TIMELINE] effect:calling-makeBotAnteDecisions', { t: tMakeBotStart });
       makeBotAnteDecisions(gameId!).then(async () => {
         const tBotReturned = Date.now();
+        recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions returned', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+          elapsedMs: tBotReturned - tMakeBotStart,
+        });
         console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart });
         const tRefetchStart = Date.now();
+        recordStartupFlight('FETCH TIMELINE', 'post-bot players refetch start', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+        });
         const { data: freshPlayers } = await supabase
           .from('players')
           .select('id, ante_decision, sitting_out, status')
           .eq('game_id', gameId);
+        recordStartupFlight('FETCH TIMELINE', 'post-bot players refetch complete', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+          elapsedMs: Date.now() - tRefetchStart,
+          oldValue: null,
+          newValue: freshPlayers?.map(p => ({ id: p.id, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: (p as any).status })) ?? [],
+        });
         console.log('[GIN_RUNTIME_TIMELINE] effect:post-bot-refetch-complete', { t: Date.now(), deltaMs: Date.now() - tRefetchStart });
         const activePlayers = (freshPlayers ?? []).filter(
           p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
         );
         const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
+        recordStartupFlight('PHASE TIMELINE', 'allDecided evaluated after bot write', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+          dealerGameId: game?.current_game_uuid ?? null,
+          oldValue: null,
+          newValue: allDecided,
+          activePlayers: activePlayers.length,
+          decisions: activePlayers.map(p => ({ id: p.id, ante_decision: p.ante_decision })),
+        });
         console.log('[GIN_RUNTIME_TIMELINE] bot ante completion check:after-write', {
           t: Date.now(),
           gameId,
@@ -2972,10 +3036,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           decisions: activePlayers.map(p => p.ante_decision),
         });
         if (allDecided && !anteProcessingRef.current) {
+          recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn call issued', {
+            file: 'src/pages/Game.tsx',
+            function: 'bot ante useEffect',
+            caller: 'allDecided true after bot write',
+            gameId,
+          });
           console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → calling handleAllAnteDecisionsIn', { t: Date.now() });
           anteProcessingRef.current = true;
           handleAllAnteDecisionsIn();
         } else {
+          recordStartupFlight('EFFECT TIMELINE', 'bot ante effect exited via fallback fetch', {
+            file: 'src/pages/Game.tsx',
+            function: 'bot ante useEffect',
+            skipReason: allDecided ? 'anteProcessingRef already true' : 'allDecided false',
+            gameId,
+            allDecided,
+            anteProcessingRef: anteProcessingRef.current,
+          });
           console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=false → fetchGameData fallback', { t: Date.now(), allDecided, anteProcessingRef: anteProcessingRef.current });
           fetchGameData();
         }
