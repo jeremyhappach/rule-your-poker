@@ -75,7 +75,40 @@ export function CanonicalAnnouncementLayer() {
       : ctx.ambient?.type === 'dealer_configuring'
         ? ctx.ambient
         : ctx.active;
-  if (!railActive) return null;
+  const showAnnouncementDebug = import.meta.env.DEV;
+  const renderDebug = (extra: Record<string, string | boolean | null> = {}) => (
+    <div
+      data-announcement-layer-runtime-debug=""
+      style={{
+        position: 'fixed',
+        left: 8,
+        top: 92,
+        zIndex: 2147483647,
+        maxWidth: 360,
+        padding: '6px 8px',
+        background: 'hsl(var(--background) / 0.92)',
+        color: 'hsl(var(--foreground))',
+        border: '1px solid hsl(var(--poker-gold))',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSize: 10,
+        lineHeight: 1.25,
+        textAlign: 'left',
+        pointerEvents: 'none',
+        whiteSpace: 'pre-wrap',
+      }}
+    >
+      {[
+        'ANN LAYER DEBUG',
+        'CanonicalAnnouncementLayer mounted: yes',
+        `active.type: ${ctx.active?.type ?? 'null'}`,
+        `ambient.type: ${ctx.ambient?.type ?? 'null'}`,
+        `railActive.type: ${railActive?.type ?? 'null'}`,
+        `match_win renderer selected: ${String(extra.matchWinRendererSelected ?? false)}`,
+        extra.filtered ? `filtered: ${extra.filtered}` : null,
+      ].filter(Boolean).join('\n')}
+    </div>
+  );
+  if (!railActive) return showAnnouncementDebug ? renderDebug() : null;
 
   // Celebration-tier events ALSO render a centered overlay via
   // CanonicalCelebrationLayer, but match_win additionally renders a
@@ -84,7 +117,7 @@ export function CanonicalAnnouncementLayer() {
   // continue to skip the rail.
   if (isCelebrationType(railActive.type) && railActive.type !== 'match_win') {
     traceAnnouncementPaint('rail:filtered:celebration', { id: railActive.id, type: railActive.type });
-    return null;
+    return showAnnouncementDebug ? renderDebug({ filtered: 'celebration' }) : null;
   }
   // Actor-directed CTAs / waiting-on-player prompts render in the
   // ambient helper text area inside the active content pane — not in
@@ -92,7 +125,7 @@ export function CanonicalAnnouncementLayer() {
   // shared gameplay/lifecycle state and avoids per-action churn.
   if (isCtaAmbientType(railActive.type)) {
     traceAnnouncementPaint('rail:filtered:cta-ambient', { id: railActive.id, type: railActive.type });
-    return null;
+    return showAnnouncementDebug ? renderDebug({ filtered: 'cta-ambient' }) : null;
   }
 
   // Actor-only visibility gate for cta_prompt.
@@ -111,7 +144,7 @@ export function CanonicalAnnouncementLayer() {
   }
 
   const node = renderAnnouncement(railActive);
-  if (!node) return null;
+  if (!node) return showAnnouncementDebug ? renderDebug({ filtered: 'no-renderer' }) : null;
   traceAnnouncementPaint('rail:render', { id: railActive.id, type: railActive.type });
   return (
     <div
@@ -126,6 +159,7 @@ export function CanonicalAnnouncementLayer() {
       }}
     >
       {node}
+      {showAnnouncementDebug ? renderDebug({ matchWinRendererSelected: railActive.type === 'match_win' }) : null}
     </div>
   );
 }
