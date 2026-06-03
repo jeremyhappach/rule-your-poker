@@ -46,6 +46,8 @@ function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string
   if (mode === 'wins') {
     const hay = `${e.summary} ${JSON.stringify(e.detail ?? {})}`.toLowerCase();
     if (!/match_win|round_win|chip_award/.test(hay)) return false;
+  } else if (mode === 'lifecycle') {
+    if (e.kind !== 'lifecycle') return false;
   } else if (mode === 'transitions') {
     if (
       e.kind !== 'active-change' &&
@@ -63,7 +65,8 @@ function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string
       e.kind !== 'emit-transient-set-active' &&
       e.kind !== 'emit-transient-enqueued' &&
       e.kind !== 'transient-promoted' &&
-      e.kind !== 'transient-ttl-expired'
+      e.kind !== 'transient-ttl-expired' &&
+      e.kind !== 'lifecycle'
     ) return false;
   }
   if (text.trim()) {
