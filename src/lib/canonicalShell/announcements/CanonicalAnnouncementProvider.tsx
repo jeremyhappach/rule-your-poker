@@ -49,6 +49,7 @@ import {
   type AnnouncementScope,
   type AnnouncementType,
 } from './types';
+import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 
 const traceAnnouncementRuntime = (event: string, payload: Record<string, unknown> = {}) => {
   try {
