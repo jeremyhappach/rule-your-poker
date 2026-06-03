@@ -5,6 +5,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { recordStartupFlight, type StartupFlightCategory } from './startupFlightRecorder';
 
 let _t0: number | null = null;
 let _t0GameId: string | null = null;
@@ -118,6 +119,24 @@ export function markGinSubmit(gameId: string | null | undefined): void {
 export function ginTrace(event: string, data?: Record<string, unknown>): void {
   const now = performance.now();
   const dt = _t0 != null ? Math.round(now - _t0) : null;
+  const category: StartupFlightCategory = event.includes('realtime')
+    ? 'REALTIME TIMELINE'
+    : event.includes('round') || event.includes('Round')
+      ? 'ROUND TIMELINE'
+      : event.includes('identity') || event.includes('current_game_uuid') || event.includes('propRoundId')
+        ? 'IDENTITY TIMELINE'
+        : event.includes('readiness') || event.includes('ready') || event.includes('slot.')
+          ? 'READINESS TIMELINE'
+          : event.includes('bootstrap') || event.includes('receiveAuthoritativeUpdate') || event.includes('presentation') || event.includes('viewState')
+            ? 'SYNC TIMELINE'
+            : event.includes('placeholder') || event.includes('painted') || event.includes('visible')
+              ? 'PLACEHOLDER TIMELINE'
+              : 'PHASE TIMELINE';
+  recordStartupFlight(category, `ginTrace:${event}`, {
+    dtMs: dt,
+    gameId: _t0GameId,
+    ...(data ?? {}),
+  });
   // eslint-disable-next-line no-console
   console.log(`[GIN_RUNTIME_TIMELINE] ${event}`, {
     tAbs: Date.now(),

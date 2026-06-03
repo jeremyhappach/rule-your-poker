@@ -18,6 +18,7 @@ import type { GinRummyState } from './ginRummyTypes';
 import { logGinHandStart } from './ginRummySyncDiagnostics';
 import { ginTrace } from './ginStartupTrace';
 import { isGinTwoActionHarnessEnabled } from './debugFlags';
+import { recordStartupFlight } from './startupFlightRecorder';
 
 /**
  * Start the first Gin Rummy round/hand.
@@ -26,15 +27,39 @@ import { isGinTwoActionHarnessEnabled } from './debugFlags';
 export async function startGinRummyRound(
   gameId: string
 ): Promise<{ success: boolean; roundId?: string; handNumber?: number; error?: string }> {
+  recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound entered', {
+    file: 'src/lib/ginRummyRoundLogic.ts',
+    function: 'startGinRummyRound',
+    caller: 'Game.tsx handleAllAnteDecisionsIn',
+    gameId,
+  });
   console.log('[GIN-RUMMY] Starting gin rummy round', { gameId });
 
   try {
     // Fetch game data
+    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game start', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+    });
     const { data: game, error: gameError } = await supabase
       .from('games')
       .select('*, players(*)')
       .eq('id', gameId)
       .single();
+    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game complete', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      oldValue: null,
+      newValue: {
+        status: (game as any)?.status ?? null,
+        game_type: (game as any)?.game_type ?? null,
+        current_game_uuid: (game as any)?.current_game_uuid ?? null,
+        players: (game as any)?.players?.map((p: any) => ({ id: p.id, ante_decision: p.ante_decision, is_bot: p.is_bot, sitting_out: p.sitting_out, status: p.status })) ?? null,
+      },
+      error: gameError?.message ?? null,
+    });
 
     if (gameError || !game) {
       throw new Error(`Failed to fetch game: ${gameError?.message}`);
@@ -85,12 +110,26 @@ export async function startGinRummyRound(
     }
 
     // Calculate hand number (DB-First)
+    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch start', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      dealerGameId,
+    });
     const { data: existingRounds } = await supabase
       .from('rounds')
       .select('hand_number')
       .eq('dealer_game_id', dealerGameId)
       .order('hand_number', { ascending: false })
       .limit(1);
+    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch complete', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      dealerGameId,
+      oldValue: null,
+      newValue: existingRounds ?? [],
+    });
 
     const handNumber = existingRounds && existingRounds.length > 0
       ? (existingRounds[0].hand_number || 0) + 1
@@ -103,6 +142,15 @@ export async function startGinRummyRound(
     ginTrace('rounds.insert dispatched', {
       dealerGameId: dealerGameId?.slice(0, 8) ?? null,
       handNumber,
+    });
+    recordStartupFlight('WRITE TIMELINE', 'rounds INSERT issued', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      caller: 'Game.tsx handleAllAnteDecisionsIn',
+      table: 'rounds',
+      row: null,
+      oldValue: null,
+      newValue: { gameId, dealerGameId, round_number: 1, hand_number: handNumber, status: 'betting', hasGinState: true },
     });
     const { data: round, error: roundError } = await supabase
       .from('rounds')
@@ -122,6 +170,20 @@ export async function startGinRummyRound(
       ok: !roundError && !!round,
       code: roundError?.code ?? null,
       roundId: round?.id?.slice(0, 8) ?? null,
+    });
+    recordStartupFlight('ROUND TIMELINE', 'currentRound created / rounds INSERT returned', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      table: 'rounds',
+      row: round?.id ?? null,
+      oldValue: null,
+      newValue: {
+        roundId: round?.id ?? null,
+        dealerGameId: (round as any)?.dealer_game_id ?? null,
+        handNumber: (round as any)?.hand_number ?? null,
+        hasGinState: !!(round as any)?.gin_rummy_state,
+      },
+      error: roundError?.message ?? null,
     });
 
     if (roundError || !round) {
@@ -143,6 +205,16 @@ export async function startGinRummyRound(
     // caller can return as soon as the authoritative frame is queryable.
     ginTrace('off-critical writes dispatched (games + player_cards)');
     const tStatusWriteIssued = Date.now();
+    recordStartupFlight('WRITE TIMELINE', 'games.status=in_progress UPDATE issued', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      caller: 'Game.tsx handleAllAnteDecisionsIn',
+      table: 'games',
+      row: gameId,
+      oldValue: game.status,
+      newValue: { status: 'in_progress', current_round: 1, total_hands: insertedHandNumber },
+      roundId: round.id,
+    });
     console.log('[GIN_RUNTIME_TIMELINE] startGinRummyRound:status=in_progress write issued', { t: tStatusWriteIssued, gameId, roundId: round.id });
     const offCriticalWrites: PromiseLike<unknown>[] = [
       supabase
@@ -156,6 +228,17 @@ export async function startGinRummyRound(
         })
         .eq('id', gameId)
         .then(({ error }) => {
+          recordStartupFlight('WRITE TIMELINE', 'games.status=in_progress UPDATE completed', {
+            file: 'src/lib/ginRummyRoundLogic.ts',
+            function: 'startGinRummyRound',
+            caller: 'Game.tsx handleAllAnteDecisionsIn',
+            table: 'games',
+            row: gameId,
+            oldValue: game.status,
+            newValue: 'in_progress',
+            elapsedMs: Date.now() - tStatusWriteIssued,
+            error: error?.message ?? null,
+          });
           console.log('[GIN_RUNTIME_TIMELINE] startGinRummyRound:status=in_progress write completed', { t: Date.now(), deltaMs: Date.now() - tStatusWriteIssued, error: error?.message ?? null });
           if (error) console.warn('[GIN-RUMMY] games status update failed:', error.message);
         }),
@@ -179,10 +262,25 @@ export async function startGinRummyRound(
     void Promise.all(offCriticalWrites.map((p) => Promise.resolve(p)));
 
     console.log('[GIN-RUMMY] Round started', { roundId: round.id, handNumber: insertedHandNumber });
+    recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound exited', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      roundId: round.id,
+      handNumber: insertedHandNumber,
+      success: true,
+    });
     return { success: true, roundId: round.id, handNumber: insertedHandNumber };
 
   } catch (error: any) {
     console.error('[GIN-RUMMY] Error starting round:', error);
+    recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound exited', {
+      file: 'src/lib/ginRummyRoundLogic.ts',
+      function: 'startGinRummyRound',
+      gameId,
+      success: false,
+      error: error.message,
+    });
     return { success: false, error: error.message };
   }
 }

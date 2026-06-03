@@ -26,6 +26,7 @@ import { isCelebrationType, isCtaAmbientType } from './types';
 import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 import { useLifecycleMount, getLifecycleContext } from '../lifecycleDebug';
 import { useUnmountSnapshot } from '../shellLifecycleLog';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> = {}) => {
   try {
@@ -46,6 +47,14 @@ const traceAnnouncementPaint = (event: string, payload: Record<string, unknown> 
 export function CanonicalAnnouncementLayer() {
   useLifecycleMount('CanonicalAnnouncementLayer');
   const _ctx = getLifecycleContext();
+  useStartupMountTrace('CanonicalAnnouncementLayer', { gameType: _ctx.gameType, gameStatus: _ctx.gameStatus });
+  useStartupRenderTrace('CanonicalAnnouncementLayer', {
+    gameType: _ctx.gameType,
+    gameStatus: _ctx.gameStatus,
+    dealerGameId: _ctx.dealerGameId,
+    roundId: _ctx.roundId,
+    shellRoute: _ctx.shellRoute,
+  }, { file: 'src/lib/canonicalShell/announcements/CanonicalAnnouncementLayer.tsx' });
   useUnmountSnapshot('CanonicalAnnouncementLayer', {
     parent: 'ShellAnnouncementRail → ShellHudGrid row 1 → gameplay-surface',
     gameType: _ctx.gameType,

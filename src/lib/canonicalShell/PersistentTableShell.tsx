@@ -34,6 +34,7 @@ import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { useChangeTracker, useUnmountSnapshot, recordRenderDecision } from './shellLifecycleLog';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 import {
   ShellFeltContextProvider,
@@ -97,6 +98,16 @@ export function PersistentTableShell({
   const shellRootRef = useRef<HTMLDivElement>(null);
   const overlayRootRef = useRef<HTMLDivElement>(null);
   useLifecycleMount('PersistentTableShell', { gameType });
+  useStartupMountTrace('PersistentTableShell', { gameId: gameId ?? null, gameType: gameType ?? null });
+  useStartupRenderTrace('PersistentTableShell', {
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+    projectionMode: projectionMode ?? null,
+    viewerPosition,
+    viewerUserId: viewerUserId ?? null,
+    seatCount: seats?.length ?? null,
+    hasHeader: header != null,
+  }, { file: 'src/lib/canonicalShell/PersistentTableShell.tsx' });
   useUnmountSnapshot('PersistentTableShell', {
     parent: 'Game.tsx (bootstrap-branch OR post-hydration-branch)',
     gameId: gameId ?? null,

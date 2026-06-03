@@ -24,6 +24,7 @@ import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
 import { supabase as __mgtSupabase } from "@/integrations/supabase/client";
 import { recordDealerSelectionDiag } from "@/lib/dealerSelectionDiag";
+import { useStartupMountTrace, useStartupRenderTrace } from "@/lib/startupFlightRecorder";
 
 // ── BOOTSTRAP_FLASH_MGT instrumentation (PR-B.4) ──
 // Module-level dedup + stable per-tab instance id so we can correlate
@@ -631,6 +632,21 @@ export const MobileGameTable = ({
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
 }: MobileGameTableProps) => {
+  useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
+  useStartupRenderTrace('MobileGameTable', {
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+    gameStatus: gameStatus ?? null,
+    instanceLabel,
+    playersCount: players.length,
+    currentTurnPosition: currentTurnPosition ?? null,
+    roundStatus: roundStatus ?? null,
+    horsesRoundId: horsesRoundId ?? null,
+    horsesDealerGameId: horsesDealerGameId ?? null,
+    horsesHandNumber: horsesHandNumber ?? null,
+    isWaitingPhase,
+    isGameOver,
+  }, { file: 'src/components/MobileGameTable.tsx' });
   const {
     getFourColorSuit,
     getCardBackColors,

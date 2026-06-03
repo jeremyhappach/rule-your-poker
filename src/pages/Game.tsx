@@ -112,6 +112,12 @@ import { startSCCRound } from "@/lib/sccRoundLogic";
 import { startCribbageRound } from "@/lib/cribbageRoundLogic";
 import { startGinRummyRound } from "@/lib/ginRummyRoundLogic";
 import { markGinSubmit, ginTrace } from "@/lib/ginStartupTrace";
+import {
+  StartupFlightRecorderOverlay,
+  recordStartupFlight,
+  recordStartupValue,
+  useStartupRenderTrace,
+} from "@/lib/startupFlightRecorder";
 import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
@@ -577,6 +583,18 @@ const Game = () => {
   const cardFetchTokenRef = useRef(0); // FIX 3: fetch token to prevent overlap races
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  useStartupRenderTrace('Game', {
+    routeGameId: gameId ?? null,
+    loading,
+    authReady,
+    hasGame: !!game,
+    gameStatus: game?.status ?? null,
+    gameType: game?.game_type ?? null,
+    currentGameUuid: (game as any)?.current_game_uuid ?? null,
+    currentRoundNumber: game?.current_round ?? null,
+    totalHands: game?.total_hands ?? null,
+    playersCount: players.length,
+  });
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
@@ -1946,9 +1964,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.game_type]);
 
   useEffect(() => {
-    if (!gameId || !user) return;
+    if (!gameId || !user) {
+      recordStartupFlight('EFFECT TIMELINE', 'realtime subscription effect skipped', {
+        file: 'src/pages/Game.tsx',
+        skipReason: !gameId ? 'no gameId' : 'no user',
+        gameId: gameId ?? null,
+      });
+      return;
+    }
 
     console.log('[SUBSCRIPTION] Setting up real-time subscriptions for game:', gameId);
+    recordStartupFlight('REALTIME TIMELINE', 'subscription establishing', {
+      file: 'src/pages/Game.tsx',
+      function: 'realtime subscription effect',
+      channel: `game-${gameId}`,
+      gameId,
+    });
     fetchGameData();
 
     // Debounce fetch to batch rapid updates during transitions
@@ -1991,6 +2022,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
+          recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
+            file: 'src/pages/Game.tsx',
+            function: 'games realtime callback',
+            table: 'games',
+            row: newData?.id ?? gameId,
+            eventType: payload.eventType,
+            oldValue: {
+              status: game?.status ?? oldData?.status ?? null,
+              game_type: game?.game_type ?? oldData?.game_type ?? null,
+              current_game_uuid: (game as any)?.current_game_uuid ?? oldData?.current_game_uuid ?? null,
+              current_round: game?.current_round ?? oldData?.current_round ?? null,
+            },
+            newValue: {
+              status: newData?.status ?? null,
+              game_type: newData?.game_type ?? null,
+              current_game_uuid: newData?.current_game_uuid ?? null,
+              current_round: newData?.current_round ?? null,
+              total_hands: newData?.total_hands ?? null,
+            },
+            statusBefore: game?.status ?? null,
+            statusAfter: newData?.status ?? null,
+          });
           ginTrace('realtime.games payload received', {
             status: newData?.status ?? null,
             current_game_uuid: newData?.current_game_uuid?.slice(0, 8) ?? null,
@@ -2239,6 +2292,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         simulateRealtime('players', (payload) => {
+          recordStartupFlight('REALTIME TIMELINE', 'players callback fired / payload received', {
+            file: 'src/pages/Game.tsx',
+            function: 'players realtime callback',
+            table: 'players',
+            row: (payload.new as any)?.id ?? (payload.old as any)?.id ?? null,
+            eventType: payload.eventType,
+            oldValue: {
+              ante_decision: (payload.old as any)?.ante_decision ?? null,
+              sitting_out: (payload.old as any)?.sitting_out ?? null,
+              status: (payload.old as any)?.status ?? null,
+            },
+            newValue: {
+              ante_decision: (payload.new as any)?.ante_decision ?? null,
+              sitting_out: (payload.new as any)?.sitting_out ?? null,
+              status: (payload.new as any)?.status ?? null,
+              is_bot: (payload.new as any)?.is_bot ?? null,
+              position: (payload.new as any)?.position ?? null,
+            },
+            statusBefore: game?.status ?? null,
+            statusAfter: game?.status ?? null,
+          });
           console.log('[REALTIME] Players table changed:', payload.eventType, payload);
           
           // CRITICAL: Immediate fetch for INSERT (new player joined) - essential for PreGameLobby
@@ -2286,6 +2360,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         simulateRealtime('rounds', (payload) => {
+          recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
+            file: 'src/pages/Game.tsx',
+            function: 'rounds realtime callback',
+            table: 'rounds',
+            row: (payload.new as any)?.id ?? (payload.old as any)?.id ?? null,
+            eventType: payload.eventType,
+            oldValue: {
+              roundId: (payload.old as any)?.id ?? null,
+              dealer_game_id: (payload.old as any)?.dealer_game_id ?? null,
+              hand_number: (payload.old as any)?.hand_number ?? null,
+              hasGinRummyState: !!(payload.old as any)?.gin_rummy_state,
+            },
+            newValue: {
+              roundId: (payload.new as any)?.id ?? null,
+              dealer_game_id: (payload.new as any)?.dealer_game_id ?? null,
+              hand_number: (payload.new as any)?.hand_number ?? null,
+              round_number: (payload.new as any)?.round_number ?? null,
+              status: (payload.new as any)?.status ?? null,
+              hasGinRummyState: !!(payload.new as any)?.gin_rummy_state,
+            },
+            statusBefore: game?.status ?? null,
+            statusAfter: game?.status ?? null,
+          });
           console.log('[REALTIME] *** ROUNDS TABLE CHANGED ***', payload);
           ginTrace('realtime.rounds payload received', {
             eventType: payload.eventType,
@@ -2336,6 +2433,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
+        recordStartupFlight('REALTIME TIMELINE', 'subscription status', {
+          file: 'src/pages/Game.tsx',
+          function: 'realtime subscription status callback',
+          channel: `game-${gameId}`,
+          oldValue: null,
+          newValue: status,
+        });
 
         // When realtime drops, keep the UI in sync via polling instead of "freezing".
         if (status === 'SUBSCRIBED') {
@@ -2829,11 +2933,40 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Trigger bot ante decisions - INSTANT for bots
   // SKIP if game is paused
   useEffect(() => {
+    recordStartupFlight('EFFECT TIMELINE', 'bot ante effect entered', {
+      file: 'src/pages/Game.tsx',
+      function: 'bot ante useEffect',
+      gameId,
+      status: game?.status ?? null,
+      isPaused: game?.is_paused ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+    });
     if (game?.is_paused) {
+      recordStartupFlight('EFFECT TIMELINE', 'bot ante effect skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        skipReason: 'game is paused',
+        gameId,
+      });
       console.log('[ANTE PHASE] Skipping bot ante decisions - game is paused');
       return;
     }
+    if (game?.status !== 'ante_decision') {
+      recordStartupFlight('EFFECT TIMELINE', 'bot ante effect skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        skipReason: 'status is not ante_decision',
+        gameId,
+        status: game?.status ?? null,
+      });
+    }
     if (game?.status === 'ante_decision') {
+      recordStartupFlight('PHASE TIMELINE', 'status=ante_decision observed by bot effect', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        gameId,
+        dealerGameId: game?.current_game_uuid ?? null,
+      });
       console.log('[GIN_RUNTIME_TIMELINE] ante phase observed:bot-bootstrap-start', {
         t: Date.now(),
         gameId,
@@ -2844,20 +2977,55 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // completion directly; otherwise human-vs-bot waits for the 3s
       // ante polling fallback before Gin can bootstrap.
       const tMakeBotStart = Date.now();
+      recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions call issued', {
+        file: 'src/pages/Game.tsx',
+        function: 'bot ante useEffect',
+        caller: 'React effect status=ante_decision',
+        gameId,
+      });
       console.log('[GIN_RUNTIME_TIMELINE] effect:calling-makeBotAnteDecisions', { t: tMakeBotStart });
       makeBotAnteDecisions(gameId!).then(async () => {
         const tBotReturned = Date.now();
+        recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions returned', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+          elapsedMs: tBotReturned - tMakeBotStart,
+        });
         console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart });
         const tRefetchStart = Date.now();
+        recordStartupFlight('FETCH TIMELINE', 'post-bot players refetch start', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+        });
         const { data: freshPlayers } = await supabase
           .from('players')
           .select('id, ante_decision, sitting_out, status')
           .eq('game_id', gameId);
+        recordStartupFlight('FETCH TIMELINE', 'post-bot players refetch complete', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+          elapsedMs: Date.now() - tRefetchStart,
+          oldValue: null,
+          newValue: freshPlayers?.map(p => ({ id: p.id, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: (p as any).status })) ?? [],
+        });
         console.log('[GIN_RUNTIME_TIMELINE] effect:post-bot-refetch-complete', { t: Date.now(), deltaMs: Date.now() - tRefetchStart });
         const activePlayers = (freshPlayers ?? []).filter(
           p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
         );
         const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
+        recordStartupFlight('PHASE TIMELINE', 'allDecided evaluated after bot write', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          gameId,
+          dealerGameId: game?.current_game_uuid ?? null,
+          oldValue: null,
+          newValue: allDecided,
+          activePlayers: activePlayers.length,
+          decisions: activePlayers.map(p => ({ id: p.id, ante_decision: p.ante_decision })),
+        });
         console.log('[GIN_RUNTIME_TIMELINE] bot ante completion check:after-write', {
           t: Date.now(),
           gameId,
@@ -2867,10 +3035,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           decisions: activePlayers.map(p => p.ante_decision),
         });
         if (allDecided && !anteProcessingRef.current) {
+          recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn call issued', {
+            file: 'src/pages/Game.tsx',
+            function: 'bot ante useEffect',
+            caller: 'allDecided true after bot write',
+            gameId,
+          });
           console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → calling handleAllAnteDecisionsIn', { t: Date.now() });
           anteProcessingRef.current = true;
           handleAllAnteDecisionsIn();
         } else {
+          recordStartupFlight('EFFECT TIMELINE', 'bot ante effect exited via fallback fetch', {
+            file: 'src/pages/Game.tsx',
+            function: 'bot ante useEffect',
+            skipReason: allDecided ? 'anteProcessingRef already true' : 'allDecided false',
+            gameId,
+            allDecided,
+            anteProcessingRef: anteProcessingRef.current,
+          });
           console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=false → fetchGameData fallback', { t: Date.now(), allDecided, anteProcessingRef: anteProcessingRef.current });
           fetchGameData();
         }
@@ -3801,6 +3983,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Priority: liveRound > (optional) state cache > (optional) ref cache
   const currentRound =
     liveRound || (allowRoundCacheFallback ? (cachedRoundData || cachedRoundRef.current) : null);
+
+  useEffect(() => {
+    recordStartupValue('STATUS TIMELINE', 'Game.status', game?.status ?? null, {
+      file: 'src/pages/Game.tsx',
+      gameId,
+      gameType: game?.game_type ?? null,
+    });
+    recordStartupValue('IDENTITY TIMELINE', 'game.game_type', game?.game_type ?? null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('IDENTITY TIMELINE', 'game.current_game_uuid', (game as any)?.current_game_uuid ?? null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('ROUND TIMELINE', 'currentRound populated', currentRound ? {
+      id: currentRound.id ?? null,
+      dealer_game_id: (currentRound as any)?.dealer_game_id ?? null,
+      hand_number: currentRound.hand_number ?? null,
+      round_number: currentRound.round_number ?? null,
+      hasGinRummyState: !!((currentRound as any)?.gin_rummy_state),
+    } : null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('ROUND TIMELINE', 'currentRound.id available', currentRound?.id ?? null, { file: 'src/pages/Game.tsx', gameId });
+    recordStartupValue('ROUND TIMELINE', 'currentRound.dealer_game_id available', (currentRound as any)?.dealer_game_id ?? null, { file: 'src/pages/Game.tsx', gameId });
+  }, [game?.status, game?.game_type, (game as any)?.current_game_uuid, currentRound?.id, (currentRound as any)?.dealer_game_id, currentRound?.hand_number, currentRound?.round_number, gameId]);
 
   // F5.1/F4.2: identity-scoped all_decisions_in. Raw `game.all_decisions_in` can
   // persist across hand/round transitions and is the systemic source of the
@@ -5086,13 +5287,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
+    const fetchStartedAt = Date.now();
 
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
     if (!gameId || !user) {
+      recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'fetchGameData',
+        fetchSeq,
+        skipReason: !gameId ? 'no gameId' : 'no user',
+      });
       fetchSpan.end({ skipped: 'no gameId or user' });
       return;
     }
 
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData start', {
+      file: 'src/pages/Game.tsx',
+      function: 'fetchGameData',
+      fetchSeq,
+      gameId,
+      statusBefore: game?.status ?? null,
+      gameTypeBefore: game?.game_type ?? null,
+      currentRoundBefore: currentRound?.id ?? null,
+    });
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
     // PARALLEL FETCH: Get game, players, and defaults all at once for speed
@@ -5105,6 +5322,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const { data: gameData, error: gameError } = gameResult;
     const { data: playersData, error: playersError } = playersResult;
     const { data: gameDefaults } = defaultsResult;
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData parallel queries complete', {
+      file: 'src/pages/Game.tsx',
+      function: 'fetchGameData',
+      fetchSeq,
+      elapsedMs: Date.now() - fetchStartedAt,
+      oldValue: {
+        status: game?.status ?? null,
+        game_type: game?.game_type ?? null,
+        current_game_uuid: (game as any)?.current_game_uuid ?? null,
+        current_round: game?.current_round ?? null,
+        roundId: currentRound?.id ?? null,
+      },
+      newValue: {
+        status: (gameData as any)?.status ?? null,
+        game_type: (gameData as any)?.game_type ?? null,
+        current_game_uuid: (gameData as any)?.current_game_uuid ?? null,
+        current_round: (gameData as any)?.current_round ?? null,
+        total_hands: (gameData as any)?.total_hands ?? null,
+        rounds: (gameData as any)?.rounds?.map((r: any) => ({ id: r.id, dealer_game_id: r.dealer_game_id, hand_number: r.hand_number, round_number: r.round_number, hasGinRummyState: !!r.gin_rummy_state })) ?? null,
+        players: playersData?.map((p: any) => ({ id: p.id, position: p.position, is_bot: p.is_bot, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: p.status })) ?? null,
+      },
+      errors: { game: gameError?.message ?? null, players: playersError?.message ?? null },
+    });
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
@@ -5401,6 +5641,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     }
 
     setGame(gameData);
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData setGame applied', {
+      file: 'src/pages/Game.tsx',
+      function: 'fetchGameData',
+      fetchSeq,
+      elapsedMs: Date.now() - fetchStartedAt,
+      oldValue: {
+        status: game?.status ?? null,
+        game_type: game?.game_type ?? null,
+        current_game_uuid: (game as any)?.current_game_uuid ?? null,
+        roundId: currentRound?.id ?? null,
+      },
+      newValue: {
+        status: (gameData as any)?.status ?? null,
+        game_type: (gameData as any)?.game_type ?? null,
+        current_game_uuid: (gameData as any)?.current_game_uuid ?? null,
+        current_round: (gameData as any)?.current_round ?? null,
+        total_hands: (gameData as any)?.total_hands ?? null,
+      },
+    });
     ginTrace('reducer.setGame applied (fetchGameData)', {
       current_game_uuid: gameData?.current_game_uuid?.slice(0, 8) ?? null,
       status: gameData?.status ?? null,
@@ -7538,13 +7797,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [gameId, game, players, user?.id, fetchGameData]);
 
   const handleAllAnteDecisionsIn = async () => {
+    recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn entered', {
+      file: 'src/pages/Game.tsx',
+      function: 'handleAllAnteDecisionsIn',
+      caller: 'bot ante effect / ante completion paths',
+      gameId,
+      status: game?.status ?? null,
+      dealerGameId: game?.current_game_uuid ?? null,
+    });
     if (!gameId) {
+      recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'handleAllAnteDecisionsIn',
+        skipReason: 'no gameId',
+      });
       anteProcessingRef.current = false;
       return;
     }
     
     // CRITICAL: Don't start round if game is paused
     if (game?.is_paused) {
+      recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'handleAllAnteDecisionsIn',
+        skipReason: 'game is paused',
+        gameId,
+      });
       console.log('[ANTE] Game is paused, skipping ante processing');
       anteProcessingRef.current = false;
       return;
@@ -7552,13 +7830,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // CRITICAL: Fetch fresh game status AND game_type from DB to prevent race conditions in multiplayer
     // React state can be stale, causing both clients to attempt ante processing or use wrong game type
+    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh game fetch start', {
+      file: 'src/pages/Game.tsx',
+      function: 'handleAllAnteDecisionsIn',
+      gameId,
+    });
     const { data: freshGame, error: gameError } = await supabase
       .from('games')
       .select('status, game_type, ante_amount, is_first_hand, pot, current_game_uuid, total_hands')
       .eq('id', gameId)
       .single();
+    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh game fetch complete', {
+      file: 'src/pages/Game.tsx',
+      function: 'handleAllAnteDecisionsIn',
+      gameId,
+      oldValue: { status: game?.status ?? null, game_type: game?.game_type ?? null, current_game_uuid: game?.current_game_uuid ?? null },
+      newValue: freshGame ?? null,
+      error: gameError?.message ?? null,
+    });
     
     if (gameError || !freshGame) {
+      recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn exited', {
+        file: 'src/pages/Game.tsx',
+        function: 'handleAllAnteDecisionsIn',
+        reason: 'fresh game fetch failed',
+        gameId,
+        error: gameError?.message ?? null,
+      });
       console.log('[ANTE] Error fetching fresh game status:', gameError);
       anteProcessingRef.current = false;
       return;
@@ -7566,6 +7864,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Prevent duplicate calls if already in progress (using FRESH DB data, not stale React state)
     if (freshGame.status === 'in_progress') {
+      recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn skipped', {
+        file: 'src/pages/Game.tsx',
+        function: 'handleAllAnteDecisionsIn',
+        skipReason: 'fresh status already in_progress',
+        gameId,
+      });
       console.log('[ANTE] Already in progress (fresh check), skipping');
       anteProcessingRef.current = false;
       return;
@@ -7584,10 +7888,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
 
     // CRITICAL: Fetch fresh player data directly from database - don't use stale React state!
+    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh players fetch start', {
+      file: 'src/pages/Game.tsx',
+      function: 'handleAllAnteDecisionsIn',
+      gameId,
+    });
     const { data: freshPlayers, error: playersError } = await supabase
       .from('players')
       .select('*')
       .eq('game_id', gameId);
+    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh players fetch complete', {
+      file: 'src/pages/Game.tsx',
+      function: 'handleAllAnteDecisionsIn',
+      gameId,
+      oldValue: null,
+      newValue: freshPlayers?.map((p: any) => ({ id: p.id, is_bot: p.is_bot, position: p.position, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: p.status })) ?? null,
+      error: playersError?.message ?? null,
+    });
     
     if (playersError || !freshPlayers) {
       console.error('[ANTE] Error fetching players:', playersError);
@@ -7598,6 +7915,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Get players who anted up from FRESH database data
     const antedPlayers = freshPlayers.filter(p => p.ante_decision === 'ante_up');
     const sittingOutPlayers = freshPlayers.filter(p => p.ante_decision === 'sit_out' || p.sitting_out);
+    recordStartupFlight('PHASE TIMELINE', 'handleAllAnteDecisionsIn ante cohort evaluated', {
+      file: 'src/pages/Game.tsx',
+      function: 'handleAllAnteDecisionsIn',
+      oldValue: null,
+      newValue: { antedPlayers: antedPlayers.length, sittingOutPlayers: sittingOutPlayers.length, totalPlayers: freshPlayers.length },
+      antedPlayerIds: antedPlayers.map((p: any) => p.id),
+      sittingOutPlayerIds: sittingOutPlayers.map((p: any) => p.id),
+    });
 
     console.log('[ANTE] Anted players (from DB):', antedPlayers.length, 'Sitting out:', sittingOutPlayers.length, 'Total players:', freshPlayers.length);
 
@@ -7823,6 +8148,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .eq('id', gameId);
           } else if (freshGame?.game_type === 'gin-rummy') {
             // Gin Rummy: go straight to in_progress and start the round
+            recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound call issued', {
+              file: 'src/pages/Game.tsx',
+              function: 'handleAllAnteDecisionsIn',
+              caller: 'all ante decisions in',
+              gameId,
+              dealerGameId: game?.current_game_uuid ?? null,
+            });
             console.log('[GIN_RUNTIME_TIMELINE] gin state bootstrap:start', {
               t: Date.now(),
               gameId,
@@ -7832,6 +8164,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               dealerGameId: game?.current_game_uuid ?? null,
             });
             const ginStartResult = await startGinRummyRound(gameId!);
+            recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound returned', {
+              file: 'src/pages/Game.tsx',
+              function: 'handleAllAnteDecisionsIn',
+              caller: 'all ante decisions in',
+              gameId,
+              oldValue: null,
+              newValue: ginStartResult,
+            });
             ginTrace('startGinRummyRound:returned', {
               success: ginStartResult.success,
               roundId: ginStartResult.roundId?.slice(0, 8) ?? null,
@@ -8412,6 +8752,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ) : null}
           </div>
         </PersistentTableShell>
+        <StartupFlightRecorderOverlay />
       </SurfaceReadinessProvider>
     );
   }
@@ -9420,14 +9761,35 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // to the current dealer game — otherwise the surface
               // would mount with stale or empty round state.
               const dgid = (game as any).current_game_uuid ?? null;
-              if (!dgid) return true;
+              if (!dgid) {
+                Promise.resolve().then(() => recordStartupValue('READINESS TIMELINE', 'PlayfieldSlotController readyToMount prop', true, {
+                  file: 'src/pages/Game.tsx',
+                  reason: 'no dealer game id',
+                  gameStatus: game.status,
+                }));
+                return true;
+              }
               const status = game.status;
               if (status === 'in_progress') {
-                return Boolean(
+                const ready = Boolean(
                   currentRound?.id &&
                   (currentRound as any).dealer_game_id === dgid
                 );
+                Promise.resolve().then(() => recordStartupValue('READINESS TIMELINE', 'PlayfieldSlotController readyToMount prop', ready, {
+                  file: 'src/pages/Game.tsx',
+                  reason: 'in_progress requires scoped currentRound',
+                  currentRoundId: currentRound?.id ?? null,
+                  currentRoundDealerGameId: (currentRound as any)?.dealer_game_id ?? null,
+                  dealerGameId: dgid,
+                }));
+                return ready;
               }
+              Promise.resolve().then(() => recordStartupValue('READINESS TIMELINE', 'PlayfieldSlotController readyToMount prop', true, {
+                file: 'src/pages/Game.tsx',
+                reason: 'pre-round status defaults ready',
+                gameStatus: status,
+                dealerGameId: dgid,
+              }));
               return true;
             })()}
           >
@@ -9448,6 +9810,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+          Promise.resolve().then(() => {
+            recordStartupValue('IDENTITY TIMELINE', 'effectiveRenderGameType', effectiveRenderGameType, { file: 'src/pages/Game.tsx' });
+            recordStartupValue('IDENTITY TIMELINE', 'render propRoundId precursor', currentRound?.id ?? null, { file: 'src/pages/Game.tsx', renderRoundContext, hasActiveRound });
+            recordStartupValue('READINESS TIMELINE', 'render hasActiveRound', hasActiveRound, { file: 'src/pages/Game.tsx', renderRoundContext });
+          });
 
           // SHELL LC: comparative branch-selector instrumentation.
           // Pre-compute which IIFE return branch will win so we can prove
@@ -9575,6 +9942,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (effectiveRenderGameType === 'gin-rummy' && (isGinRummyConfiguring || isGinRummyDealerSelection || isAnteDecision || isInProgress || isGinRummyGameOver)) {
             const _ginEffRoundId = (isInProgress || isGinRummyGameOver) ? (currentRound?.id || '') : '';
             const _ginEffDealerGameId = (isInProgress || isGinRummyGameOver) ? (currentRound?.dealer_game_id || null) : null;
+            Promise.resolve().then(() => {
+              recordStartupValue('IDENTITY TIMELINE', 'propRoundId available', _ginEffRoundId, {
+                file: 'src/pages/Game.tsx',
+                isInProgress,
+                isGinRummyGameOver,
+                gameStatus: game.status,
+              });
+              recordStartupValue('IDENTITY TIMELINE', 'dealerGameId prop available', _ginEffDealerGameId, {
+                file: 'src/pages/Game.tsx',
+                isInProgress,
+                isGinRummyGameOver,
+                gameStatus: game.status,
+              });
+            });
             return (
               <>
                 <GinIdentityGateTracer
@@ -10271,6 +10652,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         </>
       )}
 
+      <StartupFlightRecorderOverlay />
     </VisualPreferencesProvider>
   );
 };

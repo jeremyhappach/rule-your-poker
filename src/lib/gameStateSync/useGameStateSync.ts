@@ -26,6 +26,7 @@ import {
   type AuthoritativeIdentity,
 } from './authoritativeIdentityPure';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { recordStartupFlight, recordStartupValue } from '@/lib/startupFlightRecorder';
 
 const DEFAULT_OPTIMISTIC_TIMEOUT = 3000;
 const DEFAULT_VISUAL_CONTRACT_TIMEOUT = 10000;
@@ -147,6 +148,12 @@ export function useGameStateSync<T>(
 
   // ── Receive authoritative update (from realtime / poll) ──────
   const receiveAuthoritativeUpdate = useCallback((incoming: T): AuthoritativeUpdateResult => {
+    recordStartupFlight('SYNC TIMELINE', 'receiveAuthoritativeUpdate entered', {
+      file: 'src/lib/gameStateSync/useGameStateSync.ts',
+      function: 'receiveAuthoritativeUpdate',
+      gameType: resolvedGameType,
+      identity: identityPropRef.current,
+    });
     const currentAuth = authRef.current;
     const presPre = presentationRef.current;
 
@@ -164,7 +171,7 @@ export function useGameStateSync<T>(
         pendingPostResetHydrationRef.current = false;
         stampAcceptedIdentity();
 
-        return {
+        const result: AuthoritativeUpdateResult = {
           accepted: true,
           reason: 'equal',
           previousProgress: currentProgress,
@@ -174,16 +181,39 @@ export function useGameStateSync<T>(
           wasFrozenAtWrite: false,
           presentationBefore: presPre,
         };
+        recordStartupFlight('SYNC TIMELINE', 'receiveAuthoritativeUpdate exited', {
+          file: 'src/lib/gameStateSync/useGameStateSync.ts',
+          function: 'receiveAuthoritativeUpdate',
+          gameType: resolvedGameType,
+          oldValue: presPre as any,
+          newValue: incoming as any,
+          result,
+        });
+        return result;
       }
 
-      return { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+      const result: AuthoritativeUpdateResult = { accepted: false, reason: 'identical', previousProgress: currentProgress, incomingProgress, comparison: 0, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+      recordStartupFlight('SYNC TIMELINE', 'receiveAuthoritativeUpdate exited', {
+        file: 'src/lib/gameStateSync/useGameStateSync.ts',
+        function: 'receiveAuthoritativeUpdate',
+        gameType: resolvedGameType,
+        result,
+      });
+      return result;
     }
 
     const cmp = compareProgress(currentProgress, incomingProgress);
 
     // Reject regressive updates
     if (cmp === -1) {
-      return { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+      const result: AuthoritativeUpdateResult = { accepted: false, reason: 'regressive', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'not-applicable', wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+      recordStartupFlight('SYNC TIMELINE', 'receiveAuthoritativeUpdate exited', {
+        file: 'src/lib/gameStateSync/useGameStateSync.ts',
+        function: 'receiveAuthoritativeUpdate',
+        gameType: resolvedGameType,
+        result,
+      });
+      return result;
     }
 
     // Accept: update authoritative
@@ -198,7 +228,14 @@ export function useGameStateSync<T>(
         incomingProgress,
         currentProgress,
       });
-      return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'skipped-frozen', wasFrozenAtWrite: true, presentationBefore: presPre };
+      const result: AuthoritativeUpdateResult = { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction: 'skipped-frozen', wasFrozenAtWrite: true, presentationBefore: presPre };
+      recordStartupFlight('SYNC TIMELINE', 'receiveAuthoritativeUpdate exited', {
+        file: 'src/lib/gameStateSync/useGameStateSync.ts',
+        function: 'receiveAuthoritativeUpdate',
+        gameType: resolvedGameType,
+        result,
+      });
+      return result;
     }
 
     let presentationAction: 'written' | 'skipped-frozen' = 'skipped-frozen';
@@ -234,7 +271,16 @@ export function useGameStateSync<T>(
       }
     }
 
-    return { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+    const result: AuthoritativeUpdateResult = { accepted: true, reason: cmp === 1 ? 'forward' : 'equal', previousProgress: currentProgress, incomingProgress, comparison: cmp, presentationAction, wasFrozenAtWrite: frozenRef.current, presentationBefore: presPre };
+    recordStartupFlight('SYNC TIMELINE', 'receiveAuthoritativeUpdate exited', {
+      file: 'src/lib/gameStateSync/useGameStateSync.ts',
+      function: 'receiveAuthoritativeUpdate',
+      gameType: resolvedGameType,
+      oldValue: presPre as any,
+      newValue: presentationAction === 'written' ? incoming as any : presPre as any,
+      result,
+    });
+    return result;
   }, [getProgress, isEqual, resolvedGameType]);
 
   // ── Apply optimistic local state ─────────────────────────────
@@ -543,6 +589,12 @@ export function useGameStateSync<T>(
     !identityEqualsFn(presentationIdentityRef.current, identityProp)
   );
   const interactionsAllowed = !frozen && activeContract === null && !isIdentityStale;
+  useEffect(() => {
+    recordStartupValue('SYNC TIMELINE', `${resolvedGameType}.presentationState`, presentation as any, {
+      file: 'src/lib/gameStateSync/useGameStateSync.ts',
+      identity: identityProp ?? null,
+    });
+  }, [presentation, resolvedGameType, identityProp]);
 
   /**
    * Synchronous writer-gate predicate. Reads from refs only — bypasses React

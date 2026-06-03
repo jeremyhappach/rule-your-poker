@@ -22,6 +22,7 @@ import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { derivePlayerStatus } from './participantStatus';
 import { getDisplayName } from '@/lib/botAlias';
 import { formatChipValue } from '@/lib/utils';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 /**
  * Roster shape consumed by the optional interstitial seat layer.
@@ -103,6 +104,16 @@ export function NeutralInterstitial({
   const resolvedGameKind: CanonicalFeltGameKind = gameKind ?? 'yahtzee';
   const tableSurfaceMaxHeight = geometry?.tableSurfaceMaxHeight ?? '55vh';
   useLifecycleMount('NeutralInterstitial', { reason, gameKind });
+  useStartupMountTrace('NeutralInterstitial', { gameId: gameId ?? null, reason: reason ?? null, gameKind: gameKind ?? null });
+  useStartupRenderTrace('NeutralInterstitial', {
+    gameId: gameId ?? null,
+    reason: reason ?? null,
+    gameKind: gameKind ?? null,
+    resolvedGameKind,
+    hasCommittedGameKind,
+    participantCount: participants?.length ?? 0,
+    activeTab: externalActiveTab ?? null,
+  }, { file: 'src/lib/canonicalShell/NeutralInterstitial.tsx' });
 
   usePublishShellFelt({
     gameKind: resolvedGameKind,

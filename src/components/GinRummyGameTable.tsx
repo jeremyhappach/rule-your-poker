@@ -78,6 +78,7 @@ import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 // adjacent to the tab bar) until canonical announcement wiring lands.
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
+import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
@@ -156,6 +157,16 @@ export const GinRummyGameTable = ({
   bootstrapState = null,
 }: GinRummyGameTableProps) => {
   useLifecycleMount('GinRummyGameTable');
+  useStartupMountTrace('GinRummyGameTable', { gameId, dealerGameId: dealerGameId ?? null, propRoundId: propRoundId ?? null });
+  useStartupRenderTrace('GinRummyGameTable', {
+    gameId,
+    propRoundId: propRoundId ?? null,
+    dealerGameId: dealerGameId ?? null,
+    propHandNumber,
+    bootstrapState: bootstrapState ? { phase: bootstrapState.phase, handNumber: (bootstrapState as any).handNumber ?? null } : null,
+    playersCount: players.length,
+    pot,
+  }, { file: 'src/components/GinRummyGameTable.tsx' });
   useChangeTracker('GinRummyGameTable', 'identity', `${dealerGameId ?? '-'}|${propRoundId ?? '-'}|h${propHandNumber}`);
   useUnmountSnapshot('GinRummyGameTable', {
     parent: 'PlayfieldSlotController children (gin-rummy gameplay branch in Game.tsx)',
@@ -223,6 +234,13 @@ export const GinRummyGameTable = ({
   // client cannot become structurally blind to a forward-advanced hand
   // started by a peer client.
   const { identity: authIdentity } = useAuthoritativeIdentity({ dealerGameId });
+  useEffect(() => {
+    recordStartupValue('IDENTITY TIMELINE', 'authIdentity available', authIdentity ? {
+      dealerGameId: authIdentity.dealerGameId ?? null,
+      roundId: authIdentity.roundId ?? null,
+      handNumber: authIdentity.handNumber ?? null,
+    } : null, { file: 'src/components/GinRummyGameTable.tsx', gameId });
+  }, [authIdentity?.dealerGameId, authIdentity?.roundId, authIdentity?.handNumber, gameId]);
 
   const authIdentitySeenRef = useRef(false);
   useEffect(() => {
@@ -270,6 +288,13 @@ export const GinRummyGameTable = ({
   // Aliases — keep existing internal references pointing at the live monotonic identity.
   const roundId = currentRoundId;
   const handNumber = currentHandNumber;
+  useEffect(() => {
+    recordStartupValue('IDENTITY TIMELINE', 'GinRummyGameTable.identity', `${dealerGameId ?? '-'}|${roundId ?? '-'}|h${handNumber}`, {
+      file: 'src/components/GinRummyGameTable.tsx',
+      propRoundId: propRoundId ?? null,
+      authRoundId: authIdentity?.roundId ?? null,
+    });
+  }, [dealerGameId, roundId, handNumber, propRoundId, authIdentity?.roundId]);
 
   const roundIdSeenRef = useRef(false);
   useEffect(() => {
@@ -340,6 +365,13 @@ export const GinRummyGameTable = ({
   const bootstrapAppliedRef = useRef(false);
   useEffect(() => {
     if (!bootstrapState || !roundId) {
+      recordStartupFlight('EFFECT TIMELINE', 'bootstrapState apply effect skipped', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        function: 'bootstrapState apply useEffect',
+        skipReason: !bootstrapState ? 'no bootstrapState' : 'no roundId',
+        hasBootstrapState: !!bootstrapState,
+        hasRoundId: !!roundId,
+      });
       ginTrace('gin.receiveAuthoritativeUpdate gated', {
         hasBootstrapState: !!bootstrapState,
         hasRoundId: !!roundId,
@@ -347,6 +379,14 @@ export const GinRummyGameTable = ({
       return;
     }
     const result = ginSync.receiveAuthoritativeUpdate(bootstrapState);
+    recordStartupFlight('SYNC TIMELINE', 'bootstrapState receiveAuthoritativeUpdate returned', {
+      file: 'src/components/GinRummyGameTable.tsx',
+      function: 'bootstrapState apply useEffect',
+      roundId,
+      oldValue: null,
+      newValue: { phase: bootstrapState.phase, handNumber: (bootstrapState as any)?.handNumber ?? null },
+      result,
+    });
     if (result.accepted) setGinState(bootstrapState);
     if (!bootstrapAppliedRef.current && result.accepted) {
       bootstrapAppliedRef.current = true;
@@ -363,6 +403,12 @@ export const GinRummyGameTable = ({
   // unblocks the playable subtree render path at line ~1589.
   const viewStateReadyRef = useRef(false);
   useEffect(() => {
+    recordStartupValue('SYNC TIMELINE', 'GinRummyGameTable.presentationState', ginSync.presentationState ? {
+      phase: (ginSync.presentationState as any)?.phase ?? null,
+      handNumber: (ginSync.presentationState as any)?.handNumber ?? null,
+      currentPlayerId: (ginSync.presentationState as any)?.currentPlayerId ?? null,
+      turnIndex: (ginSync.presentationState as any)?.turnIndex ?? null,
+    } : null, { file: 'src/components/GinRummyGameTable.tsx', roundId: roundId ?? null });
     if (viewStateReadyRef.current) return;
     if (!ginSync.presentationState) return;
     viewStateReadyRef.current = true;
@@ -894,6 +940,14 @@ export const GinRummyGameTable = ({
     let isActive = true;
 
     const applyState = (state: GinRummyState, source: string) => {
+      recordStartupFlight('SYNC TIMELINE', 'Gin applyState entered', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        function: 'applyState',
+        source,
+        roundId,
+        phase: state.phase,
+        handNumber: (state as any)?.handNumber ?? null,
+      });
       if (!isActive) return;
       // ── Identity latch guard ──
       // If the roundId for this handler no longer matches the live latch,
@@ -917,6 +971,15 @@ export const GinRummyGameTable = ({
       });
       // Route ALL external updates through the sync framework's progress-vector gate.
       const result = ginSync.receiveAuthoritativeUpdate(state);
+      recordStartupFlight('SYNC TIMELINE', 'Gin receiveAuthoritativeUpdate from applyState returned', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        function: 'applyState',
+        source,
+        roundId,
+        oldValue: null,
+        newValue: { phase: state.phase, handNumber: (state as any)?.handNumber ?? null },
+        result,
+      });
       logDebugEvent({
         gameId, roundId, userId: currentUserId, clientRole: 'actor',
         eventType: result.accepted ? 'gin:snapshot_accepted' : 'gin:snapshot_rejected',
@@ -964,6 +1027,19 @@ export const GinRummyGameTable = ({
           filter: `id=eq.${roundId}`,
         },
         (payload) => {
+          recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable rounds callback fired / payload received', {
+            file: 'src/components/GinRummyGameTable.tsx',
+            function: 'round-specific realtime callback',
+            table: 'rounds',
+            row: (payload.new as any)?.id ?? roundId,
+            eventType: payload.eventType,
+            oldValue: null,
+            newValue: {
+              roundId: (payload.new as any)?.id ?? null,
+              hasGinRummyState: !!(payload.new as any)?.gin_rummy_state,
+              phase: ((payload.new as any)?.gin_rummy_state as any)?.phase ?? null,
+            },
+          });
           const newData = payload.new as { gin_rummy_state?: GinRummyState };
           if (newData.gin_rummy_state) {
             applyState(newData.gin_rummy_state, 'realtime');
@@ -972,6 +1048,13 @@ export const GinRummyGameTable = ({
       )
       .subscribe((status) => {
         console.log('[GIN-RUMMY] Realtime subscription status:', status);
+        recordStartupFlight('REALTIME TIMELINE', 'GinRummyGameTable subscription status', {
+          file: 'src/components/GinRummyGameTable.tsx',
+          function: 'round-specific subscription status callback',
+          channel: `gin-rummy-${roundId}`,
+          oldValue: null,
+          newValue: status,
+        });
       });
 
     // Fallback polling — unconditional, always applies fresh DB state.
@@ -2088,9 +2171,29 @@ export const GinRummyGameTable = ({
     interactionsAllowed: ginSync.interactionsAllowed,
     isIdentityStale: ginSync.isIdentityStale,
   });
+  Promise.resolve().then(() => {
+    recordStartupValue('PLACEHOLDER TIMELINE', 'Gin placeholder gate', {
+      hasViewState: !!viewState,
+      hasBootstrapState: !!bootstrapState,
+      hasRoundId: !!roundId,
+      viewStateHandNumber,
+      handNumber,
+      isStaleHandPresentation,
+      presentationStateNull: ginSync.presentationState == null,
+      interactionsAllowed: ginSync.interactionsAllowed,
+      isIdentityStale: ginSync.isIdentityStale,
+    }, { file: 'src/components/GinRummyGameTable.tsx' });
+  });
   if (!viewState || isStaleHandPresentation) {
     if (!placeholderPaintedRef.current) {
       placeholderPaintedRef.current = true;
+      recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
+        file: 'src/components/GinRummyGameTable.tsx',
+        oldValue: 'not-painted',
+        newValue: 'placeholder',
+        hasViewState: !!viewState,
+        isStaleHandPresentation,
+      });
       ginTrace('gin.first painted (placeholder)');
       if (typeof requestAnimationFrame !== 'undefined') {
         requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -2128,6 +2231,14 @@ export const GinRummyGameTable = ({
 
   if (!playablePaintedRef.current) {
     playablePaintedRef.current = true;
+    recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder exit / first playable frame', {
+      file: 'src/components/GinRummyGameTable.tsx',
+      oldValue: 'placeholder',
+      newValue: 'playable',
+      hasViewState: !!viewState,
+      handNumber,
+      viewStateHandNumber,
+    });
     ginTrace('gin.first painted (playable)');
     ginTrace('gin.playable gate', {
       hasViewState: !!viewState,

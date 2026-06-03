@@ -38,6 +38,7 @@ import { ShellTabBar } from './ShellTabBar';
 import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
 import { getLifecycleContext } from './lifecycleDebug';
+import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 
 export interface ShellHudGridProps {
   /** Row 2 — operational HUD chrome (timer chips, paused badge). */
@@ -57,6 +58,16 @@ const ROW_STYLE: React.CSSProperties = {
 export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
   useLifecycleMount('ShellHudGrid');
   const _ctx = getLifecycleContext();
+  useStartupMountTrace('ShellHudGrid', { gameType: _ctx.gameType, gameStatus: _ctx.gameStatus });
+  useStartupRenderTrace('ShellHudGrid', {
+    hasTimerSlot: timer != null,
+    hasPaneSlot: pane != null,
+    hasIdentitySlot: identity != null,
+    gameType: _ctx.gameType,
+    gameStatus: _ctx.gameStatus,
+    dealerGameId: _ctx.dealerGameId,
+    roundId: _ctx.roundId,
+  }, { file: 'src/lib/canonicalShell/ShellHudGrid.tsx' });
   useUnmountSnapshot('ShellHudGrid', {
     parent: 'gameplay-surface(GinRummyGameTable/CribbageMobileGameTable/MobileGameTable)',
     gameType: _ctx.gameType,

@@ -17,6 +17,7 @@ import { logSessionEvent, logSessionDeleted } from "@/lib/sessionEventLog";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { toast } from "sonner";
 import { sanitizePlayersForNewDealerGame } from "@/lib/dealerGameBoundary";
+import { recordStartupFlight, resetStartupFlight } from "@/lib/startupFlightRecorder";
 
 // P0 #2 INSTRUMENTATION: log every dealer_games insertion path with caller/reason.
 // This identifies which client/code-path creates new dealer_games mid-session
@@ -1311,6 +1312,15 @@ export const DealerGameSetup = ({
       dealerGameConfig.per_point_value = ginRummyPerPointValue;
       dealerGameConfig.gin_bonus = ginRummyGinBonus;
       dealerGameConfig.undercut_bonus = ginRummyUndercutBonus;
+      resetStartupFlight('Gin config submit start');
+      recordStartupFlight('PHASE TIMELINE', 'dealer_selected / Gin config submit start', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        gameId,
+        gameType: gameTypeToSubmit,
+        dealerPlayerId,
+      });
       console.log('[GIN_RUNTIME_TIMELINE] game selection submit:start', {
         t: Date.now(),
         gameId,
@@ -1320,6 +1330,17 @@ export const DealerGameSetup = ({
     }
     
     // Insert into dealer_games table first
+    if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'dealer_games INSERT issued', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'dealer_games',
+        row: null,
+        oldValue: null,
+        newValue: { session_id: gameId, game_type: gameTypeToSubmit, dealer_user_id: dealerUserId },
+      });
+    }
     const { data: dealerGame, error: dealerGameError } = await supabase
       .from('dealer_games')
       .insert({
@@ -1342,6 +1363,15 @@ export const DealerGameSetup = ({
     logDealerGameCreated(gameId, gameTypeToSubmit, dealerGameId, 'manual-submit-cribbage-or-ginrummy', { dealerPlayerId, dealerUserId });
     await sanitizePlayersForNewDealerGame(gameId);
     if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'dealer_games INSERT completed', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'dealer_games',
+        row: dealerGameId,
+        oldValue: null,
+        newValue: { dealerGameId, gameType: gameTypeToSubmit },
+      });
       console.log('[GIN_RUNTIME_TIMELINE] dealer game creation:inserted', {
         t: Date.now(),
         gameId,
@@ -1447,6 +1477,17 @@ export const DealerGameSetup = ({
       updateFields.points_to_win = ginRummyPointsToWin;
     }
     
+    if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'games.status=ante_decision UPDATE issued', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'games',
+        row: gameId,
+        oldValue: null,
+        newValue: updateFields,
+      });
+    }
     const { error } = await supabase
       .from('games')
       .update(updateFields)
@@ -1459,6 +1500,15 @@ export const DealerGameSetup = ({
       return;
     }
     if (isGinRummy) {
+      recordStartupFlight('STATUS TIMELINE', 'games.status=ante_decision UPDATE completed', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'games',
+        row: gameId,
+        oldValue: null,
+        newValue: { status: 'ante_decision', game_type: gameTypeToSubmit, current_game_uuid: dealerGameId },
+      });
       console.log('[GIN_RUNTIME_TIMELINE] game selection submit:game-updated-ante-decision', {
         t: Date.now(),
         gameId,
@@ -1469,6 +1519,17 @@ export const DealerGameSetup = ({
     }
     
     // Reset ante_decision for all non-dealer players
+    if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'non-dealer ante_decision reset UPDATE issued', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'players',
+        row: `game_id=${gameId}, except dealer=${dealerPlayerId}`,
+        oldValue: 'unknown',
+        newValue: null,
+      });
+    }
     await supabase
       .from('players')
       .update({ ante_decision: null })
@@ -1477,6 +1538,17 @@ export const DealerGameSetup = ({
       .neq('status', 'observer').neq('status', 'left');
     
     // Auto ante up the dealer
+    if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'dealer ante_decision=ante_up UPDATE issued', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'players',
+        row: dealerPlayerId,
+        oldValue: null,
+        newValue: { ante_decision: 'ante_up', sitting_out: false },
+      });
+    }
     await supabase
       .from('players')
       .update({ 
@@ -1484,6 +1556,17 @@ export const DealerGameSetup = ({
         sitting_out: false
       })
       .eq('id', dealerPlayerId);
+    if (isGinRummy) {
+      recordStartupFlight('WRITE TIMELINE', 'dealer ante_decision=ante_up UPDATE completed', {
+        file: 'src/components/DealerGameSetup.tsx',
+        function: 'handleCardGameSubmit',
+        caller: 'dealer submit button',
+        table: 'players',
+        row: dealerPlayerId,
+        oldValue: null,
+        newValue: { ante_decision: 'ante_up', sitting_out: false },
+      });
+    }
     
     console.log(`[DEALER SETUP] ✅ ${gameTypeName} config complete, dealer_game_id:`, dealerGameId);
     if (configTimeoutRef.current) { clearTimeout(configTimeoutRef.current); configTimeoutRef.current = null; }
