@@ -58,6 +58,8 @@ function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string
       e.kind !== 'scope-change' &&
       e.kind !== 'scope-teardown'
     ) return false;
+  } else if (mode === 'lifecycle') {
+    if (e.kind !== 'lifecycle') return false;
   }
   if (text.trim()) {
     const needle = text.trim().toLowerCase();
