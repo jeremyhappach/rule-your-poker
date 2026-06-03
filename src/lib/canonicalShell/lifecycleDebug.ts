@@ -17,6 +17,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 type Snapshot = Record<string, string | number | boolean | null | undefined>;
 
@@ -214,6 +215,10 @@ export function setLifecycleFact(key: string, value: Snapshot[string]) {
   snapshot[key] = value;
   emit();
   persistEvent('lifecycle.fact', { key, value });
+  recordShellLifecycleEvent('fact', `${key}=${value}`, {
+    dealerGameId: ctx.dealerGameId,
+    roundId: ctx.roundId,
+  });
 }
 
 export function clearLifecycleFact(key: string) {
@@ -245,11 +250,27 @@ export function useLifecycleMount(name: string, extra?: Snapshot) {
       mount_instance_id: mountInstanceRef.current,
       ...(extra ?? {}),
     });
+    recordShellLifecycleEvent('mount', name, {
+      instance: mountInstanceRef.current.slice(0, 8),
+      dealerGameId: ctx.dealerGameId,
+      roundId: ctx.roundId,
+      currentGameUuid: ctx.currentGameUuid,
+      gameStatus: ctx.gameStatus,
+      gameType: ctx.gameType,
+      ...(extra ?? {}),
+    });
     return () => {
       setLifecycleFact(`mounted:${name}`, false);
       persistEvent('lifecycle.unmount', {
         component: name,
         mount_instance_id: mountInstanceRef.current,
+      });
+      recordShellLifecycleEvent('unmount', name, {
+        instance: mountInstanceRef.current.slice(0, 8),
+        dealerGameId: ctx.dealerGameId,
+        roundId: ctx.roundId,
+        currentGameUuid: ctx.currentGameUuid,
+        gameStatus: ctx.gameStatus,
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -35,6 +35,7 @@
 import type { ReactNode } from 'react';
 import { ShellAnnouncementRail } from './ShellHudChrome';
 import { ShellTabBar } from './ShellTabBar';
+import { useLifecycleMount } from './lifecycleDebug';
 
 export interface ShellHudGridProps {
   /** Row 2 — operational HUD chrome (timer chips, paused badge). */
@@ -52,6 +53,7 @@ const ROW_STYLE: React.CSSProperties = {
 };
 
 export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
+  useLifecycleMount('ShellHudGrid');
   return (
     <div
       data-canonical-shell-hud-grid=""

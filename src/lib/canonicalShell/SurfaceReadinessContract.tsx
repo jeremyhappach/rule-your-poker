@@ -31,6 +31,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 export interface SurfaceReadinessIdentity {
   dealerGameId: string;
@@ -77,6 +78,11 @@ export function SurfaceReadinessProvider({ children }: { children: ReactNode }) 
       if (prev.reports.get(key) === ready) return prev;
       const reports = new Map(prev.reports);
       reports.set(key, ready);
+      recordShellLifecycleEvent('readiness-report', `${key.slice(0, 24)} → ${ready}`, {
+        dealerGameId: id.dealerGameId?.slice(0, 8) ?? null,
+        scope: id.scope?.slice(0, 8) ?? null,
+        previous: prev.reports.get(key) ?? null,
+      });
       return { ...prev, reports };
     });
   }, []);
@@ -88,6 +94,11 @@ export function SurfaceReadinessProvider({ children }: { children: ReactNode }) 
       if (!prev.reports.has(key)) return prev;
       const reports = new Map(prev.reports);
       reports.delete(key);
+      recordShellLifecycleEvent('readiness-clear', key.slice(0, 24), {
+        dealerGameId: id.dealerGameId?.slice(0, 8) ?? null,
+        scope: id.scope?.slice(0, 8) ?? null,
+        previousValue: prev.reports.get(key) ?? null,
+      });
       return { ...prev, reports };
     });
   }, []);
@@ -96,7 +107,9 @@ export function SurfaceReadinessProvider({ children }: { children: ReactNode }) 
     if (!dealerGameId) return;
     setState(prev => {
       const registrations = new Map(prev.registrations);
-      registrations.set(dealerGameId, (registrations.get(dealerGameId) ?? 0) + 1);
+      const next = (registrations.get(dealerGameId) ?? 0) + 1;
+      registrations.set(dealerGameId, next);
+      recordShellLifecycleEvent('readiness-probe-register', `dealer=${dealerGameId.slice(0, 8)} count=${next}`);
       return { ...prev, registrations };
     });
   }, []);
@@ -119,9 +132,13 @@ export function SurfaceReadinessProvider({ children }: { children: ReactNode }) 
             mutated = true;
           }
         }
+        recordShellLifecycleEvent('readiness-probe-unregister', `dealer=${dealerGameId.slice(0, 8)} (last)`, {
+          purgedReports: mutated,
+        });
         return { reports: mutated ? reports : prev.reports, registrations };
       }
       registrations.set(dealerGameId, next);
+      recordShellLifecycleEvent('readiness-probe-unregister', `dealer=${dealerGameId.slice(0, 8)} count=${next}`);
       return { ...prev, registrations };
     });
   }, []);

@@ -26,6 +26,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLifecycleMount, setLifecycleFact } from './lifecycleDebug';
+import { recordShellLifecycleEvent } from './shellLifecycleLog';
 
 import { NeutralInterstitial } from './NeutralInterstitial';
 import {
@@ -183,6 +184,55 @@ export function PlayfieldSlotController({
     console.log('[GIN_RUNTIME_TIMELINE] slot controller state', snapshot);
     ginTrace('slot.state', snapshot);
   }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp, readinessScope]);
+
+  // ShellLifecyclePanel: phase transitions, mount-identity changes,
+  // and readiness flips — emitted only when the relevant slice changes
+  // (notify-on-change), so the panel is not flooded.
+  const lastPhaseRef = useRef<string | null>(null);
+  const lastMountedRef = useRef<string | null>(null);
+  const lastReadyRef = useRef<boolean | null>(null);
+  const lastReasonRef = useRef<string | null>(null);
+  useEffect(() => {
+    const mounted = describeSlotIdentity(mountedIdentity);
+    const desired = describeSlotIdentity(desiredIdentity);
+    if (lastPhaseRef.current !== phase) {
+      recordShellLifecycleEvent('slot-phase', `${lastPhaseRef.current ?? '(init)'} → ${phase}`, {
+        mounted, desired, neutralReason, readyToMount, surfaceReady, readyToMountProp,
+        dealerGameId: desiredIdentity?.dealerGameId?.slice(0, 8) ?? null,
+        readinessScope: readinessScope?.slice(0, 8) ?? null,
+      });
+      if (phase === 'neutral' && lastPhaseRef.current !== 'neutral') {
+        recordShellLifecycleEvent('neutral-shown', `reason=${neutralReason}`, {
+          from: lastPhaseRef.current, mounted, desired,
+        });
+      } else if (phase !== 'neutral' && lastPhaseRef.current === 'neutral') {
+        recordShellLifecycleEvent('neutral-hidden', `phase=${phase}`, {
+          mounted, desired, neutralReason,
+        });
+      }
+      lastPhaseRef.current = phase;
+    }
+    if (lastMountedRef.current !== mounted) {
+      recordShellLifecycleEvent('slot-phase', `mountedIdentity ${lastMountedRef.current ?? '(init)'} → ${mounted}`, {
+        phase, desired,
+      });
+      lastMountedRef.current = mounted;
+    }
+    if (lastReadyRef.current !== readyToMount) {
+      recordShellLifecycleEvent('gating', `readyToMount ${lastReadyRef.current} → ${readyToMount}`, {
+        owner: 'PlayfieldSlotController',
+        readyToMountProp, surfaceReady, phase, desired, mounted,
+      });
+      lastReadyRef.current = readyToMount;
+    }
+    if (phase === 'neutral' && lastReasonRef.current !== neutralReason) {
+      recordShellLifecycleEvent('gating', `neutralReason → ${neutralReason}`, {
+        owner: 'PlayfieldSlotController', mounted, desired,
+      });
+      lastReasonRef.current = neutralReason;
+    }
+  }, [phase, mountedIdentity, desiredIdentity, readyToMount, surfaceReady, readyToMountProp, neutralReason, readinessScope]);
+
 
   // Helper: attempt to promote neutral → active iff dwell elapsed AND
   // readiness is satisfied AND we have a non-null target.
