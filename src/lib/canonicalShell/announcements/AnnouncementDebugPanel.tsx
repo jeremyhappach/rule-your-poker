@@ -9,13 +9,14 @@
  *   ?ann_debug=1
  */
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import {
   clearAnnouncementDebugEvents,
   formatAnnouncementDebugEventsAsText,
   getAnnouncementDebugEvents,
   isAnnouncementDebugEnabled,
   subscribeAnnouncementDebug,
+  type AnnouncementDebugEvent,
 } from './announcementDebugLog';
 import {
   ensureHarnessCacheLoaded,
@@ -38,6 +39,33 @@ const KIND_COLOR: Record<string, string> = {
   'scope-teardown': '#FF6B6B',
 };
 
+type FilterMode = 'all' | 'wins' | 'transitions';
+
+function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string): boolean {
+  if (mode === 'wins') {
+    const hay = `${e.summary} ${JSON.stringify(e.detail ?? {})}`.toLowerCase();
+    if (!/match_win|round_win|chip_award/.test(hay)) return false;
+  } else if (mode === 'transitions') {
+    if (
+      e.kind !== 'active-change' &&
+      e.kind !== 'ambient-change' &&
+      e.kind !== 'transient-change' &&
+      e.kind !== 'rail-active-change' &&
+      e.kind !== 'rail-event-flag-change' &&
+      e.kind !== 'layer-mount' &&
+      e.kind !== 'layer-unmount' &&
+      e.kind !== 'scope-change' &&
+      e.kind !== 'scope-teardown'
+    ) return false;
+  }
+  if (text.trim()) {
+    const needle = text.trim().toLowerCase();
+    const hay = `${e.kind} ${e.summary} ${JSON.stringify(e.detail ?? {})}`.toLowerCase();
+    if (!hay.includes(needle)) return false;
+  }
+  return true;
+}
+
 export function AnnouncementDebugPanel() {
   const [, forceVisibilityCheck] = useState(0);
   const events = useSyncExternalStore(
@@ -47,6 +75,8 @@ export function AnnouncementDebugPanel() {
   );
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState<FilterMode>('all');
+  const [text, setText] = useState('');
 
   useEffect(() => {
     void ensureHarnessCacheLoaded().finally(() => forceVisibilityCheck((n) => n + 1));
@@ -59,6 +89,11 @@ export function AnnouncementDebugPanel() {
     return () => clearTimeout(t);
   }, [copied]);
 
+  const filtered = useMemo(
+    () => events.filter((e) => matchesFilter(e, filter, text)),
+    [events, filter, text],
+  );
+
   if (!isAnnouncementDebugEnabled()) return null;
 
   const handleCopy = async () => {
@@ -67,16 +102,22 @@ export function AnnouncementDebugPanel() {
       await navigator.clipboard.writeText(text);
       setCopied(true);
     } catch {
-      try {
-        window.prompt('Copy announcement debug log:', text);
-      } catch {
-        /* */
-      }
+      try { window.prompt('Copy announcement debug log:', text); } catch { /* */ }
     }
   };
 
-  const newest = [...events].reverse();
+  const newest = [...filtered].reverse();
   const recent = newest[0];
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? '#3a3a3a' : 'transparent',
+    color: active ? '#fff' : '#bbb',
+    border: '1px solid #555',
+    borderRadius: 3,
+    padding: '1px 5px',
+    cursor: 'pointer',
+    font: 'inherit',
+  });
 
   return (
     <div
@@ -86,8 +127,8 @@ export function AnnouncementDebugPanel() {
         right: 4,
         bottom: 4,
         zIndex: 2147483646,
-        width: expanded ? 'min(92vw, 420px)' : 'min(78vw, 260px)',
-        background: 'rgba(0,0,0,0.82)',
+        width: expanded ? 'min(94vw, 460px)' : 'min(78vw, 280px)',
+        background: 'rgba(0,0,0,0.85)',
         color: '#fff',
         border: '1px solid #444',
         borderRadius: 4,
@@ -110,85 +151,69 @@ export function AnnouncementDebugPanel() {
           type="button"
           onClick={() => setExpanded((e) => !e)}
           style={{
-            flex: 1,
-            textAlign: 'left',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            font: 'inherit',
-            color: '#fff',
-            padding: 0,
-            fontWeight: 700,
+            flex: 1, textAlign: 'left', background: 'transparent', border: 'none',
+            cursor: 'pointer', font: 'inherit', color: '#fff', padding: 0, fontWeight: 700,
           }}
           title={expanded ? 'Collapse' : 'Expand'}
         >
-          {expanded ? '▼' : '▶'} ANN DEBUG ({events.length})
+          {expanded ? '▼' : '▶'} ANN DEBUG ({filtered.length}/{events.length})
           {!expanded && recent ? (
             <span style={{ fontWeight: 400, opacity: 0.8 }}>
               {' '}· {recent.kind} {recent.summary.slice(0, 28)}
+              {recent.repeat > 1 ? ` ×${recent.repeat}` : ''}
             </span>
           ) : null}
         </button>
-        <button
-          type="button"
-          onClick={handleCopy}
-          title="Copy full log"
-          style={{
-            background: '#222',
-            color: copied ? '#7CFC00' : '#fff',
-            border: '1px solid #555',
-            borderRadius: 3,
-            padding: '1px 6px',
-            cursor: 'pointer',
-            font: 'inherit',
-          }}
-        >
+        <button type="button" onClick={handleCopy} title="Copy full log"
+          style={{ background: '#222', color: copied ? '#7CFC00' : '#fff', border: '1px solid #555', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', font: 'inherit' }}>
           {copied ? '✓' : '⧉'}
         </button>
-        <button
-          type="button"
-          onClick={() => clearAnnouncementDebugEvents()}
-          title="Clear log"
-          style={{
-            background: '#222',
-            color: '#fff',
-            border: '1px solid #555',
-            borderRadius: 3,
-            padding: '1px 6px',
-            cursor: 'pointer',
-            font: 'inherit',
-          }}
-        >
+        <button type="button" onClick={() => clearAnnouncementDebugEvents()} title="Clear log"
+          style={{ background: '#222', color: '#fff', border: '1px solid #555', borderRadius: 3, padding: '1px 6px', cursor: 'pointer', font: 'inherit' }}>
           ✕
         </button>
       </div>
       {expanded ? (
-        <div
-          style={{
-            maxHeight: 320,
-            overflow: 'auto',
-            padding: '4px 6px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {newest.length === 0 ? (
-            <div style={{ opacity: 0.6 }}>(no events yet)</div>
-          ) : (
-            newest.map((e) => (
-              <div key={e.seq} style={{ marginBottom: 2 }}>
-                <span style={{ opacity: 0.7 }}>+{e.tMs}ms </span>
-                <span style={{ color: KIND_COLOR[e.kind] ?? '#fff', fontWeight: 700 }}>
-                  {e.kind}
-                </span>{' '}
-                <span>{e.summary}</span>
-                {e.detail ? (
-                  <span style={{ opacity: 0.7 }}> {JSON.stringify(e.detail)}</span>
-                ) : null}
-              </div>
-            ))
-          )}
-        </div>
+        <>
+          <div style={{ display: 'flex', gap: 4, padding: '4px 6px', borderBottom: '1px solid #222', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button type="button" style={chipStyle(filter === 'all')} onClick={() => setFilter('all')}>All</button>
+            <button type="button" style={chipStyle(filter === 'wins')} onClick={() => setFilter('wins')}>Wins</button>
+            <button type="button" style={chipStyle(filter === 'transitions')} onClick={() => setFilter('transitions')}>Transitions</button>
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="filter…"
+              style={{
+                flex: 1, minWidth: 60, background: '#111', color: '#fff',
+                border: '1px solid #444', borderRadius: 3, padding: '1px 4px',
+                font: 'inherit', outline: 'none',
+              }}
+            />
+          </div>
+          <div style={{ maxHeight: 360, overflow: 'auto', padding: '4px 6px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {newest.length === 0 ? (
+              <div style={{ opacity: 0.6 }}>(no events match)</div>
+            ) : (
+              newest.map((e) => (
+                <div key={e.seq} style={{ marginBottom: 2 }}>
+                  <span style={{ opacity: 0.7 }}>+{e.tMs}ms </span>
+                  <span style={{ color: KIND_COLOR[e.kind] ?? '#fff', fontWeight: 700 }}>{e.kind}</span>{' '}
+                  <span>{e.summary}</span>
+                  {e.repeat > 1 ? (
+                    <span style={{ color: '#FFD700', fontWeight: 700 }}>
+                      {' '}×{e.repeat}
+                      <span style={{ opacity: 0.6, fontWeight: 400 }}> (last +{e.tLastMs}ms)</span>
+                    </span>
+                  ) : null}
+                  {e.detail ? (
+                    <span style={{ opacity: 0.7 }}> {JSON.stringify(e.detail)}</span>
+                  ) : null}
+                </div>
+              ))
+            )}
+          </div>
+        </>
       ) : null}
     </div>
   );
