@@ -269,20 +269,28 @@ export function CanonicalAnnouncementProvider({
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
+      const isMW = event.type === 'match_win';
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `emit-requested ${event.type} id=${event.id.slice(0, 8)}`,
+        {
+          stage: 'emit-requested', type: event.type, id: event.id,
+          scope: event.scope, currentScope, isMatchWin: isMW,
+        },
+      );
       if (!scopeMatches(event.scope, currentScope)) {
         traceAnnouncementRuntime('emit:dropped:scope-mismatch', {
-          id: event.id,
-          type: event.type,
-          eventScope: event.scope,
-          currentScope,
+          id: event.id, type: event.type, eventScope: event.scope, currentScope,
         });
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `emit-rejected ${event.type} reason=scope-mismatch`,
+          { stage: 'emit-rejected', reason: 'scope-mismatch', id: event.id, type: event.type, eventScope: event.scope, currentScope },
+        );
         if (import.meta.env?.DEV) {
           // eslint-disable-next-line no-console
           console.warn('[canonical-rail] emit dropped — scope mismatch', {
-            id: event.id,
-            type: event.type,
-            eventScope: event.scope,
-            currentScope,
+            id: event.id, type: event.type, eventScope: event.scope, currentScope,
           });
         }
         return;
@@ -291,30 +299,26 @@ export function CanonicalAnnouncementProvider({
       if (import.meta.env?.DEV) {
         // eslint-disable-next-line no-console
         console.debug('[canonical-rail] emit', {
-          id: event.id,
-          type: event.type,
-          behavior: resolved.resolvedBehavior,
+          id: event.id, type: event.type, behavior: resolved.resolvedBehavior,
         });
       }
       recordAnnouncementDebugEvent('emit', `${event.type} id=${event.id.slice(0,8)} (${resolved.resolvedBehavior})`, {
-        type: event.type,
-        id: event.id,
-        behavior: resolved.resolvedBehavior,
-        priority: resolved.resolvedPriority,
-        scope: resolved.scope,
+        type: event.type, id: event.id, behavior: resolved.resolvedBehavior,
+        priority: resolved.resolvedPriority, scope: resolved.scope,
       });
 
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
         traceAnnouncementRuntime('emit:accepted:ambient', {
-          id: resolved.id,
-          type: resolved.type,
-          scope: resolved.scope,
+          id: resolved.id, type: resolved.type, scope: resolved.scope,
         });
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `emit-accepted-ambient ${resolved.type} id=${resolved.id.slice(0, 8)}`,
+          { stage: 'emit-accepted-ambient', id: resolved.id, type: resolved.type },
+        );
         setAmbient((prev) => {
-          // Same id refresh → keep existing (idempotent no-op for identity).
           if (prev && prev.id === resolved.id && prev.type === resolved.type) {
-            // Update payload if changed.
             return { ...prev, ...resolved };
           }
           return resolved;
@@ -329,25 +333,48 @@ export function CanonicalAnnouncementProvider({
         bucket = new Set();
         seenRef.current.set(bucketKey, bucket);
       }
-      if (bucket.has(event.id)) return; // idempotent
+      if (bucket.has(event.id)) {
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `emit-rejected ${event.type} reason=dedupe id=${event.id.slice(0, 8)}`,
+          { stage: 'emit-rejected', reason: 'dedupe', id: event.id, type: event.type, bucketKey },
+        );
+        return;
+      }
       bucket.add(event.id);
 
       traceAnnouncementRuntime('emit:accepted:transient', {
-        id: resolved.id,
-        type: resolved.type,
-        scope: resolved.scope,
+        id: resolved.id, type: resolved.type, scope: resolved.scope,
         priority: resolved.resolvedPriority,
-        hasActiveTransient: !!transient,
-        activeTransientId: transient?.id ?? null,
+        hasActiveTransient: !!transient, activeTransientId: transient?.id ?? null,
       });
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `emit-accepted-transient ${resolved.type} id=${resolved.id.slice(0, 8)} pri=${resolved.resolvedPriority}`,
+        {
+          stage: 'emit-accepted-transient', id: resolved.id, type: resolved.type,
+          priority: resolved.resolvedPriority,
+          activeTransient: transient ? { id: transient.id, type: transient.type, priority: transient.resolvedPriority } : null,
+          ambient: ambient ? { id: ambient.id, type: ambient.type } : null,
+          queueLenBefore: queueRef.current.length,
+        },
+      );
 
       // Preempt current transient if higher priority.
       if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
         clearTtl();
         traceAnnouncementRuntime('transient:preempt', {
-          droppedId: transient.id,
-          nextId: resolved.id,
+          droppedId: transient.id, nextId: resolved.id,
         });
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `preempt ${transient.type}→${resolved.type} id=${resolved.id.slice(0, 8)}`,
+          {
+            stage: 'preempt',
+            dropped: { id: transient.id, type: transient.type, priority: transient.resolvedPriority },
+            next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+          },
+        );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
         setTransient(resolved);
@@ -357,15 +384,20 @@ export function CanonicalAnnouncementProvider({
 
       // No active transient → become active.
       if (!transient) {
+        recordAnnouncementDebugEvent(
+          'lifecycle',
+          `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
+          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+        );
         transientIdRef.current = resolved.id;
         setTransient(resolved);
         armTtl(resolved);
         return;
       }
 
-
       // Otherwise enqueue priority-desc, FIFO within tie.
       const q = queueRef.current;
+      const lenBefore = q.length;
       let insertAt = q.length;
       for (let i = 0; i < q.length; i++) {
         if (resolved.resolvedPriority > q[i].resolvedPriority) {
@@ -374,8 +406,24 @@ export function CanonicalAnnouncementProvider({
         }
       }
       q.splice(insertAt, 0, resolved);
+      const blockedBy = {
+        id: transient.id, type: transient.type, priority: transient.resolvedPriority,
+        priorityCompare: resolved.resolvedPriority > transient.resolvedPriority
+          ? 'gt' : resolved.resolvedPriority === transient.resolvedPriority ? 'eq' : 'lt',
+      };
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `enqueue ${resolved.type} id=${resolved.id.slice(0, 8)} at=${insertAt} qlen=${lenBefore}→${q.length} blockedBy=${transient.type}`,
+        {
+          stage: 'enqueue', id: resolved.id, type: resolved.type,
+          priority: resolved.resolvedPriority, insertAt,
+          queueLenBefore: lenBefore, queueLenAfter: q.length,
+          blockedBy,
+          queueAfter: q.map((it) => ({ id: it.id.slice(0, 8), type: it.type, priority: it.resolvedPriority })),
+        },
+      );
     },
-    [currentScope, transient, clearTtl, armTtl, scopeKey],
+    [currentScope, transient, ambient, clearTtl, armTtl, scopeKey, drainDismiss],
   );
 
   const dismiss = useCallback(
