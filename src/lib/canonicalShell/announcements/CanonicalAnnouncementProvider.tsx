@@ -228,113 +228,37 @@ export function CanonicalAnnouncementProvider({
 
   const promoteNextTransient = useCallback(() => {
     const queue = queueRef.current;
-    const beforeLen = queue.length;
-    const candidates = queue.map((q) => ({
-      id: q.id.slice(0, 8), type: q.type, priority: q.resolvedPriority,
-    }));
-    const mwInQueue = queue.find((q) => q.type === 'match_win') ?? null;
-    recordAnnouncementDebugEvent(
-      'lifecycle',
-      `promotion-pass-start qlen=${beforeLen} transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'}`,
-      {
-        stage: 'promotion-pass-start',
-        queueLen: beforeLen,
-        candidates,
-        transientIdRef: transientIdRef.current,
-        matchWinInQueue: mwInQueue ? { id: mwInQueue.id } : null,
-        currentScope,
-      },
-    );
 
     // Ownership guard: a promotion task is "owned" by the slot state
     // it was scheduled to follow up on. If the slot has since been
     // taken by a newer transient (e.g. a preempt that ran between
     // the scheduling of this microtask and its execution), we must
     // not touch the slot or the TTL timer — both belong to the new
-    // owner. Bail before clearTtl/setTransient so we don't clobber
-    // the in-flight transient or cancel its TTL.
+    // owner.
     if (transientIdRef.current != null && queue.length === 0) {
-      recordAnnouncementDebugEvent(
-        'lifecycle',
-        `promotion-skip-stale transientRef=${transientIdRef.current.slice(0,8)}`,
-        {
-          stage: 'promotion-skip-stale',
-          reason: 'slot-owned-by-newer-transient',
-          transientIdRef: transientIdRef.current,
-        },
-      );
       return;
     }
 
     clearTtl();
     while (queue.length > 0 && !scopeMatches(queue[0].scope, currentScope)) {
       const dropped = queue.shift()!;
-      recordAnnouncementDebugEvent(
-        'lifecycle',
-        `promotion-drop-scope ${dropped.type} id=${dropped.id.slice(0, 8)}`,
-        { stage: 'promotion-drop-scope', id: dropped.id, type: dropped.type, scope: dropped.scope, currentScope },
-      );
       drainDismiss(dropped.id);
     }
     const next = queue.shift() ?? null;
-    if (next) {
-      recordAnnouncementDebugEvent(
-        'lifecycle',
-        `promotion-selected ${next.type} id=${next.id.slice(0, 8)}`,
-        { stage: 'promotion-selected', id: next.id, type: next.type, priority: next.resolvedPriority },
-      );
-    } else {
-      recordAnnouncementDebugEvent(
-        'lifecycle',
-        `promotion-none transientRef=${transientIdRef.current?.slice(0,8) ?? 'null'}`,
-        {
-          stage: 'promotion-none',
-          transientIdRef: transientIdRef.current,
-        },
-      );
-    }
     transientIdRef.current = next?.id ?? null;
-    setTransient((prev) => {
-      // Second-line ownership guard at update time: if the slot has
-      // a value but the queue produced no successor, only clear if
-      // the slot is still the one we expected. Otherwise a newer
-      // transient was installed between scheduling and apply — leave
-      // it alone.
-      if (prev && !next) {
-        recordAnnouncementDebugEvent(
-          'lifecycle',
-          `promotion-clear ${prev.type}→null id=${prev.id.slice(0,8)}`,
-          {
-            stage: 'promotion-clear',
-            prev: { id: prev.id, type: prev.type, priority: prev.resolvedPriority },
-          },
-        );
-      } else if (prev && next && prev.id !== next.id) {
-        recordAnnouncementDebugEvent(
-          'lifecycle',
-          `promotion-replace ${prev.type}→${next.type}`,
-          {
-            stage: 'promotion-replace',
-            prev: { id: prev.id, type: prev.type },
-            next: { id: next.id, type: next.type },
-          },
-        );
-      }
-      return next;
-    });
+    setTransient(() => next);
     if (next) armTtl(next);
   }, [clearTtl, currentScope, armTtl, drainDismiss]);
 
 
   const emit = useCallback(
     (event: AnnouncementEvent) => {
-      const isMW = event.type === 'match_win';
       recordAnnouncementDebugEvent(
         'lifecycle',
         `emit-requested ${event.type} id=${event.id.slice(0, 8)}`,
         {
           stage: 'emit-requested', type: event.type, id: event.id,
-          scope: event.scope, currentScope, isMatchWin: isMW,
+          scope: event.scope, currentScope,
         },
       );
       if (!scopeMatches(event.scope, currentScope)) {
@@ -443,19 +367,7 @@ export function CanonicalAnnouncementProvider({
         );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
-        setTransient((prev) => {
-          recordAnnouncementDebugEvent(
-            'lifecycle',
-            `preempt-apply prev=${prev?.type ?? 'null'}(${prev?.id.slice(0,8) ?? '-'}) → ${resolved.type}(${resolved.id.slice(0,8)})`,
-            {
-              stage: 'preempt-apply',
-              prevAtUpdate: prev ? { id: prev.id, type: prev.type, priority: prev.resolvedPriority } : null,
-              next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
-              transientIdRefAfter: transientIdRef.current,
-            },
-          );
-          return resolved;
-        });
+        setTransient(() => resolved);
         armTtl(resolved);
         return;
       }
@@ -465,19 +377,10 @@ export function CanonicalAnnouncementProvider({
         recordAnnouncementDebugEvent(
           'lifecycle',
           `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
-          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority, transientIdRefBefore: transientIdRef.current },
+          { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
         );
         transientIdRef.current = resolved.id;
-        setTransient((prev) => {
-          if (prev) {
-            recordAnnouncementDebugEvent(
-              'lifecycle',
-              `promote-immediate-stale-closure prev=${prev.type}(${prev.id.slice(0,8)}) — closure said null`,
-              { stage: 'promote-immediate-stale-closure', prev: { id: prev.id, type: prev.type } },
-            );
-          }
-          return resolved;
-        });
+        setTransient(() => resolved);
         armTtl(resolved);
         return;
       }
@@ -535,8 +438,6 @@ export function CanonicalAnnouncementProvider({
             curAtUpdate: cur ? { id: cur.id, type: cur.type } : null,
             targetId: id,
             matched: matches,
-            wouldClobberMatchWin: !!(cur && cur.type === 'match_win' && cur.id === id),
-            staleDismissAfterPreempt: !!(cur && cur.id !== id),
           },
         );
         if (matches) {
