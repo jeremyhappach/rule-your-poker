@@ -1435,6 +1435,7 @@ export const CribbageMobileGameTable = ({
     amountPerLoser: number;
     totalWinnings: number;
     loserIds: string[];
+    chatMessage?: string;
   } | null>(null);
 
   // ── Sync invariant checks (wired to the ACTUAL rendered mobile state) ─
