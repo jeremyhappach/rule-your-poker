@@ -276,7 +276,7 @@ export function CanonicalAnnouncementProvider({
             id: event.id, type: event.type, eventScope: event.scope, currentScope,
           });
         }
-        if (event.type === 'match_win') {
+        if (event.type === 'match_win' && event.id.includes('yahtzee-match:')) {
           recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider REJECTED', {
             providerDealerGameId: currentScope.dealerGameId ?? null,
             providerRoundId: currentScope.roundId ?? null,
@@ -296,7 +296,7 @@ export function CanonicalAnnouncementProvider({
           id: event.id, type: event.type, behavior: resolved.resolvedBehavior,
         });
       }
-      if (event.type === 'match_win') {
+      if (event.type === 'match_win' && event.id.includes('yahtzee-match:')) {
         recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider ACCEPTED', {
           providerDealerGameId: currentScope.dealerGameId ?? null,
           providerRoundId: currentScope.roundId ?? null,
