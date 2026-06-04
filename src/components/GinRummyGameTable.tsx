@@ -2441,7 +2441,7 @@ export const GinRummyGameTable = ({
         }
         pane={
           <div className="w-full h-full overflow-hidden">
-            {activeTab === 'cards' && currentPlayer && (
+            {activeTab === 'cards' && currentPlayer && isPlayable && viewState && (
               <GinRummyMobileCardsTab
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
@@ -2463,6 +2463,14 @@ export const GinRummyGameTable = ({
               />
             )}
 
+            {activeTab === 'cards' && currentPlayer && !isPlayable && (
+              <div className="px-4 py-6">
+                <p className="text-muted-foreground text-sm text-center">
+                  Preparing hand…
+                </p>
+              </div>
+            )}
+
             {activeTab === 'cards' && !currentPlayer && (
               <div className="px-4 py-6">
                 <p className="text-muted-foreground text-sm text-center">
@@ -2470,6 +2478,7 @@ export const GinRummyGameTable = ({
                 </p>
               </div>
             )}
+
 
             {activeTab === 'chat' && (
               <div className="h-full p-2">
