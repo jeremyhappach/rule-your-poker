@@ -4895,6 +4895,9 @@ export const CribbageMobileGameTable = ({
             winnerId: result.newState.winnerPlayerId,
             phase: result.newState.phase,
           });
+          // Freeze the counting animation so the winning combo remains
+          // highlighted while the win sequence plays.
+          setCountingWinFrozen(true);
           await updateState(result.newState);
           triggerWinSequence(result.newState);
           return;
