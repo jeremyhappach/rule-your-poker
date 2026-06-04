@@ -680,4 +680,10 @@ export async function makeBotAnteDecisions(gameId: string): Promise<BotAnteDecis
     gameId,
   });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:returning', { t: Date.now() });
+
+  const results: BotAnteDecisionResult[] = [
+    ...anteUpBots.map(b => ({ id: b.id, ante_decision: 'ante_up' as const, sitting_out: !!b.sitting_out })),
+    ...sitOutBots.map(b => ({ id: b.id, ante_decision: 'sit_out' as const, sitting_out: !!b.sitting_out })),
+  ];
+  return results;
 }
