@@ -147,7 +147,8 @@ export const AnteUpDialog = ({
       return;
     }
 
-    onDecisionMade();
+    onDecisionMade('ante_up');
+
   };
 
   const toggleAutoAnteRunback = async (checked: boolean) => {
