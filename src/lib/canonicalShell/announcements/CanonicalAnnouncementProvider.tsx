@@ -290,22 +290,11 @@ export function CanonicalAnnouncementProvider({
         return;
       }
       const resolved = resolve(event);
+      const isYahtzeeMatchWin = event.type === 'match_win' && event.id.includes('yahtzee-match:');
       if (import.meta.env?.DEV) {
         // eslint-disable-next-line no-console
         console.debug('[canonical-rail] emit', {
           id: event.id, type: event.type, behavior: resolved.resolvedBehavior,
-        });
-      }
-      if (event.type === 'match_win' && event.id.includes('yahtzee-match:')) {
-        recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider ACCEPTED', {
-          providerDealerGameId: currentScope.dealerGameId ?? null,
-          providerRoundId: currentScope.roundId ?? null,
-          eventScopeDealerGameId: event.scope.dealerGameId ?? null,
-          eventScopeRoundId: event.scope.roundId ?? null,
-          accepted: true,
-          rejectionReason: null,
-          id: event.id,
-          behavior: resolved.resolvedBehavior,
         });
       }
       recordAnnouncementDebugEvent('emit', `${event.type} id=${event.id.slice(0,8)} (${resolved.resolvedBehavior})`, {
@@ -340,6 +329,17 @@ export function CanonicalAnnouncementProvider({
         seenRef.current.set(bucketKey, bucket);
       }
       if (bucket.has(event.id)) {
+        if (isYahtzeeMatchWin) {
+          recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider REJECTED', {
+            providerDealerGameId: currentScope.dealerGameId ?? null,
+            providerRoundId: currentScope.roundId ?? null,
+            eventScopeDealerGameId: event.scope.dealerGameId ?? null,
+            eventScopeRoundId: event.scope.roundId ?? null,
+            accepted: false,
+            rejectionReason: 'dedupe',
+            id: event.id,
+          });
+        }
         recordAnnouncementDebugEvent(
           'lifecycle',
           `emit-rejected ${event.type} reason=dedupe id=${event.id.slice(0, 8)}`,
@@ -368,6 +368,19 @@ export function CanonicalAnnouncementProvider({
 
       // Preempt current transient if higher priority.
       if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
+        if (isYahtzeeMatchWin) {
+          recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider ACCEPTED', {
+            providerDealerGameId: currentScope.dealerGameId ?? null,
+            providerRoundId: currentScope.roundId ?? null,
+            eventScopeDealerGameId: event.scope.dealerGameId ?? null,
+            eventScopeRoundId: event.scope.roundId ?? null,
+            accepted: true,
+            rejectionReason: null,
+            id: event.id,
+            behavior: resolved.resolvedBehavior,
+            outcome: 'preempt',
+          });
+        }
         clearTtl();
         traceAnnouncementRuntime('transient:preempt', {
           droppedId: transient.id, nextId: resolved.id,
@@ -397,6 +410,19 @@ export function CanonicalAnnouncementProvider({
 
       // No active transient → become active.
       if (!transient) {
+        if (isYahtzeeMatchWin) {
+          recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider ACCEPTED', {
+            providerDealerGameId: currentScope.dealerGameId ?? null,
+            providerRoundId: currentScope.roundId ?? null,
+            eventScopeDealerGameId: event.scope.dealerGameId ?? null,
+            eventScopeRoundId: event.scope.roundId ?? null,
+            accepted: true,
+            rejectionReason: null,
+            id: event.id,
+            behavior: resolved.resolvedBehavior,
+            outcome: 'promote-immediate',
+          });
+        }
         recordAnnouncementDebugEvent(
           'lifecycle',
           `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
@@ -419,6 +445,20 @@ export function CanonicalAnnouncementProvider({
         }
       }
       q.splice(insertAt, 0, resolved);
+      if (isYahtzeeMatchWin) {
+        recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider ACCEPTED', {
+          providerDealerGameId: currentScope.dealerGameId ?? null,
+          providerRoundId: currentScope.roundId ?? null,
+          eventScopeDealerGameId: event.scope.dealerGameId ?? null,
+          eventScopeRoundId: event.scope.roundId ?? null,
+          accepted: true,
+          rejectionReason: null,
+          id: event.id,
+          behavior: resolved.resolvedBehavior,
+          outcome: 'enqueue',
+          blockedByType: transient.type,
+        });
+      }
       const blockedBy = {
         id: transient.id, type: transient.type, priority: transient.resolvedPriority,
         priorityCompare: resolved.resolvedPriority > transient.resolvedPriority
