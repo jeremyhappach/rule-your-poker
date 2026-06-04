@@ -8160,14 +8160,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ginTrace('startGinRummyRound:entered', {
               dealerGameId: game?.current_game_uuid ?? null,
             });
-            const ginStartResult = await startGinRummyRound(gameId!);
+            // OPTIMIZATION: Pass already-fetched game (with players) so startGinRummyRound
+            // does not re-fetch the same row, and assume first hand of dealer_game (total_hands===0)
+            // to skip the existing-rounds precheck. Unique-constraint guard on insert preserves safety.
+            const preloadedGameForGin = {
+              ...freshGame,
+              players: freshPlayers, // freshGame already includes .players, but freshPlayers is authoritative
+            };
+            const ginStartResult = await startGinRummyRound(gameId!, {
+              game: preloadedGameForGin,
+              assumeFirstHand: (freshGame?.total_hands ?? 0) === 0,
+            });
             recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound returned', {
               file: 'src/pages/Game.tsx',
               function: 'handleAllAnteDecisionsIn',
               caller: 'all ante decisions in',
               gameId,
               oldValue: null,
-              newValue: ginStartResult,
+              newValue: { success: ginStartResult.success, roundId: ginStartResult.roundId, handNumber: ginStartResult.handNumber, hasRound: !!ginStartResult.round, error: ginStartResult.error ?? null },
             });
             ginTrace('startGinRummyRound:returned', {
               success: ginStartResult.success,
@@ -8183,10 +8193,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               success: ginStartResult.success,
               error: ginStartResult.error ?? null,
             });
+
+            // OPTIMIZATION: Optimistically seed the returned round into Game state so
+            // currentRound / bootstrapState become available immediately, without
+            // waiting for realtime → fetchGameData → currentRound population
+            // (previously ~600ms on the critical path). Realtime + fetch remain as
+            // reconciliation — they will overwrite this seed with the same authoritative row.
+            if (ginStartResult.success && ginStartResult.round) {
+              const insertedRound = ginStartResult.round as any;
+              const insertedHand = ginStartResult.handNumber ?? insertedRound.hand_number ?? 1;
+              recordStartupFlight('SYNC TIMELINE', 'optimistic round seed dispatched', {
+                file: 'src/pages/Game.tsx',
+                function: 'handleAllAnteDecisionsIn',
+                roundId: insertedRound.id,
+                handNumber: insertedHand,
+                dealerGameId: insertedRound.dealer_game_id ?? null,
+              });
+              setGame((prev) => {
+                if (!prev) return prev;
+                const rounds = prev.rounds ?? [];
+                const idx = rounds.findIndex((r: any) => r.id === insertedRound.id);
+                const nextRounds = idx === -1
+                  ? [...rounds, insertedRound]
+                  : (() => { const arr = [...rounds]; arr[idx] = { ...arr[idx], ...insertedRound }; return arr; })();
+                return {
+                  ...prev,
+                  status: 'in_progress',
+                  current_round: 1,
+                  total_hands: insertedHand,
+                  is_first_hand: insertedHand === 1,
+                  rounds: nextRounds,
+                };
+              });
+            }
             // Canonical sync: realtime delivers rounds.gin_rummy_state and the
             // games-status update independently; readiness probe (subscribed to
             // rounds row) fires as soon as the insert lands. No awaited
             // fetchGameData() and no setTimeout enrich on the critical path.
+
           } else {
             await supabase
               .from('games')
