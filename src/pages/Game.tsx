@@ -1203,6 +1203,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
+
+  // ── Optimistic Gin in-progress seed guard ─────────────────────────────
+  // When the dealer client optimistically advances a gin dealerGameId to
+  // status='in_progress' / current_round=1 / rounds[seed.roundId] (see
+  // handleAllAnteDecisionsIn after startGinRummyRound), a stale fetch that
+  // was already in flight (or one triggered immediately by the bot ante
+  // realtime payload) can land milliseconds later carrying the OLD snapshot
+  // (status='ante_decision', no round yet). That stale write regresses
+  // currentRound → null and propRoundId → "", causing the user-visible
+  // "Awaiting ante decisions" → disappear → reappear → start flicker.
+  //
+  // This ref captures the optimistic seed identity. While it is active,
+  // fetchGameData merges seeded fields into any incoming snapshot for the
+  // SAME dealerGameId that does not yet reflect the seed (status not
+  // in_progress, or rounds list missing the seeded roundId). Reconciled
+  // snapshots (status in_progress AND rounds include seed.roundId) clear
+  // the ref. A boundary to a different dealerGameId also clears it.
+  const ginOptimisticSeedRef = useRef<{
+    dealerGameId: string;
+    roundId: string;
+    handNumber: number;
+    seededAt: number;
+  } | null>(null);
   useEffect(() => {
     if (!gameId || !user) return;
 
@@ -5636,7 +5659,58 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    setGame(gameData);
+    // ── Optimistic Gin seed regression guard ──────────────────────────
+    // If we have an active optimistic seed for this dealerGameId and the
+    // incoming snapshot does not yet reflect it (DB hasn't caught up, or
+    // an earlier-in-flight fetch is landing now), merge seeded identity
+    // forward instead of overwriting. Clear the seed once reconciled, or
+    // if the dealerGameId boundary actually changed.
+    let gameDataToApply: any = gameData;
+    const seed = ginOptimisticSeedRef.current;
+    if (seed) {
+      const incomingDealerGameUuid = (gameData as any)?.current_game_uuid ?? null;
+      if (incomingDealerGameUuid && incomingDealerGameUuid !== seed.dealerGameId) {
+        // True boundary to a different dealer-game — release the seed.
+        ginOptimisticSeedRef.current = null;
+      } else {
+        const incomingRounds: any[] = Array.isArray((gameData as any)?.rounds)
+          ? (gameData as any).rounds
+          : [];
+        const hasSeededRound = incomingRounds.some((r) => r?.id === seed.roundId);
+        const incomingStatus = (gameData as any)?.status ?? null;
+        const reconciled = incomingStatus === 'in_progress' && hasSeededRound;
+        if (reconciled) {
+          ginOptimisticSeedRef.current = null;
+        } else {
+          // Regression detected — preserve seeded fields.
+          const seededRoundRow = (game?.rounds ?? []).find((r: any) => r?.id === seed.roundId) ?? null;
+          const mergedRounds = hasSeededRound || !seededRoundRow
+            ? incomingRounds
+            : [...incomingRounds, seededRoundRow];
+          gameDataToApply = {
+            ...(gameData as any),
+            status: 'in_progress',
+            current_round: 1,
+            total_hands: Math.max(((gameData as any)?.total_hands ?? 0), seed.handNumber),
+            is_first_hand: seed.handNumber === 1,
+            rounds: mergedRounds,
+          };
+          recordStartupFlight('SYNC TIMELINE', 'fetchGameData regression suppressed by gin seed', {
+            file: 'src/pages/Game.tsx',
+            function: 'fetchGameData',
+            seedDealerGameId: seed.dealerGameId,
+            seedRoundId: seed.roundId,
+            seedHandNumber: seed.handNumber,
+            incomingStatus,
+            incomingHasSeededRound: hasSeededRound,
+            incomingRoundCount: incomingRounds.length,
+            ageMs: Date.now() - seed.seededAt,
+          });
+        }
+      }
+    }
+
+    setGame(gameDataToApply);
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData setGame applied', {
       file: 'src/pages/Game.tsx',
       function: 'fetchGameData',
@@ -8205,6 +8279,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 handNumber: insertedHand,
                 dealerGameId: insertedRound.dealer_game_id ?? null,
               });
+              // Arm the regression guard so any stale fetch landing after this
+              // seed cannot reset status back to ante_decision / drop currentRound.
+              if (insertedRound.dealer_game_id && insertedRound.id) {
+                ginOptimisticSeedRef.current = {
+                  dealerGameId: insertedRound.dealer_game_id,
+                  roundId: insertedRound.id,
+                  handNumber: insertedHand,
+                  seededAt: Date.now(),
+                };
+              }
               setGame((prev) => {
                 if (!prev) return prev;
                 const rounds = prev.rounds ?? [];
