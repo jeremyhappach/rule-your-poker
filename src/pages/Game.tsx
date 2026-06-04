@@ -5659,7 +5659,58 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    setGame(gameData);
+    // ── Optimistic Gin seed regression guard ──────────────────────────
+    // If we have an active optimistic seed for this dealerGameId and the
+    // incoming snapshot does not yet reflect it (DB hasn't caught up, or
+    // an earlier-in-flight fetch is landing now), merge seeded identity
+    // forward instead of overwriting. Clear the seed once reconciled, or
+    // if the dealerGameId boundary actually changed.
+    let gameDataToApply: any = gameData;
+    const seed = ginOptimisticSeedRef.current;
+    if (seed) {
+      const incomingDealerGameUuid = (gameData as any)?.current_game_uuid ?? null;
+      if (incomingDealerGameUuid && incomingDealerGameUuid !== seed.dealerGameId) {
+        // True boundary to a different dealer-game — release the seed.
+        ginOptimisticSeedRef.current = null;
+      } else {
+        const incomingRounds: any[] = Array.isArray((gameData as any)?.rounds)
+          ? (gameData as any).rounds
+          : [];
+        const hasSeededRound = incomingRounds.some((r) => r?.id === seed.roundId);
+        const incomingStatus = (gameData as any)?.status ?? null;
+        const reconciled = incomingStatus === 'in_progress' && hasSeededRound;
+        if (reconciled) {
+          ginOptimisticSeedRef.current = null;
+        } else {
+          // Regression detected — preserve seeded fields.
+          const seededRoundRow = (game?.rounds ?? []).find((r: any) => r?.id === seed.roundId) ?? null;
+          const mergedRounds = hasSeededRound || !seededRoundRow
+            ? incomingRounds
+            : [...incomingRounds, seededRoundRow];
+          gameDataToApply = {
+            ...(gameData as any),
+            status: 'in_progress',
+            current_round: 1,
+            total_hands: Math.max(((gameData as any)?.total_hands ?? 0), seed.handNumber),
+            is_first_hand: seed.handNumber === 1,
+            rounds: mergedRounds,
+          };
+          recordStartupFlight('SYNC TIMELINE', 'fetchGameData regression suppressed by gin seed', {
+            file: 'src/pages/Game.tsx',
+            function: 'fetchGameData',
+            seedDealerGameId: seed.dealerGameId,
+            seedRoundId: seed.roundId,
+            seedHandNumber: seed.handNumber,
+            incomingStatus,
+            incomingHasSeededRound: hasSeededRound,
+            incomingRoundCount: incomingRounds.length,
+            ageMs: Date.now() - seed.seededAt,
+          });
+        }
+      }
+    }
+
+    setGame(gameDataToApply);
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData setGame applied', {
       file: 'src/pages/Game.tsx',
       function: 'fetchGameData',
