@@ -2358,47 +2358,71 @@ export const GinRummyGameTable = ({
             {/* Opponent overlay — single CanonicalSeatCluster per opponent.
                 Shell owns identity + dealer pip + chip bubble + cluster
                 anchoring; this game body contributes only the seat-specific
-                card-back row as cluster children. No floating orphan
-                elements, no per-projection contrast hacks. */}
+                card-back row as cluster children.
+
+                CRIBBAGE-ALIGNED GATING: the cluster itself is gated on
+                the projected seat list (derived from `players`), NOT on
+                `viewState`. This preserves chip-stack continuity through
+                the ante_decision placeholder window where viewState is
+                briefly null. Only the inner card-back row gates on
+                `seatState` (viewState) — when viewState is absent the
+                cluster collapses to identity + chip, exactly like
+                Cribbage between dealer selection and gameplay. */}
             <div className="absolute inset-0 z-50 pointer-events-none">
-              {viewState && (isObserver ? observerSeatIds : [opponentId]).map((seatId) => {
-                const seatPlayer = players.find(p => p.id === seatId);
-                const seatState = viewState.playerStates[seatId];
-                if (!seatPlayer || !seatState) return null;
-                const slot = playerSlotById.get(seatId) ?? null;
-                const showCardBacks =
-                  seatId === opponentId &&
-                  seatState.hand.length > 0 &&
-                  viewState.phase !== 'knocking' &&
-                  viewState.phase !== 'laying_off' &&
-                  viewState.phase !== 'scoring' &&
-                  !(viewState.phase === 'complete' && viewState.knockResult);
-                return (
-                  <CanonicalSeatCluster
-                    key={seatId}
-                    slot={slot}
-                    position={seatPlayer.position}
-                    name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                    isDealer={isCribDealer(seatId)}
-                    chipValue={`$${formatChipValue(seatPlayer.chips)}`}
-                  >
-                    {showCardBacks && (
-                      <div className="flex -space-x-3 mt-1">
-                        {seatState.hand.map((_, i) => (
-                          <div
-                            key={i}
-                            className="w-3.5 h-5 rounded-sm border border-white/20"
-                            style={{
-                              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </CanonicalSeatCluster>
-                );
-              })}
+              {(() => {
+                // Seat projection independent of viewState.
+                // - Observers: all active seated players except self (handled
+                //   by CanonicalSeatCluster self-suppression anyway).
+                // - Seated viewer: every other active seat.
+                // When viewState is present we honor its dealer/nonDealer
+                // identities for the dealer pip + card-back source; when
+                // absent we still render the chip cluster for everyone but
+                // the local viewer so chrome stays continuous.
+                const projectedSeatPlayers = isObserver
+                  ? activeSeatPlayers
+                  : activeSeatPlayers.filter(p => p.id !== currentPlayerId);
+                return projectedSeatPlayers.map((seatPlayer) => {
+                  const seatId = seatPlayer.id;
+                  const seatState = viewState?.playerStates[seatId] ?? null;
+                  const slot = playerSlotById.get(seatId) ?? null;
+                  const isOpponentSeat = !isObserver && seatId === opponentId;
+                  const showCardBacks =
+                    !!viewState &&
+                    !!seatState &&
+                    isOpponentSeat &&
+                    seatState.hand.length > 0 &&
+                    viewState.phase !== 'knocking' &&
+                    viewState.phase !== 'laying_off' &&
+                    viewState.phase !== 'scoring' &&
+                    !(viewState.phase === 'complete' && viewState.knockResult);
+                  return (
+                    <CanonicalSeatCluster
+                      key={seatId}
+                      slot={slot}
+                      position={seatPlayer.position}
+                      name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
+                      isDealer={isCribDealer(seatId)}
+                      chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                    >
+                      {showCardBacks && seatState && (
+                        <div className="flex -space-x-3 mt-1">
+                          {seatState.hand.map((_, i) => (
+                            <div
+                              key={i}
+                              className="w-3.5 h-5 rounded-sm border border-white/20"
+                              style={{
+                                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CanonicalSeatCluster>
+                  );
+                });
+              })()}
             </div>
+
         </div>
 
 
