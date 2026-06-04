@@ -5013,6 +5013,14 @@ export const CribbageMobileGameTable = ({
     // Store positions in state so chip animation has them on first render
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
+
+    // Fire the deferred winner chat message NOW so it lands together with the
+    // chip transfer (previously fired at overlay start, which left the chip
+    // transfer feeling empty).
+    const chatMessage = (winSequenceData as any)?.chatMessage as string | undefined;
+    if (chatMessage) {
+      injectDealerMessage(chatMessage);
+    }
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
     logDebugEvent({
       gameId,
@@ -5020,7 +5028,8 @@ export const CribbageMobileGameTable = ({
       payload: { from: 'announcement', to: 'chips', site: 'handleAnnouncementComplete' },
     });
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage]);
+
 
   const handleChipAnimationEnd = useCallback(() => {
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
