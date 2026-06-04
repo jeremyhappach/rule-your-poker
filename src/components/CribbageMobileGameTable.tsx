@@ -5091,6 +5091,35 @@ export const CribbageMobileGameTable = ({
     return () => clearTimeout(timer);
   }, [winSequencePhase, winSequenceData]);
 
+  // Continuous confetti for the winner across announcement + chip-transfer.
+  // Replaces the previous one-shot burst that faded long before chips moved.
+  // Runs only on the winner's client; observers/losers see overlay + chips
+  // without confetti, matching prior behavior.
+  useEffect(() => {
+    if (winSequencePhase !== 'announcement' && winSequencePhase !== 'chips') return;
+    if (!winSequenceData) return;
+    if (currentPlayerId !== winSequenceData.winnerId) return;
+
+    let cancelled = false;
+    const palette = ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'];
+
+    // Immediate opening burst.
+    confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
+
+    // Repeating smaller bursts so confetti remains visible through chip transfer.
+    const interval = window.setInterval(() => {
+      if (cancelled) return;
+      confetti({ particleCount: 60, spread: 60, origin: { x: 0.2 + Math.random() * 0.6, y: 0.55 + Math.random() * 0.15 }, colors: palette });
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [winSequencePhase, winSequenceData, currentPlayerId]);
+
+
+
 
   // Safety timeout: If chip animation phase doesn't complete within 8 seconds, force transition
   // (animation is now ~4s + stagger, so 8s is safe)
