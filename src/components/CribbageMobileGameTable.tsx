@@ -4834,6 +4834,11 @@ export const CribbageMobileGameTable = ({
           winnerId: countedState.winnerPlayerId,
           phase: countedState.phase,
         });
+        // Freeze the counting animation so the last-highlighted winning combo
+        // remains visible for the duration of the win sequence. Without this,
+        // CribbageCountingPhase has already advanced past every combo and
+        // cleared highlightedCards, leaving an ambiguous hand+cut layout.
+        setCountingWinFrozen(true);
         // Persist the completed state and trigger win sequence
         await updateState(countedState);
         triggerWinSequence(countedState);
@@ -4890,6 +4895,9 @@ export const CribbageMobileGameTable = ({
             winnerId: result.newState.winnerPlayerId,
             phase: result.newState.phase,
           });
+          // Freeze the counting animation so the winning combo remains
+          // highlighted while the win sequence plays.
+          setCountingWinFrozen(true);
           await updateState(result.newState);
           triggerWinSequence(result.newState);
           return;
