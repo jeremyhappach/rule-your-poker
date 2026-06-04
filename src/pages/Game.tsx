@@ -612,6 +612,8 @@ const Game = () => {
   const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(30);
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
+  const playersRef = useRef<Player[]>([]);
+  useEffect(() => { playersRef.current = players; }, [players]);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
@@ -3023,7 +3025,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         // without a network roundtrip. Local `players` already reflects the
         // dealer's ante write (set in the submit flow + realtime).
         const botDecisionMap = new Map(botResults.map(r => [r.id, r.ante_decision] as const));
-        const mergedPlayers = players.map(p => ({
+        // Read latest players via ref to avoid stale closure: the dealer's own
+        // ante write (set optimistically in AnteUpDialog onDecisionMade) may have
+        // landed AFTER this effect captured `players`. Without the ref the
+        // dealer would falsely appear undecided here.
+        const latestPlayers = playersRef.current;
+        const mergedPlayers = latestPlayers.map(p => ({
           id: p.id,
           ante_decision: botDecisionMap.get(p.id) ?? p.ante_decision ?? null,
           sitting_out: !!p.sitting_out,
