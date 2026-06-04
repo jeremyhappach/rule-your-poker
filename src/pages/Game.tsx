@@ -2984,39 +2984,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         gameId,
       });
       console.log('[GIN_RUNTIME_TIMELINE] effect:calling-makeBotAnteDecisions', { t: tMakeBotStart });
-      makeBotAnteDecisions(gameId!).then(async () => {
+      makeBotAnteDecisions(gameId!).then(async (botResults) => {
         const tBotReturned = Date.now();
         recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions returned', {
           file: 'src/pages/Game.tsx',
           function: 'bot ante useEffect',
           gameId,
           elapsedMs: tBotReturned - tMakeBotStart,
+          botResultCount: botResults.length,
         });
-        console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart });
-        const tRefetchStart = Date.now();
-        recordStartupFlight('FETCH TIMELINE', 'post-bot players refetch start', {
-          file: 'src/pages/Game.tsx',
-          function: 'bot ante useEffect',
-          gameId,
-        });
-        const { data: freshPlayers } = await supabase
-          .from('players')
-          .select('id, ante_decision, sitting_out, status')
-          .eq('game_id', gameId);
-        recordStartupFlight('FETCH TIMELINE', 'post-bot players refetch complete', {
-          file: 'src/pages/Game.tsx',
-          function: 'bot ante useEffect',
-          gameId,
-          elapsedMs: Date.now() - tRefetchStart,
-          oldValue: null,
-          newValue: freshPlayers?.map(p => ({ id: p.id, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: (p as any).status })) ?? [],
-        });
-        console.log('[GIN_RUNTIME_TIMELINE] effect:post-bot-refetch-complete', { t: Date.now(), deltaMs: Date.now() - tRefetchStart });
-        const activePlayers = (freshPlayers ?? []).filter(
-          p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
+        console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart, botResultCount: botResults.length });
+
+        // ISSUE 2 FIX: eliminate the post-bot players refetch. Merge bot
+        // write results into the local `players` state to derive allDecided
+        // without a network roundtrip. Local `players` already reflects the
+        // dealer's ante write (set in the submit flow + realtime).
+        const botDecisionMap = new Map(botResults.map(r => [r.id, r.ante_decision] as const));
+        const mergedPlayers = players.map(p => ({
+          id: p.id,
+          ante_decision: botDecisionMap.get(p.id) ?? p.ante_decision ?? null,
+          sitting_out: !!p.sitting_out,
+          status: (p as any).status,
+        }));
+        const activePlayers = mergedPlayers.filter(
+          p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left'
         );
         const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
-        recordStartupFlight('PHASE TIMELINE', 'allDecided evaluated after bot write', {
+        recordStartupFlight('PHASE TIMELINE', 'allDecided evaluated after bot write (no-refetch)', {
           file: 'src/pages/Game.tsx',
           function: 'bot ante useEffect',
           gameId,
@@ -3026,7 +3020,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           activePlayers: activePlayers.length,
           decisions: activePlayers.map(p => ({ id: p.id, ante_decision: p.ante_decision })),
         });
-        console.log('[GIN_RUNTIME_TIMELINE] bot ante completion check:after-write', {
+        console.log('[GIN_RUNTIME_TIMELINE] bot ante completion check:after-write (no-refetch)', {
           t: Date.now(),
           gameId,
           dealerGameId: game?.current_game_uuid ?? null,
@@ -3038,25 +3032,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn call issued', {
             file: 'src/pages/Game.tsx',
             function: 'bot ante useEffect',
-            caller: 'allDecided true after bot write',
+            caller: 'allDecided true after bot write (no-refetch)',
             gameId,
           });
-          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → calling handleAllAnteDecisionsIn', { t: Date.now() });
+          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=true → calling handleAllAnteDecisionsIn (no-refetch)', { t: Date.now() });
           anteProcessingRef.current = true;
           handleAllAnteDecisionsIn();
         } else {
           recordStartupFlight('EFFECT TIMELINE', 'bot ante effect exited via fallback fetch', {
             file: 'src/pages/Game.tsx',
             function: 'bot ante useEffect',
-            skipReason: allDecided ? 'anteProcessingRef already true' : 'allDecided false',
+            skipReason: allDecided ? 'anteProcessingRef already true' : 'allDecided false (awaiting human writes via realtime)',
             gameId,
             allDecided,
             anteProcessingRef: anteProcessingRef.current,
           });
-          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=false → fetchGameData fallback', { t: Date.now(), allDecided, anteProcessingRef: anteProcessingRef.current });
-          fetchGameData();
+          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=false → awaiting realtime', { t: Date.now(), allDecided, anteProcessingRef: anteProcessingRef.current });
+          // Do not fetchGameData here: any human ante write will propagate
+          // via realtime + the dedicated ante-completion effect below.
         }
       });
+
     }
   }, [game?.status, game?.is_paused, gameId, game?.current_game_uuid]);
 
