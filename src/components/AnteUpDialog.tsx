@@ -23,7 +23,7 @@ interface AnteUpDialogProps {
   autoAnte?: boolean;
   autoAnteRunback?: boolean;
   anteDecisionTimerSeconds?: number;
-  onDecisionMade: () => void;
+  onDecisionMade: (decision?: 'ante_up' | 'sit_out') => void;
 }
 
 export const AnteUpDialog = ({
