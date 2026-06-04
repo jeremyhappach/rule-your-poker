@@ -40,11 +40,13 @@ export function CanonicalCelebrationLayer() {
   const isCeleb = active ? isCelebrationType(active.type) : false;
   const node = active && isCeleb ? renderCelebration(active) : null;
   // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 4 — render decision
-  recordAnnouncementDebugEvent('lifecycle', `CanonicalCelebrationLayer render: ${node ? 'shown' : 'null'}`, {
+  recordAnnouncementDebugEvent('lifecycle', `CRIBBAGE-DOUBLE-SKUNK-TRACE CanonicalCelebrationLayer render decision: ${node ? 'shown' : 'null'}`, {
     activeId: active?.id ?? null,
+    terminalEventId: active?.id ?? null,
     activeType: active?.type ?? null,
     isCelebrationType: isCeleb,
     nodePresent: !!node,
+    skunk: (active?.payload as { skunk?: unknown } | undefined)?.skunk ?? null,
   });
   if (!ctx || !ctx.active) return null;
   if (!isCelebrationType(ctx.active.type)) return null;

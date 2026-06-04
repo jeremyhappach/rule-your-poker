@@ -57,6 +57,7 @@ import { useShellFeltContext, usePublishShellFelt } from "@/lib/canonicalShell/S
 import { useShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
@@ -988,14 +989,9 @@ export function YahtzeeGameTable({
         const matchKey = `yahtzee-match:${dealerGameId ?? 'no-dg'}:${currentRoundId ?? 'no-r'}:${winnerId}:${maxScore}`;
         if (lastEmittedYahtzeeMatchRef.current !== matchKey) {
           lastEmittedYahtzeeMatchRef.current = matchKey;
-          // ── ONE-SHOT TRACE: Yahtzee match_win emit scope ──
-          // Paired with [canonical-rail] accept/drop logs in
-          // CanonicalAnnouncementProvider.emit so we can directly compare
-          // the emitted event scope to the live provider scope and see
-          // whether the rail accepts or rejects this match_win.
-          // eslint-disable-next-line no-console
-          console.warn('[YAHTZEE-MATCH-WIN-TRACE] emit', {
-            eventScope: { dealerGameId: dealerGameId ?? null, roundId: currentRoundId ?? null },
+          recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE emit', {
+            eventScopeDealerGameId: dealerGameId ?? null,
+            eventScopeRoundId: currentRoundId ?? null,
             propsDealerGameId: dealerGameId ?? null,
             propsRoundId: currentRoundId ?? null,
             winnerId,

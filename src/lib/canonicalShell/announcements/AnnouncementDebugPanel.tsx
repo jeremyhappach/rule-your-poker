@@ -1,6 +1,6 @@
 /**
  * AnnouncementDebugPanel — small collapsible debug panel for the
- * announcement lifecycle investigation. Bottom-right, monospace,
+ * announcement lifecycle investigation. Top-left, monospace,
  * newest event on top, copy-to-clipboard.
  *
  * Visibility gated by isAnnouncementDebugEnabled() — defaults on in
@@ -45,7 +45,7 @@ type FilterMode = 'all' | 'wins' | 'transitions' | 'lifecycle';
 function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string): boolean {
   if (mode === 'wins') {
     const hay = `${e.summary} ${JSON.stringify(e.detail ?? {})}`.toLowerCase();
-    if (!/match_win|round_win|chip_award/.test(hay)) return false;
+    if (!/match_win|round_win|chip_award|double-skunk|legacyskunkoverlay|canonicalcelebrationlayer|yahtzee-match-win-trace/.test(hay)) return false;
   } else if (mode === 'transitions') {
     if (
       e.kind !== 'active-change' &&
@@ -127,8 +127,8 @@ export function AnnouncementDebugPanel() {
       data-announcement-debug-panel=""
       style={{
         position: 'fixed',
-        right: 4,
-        bottom: 4,
+        left: 4,
+        top: 4,
         zIndex: 2147483646,
         width: expanded ? 'min(94vw, 460px)' : 'min(78vw, 280px)',
         background: 'rgba(0,0,0,0.85)',

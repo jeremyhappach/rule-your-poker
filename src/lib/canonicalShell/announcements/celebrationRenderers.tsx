@@ -18,6 +18,8 @@ interface MatchWinPayload {
   skunk?: 'single' | 'double';
 }
 
+const legacySkunkMountCounts = new Map<string, number>();
+
 function MatchWinCelebration({ payload, eventId }: { payload: MatchWinPayload; eventId?: string }) {
   const skunkKind = payload.skunk;
   if (!skunkKind) return null;
@@ -31,7 +33,16 @@ function LegacySkunkOverlay({ multiplier, eventId }: { multiplier: number; event
 
   useEffect(() => {
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 3 — overlay mount
-    recordAnnouncementDebugEvent('layer-mount', 'LegacySkunkOverlay mount', { multiplier, eventId });
+    const key = eventId ?? `multiplier:${multiplier}`;
+    const mountCount = (legacySkunkMountCounts.get(key) ?? 0) + 1;
+    legacySkunkMountCounts.set(key, mountCount);
+    recordAnnouncementDebugEvent(
+      'layer-mount',
+      mountCount > 1
+        ? 'CRIBBAGE-DOUBLE-SKUNK-TRACE second overlay mount'
+        : 'CRIBBAGE-DOUBLE-SKUNK-TRACE LegacySkunkOverlay mount',
+      { multiplier, eventId, terminalEventId: eventId ?? null, mountCount },
+    );
     timersRef.current = [
       setTimeout(() => setPhase('show'), 100),
       setTimeout(() => setPhase('exit'), 3600),
@@ -41,7 +52,12 @@ function LegacySkunkOverlay({ multiplier, eventId }: { multiplier: number; event
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
       // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 3 — overlay unmount
-      recordAnnouncementDebugEvent('layer-unmount', 'LegacySkunkOverlay unmount', { multiplier, eventId });
+      recordAnnouncementDebugEvent('layer-unmount', 'CRIBBAGE-DOUBLE-SKUNK-TRACE LegacySkunkOverlay unmount', {
+        multiplier,
+        eventId,
+        terminalEventId: eventId ?? null,
+        mountCount: legacySkunkMountCounts.get(key) ?? null,
+      });
     };
   }, [multiplier, eventId]);
 

@@ -25,6 +25,7 @@ import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
@@ -1680,6 +1681,23 @@ export const CribbageMobileGameTable = ({
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
   const winKeyFor = (winnerId: string) => `${gameId}:${dealerGameId ?? 'unknown-dealer'}:${winnerId}`;
+  const terminalEventIdFor = useCallback(
+    (winnerId?: string | null) => `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId ?? 'no-winner'}`,
+    [gameId, dealerGameId],
+  );
+  const recordCribDoubleSkunkTrace = useCallback(
+    (label: string, detail: Record<string, unknown> = {}) => {
+      recordAnnouncementDebugEvent('lifecycle', `CRIBBAGE-DOUBLE-SKUNK-TRACE ${label}`, {
+        dealerGameId: dealerGameId ?? null,
+        roundId: currentRoundId ?? null,
+        handNumber: currentHandNumber,
+        winSequenceFiredRef: winSequenceFiredRef.current,
+        winSequenceScheduledRef: winSequenceScheduledRef.current,
+        ...detail,
+      });
+    },
+    [dealerGameId, currentRoundId, currentHandNumber],
+  );
 
   // Event logging context - uses local tracking for proper hand transitions
   const eventCtx = useCribbageEventContext(currentRoundId, dealerGameId, currentHandNumber);
@@ -2732,10 +2750,23 @@ export const CribbageMobileGameTable = ({
         console.log('[CRIBBAGE] Win detected via score subscription:', { playerId, score, pointsToWin });
 
         const winKey = winKeyFor(playerId);
-        if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
+        if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) {
+          recordCribDoubleSkunkTrace('reactive combo-crossing schedule BLOCK', {
+            terminalEventId: terminalEventIdFor(playerId),
+            winKey,
+            reason: winSequenceFiredRef.current === winKey ? 'fired-ref-match' : 'scheduled-ref-match',
+          });
+          return;
+        }
 
         // Guard immediately so we can't schedule multiple timers before the first one fires.
         winSequenceScheduledRef.current = winKey;
+        recordCribDoubleSkunkTrace('reactive combo-crossing schedule PASS', {
+          terminalEventId: terminalEventIdFor(playerId),
+          winKey,
+          score,
+          pointsToWin,
+        });
         
         // Freeze the counting animation - it should stop advancing and keep cards highlighted
         setCountingWinFrozen(true);
@@ -2804,6 +2835,12 @@ export const CribbageMobileGameTable = ({
             // Release the schedule guard so a legitimate later win for the same
             // winner key isn't permanently suppressed.
             if (winSequenceScheduledRef.current === winKey && winSequenceFiredRef.current !== winKey) {
+              recordCribDoubleSkunkTrace('reactive combo-crossing delayed abort clears scheduledRef', {
+                terminalEventId: terminalEventIdFor(playerId),
+                winKey,
+                scheduledIdentity,
+                liveIdentity,
+              });
               winSequenceScheduledRef.current = null;
             }
             return;
@@ -3423,9 +3460,23 @@ export const CribbageMobileGameTable = ({
 
   // Trigger win sequence when game completes
   const triggerWinSequence = useCallback((state: CribbageState) => {
-    if (!state.winnerPlayerId) return;
+    if (!state.winnerPlayerId) {
+      recordCribDoubleSkunkTrace('triggerWinSequence entry blocked:no-winner', {
+        terminalEventId: terminalEventIdFor(null),
+        phase: state.phase,
+      });
+      return;
+    }
     const winKey = winKeyFor(state.winnerPlayerId);
     const guardBlocked = winSequenceFiredRef.current === winKey;
+    const terminalEventId = terminalEventIdFor(state.winnerPlayerId);
+    recordCribDoubleSkunkTrace('triggerWinSequence entry', {
+      terminalEventId,
+      winKey,
+      winnerId: state.winnerPlayerId,
+      payoutMultiplier: state.payoutMultiplier ?? 1,
+      guardBlocked,
+    });
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 1
     logDebugEvent({
       gameId,
@@ -3441,10 +3492,21 @@ export const CribbageMobileGameTable = ({
         currentRoundId: currentRoundId?.slice(0, 8),
         dealerGameId: dealerGameId?.slice(0, 8),
         handNumber: currentHandNumber,
-        eventId: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${state.winnerPlayerId}`,
+        eventId: terminalEventId,
       },
     });
-    if (guardBlocked) return;
+    if (guardBlocked) {
+      recordCribDoubleSkunkTrace('triggerWinSequence guard BLOCK', {
+        terminalEventId,
+        winKey,
+        reason: 'winSequenceFiredRef already equals winKey',
+      });
+      return;
+    }
+    recordCribDoubleSkunkTrace('triggerWinSequence guard PASS', {
+      terminalEventId,
+      winKey,
+    });
     winSequenceFiredRef.current = winKey;
     // Also set scheduled so other code paths can't race-trigger while this is running.
     winSequenceScheduledRef.current = winKey;
@@ -3524,7 +3586,7 @@ export const CribbageMobileGameTable = ({
     // match_win. One announcement owner only.
     announcements.clearAmbient();
     announcements.emit({
-      id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+      id: terminalEventId,
       type: 'match_win',
       scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
       payload: {
@@ -3547,9 +3609,15 @@ export const CribbageMobileGameTable = ({
       eventType: 'crib:winseq:phase_change',
       payload: { from: 'idle', to: 'announcement', site: 'triggerWinSequence', winKey, skunk: skunkPayload, multiplier },
     });
+    recordCribDoubleSkunkTrace('setWinSequencePhase idle→announcement', {
+      terminalEventId,
+      winKey,
+      skunk: skunkPayload ?? null,
+      multiplier,
+    });
     setWinSequencePhase('announcement');
 
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements]);
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
@@ -3640,6 +3708,12 @@ export const CribbageMobileGameTable = ({
     lastPeggingScoresRef.current = null;
     setPostCountingTransitionActive(false);
     // Reset win sequence state to prevent prior-hand win from leaking
+    recordCribDoubleSkunkTrace('setWinSequencePhase →idle', {
+      terminalEventId: terminalEventIdFor(cribbageStateRef.current?.winnerPlayerId ?? null),
+      site: 'roundId_change',
+      oldRoundId: oldId,
+      newRoundId: currentRoundId,
+    });
     setWinSequencePhase('idle');
     setWinSequenceData(null);
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 2 — guard reset enables re-fire
@@ -4895,6 +4969,11 @@ export const CribbageMobileGameTable = ({
             winnerId: result.newState.winnerPlayerId,
             phase: result.newState.phase,
           });
+          recordCribDoubleSkunkTrace('startNextCribbageHand winner path', {
+            terminalEventId: terminalEventIdFor(result.newState.winnerPlayerId),
+            winnerId: result.newState.winnerPlayerId,
+            payoutMultiplier: result.newState.payoutMultiplier ?? null,
+          });
           // Freeze the counting animation so the winning combo remains
           // highlighted while the win sequence plays.
           setCountingWinFrozen(true);
@@ -4937,13 +5016,20 @@ export const CribbageMobileGameTable = ({
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');
     }
-  }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber]);
+  }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
   // Phase E: handleSkunkComplete retired — skunk now rides inside the
   // canonical match_win announcement, so the bespoke overlay phase is gone.
 
 
   const handleAnnouncementComplete = useCallback(() => {
+    const terminalEventId = terminalEventIdFor(winSequenceData?.winnerId ?? null);
+    recordCribDoubleSkunkTrace('handleAnnouncementComplete', {
+      terminalEventId,
+      hasWinSequenceData: !!winSequenceData,
+      hasTableContainer: !!tableContainerRef.current,
+      chipAnimationFiredRef: chipAnimationFiredRef.current,
+    });
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 6
     logDebugEvent({
       gameId,
@@ -4965,11 +5051,19 @@ export const CribbageMobileGameTable = ({
         eventType: 'crib:winseq:phase_change',
         payload: { from: 'announcement', to: 'complete', site: 'handleAnnouncementComplete:early-exit' },
       });
+      recordCribDoubleSkunkTrace('setWinSequencePhase announcement→complete', {
+        terminalEventId,
+        site: 'handleAnnouncementComplete:early-exit',
+      });
       setWinSequencePhase('complete');
       logDebugEvent({
         gameId,
         eventType: 'crib:winseq:on_game_complete',
         payload: { site: 'handleAnnouncementComplete:early-exit' },
+      });
+      recordCribDoubleSkunkTrace('onGameComplete callsite', {
+        terminalEventId,
+        site: 'handleAnnouncementComplete:early-exit',
       });
       onGameComplete();
       return;
@@ -5020,8 +5114,9 @@ export const CribbageMobileGameTable = ({
     }));
 
     // Store positions in state so chip animation has them on first render
+    const nextChipTriggerId = `crib-win-${roundId}-${Date.now()}`;
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
-    setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
+    setChipAnimationTriggerId(nextChipTriggerId);
 
     // Fire the deferred winner chat message NOW so it lands together with the
     // chip transfer (previously fired at overlay start, which left the chip
@@ -5036,16 +5131,26 @@ export const CribbageMobileGameTable = ({
       eventType: 'crib:winseq:phase_change',
       payload: { from: 'announcement', to: 'chips', site: 'handleAnnouncementComplete' },
     });
+    recordCribDoubleSkunkTrace('setWinSequencePhase announcement→chips', {
+      terminalEventId,
+      chipAnimKey,
+      chipAnimationTriggerId: nextChipTriggerId,
+    });
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
 
   const handleChipAnimationEnd = useCallback(() => {
+    const terminalEventId = terminalEventIdFor(winSequenceData?.winnerId ?? null);
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
     logDebugEvent({
       gameId,
       eventType: 'crib:winseq:phase_change',
       payload: { from: 'chips', to: 'complete', site: 'handleChipAnimationEnd' },
+    });
+    recordCribDoubleSkunkTrace('setWinSequencePhase chips→complete', {
+      terminalEventId,
+      site: 'handleChipAnimationEnd',
     });
     setWinSequencePhase('complete');
     // Small delay before transitioning to next game
@@ -5063,10 +5168,14 @@ export const CribbageMobileGameTable = ({
           eventType: 'crib:winseq:on_game_complete',
           payload: { site: 'handleChipAnimationEnd' },
         });
+        recordCribDoubleSkunkTrace('onGameComplete callsite', {
+          terminalEventId,
+          site: 'handleChipAnimationEnd',
+        });
         onGameComplete();
       })();
     }, 500);
-  }, [ensureBackendGameOverAck, onGameComplete, gameId]);
+  }, [ensureBackendGameOverAck, onGameComplete, gameId, recordCribDoubleSkunkTrace, terminalEventIdFor, winSequenceData?.winnerId]);
 
   // Gate chip animation on the shell-owned terminal announcement duration.
   // Skunk overlay occupies the first ~4100ms, then the same match_win event
@@ -5137,11 +5246,16 @@ export const CribbageMobileGameTable = ({
     
     const safetyTimer = setTimeout(() => {
       console.warn('[CRIBBAGE] Chip animation safety timeout triggered');
+      const terminalEventId = terminalEventIdFor(winSequenceData?.winnerId ?? null);
       // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5/7
       logDebugEvent({
         gameId,
         eventType: 'crib:winseq:phase_change',
         payload: { from: 'chips', to: 'complete', site: 'safety_timeout' },
+      });
+      recordCribDoubleSkunkTrace('setWinSequencePhase chips→complete', {
+        terminalEventId,
+        site: 'safety_timeout',
       });
       setWinSequencePhase('complete');
       (async () => {
@@ -5155,6 +5269,10 @@ export const CribbageMobileGameTable = ({
           gameId,
           eventType: 'crib:winseq:on_game_complete',
           payload: { site: 'safety_timeout' },
+        });
+        recordCribDoubleSkunkTrace('onGameComplete callsite', {
+          terminalEventId,
+          site: 'safety_timeout',
         });
         onGameComplete();
       })();
