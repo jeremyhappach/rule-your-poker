@@ -4969,6 +4969,11 @@ export const CribbageMobileGameTable = ({
             winnerId: result.newState.winnerPlayerId,
             phase: result.newState.phase,
           });
+          recordCribDoubleSkunkTrace('startNextCribbageHand winner path', {
+            terminalEventId: terminalEventIdFor(result.newState.winnerPlayerId),
+            winnerId: result.newState.winnerPlayerId,
+            payoutMultiplier: result.newState.payoutMultiplier ?? null,
+          });
           // Freeze the counting animation so the winning combo remains
           // highlighted while the win sequence plays.
           setCountingWinFrozen(true);
@@ -5011,13 +5016,20 @@ export const CribbageMobileGameTable = ({
       console.error('[CRIBBAGE] Error starting new hand:', err);
       toast.error('Failed to start new hand');
     }
-  }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber]);
+  }, [cribbageState, players, triggerWinSequence, gameId, dealerGameId, currentRoundId, currentHandNumber, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
   // Phase E: handleSkunkComplete retired — skunk now rides inside the
   // canonical match_win announcement, so the bespoke overlay phase is gone.
 
 
   const handleAnnouncementComplete = useCallback(() => {
+    const terminalEventId = terminalEventIdFor(winSequenceData?.winnerId ?? null);
+    recordCribDoubleSkunkTrace('handleAnnouncementComplete', {
+      terminalEventId,
+      hasWinSequenceData: !!winSequenceData,
+      hasTableContainer: !!tableContainerRef.current,
+      chipAnimationFiredRef: chipAnimationFiredRef.current,
+    });
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 6
     logDebugEvent({
       gameId,
@@ -5039,11 +5051,19 @@ export const CribbageMobileGameTable = ({
         eventType: 'crib:winseq:phase_change',
         payload: { from: 'announcement', to: 'complete', site: 'handleAnnouncementComplete:early-exit' },
       });
+      recordCribDoubleSkunkTrace('setWinSequencePhase announcement→complete', {
+        terminalEventId,
+        site: 'handleAnnouncementComplete:early-exit',
+      });
       setWinSequencePhase('complete');
       logDebugEvent({
         gameId,
         eventType: 'crib:winseq:on_game_complete',
         payload: { site: 'handleAnnouncementComplete:early-exit' },
+      });
+      recordCribDoubleSkunkTrace('onGameComplete callsite', {
+        terminalEventId,
+        site: 'handleAnnouncementComplete:early-exit',
       });
       onGameComplete();
       return;
@@ -5110,8 +5130,13 @@ export const CribbageMobileGameTable = ({
       eventType: 'crib:winseq:phase_change',
       payload: { from: 'announcement', to: 'chips', site: 'handleAnnouncementComplete' },
     });
+    recordCribDoubleSkunkTrace('setWinSequencePhase announcement→chips', {
+      terminalEventId,
+      chipAnimKey,
+      chipAnimationTriggerId: `crib-win-${roundId}-${Date.now()}`,
+    });
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
 
   const handleChipAnimationEnd = useCallback(() => {
