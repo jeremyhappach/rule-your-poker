@@ -612,6 +612,8 @@ const Game = () => {
   const [decisionTimerSeconds, setDecisionTimerSeconds] = useState<number>(30);
   const decisionTimerRef = useRef<number>(30); // Use ref for immediate access
   const anteProcessingRef = useRef(false);
+  const playersRef = useRef<Player[]>([]);
+  useEffect(() => { playersRef.current = players; }, [players]);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
