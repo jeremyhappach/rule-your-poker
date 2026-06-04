@@ -7828,27 +7828,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-    // CRITICAL: Fetch fresh game status AND game_type from DB to prevent race conditions in multiplayer
-    // React state can be stale, causing both clients to attempt ante processing or use wrong game type
-    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh game fetch start', {
+    // CRITICAL: Fetch fresh game status AND game_type from DB to prevent race conditions in multiplayer.
+    // React state can be stale, causing both clients to attempt ante processing or use wrong game type.
+    // OPTIMIZATION: Run game + players fetches in parallel (previously serial — saved ~210ms on critical path).
+    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh game+players fetch start (parallel)', {
       file: 'src/pages/Game.tsx',
       function: 'handleAllAnteDecisionsIn',
       gameId,
     });
-    const { data: freshGame, error: gameError } = await supabase
-      .from('games')
-      .select('status, game_type, ante_amount, is_first_hand, pot, current_game_uuid, total_hands')
-      .eq('id', gameId)
-      .single();
-    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh game fetch complete', {
+    const [gameRes, playersRes] = await Promise.all([
+      supabase
+        .from('games')
+        .select('*, players(*)')
+        .eq('id', gameId)
+        .single(),
+      supabase
+        .from('players')
+        .select('*')
+        .eq('game_id', gameId),
+    ]);
+    const { data: freshGame, error: gameError } = gameRes as any;
+    const { data: freshPlayers, error: playersError } = playersRes as any;
+    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh game+players fetch complete (parallel)', {
       file: 'src/pages/Game.tsx',
       function: 'handleAllAnteDecisionsIn',
       gameId,
       oldValue: { status: game?.status ?? null, game_type: game?.game_type ?? null, current_game_uuid: game?.current_game_uuid ?? null },
-      newValue: freshGame ?? null,
-      error: gameError?.message ?? null,
+      newValue: {
+        status: freshGame?.status ?? null,
+        game_type: freshGame?.game_type ?? null,
+        current_game_uuid: freshGame?.current_game_uuid ?? null,
+        total_hands: freshGame?.total_hands ?? null,
+        playerCount: freshPlayers?.length ?? 0,
+      },
+      gameError: gameError?.message ?? null,
+      playersError: playersError?.message ?? null,
     });
-    
+
     if (gameError || !freshGame) {
       recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn exited', {
         file: 'src/pages/Game.tsx',
@@ -7861,7 +7877,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       anteProcessingRef.current = false;
       return;
     }
-    
+
     // Prevent duplicate calls if already in progress (using FRESH DB data, not stale React state)
     if (freshGame.status === 'in_progress') {
       recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn skipped', {
@@ -7887,25 +7903,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       freshGameType: freshGame.game_type,
     });
 
-    // CRITICAL: Fetch fresh player data directly from database - don't use stale React state!
-    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh players fetch start', {
-      file: 'src/pages/Game.tsx',
-      function: 'handleAllAnteDecisionsIn',
-      gameId,
-    });
-    const { data: freshPlayers, error: playersError } = await supabase
-      .from('players')
-      .select('*')
-      .eq('game_id', gameId);
-    recordStartupFlight('FETCH TIMELINE', 'handleAllAnteDecisionsIn fresh players fetch complete', {
-      file: 'src/pages/Game.tsx',
-      function: 'handleAllAnteDecisionsIn',
-      gameId,
-      oldValue: null,
-      newValue: freshPlayers?.map((p: any) => ({ id: p.id, is_bot: p.is_bot, position: p.position, ante_decision: p.ante_decision, sitting_out: p.sitting_out, status: p.status })) ?? null,
-      error: playersError?.message ?? null,
-    });
-    
     if (playersError || !freshPlayers) {
       console.error('[ANTE] Error fetching players:', playersError);
       anteProcessingRef.current = false;
@@ -8163,14 +8160,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ginTrace('startGinRummyRound:entered', {
               dealerGameId: game?.current_game_uuid ?? null,
             });
-            const ginStartResult = await startGinRummyRound(gameId!);
+            // OPTIMIZATION: Pass already-fetched game (with players) so startGinRummyRound
+            // does not re-fetch the same row, and assume first hand of dealer_game (total_hands===0)
+            // to skip the existing-rounds precheck. Unique-constraint guard on insert preserves safety.
+            const preloadedGameForGin = {
+              ...freshGame,
+              players: freshPlayers, // freshGame already includes .players, but freshPlayers is authoritative
+            };
+            const ginStartResult = await startGinRummyRound(gameId!, {
+              game: preloadedGameForGin,
+              assumeFirstHand: (freshGame?.total_hands ?? 0) === 0,
+            });
             recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound returned', {
               file: 'src/pages/Game.tsx',
               function: 'handleAllAnteDecisionsIn',
               caller: 'all ante decisions in',
               gameId,
               oldValue: null,
-              newValue: ginStartResult,
+              newValue: { success: ginStartResult.success, roundId: ginStartResult.roundId, handNumber: ginStartResult.handNumber, hasRound: !!ginStartResult.round, error: ginStartResult.error ?? null },
             });
             ginTrace('startGinRummyRound:returned', {
               success: ginStartResult.success,
@@ -8186,10 +8193,44 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               success: ginStartResult.success,
               error: ginStartResult.error ?? null,
             });
+
+            // OPTIMIZATION: Optimistically seed the returned round into Game state so
+            // currentRound / bootstrapState become available immediately, without
+            // waiting for realtime → fetchGameData → currentRound population
+            // (previously ~600ms on the critical path). Realtime + fetch remain as
+            // reconciliation — they will overwrite this seed with the same authoritative row.
+            if (ginStartResult.success && ginStartResult.round) {
+              const insertedRound = ginStartResult.round as any;
+              const insertedHand = ginStartResult.handNumber ?? insertedRound.hand_number ?? 1;
+              recordStartupFlight('SYNC TIMELINE', 'optimistic round seed dispatched', {
+                file: 'src/pages/Game.tsx',
+                function: 'handleAllAnteDecisionsIn',
+                roundId: insertedRound.id,
+                handNumber: insertedHand,
+                dealerGameId: insertedRound.dealer_game_id ?? null,
+              });
+              setGame((prev) => {
+                if (!prev) return prev;
+                const rounds = prev.rounds ?? [];
+                const idx = rounds.findIndex((r: any) => r.id === insertedRound.id);
+                const nextRounds = idx === -1
+                  ? [...rounds, insertedRound]
+                  : (() => { const arr = [...rounds]; arr[idx] = { ...arr[idx], ...insertedRound }; return arr; })();
+                return {
+                  ...prev,
+                  status: 'in_progress',
+                  current_round: 1,
+                  total_hands: insertedHand,
+                  is_first_hand: insertedHand === 1,
+                  rounds: nextRounds,
+                };
+              });
+            }
             // Canonical sync: realtime delivers rounds.gin_rummy_state and the
             // games-status update independently; readiness probe (subscribed to
             // rounds row) fires as soon as the insert lands. No awaited
             // fetchGameData() and no setTimeout enrich on the critical path.
+
           } else {
             await supabase
               .from('games')
