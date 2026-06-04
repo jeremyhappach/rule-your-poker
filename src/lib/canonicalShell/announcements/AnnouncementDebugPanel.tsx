@@ -1,6 +1,6 @@
 /**
  * AnnouncementDebugPanel — small collapsible debug panel for the
- * announcement lifecycle investigation. Bottom-right, monospace,
+ * announcement lifecycle investigation. Top-left, monospace,
  * newest event on top, copy-to-clipboard.
  *
  * Visibility gated by isAnnouncementDebugEnabled() — defaults on in
@@ -127,8 +127,8 @@ export function AnnouncementDebugPanel() {
       data-announcement-debug-panel=""
       style={{
         position: 'fixed',
-        right: 4,
-        bottom: 4,
+        left: 4,
+        top: 4,
         zIndex: 2147483646,
         width: expanded ? 'min(94vw, 460px)' : 'min(78vw, 280px)',
         background: 'rgba(0,0,0,0.85)',
