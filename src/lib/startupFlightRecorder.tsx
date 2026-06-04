@@ -193,12 +193,16 @@ export function StartupFlightRecorderOverlay() {
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  // Dev chrome: must never occlude canonical HUD rows (identity row sits
+  // at the bottom of the viewport). Pinned to the TOP, narrow, with a
+  // modest z-index so app modals/dialogs continue to win over it.
   const shellStyle: CSSProperties = {
     position: 'fixed',
-    left: 8,
     right: 8,
-    bottom: 8,
-    zIndex: 2147483647,
+    top: 8,
+    width: expanded ? 'min(96vw, 520px)' : 'auto',
+    maxWidth: 'calc(100vw - 16px)',
+    zIndex: 60,
     maxHeight: expanded ? '44dvh' : 'auto',
     display: 'grid',
     gridTemplateRows: expanded ? 'auto minmax(0, 1fr)' : 'auto',

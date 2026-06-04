@@ -8911,7 +8911,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ) : null}
           </div>
         </PersistentTableShell>
-        <StartupFlightRecorderOverlay />
+        {/* StartupFlightRecorderOverlay is mounted once at App.tsx; do not
+            duplicate here — duplicate mounts caused redundant fixed-position
+            dev chrome on top of canonical HUD rows. */}
       </SurfaceReadinessProvider>
     );
   }
@@ -10848,7 +10850,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         </>
       )}
 
-      <StartupFlightRecorderOverlay />
+      {/* StartupFlightRecorderOverlay is mounted once at App.tsx; do not
+          duplicate here. */}
     </VisualPreferencesProvider>
   );
 };

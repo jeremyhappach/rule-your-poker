@@ -988,6 +988,20 @@ export function YahtzeeGameTable({
         const matchKey = `yahtzee-match:${dealerGameId ?? 'no-dg'}:${currentRoundId ?? 'no-r'}:${winnerId}:${maxScore}`;
         if (lastEmittedYahtzeeMatchRef.current !== matchKey) {
           lastEmittedYahtzeeMatchRef.current = matchKey;
+          // ── ONE-SHOT TRACE: Yahtzee match_win emit scope ──
+          // Paired with [canonical-rail] accept/drop logs in
+          // CanonicalAnnouncementProvider.emit so we can directly compare
+          // the emitted event scope to the live provider scope and see
+          // whether the rail accepts or rejects this match_win.
+          // eslint-disable-next-line no-console
+          console.warn('[YAHTZEE-MATCH-WIN-TRACE] emit', {
+            eventScope: { dealerGameId: dealerGameId ?? null, roundId: currentRoundId ?? null },
+            propsDealerGameId: dealerGameId ?? null,
+            propsRoundId: currentRoundId ?? null,
+            winnerId,
+            winnerName,
+            matchKey,
+          });
           announcements.clearAmbient();
           announcements.emit({
             id: `match_win:${matchKey}`,
