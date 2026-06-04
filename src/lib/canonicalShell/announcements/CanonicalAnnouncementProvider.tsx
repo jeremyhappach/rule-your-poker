@@ -276,13 +276,14 @@ export function CanonicalAnnouncementProvider({
             id: event.id, type: event.type, eventScope: event.scope, currentScope,
           });
         }
-        // ── ONE-SHOT TRACE: pair with Yahtzee match_win emit trace ──
         if (event.type === 'match_win') {
-          // eslint-disable-next-line no-console
-          console.warn('[YAHTZEE-MATCH-WIN-TRACE] provider REJECTED', {
-            reason: 'scope-mismatch',
-            eventScope: event.scope,
-            providerScope: currentScope,
+          recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider REJECTED', {
+            providerDealerGameId: currentScope.dealerGameId ?? null,
+            providerRoundId: currentScope.roundId ?? null,
+            eventScopeDealerGameId: event.scope.dealerGameId ?? null,
+            eventScopeRoundId: event.scope.roundId ?? null,
+            accepted: false,
+            rejectionReason: 'scope-mismatch',
             id: event.id,
           });
         }
@@ -295,12 +296,14 @@ export function CanonicalAnnouncementProvider({
           id: event.id, type: event.type, behavior: resolved.resolvedBehavior,
         });
       }
-      // ── ONE-SHOT TRACE: pair with Yahtzee match_win emit trace ──
       if (event.type === 'match_win') {
-        // eslint-disable-next-line no-console
-        console.warn('[YAHTZEE-MATCH-WIN-TRACE] provider ACCEPTED', {
-          eventScope: event.scope,
-          providerScope: currentScope,
+        recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE provider ACCEPTED', {
+          providerDealerGameId: currentScope.dealerGameId ?? null,
+          providerRoundId: currentScope.roundId ?? null,
+          eventScopeDealerGameId: event.scope.dealerGameId ?? null,
+          eventScopeRoundId: event.scope.roundId ?? null,
+          accepted: true,
+          rejectionReason: null,
           id: event.id,
           behavior: resolved.resolvedBehavior,
         });
