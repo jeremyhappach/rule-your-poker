@@ -2282,7 +2282,7 @@ export const GinRummyGameTable = ({
 
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
-            {(viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
+            {isPlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
               <GinRummyKnockDisplay
                 ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
@@ -2299,7 +2299,7 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Knock Overlay — shown to all clients */}
-            {showKnockOverlay && (() => {
+            {isPlayable && viewState && showKnockOverlay && (() => {
               const knockerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked);
               if (!knockerEntry) return null;
               const [knockerId, knockerState] = knockerEntry;
@@ -2313,7 +2313,7 @@ export const GinRummyGameTable = ({
             })()}
 
             {/* Gin Overlay — cool blue with record scratch */}
-            {showGinOverlay && (() => {
+            {isPlayable && viewState && showGinOverlay && (() => {
               const ginnerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasGin);
               const winnerId = ginnerEntry?.[0]
                 || viewState.knockResult?.winnerId
@@ -2346,13 +2346,14 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
-            {isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
+            {isPlayable && viewState && isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                 <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-[10px]">D</span>
                 </div>
               </div>
             )}
+
 
             {/* Opponent overlay — single CanonicalSeatCluster per opponent.
                 Shell owns identity + dealer pip + chip bubble + cluster
