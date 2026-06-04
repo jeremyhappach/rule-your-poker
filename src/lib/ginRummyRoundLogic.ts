@@ -23,46 +23,68 @@ import { recordStartupFlight } from './startupFlightRecorder';
 /**
  * Start the first Gin Rummy round/hand.
  * Creates a round record with gin_rummy_state initialized.
+ *
+ * Critical-path optimization: callers that have already fetched the game row
+ * (with players) and know this is the first hand of the dealer_game may pass
+ * `preloaded` to skip the redundant `games` re-fetch and the existing-rounds
+ * pre-check. The 23505 unique-constraint guard on insert still protects
+ * concurrency, so semantics are preserved.
  */
 export async function startGinRummyRound(
-  gameId: string
-): Promise<{ success: boolean; roundId?: string; handNumber?: number; error?: string }> {
+  gameId: string,
+  preloaded?: {
+    game?: any; // expected to include `.players` array when provided
+    assumeFirstHand?: boolean; // true when caller knows total_hands === 0 for this dealer_game
+  }
+): Promise<{ success: boolean; roundId?: string; handNumber?: number; round?: any; error?: string }> {
   recordStartupFlight('EFFECT TIMELINE', 'startGinRummyRound entered', {
     file: 'src/lib/ginRummyRoundLogic.ts',
     function: 'startGinRummyRound',
     caller: 'Game.tsx handleAllAnteDecisionsIn',
     gameId,
+    usedPreloadedGame: !!preloaded?.game,
+    assumeFirstHand: !!preloaded?.assumeFirstHand,
   });
   console.log('[GIN-RUMMY] Starting gin rummy round', { gameId });
 
   try {
-    // Fetch game data
-    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game start', {
-      file: 'src/lib/ginRummyRoundLogic.ts',
-      function: 'startGinRummyRound',
-      gameId,
-    });
-    const { data: game, error: gameError } = await supabase
-      .from('games')
-      .select('*, players(*)')
-      .eq('id', gameId)
-      .single();
-    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game complete', {
-      file: 'src/lib/ginRummyRoundLogic.ts',
-      function: 'startGinRummyRound',
-      gameId,
-      oldValue: null,
-      newValue: {
-        status: (game as any)?.status ?? null,
-        game_type: (game as any)?.game_type ?? null,
-        current_game_uuid: (game as any)?.current_game_uuid ?? null,
-        players: (game as any)?.players?.map((p: any) => ({ id: p.id, ante_decision: p.ante_decision, is_bot: p.is_bot, sitting_out: p.sitting_out, status: p.status })) ?? null,
-      },
-      error: gameError?.message ?? null,
-    });
+    // Fetch game data (unless caller already provided it)
+    let game: any = preloaded?.game ?? null;
+    if (!game) {
+      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game start', {
+        file: 'src/lib/ginRummyRoundLogic.ts',
+        function: 'startGinRummyRound',
+        gameId,
+      });
+      const { data: fetched, error: gameError } = await supabase
+        .from('games')
+        .select('*, players(*)')
+        .eq('id', gameId)
+        .single();
+      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game complete', {
+        file: 'src/lib/ginRummyRoundLogic.ts',
+        function: 'startGinRummyRound',
+        gameId,
+        oldValue: null,
+        newValue: {
+          status: (fetched as any)?.status ?? null,
+          game_type: (fetched as any)?.game_type ?? null,
+          current_game_uuid: (fetched as any)?.current_game_uuid ?? null,
+          players: (fetched as any)?.players?.map((p: any) => ({ id: p.id, ante_decision: p.ante_decision, is_bot: p.is_bot, sitting_out: p.sitting_out, status: p.status })) ?? null,
+        },
+        error: gameError?.message ?? null,
+      });
 
-    if (gameError || !game) {
-      throw new Error(`Failed to fetch game: ${gameError?.message}`);
+      if (gameError || !fetched) {
+        throw new Error(`Failed to fetch game: ${gameError?.message}`);
+      }
+      game = fetched;
+    } else {
+      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound fetch game skipped (preloaded)', {
+        file: 'src/lib/ginRummyRoundLogic.ts',
+        function: 'startGinRummyRound',
+        gameId,
+      });
     }
 
     if (game.status === 'game_over' || game.status === 'session_ended') {
@@ -109,31 +131,43 @@ export async function startGinRummyRound(
       throw new Error('No dealer_game_id - cannot create round');
     }
 
-    // Calculate hand number (DB-First)
-    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch start', {
-      file: 'src/lib/ginRummyRoundLogic.ts',
-      function: 'startGinRummyRound',
-      gameId,
-      dealerGameId,
-    });
-    const { data: existingRounds } = await supabase
-      .from('rounds')
-      .select('hand_number')
-      .eq('dealer_game_id', dealerGameId)
-      .order('hand_number', { ascending: false })
-      .limit(1);
-    recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch complete', {
-      file: 'src/lib/ginRummyRoundLogic.ts',
-      function: 'startGinRummyRound',
-      gameId,
-      dealerGameId,
-      oldValue: null,
-      newValue: existingRounds ?? [],
-    });
-
-    const handNumber = existingRounds && existingRounds.length > 0
-      ? (existingRounds[0].hand_number || 0) + 1
-      : 1;
+    // Calculate hand number (DB-First). Skip the precheck on the happy path
+    // when caller asserts this is the first hand of the dealer_game — the
+    // 23505 unique-constraint guard on insert still catches concurrent inserts.
+    let handNumber: number;
+    if (preloaded?.assumeFirstHand) {
+      handNumber = 1;
+      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds skipped (first-hand assumed)', {
+        file: 'src/lib/ginRummyRoundLogic.ts',
+        function: 'startGinRummyRound',
+        gameId,
+        dealerGameId,
+      });
+    } else {
+      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch start', {
+        file: 'src/lib/ginRummyRoundLogic.ts',
+        function: 'startGinRummyRound',
+        gameId,
+        dealerGameId,
+      });
+      const { data: existingRounds } = await supabase
+        .from('rounds')
+        .select('hand_number')
+        .eq('dealer_game_id', dealerGameId)
+        .order('hand_number', { ascending: false })
+        .limit(1);
+      recordStartupFlight('FETCH TIMELINE', 'startGinRummyRound existing rounds fetch complete', {
+        file: 'src/lib/ginRummyRoundLogic.ts',
+        function: 'startGinRummyRound',
+        gameId,
+        dealerGameId,
+        oldValue: null,
+        newValue: existingRounds ?? [],
+      });
+      handNumber = existingRounds && existingRounds.length > 0
+        ? (existingRounds[0].hand_number || 0) + 1
+        : 1;
+    }
 
     // Stamp handNumber into state for the sync progress vector
     ginState = { ...ginState, handNumber };
