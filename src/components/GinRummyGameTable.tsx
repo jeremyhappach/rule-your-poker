@@ -2254,18 +2254,21 @@ export const GinRummyGameTable = ({
 
 
 
-            {/* Felt Content */}
-            <GinRummyFeltContent
-              ginState={viewState}
-              currentPlayerId={currentPlayerId}
-              opponentId={opponentId}
-              currentTurnSlot={currentTurnSlot}
-              getPlayerUsername={getPlayerUsername}
-              cardBackColors={cardBackColors}
-              onDrawStock={handleDrawStock}
-              onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
-              isProcessing={isProcessing}
-            />
+            {/* Felt Content — requires hydrated viewState */}
+            {isPlayable && viewState && (
+              <GinRummyFeltContent
+                ginState={viewState}
+                currentPlayerId={currentPlayerId}
+                opponentId={opponentId}
+                currentTurnSlot={currentTurnSlot}
+                getPlayerUsername={getPlayerUsername}
+                cardBackColors={cardBackColors}
+                onDrawStock={handleDrawStock}
+                onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
+                isProcessing={isProcessing}
+              />
+            )}
+
 
             {/* Opponent Draw Animation */}
             <GinRummyOpponentDrawAnimation
