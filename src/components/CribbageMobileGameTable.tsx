@@ -4937,9 +4937,33 @@ export const CribbageMobileGameTable = ({
 
 
   const handleAnnouncementComplete = useCallback(() => {
+    // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 6
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:winseq:announcement_complete_invoked',
+      payload: {
+        hasWinSequenceData: !!winSequenceData,
+        hasTableContainer: !!tableContainerRef.current,
+        winnerId: winSequenceData?.winnerId?.slice(0, 8),
+        multiplier: winSequenceData?.multiplier,
+        chipAnimAlreadyFired: !!chipAnimationFiredRef.current,
+        chipAnimFiredKey: chipAnimationFiredRef.current,
+      },
+    });
     // Compute chip animation positions
     if (!winSequenceData || !tableContainerRef.current) {
+      // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5/7
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:winseq:phase_change',
+        payload: { from: 'announcement', to: 'complete', site: 'handleAnnouncementComplete:early-exit' },
+      });
       setWinSequencePhase('complete');
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:winseq:on_game_complete',
+        payload: { site: 'handleAnnouncementComplete:early-exit' },
+      });
       onGameComplete();
       return;
     }
@@ -4991,15 +5015,25 @@ export const CribbageMobileGameTable = ({
     // Store positions in state so chip animation has them on first render
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
+    // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:winseq:phase_change',
+      payload: { from: 'announcement', to: 'chips', site: 'handleAnnouncementComplete' },
+    });
     setWinSequencePhase('chips');
   }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId]);
 
   const handleChipAnimationEnd = useCallback(() => {
+    // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
+    logDebugEvent({
+      gameId,
+      eventType: 'crib:winseq:phase_change',
+      payload: { from: 'chips', to: 'complete', site: 'handleChipAnimationEnd' },
+    });
     setWinSequencePhase('complete');
     // Small delay before transitioning to next game
     setTimeout(() => {
-      // Wait briefly for backend to mark game_over (endCribbageGame is async + cross-client).
-      // If we transition too early, Game.tsx will refuse to advance because status !== game_over.
       (async () => {
         const deadline = Date.now() + 3000;
         while (Date.now() < deadline) {
@@ -5007,10 +5041,16 @@ export const CribbageMobileGameTable = ({
           if (ok) break;
           await new Promise((r) => setTimeout(r, 250));
         }
+        // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 7
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:winseq:on_game_complete',
+          payload: { site: 'handleChipAnimationEnd' },
+        });
         onGameComplete();
       })();
     }, 500);
-  }, [ensureBackendGameOverAck, onGameComplete]);
+  }, [ensureBackendGameOverAck, onGameComplete, gameId]);
 
   // Gate chip animation on the shell-owned terminal announcement duration.
   // Skunk overlay occupies the first ~4100ms, then the same match_win event
@@ -5052,6 +5092,12 @@ export const CribbageMobileGameTable = ({
     
     const safetyTimer = setTimeout(() => {
       console.warn('[CRIBBAGE] Chip animation safety timeout triggered');
+      // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5/7
+      logDebugEvent({
+        gameId,
+        eventType: 'crib:winseq:phase_change',
+        payload: { from: 'chips', to: 'complete', site: 'safety_timeout' },
+      });
       setWinSequencePhase('complete');
       (async () => {
         const deadline = Date.now() + 3000;
@@ -5060,12 +5106,17 @@ export const CribbageMobileGameTable = ({
           if (ok) break;
           await new Promise((r) => setTimeout(r, 250));
         }
+        logDebugEvent({
+          gameId,
+          eventType: 'crib:winseq:on_game_complete',
+          payload: { site: 'safety_timeout' },
+        });
         onGameComplete();
       })();
     }, 8000);
     
     return () => clearTimeout(safetyTimer);
-  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete]);
+  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete, gameId]);
 
   // Canonical projected seat roster. Every active participant renders from
   // the shell-owned SeatAnchorLayer so chips, dealer pips, card backs, and
