@@ -3441,9 +3441,23 @@ export const CribbageMobileGameTable = ({
 
   // Trigger win sequence when game completes
   const triggerWinSequence = useCallback((state: CribbageState) => {
-    if (!state.winnerPlayerId) return;
+    if (!state.winnerPlayerId) {
+      recordCribDoubleSkunkTrace('triggerWinSequence entry blocked:no-winner', {
+        terminalEventId: terminalEventIdFor(null),
+        phase: state.phase,
+      });
+      return;
+    }
     const winKey = winKeyFor(state.winnerPlayerId);
     const guardBlocked = winSequenceFiredRef.current === winKey;
+    const terminalEventId = terminalEventIdFor(state.winnerPlayerId);
+    recordCribDoubleSkunkTrace('triggerWinSequence entry', {
+      terminalEventId,
+      winKey,
+      winnerId: state.winnerPlayerId,
+      payoutMultiplier: state.payoutMultiplier ?? 1,
+      guardBlocked,
+    });
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 1
     logDebugEvent({
       gameId,
@@ -3459,10 +3473,21 @@ export const CribbageMobileGameTable = ({
         currentRoundId: currentRoundId?.slice(0, 8),
         dealerGameId: dealerGameId?.slice(0, 8),
         handNumber: currentHandNumber,
-        eventId: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${state.winnerPlayerId}`,
+        eventId: terminalEventId,
       },
     });
-    if (guardBlocked) return;
+    if (guardBlocked) {
+      recordCribDoubleSkunkTrace('triggerWinSequence guard BLOCK', {
+        terminalEventId,
+        winKey,
+        reason: 'winSequenceFiredRef already equals winKey',
+      });
+      return;
+    }
+    recordCribDoubleSkunkTrace('triggerWinSequence guard PASS', {
+      terminalEventId,
+      winKey,
+    });
     winSequenceFiredRef.current = winKey;
     // Also set scheduled so other code paths can't race-trigger while this is running.
     winSequenceScheduledRef.current = winKey;
@@ -3542,7 +3567,7 @@ export const CribbageMobileGameTable = ({
     // match_win. One announcement owner only.
     announcements.clearAmbient();
     announcements.emit({
-      id: `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId}`,
+      id: terminalEventId,
       type: 'match_win',
       scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
       payload: {
@@ -3565,9 +3590,15 @@ export const CribbageMobileGameTable = ({
       eventType: 'crib:winseq:phase_change',
       payload: { from: 'idle', to: 'announcement', site: 'triggerWinSequence', winKey, skunk: skunkPayload, multiplier },
     });
+    recordCribDoubleSkunkTrace('setWinSequencePhase idle→announcement', {
+      terminalEventId,
+      winKey,
+      skunk: skunkPayload ?? null,
+      multiplier,
+    });
     setWinSequencePhase('announcement');
 
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements]);
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
