@@ -32,10 +32,6 @@
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderCelebration } from './celebrationRenderers';
 import { isCelebrationType } from './types';
-
-import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
-import { renderCelebration } from './celebrationRenderers';
-import { isCelebrationType } from './types';
 import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 
 export function CanonicalCelebrationLayer() {
