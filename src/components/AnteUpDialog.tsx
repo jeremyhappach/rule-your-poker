@@ -216,7 +216,8 @@ export const AnteUpDialog = ({
     }
 
     console.log('Sitting out this game');
-    onDecisionMade();
+    onDecisionMade('sit_out');
+
   };
 
   return (
