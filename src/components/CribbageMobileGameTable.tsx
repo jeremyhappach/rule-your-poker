@@ -5246,11 +5246,16 @@ export const CribbageMobileGameTable = ({
     
     const safetyTimer = setTimeout(() => {
       console.warn('[CRIBBAGE] Chip animation safety timeout triggered');
+      const terminalEventId = terminalEventIdFor(winSequenceData?.winnerId ?? null);
       // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5/7
       logDebugEvent({
         gameId,
         eventType: 'crib:winseq:phase_change',
         payload: { from: 'chips', to: 'complete', site: 'safety_timeout' },
+      });
+      recordCribDoubleSkunkTrace('setWinSequencePhase chips→complete', {
+        terminalEventId,
+        site: 'safety_timeout',
       });
       setWinSequencePhase('complete');
       (async () => {
@@ -5265,12 +5270,16 @@ export const CribbageMobileGameTable = ({
           eventType: 'crib:winseq:on_game_complete',
           payload: { site: 'safety_timeout' },
         });
+        recordCribDoubleSkunkTrace('onGameComplete callsite', {
+          terminalEventId,
+          site: 'safety_timeout',
+        });
         onGameComplete();
       })();
     }, 8000);
     
     return () => clearTimeout(safetyTimer);
-  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete, gameId]);
+  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete, gameId, recordCribDoubleSkunkTrace, terminalEventIdFor, winSequenceData?.winnerId]);
 
   // Canonical projected seat roster. Every active participant renders from
   // the shell-owned SeatAnchorLayer so chips, dealer pips, card backs, and
