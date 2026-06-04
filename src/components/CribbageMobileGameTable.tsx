@@ -5690,12 +5690,17 @@ export const CribbageMobileGameTable = ({
       )}
 
       {/* ═══════ UNIFIED FELT AREA — same shell for ALL modes ═══════ */}
+      {/* Canonical felt geometry: fixed height + flex:0 0 — matches Gin/Yahtzee.
+          The previous `minHeight: 260px` allowed the felt to overflow the
+          viewport on small phones, pushing the HUD identity row below the
+          fold. Identity-row containment is non-negotiable; the felt must
+          obey shell tokens. */}
       <div 
         ref={tableContainerRef}
-        className="relative flex items-start justify-center pt-1"
+        className="relative flex items-start justify-center pt-1 overflow-hidden"
         style={{ 
           height: tableContainerHeight,
-          minHeight: '260px',
+          flex: '0 0 var(--shell-felt-h)',
         }}
       >
         {/* Shell host owns the canonical felt + backdrop. No local floor slab. */}
