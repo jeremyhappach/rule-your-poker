@@ -5018,7 +5018,7 @@ export const CribbageMobileGameTable = ({
     // Fire the deferred winner chat message NOW so it lands together with the
     // chip transfer (previously fired at overlay start, which left the chip
     // transfer feeling empty).
-    const chatMessage = (winSequenceData as any)?.chatMessage as string | undefined;
+    const chatMessage = winSequenceData?.chatMessage;
     if (chatMessage) {
       injectDealerMessage(chatMessage);
     }
