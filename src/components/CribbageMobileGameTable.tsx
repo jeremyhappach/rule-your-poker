@@ -3789,7 +3789,7 @@ export const CribbageMobileGameTable = ({
       isTransitioningSet: !isBootstrapTransition,
       instanceId: instanceIdRef.current,
     });
-  }, [currentRoundId, recordCribDoubleSkunkTrace, terminalEventIdFor]);
+  }, [currentRoundId]);
 
   // Realtime subscription with polling fallback
   // This ensures updates are received even if WebSocket connection degrades
@@ -5279,7 +5279,7 @@ export const CribbageMobileGameTable = ({
     }, 8000);
     
     return () => clearTimeout(safetyTimer);
-  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete, gameId, recordCribDoubleSkunkTrace, terminalEventIdFor, winSequenceData?.winnerId]);
+  }, [winSequencePhase, ensureBackendGameOverAck, onGameComplete, gameId]);
 
   // Canonical projected seat roster. Every active participant renders from
   // the shell-owned SeatAnchorLayer so chips, dealer pips, card backs, and
