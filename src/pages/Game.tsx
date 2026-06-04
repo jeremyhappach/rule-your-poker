@@ -1203,6 +1203,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
+
+  // ── Optimistic Gin in-progress seed guard ─────────────────────────────
+  // When the dealer client optimistically advances a gin dealerGameId to
+  // status='in_progress' / current_round=1 / rounds[seed.roundId] (see
+  // handleAllAnteDecisionsIn after startGinRummyRound), a stale fetch that
+  // was already in flight (or one triggered immediately by the bot ante
+  // realtime payload) can land milliseconds later carrying the OLD snapshot
+  // (status='ante_decision', no round yet). That stale write regresses
+  // currentRound → null and propRoundId → "", causing the user-visible
+  // "Awaiting ante decisions" → disappear → reappear → start flicker.
+  //
+  // This ref captures the optimistic seed identity. While it is active,
+  // fetchGameData merges seeded fields into any incoming snapshot for the
+  // SAME dealerGameId that does not yet reflect the seed (status not
+  // in_progress, or rounds list missing the seeded roundId). Reconciled
+  // snapshots (status in_progress AND rounds include seed.roundId) clear
+  // the ref. A boundary to a different dealerGameId also clears it.
+  const ginOptimisticSeedRef = useRef<{
+    dealerGameId: string;
+    roundId: string;
+    handNumber: number;
+    seededAt: number;
+  } | null>(null);
   useEffect(() => {
     if (!gameId || !user) return;
 
