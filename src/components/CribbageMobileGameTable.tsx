@@ -2750,10 +2750,23 @@ export const CribbageMobileGameTable = ({
         console.log('[CRIBBAGE] Win detected via score subscription:', { playerId, score, pointsToWin });
 
         const winKey = winKeyFor(playerId);
-        if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) return;
+        if (winSequenceFiredRef.current === winKey || winSequenceScheduledRef.current === winKey) {
+          recordCribDoubleSkunkTrace('reactive combo-crossing schedule BLOCK', {
+            terminalEventId: terminalEventIdFor(playerId),
+            winKey,
+            reason: winSequenceFiredRef.current === winKey ? 'fired-ref-match' : 'scheduled-ref-match',
+          });
+          return;
+        }
 
         // Guard immediately so we can't schedule multiple timers before the first one fires.
         winSequenceScheduledRef.current = winKey;
+        recordCribDoubleSkunkTrace('reactive combo-crossing schedule PASS', {
+          terminalEventId: terminalEventIdFor(playerId),
+          winKey,
+          score,
+          pointsToWin,
+        });
         
         // Freeze the counting animation - it should stop advancing and keep cards highlighted
         setCountingWinFrozen(true);
@@ -2822,6 +2835,12 @@ export const CribbageMobileGameTable = ({
             // Release the schedule guard so a legitimate later win for the same
             // winner key isn't permanently suppressed.
             if (winSequenceScheduledRef.current === winKey && winSequenceFiredRef.current !== winKey) {
+              recordCribDoubleSkunkTrace('reactive combo-crossing delayed abort clears scheduledRef', {
+                terminalEventId: terminalEventIdFor(playerId),
+                winKey,
+                scheduledIdentity,
+                liveIdentity,
+              });
               winSequenceScheduledRef.current = null;
             }
             return;
