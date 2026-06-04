@@ -578,13 +578,14 @@ export async function makeBotAnteDecisions(gameId: string): Promise<BotAnteDecis
       gameId,
     });
     console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
-    return;
+    return [];
   }
   
   // Get bot players who haven't made ante decision yet AND are not sitting out
   // CRITICAL: Respect sitting_out status - don't force bots back into the game if they're set to sit out
   const tSelectStart = Date.now();
   const { data: botsToAnte } = await supabase
+
     .from('players')
     .select('id, sitting_out')
     .eq('game_id', gameId)
