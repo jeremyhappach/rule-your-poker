@@ -990,10 +990,19 @@ export function YahtzeeGameTable({
         if (lastEmittedYahtzeeMatchRef.current !== matchKey) {
           lastEmittedYahtzeeMatchRef.current = matchKey;
           recordAnnouncementDebugEvent('lifecycle', 'YAHTZEE-MATCH-WIN-TRACE emit', {
-            eventScopeDealerGameId: dealerGameId ?? null,
+            // PersistentTableShell mounts CanonicalAnnouncementProvider
+            // with dealerGameId = games.id (legacy row id), matching
+            // the emit convention used by Gin & Cribbage. Yahtzee's
+            // prop named `dealerGameId` is actually current_game_uuid
+            // (finer dealer-game lifecycle id) — emitting that as the
+            // scope caused the provider to reject match_win with
+            // scope-mismatch and silently dropped the rail winner
+            // plate. Align with shell contract: scope on `gameId`.
+            eventScopeDealerGameId: gameId,
             eventScopeRoundId: currentRoundId ?? null,
             propsDealerGameId: dealerGameId ?? null,
             propsRoundId: currentRoundId ?? null,
+            propsGameId: gameId,
             winnerId,
             winnerName,
             matchKey,
@@ -1002,7 +1011,7 @@ export function YahtzeeGameTable({
           announcements.emit({
             id: `match_win:${matchKey}`,
             type: 'match_win',
-            scope: { dealerGameId: dealerGameId ?? null, roundId: currentRoundId ?? null },
+            scope: { dealerGameId: gameId, roundId: currentRoundId ?? null },
             payload: {
               winnerName,
               text: `${winnerName} Wins! ${scoreLine}`,
