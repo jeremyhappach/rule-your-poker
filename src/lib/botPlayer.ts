@@ -536,7 +536,14 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   return false; // 3-5-7 decisions are async, don't need immediate refetch
 }
 
-export async function makeBotAnteDecisions(gameId: string) {
+export interface BotAnteDecisionResult {
+  id: string;
+  ante_decision: 'ante_up' | 'sit_out';
+  sitting_out: boolean;
+}
+
+export async function makeBotAnteDecisions(gameId: string): Promise<BotAnteDecisionResult[]> {
+
   recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions entered', {
     file: 'src/lib/botPlayer.ts',
     function: 'makeBotAnteDecisions',
