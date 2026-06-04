@@ -10357,7 +10357,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               autoAnte={currentPlayer?.auto_ante ?? false}
               autoAnteRunback={currentPlayer?.auto_ante_runback ?? false}
               anteDecisionTimerSeconds={game.ante_decision_timer_seconds || 30}
-              onDecisionMade={() => {
+              onDecisionMade={(decision) => {
                 // ── Set latch BEFORE hiding so transient server regression cannot re-trigger ──
                 const currentPlayer = players.find(p => p.user_id === user.id);
                 const latchKey = `${gameId}|${game.current_game_uuid ?? ''}|${currentPlayer?.id ?? ''}`;
@@ -10365,6 +10365,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 console.log('[ANTE LATCH] Set:', latchKey);
                 
                 setShowAnteDialog(false);
+
+                // ISSUE 2 FIX: optimistic local merge — immediately reflect the
+                // dealer's own ante decision in local players state, and if all
+                // active non-sitting-out players are now decided, call
+                // handleAllAnteDecisionsIn without waiting for realtime/poll.
+                if (decision && currentPlayer) {
+                  setPlayers(prev => prev.map(p =>
+                    p.id === currentPlayer.id
+                      ? { ...p, ante_decision: decision, sitting_out: decision === 'sit_out' ? true : p.sitting_out }
+                      : p
+                  ));
+                  const merged = players.map(p =>
+                    p.id === currentPlayer.id
+                      ? { ...p, ante_decision: decision, sitting_out: decision === 'sit_out' ? true : p.sitting_out }
+                      : p
+                  );
+                  const activePlayers = merged.filter(
+                    p => !p.sitting_out && (p as any).status !== 'observer' && (p as any).status !== 'left'
+                  );
+                  const allDecided = activePlayers.length >= 2 && activePlayers.every(p => !!p.ante_decision);
+                  recordStartupFlight('PHASE TIMELINE', 'allDecided evaluated after dealer ante submit (optimistic)', {
+                    file: 'src/pages/Game.tsx',
+                    function: 'AnteUpDialog onDecisionMade',
+                    gameId,
+                    dealerGameId: game.current_game_uuid ?? null,
+                    newValue: allDecided,
+                    activePlayers: activePlayers.length,
+                    decision,
+                  });
+                  if (allDecided && !anteProcessingRef.current) {
+                    console.log('[GIN_RUNTIME_TIMELINE] dealer-submit:allDecided=true → immediate handleAllAnteDecisionsIn');
+                    anteProcessingRef.current = true;
+                    handleAllAnteDecisionsIn();
+                  }
+                }
+
                 // ── HANDOFF TRACE #5c: ante modal CONFIRMED (decision made) ──
                 emitCribbageHandoffTrace({
                   gameId: gameId!,
@@ -10378,6 +10414,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   },
                 });
               }}
+
             />
           );
         })()}
