@@ -3477,7 +3477,7 @@ export const CribbageMobileGameTable = ({
       loserIds,
       // Stash chat message so the chip-transfer handoff can inject it.
       chatMessage: deferredWinnerChatMessage,
-    } as any);
+    });
 
     // Persist end-of-game to backend.
     // IMPORTANT: All clients should attempt this call because:
