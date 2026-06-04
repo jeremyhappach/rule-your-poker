@@ -304,7 +304,7 @@ export async function startGinRummyRound(
       handNumber: insertedHandNumber,
       success: true,
     });
-    return { success: true, roundId: round.id, handNumber: insertedHandNumber };
+    return { success: true, roundId: round.id, handNumber: insertedHandNumber, round };
 
   } catch (error: any) {
     console.error('[GIN-RUMMY] Error starting round:', error);
