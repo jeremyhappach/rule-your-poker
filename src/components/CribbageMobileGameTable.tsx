@@ -5114,8 +5114,9 @@ export const CribbageMobileGameTable = ({
     }));
 
     // Store positions in state so chip animation has them on first render
+    const nextChipTriggerId = `crib-win-${roundId}-${Date.now()}`;
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
-    setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
+    setChipAnimationTriggerId(nextChipTriggerId);
 
     // Fire the deferred winner chat message NOW so it lands together with the
     // chip transfer (previously fired at overlay start, which left the chip
@@ -5133,18 +5134,23 @@ export const CribbageMobileGameTable = ({
     recordCribDoubleSkunkTrace('setWinSequencePhase announcement→chips', {
       terminalEventId,
       chipAnimKey,
-      chipAnimationTriggerId: `crib-win-${roundId}-${Date.now()}`,
+      chipAnimationTriggerId: nextChipTriggerId,
     });
     setWinSequencePhase('chips');
   }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
 
   const handleChipAnimationEnd = useCallback(() => {
+    const terminalEventId = terminalEventIdFor(winSequenceData?.winnerId ?? null);
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
     logDebugEvent({
       gameId,
       eventType: 'crib:winseq:phase_change',
       payload: { from: 'chips', to: 'complete', site: 'handleChipAnimationEnd' },
+    });
+    recordCribDoubleSkunkTrace('setWinSequencePhase chips→complete', {
+      terminalEventId,
+      site: 'handleChipAnimationEnd',
     });
     setWinSequencePhase('complete');
     // Small delay before transitioning to next game
@@ -5162,10 +5168,14 @@ export const CribbageMobileGameTable = ({
           eventType: 'crib:winseq:on_game_complete',
           payload: { site: 'handleChipAnimationEnd' },
         });
+        recordCribDoubleSkunkTrace('onGameComplete callsite', {
+          terminalEventId,
+          site: 'handleChipAnimationEnd',
+        });
         onGameComplete();
       })();
     }, 500);
-  }, [ensureBackendGameOverAck, onGameComplete, gameId]);
+  }, [ensureBackendGameOverAck, onGameComplete, gameId, recordCribDoubleSkunkTrace, terminalEventIdFor, winSequenceData?.winnerId]);
 
   // Gate chip animation on the shell-owned terminal announcement duration.
   // Skunk overlay occupies the first ~4100ms, then the same match_win event
