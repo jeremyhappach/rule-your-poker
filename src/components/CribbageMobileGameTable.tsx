@@ -3708,6 +3708,12 @@ export const CribbageMobileGameTable = ({
     lastPeggingScoresRef.current = null;
     setPostCountingTransitionActive(false);
     // Reset win sequence state to prevent prior-hand win from leaking
+    recordCribDoubleSkunkTrace('setWinSequencePhase →idle', {
+      terminalEventId: terminalEventIdFor(cribbageStateRef.current?.winnerPlayerId ?? null),
+      site: 'roundId_change',
+      oldRoundId: oldId,
+      newRoundId: currentRoundId,
+    });
     setWinSequencePhase('idle');
     setWinSequenceData(null);
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 2 — guard reset enables re-fire
@@ -3783,7 +3789,7 @@ export const CribbageMobileGameTable = ({
       isTransitioningSet: !isBootstrapTransition,
       instanceId: instanceIdRef.current,
     });
-  }, [currentRoundId]);
+  }, [currentRoundId, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
   // Realtime subscription with polling fallback
   // This ensures updates are received even if WebSocket connection degrades
