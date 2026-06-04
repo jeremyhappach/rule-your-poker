@@ -247,6 +247,40 @@ export function StartupFlightRecorderOverlay() {
             <button
               type="button"
               className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
+              onClick={() => {
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `startup-flight-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+            >
+              TXT
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
+              onClick={() => {
+                const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `startup-flight-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              }}
+            >
+              JSON
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border bg-muted px-2 py-1 text-[10px] text-foreground"
               onClick={() => resetStartupFlight('overlay clear')}
             >
               Clear
