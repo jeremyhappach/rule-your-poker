@@ -23,7 +23,7 @@ interface AnteUpDialogProps {
   autoAnte?: boolean;
   autoAnteRunback?: boolean;
   anteDecisionTimerSeconds?: number;
-  onDecisionMade: () => void;
+  onDecisionMade: (decision?: 'ante_up' | 'sit_out') => void;
 }
 
 export const AnteUpDialog = ({
@@ -147,7 +147,8 @@ export const AnteUpDialog = ({
       return;
     }
 
-    onDecisionMade();
+    onDecisionMade('ante_up');
+
   };
 
   const toggleAutoAnteRunback = async (checked: boolean) => {
@@ -215,7 +216,8 @@ export const AnteUpDialog = ({
     }
 
     console.log('Sitting out this game');
-    onDecisionMade();
+    onDecisionMade('sit_out');
+
   };
 
   return (

@@ -536,7 +536,14 @@ export async function makeBotDecisions(gameId: string, passedTurnPosition?: numb
   return false; // 3-5-7 decisions are async, don't need immediate refetch
 }
 
-export async function makeBotAnteDecisions(gameId: string) {
+export interface BotAnteDecisionResult {
+  id: string;
+  ante_decision: 'ante_up' | 'sit_out';
+  sitting_out: boolean;
+}
+
+export async function makeBotAnteDecisions(gameId: string): Promise<BotAnteDecisionResult[]> {
+
   recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions entered', {
     file: 'src/lib/botPlayer.ts',
     function: 'makeBotAnteDecisions',
@@ -571,13 +578,14 @@ export async function makeBotAnteDecisions(gameId: string) {
       gameId,
     });
     console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
-    return;
+    return [];
   }
   
   // Get bot players who haven't made ante decision yet AND are not sitting out
   // CRITICAL: Respect sitting_out status - don't force bots back into the game if they're set to sit out
   const tSelectStart = Date.now();
   const { data: botsToAnte } = await supabase
+
     .from('players')
     .select('id, sitting_out')
     .eq('game_id', gameId)
@@ -601,8 +609,9 @@ export async function makeBotAnteDecisions(gameId: string) {
       gameId,
     });
     console.log('[BOT ANTE] No bots need ante decision');
-    return;
+    return [];
   }
+
 
   console.log('[BOT ANTE] Bots to evaluate:', botsToAnte.length);
 
@@ -671,4 +680,10 @@ export async function makeBotAnteDecisions(gameId: string) {
     gameId,
   });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:returning', { t: Date.now() });
+
+  const results: BotAnteDecisionResult[] = [
+    ...anteUpBots.map(b => ({ id: b.id, ante_decision: 'ante_up' as const, sitting_out: !!b.sitting_out })),
+    ...sitOutBots.map(b => ({ id: b.id, ante_decision: 'sit_out' as const, sitting_out: !!b.sitting_out })),
+  ];
+  return results;
 }

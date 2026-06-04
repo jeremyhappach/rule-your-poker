@@ -2184,52 +2184,36 @@ export const GinRummyGameTable = ({
       isIdentityStale: ginSync.isIdentityStale,
     }, { file: 'src/components/GinRummyGameTable.tsx' });
   });
-  if (!viewState || isStaleHandPresentation) {
-    if (!placeholderPaintedRef.current) {
-      placeholderPaintedRef.current = true;
-      recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
-        file: 'src/components/GinRummyGameTable.tsx',
-        oldValue: 'not-painted',
-        newValue: 'placeholder',
-        hasViewState: !!viewState,
-        isStaleHandPresentation,
-      });
-      ginTrace('gin.first painted (placeholder)');
-      if (typeof requestAnimationFrame !== 'undefined') {
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          ginTrace('gin.placeholder visible (rAF)');
-        }));
-      }
-    }
-    if (isStaleHandPresentation) {
-      ginTrace('gin.placeholder forced (stale-hand at boundary)', {
-        viewStateHandNumber,
-        handNumber,
-      });
-    }
-    return (
-      <div className="h-full flex flex-col bg-transparent relative">
-        <div
-          ref={tableContainerRef}
-          className="relative overflow-hidden"
-          style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
+  // ISSUE 1 FIX: Do NOT early-return a placeholder that would unmount the
+  // canonical shell chrome (ShellHudGrid, ActivePlayerHUD, seat clusters,
+  // chip bubbles, identity row, announcement rail). The outer layout stays
+  // mounted continuously from slot mount onward. Only the gameplay-specific
+  // subtrees that REQUIRE a hydrated viewState are gated behind `isPlayable`.
+  const isPlayable = !!viewState && !isStaleHandPresentation;
 
-        >
-          {/* Shell owns canonical felt. */}
-        </div>
-        {/* Geometry-parity bottom-panel reservation: mirrors the
-            playable layout below so the felt region above resolves
-            against the same vertical share before viewState is ready. */}
-        <div
-          data-gin-placeholder-bottom-panel=""
-          className="flex-1 flex flex-col min-h-0 bg-transparent border-t border-transparent"
-        />
-      </div>
-    );
+  if (!isPlayable && !placeholderPaintedRef.current) {
+    placeholderPaintedRef.current = true;
+    recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
+      file: 'src/components/GinRummyGameTable.tsx',
+      oldValue: 'not-painted',
+      newValue: 'placeholder',
+      hasViewState: !!viewState,
+      isStaleHandPresentation,
+    });
+    ginTrace('gin.first painted (placeholder)');
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ginTrace('gin.placeholder visible (rAF)');
+      }));
+    }
   }
-
-
-  if (!playablePaintedRef.current) {
+  if (!isPlayable && isStaleHandPresentation) {
+    ginTrace('gin.placeholder forced (stale-hand at boundary)', {
+      viewStateHandNumber,
+      handNumber,
+    });
+  }
+  if (isPlayable && !playablePaintedRef.current) {
     playablePaintedRef.current = true;
     recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder exit / first playable frame', {
       file: 'src/components/GinRummyGameTable.tsx',
@@ -2256,9 +2240,6 @@ export const GinRummyGameTable = ({
   }
 
 
-
-  const opponentState = viewState.playerStates[opponentId];
-
   return (
     <div className="h-full flex flex-col bg-transparent relative">
       {/* Felt Area - Upper Section with canonical oval table */}
@@ -2273,18 +2254,21 @@ export const GinRummyGameTable = ({
 
 
 
-            {/* Felt Content */}
-            <GinRummyFeltContent
-              ginState={viewState}
-              currentPlayerId={currentPlayerId}
-              opponentId={opponentId}
-              currentTurnSlot={currentTurnSlot}
-              getPlayerUsername={getPlayerUsername}
-              cardBackColors={cardBackColors}
-              onDrawStock={handleDrawStock}
-              onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
-              isProcessing={isProcessing}
-            />
+            {/* Felt Content — requires hydrated viewState */}
+            {isPlayable && viewState && (
+              <GinRummyFeltContent
+                ginState={viewState}
+                currentPlayerId={currentPlayerId}
+                opponentId={opponentId}
+                currentTurnSlot={currentTurnSlot}
+                getPlayerUsername={getPlayerUsername}
+                cardBackColors={cardBackColors}
+                onDrawStock={handleDrawStock}
+                onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
+                isProcessing={isProcessing}
+              />
+            )}
+
 
             {/* Opponent Draw Animation */}
             <GinRummyOpponentDrawAnimation
@@ -2298,7 +2282,7 @@ export const GinRummyGameTable = ({
 
 
             {/* Knock/Gin Felt Display — shows only the OPPONENT's cards on the felt */}
-            {(viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
+            {isPlayable && viewState && (viewState.phase === 'knocking' || viewState.phase === 'laying_off' || viewState.phase === 'scoring' || (viewState.phase === 'complete' && !!viewState.knockResult)) && (
               <GinRummyKnockDisplay
                 ginState={viewState}
                 getPlayerUsername={getPlayerUsername}
@@ -2315,7 +2299,7 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Knock Overlay — shown to all clients */}
-            {showKnockOverlay && (() => {
+            {isPlayable && viewState && showKnockOverlay && (() => {
               const knockerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasKnocked);
               if (!knockerEntry) return null;
               const [knockerId, knockerState] = knockerEntry;
@@ -2329,7 +2313,7 @@ export const GinRummyGameTable = ({
             })()}
 
             {/* Gin Overlay — cool blue with record scratch */}
-            {showGinOverlay && (() => {
+            {isPlayable && viewState && showGinOverlay && (() => {
               const ginnerEntry = Object.entries(viewState.playerStates).find(([, ps]) => ps.hasGin);
               const winnerId = ginnerEntry?.[0]
                 || viewState.knockResult?.winnerId
@@ -2362,13 +2346,14 @@ export const GinRummyGameTable = ({
             )}
 
             {/* Dealer button at bottom - only if current player is dealer */}
-            {isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
+            {isPlayable && viewState && isCribDealer(currentPlayerId) && viewState.phase === 'playing' && (
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                 <div className="w-6 h-6 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-[10px]">D</span>
                 </div>
               </div>
             )}
+
 
             {/* Opponent overlay — single CanonicalSeatCluster per opponent.
                 Shell owns identity + dealer pip + chip bubble + cluster
@@ -2456,7 +2441,7 @@ export const GinRummyGameTable = ({
         }
         pane={
           <div className="w-full h-full overflow-hidden">
-            {activeTab === 'cards' && currentPlayer && (
+            {activeTab === 'cards' && currentPlayer && isPlayable && viewState && (
               <GinRummyMobileCardsTab
                 ginState={viewState}
                 currentPlayerId={currentPlayerId}
@@ -2478,6 +2463,14 @@ export const GinRummyGameTable = ({
               />
             )}
 
+            {activeTab === 'cards' && currentPlayer && !isPlayable && (
+              <div className="px-4 py-6">
+                <p className="text-muted-foreground text-sm text-center">
+                  Preparing hand…
+                </p>
+              </div>
+            )}
+
             {activeTab === 'cards' && !currentPlayer && (
               <div className="px-4 py-6">
                 <p className="text-muted-foreground text-sm text-center">
@@ -2485,6 +2478,7 @@ export const GinRummyGameTable = ({
                 </p>
               </div>
             )}
+
 
             {activeTab === 'chat' && (
               <div className="h-full p-2">
