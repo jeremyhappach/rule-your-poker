@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { AnnouncementEvent } from './types';
+import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 
 interface MatchWinPayload {
   winnerName?: string;
@@ -17,18 +18,20 @@ interface MatchWinPayload {
   skunk?: 'single' | 'double';
 }
 
-function MatchWinCelebration({ payload }: { payload: MatchWinPayload }) {
+function MatchWinCelebration({ payload, eventId }: { payload: MatchWinPayload; eventId?: string }) {
   const skunkKind = payload.skunk;
   if (!skunkKind) return null;
 
-  return <LegacySkunkOverlay multiplier={skunkKind === 'double' ? 3 : 2} />;
+  return <LegacySkunkOverlay multiplier={skunkKind === 'double' ? 3 : 2} eventId={eventId} />;
 }
 
-function LegacySkunkOverlay({ multiplier }: { multiplier: number }) {
+function LegacySkunkOverlay({ multiplier, eventId }: { multiplier: number; eventId?: string }) {
   const [phase, setPhase] = useState<'enter' | 'show' | 'exit'>('enter');
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
+    // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 3 — overlay mount
+    recordAnnouncementDebugEvent('layer-mount', 'LegacySkunkOverlay mount', { multiplier, eventId });
     timersRef.current = [
       setTimeout(() => setPhase('show'), 100),
       setTimeout(() => setPhase('exit'), 3600),
@@ -37,8 +40,10 @@ function LegacySkunkOverlay({ multiplier }: { multiplier: number }) {
     return () => {
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];
+      // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 3 — overlay unmount
+      recordAnnouncementDebugEvent('layer-unmount', 'LegacySkunkOverlay unmount', { multiplier, eventId });
     };
-  }, []);
+  }, [multiplier, eventId]);
 
   const isDoubleSkunk = multiplier >= 3;
   const title = isDoubleSkunk ? 'DOUBLE SKUNK!' : 'SKUNK!';
