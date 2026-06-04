@@ -45,7 +45,7 @@ type FilterMode = 'all' | 'wins' | 'transitions' | 'lifecycle';
 function matchesFilter(e: AnnouncementDebugEvent, mode: FilterMode, text: string): boolean {
   if (mode === 'wins') {
     const hay = `${e.summary} ${JSON.stringify(e.detail ?? {})}`.toLowerCase();
-    if (!/match_win|round_win|chip_award/.test(hay)) return false;
+    if (!/match_win|round_win|chip_award|double-skunk|legacyskunkoverlay|canonicalcelebrationlayer|yahtzee-match-win-trace/.test(hay)) return false;
   } else if (mode === 'transitions') {
     if (
       e.kind !== 'active-change' &&
