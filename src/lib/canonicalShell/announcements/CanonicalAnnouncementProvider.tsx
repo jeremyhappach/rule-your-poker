@@ -276,6 +276,16 @@ export function CanonicalAnnouncementProvider({
             id: event.id, type: event.type, eventScope: event.scope, currentScope,
           });
         }
+        // ── ONE-SHOT TRACE: pair with Yahtzee match_win emit trace ──
+        if (event.type === 'match_win') {
+          // eslint-disable-next-line no-console
+          console.warn('[YAHTZEE-MATCH-WIN-TRACE] provider REJECTED', {
+            reason: 'scope-mismatch',
+            eventScope: event.scope,
+            providerScope: currentScope,
+            id: event.id,
+          });
+        }
         return;
       }
       const resolved = resolve(event);
@@ -283,6 +293,16 @@ export function CanonicalAnnouncementProvider({
         // eslint-disable-next-line no-console
         console.debug('[canonical-rail] emit', {
           id: event.id, type: event.type, behavior: resolved.resolvedBehavior,
+        });
+      }
+      // ── ONE-SHOT TRACE: pair with Yahtzee match_win emit trace ──
+      if (event.type === 'match_win') {
+        // eslint-disable-next-line no-console
+        console.warn('[YAHTZEE-MATCH-WIN-TRACE] provider ACCEPTED', {
+          eventScope: event.scope,
+          providerScope: currentScope,
+          id: event.id,
+          behavior: resolved.resolvedBehavior,
         });
       }
       recordAnnouncementDebugEvent('emit', `${event.type} id=${event.id.slice(0,8)} (${resolved.resolvedBehavior})`, {
