@@ -614,6 +614,9 @@ const Game = () => {
   const anteProcessingRef = useRef(false);
   const playersRef = useRef<Player[]>([]);
   useEffect(() => { playersRef.current = players; }, [players]);
+  // Guard against duplicate bot ante execution for the same (gameId, dealerGameId).
+  // Keyed by `${gameId}:${dealerGameId ?? ''}`. Cleared when the effect's identity changes.
+  const botAnteInFlightKeyRef = useRef<string | null>(null);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
