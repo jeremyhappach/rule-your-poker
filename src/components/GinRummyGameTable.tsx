@@ -2184,52 +2184,36 @@ export const GinRummyGameTable = ({
       isIdentityStale: ginSync.isIdentityStale,
     }, { file: 'src/components/GinRummyGameTable.tsx' });
   });
-  if (!viewState || isStaleHandPresentation) {
-    if (!placeholderPaintedRef.current) {
-      placeholderPaintedRef.current = true;
-      recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
-        file: 'src/components/GinRummyGameTable.tsx',
-        oldValue: 'not-painted',
-        newValue: 'placeholder',
-        hasViewState: !!viewState,
-        isStaleHandPresentation,
-      });
-      ginTrace('gin.first painted (placeholder)');
-      if (typeof requestAnimationFrame !== 'undefined') {
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          ginTrace('gin.placeholder visible (rAF)');
-        }));
-      }
-    }
-    if (isStaleHandPresentation) {
-      ginTrace('gin.placeholder forced (stale-hand at boundary)', {
-        viewStateHandNumber,
-        handNumber,
-      });
-    }
-    return (
-      <div className="h-full flex flex-col bg-transparent relative">
-        <div
-          ref={tableContainerRef}
-          className="relative overflow-hidden"
-          style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
+  // ISSUE 1 FIX: Do NOT early-return a placeholder that would unmount the
+  // canonical shell chrome (ShellHudGrid, ActivePlayerHUD, seat clusters,
+  // chip bubbles, identity row, announcement rail). The outer layout stays
+  // mounted continuously from slot mount onward. Only the gameplay-specific
+  // subtrees that REQUIRE a hydrated viewState are gated behind `isPlayable`.
+  const isPlayable = !!viewState && !isStaleHandPresentation;
 
-        >
-          {/* Shell owns canonical felt. */}
-        </div>
-        {/* Geometry-parity bottom-panel reservation: mirrors the
-            playable layout below so the felt region above resolves
-            against the same vertical share before viewState is ready. */}
-        <div
-          data-gin-placeholder-bottom-panel=""
-          className="flex-1 flex flex-col min-h-0 bg-transparent border-t border-transparent"
-        />
-      </div>
-    );
+  if (!isPlayable && !placeholderPaintedRef.current) {
+    placeholderPaintedRef.current = true;
+    recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder enter', {
+      file: 'src/components/GinRummyGameTable.tsx',
+      oldValue: 'not-painted',
+      newValue: 'placeholder',
+      hasViewState: !!viewState,
+      isStaleHandPresentation,
+    });
+    ginTrace('gin.first painted (placeholder)');
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ginTrace('gin.placeholder visible (rAF)');
+      }));
+    }
   }
-
-
-  if (!playablePaintedRef.current) {
+  if (!isPlayable && isStaleHandPresentation) {
+    ginTrace('gin.placeholder forced (stale-hand at boundary)', {
+      viewStateHandNumber,
+      handNumber,
+    });
+  }
+  if (isPlayable && !playablePaintedRef.current) {
     playablePaintedRef.current = true;
     recordStartupFlight('PLACEHOLDER TIMELINE', 'placeholder exit / first playable frame', {
       file: 'src/components/GinRummyGameTable.tsx',
@@ -2255,9 +2239,6 @@ export const GinRummyGameTable = ({
     }
   }
 
-
-
-  const opponentState = viewState.playerStates[opponentId];
 
   return (
     <div className="h-full flex flex-col bg-transparent relative">
