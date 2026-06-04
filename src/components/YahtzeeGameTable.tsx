@@ -1801,25 +1801,14 @@ export function YahtzeeGameTable({
     );
   };
 
-  /* ---- Pre-round: shell ellipse paints the felt; no seat clusters yet ---- */
-  const isPreRound = !viewState || !currentRoundId;
-  if (isPreRound) {
-    return (
-      <div className="flex flex-col h-full min-h-0 overflow-hidden bg-transparent relative">
-        <div className="relative overflow-hidden" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
-          {/* Shell owns canonical felt. During DB/auth bootstrap, do not
-              render any seat chips here: this branch previously used a
-              manual absolute-positioned chip layout that bypassed
-              CanonicalSeatCluster self-suppression and caused the local
-              viewer bubble to flash in a non-canonical location. */}
-        </div>
-        {/* Bottom area placeholder */}
-        <div className="flex-none flex items-center justify-center py-8">
-          <p className="text-amber-200/60 animate-pulse text-sm font-medium">Starting game…</p>
-        </div>
-      </div>
-    );
-  }
+  /* ---- Startup: canonical shell chrome stays mounted continuously ----
+     Aligned with the Gin Rummy fix (see GinRummyGameTable.tsx ~L2187).
+     Do NOT early-return a placeholder that would unmount ShellHudGrid,
+     the opponent CanonicalSeatCluster, chip bubbles, identity row, or
+     the announcement rail. The outer layout stays mounted from slot
+     mount onward. Only gameplay-specific sub-trees that REQUIRE a
+     hydrated viewState are gated behind `isPlayable`. */
+  const isPlayable = !!viewState && !!currentRoundId;
 
   /* ================================================================ */
   /*  RENDER – mirrors MobileGameTable layout exactly                  */
@@ -2190,7 +2179,7 @@ export function YahtzeeGameTable({
             {activeTab === 'lobby' && (
               <div className="h-full overflow-y-auto p-3 space-y-2">
                 {activePlayers.map(player => {
-                  const ps = viewState.playerStates[player.id];
+                  const ps = viewState?.playerStates?.[player.id];
                   const total = ps ? getTotalScore(ps.scorecard) : 0;
                   return (
                     <div key={player.id} className="flex items-center justify-between bg-muted/20 rounded-lg px-3 py-2">

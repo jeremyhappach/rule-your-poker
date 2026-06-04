@@ -32,12 +32,22 @@
 import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderCelebration } from './celebrationRenderers';
 import { isCelebrationType } from './types';
+import { recordAnnouncementDebugEvent } from './announcementDebugLog';
 
 export function CanonicalCelebrationLayer() {
   const ctx = useAnnouncementContext();
+  const active = ctx?.active ?? null;
+  const isCeleb = active ? isCelebrationType(active.type) : false;
+  const node = active && isCeleb ? renderCelebration(active) : null;
+  // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 4 — render decision
+  recordAnnouncementDebugEvent('lifecycle', `CanonicalCelebrationLayer render: ${node ? 'shown' : 'null'}`, {
+    activeId: active?.id ?? null,
+    activeType: active?.type ?? null,
+    isCelebrationType: isCeleb,
+    nodePresent: !!node,
+  });
   if (!ctx || !ctx.active) return null;
   if (!isCelebrationType(ctx.active.type)) return null;
-  const node = renderCelebration(ctx.active);
   if (!node) return null;
 
   return (
