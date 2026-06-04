@@ -523,46 +523,12 @@ export function YahtzeeGameTable({
     player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || 'Player');
 
   // ── Phase 5: Canonical match_win emit ────────────────────────────────
-  // Migrates the retired local Yahtzee game-over gold plate to a
-  // shell-owned semantic emit. Operational HUD chrome (turn chip + rolls
-  // badge) is relocated as a sibling region of the rail at the render
-  // site below — it is NOT a semantic announcement.
+  // Emit moved into the completion presentation effect below (co-fired
+  // with chip-transfer trigger + winner confetti, matching Gin/Cribbage).
+  // Keeping the announcements handle here for the chip-transfer effect.
   const announcements = useAnnouncements();
   const lastEmittedYahtzeeMatchRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (gamePhase !== 'complete') return;
-    if (!viewState) return;
-    const results = Object.entries(viewState.playerStates || {})
-      .map(([pid, ps]) => ({ pid, total: getTotalScore(ps.scorecard) }))
-      .sort((a, b) => b.total - a.total);
-    if (results.length === 0) return;
-    const winnerPlayer = players.find(p => p.id === results[0].pid);
-    const winnerName = winnerPlayer ? getPlayerUsername(winnerPlayer) : '?';
-    const scoreLine = results.map(r => {
-      const p = players.find(pl => pl.id === r.pid);
-      return `${p ? getPlayerUsername(p) : '?'}: ${r.total}`;
-    }).join(' • ');
-    const text = `${winnerName} Wins! ${scoreLine}`;
-    const key = `yahtzee-match:${dealerGameId ?? 'no-dg'}:${currentRoundId ?? 'no-r'}:${results[0].pid}:${results[0].total}`;
-    if (lastEmittedYahtzeeMatchRef.current === key) return;
-    lastEmittedYahtzeeMatchRef.current = key;
-    announcements.clearAmbient();
-    announcements.emit({
-      id: `match_win:${key}`,
-      type: 'match_win',
-      scope: { dealerGameId: dealerGameId ?? null, roundId: currentRoundId ?? null },
-      payload: { text },
-      // Persist through chip transfer / winner overlay sequence.
-      ttlMs: 10000,
-    });
-  }, [
-    gamePhase,
-    viewState?.playerStates,
-    dealerGameId,
-    currentRoundId,
-    players,
-    announcements,
-  ]);
+
 
   // Scores — derived from viewState for render stability
   const allTotals = useMemo(() =>
