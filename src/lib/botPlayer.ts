@@ -609,8 +609,9 @@ export async function makeBotAnteDecisions(gameId: string): Promise<BotAnteDecis
       gameId,
     });
     console.log('[BOT ANTE] No bots need ante decision');
-    return;
+    return [];
   }
+
 
   console.log('[BOT ANTE] Bots to evaluate:', botsToAnte.length);
 
