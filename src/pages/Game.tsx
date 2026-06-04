@@ -8228,6 +8228,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 handNumber: insertedHand,
                 dealerGameId: insertedRound.dealer_game_id ?? null,
               });
+              // Arm the regression guard so any stale fetch landing after this
+              // seed cannot reset status back to ante_decision / drop currentRound.
+              if (insertedRound.dealer_game_id && insertedRound.id) {
+                ginOptimisticSeedRef.current = {
+                  dealerGameId: insertedRound.dealer_game_id,
+                  roundId: insertedRound.id,
+                  handNumber: insertedHand,
+                  seededAt: Date.now(),
+                };
+              }
               setGame((prev) => {
                 if (!prev) return prev;
                 const rounds = prev.rounds ?? [];
