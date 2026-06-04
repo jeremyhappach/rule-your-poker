@@ -149,16 +149,9 @@ export const CribbageFeltContent = ({
     });
     return (
       <>
-        {/* Skunk indicator when active */}
-        {cribbageState.payoutMultiplier > 1 && (
-          <div className="absolute top-2 right-2 z-30">
-            <div className="bg-destructive px-2 py-1 rounded">
-              <p className="text-xs font-bold text-destructive-foreground">
-                {cribbageState.payoutMultiplier === 2 ? 'SKUNK!' : 'DOUBLE!'}
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Skunk/Double badge removed — centered overlay + rail announcement
+            already communicate the payout multiplier. */}
+
 
         {/* Peg Board now rendered by parent (CribbageMobileGameTable) for mount stability */}
       </>
@@ -169,16 +162,9 @@ export const CribbageFeltContent = ({
     <>
       {/* Game title moved to CribbageMobileGameTable */}
 
-      {/* Skunk indicator when active */}
-      {cribbageState.payoutMultiplier > 1 && (
-        <div className="absolute top-2 right-2 z-30">
-          <div className="bg-destructive px-2 py-1 rounded">
-            <p className="text-xs font-bold text-destructive-foreground">
-              {cribbageState.payoutMultiplier === 2 ? 'SKUNK!' : 'DOUBLE!'}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Skunk/Double badge removed — centered overlay + rail announcement
+          already communicate the payout multiplier. */}
+
 
       {/* Peg Board now rendered by parent (CribbageMobileGameTable) for mount stability */}
 

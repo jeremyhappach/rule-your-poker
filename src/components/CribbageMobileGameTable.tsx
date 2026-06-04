@@ -1435,6 +1435,7 @@ export const CribbageMobileGameTable = ({
     amountPerLoser: number;
     totalWinnings: number;
     loserIds: string[];
+    chatMessage?: string;
   } | null>(null);
 
   // ── Sync invariant checks (wired to the ACTUAL rendered mobile state) ─
@@ -3459,11 +3460,12 @@ export const CribbageMobileGameTable = ({
     const amountPerLoser = anteAmount * multiplier;
     const totalWinnings = amountPerLoser * loserIds.length;
 
-    // Inject win announcement into chat with final scores
+    // Chat winner message is intentionally deferred to handleAnnouncementComplete
+    // so it lands with the chip transfer rather than during the overlay window.
     const winnerScore = state.playerStates[winnerId]?.pegScore ?? 0;
     const loserScores = loserIds.map(id => state.playerStates[id]?.pegScore ?? 0);
     const loserScoreStr = loserScores.join('-');
-    injectDealerMessage(`${winnerName} won the game ${winnerScore}-${loserScoreStr}!`);
+    const deferredWinnerChatMessage = `${winnerName} won the game ${winnerScore}-${loserScoreStr}!`;
 
     setWinSequenceData({
       winnerId,
@@ -3473,6 +3475,8 @@ export const CribbageMobileGameTable = ({
       amountPerLoser,
       totalWinnings,
       loserIds,
+      // Stash chat message so the chip-transfer handoff can inject it.
+      chatMessage: deferredWinnerChatMessage,
     });
 
     // Persist end-of-game to backend.
@@ -3501,15 +3505,10 @@ export const CribbageMobileGameTable = ({
       });
     }
 
-    // Fire confetti only for the winner
-    if (currentPlayerId === winnerId) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
-      });
-    }
+    // Confetti now runs as a continuous burst loop across the announcement +
+    // chip-transfer window (see effect below keyed on winSequencePhase).
+    // The one-shot confetti previously fired here faded before chip transfer.
+
 
     // Emit canonical terminal event. Skunk/double-skunk still owns the
     // centered celebration overlay, but match_win must remain alive long
@@ -5015,6 +5014,14 @@ export const CribbageMobileGameTable = ({
     // Store positions in state so chip animation has them on first render
     setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(`crib-win-${roundId}-${Date.now()}`);
+
+    // Fire the deferred winner chat message NOW so it lands together with the
+    // chip transfer (previously fired at overlay start, which left the chip
+    // transfer feeling empty).
+    const chatMessage = winSequenceData?.chatMessage;
+    if (chatMessage) {
+      injectDealerMessage(chatMessage);
+    }
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
     logDebugEvent({
       gameId,
@@ -5022,7 +5029,8 @@ export const CribbageMobileGameTable = ({
       payload: { from: 'announcement', to: 'chips', site: 'handleAnnouncementComplete' },
     });
     setWinSequencePhase('chips');
-  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId]);
+  }, [winSequenceData, players, currentUserId, onGameComplete, roundId, gameId, injectDealerMessage]);
+
 
   const handleChipAnimationEnd = useCallback(() => {
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 5
@@ -5083,6 +5091,35 @@ export const CribbageMobileGameTable = ({
 
     return () => clearTimeout(timer);
   }, [winSequencePhase, winSequenceData]);
+
+  // Continuous confetti for the winner across announcement + chip-transfer.
+  // Replaces the previous one-shot burst that faded long before chips moved.
+  // Runs only on the winner's client; observers/losers see overlay + chips
+  // without confetti, matching prior behavior.
+  useEffect(() => {
+    if (winSequencePhase !== 'announcement' && winSequencePhase !== 'chips') return;
+    if (!winSequenceData) return;
+    if (currentPlayerId !== winSequenceData.winnerId) return;
+
+    let cancelled = false;
+    const palette = ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'];
+
+    // Immediate opening burst.
+    confetti({ particleCount: 160, spread: 75, origin: { y: 0.6 }, colors: palette });
+
+    // Repeating smaller bursts so confetti remains visible through chip transfer.
+    const interval = window.setInterval(() => {
+      if (cancelled) return;
+      confetti({ particleCount: 60, spread: 60, origin: { x: 0.2 + Math.random() * 0.6, y: 0.55 + Math.random() * 0.15 }, colors: palette });
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [winSequencePhase, winSequenceData, currentPlayerId]);
+
+
 
 
   // Safety timeout: If chip animation phase doesn't complete within 8 seconds, force transition
