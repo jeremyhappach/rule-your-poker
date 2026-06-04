@@ -25,6 +25,7 @@ import { CribbageCountingPhase } from './CribbageCountingPhase';
 import { CribbageTurnSpotlight } from './CribbageTurnSpotlight';
 import { type DealerSelectionCard, type DealerSelectionState, useHighCardDealerSelection } from '@/hooks/useHighCardDealerSelection';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
+import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
@@ -1680,6 +1681,23 @@ export const CribbageMobileGameTable = ({
   // Stable guard key so transient roundId churn can't cause duplicate win sequences.
   // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
   const winKeyFor = (winnerId: string) => `${gameId}:${dealerGameId ?? 'unknown-dealer'}:${winnerId}`;
+  const terminalEventIdFor = useCallback(
+    (winnerId?: string | null) => `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId ?? 'no-winner'}`,
+    [gameId, dealerGameId],
+  );
+  const recordCribDoubleSkunkTrace = useCallback(
+    (label: string, detail: Record<string, unknown> = {}) => {
+      recordAnnouncementDebugEvent('lifecycle', `CRIBBAGE-DOUBLE-SKUNK-TRACE ${label}`, {
+        dealerGameId: dealerGameId ?? null,
+        roundId: currentRoundId ?? null,
+        handNumber: currentHandNumber,
+        winSequenceFiredRef: winSequenceFiredRef.current,
+        winSequenceScheduledRef: winSequenceScheduledRef.current,
+        ...detail,
+      });
+    },
+    [dealerGameId, currentRoundId, currentHandNumber],
+  );
 
   // Event logging context - uses local tracking for proper hand transitions
   const eventCtx = useCribbageEventContext(currentRoundId, dealerGameId, currentHandNumber);
