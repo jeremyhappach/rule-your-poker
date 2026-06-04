@@ -110,7 +110,7 @@ function LegacySkunkOverlay({ multiplier, eventId }: { multiplier: number; event
 export function renderCelebration(event: AnnouncementEvent): JSX.Element | null {
   switch (event.type) {
     case 'match_win':
-      return <MatchWinCelebration payload={(event.payload ?? {}) as MatchWinPayload} />;
+      return <MatchWinCelebration payload={(event.payload ?? {}) as MatchWinPayload} eventId={event.id} />;
     default:
       return null;
   }
