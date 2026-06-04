@@ -542,65 +542,83 @@ export interface BotAnteDecisionResult {
   sitting_out: boolean;
 }
 
-export async function makeBotAnteDecisions(gameId: string): Promise<BotAnteDecisionResult[]> {
+export interface MakeBotAnteDecisionsOptions {
+  /** Skip the games.is_paused SELECT when the caller already knows is_paused is false. */
+  skipPauseCheck?: boolean;
+  /** Skip the players SELECT when the caller already knows which bots need ante decisions. */
+  preselectedBots?: { id: string; sitting_out: boolean }[];
+}
+
+export async function makeBotAnteDecisions(
+  gameId: string,
+  options: MakeBotAnteDecisionsOptions = {},
+): Promise<BotAnteDecisionResult[]> {
 
   recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions entered', {
     file: 'src/lib/botPlayer.ts',
     function: 'makeBotAnteDecisions',
     caller: 'Game.tsx bot ante effect',
     gameId,
+    skipPauseCheck: !!options.skipPauseCheck,
+    preselectedBotCount: options.preselectedBots?.length ?? null,
   });
   console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:entered', { t: Date.now(), gameId });
   console.log('[BOT ANTE] Making ante decisions for bots in game:', gameId);
-  
-  // Check if game is paused before processing bot ante decisions
-  const tPauseCheckStart = Date.now();
-  const { data: gameData } = await supabase
-    .from('games')
-    .select('is_paused')
-    .eq('id', gameId)
-    .single();
-  recordStartupFlight('FETCH TIMELINE', 'makeBotAnteDecisions pause check complete', {
-    file: 'src/lib/botPlayer.ts',
-    function: 'makeBotAnteDecisions',
-    gameId,
-    oldValue: null,
-    newValue: gameData?.is_paused ?? null,
-    elapsedMs: Date.now() - tPauseCheckStart,
-  });
-  console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:pause-check-complete', { t: Date.now(), deltaMs: Date.now() - tPauseCheckStart });
-  
-  if (gameData?.is_paused) {
-    recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions skipped', {
+
+  // Check if game is paused before processing bot ante decisions (unless caller asserted it's not paused).
+  if (!options.skipPauseCheck) {
+    const tPauseCheckStart = Date.now();
+    const { data: gameData } = await supabase
+      .from('games')
+      .select('is_paused')
+      .eq('id', gameId)
+      .single();
+    recordStartupFlight('FETCH TIMELINE', 'makeBotAnteDecisions pause check complete', {
       file: 'src/lib/botPlayer.ts',
       function: 'makeBotAnteDecisions',
-      skipReason: 'game is paused',
       gameId,
+      oldValue: null,
+      newValue: gameData?.is_paused ?? null,
+      elapsedMs: Date.now() - tPauseCheckStart,
     });
-    console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
-    return [];
-  }
-  
-  // Get bot players who haven't made ante decision yet AND are not sitting out
-  // CRITICAL: Respect sitting_out status - don't force bots back into the game if they're set to sit out
-  const tSelectStart = Date.now();
-  const { data: botsToAnte } = await supabase
+    console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:pause-check-complete', { t: Date.now(), deltaMs: Date.now() - tPauseCheckStart });
 
-    .from('players')
-    .select('id, sitting_out')
-    .eq('game_id', gameId)
-    .eq('is_bot', true)
-    .is('ante_decision', null);
-  recordStartupFlight('FETCH TIMELINE', 'makeBotAnteDecisions select bots complete', {
-    file: 'src/lib/botPlayer.ts',
-    function: 'makeBotAnteDecisions',
-    gameId,
-    oldValue: null,
-    newValue: botsToAnte?.map((b) => ({ id: b.id, sitting_out: b.sitting_out })) ?? [],
-    elapsedMs: Date.now() - tSelectStart,
-  });
-  console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:select-bots-complete', { t: Date.now(), deltaMs: Date.now() - tSelectStart, count: botsToAnte?.length ?? 0 });
-  
+    if (gameData?.is_paused) {
+      recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions skipped', {
+        file: 'src/lib/botPlayer.ts',
+        function: 'makeBotAnteDecisions',
+        skipReason: 'game is paused',
+        gameId,
+      });
+      console.log('[BOT ANTE] Game is paused, skipping bot ante decisions');
+      return [];
+    }
+  }
+
+  // Get bot players who haven't made ante decision yet (preselected by caller when possible).
+  let botsToAnte: { id: string; sitting_out: boolean }[] | null | undefined;
+  if (options.preselectedBots) {
+    botsToAnte = options.preselectedBots;
+  } else {
+    const tSelectStart = Date.now();
+    const { data } = await supabase
+      .from('players')
+      .select('id, sitting_out')
+      .eq('game_id', gameId)
+      .eq('is_bot', true)
+      .is('ante_decision', null);
+    botsToAnte = data;
+    recordStartupFlight('FETCH TIMELINE', 'makeBotAnteDecisions select bots complete', {
+      file: 'src/lib/botPlayer.ts',
+      function: 'makeBotAnteDecisions',
+      gameId,
+      oldValue: null,
+      newValue: botsToAnte?.map((b) => ({ id: b.id, sitting_out: b.sitting_out })) ?? [],
+      elapsedMs: Date.now() - tSelectStart,
+    });
+    console.log('[GIN_RUNTIME_TIMELINE] makeBotAnteDecisions:select-bots-complete', { t: Date.now(), deltaMs: Date.now() - tSelectStart, count: botsToAnte?.length ?? 0 });
+  }
+
   if (!botsToAnte || botsToAnte.length === 0) {
     recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions skipped', {
       file: 'src/lib/botPlayer.ts',

@@ -614,6 +614,9 @@ const Game = () => {
   const anteProcessingRef = useRef(false);
   const playersRef = useRef<Player[]>([]);
   useEffect(() => { playersRef.current = players; }, [players]);
+  // Guard against duplicate bot ante execution for the same (gameId, dealerGameId).
+  // Keyed by `${gameId}:${dealerGameId ?? ''}`. Cleared when the effect's identity changes.
+  const botAnteInFlightKeyRef = useRef<string | null>(null);
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
@@ -2986,11 +2989,42 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
     }
     if (game?.status === 'ante_decision') {
+      const dealerGameIdForKey = game?.current_game_uuid ?? '';
+      const inFlightKey = `${gameId}:${dealerGameIdForKey}`;
+      if (botAnteInFlightKeyRef.current === inFlightKey) {
+        recordStartupFlight('EFFECT TIMELINE', 'bot ante effect skipped', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          skipReason: 'duplicate invocation for same (gameId,dealerGameId) — bot ante already in flight',
+          gameId,
+          dealerGameId: dealerGameIdForKey,
+          inFlightKey,
+        });
+        console.log('[GIN_RUNTIME_TIMELINE] bot ante effect skipped: duplicate in-flight', { t: Date.now(), inFlightKey });
+        return;
+      }
+      // Fast-path: derive bots needing ante from local players state. If none
+      // need a decision, skip the entire bot ante path (no SELECTs, no UPDATE).
+      const knownBotsNeedingAnte = playersRef.current
+        .filter(p => (p as any).is_bot && p.ante_decision == null && (p as any).status !== 'observer' && (p as any).status !== 'left')
+        .map(p => ({ id: p.id, sitting_out: !!p.sitting_out }));
+      if (knownBotsNeedingAnte.length === 0) {
+        recordStartupFlight('EFFECT TIMELINE', 'bot ante effect skipped', {
+          file: 'src/pages/Game.tsx',
+          function: 'bot ante useEffect',
+          skipReason: 'no bots need ante decision (derived from local players state)',
+          gameId,
+          dealerGameId: dealerGameIdForKey,
+        });
+        return;
+      }
+      botAnteInFlightKeyRef.current = inFlightKey;
       recordStartupFlight('PHASE TIMELINE', 'status=ante_decision observed by bot effect', {
         file: 'src/pages/Game.tsx',
         function: 'bot ante useEffect',
         gameId,
         dealerGameId: game?.current_game_uuid ?? null,
+        knownBotsNeedingAnte: knownBotsNeedingAnte.length,
       });
       console.log('[GIN_RUNTIME_TIMELINE] ante phase observed:bot-bootstrap-start', {
         t: Date.now(),
@@ -2998,18 +3032,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         dealerGameId: game?.current_game_uuid ?? null,
         status: game?.status,
       });
-      // Call immediately - no delay needed for bots. Then re-check ante
-      // completion directly; otherwise human-vs-bot waits for the 3s
-      // ante polling fallback before Gin can bootstrap.
       const tMakeBotStart = Date.now();
       recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions call issued', {
         file: 'src/pages/Game.tsx',
         function: 'bot ante useEffect',
         caller: 'React effect status=ante_decision',
         gameId,
+        inFlightKey,
       });
       console.log('[GIN_RUNTIME_TIMELINE] effect:calling-makeBotAnteDecisions', { t: tMakeBotStart });
-      makeBotAnteDecisions(gameId!).then(async (botResults) => {
+      // Pass known-paused state (we already gated on game?.is_paused above so
+      // it's false here) and the preselected bot list to skip the two serial
+      // SELECTs inside makeBotAnteDecisions on the happy path.
+      makeBotAnteDecisions(gameId!, {
+        skipPauseCheck: true,
+        preselectedBots: knownBotsNeedingAnte,
+      }).then(async (botResults) => {
         const tBotReturned = Date.now();
         recordStartupFlight('EFFECT TIMELINE', 'makeBotAnteDecisions returned', {
           file: 'src/pages/Game.tsx',
@@ -3020,15 +3058,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         });
         console.log('[GIN_RUNTIME_TIMELINE] effect:makeBotAnteDecisions-returned', { t: tBotReturned, deltaMs: tBotReturned - tMakeBotStart, botResultCount: botResults.length });
 
-        // ISSUE 2 FIX: eliminate the post-bot players refetch. Merge bot
-        // write results into the local `players` state to derive allDecided
-        // without a network roundtrip. Local `players` already reflects the
-        // dealer's ante write (set in the submit flow + realtime).
         const botDecisionMap = new Map(botResults.map(r => [r.id, r.ante_decision] as const));
-        // Read latest players via ref to avoid stale closure: the dealer's own
-        // ante write (set optimistically in AnteUpDialog onDecisionMade) may have
-        // landed AFTER this effect captured `players`. Without the ref the
-        // dealer would falsely appear undecided here.
         const latestPlayers = playersRef.current;
         const mergedPlayers = latestPlayers.map(p => ({
           id: p.id,
@@ -3050,14 +3080,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           activePlayers: activePlayers.length,
           decisions: activePlayers.map(p => ({ id: p.id, ante_decision: p.ante_decision })),
         });
-        console.log('[GIN_RUNTIME_TIMELINE] bot ante completion check:after-write (no-refetch)', {
-          t: Date.now(),
-          gameId,
-          dealerGameId: game?.current_game_uuid ?? null,
-          activePlayers: activePlayers.length,
-          allDecided,
-          decisions: activePlayers.map(p => p.ante_decision),
-        });
         if (allDecided && !anteProcessingRef.current) {
           recordStartupFlight('EFFECT TIMELINE', 'handleAllAnteDecisionsIn call issued', {
             file: 'src/pages/Game.tsx',
@@ -3077,12 +3099,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             allDecided,
             anteProcessingRef: anteProcessingRef.current,
           });
-          console.log('[GIN_RUNTIME_TIMELINE] effect:allDecided=false → awaiting realtime', { t: Date.now(), allDecided, anteProcessingRef: anteProcessingRef.current });
-          // Do not fetchGameData here: any human ante write will propagate
-          // via realtime + the dedicated ante-completion effect below.
         }
+      }).catch((err) => {
+        // On failure clear the in-flight key so a retry can run.
+        if (botAnteInFlightKeyRef.current === inFlightKey) {
+          botAnteInFlightKeyRef.current = null;
+        }
+        console.error('[BOT ANTE] makeBotAnteDecisions failed', err);
       });
 
+    } else {
+      // Status is no longer ante_decision — clear the in-flight key so the
+      // next ante_decision phase (e.g. next hand) can run.
+      if (botAnteInFlightKeyRef.current !== null) {
+        botAnteInFlightKeyRef.current = null;
+      }
     }
   }, [game?.status, game?.is_paused, gameId, game?.current_game_uuid]);
 
