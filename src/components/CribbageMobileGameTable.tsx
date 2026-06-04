@@ -3459,11 +3459,12 @@ export const CribbageMobileGameTable = ({
     const amountPerLoser = anteAmount * multiplier;
     const totalWinnings = amountPerLoser * loserIds.length;
 
-    // Inject win announcement into chat with final scores
+    // Chat winner message is intentionally deferred to handleAnnouncementComplete
+    // so it lands with the chip transfer rather than during the overlay window.
     const winnerScore = state.playerStates[winnerId]?.pegScore ?? 0;
     const loserScores = loserIds.map(id => state.playerStates[id]?.pegScore ?? 0);
     const loserScoreStr = loserScores.join('-');
-    injectDealerMessage(`${winnerName} won the game ${winnerScore}-${loserScoreStr}!`);
+    const deferredWinnerChatMessage = `${winnerName} won the game ${winnerScore}-${loserScoreStr}!`;
 
     setWinSequenceData({
       winnerId,
@@ -3473,7 +3474,9 @@ export const CribbageMobileGameTable = ({
       amountPerLoser,
       totalWinnings,
       loserIds,
-    });
+      // Stash chat message so the chip-transfer handoff can inject it.
+      chatMessage: deferredWinnerChatMessage,
+    } as any);
 
     // Persist end-of-game to backend.
     // IMPORTANT: All clients should attempt this call because:
@@ -3501,15 +3504,10 @@ export const CribbageMobileGameTable = ({
       });
     }
 
-    // Fire confetti only for the winner
-    if (currentPlayerId === winnerId) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#9370DB'],
-      });
-    }
+    // Confetti now runs as a continuous burst loop across the announcement +
+    // chip-transfer window (see effect below keyed on winSequencePhase).
+    // The one-shot confetti previously fired here faded before chip transfer.
+
 
     // Emit canonical terminal event. Skunk/double-skunk still owns the
     // centered celebration overlay, but match_win must remain alive long
