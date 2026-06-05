@@ -224,6 +224,7 @@ export function CanonicalAnnouncementProvider({
             { stage: 'ttl-expired', id, type, ttlMs },
           );
           transientIdRef.current = null;
+          transientRef.current = null;
           drainDismiss(id);
           queueMicrotask(promoteNextTransient);
           return null;
@@ -254,6 +255,7 @@ export function CanonicalAnnouncementProvider({
     }
     const next = queue.shift() ?? null;
     transientIdRef.current = next?.id ?? null;
+    transientRef.current = next;
     setTransient(() => next);
     if (next) armTtl(next);
   }, [clearTtl, currentScope, armTtl, drainDismiss]);
