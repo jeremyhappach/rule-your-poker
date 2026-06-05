@@ -46,9 +46,21 @@ function LegacySkunkOverlay({ multiplier, eventId }: { multiplier: number; event
       { multiplier, eventId, terminalEventId: eventId ?? null, mountCount },
     );
     timersRef.current = [
-      setTimeout(() => setPhase('show'), 100),
+      setTimeout(() => {
+        setPhase('show');
+        // [CRIBBAGE-DOUBLE-SKUNK-TRACE] celebration animation started
+        const startCount = (celebrationStartCounts.get(key) ?? 0) + 1;
+        celebrationStartCounts.set(key, startCount);
+        recordAnnouncementDebugEvent('lifecycle', 'CRIBBAGE-DOUBLE-SKUNK-TRACE celebration started', {
+          eventId,
+          startCount,
+          timestamp: Date.now(),
+          multiplier,
+        });
+      }, 100),
       setTimeout(() => setPhase('exit'), 3600),
     ];
+
 
     return () => {
       timersRef.current.forEach(clearTimeout);
