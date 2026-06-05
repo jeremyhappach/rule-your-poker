@@ -1679,12 +1679,17 @@ export const CribbageMobileGameTable = ({
 
   // Sync framework handles optimistic write protection — no manual timestamp needed.
 
-  // Stable guard key so transient roundId churn can't cause duplicate win sequences.
-  // IMPORTANT: include dealerGameId so a player can win multiple dealer games in the same session.
-  const winKeyFor = (winnerId: string) => `${gameId}:${dealerGameId ?? 'unknown-dealer'}:${winnerId}`;
+  // Stable guard key + terminal event id. MUST NOT include dealerGameId —
+  // after match completion `games.current_game_uuid` is cleared, which flips
+  // dealerGameId from <id> → null and would otherwise produce a second,
+  // distinct winKey / match_win event id that bypasses the local dedupe
+  // guard and re-fires the celebration overlay. The roundId-change effect
+  // (and the dealerGameId boundary reset for Run Back) handle cross-match
+  // identity rollover, so per-match identity only needs gameId + winnerId.
+  const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
   const terminalEventIdFor = useCallback(
-    (winnerId?: string | null) => `${gameId}:${dealerGameId ?? 'no-dg'}:match_win:${winnerId ?? 'no-winner'}`,
-    [gameId, dealerGameId],
+    (winnerId?: string | null) => `${gameId}:match_win:${winnerId ?? 'no-winner'}`,
+    [gameId],
   );
   const recordCribDoubleSkunkTrace = useCallback(
     (label: string, detail: Record<string, unknown> = {}) => {
