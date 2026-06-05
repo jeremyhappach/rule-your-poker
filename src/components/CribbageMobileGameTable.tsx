@@ -3206,12 +3206,12 @@ export const CribbageMobileGameTable = ({
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
       const playerIds = players.map(p => p.id);
-      const hostPlayerId = players.find(p => p.user_id === currentUserId)?.id;
-      // Ensure debug-harness cache is hydrated before init so a configured
-      // harness (e.g. cribbage 'near_double_skunk') is honored on the first
-      // game after a fresh page load, instead of fail-closing to 'none'.
+      // Debug-harness target is the canonical SESSION HOST (games.current_host
+      // → earliest non-bot fallback). Identical on every client; never the
+      // local viewer / init-race winner. See resolveHarnessHost.ts.
       await ensureHarnessCacheLoaded();
-      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig, undefined, hostPlayerId);
+      const hostPlayerId = await fetchSessionHostPlayerId(gameId, players);
+      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig, undefined, hostPlayerId ?? undefined);
 
       
       
