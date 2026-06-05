@@ -108,11 +108,21 @@ export async function startGinRummyRound(
       throw new Error('Gin Rummy requires exactly 2 players');
     }
 
-    // Determine dealer and non-dealer
+    // Determine dealer and non-dealer.
+    // Near-Gin harness: force dealer = canonical SESSION HOST so the
+    // advantaged hand always lands on the host, identical on every client.
     const dealerPosition = game.dealer_position || 1;
     const sortedPlayers = [...activePlayers].sort((a: any, b: any) => a.position - b.position);
-    const dealerPlayer = sortedPlayers.find((p: any) => p.position === dealerPosition)
+    let dealerPlayer: any = sortedPlayers.find((p: any) => p.position === dealerPosition)
       || sortedPlayers[0];
+    if (isGinTwoActionHarnessEnabled()) {
+      const hostPid = resolveSessionHostPlayerId(
+        { current_host: (game as any)?.current_host ?? null },
+        sortedPlayers,
+      );
+      const hostPlayer = sortedPlayers.find((p: any) => p.id === hostPid);
+      if (hostPlayer) dealerPlayer = hostPlayer;
+    }
     const nonDealerPlayer = sortedPlayers.find((p: any) => p.id !== dealerPlayer.id)!;
 
     const anteAmount = game.ante_amount || 1;
