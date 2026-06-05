@@ -180,6 +180,14 @@ export function CanonicalAnnouncementProvider({
   // immediately after emit() can see the post-emit state without waiting
   // for React to flush.
   const transientIdRef = useRef<string | null>(null);
+  // Synchronous mirror of the FULL current transient. Branch decisions in
+  // emit() MUST read this rather than the closured `transient` useState
+  // value: multiple emits fired in the same React batch all close over
+  // the same pre-batch `transient`, so without a ref a same-tick second
+  // emit will take `promote-immediate` and clobber a higher-priority
+  // event that was just promoted earlier in the batch. This was the
+  // root cause of the Cribbage match_win → peg_notice clobber.
+  const transientRef = useRef<ResolvedAnnouncement | null>(null);
 
   const drainDismiss = useCallback((id: string) => {
     const list = pendingDismissRef.current.get(id);
