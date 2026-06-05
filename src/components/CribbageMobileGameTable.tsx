@@ -3362,7 +3362,8 @@ export const CribbageMobileGameTable = ({
     // Ensure debug-harness cache is hydrated (see note at first init callsite).
     await ensureHarnessCacheLoaded();
     const playerIds = players.map(p => p.id);
-    const hostPlayerId = players.find(p => p.user_id === currentUserId)?.id;
+    // Canonical session host (see resolveHarnessHost.ts) — deterministic across clients.
+    const hostPlayerId = await fetchSessionHostPlayerId(gameId, players);
     const newState = initializeCribbageGame(
       playerIds,
       winnerPlayer.id,
@@ -3372,7 +3373,7 @@ export const CribbageMobileGameTable = ({
         dealerSelectionCohort: dealerSelectionCohortDerived,
         dealerResolved: true,
       },
-      hostPlayerId,
+      hostPlayerId ?? undefined,
     );
 
 
