@@ -551,6 +551,7 @@ export function CanonicalAnnouncementProvider({
         );
         if (matches) {
           transientIdRef.current = null;
+          transientRef.current = null;
           drainDismiss(id);
           queueMicrotask(promoteNextTransient);
           return null;
