@@ -677,8 +677,36 @@ export function CanonicalAnnouncementProvider({
     const a = { id: active?.id ?? null, type: active?.type ?? null };
     if (a.id !== prevActiveRef.current.id || a.type !== prevActiveRef.current.type) {
       recordAnnouncementDebugEvent('active-change', `${prevActiveRef.current.type ?? 'null'} → ${a.type ?? 'null'}`, { from: prevActiveRef.current, to: a });
+
+      // [CRIBBAGE-DOUBLE-SKUNK-TRACE] terminalEventId changes — track when celebration-tier (match_win) active id flips
+      const prevTerminalId = prevActiveRef.current.type === 'match_win' ? prevActiveRef.current.id : null;
+      const nextTerminalId = a.type === 'match_win' ? a.id : null;
+      if (prevTerminalId !== nextTerminalId) {
+        const reason =
+          prevTerminalId && !nextTerminalId ? 'cleared' :
+          !prevTerminalId && nextTerminalId ? 'set' :
+          prevTerminalId === nextTerminalId ? 'noop' :
+          'replaced';
+        recordAnnouncementDebugEvent('lifecycle', 'CRIBBAGE-DOUBLE-SKUNK-TRACE terminalEventId changed', {
+          previousId: prevTerminalId,
+          nextId: nextTerminalId,
+          reason,
+          fromType: prevActiveRef.current.type,
+          toType: a.type,
+        });
+      }
+      // [CRIBBAGE-DOUBLE-SKUNK-TRACE] dealer_configuring became active
+      if (a.type === 'dealer_configuring') {
+        recordAnnouncementDebugEvent('lifecycle', 'CRIBBAGE-DOUBLE-SKUNK-TRACE dealer_configuring interaction', {
+          stage: 'active',
+          activeId: a.id,
+          terminalEventId: nextTerminalId,
+          celebrationVisible: a.type === 'match_win',
+        });
+      }
       prevActiveRef.current = a;
     }
+
     const am = { id: ambient?.id ?? null, type: ambient?.type ?? null };
     if (am.id !== prevAmbientRef.current.id || am.type !== prevAmbientRef.current.type) {
       recordAnnouncementDebugEvent('ambient-change', `${prevAmbientRef.current.type ?? 'null'} → ${am.type ?? 'null'}`, { from: prevAmbientRef.current, to: am });
