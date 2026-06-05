@@ -74,17 +74,35 @@ const PRESETS: Record<YahtzeeSeedScenario, ScorecardPreset[]> = {
 
 /**
  * Mutates `state.playerStates` in-place, applying the scenario preset to each
- * player in turnOrder. If there are more players than presets, the last
- * preset is reused. `chance` is left open for everyone.
+ * player. If a `hostPlayerId` is provided AND present in `state.turnOrder`,
+ * preset index 0 (the advantaged "winner" preset for `clear_winner`) is
+ * applied to the host and remaining presets are applied to the other
+ * players in turnOrder. This guarantees the canonical session host is the
+ * scripted winner, identical on every client.
+ *
+ * When `hostPlayerId` is null/unresolvable, falls back to turnOrder order.
+ * `chance` is left open for everyone in all scenarios.
  */
 export function applyYahtzeeSeedScenario(
   state: YahtzeeState,
   scenario: YahtzeeSeedScenario,
+  hostPlayerId?: string | null,
 ): void {
   const presets = PRESETS[scenario];
   if (!presets || presets.length === 0) return;
 
-  state.turnOrder.forEach((pid, idx) => {
+  // Build the assignment order: host first (gets preset[0]), then others in turnOrder.
+  const ordered: string[] = [];
+  if (hostPlayerId && state.turnOrder.includes(hostPlayerId)) {
+    ordered.push(hostPlayerId);
+    for (const pid of state.turnOrder) {
+      if (pid !== hostPlayerId) ordered.push(pid);
+    }
+  } else {
+    ordered.push(...state.turnOrder);
+  }
+
+  ordered.forEach((pid, idx) => {
     const ps = state.playerStates[pid];
     if (!ps) return;
     const preset = presets[Math.min(idx, presets.length - 1)];
@@ -99,5 +117,7 @@ export function applyYahtzeeSeedScenario(
     };
   });
 
-  console.warn(`[YAHTZEE_SEED] Applied scenario "${scenario}" — chance open for all players`);
+  console.warn(
+    `[YAHTZEE_SEED] Applied scenario "${scenario}" — host=${hostPlayerId ?? '(fallback turnOrder)'}`,
+  );
 }

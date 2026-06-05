@@ -12,13 +12,14 @@ import { YahtzeeState } from "./yahtzeeTypes";
 import { logYahtzeeHandStart } from "./yahtzeeSyncDiagnostics";
 import { getYahtzeeSeedScenario } from "./debugFlags";
 import { applyYahtzeeSeedScenario } from "./yahtzeeSeedScenarios";
+import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 
 export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[YAHTZEE] 🎲 Starting round', { gameId, isFirstHand });
 
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused, current_host')
     .eq('id', gameId)
     .maybeSingle();
 
@@ -131,7 +132,7 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
   // Get active players
   const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('id, user_id, position, is_bot, chips, sitting_out, status')
+    .select('id, user_id, position, is_bot, chips, sitting_out, status, created_at')
     .eq('game_id', gameId);
 
   if (playersError) {
@@ -177,9 +178,15 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
   };
 
   // DEV-only: seed near-end scorecards for end-of-game regression testing.
+  // Advantaged player is the canonical SESSION HOST — identical on every
+  // client, never the local viewer / init-race winner.
   const seedScenario = getYahtzeeSeedScenario();
   if (seedScenario && isFirstHand) {
-    applyYahtzeeSeedScenario(initialState, seedScenario);
+    const hostPlayerId = resolveSessionHostPlayerId(
+      { current_host: (game as any)?.current_host ?? null },
+      activePlayers as any,
+    );
+    applyYahtzeeSeedScenario(initialState, seedScenario, hostPlayerId);
   }
 
   // Yahtzee doesn't collect antes — chips transfer at end based on score difference

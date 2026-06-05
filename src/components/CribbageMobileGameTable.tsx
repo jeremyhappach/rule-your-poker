@@ -13,6 +13,7 @@ import {
 } from '@/lib/cribbageGameLogic';
 import { endCribbageGame, startNextCribbageHand } from '@/lib/cribbageRoundLogic';
 import { ensureHarnessCacheLoaded } from '@/lib/debugHarness/runtimeCache';
+import { fetchSessionHostPlayerId } from '@/lib/debugHarness/resolveHarnessHost';
 import { archiveCribbageHand } from '@/lib/cribbageHandArchive';
 import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
@@ -3205,12 +3206,12 @@ export const CribbageMobileGameTable = ({
       setInitialLoadComplete(true);
       const dealerId = players.find(p => p.position === dealerPosition)?.id || players[0].id;
       const playerIds = players.map(p => p.id);
-      const hostPlayerId = players.find(p => p.user_id === currentUserId)?.id;
-      // Ensure debug-harness cache is hydrated before init so a configured
-      // harness (e.g. cribbage 'near_double_skunk') is honored on the first
-      // game after a fresh page load, instead of fail-closing to 'none'.
+      // Debug-harness target is the canonical SESSION HOST (games.current_host
+      // → earliest non-bot fallback). Identical on every client; never the
+      // local viewer / init-race winner. See resolveHarnessHost.ts.
       await ensureHarnessCacheLoaded();
-      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig, undefined, hostPlayerId);
+      const hostPlayerId = await fetchSessionHostPlayerId(gameId, players);
+      const newState = initializeCribbageGame(playerIds, dealerId, anteAmount, gameConfig, undefined, hostPlayerId ?? undefined);
 
       
       
@@ -3361,7 +3362,8 @@ export const CribbageMobileGameTable = ({
     // Ensure debug-harness cache is hydrated (see note at first init callsite).
     await ensureHarnessCacheLoaded();
     const playerIds = players.map(p => p.id);
-    const hostPlayerId = players.find(p => p.user_id === currentUserId)?.id;
+    // Canonical session host (see resolveHarnessHost.ts) — deterministic across clients.
+    const hostPlayerId = await fetchSessionHostPlayerId(gameId, players);
     const newState = initializeCribbageGame(
       playerIds,
       winnerPlayer.id,
@@ -3371,7 +3373,7 @@ export const CribbageMobileGameTable = ({
         dealerSelectionCohort: dealerSelectionCohortDerived,
         dealerResolved: true,
       },
-      hostPlayerId,
+      hostPlayerId ?? undefined,
     );
 
 
