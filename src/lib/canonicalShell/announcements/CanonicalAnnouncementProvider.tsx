@@ -637,6 +637,7 @@ export function CanonicalAnnouncementProvider({
         recordAnnouncementDebugEvent('scope-teardown', `transient ${cur.type} id=${cur.id.slice(0,8)}`, { id: cur.id, type: cur.type });
         clearTtl();
         transientIdRef.current = null;
+        transientRef.current = null;
         drainDismiss(cur.id);
         queueMicrotask(promoteNextTransient);
         return null;
