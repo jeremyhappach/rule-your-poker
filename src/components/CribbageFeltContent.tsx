@@ -122,6 +122,39 @@ export const CribbageFeltContent = ({
     (phaseForLayout === 'complete' && !!cribbageState.lastHandCount)
   ) && !isPeggingWin;
 
+  // [TERMINAL-CARD-CONTEXT AUDIT] Whenever the felt is in a terminal/complete
+  // phase, log exactly which render branch is chosen and what card data is
+  // backing it. Investigating: counting-path win rendering an 8-card pegging
+  // row instead of the frozen counting hand+combo.
+  if (phaseForLayout === 'complete') {
+    logDebugEvent({
+      gameId: 'terminal-card-context',
+      eventType: 'crib:terminal:felt_render_decision',
+      payload: {
+        feltInstanceId: feltInstanceIdRef.current,
+        phase: cribbageState.phase,
+        phaseForLayout,
+        winnerPlayerId: cribbageState.winnerPlayerId?.slice(0, 8) ?? null,
+        payoutMultiplier: cribbageState.payoutMultiplier ?? 1,
+        hasLastHandCount: !!cribbageState.lastHandCount,
+        isPeggingWin,
+        isCountingPhase,
+        showCribOnFelt,
+        playedCardsCount: cribbageState.pegging.playedCards.length,
+        playedCards: cribbageState.pegging.playedCards.map(pc => `${pc.card.rank}${pc.card.suit[0]}`),
+        sequenceStartIndex,
+        cribSize: cribbageState.crib.length,
+        cutCard: cribbageState.cutCard ? `${cribbageState.cutCard.rank}${cribbageState.cutCard.suit[0]}` : null,
+        renderBranch: isCountingPhase
+          ? 'counting (CribbageCountingPhase owns cards)'
+          : isPeggingWin
+            ? 'pegging-win (renders ALL playedCards on felt)'
+            : 'default-complete (no card row)',
+        ...buildMetaPayload(),
+      },
+    });
+  }
+
   // Show crib on felt only during discarding/cutting/pegging (or pegging win)
   const showCribOnFelt =
     cribbageState.crib.length > 0 &&
