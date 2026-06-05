@@ -389,6 +389,47 @@ export function CanonicalAnnouncementProvider({
         },
       );
 
+      // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Terminal-event candidate evaluation.
+      // Captures both the closed-over `transient` value AND the synchronous
+      // transientIdRef so we can detect stale-closure decisions: if a prior
+      // emit in the same render tick already promoted a transient via
+      // setTransient(()=>X) and stamped transientIdRef, the captured
+      // `transient` closure here will still read null and this emit will
+      // take the wrong branch (promote-immediate instead of preempt/enqueue).
+      const closureTransient = transient
+        ? { id: transient.id, type: transient.type, priority: transient.resolvedPriority }
+        : null;
+      const refTransientId = transientIdRef.current;
+      const closureRefMismatch = (closureTransient?.id ?? null) !== refTransientId;
+      const branch = transient && resolved.resolvedPriority > transient.resolvedPriority
+        ? 'preempt'
+        : !transient
+          ? 'promote-immediate'
+          : 'enqueue';
+      recordAnnouncementDebugEvent(
+        'lifecycle',
+        `DOUBLE-SKUNK-TRACE terminal-eval ${resolved.type}(${resolved.id.slice(0,8)}) pri=${resolved.resolvedPriority} branch=${branch} closure=${closureTransient?.type ?? 'null'} ref=${refTransientId?.slice(0,8) ?? 'null'} mismatch=${closureRefMismatch}`,
+        {
+          stage: 'terminal-eval',
+          candidate: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+          closureTransient,
+          refTransientId,
+          closureRefMismatch,
+          branch,
+          providerScope: currentScope,
+          eventScope: event.scope,
+          roundIdGating: {
+            providerRoundId: currentScope.roundId ?? null,
+            eventRoundId: event.scope.roundId ?? null,
+            roundIdEnforced: event.scope.roundId != null && currentScope.roundId != null,
+          },
+          queueLen: queueRef.current.length,
+          queueSummary: queueRef.current.map((q) => ({
+            id: q.id.slice(0, 8), type: q.type, priority: q.resolvedPriority,
+          })),
+        },
+      );
+
       // Preempt current transient if higher priority.
       if (transient && resolved.resolvedPriority > transient.resolvedPriority) {
         if (isYahtzeeMatchWin) {
@@ -426,7 +467,20 @@ export function CanonicalAnnouncementProvider({
         );
         drainDismiss(transient.id);
         transientIdRef.current = resolved.id;
-        setTransient(() => resolved);
+        setTransient((cur) => {
+          recordAnnouncementDebugEvent(
+            'lifecycle',
+            `DOUBLE-SKUNK-TRACE setTransient[preempt] cur=${cur?.type ?? 'null'}(${cur?.id.slice(0,8) ?? '-'}) → ${resolved.type}(${resolved.id.slice(0,8)})`,
+            {
+              stage: 'setTransient-apply', branch: 'preempt',
+              curAtUpdate: cur ? { id: cur.id, type: cur.type, priority: cur.resolvedPriority } : null,
+              closureTransient,
+              curDiffersFromClosure: !!(cur && cur.id !== (closureTransient?.id ?? null)),
+              next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+            },
+          );
+          return resolved;
+        });
         armTtl(resolved);
         return;
       }
@@ -451,11 +505,51 @@ export function CanonicalAnnouncementProvider({
           `promote-immediate ${resolved.type} id=${resolved.id.slice(0, 8)}`,
           { stage: 'promote-immediate', id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
         );
+        // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Stale-closure clobber detection.
+        // Closure says no transient, but refTransientId is set ⇒ an earlier
+        // same-tick emit already claimed the slot. This branch will overwrite
+        // it via setTransient(()=>resolved) regardless of priority.
+        if (refTransientId) {
+          recordAnnouncementDebugEvent(
+            'lifecycle',
+            `DOUBLE-SKUNK-TRACE STALE-CLOSURE-CLOBBER candidate=${resolved.type}(${resolved.id.slice(0,8)}) pri=${resolved.resolvedPriority} would-overwrite refTransientId=${refTransientId.slice(0,8)}`,
+            {
+              stage: 'stale-closure-clobber-detected',
+              candidate: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+              refTransientId,
+              closureTransientWasNull: true,
+              note: 'Closure transient=null but transientIdRef is set — earlier same-tick emit already claimed slot. Promote-immediate will clobber it.',
+            },
+          );
+        }
         transientIdRef.current = resolved.id;
-        setTransient(() => resolved);
+        setTransient((cur) => {
+          if (cur) {
+            recordAnnouncementDebugEvent(
+              'lifecycle',
+              `DOUBLE-SKUNK-TRACE setTransient[promote-immediate] CLOBBER cur=${cur.type}(${cur.id.slice(0,8)}) pri=${cur.resolvedPriority} → ${resolved.type}(${resolved.id.slice(0,8)}) pri=${resolved.resolvedPriority}`,
+              {
+                stage: 'setTransient-apply', branch: 'promote-immediate',
+                curAtUpdate: { id: cur.id, type: cur.type, priority: cur.resolvedPriority },
+                next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority },
+                priorityRegression: cur.resolvedPriority > resolved.resolvedPriority,
+                note: 'Functional updater saw a non-null transient — same-batch clobber confirmed.',
+              },
+            );
+          } else {
+            recordAnnouncementDebugEvent(
+              'lifecycle',
+              `DOUBLE-SKUNK-TRACE setTransient[promote-immediate] cur=null → ${resolved.type}(${resolved.id.slice(0,8)})`,
+              { stage: 'setTransient-apply', branch: 'promote-immediate', curAtUpdate: null,
+                next: { id: resolved.id, type: resolved.type, priority: resolved.resolvedPriority } },
+            );
+          }
+          return resolved;
+        });
         armTtl(resolved);
         return;
       }
+
 
       // Otherwise enqueue priority-desc, FIFO within tie.
       const q = queueRef.current;
