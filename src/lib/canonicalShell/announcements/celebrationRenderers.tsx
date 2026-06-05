@@ -19,6 +19,8 @@ interface MatchWinPayload {
 }
 
 const legacySkunkMountCounts = new Map<string, number>();
+const celebrationStartCounts = new Map<string, number>();
+
 
 function MatchWinCelebration({ payload, eventId }: { payload: MatchWinPayload; eventId?: string }) {
   const skunkKind = payload.skunk;
