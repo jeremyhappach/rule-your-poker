@@ -19,7 +19,7 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
 
   const { data: game, error: gameError } = await supabase
     .from('games')
-    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused')
+    .select('current_round, total_hands, pot, ante_amount, status, awaiting_next_round, dealer_position, current_game_uuid, game_type, is_paused, current_host')
     .eq('id', gameId)
     .maybeSingle();
 
