@@ -302,6 +302,29 @@ export function CanonicalAnnouncementProvider({
         priority: resolved.resolvedPriority, scope: resolved.scope,
       });
 
+      // [CRIBBAGE-DOUBLE-SKUNK-TRACE] match_win acceptance (post-scope-match)
+      if (event.type === 'match_win') {
+        recordAnnouncementDebugEvent('lifecycle', 'CRIBBAGE-DOUBLE-SKUNK-TRACE match_win accepted', {
+          eventId: event.id,
+          acceptedAt: Date.now(),
+          scope: event.scope,
+          source: (event.payload as { source?: unknown } | undefined)?.source ?? null,
+          skunk: (event.payload as { skunk?: unknown } | undefined)?.skunk ?? null,
+        });
+      }
+      // [CRIBBAGE-DOUBLE-SKUNK-TRACE] dealer_configuring interaction (emit-accepted point)
+      if (event.type === 'dealer_configuring') {
+        recordAnnouncementDebugEvent('lifecycle', 'CRIBBAGE-DOUBLE-SKUNK-TRACE dealer_configuring interaction', {
+          stage: 'emit-accepted',
+          eventId: event.id,
+          activeId: transient?.id ?? ambient?.id ?? null,
+          activeType: transient?.type ?? ambient?.type ?? null,
+          terminalEventId: (transient && transient.type === 'match_win') ? transient.id : null,
+          celebrationVisible: !!(transient && transient.type === 'match_win'),
+        });
+      }
+
+
       // ---- Ambient path: dedicated slot, replaces prior ambient. ----
       if (isAmbientBehavior(resolved.resolvedBehavior)) {
         traceAnnouncementRuntime('emit:accepted:ambient', {
