@@ -3624,7 +3624,11 @@ export const CribbageMobileGameTable = ({
     });
     setWinSequencePhase('announcement');
 
-  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, dealerGameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements, recordCribDoubleSkunkTrace, terminalEventIdFor]);
+    // NOTE: dealerGameId intentionally OMITTED from deps. It flips to null when
+    // games.current_game_uuid is cleared post-completion, which would otherwise
+    // rebuild this callback, re-run the reactive complete-state effect below,
+    // and (with a different winKey) bypass the local dedupe guard.
+  }, [players, anteAmount, currentPlayerId, roundId, isHost, gameId, currentRoundId, injectDealerMessage, currentHandNumber, announcements, recordCribDoubleSkunkTrace, terminalEventIdFor]);
 
   // Ensure pegging-phase wins still trigger the win sequence (no counting animation involved).
   useEffect(() => {
