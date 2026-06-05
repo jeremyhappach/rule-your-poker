@@ -178,9 +178,15 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
   };
 
   // DEV-only: seed near-end scorecards for end-of-game regression testing.
+  // Advantaged player is the canonical SESSION HOST — identical on every
+  // client, never the local viewer / init-race winner.
   const seedScenario = getYahtzeeSeedScenario();
   if (seedScenario && isFirstHand) {
-    applyYahtzeeSeedScenario(initialState, seedScenario);
+    const hostPlayerId = resolveSessionHostPlayerId(
+      { current_host: (game as any)?.current_host ?? null },
+      activePlayers as any,
+    );
+    applyYahtzeeSeedScenario(initialState, seedScenario, hostPlayerId);
   }
 
   // Yahtzee doesn't collect antes — chips transfer at end based on score difference
