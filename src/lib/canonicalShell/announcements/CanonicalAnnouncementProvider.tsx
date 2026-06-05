@@ -596,6 +596,7 @@ export function CanonicalAnnouncementProvider({
       setTransient((cur) => {
         if (cur && scopeMatches(cur.scope, scope)) {
           transientIdRef.current = null;
+          transientRef.current = null;
           drainDismiss(cur.id);
           queueMicrotask(promoteNextTransient);
           return null;
