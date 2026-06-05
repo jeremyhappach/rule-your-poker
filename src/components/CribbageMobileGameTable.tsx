@@ -3498,6 +3498,55 @@ export const CribbageMobileGameTable = ({
       payoutMultiplier: state.payoutMultiplier ?? 1,
       guardBlocked,
     });
+    // [TERMINAL-CARD-CONTEXT AUDIT] Capture the exact card data + lifecycle
+    // signals at the moment the win sequence fires so we can correlate with
+    // CribbageFeltContent's render branch decision downstream.
+    {
+      const liveCs = cribbageStateRef.current;
+      const countingActive = countingAnimationActiveRef.current;
+      const hasCountingSnapshot = !!countingStateSnapshot;
+      const inferredPath = countingActive || hasCountingSnapshot
+        ? (state.lastHandCount ? 'counting-complete (handleCountingComplete)' : 'counting-frozen (reactive combo-crossing)')
+        : (state.phase === 'pegging' || (state.phase === 'complete' && !state.lastHandCount && (liveCs?.phase === 'pegging')))
+          ? 'pegging-win'
+          : state.lastHandCount
+            ? 'counting-complete (post-animation)'
+            : 'fallback/unknown';
+      logDebugEvent({
+        gameId: 'terminal-card-context',
+        eventType: 'crib:terminal:winseq_card_snapshot',
+        payload: {
+          winKey,
+          terminalEventId,
+          winnerId: state.winnerPlayerId?.slice(0, 8),
+          payoutMultiplier: state.payoutMultiplier ?? 1,
+          inferredTerminalPath: inferredPath,
+          // Path discriminators
+          countingAnimationActiveRef: countingActive,
+          countingWinFrozen,
+          hasCountingSnapshot,
+          countingTargetIndex: countingStateSnapshot?.countingTargetIndex ?? null,
+          countingBeatIndex: countingStateSnapshot?.countingBeatIndex ?? null,
+          countingHandKey: countingStateSnapshot?.countingHandKey ?? null,
+          // Card data on the win-state passed to the sequence
+          statePhase: state.phase,
+          hasLastHandCount: !!state.lastHandCount,
+          peggingPlayedCardsCount: state.pegging?.playedCards?.length ?? 0,
+          peggingPlayedCards: (state.pegging?.playedCards ?? []).map(pc => `${pc.card.rank}${pc.card.suit[0]}`),
+          peggingSequenceStartIndex: state.pegging?.sequenceStartIndex ?? null,
+          cribCards: state.crib?.length ?? 0,
+          cutCard: state.cutCard ? `${state.cutCard.rank}${state.cutCard.suit[0]}` : null,
+          handSizes: Object.fromEntries(
+            Object.entries(state.playerStates).map(([pid, ps]) => [pid.slice(0, 8), ps.hand?.length ?? 0])
+          ),
+          // Comparable snapshot of live cribbageState (the one the felt actually renders from
+          // via viewState — may differ from `state`)
+          liveCsPhase: liveCs?.phase ?? null,
+          liveCsHasLastHandCount: !!liveCs?.lastHandCount,
+          liveCsPeggingCount: liveCs?.pegging?.playedCards?.length ?? 0,
+        },
+      });
+    }
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 1
     logDebugEvent({
       gameId,
