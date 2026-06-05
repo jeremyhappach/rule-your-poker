@@ -33,12 +33,59 @@ import { useAnnouncementContext } from './CanonicalAnnouncementProvider';
 import { renderCelebration } from './celebrationRenderers';
 import { isCelebrationType } from './types';
 import { recordAnnouncementDebugEvent } from './announcementDebugLog';
+import { useEffect, useRef } from 'react';
+
+const celebrationLayerMountCounts = new Map<string, number>();
+const celebrationLayerUnmountCounts = new Map<string, number>();
 
 export function CanonicalCelebrationLayer() {
   const ctx = useAnnouncementContext();
   const active = ctx?.active ?? null;
   const isCeleb = active ? isCelebrationType(active.type) : false;
   const node = active && isCeleb ? renderCelebration(active) : null;
+  const mountedEventIdRef = useRef<string | null>(null);
+
+  // [CRIBBAGE-DOUBLE-SKUNK-TRACE] CanonicalCelebrationLayer mount/unmount per eventId
+  useEffect(() => {
+    if (!active || !isCeleb || !node) {
+      if (mountedEventIdRef.current) {
+        const id = mountedEventIdRef.current;
+        const u = (celebrationLayerUnmountCounts.get(id) ?? 0) + 1;
+        celebrationLayerUnmountCounts.set(id, u);
+        recordAnnouncementDebugEvent('layer-unmount', 'CRIBBAGE-DOUBLE-SKUNK-TRACE celebration unmount', {
+          eventId: id,
+          mountCount: celebrationLayerMountCounts.get(id) ?? 0,
+          unmountCount: u,
+        });
+        mountedEventIdRef.current = null;
+      }
+      return;
+    }
+    if (mountedEventIdRef.current !== active.id) {
+      // unmount prior if any
+      if (mountedEventIdRef.current) {
+        const prev = mountedEventIdRef.current;
+        const u = (celebrationLayerUnmountCounts.get(prev) ?? 0) + 1;
+        celebrationLayerUnmountCounts.set(prev, u);
+        recordAnnouncementDebugEvent('layer-unmount', 'CRIBBAGE-DOUBLE-SKUNK-TRACE celebration unmount', {
+          eventId: prev,
+          mountCount: celebrationLayerMountCounts.get(prev) ?? 0,
+          unmountCount: u,
+        });
+      }
+      const m = (celebrationLayerMountCounts.get(active.id) ?? 0) + 1;
+      celebrationLayerMountCounts.set(active.id, m);
+      recordAnnouncementDebugEvent('layer-mount', 'CRIBBAGE-DOUBLE-SKUNK-TRACE celebration mount', {
+        eventId: active.id,
+        mountCount: m,
+        unmountCount: celebrationLayerUnmountCounts.get(active.id) ?? 0,
+        activeType: active.type,
+      });
+      mountedEventIdRef.current = active.id;
+    }
+  }, [active, isCeleb, node]);
+
+
   // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 4 — render decision
   recordAnnouncementDebugEvent('lifecycle', `CRIBBAGE-DOUBLE-SKUNK-TRACE CanonicalCelebrationLayer render decision: ${node ? 'shown' : 'null'}`, {
     activeId: active?.id ?? null,
