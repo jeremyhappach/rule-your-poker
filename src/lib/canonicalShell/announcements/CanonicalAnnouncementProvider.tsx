@@ -701,7 +701,7 @@ export function CanonicalAnnouncementProvider({
           stage: 'active',
           activeId: a.id,
           terminalEventId: nextTerminalId,
-          celebrationVisible: a.type === 'match_win',
+          celebrationVisible: false,
         });
       }
       prevActiveRef.current = a;
