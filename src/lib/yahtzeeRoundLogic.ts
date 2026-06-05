@@ -132,7 +132,7 @@ export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = f
   // Get active players
   const { data: players, error: playersError } = await supabase
     .from('players')
-    .select('id, user_id, position, is_bot, chips, sitting_out, status')
+    .select('id, user_id, position, is_bot, chips, sitting_out, status, created_at')
     .eq('game_id', gameId);
 
   if (playersError) {
