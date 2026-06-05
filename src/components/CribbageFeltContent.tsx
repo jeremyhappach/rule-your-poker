@@ -122,6 +122,12 @@ export const CribbageFeltContent = ({
     (phaseForLayout === 'complete' && !!cribbageState.lastHandCount)
   ) && !isPeggingWin;
 
+  // Show crib on felt only during discarding/cutting/pegging (or pegging win)
+  const showCribOnFelt =
+    cribbageState.crib.length > 0 &&
+    !isCountingPhase &&
+    (phaseForLayout !== 'complete' || isPeggingWin);
+
   // [TERMINAL-CARD-CONTEXT AUDIT] Whenever the felt is in a terminal/complete
   // phase, log exactly which render branch is chosen and what card data is
   // backing it. Investigating: counting-path win rendering an 8-card pegging
@@ -154,12 +160,6 @@ export const CribbageFeltContent = ({
       },
     });
   }
-
-  // Show crib on felt only during discarding/cutting/pegging (or pegging win)
-  const showCribOnFelt =
-    cribbageState.crib.length > 0 &&
-    !isCountingPhase &&
-    (phaseForLayout !== 'complete' || isPeggingWin);
 
   // During counting, show pegboard and skunk indicator - cards handled by CribbageCountingPhase
   if (isCountingPhase) {
