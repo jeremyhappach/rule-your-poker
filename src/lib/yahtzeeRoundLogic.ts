@@ -12,6 +12,7 @@ import { YahtzeeState } from "./yahtzeeTypes";
 import { logYahtzeeHandStart } from "./yahtzeeSyncDiagnostics";
 import { getYahtzeeSeedScenario } from "./debugFlags";
 import { applyYahtzeeSeedScenario } from "./yahtzeeSeedScenarios";
+import { resolveSessionHostPlayerId } from "./debugHarness/resolveHarnessHost";
 
 export async function startYahtzeeRound(gameId: string, isFirstHand: boolean = false): Promise<void> {
   console.log('[YAHTZEE] 🎲 Starting round', { gameId, isFirstHand });
