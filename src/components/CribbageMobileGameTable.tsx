@@ -1702,7 +1702,11 @@ export const CribbageMobileGameTable = ({
         ...detail,
       });
     },
-    [dealerGameId, currentRoundId, currentHandNumber],
+    // dealerGameId intentionally omitted: see winKeyFor/terminalEventIdFor comment.
+    // Including it would rebuild triggerWinSequence on completion cleanup and
+    // re-fire the reactive complete-state effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentRoundId, currentHandNumber],
   );
 
   // Event logging context - uses local tracking for proper hand transitions
