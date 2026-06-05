@@ -1679,17 +1679,27 @@ export const CribbageMobileGameTable = ({
 
   // Sync framework handles optimistic write protection — no manual timestamp needed.
 
-  // Stable guard key + terminal event id. MUST NOT include dealerGameId —
-  // after match completion `games.current_game_uuid` is cleared, which flips
-  // dealerGameId from <id> → null and would otherwise produce a second,
-  // distinct winKey / match_win event id that bypasses the local dedupe
-  // guard and re-fires the celebration overlay. The roundId-change effect
-  // (and the dealerGameId boundary reset for Run Back) handle cross-match
-  // identity rollover, so per-match identity only needs gameId + winnerId.
-  const winKeyFor = (winnerId: string) => `${gameId}:${winnerId}`;
+  // Stable guard key + terminal event id.
+  //
+  // MUST NOT include dealerGameId / current_game_uuid — those flip from
+  // <id> → null immediately after match completion (games.current_game_uuid
+  // is cleared), which would generate a second distinct key/event id and
+  // bypass both the local winSequence guard AND the provider's per-scope
+  // dedupe Set (re-firing the celebration overlay).
+  //
+  // MUST include roundId — without it, every dealer game in the same
+  // session that ends with the same winner produces an identical
+  // match_win event id, and the provider's session-scoped dedupe bucket
+  // (key = `${gameId}::null`, never cleared between dealer games) silently
+  // rejects every match_win after the first. roundId is forward-only,
+  // identifies the specific winning round, and remains stable across the
+  // post-win current_game_uuid/dealerGameId cleanup window.
+  const winKeyFor = (winnerId: string) =>
+    `${gameId}:${currentRoundId ?? 'no-round'}:${winnerId}`;
   const terminalEventIdFor = useCallback(
-    (winnerId?: string | null) => `${gameId}:match_win:${winnerId ?? 'no-winner'}`,
-    [gameId],
+    (winnerId?: string | null) =>
+      `${gameId}:${currentRoundId ?? 'no-round'}:match_win:${winnerId ?? 'no-winner'}`,
+    [gameId, currentRoundId],
   );
   const recordCribDoubleSkunkTrace = useCallback(
     (label: string, detail: Record<string, unknown> = {}) => {
