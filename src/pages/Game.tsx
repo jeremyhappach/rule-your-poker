@@ -77,6 +77,27 @@ type HighCardDealerSelectionShimProps = {
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
   useHighCardDealerSelection(props);
+
+  // P-WAIT.C5: per-render trace — fires every render of the shim so
+  // we can correlate cards-array transitions with parent re-renders
+  // and prove whether the surface ever observed an empty cards frame
+  // while still mounted (renders-but-shows-nothing) vs. unmounted.
+  const cardsLen = props.syncedState?.cards?.length ?? 0;
+  recordWaitingLifecycleIfChanged(
+    `highCardRender:${props.gameId}`,
+    'HighCardDealerSelection render',
+    {
+      gameId: props.gameId,
+      isHost: props.isHost,
+      selectionVariant: props.selectionVariant ?? 'default',
+      hasSyncedState: !!props.syncedState,
+      cardsLen,
+      winnerPosition: props.syncedState?.winnerPosition ?? null,
+      isComplete: !!props.syncedState?.isComplete,
+      hasAnnouncement: !!props.syncedState?.announcement,
+    },
+  );
+
   useEffect(() => {
     recordDealerSelectionDiag('dealer_selection_surface_mounted', {
       sessionId: props.gameId,
@@ -94,6 +115,9 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
       playerCount: props.players.length,
       eligibleCount: props.players.filter(p => !p.sitting_out && (!p.is_bot || props.allowBotDealers)).length,
       syncedCardCount: props.syncedState?.cards?.length ?? 0,
+      hasSyncedState: !!props.syncedState,
+      winnerPosition: props.syncedState?.winnerPosition ?? null,
+      isComplete: !!props.syncedState?.isComplete,
     });
     return () => {
       recordDealerSelectionDiag('dealer_selection_surface_mounted', {
@@ -105,6 +129,10 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
       });
       recordWaitingLifecycle('HighCardDealerSelection unmount', {
         gameId: props.gameId,
+        // Snapshot of last-observed sync state at teardown for cause-of-disappearance attribution.
+        lastCardsLen: props.syncedState?.cards?.length ?? 0,
+        lastWinnerPosition: props.syncedState?.winnerPosition ?? null,
+        lastIsComplete: !!props.syncedState?.isComplete,
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
