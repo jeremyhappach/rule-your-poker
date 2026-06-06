@@ -2798,6 +2798,14 @@ export const CribbageMobileGameTable = ({
         
         // Freeze the counting animation - it should stop advancing and keep cards highlighted
         setCountingWinFrozen(true);
+        // [TERMINAL-PATH] reactive combo-crossing during counting = counting win.
+        // Refine hand vs crib from the active counting target index (last target is crib).
+        {
+          const tIdx = countingStateSnapshot?.countingTargetIndex ?? null;
+          const isCribTarget = typeof tIdx === 'number' && tIdx >= 0 &&
+            tIdx === (cribbageState.turnOrder?.length ?? 0);
+          setTerminalPath(isCribTarget ? 'crib-counting' : 'hand-counting');
+        }
         
         const loserScores = Object.entries(countingScoreOverrides)
           .filter(([id]) => id !== playerId)
