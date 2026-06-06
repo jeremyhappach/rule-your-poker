@@ -129,7 +129,27 @@ export function useHighCardDealerSelection({
       componentKey: `${gameId}:${selectionVariant}`,
       playerCount: players.length,
     });
+    // Start the rAF DOM/CSS/overlay visual sampler scoped to the
+    // active high-card window. Stops on unmount below.
+    startHighCardVisualSampler({
+      gameId,
+      componentKey: `${gameId}:${selectionVariant}`,
+      renderPath: isHost ? 'host' : 'non-host',
+      selectedCardsSource: isHost ? 'local' : 'syncedState',
+      surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+      getHookState: () => ({
+        hookCardsLength: hookStateRef.current.cards.length,
+        hookCardIds: hookStateRef.current.cards.map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        ),
+        expectedCardIds: hookStateRef.current.expectedCardIds,
+        gameStatus: 'dealer_selection',
+        winnerPosition: hookStateRef.current.winnerPosition,
+        isComplete: hookStateRef.current.isComplete,
+      }),
+    });
     return () => {
+      stopHighCardVisualSampler(gameId);
       recordHighCardSurfaceUnmount({
         gameId,
         isHost,
@@ -140,6 +160,21 @@ export function useHighCardDealerSelection({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Mount only
+
+  // Mirror of latest hook state for the rAF sampler / raw recorders
+  // (refs so sampler closure does not need to re-bind each render).
+  const hookStateRef = useRef<{
+    cards: DealerSelectionCard[];
+    expectedCardIds: string[];
+    winnerPosition: number | null;
+    isComplete: boolean;
+  }>({ cards: [], expectedCardIds: [], winnerPosition: null, isComplete: false });
+  hookStateRef.current = {
+    cards: cardsForRender,
+    expectedCardIds: cardIdsForRender,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
+  };
 
   // Render-decision + cards-disappeared classifier — emits on every
   // render via signature-keyed cache inside recordHighCardRender.
