@@ -5005,6 +5005,23 @@ export const CribbageMobileGameTable = ({
         // CribbageCountingPhase has already advanced past every combo and
         // cleared highlightedCards, leaving an ambiguous hand+cut layout.
         setCountingWinFrozen(true);
+        // [TERMINAL-PATH] applyHandCountScores resolved the winner post-animation.
+        // countedState carries lastHandCount; treat as counting (hand vs crib refined
+        // by which target's score actually crossed the threshold).
+        {
+          const winner = countedState.winnerPlayerId!;
+          const cribOwner = countedState.cribOwnerPlayerId;
+          const cribAdded = countedState.lastHandCount?.cribScore?.total ?? 0;
+          const handAdded = winner === cribOwner
+            ? (countedState.lastHandCount?.dealerHandScore?.total ?? 0)
+            : (countedState.lastHandCount?.playerHandScores?.[winner]?.total ?? 0);
+          // If winner is crib owner AND the crib alone pushed them over, it's a crib-counting win.
+          const preCribScore = (countedState.playerStates[winner]?.pegScore ?? 0) - cribAdded - handAdded;
+          const crossedOnCrib = winner === cribOwner &&
+            (preCribScore + handAdded) < countedState.pointsToWin &&
+            (preCribScore + handAdded + cribAdded) >= countedState.pointsToWin;
+          setTerminalPath(crossedOnCrib ? 'crib-counting' : 'hand-counting');
+        }
         // Persist the completed state and trigger win sequence
         await updateState(countedState);
         triggerWinSequence(countedState);
