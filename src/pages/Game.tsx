@@ -560,6 +560,15 @@ function buildThreeFiveSevenSnapshot(
 // `if (!game) return null` guard without needing a React hook.
 const __bootstrapFlashDiagCache = new Map<string, string>();
 
+// Module-level stable-identity cache for the shell SeatAnchorLayer
+// roster. Lives outside the component so we can dedupe array identity
+// across renders without introducing a React hook after the
+// `if (!game) return null` early-return guard.
+const __shellSeatRosterCache = new Map<
+  string,
+  { key: string; seats: Array<{ position: number; occupied: boolean; hidden: boolean }> }
+>();
+
 // Stable per-tab mount-instance id so the persisted diag can tell
 // the two clients apart on the next repro without relying on memory.
 // Generated once per page load; survives the early-return guard.
