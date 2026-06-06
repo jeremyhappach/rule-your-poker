@@ -30,6 +30,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { SeatAnchorLayer } from './SeatAnchorLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
+import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
@@ -132,6 +133,16 @@ export function PersistentTableShell({
         device: geometry?.deviceType ?? null,
       },
     });
+    // P-WAIT.A1: first-paint marker for the Waiting → Interstitial →
+    // DealerSelection → Gameplay trace. One-shot per shell mount.
+    recordWaitingLifecycle('PersistentTableShell first paint', {
+      gameId: gameId ?? null,
+      gameType: gameType ?? null,
+      route: typeof window !== 'undefined' ? window.location.pathname : null,
+      projectionMode: projectionMode ?? null,
+      viewerPosition,
+    });
+
     return () => {
       recordShellEvent('shell-unmounted', {
         gameId: gameId ?? null,
@@ -141,6 +152,7 @@ export function PersistentTableShell({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   const body = (
     <div

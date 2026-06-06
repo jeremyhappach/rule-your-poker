@@ -1,4 +1,4 @@
-import { recordSurfaceOwnership, recordWaitingLifecycle } from "@/lib/canonicalShell/waitingTableFlight";
+import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -737,6 +737,42 @@ export const MobileGameTable = ({
       HUDOwner: 'Shell:ShellHudChrome + ShellTabBar',
     }, { instanceLabel, gameType: gameType ?? null });
   }, [isWaitingPhase, gameStatus, gameType, instanceLabel, isGameOver, gameId, players.length]);
+
+  // P-WAIT.B2: per-player chip-glyph render trace (MGT). Surface name
+  // is derived the same way as the MGT presenting emit above. Signature-
+  // keyed so we only emit when the rendered chip identity changes.
+  useEffect(() => {
+    const surface = isWaitingPhase
+      ? 'WaitingSlot'
+      : (gameStatus === 'dealer_selection' ? 'DealerSelection' : 'Gameplay');
+    const isCanonicalSeat =
+      gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'yahtzee';
+    const renderer = isCanonicalSeat ? 'CanonicalSeatCluster.chipValue' : 'ChipStack';
+    const viewerPos = (players as any[]).find(p => p.user_id === currentUserId)?.position ?? null;
+    for (const p of (players as any[])) {
+      recordWaitingLifecycleIfChanged(
+        `chipglyph:MGT:${instanceLabel}:${p.id}`,
+        'chip-glyph render',
+        {
+          surface,
+          renderer,
+          position: p.position,
+          playerId: p.id,
+          userId: p.user_id,
+          name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
+          chipValue: p.chips ?? 0,
+          variant: isCanonicalSeat ? 'status-palette' : 'plain',
+          seatAnchorSource: 'MobileGameTable (shell SeatAnchorLayer)',
+          chipAnchorSource: isCanonicalSeat ? 'CanonicalSeatCluster (slot-derived)' : 'PlayerSlot (legacy)',
+          chipStyleSource: isCanonicalSeat ? 'derivePlayerStatus → status palette' : 'ChipStack default',
+          projectionMode: null,
+          viewerPosition: viewerPos,
+          instanceLabel,
+        },
+      );
+    }
+  }, [players, isWaitingPhase, gameStatus, gameType, instanceLabel, currentUserId]);
+
 
   // Prevent screen from dimming during gameplay
   useWakeLock(true);

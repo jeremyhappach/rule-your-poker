@@ -46,6 +46,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
+import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
 
 /**
  * HighCardDealerSelection — Phase C.2 retirement shim.
@@ -86,6 +87,14 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
       presentationVisibilityState: 'mounted-empty',
       extra: { isHost: props.isHost, surface: 'HighCardDealerSelection-shim', phase: 'mount' },
     });
+    recordWaitingLifecycle('HighCardDealerSelection mount', {
+      gameId: props.gameId,
+      isHost: props.isHost,
+      selectionVariant: props.selectionVariant ?? 'default',
+      playerCount: props.players.length,
+      eligibleCount: props.players.filter(p => !p.sitting_out && (!p.is_bot || props.allowBotDealers)).length,
+      syncedCardCount: props.syncedState?.cards?.length ?? 0,
+    });
     return () => {
       recordDealerSelectionDiag('dealer_selection_surface_mounted', {
         sessionId: props.gameId,
@@ -93,6 +102,9 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
         scope: props.selectionVariant === 'cribbage' ? 'cribbage' : 'session',
         presentationVisibilityState: 'unmounted',
         extra: { surface: 'HighCardDealerSelection-shim', phase: 'unmount' },
+      });
+      recordWaitingLifecycle('HighCardDealerSelection unmount', {
+        gameId: props.gameId,
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -595,6 +607,47 @@ const Game = () => {
     totalHands: game?.total_hands ?? null,
     playersCount: players.length,
   });
+
+  // ── P-WAIT.A2/A3: Game route render + first-hydration markers ──
+  // Change-only emit (deduped by signature) on every render.
+  recordWaitingLifecycleIfChanged(
+    `gameRouteRender:${gameId ?? 'none'}`,
+    'Game route render',
+    {
+      routeGameId: gameId ?? null,
+      hasGame: !!game,
+      loading,
+      authReady,
+      status: game?.status ?? null,
+      gameType: game?.game_type ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      playersCount: players.length,
+    },
+  );
+  const _waitMountTRef = useRef<number>(0);
+  if (_waitMountTRef.current === 0 && typeof performance !== 'undefined') {
+    _waitMountTRef.current = performance.now();
+  }
+  const _waitFetchSeqRef = useRef<number>(0);
+  const _waitFirstHydratedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (_game) _waitFetchSeqRef.current += 1;
+    if (!_waitFirstHydratedRef.current && _game) {
+      _waitFirstHydratedRef.current = true;
+      recordWaitingLifecycle('game row first hydrated', {
+        gameId: _game.id ?? gameId ?? null,
+        status: _game.status ?? null,
+        gameType: _game.game_type ?? null,
+        currentGameUuid: (_game as any)?.current_game_uuid ?? null,
+        playersCount: players.length,
+        elapsedMs: typeof performance !== 'undefined'
+          ? Math.round(performance.now() - _waitMountTRef.current)
+          : null,
+        fetchSeq: _waitFetchSeqRef.current,
+      });
+    }
+  }, [_game, gameId, players.length]);
+
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
@@ -9312,6 +9365,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             from session entry, so no waiting-specific felt mounts and
             no geometry swap occurs at session start (Phase 3.1c).
             Poker-variant family keeps the legacy WaitingForPlayersTable. */}
+        {game.status === 'waiting' && (() => {
+          const shellKind = resolveShellKind(game.game_type);
+          recordWaitingLifecycleIfChanged(
+            `waitBranch:${gameId ?? 'none'}`,
+            'waiting branch decision',
+            {
+              status: game.status,
+              gameType: game.game_type ?? null,
+              shellKind,
+              branch: shellKind === 'canonical'
+                ? 'CanonicalShellWaitingSurface'
+                : 'WaitingForPlayersTable',
+              hasGame: !!game,
+              playersCount: players.length,
+            },
+          );
+          return null;
+        })()}
         {game.status === 'waiting' && resolveShellKind(game.game_type) === 'canonical' && (
           <CanonicalShellWaitingSurface
             gameId={gameId!}
@@ -9364,6 +9435,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 Bucket 3/4 of the unification initiative. */}
             {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && !_isPokerShellPersistent && (
               <>
+                <WaitingFlightMarker
+                  event="dealer-selection-bg"
+                  payload={{
+                    gameId,
+                    gameType: game.game_type ?? null,
+                    playerCount: players.length,
+                    viewerPosition: getPositionForUserId(user?.id ?? '') ?? null,
+                  }}
+                />
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="dealer-selection-bg"

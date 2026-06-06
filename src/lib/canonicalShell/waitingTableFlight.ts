@@ -142,8 +142,51 @@ export function useWaitingMount(
   }, []);
 }
 
+const miscCache = new Map<string, string>();
+
+/**
+ * Lifecycle emit that suppresses duplicates per `key`. Use for
+ * per-entity (per-seat, per-player) signature-keyed events that
+ * otherwise would fire every render.
+ */
+export function recordWaitingLifecycleIfChanged(
+  key: string,
+  event: string,
+  payload: Record<string, unknown> = {},
+) {
+  const sig = stable(payload);
+  if (miscCache.get(key) === sig) return;
+  miscCache.set(key, sig);
+  recordStartupFlight('PHASE TIMELINE', `[WAIT] ${event}`, payload);
+}
+
+/**
+ * Tiny mount/unmount marker component for use inside JSX trees where
+ * adding a useEffect to an existing component would touch unrelated
+ * code. Emits `[WAIT] {event} mount` on mount and `[WAIT] {event}
+ * unmount` on unmount. Renders nothing.
+ */
+
+export function WaitingFlightMarker({
+  event,
+  payload,
+}: {
+  event: string;
+  payload?: Record<string, unknown>;
+}) {
+  useEffect(() => {
+    recordStartupFlight('MOUNT TIMELINE', `[WAIT] ${event} mount`, payload ?? {});
+    return () => {
+      recordStartupFlight('MOUNT TIMELINE', `[WAIT] ${event} unmount`, payload ?? {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 /** Test/escape hatch to clear caches (not wired to UI). */
 export function _resetWaitingTableFlightCaches() {
   ownershipCache.clear();
   geometryCache.clear();
+  miscCache.clear();
 }

@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import {
   useWaitingMount,
   recordWaitingLifecycle,
+  recordWaitingLifecycleIfChanged,
   recordSurfaceOwnership,
   recordSurfaceGeometry,
 } from "@/lib/canonicalShell/waitingTableFlight";
@@ -248,6 +249,38 @@ function WaitingSurfaceBody({
       anchorSnapshot,
     }, { gameId });
   }, [gameId, projectionMode, byPosition, players, currentUserId]);
+
+  // P-WAIT.B1: per-seat chip-glyph render trace. Signature-keyed so we
+  // emit only when the rendered chip identity changes.
+  useEffect(() => {
+    const viewerPos = players.find(p => p.user_id === currentUserId)?.position ?? null;
+    for (const player of players) {
+      const anchor = byPosition.get(player.position);
+      if (!anchor) continue;
+      const status = derivePlayerStatus(player as any, null, { hasStayDecision: false });
+      recordWaitingLifecycleIfChanged(
+        `chipglyph:WaitingTable:${player.id}`,
+        'chip-glyph render',
+        {
+          surface: 'WaitingTable',
+          renderer: 'CanonicalSeatCluster.chipValue',
+          position: player.position,
+          slot: anchor.slot,
+          playerId: player.id,
+          userId: player.user_id,
+          name: player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player'),
+          chipValue: `$${formatChipValue(player.chips ?? 0)}`,
+          status,
+          seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+          chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
+          chipStyleSource: 'derivePlayerStatus → status palette',
+          projectionMode,
+          viewerPosition: viewerPos,
+        },
+      );
+    }
+  }, [players, byPosition, projectionMode, currentUserId]);
+
 
   const openPositions = ALL_POSITIONS.filter(
     (pos) => !players.some((p) => p.position === pos),

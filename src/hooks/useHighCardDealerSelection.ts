@@ -23,6 +23,10 @@ import { Card, createDeck, shuffleDeck, RANK_VALUES } from '@/lib/cardUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { recordDealerSelectionDiag } from '@/lib/dealerSelectionDiag';
+import {
+  recordWaitingLifecycle,
+  recordWaitingLifecycleIfChanged,
+} from '@/lib/canonicalShell/waitingTableFlight';
 
 interface Player {
   id: string;
@@ -181,9 +185,23 @@ export function useHighCardDealerSelection({
 
   // NON-HOST: react to synced state from database
   const nonHostCardsSeenRef = useRef(false);
+  const lastCardsLenRef = useRef<number>(0);
+  const lastWinnerRef = useRef<number | null>(null);
   useEffect(() => {
     if (isHost) return;
     if (!syncedState) return;
+
+    // P-WAIT.C2: receive-frame trace (every synced-state delivery on non-host).
+    recordWaitingLifecycle('high-card receive frame', {
+      gameId,
+      viewerSide: 'non-host',
+      cardsLength: syncedState.cards?.length ?? 0,
+      isComplete: !!syncedState.isComplete,
+      winnerPosition: syncedState.winnerPosition ?? null,
+      hasAnnouncement: !!syncedState.announcement,
+      stateVersion: null,
+      updatedAt: Date.now(),
+    });
 
     recordDealerSelectionDiag('dealer_selection_state_published', {
       sessionId: gameId,
@@ -205,11 +223,55 @@ export function useHighCardDealerSelection({
     }
 
     lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
+
+    // P-WAIT.C4: cards-change tracing for non-host receive path.
+    const prevLen = lastCardsLenRef.current;
+    const nextLen = syncedState.cards?.length ?? 0;
+    if (prevLen !== nextLen) {
+      recordWaitingLifecycle('high-card cards-change', {
+        gameId,
+        previousLength: prevLen,
+        nextLength: nextLen,
+        positions: (syncedState.cards ?? []).map(c => c.position),
+        source: 'non-host-receive',
+        viewerPosition: null,
+        gameStatus: 'dealer_selection',
+      });
+      if (prevLen === 0 && nextLen > 0) {
+        recordWaitingLifecycle('high-card card-reveal', {
+          gameId, source: 'non-host-receive', cardsLength: nextLen,
+        });
+      } else if (prevLen > 0 && nextLen === 0) {
+        recordWaitingLifecycle('high-card card-hide', {
+          gameId, source: 'non-host-receive', cardsLength: nextLen,
+        });
+      }
+      lastCardsLenRef.current = nextLen;
+    }
+
     onCardsUpdate(syncedState.cards);
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
+    if (syncedState.winnerPosition !== null && lastWinnerRef.current !== syncedState.winnerPosition) {
+      lastWinnerRef.current = syncedState.winnerPosition;
+      recordWaitingLifecycle('high-card winner-determined', {
+        gameId,
+        winnerPosition: syncedState.winnerPosition,
+        round: null,
+        viewerSide: 'non-host',
+        cardsLength: nextLen,
+      });
+    }
+
     if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
+      recordWaitingLifecycle('high-card dealer-selected', {
+        gameId,
+        winnerPosition: syncedState.winnerPosition,
+        viewerSide: 'non-host',
+        cardsLength: nextLen,
+        isComplete: true,
+      });
     }
   }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate, gameId, selectionVariant]);
 
@@ -268,6 +330,34 @@ export function useHighCardDealerSelection({
           ...existingCards.filter((c) => c.roundNumber !== roundNum),
           ...newCards,
         ];
+
+        // P-WAIT.C3 + C4: card-deal + cards-change (host side).
+        const prevHostLen = lastCardsLenRef.current;
+        recordWaitingLifecycle('high-card card-deal', {
+          gameId,
+          round: roundNum,
+          dealt: newCards.length,
+          totalCards: allCards.length,
+          positions: newCards.map(c => c.position),
+          isHost: true,
+        });
+        if (prevHostLen !== allCards.length) {
+          recordWaitingLifecycle('high-card cards-change', {
+            gameId,
+            previousLength: prevHostLen,
+            nextLength: allCards.length,
+            positions: allCards.map(c => c.position),
+            source: 'host-deal',
+            viewerPosition: null,
+            gameStatus: 'dealer_selection',
+          });
+          if (prevHostLen === 0 && allCards.length > 0) {
+            recordWaitingLifecycle('high-card card-reveal', {
+              gameId, source: 'host-deal', cardsLength: allCards.length,
+            });
+          }
+          lastCardsLenRef.current = allCards.length;
+        }
 
         onCardsUpdate(allCards);
 
@@ -344,6 +434,14 @@ export function useHighCardDealerSelection({
 
           onWinnerPositionUpdate?.(winnerPlayer.position);
 
+          recordWaitingLifecycle('high-card winner-determined', {
+            gameId,
+            winnerPosition: winnerPlayer.position,
+            round: roundNum,
+            viewerSide: 'host',
+            cardsLength: updatedCards.length,
+          });
+
           syncToDatabase({
             cards: updatedCards,
             announcement: winAnnouncement,
@@ -363,6 +461,13 @@ export function useHighCardDealerSelection({
           });
 
           addTimeout(() => {
+            recordWaitingLifecycle('high-card dealer-selected', {
+              gameId,
+              winnerPosition: winnerPlayer.position,
+              viewerSide: 'host',
+              cardsLength: updatedCards.length,
+              isComplete: true,
+            });
             onComplete(winnerPlayer.position);
           }, WINNER_ANNOUNCE_DELAY);
         }
@@ -462,6 +567,14 @@ export function useHighCardDealerSelection({
       cardCount: 0,
       scope: isCribbageVariant ? 'cribbage' : 'session',
       extra: { eligibleDealers: eligibleDealers.length },
+    });
+
+    recordWaitingLifecycle('high-card-start', {
+      gameId,
+      isHost,
+      eligibleCount: eligibleDealers.length,
+      viewerPosition: null,
+      playerCount: players.length,
     });
 
     runSelectionRound(eligibleDealers, 1, []);
