@@ -472,6 +472,10 @@ export interface PlayerVisualSnapshot {
   chipStyleSource?: string | null;
   chipVariant?: string | null;
   chipValue?: string | number | null;
+  /** DOM coordinates of the chip element (when locatable). */
+  chipDOMSelector?: string | null;
+  chipRect?: Record<string, number> | null;
+  chipComputedStyle?: Record<string, string> | null;
   status?: string | null;
   projectionMode?: string | null;
   isViewerSelf?: boolean | null;
@@ -488,6 +492,7 @@ function _diffSnapshots(a: PlayerVisualSnapshot, b: PlayerVisualSnapshot) {
     'seatAnchorSource', 'seatAnchorCoordinates',
     'chipAnchorSource', 'chipAnchorCoordinates',
     'chipRenderer', 'chipStyleSource', 'chipVariant', 'chipValue',
+    'chipDOMSelector', 'chipRect', 'chipComputedStyle',
     'status', 'projectionMode', 'isViewerSelf', 'isSuppressed', 'suppressionReason',
   ];
   const delta: Record<string, { from: unknown; to: unknown }> = {};
