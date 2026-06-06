@@ -99,4 +99,20 @@ const App = () => {
   );
 };
 
+/**
+ * Legacy debug panels (Announcement Debug + Startup Flight Recorder) are
+ * kept intact but hidden while the Wartime Debug Framework is enabled.
+ * Toggle Wartime Debug from Admin Settings to switch surfaces.
+ */
+function LegacyDebugPanels() {
+  const wartimeEnabled = useWartimeEnabled();
+  if (wartimeEnabled) return null;
+  return (
+    <>
+      <AnnouncementDebugPanel />
+      <StartupFlightRecorderOverlay />
+    </>
+  );
+}
+
 export default App;
