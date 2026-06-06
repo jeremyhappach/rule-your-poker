@@ -31,7 +31,14 @@ import {
   recordHighCardSurfaceMount,
   recordHighCardSurfaceUnmount,
   recordHighCardRender,
+  recordHighCardStateRaw,
+  recordHighCardRenderRaw,
+  recordHighCardTimer,
 } from '@/lib/wartimeDebug/surfaces';
+import {
+  startHighCardVisualSampler,
+  stopHighCardVisualSampler,
+} from '@/lib/wartimeDebug/highCardVisualSampler';
 
 interface Player {
   id: string;
