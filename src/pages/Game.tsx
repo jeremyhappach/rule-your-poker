@@ -11034,6 +11034,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _shellRoutedGameType =
     _routeShellGameType ?? (_isPokerShellPersistent ? 'holm-game' : null);
   const shellCanonicalFamily = isCanonicalShellFamily(_shellRoutedGameType);
+  // P0 (chip/seat continuity fix): the shell-owned SeatAnchorLayer must
+  // also mount during fresh-waiting (no committed game_type) AND during
+  // any configuring context that renders CanonicalShellWaitingSurface
+  // / canonical interstitial surfaces. Those surfaces consume
+  // useSeatAnchorsOptional() and explicitly record
+  // `contract-violation.missing-seat-anchor-provider` when ambient is
+  // null. Previously the gate was scoped to `shellCanonicalFamily`
+  // (which needs a real game_type), so a fresh-waiting session entered
+  // the canonical waiting surface without an anchor provider above it.
+  const shellAnchorEligible =
+    shellCanonicalFamily || _isFreshWaitingNoFamily || _isConfiguringContext;
   // P0 (chip-continuity fix): include `waiting` players in the shell-
   // owned anchor roster. Waiting players have an authoritative seat
   // position (they're joined; the hand simply hasn't committed them)
@@ -11045,18 +11056,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // sitting_out is still excluded — sitting_out is a gameplay-state
   // signal and the gameplay surfaces deliberately render them
   // separately. observer / left are excluded as before (no seat).
-  // Stable-identity shell seat roster. The surrounding block lives
-  // after the `if (!game) return null` early-return above, so we
-  // CANNOT introduce React hooks here (useMemo/useRef would cause
-  // hook-count mismatches between the pre- and post-hydration
-  // renders — see the inline comment further down). Instead we cache
-  // the last-built array on a module-level Map keyed by gameId, and
-  // reuse it whenever the sorted seat-roster signature is unchanged.
-  // This prevents `players` reference churn from re-creating a fresh
-  // seats array identity on every render, which would otherwise
-  // re-fire the shell SeatAnchorLayer geometry pass and any
-  // downstream effect that depends on `shellEligibleSeats`.
-  const _shellSeatRosterKey = shellCanonicalFamily
+  // Stable-identity shell seat roster (see hook-rule note below).
+  const _shellSeatRosterKey = shellAnchorEligible
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
         .map(p => p.position)
@@ -11064,7 +11065,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .join(',')
     : '';
   let shellEligibleSeats: Array<{ position: number; occupied: boolean; hidden: boolean }> | undefined;
-  if (shellCanonicalFamily && gameId) {
+  if (shellAnchorEligible && gameId) {
     const cached = __shellSeatRosterCache.get(gameId);
     if (cached && cached.key === _shellSeatRosterKey) {
       shellEligibleSeats = cached.seats;
@@ -11085,9 +11086,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     && currentPlayer.status !== 'left'
     && !currentPlayer.sitting_out;
   const shellViewerPosition = isViewerSeated ? (currentPlayer?.position ?? null) : null;
-  const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellCanonicalFamily
+  const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellAnchorEligible
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
     : undefined;
+
 
 
   // PR-B.3 instrumentation: hand-1 bootstrap flash diagnostic.

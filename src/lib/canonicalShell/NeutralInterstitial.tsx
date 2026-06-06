@@ -308,6 +308,12 @@ export function NeutralInterstitial({
   }, [hasParticipants, ambient == null]);
   const projectionMode = ambient?.projectionMode ?? (isViewerSeated ? 'active-canonical' : 'observer-absolute');
   const viewerPosition = ambient?.viewerPosition ?? (isViewerSeated ? viewer!.position : null);
+  // Runtime provider probe — replaces hard-coded 'SHELL' literal so
+  // traces report actual ambient-provider presence.
+  const seatAnchorSourceLabel = ambient == null
+    ? 'NONE (no ambient SeatAnchorLayer)'
+    : 'SHELL (PersistentTableShell.SeatAnchorLayer)';
+
 
 
   // P-WAIT.B3: per-participant chip-glyph render trace (Interstitial).
@@ -326,7 +332,7 @@ export function NeutralInterstitial({
           userId: p.user_id,
           name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
           chipValue: `$${formatChipValue(p.chips ?? 0)}`,
-          seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
+          seatAnchorSource: seatAnchorSourceLabel,
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipStyleSource: 'derivePlayerStatus → status palette',
           projectionMode,
@@ -345,7 +351,7 @@ export function NeutralInterstitial({
         viewerPosition: viewerPos,
         logicalSeat: p.position,
         renderedSeatSlot: null,
-        seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
+        seatAnchorSource: seatAnchorSourceLabel,
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatClusterDeferred',
         chipStyleSource: 'derivePlayerStatus → status palette',
