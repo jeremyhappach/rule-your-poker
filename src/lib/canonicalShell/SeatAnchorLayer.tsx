@@ -84,6 +84,13 @@ export function SeatAnchorLayer({
     [seats],
   );
 
+  // Stable per-mount provider id so cross-surface diffs can tell
+  // whether the same provider survived a surface transition.
+  const providerInstanceIdRef = useRef<string>('');
+  if (!providerInstanceIdRef.current) {
+    providerInstanceIdRef.current = `seat-anchor-${++_seatAnchorProviderSeq}`;
+  }
+
   const value = useMemo<SeatAnchorContextValue>(() => {
     const anchors = resolveSeatAnchors({
       projectionMode,
@@ -93,7 +100,13 @@ export function SeatAnchorLayer({
       gameType,
     });
     const byPosition = new Map(anchors.map(a => [a.position, a]));
-    return { projectionMode, viewerPosition, anchors, byPosition };
+    return {
+      projectionMode,
+      viewerPosition,
+      anchors,
+      byPosition,
+      providerInstanceId: providerInstanceIdRef.current,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectionMode, viewerPosition, seatKey, gameId, gameType]);
 
