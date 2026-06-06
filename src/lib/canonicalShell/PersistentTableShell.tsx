@@ -132,6 +132,22 @@ export function PersistentTableShell({
         device: geometry?.deviceType ?? null,
       },
     });
+    // P-WAIT.A1: first-paint marker for the Waiting → Interstitial →
+    // DealerSelection → Gameplay trace. One-shot per shell mount.
+    try {
+      // dynamic import to avoid a hard module dependency cycle.
+      // waitingTableFlight has zero side-effects beyond recorder calls.
+      const { recordWaitingLifecycle } = require('./waitingTableFlight') as typeof import('./waitingTableFlight');
+      recordWaitingLifecycle('PersistentTableShell first paint', {
+        gameId: gameId ?? null,
+        gameType: gameType ?? null,
+        route: typeof window !== 'undefined' ? window.location.pathname : null,
+        projectionMode: projectionMode ?? null,
+        viewerPosition,
+      });
+    } catch {
+      // recorder is best-effort; never break shell mount on telemetry.
+    }
     return () => {
       recordShellEvent('shell-unmounted', {
         gameId: gameId ?? null,
@@ -141,6 +157,7 @@ export function PersistentTableShell({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   const body = (
     <div
