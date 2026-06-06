@@ -225,7 +225,7 @@ export function StartupFlightRecorderOverlay() {
           className="min-w-0 flex-1 text-left"
         >
           <div className="text-xs font-semibold">
-            {expanded ? '▼' : '▶'} STARTUP FLIGHT RECORDER ({snapshot.length})
+            {expanded ? '▼' : '▶'} STARTUP FLIGHT RECORDER ({snapshot.length} / {MAX_EVENTS})
           </div>
           {expanded ? (
             <div className="text-[10px] text-muted-foreground">visible, selectable, copyable · temporary</div>
