@@ -5856,7 +5856,9 @@ export const MobileGameTable = ({
                             )}
                           />
                         </div>
-                      ))}
+                        );
+                      })}
+
                     </div>
                     {/* Player name badge removed per user request - cards placed directly over chip stack */}
                   </div>
