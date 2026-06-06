@@ -11,6 +11,8 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import {
   WARTIME_CATEGORIES,
+  buildWartimeExportJson,
+  buildWartimeExportText,
   clearWartimeEvents,
   formatWartimeEventsAsText,
   getWartimeEvents,
