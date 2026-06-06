@@ -40,6 +40,7 @@ import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { recordStartupFlight, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { useWaitingMount, recordWaitingLifecycle } from './waitingTableFlight';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -131,6 +132,7 @@ export function PlayfieldSlotController({
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
+  useWaitingMount('PlayfieldSlotController', { gameId: gameId ?? null });
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
   useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
   // Hook-free input-prop transition logging (no new hooks; safe at render).
@@ -228,6 +230,11 @@ export function PlayfieldSlotController({
         dealerGameId: desiredIdentity?.dealerGameId?.slice(0, 8) ?? null,
         readinessScope: readinessScope?.slice(0, 8) ?? null,
       });
+      recordWaitingLifecycle('PSC phase change', {
+        from: lastPhaseRef.current ?? '(init)', to: phase,
+        mounted, desired, neutralReason, readyToMount, surfaceReady,
+        gameId: gameId ?? null,
+      });
       if (phase === 'neutral' && lastPhaseRef.current !== 'neutral') {
         recordShellLifecycleEvent('neutral-shown', `reason=${neutralReason}`, {
           from: lastPhaseRef.current, mounted, desired,
@@ -242,6 +249,10 @@ export function PlayfieldSlotController({
     if (lastMountedRef.current !== mounted) {
       recordShellLifecycleEvent('slot-phase', `mountedIdentity ${lastMountedRef.current ?? '(init)'} → ${mounted}`, {
         phase, desired,
+      });
+      recordWaitingLifecycle('PSC mountedIdentity change', {
+        from: lastMountedRef.current ?? '(init)', to: mounted, phase, desired,
+        gameId: gameId ?? null,
       });
       lastMountedRef.current = mounted;
     }
@@ -258,7 +269,7 @@ export function PlayfieldSlotController({
       });
       lastReasonRef.current = neutralReason;
     }
-  }, [phase, mountedIdentity, desiredIdentity, readyToMount, surfaceReady, readyToMountProp, neutralReason, readinessScope]);
+  }, [phase, mountedIdentity, desiredIdentity, readyToMount, surfaceReady, readyToMountProp, neutralReason, readinessScope, gameId]);
 
 
   // Helper: attempt to promote neutral → active iff dwell elapsed AND

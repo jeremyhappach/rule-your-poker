@@ -12,6 +12,11 @@ import { PerfSession } from "@/lib/perf";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import {
+  useWaitingMount,
+  recordWaitingLifecycle,
+  recordSurfaceOwnership,
+} from "@/lib/canonicalShell/waitingTableFlight";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -113,6 +118,29 @@ export const WaitingForPlayersTable = ({
   const gameStartTriggeredRef = useRef(false);
   const previousPlayerCountRef = useRef(0);
   const [isAddingBot, setIsAddingBot] = useState(false);
+
+  // ── Waiting-table flight recorder (instrumentation only) ────────
+  useWaitingMount('WaitingTable', {
+    impl: 'WaitingForPlayersTable',
+    gameId,
+    playerCount: players.length,
+  });
+  useEffect(() => {
+    recordWaitingLifecycle('WaitingTable ready (poker-variant)', {
+      gameId,
+      playerCount: players.length,
+      seatedCount: players.filter(p => p.position != null).length,
+      realMoney,
+    });
+    recordSurfaceOwnership('WaitingTable', {
+      SeatOwner: 'Shell:MobileGameTable seat clusters',
+      ChipOwner: 'Shell:MobileGameTable ChipStack',
+      ControlOwner: 'Slot:WaitingForPlayersTable (Invite/AddBot/Start)',
+      AnnouncementOwner: 'Shell:CanonicalAnnouncementProvider rail',
+      HUDOwner: 'Shell:ShellTabBar via MobileGameTable',
+    }, { gameId, impl: 'WaitingForPlayersTable' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const playersRef = useRef<Player[]>(players);
   useEffect(() => {
