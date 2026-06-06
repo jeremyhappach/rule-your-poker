@@ -232,7 +232,7 @@ export function NeutralInterstitial({
     });
     recordSurfaceOwnership('NeutralInterstitial', {
       SeatOwner: participants?.length
-        ? 'Slot:NeutralInterstitial.SeatAnchorLayer(LOCAL) → CanonicalSeatClusterDeferred'
+        ? 'Shell:PersistentTableShell.SeatAnchorLayer → CanonicalSeatClusterDeferred'
         : '(none — no participants prop)',
       ChipOwner: participants?.length ? 'CanonicalSeatCluster.chipValue' : '(none)',
       ControlOwner: '(none — neutral interstitial owns no controls)',
@@ -325,7 +325,7 @@ export function NeutralInterstitial({
           userId: p.user_id,
           name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
           chipValue: `$${formatChipValue(p.chips ?? 0)}`,
-          seatAnchorSource: 'NeutralInterstitial.SeatAnchorLayer (LOCAL)',
+          seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipStyleSource: 'derivePlayerStatus → status palette',
           projectionMode,
@@ -344,7 +344,7 @@ export function NeutralInterstitial({
         viewerPosition: viewerPos,
         logicalSeat: p.position,
         renderedSeatSlot: null,
-        seatAnchorSource: 'NeutralInterstitial.SeatAnchorLayer (LOCAL)',
+        seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatClusterDeferred',
         chipStyleSource: 'derivePlayerStatus → status palette',
