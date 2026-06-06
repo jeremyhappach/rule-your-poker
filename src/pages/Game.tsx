@@ -3772,7 +3772,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset isRunningItBack so it re-computes on next ante_decision phase
       setIsRunningItBack(null);
     }
-  }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
+  }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user?.id, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
