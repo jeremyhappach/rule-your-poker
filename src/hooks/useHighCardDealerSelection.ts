@@ -178,9 +178,12 @@ export function useHighCardDealerSelection({
         sourceSurface: 'useHighCardDealerSelection',
         componentKey: `${gameId}:${selectionVariant}`,
       });
+      resetHighCardVisibleRendererCache(gameId);
+      resetHighCardPhaseCache(gameId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Mount only
+
 
   // Mirror of latest hook state for the rAF sampler / raw recorders
   // (refs so sampler closure does not need to re-bind each render).
