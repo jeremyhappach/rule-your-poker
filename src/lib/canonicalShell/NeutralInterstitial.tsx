@@ -214,32 +214,8 @@ export function NeutralInterstitial({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // P-WAIT.B3: per-participant chip-glyph render trace (Interstitial).
-  useEffect(() => {
-    if (!participants || participants.length === 0) return;
-    const viewerPos = participants.find(p => p.user_id === currentUserId)?.position ?? null;
-    for (const p of participants) {
-      recordWaitingLifecycleIfChanged(
-        `chipglyph:NeutralInterstitial:${p.id}`,
-        'chip-glyph render',
-        {
-          surface: 'NeutralInterstitial',
-          renderer: 'CanonicalSeatCluster.chipValue',
-          position: p.position,
-          playerId: p.id,
-          userId: p.user_id,
-          name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
-          chipValue: `$${formatChipValue(p.chips ?? 0)}`,
-          seatAnchorSource: 'NeutralInterstitial.SeatAnchorLayer (LOCAL)',
-          chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
-          chipStyleSource: 'derivePlayerStatus → status palette',
-          projectionMode,
-          viewerPosition: viewerPos,
-          instanceLabel: 'NeutralInterstitial',
-        },
-      );
-    }
-  }, [participants, projectionMode, currentUserId]);
+
+
 
 
   // Slot frame ownership: PlayfieldSlotController owns the outer
