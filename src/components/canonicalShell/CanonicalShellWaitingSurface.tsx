@@ -95,45 +95,19 @@ const SHELL_TABLE_REGION_HEIGHT = "var(--shell-felt-h)";
 export function CanonicalShellWaitingSurface(
   props: CanonicalShellWaitingSurfaceProps,
 ) {
-  // Derive projection inputs once so the local SeatAnchorLayer mount
-  // gets the same canonical inputs every gameplay surface uses.
-  const { players, currentUserId, gameId, gameType } = props;
-  const viewer = players.find((p) => p.user_id === currentUserId);
-  const isViewerSeated = !!viewer;
-  const projectionMode = isViewerSeated
-    ? "active-canonical"
-    : "observer-absolute";
-  const viewerPosition = isViewerSeated ? viewer!.position : null;
-
-  // Roster fed to the canonical resolver. Waiting players ARE seated
-  // for projection purposes — they're at their authoritative position
-  // even though the hand hasn't committed them yet. This matches the
-  // perspective semantics the user sees during gameplay: the viewer's
-  // own seat is HOME (-1), others remap by clockwise distance.
-  const seatInputs = useMemo(
-    () =>
-      players.map((p) => ({
-        position: p.position,
-        occupied: true,
-        hidden: false,
-      })),
-    [players],
-  );
-
-  return (
-    <SeatAnchorLayer
-      projectionMode={projectionMode}
-      viewerPosition={viewerPosition}
-      seats={seatInputs}
-      gameId={gameId}
-      gameType={gameType ?? undefined}
-    >
-      <WaitingSurfaceBody {...props} />
-    </SeatAnchorLayer>
-  );
+  // P0 (chip-continuity fix): canonical pre-session surfaces consume
+  // the SHELL-OWNED SeatAnchorLayer mounted in PersistentTableShell
+  // via Game.tsx. The previous local SeatAnchorLayer wrap forked seat
+  // identity from NeutralInterstitial — every slot transition
+  // remounted the provider and reinitialized CanonicalSeatCluster,
+  // which read as a visible chip jump. There is no local fallback:
+  // missing ambient provider is a shell wiring contract violation and
+  // is recorded as such for diagnosis.
+  return <WaitingSurfaceBody {...props} />;
 }
 
 function WaitingSurfaceBody({
+
   gameId,
   gameType,
   anteAmount = 0,
