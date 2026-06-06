@@ -9424,6 +9424,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 Bucket 3/4 of the unification initiative. */}
             {game.status === 'dealer_selection' && !isCanonicalSeatConsumer(game.game_type) && !_isPokerShellPersistent && (
               <>
+                <WaitingFlightMarker
+                  event="dealer-selection-bg"
+                  payload={{
+                    gameId,
+                    gameType: game.game_type ?? null,
+                    playerCount: players.length,
+                    viewerPosition: getPositionForUserId(user?.id ?? '') ?? null,
+                  }}
+                />
                 {/* Show game table as background during dealer selection (non-canonical-seat-consumer families). */}
                 <MobileGameTable key={gameId ?? 'unknown-game'}
                     instanceLabel="dealer-selection-bg"
