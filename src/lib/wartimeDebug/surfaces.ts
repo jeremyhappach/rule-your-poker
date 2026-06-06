@@ -496,10 +496,10 @@ const _playerLastSurface = new Map<string, string>();                   // playe
 function _diffSnapshots(a: PlayerVisualSnapshot, b: PlayerVisualSnapshot) {
   const keys: (keyof PlayerVisualSnapshot)[] = [
     'position', 'viewerPosition', 'logicalSeat', 'renderedSeatSlot',
-    'seatAnchorSource', 'seatAnchorCoordinates',
+    'seatAnchorSource', 'seatAnchorCoordinates', 'anchorProviderInstanceId',
     'chipAnchorSource', 'chipAnchorCoordinates',
     'chipRenderer', 'chipStyleSource', 'chipVariant', 'chipValue',
-    'chipDOMSelector', 'chipRect', 'chipComputedStyle',
+    'chipDOMSelector', 'chipRect', 'chipComputedStyle', 'domAncestry',
     'status', 'projectionMode', 'isViewerSelf', 'isSuppressed', 'suppressionReason',
   ];
   const delta: Record<string, { from: unknown; to: unknown }> = {};
