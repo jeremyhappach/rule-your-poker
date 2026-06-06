@@ -148,10 +148,25 @@ function WaitingSurfaceBody({
     onRejoinRequested: onBotAdded,
   });
 
-  // Canonical seat resolver — same one every gameplay surface reads.
-  // We never recompute slot math here; we read what the shell-owned
-  // layer resolved.
-  const { byPosition, projectionMode } = useSeatAnchors();
+  // Canonical seat resolver — shell-owned (PersistentTableShell).
+  // No local provider; contract violation is recorded if missing so
+  // wiring failures surface in Wartime instead of silently rendering
+  // empty seats.
+  const ambient = useSeatAnchorsOptional();
+  useEffect(() => {
+    if (!ambient) {
+      recordWartime('SEATING', 'contract-violation.missing-seat-anchor-provider', {
+        surface: 'CanonicalShellWaitingSurface',
+        gameId,
+        gameType,
+        hint: 'shell SeatAnchorLayer not mounted above this surface',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ambient == null]);
+  const byPosition = ambient?.byPosition ?? new Map();
+  const projectionMode = ambient?.projectionMode ?? 'observer-absolute';
+
 
   // Host pip discrimination — host is the earliest-joined human (same
   // rule as `useWaitingRoomActions`). We surface it through the
