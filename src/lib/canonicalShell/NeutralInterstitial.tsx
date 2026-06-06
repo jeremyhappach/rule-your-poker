@@ -286,19 +286,28 @@ export function NeutralInterstitial({
     ? participants!.find(p => p.user_id === currentUserId)
     : undefined;
   const isViewerSeated = !!viewer;
-  const projectionMode = isViewerSeated ? 'active-canonical' : 'observer-absolute';
-  const viewerPosition = isViewerSeated ? viewer!.position : null;
-  const seatInputs = useMemo(
-    () =>
-      hasParticipants
-        ? participants!.map(p => ({
-            position: p.position,
-            occupied: true,
-            hidden: false,
-          }))
-        : [],
-    [hasParticipants, participants],
-  );
+  // P0 (chip-continuity fix): consume the SHELL-OWNED SeatAnchorLayer
+  // mounted in PersistentTableShell via Game.tsx. The previous local
+  // SeatAnchorLayer wrap forked seat identity from WaitingTable so
+  // every slot transition remounted the provider and reinitialized
+  // CanonicalSeatCluster — read as a visible chip jump. No local
+  // fallback: missing ambient provider is a wiring contract violation
+  // and is recorded for diagnosis.
+  const ambient = useSeatAnchorsOptional();
+  useEffect(() => {
+    if (hasParticipants && !ambient) {
+      recordWartime('SEATING', 'contract-violation.missing-seat-anchor-provider', {
+        surface: 'NeutralInterstitial',
+        gameId: gameId ?? null,
+        gameType: participantGameType ?? null,
+        hint: 'shell SeatAnchorLayer not mounted above this surface',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasParticipants, ambient == null]);
+  const projectionMode = ambient?.projectionMode ?? (isViewerSeated ? 'active-canonical' : 'observer-absolute');
+  const viewerPosition = ambient?.viewerPosition ?? (isViewerSeated ? viewer!.position : null);
+
 
   // P-WAIT.B3: per-participant chip-glyph render trace (Interstitial).
   useEffect(() => {
