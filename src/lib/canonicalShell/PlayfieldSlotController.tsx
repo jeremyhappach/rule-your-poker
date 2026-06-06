@@ -44,7 +44,6 @@ import { useWaitingMount, recordWaitingLifecycle } from './waitingTableFlight';
 import {
   useWartimeSurface,
   useWartimeState,
-  useWartimeRender,
 } from '@/lib/wartimeDebug/surfaces';
 
 export interface PlayfieldSlotControllerProps {
