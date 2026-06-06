@@ -34,6 +34,7 @@ import {
   useWartimeState,
   useWartimeRender,
   useWartimeOwnership,
+  recordPlayerVisualSnapshot,
 } from '@/lib/wartimeDebug/surfaces';
 
 /**
@@ -320,8 +321,31 @@ export function NeutralInterstitial({
           instanceLabel: 'NeutralInterstitial',
         },
       );
+      // Wartime: cross-surface visual snapshot (auto-diffs vs WaitingTable
+      // / DealerSelection snapshots for the same playerId).
+      recordPlayerVisualSnapshot({
+        surface: 'NeutralInterstitial',
+        playerId: p.id,
+        userId: p.user_id,
+        position: p.position,
+        viewerPosition: viewerPos,
+        logicalSeat: p.position,
+        renderedSeatSlot: null,
+        seatAnchorSource: 'NeutralInterstitial.SeatAnchorLayer (LOCAL)',
+        chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
+        chipRenderer: 'CanonicalSeatClusterDeferred',
+        chipStyleSource: 'derivePlayerStatus → status palette',
+        chipVariant: 'interstitial',
+        chipValue: `$${formatChipValue(p.chips ?? 0)}`,
+        status: null,
+        projectionMode,
+        isViewerSelf: p.user_id === currentUserId,
+        isSuppressed: p.user_id === currentUserId,
+        suppressionReason: p.user_id === currentUserId ? 'self-HOME' : null,
+      });
     }
   }, [participants, projectionMode, currentUserId]);
+
 
 
   const seatLayer = hasParticipants ? (

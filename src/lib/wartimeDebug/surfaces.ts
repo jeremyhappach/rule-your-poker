@@ -441,3 +441,209 @@ const KNOWN_SURFACES: Array<[string, CoverageCategory[]]> = [
   ['HighCardRender', []],
 ];
 for (const [s, cats] of KNOWN_SURFACES) declareWartimeSurface(s, cats);
+
+// =========================================================================
+// PlayerVisualSnapshot — cross-surface per-player diff engine.
+//
+// Each surface that renders a seated player calls
+//   recordPlayerVisualSnapshot('WaitingTable' | 'NeutralInterstitial' | ...,
+//     { playerId, position, seatAnchorSource, chipAnchorSource, ... })
+// per render (signature-keyed so it only emits on change).
+//
+// When the SAME playerId is recorded on a DIFFERENT surface than the
+// previous snapshot for that player, an automatic
+// `[WARTIME] player-visual-transition` event is emitted with deltas
+// across every visual dimension — no manual diffing required.
+// =========================================================================
+
+export interface PlayerVisualSnapshot {
+  surface: string;
+  playerId: string;
+  userId?: string | null;
+  position?: number | null;
+  viewerPosition?: number | null;
+  logicalSeat?: number | null;
+  renderedSeatSlot?: number | string | null;
+  seatAnchorSource?: string | null;
+  seatAnchorCoordinates?: Record<string, unknown> | null;
+  chipAnchorSource?: string | null;
+  chipAnchorCoordinates?: Record<string, unknown> | null;
+  chipRenderer?: string | null;
+  chipStyleSource?: string | null;
+  chipVariant?: string | null;
+  chipValue?: string | number | null;
+  status?: string | null;
+  projectionMode?: string | null;
+  isViewerSelf?: boolean | null;
+  isSuppressed?: boolean | null;
+  suppressionReason?: string | null;
+}
+
+const _playerVisualSnapshots = new Map<string, PlayerVisualSnapshot>(); // key: surface:playerId
+const _playerLastSurface = new Map<string, string>();                   // playerId -> last surface
+
+function _diffSnapshots(a: PlayerVisualSnapshot, b: PlayerVisualSnapshot) {
+  const keys: (keyof PlayerVisualSnapshot)[] = [
+    'position', 'viewerPosition', 'logicalSeat', 'renderedSeatSlot',
+    'seatAnchorSource', 'seatAnchorCoordinates',
+    'chipAnchorSource', 'chipAnchorCoordinates',
+    'chipRenderer', 'chipStyleSource', 'chipVariant', 'chipValue',
+    'status', 'projectionMode', 'isViewerSelf', 'isSuppressed', 'suppressionReason',
+  ];
+  const delta: Record<string, { from: unknown; to: unknown }> = {};
+  for (const k of keys) {
+    const va = a[k] as unknown;
+    const vb = b[k] as unknown;
+    if (JSON.stringify(va) !== JSON.stringify(vb)) delta[k as string] = { from: va, to: vb };
+  }
+  return delta;
+}
+
+export function recordPlayerVisualSnapshot(snap: PlayerVisualSnapshot): void {
+  const key = `${snap.surface}:${snap.playerId}`;
+  const prevSameSurface = _playerVisualSnapshots.get(key);
+  const prevSurfaceForPlayer = _playerLastSurface.get(snap.playerId) ?? null;
+
+  // Cache + always store the latest for this surface.
+  const sigPrev = prevSameSurface ? JSON.stringify(prevSameSurface) : null;
+  const sigNext = JSON.stringify(snap);
+  const changed = sigPrev !== sigNext;
+  _playerVisualSnapshots.set(key, snap);
+  _playerLastSurface.set(snap.playerId, snap.surface);
+
+  if (changed) {
+    recordWartime('SEATING', `player-visual-snapshot ${snap.surface}`, {
+      playerId: snap.playerId,
+      surface: snap.surface,
+      snapshot: snap,
+    });
+  }
+
+  // If the player previously rendered on a DIFFERENT surface, emit
+  // a cross-surface transition diff automatically.
+  if (prevSurfaceForPlayer && prevSurfaceForPlayer !== snap.surface) {
+    const prevKey = `${prevSurfaceForPlayer}:${snap.playerId}`;
+    const prev = _playerVisualSnapshots.get(prevKey);
+    if (prev) {
+      recordWartime('SEATING', `player-visual-transition ${prevSurfaceForPlayer} → ${snap.surface}`, {
+        playerId: snap.playerId,
+        position: snap.position ?? null,
+        from: { surface: prevSurfaceForPlayer, snapshot: prev },
+        to:   { surface: snap.surface,         snapshot: snap },
+        delta: _diffSnapshots(prev, snap),
+      });
+    }
+  }
+}
+
+// =========================================================================
+// HighCard render/lifecycle/classifier helpers.
+// =========================================================================
+
+interface HighCardRenderState {
+  renderPath: string | null;
+  cardsLength: number;
+  cardIds: string[];
+  winnerPosition: number | null;
+  isComplete: boolean;
+  hasAnnouncement: boolean;
+  shouldRenderCards: boolean;
+  hideReason: string | null;
+  componentKey: string | null;
+  gameStatus: string | null;
+}
+
+const _lastHighCardRender = new Map<string, HighCardRenderState>(); // gameId -> last
+
+export interface HighCardRenderPayload extends Partial<HighCardRenderState> {
+  gameId: string;
+  selectedCardsSource?: string;
+  renderedCardCount?: number;
+}
+
+export function recordHighCardSurfaceMount(payload: Record<string, unknown>): void {
+  recordWartime('LIFECYCLE', 'surface.mount HighCardDealerSelection', payload);
+}
+export function recordHighCardSurfaceUnmount(payload: Record<string, unknown>): void {
+  recordWartime('LIFECYCLE', 'surface.unmount HighCardDealerSelection', payload);
+}
+
+export function recordHighCardRender(payload: HighCardRenderPayload): void {
+  const next: HighCardRenderState = {
+    renderPath: payload.renderPath ?? null,
+    cardsLength: payload.cardsLength ?? 0,
+    cardIds: payload.cardIds ?? [],
+    winnerPosition: payload.winnerPosition ?? null,
+    isComplete: payload.isComplete ?? false,
+    hasAnnouncement: payload.hasAnnouncement ?? false,
+    shouldRenderCards: payload.shouldRenderCards ?? false,
+    hideReason: payload.hideReason ?? null,
+    componentKey: payload.componentKey ?? null,
+    gameStatus: payload.gameStatus ?? null,
+  };
+  const prev = _lastHighCardRender.get(payload.gameId);
+  _lastHighCardRender.set(payload.gameId, next);
+
+  if (!prev || JSON.stringify(prev) !== JSON.stringify(next)) {
+    recordWartime('RENDERING', 'render.HighCardDealerSelection', {
+      gameId: payload.gameId,
+      selectedCardsSource: payload.selectedCardsSource ?? null,
+      renderedCardCount: payload.renderedCardCount ?? next.cardsLength,
+      from: prev ?? null,
+      to: next,
+    });
+  }
+
+  // Disappearance classifier — when card count drops to 0.
+  if (prev && prev.cardsLength > 0 && next.cardsLength === 0) {
+    let cause:
+      | 'cards-array-cleared'
+      | 'synced-state-cleared'
+      | 'render-branch-hidden'
+      | 'surface-unmounted'
+      | 'component-key-changed'
+      | 'status-transition'
+      | 'unknown' = 'unknown';
+    if (prev.componentKey !== next.componentKey) cause = 'component-key-changed';
+    else if (prev.gameStatus !== next.gameStatus) cause = 'status-transition';
+    else if (prev.shouldRenderCards && !next.shouldRenderCards) cause = 'render-branch-hidden';
+    else if (payload.selectedCardsSource === 'syncedState') cause = 'synced-state-cleared';
+    else cause = 'cards-array-cleared';
+
+    recordWartime('RENDERING', 'high-card.cards-disappeared', {
+      gameId: payload.gameId,
+      previousCards: prev.cardIds,
+      nextCards: next.cardIds,
+      causeCandidate: cause,
+      previousGameStatus: prev.gameStatus,
+      nextGameStatus: next.gameStatus,
+      previousRenderPath: prev.renderPath,
+      nextRenderPath: next.renderPath,
+      previousComponentKey: prev.componentKey,
+      nextComponentKey: next.componentKey,
+      previousShouldRenderCards: prev.shouldRenderCards,
+      nextShouldRenderCards: next.shouldRenderCards,
+    });
+  }
+}
+
+export function recordHighCardCardRender(payload: {
+  cardKey: string;
+  cardId?: string | null;
+  position?: number | null;
+  rank?: string | null;
+  suit?: string | null;
+  source?: string | null;
+  renderIndex?: number | null;
+  surfaceInstanceId?: string | null;
+}): void {
+  recordWartime('RENDERING', 'high-card.card-render', payload);
+}
+
+export function recordHighCardCardMount(payload: Record<string, unknown>): void {
+  recordWartime('LIFECYCLE', 'high-card.card-mount', payload);
+}
+export function recordHighCardCardUnmount(payload: Record<string, unknown>): void {
+  recordWartime('LIFECYCLE', 'high-card.card-unmount', payload);
+}
+

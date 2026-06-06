@@ -253,6 +253,79 @@ export function formatWartimeEventsAsText(snapshot: WartimeEvent[] = _events): s
 }
 
 // ------------------------------------------------------------------
+// Export with audit metadata — guarantees the reader can tell whether
+// missing events were never recorded, filtered out at export time, or
+// purged by the ring buffer (oldest-first drop policy).
+// ------------------------------------------------------------------
+export interface WartimeExportAudit {
+  exportedAt: string;
+  recordingStartedAt: string | null;
+  recordingStoppedAt: string | null;
+  eventCount: number;            // events serialized in this export
+  retainedCount: number;         // events currently retained in ring buffer
+  maxEvents: number;
+  droppedOldestCount: number;
+  firstEventSeq: number | null;
+  lastEventSeq: number | null;
+  firstEventTimestamp: string | null;
+  lastEventTimestamp: string | null;
+  activeFilters: { category?: string | null; text?: string | null };
+  exportIncludesFilteredOnly: boolean;
+}
+
+export interface WartimeExportOptions {
+  /** If true, export the filtered snapshot; otherwise the FULL retained buffer. */
+  includeFilteredOnly?: boolean;
+  /** Filtered snapshot from the panel (only used when includeFilteredOnly=true). */
+  filtered?: WartimeEvent[];
+  /** Currently active filter values, recorded in the audit header. */
+  activeFilters?: { category?: string | null; text?: string | null };
+}
+
+export function buildWartimeExportAudit(
+  events: WartimeEvent[],
+  opts: WartimeExportOptions = {},
+): WartimeExportAudit {
+  const first = events[0] ?? null;
+  const last = events[events.length - 1] ?? null;
+  return {
+    exportedAt: new Date().toISOString(),
+    recordingStartedAt: _startedAtMs ? new Date(_startedAtMs).toISOString() : null,
+    recordingStoppedAt: _stoppedAtMs ? new Date(_stoppedAtMs).toISOString() : null,
+    eventCount: events.length,
+    retainedCount: _events.length,
+    maxEvents: MAX_EVENTS,
+    droppedOldestCount: _dropped,
+    firstEventSeq: first?.seq ?? null,
+    lastEventSeq: last?.seq ?? null,
+    firstEventTimestamp: first?.wallTime ?? null,
+    lastEventTimestamp: last?.wallTime ?? null,
+    activeFilters: opts.activeFilters ?? {},
+    exportIncludesFilteredOnly: !!opts.includeFilteredOnly,
+  };
+}
+
+export function buildWartimeExportText(opts: WartimeExportOptions = {}): string {
+  const events = opts.includeFilteredOnly && opts.filtered ? opts.filtered : _events;
+  const audit = buildWartimeExportAudit(events, opts);
+  return [
+    '# WARTIME EXPORT AUDIT',
+    JSON.stringify(audit, null, 2),
+    '# --- EVENTS ---',
+    formatWartimeEventsAsText(events),
+  ].join('\n');
+}
+
+export function buildWartimeExportJson(opts: WartimeExportOptions = {}): string {
+  const events = opts.includeFilteredOnly && opts.filtered ? opts.filtered : _events;
+  return JSON.stringify(
+    { audit: buildWartimeExportAudit(events, opts), events },
+    null,
+    2,
+  );
+}
+
+// ------------------------------------------------------------------
 // React hooks
 // ------------------------------------------------------------------
 export function useWartimeEnabled(): boolean {

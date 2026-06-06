@@ -27,6 +27,11 @@ import {
   recordWaitingLifecycle,
   recordWaitingLifecycleIfChanged,
 } from '@/lib/canonicalShell/waitingTableFlight';
+import {
+  recordHighCardSurfaceMount,
+  recordHighCardSurfaceUnmount,
+  recordHighCardRender,
+} from '@/lib/wartimeDebug/surfaces';
 
 interface Player {
   id: string;
@@ -109,8 +114,48 @@ export function useHighCardDealerSelection({
         playerCount: players.length,
       },
     });
+    recordHighCardSurfaceMount({
+      gameId,
+      isHost,
+      selectionVariant,
+      sourceSurface: 'useHighCardDealerSelection',
+      componentKey: `${gameId}:${selectionVariant}`,
+      playerCount: players.length,
+    });
+    return () => {
+      recordHighCardSurfaceUnmount({
+        gameId,
+        isHost,
+        selectionVariant,
+        sourceSurface: 'useHighCardDealerSelection',
+        componentKey: `${gameId}:${selectionVariant}`,
+      });
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Mount only
+
+  // Render-decision + cards-disappeared classifier — emits on every
+  // render via signature-keyed cache inside recordHighCardRender.
+  const cardsForRender = syncedState?.cards ?? [];
+  const cardIdsForRender = cardsForRender.map(
+    (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+  );
+  recordHighCardRender({
+    gameId,
+    renderPath: isHost ? 'host' : 'non-host',
+    selectedCardsSource: isHost ? 'local' : 'syncedState',
+    cardsLength: cardsForRender.length,
+    cardIds: cardIdsForRender,
+    renderedCardCount: cardsForRender.length,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
+    hasAnnouncement: !!syncedState?.announcement,
+    shouldRenderCards: cardsForRender.length > 0,
+    hideReason: cardsForRender.length === 0 ? 'no-cards' : null,
+    componentKey: `${gameId}:${selectionVariant}`,
+    gameStatus: 'dealer_selection',
+  });
+
 
   const isCribbageVariant = selectionVariant === 'cribbage';
 
