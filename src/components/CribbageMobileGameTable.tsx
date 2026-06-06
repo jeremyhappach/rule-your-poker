@@ -3808,6 +3808,7 @@ export const CribbageMobileGameTable = ({
     });
     setWinSequencePhase('idle');
     setWinSequenceData(null);
+    setTerminalPath(null);
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 2 — guard reset enables re-fire
     logDebugEvent({
       gameId,
