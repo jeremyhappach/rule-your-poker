@@ -247,15 +247,41 @@ export function useHighCardDealerSelection({
   const CRIBBAGE_TIE_REDEAL_DELAY = 500;
 
   const clearTimeouts = useCallback(() => {
-    timeoutsRef.current.forEach((t) => clearTimeout(t));
+    timeoutsRef.current.forEach((t) => {
+      clearTimeout(t);
+      recordHighCardTimer('timeout.cancelled', {
+        gameId,
+        componentKey: `${gameId}:${selectionVariant}`,
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        reason: 'clearTimeouts',
+      });
+    });
     timeoutsRef.current = [];
-  }, []);
+  }, [gameId, selectionVariant]);
 
+  const timerSeqRef = useRef(0);
   const addTimeout = useCallback((fn: () => void, delay: number) => {
-    const t = setTimeout(fn, delay);
+    const id = ++timerSeqRef.current;
+    recordHighCardTimer('timeout.scheduled', {
+      timerId: id,
+      delayMs: delay,
+      gameId,
+      componentKey: `${gameId}:${selectionVariant}`,
+      surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+    });
+    const t = setTimeout(() => {
+      recordHighCardTimer('timeout.fired', {
+        timerId: id,
+        delayMs: delay,
+        gameId,
+        componentKey: `${gameId}:${selectionVariant}`,
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+      });
+      fn();
+    }, delay);
     timeoutsRef.current.push(t);
     return t;
-  }, []);
+  }, [gameId, selectionVariant]);
 
   const getPlayerName = useCallback(
     (player: Player) => {
