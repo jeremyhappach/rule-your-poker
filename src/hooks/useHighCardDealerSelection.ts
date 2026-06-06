@@ -434,6 +434,14 @@ export function useHighCardDealerSelection({
 
           onWinnerPositionUpdate?.(winnerPlayer.position);
 
+          recordWaitingLifecycle('high-card winner-determined', {
+            gameId,
+            winnerPosition: winnerPlayer.position,
+            round: roundNum,
+            viewerSide: 'host',
+            cardsLength: updatedCards.length,
+          });
+
           syncToDatabase({
             cards: updatedCards,
             announcement: winAnnouncement,
@@ -453,6 +461,13 @@ export function useHighCardDealerSelection({
           });
 
           addTimeout(() => {
+            recordWaitingLifecycle('high-card dealer-selected', {
+              gameId,
+              winnerPosition: winnerPlayer.position,
+              viewerSide: 'host',
+              cardsLength: updatedCards.length,
+              isComplete: true,
+            });
             onComplete(winnerPlayer.position);
           }, WINNER_ANNOUNCE_DELAY);
         }
