@@ -5791,11 +5791,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id - this may cause cross-game contamination');
           }
           
-          const { data } = await fallbackQuery
-            .order('hand_number', { ascending: false })
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const { data } = await timedQuery('rounds.fallback-by-round', 'rounds', () =>
+            fallbackQuery
+              .order('hand_number', { ascending: false })
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle());
+
           roundData = data;
         } else {
           // Ultimate fallback: get the most recent round - STILL scope by dealer_game_id when available
