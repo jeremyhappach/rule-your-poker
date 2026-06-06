@@ -35,6 +35,10 @@ import {
   usePublishShellFelt,
 } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
+import {
+  WaitingFlightMarker,
+  recordWaitingLifecycleIfChanged,
+} from '@/lib/canonicalShell/waitingTableFlight';
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
