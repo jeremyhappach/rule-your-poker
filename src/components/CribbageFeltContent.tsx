@@ -44,6 +44,7 @@ export const CribbageFeltContent = ({
   countingOutroActive = false,
   thirtyOneDelayActive = false,
   handBoundaryKey,
+  terminalPath = null,
 }: CribbageFeltContentProps) => {
   // ── Lifecycle instrumentation ──
   const feltInstanceIdRef = useRef<string>(`felt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
