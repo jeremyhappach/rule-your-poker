@@ -2362,6 +2362,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // selection (e.g. session fall-back-to-waiting → restart) must not survive.
                 // The realtime status branch only fires on actual status change, so clearing
                 // here cannot wipe an in-progress draw.
+                recordWaitingLifecycle('dealerSelectionCards cleared', {
+                  source: 'realtime-status-change',
+                  callsite: 'src/pages/Game.tsx:~2365',
+                  newStatus,
+                  prevLength: dealerSelectionCards.length,
+                  gameId: gameId ?? null,
+                });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
                 // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
