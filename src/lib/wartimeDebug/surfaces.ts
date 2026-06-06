@@ -84,8 +84,16 @@ function _markCoverage(surface: string, category: CoverageCategory) {
   }
 }
 
+let _covSnapshot: SurfaceCoverage[] = [];
+let _covSnapshotVersion = -1;
 export function getWartimeCoverage(): SurfaceCoverage[] {
-  return Array.from(_coverage.values()).sort((a, b) => a.surface.localeCompare(b.surface));
+  if (_covSnapshotVersion !== _covVersion) {
+    _covSnapshot = Array.from(_coverage.values()).sort((a, b) =>
+      a.surface.localeCompare(b.surface),
+    );
+    _covSnapshotVersion = _covVersion;
+  }
+  return _covSnapshot;
 }
 
 export function getWartimeCoverageVersion(): number {
