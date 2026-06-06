@@ -8123,8 +8123,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       prevLength: dealerSelectionCards.length,
       gameId: gameId ?? null,
     });
+    recordHighCardCardsClear({
+      source: 'cribbage-handoff-complete',
+      callsite: 'src/pages/Game.tsx:8126 handleCribbageDealerSelectionComplete',
+      reason: 'session-level dealer-selection completed; clearing stale visuals at handoff',
+      cardsLengthBeforeClear: dealerSelectionCards.length,
+      cardsLengthAfterClear: 0,
+      gameStatus: game?.status ?? null,
+      winnerPosition: dealerPosition,
+      dealerSelectionComplete: true,
+      currentRoundId: currentRound?.id ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      gameId: gameId ?? null,
+    });
     setDealerSelectionCards([]);
     setDealerSelectionWinnerPosition(null);
+
 
     // ── HANDOFF TRACE #3: parent dealer-selection state cleared (handoff callback) ──
     emitCribbageHandoffTrace({
