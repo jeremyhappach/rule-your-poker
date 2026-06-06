@@ -752,6 +752,28 @@ const Game = () => {
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
 
+  // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
+  // event each time the local cards array length changes (mount, deal,
+  // reveal, hide, clear). Lets the recorder attribute high-card
+  // disappearance to a Game-level state mutation vs. a child reset.
+  const _waitDealerCardsLenRef = useRef<number>(-1);
+  useEffect(() => {
+    const next = dealerSelectionCards.length;
+    if (_waitDealerCardsLenRef.current === next) return;
+    const prev = _waitDealerCardsLenRef.current;
+    _waitDealerCardsLenRef.current = next;
+    recordWaitingLifecycle('dealerSelectionCards length changed', {
+      gameId: gameId ?? null,
+      previousLength: prev === -1 ? null : prev,
+      nextLength: next,
+      gameStatus: (game as any)?.status ?? null,
+      gameType: game?.game_type ?? null,
+      hasSyncedState: !!(game as any)?.dealer_selection_state,
+      syncedCardsLen: ((game as any)?.dealer_selection_state?.cards?.length) ?? null,
+      winnerPosition: dealerSelectionWinnerPosition,
+    });
+  }, [dealerSelectionCards, dealerSelectionWinnerPosition, game, gameId]);
+
   // ── dealer_selection_diag context push ─────────────────────────────
   // Keep the diag tracer enriched with viewer identity + current status
   // so every persisted checkpoint carries enough context to reconstruct
