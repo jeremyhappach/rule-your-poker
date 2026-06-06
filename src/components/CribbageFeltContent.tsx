@@ -27,6 +27,10 @@ interface CribbageFeltContentProps {
   thirtyOneDelayActive?: boolean;
   /** Stable key that changes on hand boundaries — passed to CribbageCutCardReveal to prevent re-flip */
   handBoundaryKey?: string;
+  /** Explicit terminal-path tag set by the parent when a win sequence fires.
+   *  Authoritative source for picking the complete-phase card layout. When null,
+   *  legacy heuristic (`!lastHandCount` ⇒ pegging) is used as a safe fallback. */
+  terminalPath?: 'pegging' | 'counting' | 'hand-counting' | 'crib-counting' | 'fallback' | null;
 }
 
 export const CribbageFeltContent = ({
@@ -40,6 +44,7 @@ export const CribbageFeltContent = ({
   countingOutroActive = false,
   thirtyOneDelayActive = false,
   handBoundaryKey,
+  terminalPath = null,
 }: CribbageFeltContentProps) => {
   // ── Lifecycle instrumentation ──
   const feltInstanceIdRef = useRef<string>(`felt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
@@ -108,18 +113,31 @@ export const CribbageFeltContent = ({
   
   // During 31 delay, show 31 as the count instead of the reset 0
   const displayCount = thirtyOneDelayActive ? 31 : cribbageState.pegging.currentCount;
-  // Detect pegging win: phase is 'complete' but lastHandCount is null
-  // (meaning we never entered counting phase - win occurred during pegging)
-  const isPeggingWin = phaseForLayout === 'complete' && !cribbageState.lastHandCount;
+  // Terminal-path classification (set by parent at win-trigger time).
+  // Authoritative when present; legacy `!lastHandCount` heuristic is used only
+  // as a fallback when no path tag is available (e.g. for non-terminal renders
+  // or states that reached `complete` outside a win sequence).
+  const isCountingTerminalPath =
+    terminalPath === 'counting' ||
+    terminalPath === 'hand-counting' ||
+    terminalPath === 'crib-counting';
 
-  // Hide standard felt content during counting phase (CribbageCountingPhase takes over)
-  // Use the actual phase from state, not the presence of countingScoreOverrides.
-  // During win sequences where DB phase may already be 'complete', we check lastHandCount
-  // to distinguish counting wins from pegging wins.
-  // Exception: pegging wins should NOT enter counting layout - cards stay visible on felt.
+  // Pegging win = parent stamped 'pegging', OR (no tag yet) legacy heuristic.
+  // 'fallback' explicitly does NOT count as pegging — it should suppress the
+  // pegging row instead of falling through to the 8-card aggregate layout.
+  const isPeggingWin = phaseForLayout === 'complete' && (
+    terminalPath === 'pegging' ||
+    (terminalPath === null && !cribbageState.lastHandCount)
+  );
+
+  // Hide standard felt content during counting phase (CribbageCountingPhase takes over).
+  // Now also true for any counting terminal-path (incl. reactive combo-crossing
+  // where lastHandCount has not yet been persisted) and for the fallback path.
   const isCountingPhase = (
     phaseForLayout === 'counting' ||
-    (phaseForLayout === 'complete' && !!cribbageState.lastHandCount)
+    (phaseForLayout === 'complete' && !!cribbageState.lastHandCount) ||
+    (phaseForLayout === 'complete' && isCountingTerminalPath) ||
+    (phaseForLayout === 'complete' && terminalPath === 'fallback')
   ) && !isPeggingWin;
 
   // Show crib on felt only during discarding/cutting/pegging (or pegging win)
@@ -142,6 +160,7 @@ export const CribbageFeltContent = ({
         phaseForLayout,
         winnerPlayerId: cribbageState.winnerPlayerId?.slice(0, 8) ?? null,
         payoutMultiplier: cribbageState.payoutMultiplier ?? 1,
+        terminalPath,
         hasLastHandCount: !!cribbageState.lastHandCount,
         isPeggingWin,
         isCountingPhase,

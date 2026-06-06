@@ -1440,6 +1440,14 @@ export const CribbageMobileGameTable = ({
     chatMessage?: string;
   } | null>(null);
 
+  // ── Terminal-path discriminator ─
+  // Explicitly tags which terminal trigger path produced the win, so the felt
+  // can choose the correct card layout instead of inferring from `!lastHandCount`
+  // (which is ambiguous: both a pegging win AND a reactive counting-frozen win
+  // present as `phase='complete' && !lastHandCount`).
+  type CribbageTerminalPath = 'pegging' | 'counting' | 'hand-counting' | 'crib-counting' | 'fallback';
+  const [terminalPath, setTerminalPath] = useState<CribbageTerminalPath | null>(null);
+
   // ── Sync invariant checks (wired to the ACTUAL rendered mobile state) ─
   const cribMobileInvariantScoringFiredRef = useRef<string | null>(null);
   const cribMobileResultDisplayFiredRef = useRef<string | null>(null);
@@ -2790,6 +2798,14 @@ export const CribbageMobileGameTable = ({
         
         // Freeze the counting animation - it should stop advancing and keep cards highlighted
         setCountingWinFrozen(true);
+        // [TERMINAL-PATH] reactive combo-crossing during counting = counting win.
+        // Refine hand vs crib from the active counting target index (last target is crib).
+        {
+          const tIdx = countingStateSnapshot?.countingTargetIndex ?? null;
+          const isCribTarget = typeof tIdx === 'number' && tIdx >= 0 &&
+            tIdx === (cribbageState.turnOrder?.length ?? 0);
+          setTerminalPath(isCribTarget ? 'crib-counting' : 'hand-counting');
+        }
         
         const loserScores = Object.entries(countingScoreOverrides)
           .filter(([id]) => id !== playerId)
@@ -3703,6 +3719,8 @@ export const CribbageMobileGameTable = ({
 
     // Guard immediately to avoid multi-fire on rapid state churn.
     winSequenceScheduledRef.current = winKey;
+    // [TERMINAL-PATH] this branch fires only when counting was never active.
+    setTerminalPath('pegging');
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
@@ -3790,6 +3808,7 @@ export const CribbageMobileGameTable = ({
     });
     setWinSequencePhase('idle');
     setWinSequenceData(null);
+    setTerminalPath(null);
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 2 — guard reset enables re-fire
     logDebugEvent({
       gameId,
@@ -4987,6 +5006,23 @@ export const CribbageMobileGameTable = ({
         // CribbageCountingPhase has already advanced past every combo and
         // cleared highlightedCards, leaving an ambiguous hand+cut layout.
         setCountingWinFrozen(true);
+        // [TERMINAL-PATH] applyHandCountScores resolved the winner post-animation.
+        // countedState carries lastHandCount; treat as counting (hand vs crib refined
+        // by which target's score actually crossed the threshold).
+        {
+          const winner = countedState.winnerPlayerId!;
+          const cribOwner = countedState.cribOwnerPlayerId;
+          const cribAdded = countedState.lastHandCount?.cribScore?.total ?? 0;
+          const handAdded = winner === cribOwner
+            ? (countedState.lastHandCount?.dealerHandScore?.total ?? 0)
+            : (countedState.lastHandCount?.playerHandScores?.[winner]?.total ?? 0);
+          // If winner is crib owner AND the crib alone pushed them over, it's a crib-counting win.
+          const preCribScore = (countedState.playerStates[winner]?.pegScore ?? 0) - cribAdded - handAdded;
+          const crossedOnCrib = winner === cribOwner &&
+            (preCribScore + handAdded) < countedState.pointsToWin &&
+            (preCribScore + handAdded + cribAdded) >= countedState.pointsToWin;
+          setTerminalPath(crossedOnCrib ? 'crib-counting' : 'hand-counting');
+        }
         // Persist the completed state and trigger win sequence
         await updateState(countedState);
         triggerWinSequence(countedState);
@@ -5051,6 +5087,8 @@ export const CribbageMobileGameTable = ({
           // Freeze the counting animation so the winning combo remains
           // highlighted while the win sequence plays.
           setCountingWinFrozen(true);
+          // [TERMINAL-PATH] safety/fallback: startNextCribbageHand surfaced the winner.
+          setTerminalPath('fallback');
           await updateState(result.newState);
           triggerWinSequence(result.newState);
           return;
@@ -6095,6 +6133,7 @@ export const CribbageMobileGameTable = ({
                   countingOutroActive={countingDelayActive && !!countingStateSnapshot}
                   thirtyOneDelayActive={thirtyOneDelayActive}
                   handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
+                  terminalPath={terminalPath}
                 />
 
                 {/* Counting Phase Overlay */}
