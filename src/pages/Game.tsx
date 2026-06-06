@@ -77,6 +77,27 @@ type HighCardDealerSelectionShimProps = {
 };
 const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
   useHighCardDealerSelection(props);
+
+  // P-WAIT.C5: per-render trace — fires every render of the shim so
+  // we can correlate cards-array transitions with parent re-renders
+  // and prove whether the surface ever observed an empty cards frame
+  // while still mounted (renders-but-shows-nothing) vs. unmounted.
+  const cardsLen = props.syncedState?.cards?.length ?? 0;
+  recordWaitingLifecycleIfChanged(
+    `highCardRender:${props.gameId}`,
+    'HighCardDealerSelection render',
+    {
+      gameId: props.gameId,
+      isHost: props.isHost,
+      selectionVariant: props.selectionVariant ?? 'default',
+      hasSyncedState: !!props.syncedState,
+      cardsLen,
+      winnerPosition: props.syncedState?.winnerPosition ?? null,
+      isComplete: !!props.syncedState?.isComplete,
+      hasAnnouncement: !!props.syncedState?.announcement,
+    },
+  );
+
   useEffect(() => {
     recordDealerSelectionDiag('dealer_selection_surface_mounted', {
       sessionId: props.gameId,
@@ -94,6 +115,9 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
       playerCount: props.players.length,
       eligibleCount: props.players.filter(p => !p.sitting_out && (!p.is_bot || props.allowBotDealers)).length,
       syncedCardCount: props.syncedState?.cards?.length ?? 0,
+      hasSyncedState: !!props.syncedState,
+      winnerPosition: props.syncedState?.winnerPosition ?? null,
+      isComplete: !!props.syncedState?.isComplete,
     });
     return () => {
       recordDealerSelectionDiag('dealer_selection_surface_mounted', {
@@ -105,6 +129,10 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
       });
       recordWaitingLifecycle('HighCardDealerSelection unmount', {
         gameId: props.gameId,
+        // Snapshot of last-observed sync state at teardown for cause-of-disappearance attribution.
+        lastCardsLen: props.syncedState?.cards?.length ?? 0,
+        lastWinnerPosition: props.syncedState?.winnerPosition ?? null,
+        lastIsComplete: !!props.syncedState?.isComplete,
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -648,6 +676,39 @@ const Game = () => {
     }
   }, [_game, gameId, players.length]);
 
+  // P-WAIT.A1: Route entry one-shot — emitted on Game component first mount.
+  // Anchors the "blank shell window" measurement: every subsequent
+  // [WAIT] event timestamp can be subtracted from this to attribute
+  // the 2-3s gap between route entry and WaitingTable mount.
+  useEffect(() => {
+    recordWaitingLifecycle('Game route enter', {
+      routeGameId: gameId ?? null,
+      authReadyAtEnter: authReady,
+      hasUserAtEnter: !!user,
+      tMount: typeof performance !== 'undefined' ? Math.round(performance.now()) : null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // P-WAIT.A1b: Auth ready transition. Fires once when authReady flips
+  // to true (or immediately if already true on first mount).
+  const _waitAuthReadyEmittedRef = useRef(false);
+  useEffect(() => {
+    if (_waitAuthReadyEmittedRef.current) return;
+    if (!authReady) return;
+    _waitAuthReadyEmittedRef.current = true;
+    recordWaitingLifecycle('auth ready', {
+      routeGameId: gameId ?? null,
+      hasUser: !!user,
+      userId: user?.id?.slice(0, 8) ?? null,
+      elapsedMs: typeof performance !== 'undefined'
+        ? Math.round(performance.now() - _waitMountTRef.current)
+        : null,
+    });
+  }, [authReady, user, gameId]);
+
+  // P-WAIT.A4 tracker is installed after dealerSelectionCards is declared (see below).
+
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
@@ -718,6 +779,28 @@ const Game = () => {
   // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
+
+  // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
+  // event each time the local cards array length changes (mount, deal,
+  // reveal, hide, clear). Lets the recorder attribute high-card
+  // disappearance to a Game-level state mutation vs. a child reset.
+  const _waitDealerCardsLenRef = useRef<number>(-1);
+  useEffect(() => {
+    const next = dealerSelectionCards.length;
+    if (_waitDealerCardsLenRef.current === next) return;
+    const prev = _waitDealerCardsLenRef.current;
+    _waitDealerCardsLenRef.current = next;
+    recordWaitingLifecycle('dealerSelectionCards length changed', {
+      gameId: gameId ?? null,
+      previousLength: prev === -1 ? null : prev,
+      nextLength: next,
+      gameStatus: (game as any)?.status ?? null,
+      gameType: game?.game_type ?? null,
+      hasSyncedState: !!(game as any)?.dealer_selection_state,
+      syncedCardsLen: ((game as any)?.dealer_selection_state?.cards?.length) ?? null,
+      winnerPosition: dealerSelectionWinnerPosition,
+    });
+  }, [dealerSelectionCards, dealerSelectionWinnerPosition, game, gameId]);
 
   // ── dealer_selection_diag context push ─────────────────────────────
   // Keep the diag tracer enriched with viewer identity + current status
