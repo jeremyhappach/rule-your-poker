@@ -569,6 +569,14 @@ export function useHighCardDealerSelection({
       extra: { eligibleDealers: eligibleDealers.length },
     });
 
+    recordWaitingLifecycle('high-card-start', {
+      gameId,
+      isHost,
+      eligibleCount: eligibleDealers.length,
+      viewerPosition: null,
+      playerCount: players.length,
+    });
+
     runSelectionRound(eligibleDealers, 1, []);
 
     return () => clearTimeouts();
