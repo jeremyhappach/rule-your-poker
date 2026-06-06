@@ -689,6 +689,26 @@ export function useHighCardDealerSelection({
         return { ...p, isWinner, isDimmed: !isWinner };
       });
 
+      {
+        const _prevIds = (hookStateRef.current.cards ?? []).map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        const _nextIds = updatedCards.map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        recordHighCardWriter({
+          gameId,
+          source: 'host-determine-winner',
+          callsite: `src/hooks/useHighCardDealerSelection.ts:determineWinner round=${roundNum}`,
+          reason: 'host applied winner/dim flags → onCardsUpdate(updatedCards)',
+          previousLength: _prevIds.length,
+          nextLength: _nextIds.length,
+          previousCardIds: _prevIds,
+          nextCardIds: _nextIds,
+          renderPath: 'host',
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
+      }
       onCardsUpdate(updatedCards);
 
       if (winners.length === 1) {
