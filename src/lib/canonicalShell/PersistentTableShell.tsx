@@ -33,6 +33,12 @@ import { recordShellEvent } from './diagnostics';
 import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import {
+  useWartimeSurface,
+  useWartimeGeometry,
+  useWartimeRender,
+  useWartimeState,
+} from '@/lib/wartimeDebug/surfaces';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
 import { useChangeTracker, useUnmountSnapshot, recordRenderDecision } from './shellLifecycleLog';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
@@ -122,6 +128,26 @@ export function PersistentTableShell({
   useChangeTracker('PersistentTableShell', 'seatAnchorWrapped', !!(projectionMode && seats));
   useChangeTracker('PersistentTableShell', 'projectionMode', projectionMode ?? '(none)');
   setLifecycleFact('Shell.bgClass', 'min-h-screen bg-shell-neutral');
+
+  // === Wartime Phase 2 — framework coverage =====================
+  useWartimeSurface('PersistentTableShell', {
+    gameId: gameId ?? null,
+    gameType: gameType ?? null,
+  });
+  useWartimeGeometry('PersistentTableShell', {
+    projectionMode: projectionMode ?? null,
+    viewerPosition,
+    seatCount: seats?.length ?? null,
+    deviceType: geometry?.deviceType ?? null,
+  });
+  useWartimeState('PersistentTableShell', 'hasSeats', seats != null);
+  useWartimeState('PersistentTableShell', 'hasHeader', header != null);
+  useWartimeRender(
+    'PersistentTableShell',
+    projectionMode && seats ? 'WITH_SEAT_ANCHOR_LAYER' : 'PLAIN',
+  );
+  // =============================================================
+
 
 
   useEffect(() => {

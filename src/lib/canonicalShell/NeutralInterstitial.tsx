@@ -29,6 +29,12 @@ import {
   recordWaitingLifecycle,
   recordWaitingLifecycleIfChanged,
 } from './waitingTableFlight';
+import {
+  useWartimeSurface,
+  useWartimeState,
+  useWartimeRender,
+  useWartimeOwnership,
+} from '@/lib/wartimeDebug/surfaces';
 
 /**
  * Roster shape consumed by the optional interstitial seat layer.
@@ -120,6 +126,24 @@ export function NeutralInterstitial({
     participantCount: participants?.length ?? 0,
     activeTab: externalActiveTab ?? null,
   }, { file: 'src/lib/canonicalShell/NeutralInterstitial.tsx' });
+
+  // === Wartime Phase 2 — framework coverage =====================
+  useWartimeSurface('NeutralInterstitial', {
+    gameId: gameId ?? null,
+    reason: reason ?? null,
+    gameKind: gameKind ?? null,
+  });
+  useWartimeOwnership('NeutralInterstitial', {
+    HUDOwner: 'NeutralInterstitial.ShellHudGrid',
+    SeatOwner: 'NeutralInterstitial.CanonicalSeatCluster',
+    FeltOwner: 'NeutralInterstitial.usePublishShellFelt',
+  });
+  useWartimeState('NeutralInterstitial', 'reason', reason ?? null);
+  useWartimeState('NeutralInterstitial', 'hasCommittedGameKind', hasCommittedGameKind);
+  useWartimeState('NeutralInterstitial', 'participantCount', participants?.length ?? 0);
+  useWartimeRender('NeutralInterstitial', `reason:${reason ?? 'unknown'}`);
+  // =============================================================
+
 
   usePublishShellFelt({
     gameKind: resolvedGameKind,

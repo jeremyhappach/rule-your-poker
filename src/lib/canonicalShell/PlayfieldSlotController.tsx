@@ -41,6 +41,10 @@ import { useSurfaceReadiness } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { recordStartupFlight, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import { useWaitingMount, recordWaitingLifecycle } from './waitingTableFlight';
+import {
+  useWartimeSurface,
+  useWartimeState,
+} from '@/lib/wartimeDebug/surfaces';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -139,6 +143,19 @@ export function PlayfieldSlotController({
   // Hook-free input-prop transition logging (no new hooks; safe at render).
   logIfChanged('PSC.input.persistentChildrenKey', persistentChildrenKey ?? '(none)', { gameId });
   logIfChanged('PSC.input.desiredIdentity', describeSlotIdentity(desiredIdentity), { gameId });
+
+  // === Wartime Phase 2 — framework coverage =====================
+  useWartimeSurface('PlayfieldSlotController', {
+    gameId: gameId ?? null,
+    desiredIdentity: describeSlotIdentity(desiredIdentity),
+    persistentChildrenKey: persistentChildrenKey ?? null,
+  });
+  useWartimeState('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
+  useWartimeState('PlayfieldSlotController', 'readyToMountProp', readyToMountProp);
+  // =============================================================
+
+
+
 
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
