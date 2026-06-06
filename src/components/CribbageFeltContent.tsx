@@ -27,6 +27,10 @@ interface CribbageFeltContentProps {
   thirtyOneDelayActive?: boolean;
   /** Stable key that changes on hand boundaries — passed to CribbageCutCardReveal to prevent re-flip */
   handBoundaryKey?: string;
+  /** Explicit terminal-path tag set by the parent when a win sequence fires.
+   *  Authoritative source for picking the complete-phase card layout. When null,
+   *  legacy heuristic (`!lastHandCount` ⇒ pegging) is used as a safe fallback. */
+  terminalPath?: 'pegging' | 'counting' | 'hand-counting' | 'crib-counting' | 'fallback' | null;
 }
 
 export const CribbageFeltContent = ({
