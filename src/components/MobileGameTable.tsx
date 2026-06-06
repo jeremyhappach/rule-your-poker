@@ -5822,11 +5822,18 @@ export const MobileGameTable = ({
                   >
                     {/* Stack all cards for this position (tie-breaker rounds) - positioned directly over chip stack */}
                     <div className="flex gap-1">
-                      {allCardsForPosition.map((cardData, idx) => (
+                      {allCardsForPosition.map((cardData, idx) => {
+                        const _cardRank = (cardData.card as any)?.rank ?? '?';
+                        const _cardSuit = (cardData.card as any)?.suit?.[0] ?? '?';
+                        return (
                         <div 
                           key={`card-${cardData.roundNumber}-${idx}`}
                           data-dsel-card="1"
                           data-dsel-position={position}
+                          data-wartime-high-card="card"
+                          data-card-key={`p${position}-r${cardData.roundNumber}-${idx}`}
+                          data-card-id={`p${position}:${_cardRank}${_cardSuit}:r${cardData.roundNumber}`}
+                          data-player-position={position}
                           className="transition-all duration-500"
 
                           style={{
@@ -5836,6 +5843,7 @@ export const MobileGameTable = ({
                               : 'scale(1)',
                           }}
                         >
+
                           <PlayingCard
                             card={cardData.card as CardType}
                             isHidden={!cardData.isRevealed}
