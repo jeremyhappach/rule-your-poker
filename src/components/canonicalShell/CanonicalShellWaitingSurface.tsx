@@ -233,7 +233,7 @@ function WaitingSurfaceBody({
     }
     recordSurfaceGeometry('WaitingTable', {
       geometryProviderId: 'ResponsiveGeometryProvider',
-      seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+      seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
       chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
       chipStyleSource: 'derivePlayerStatus → status palette',
       projectionMode,
@@ -263,7 +263,7 @@ function WaitingSurfaceBody({
           name: player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player'),
           chipValue: `$${formatChipValue(player.chips ?? 0)}`,
           status,
-          seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+          seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipStyleSource: 'derivePlayerStatus → status palette',
           projectionMode,
@@ -282,7 +282,7 @@ function WaitingSurfaceBody({
         viewerPosition: viewerPos,
         logicalSeat: player.position,
         renderedSeatSlot: anchor.slot,
-        seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+        seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatCluster',
         chipStyleSource: 'derivePlayerStatus → status palette',
