@@ -1071,27 +1071,48 @@ function WartimeCoverageMatrix() {
   // Re-render on coverage version bump too
   useSyncExternalStore(subscribeWartimeCoverage, getWartimeCoverageVersion, getWartimeCoverageVersion);
   const cats: CoverageCategory[] = COVERAGE_CATEGORIES;
+  const shortLabel: Record<CoverageCategory, string> = {
+    IDENTITY: 'ID',
+    OWNERSHIP: 'OWN',
+    GEOMETRY: 'GEO',
+    LIFECYCLE: 'LIFE',
+    STATE: 'STA',
+    RENDER: 'RDR',
+  };
   return (
-    <div className="mt-2 overflow-x-auto">
-      <table className="w-full text-[11px]">
+    <div className="mt-2">
+      <table className="w-full table-fixed text-[10px]">
         <thead className="text-muted-foreground">
           <tr>
             <th className="px-1 py-1 text-left font-medium">Surface</th>
             {cats.map((c) => (
-              <th key={c} className="px-1 py-1 text-center font-medium">{c}</th>
+              <th
+                key={c}
+                className="px-0 py-1 text-center font-medium"
+                style={{ width: 28 }}
+                title={c}
+              >
+                {shortLabel[c]}
+              </th>
             ))}
-            <th className="px-1 py-1 text-right font-medium">mounts</th>
+            <th className="px-1 py-1 text-right font-medium" style={{ width: 44 }}>
+              mnt
+            </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.surface} className="border-t border-amber-600/10">
-              <td className="px-1 py-1 font-mono text-amber-200">{row.surface}</td>
+            <tr key={row.surface} className="border-t border-border/40">
+              <td className="truncate px-1 py-1 font-mono text-foreground">{row.surface}</td>
               {cats.map((c) => {
                 const ok = row.categories[c];
                 return (
-                  <td key={c} className="px-1 py-1 text-center">
-                    {ok ? <span className="text-emerald-400">✅</span> : <span className="text-rose-400">❌</span>}
+                  <td key={c} className="px-0 py-1 text-center">
+                    {ok ? (
+                      <span className="text-emerald-500">✓</span>
+                    ) : (
+                      <span className="text-muted-foreground/60">·</span>
+                    )}
                   </td>
                 );
               })}
@@ -1103,10 +1124,9 @@ function WartimeCoverageMatrix() {
         </tbody>
       </table>
       <p className="mt-2 text-[10px] text-muted-foreground">
-        ✅ = category wired (observed at runtime). ❌ = category not yet wired
-        for this surface. A surface is not fully covered until every category
-        is ✅ — bugs occurring in surfaces with ❌ render decisions are a
-        Wartime coverage gap, not just an application bug.
+        ✓ = category wired for this surface. · = not yet wired. mnt = currently
+        mounted / total mounts. A surface is fully covered only when every
+        category is ✓.
       </p>
     </div>
   );

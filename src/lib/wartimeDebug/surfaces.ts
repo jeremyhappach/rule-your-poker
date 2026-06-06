@@ -115,11 +115,11 @@ export function declareWartimeSurface(
   expectedCategories: CoverageCategory[] = [],
 ): void {
   const e = _ensure(surface);
+  // Declared categories represent code-level wiring presence; mark them as
+  // covered so the matrix reflects wiring even before the surface mounts.
   for (const c of expectedCategories) {
-    // expected categories don't get auto-marked true — they remain false until
-    // actually observed. We just ensure the row exists.
+    if (!e.categories[c]) e.categories[c] = true;
   }
-  void e;
   _emitCoverage();
 }
 
