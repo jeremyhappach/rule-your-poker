@@ -30,6 +30,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { SeatAnchorLayer } from './SeatAnchorLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { recordShellEvent } from './diagnostics';
+import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
 import { setLifecycleFact, useLifecycleMount } from './lifecycleDebug';
