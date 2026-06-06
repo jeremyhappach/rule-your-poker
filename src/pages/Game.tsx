@@ -705,7 +705,7 @@ const Game = () => {
         ? Math.round(performance.now() - _waitMountTRef.current)
         : null,
     });
-  }, [authReady, user, gameId]);
+  }, [authReady, user?.id, gameId]);
 
   // P-WAIT.A4 tracker is installed after dealerSelectionCards is declared (see below).
 
