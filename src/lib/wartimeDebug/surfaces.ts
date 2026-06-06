@@ -466,6 +466,10 @@ export interface PlayerVisualSnapshot {
   renderedSeatSlot?: number | string | null;
   seatAnchorSource?: string | null;
   seatAnchorCoordinates?: Record<string, unknown> | null;
+  /** Stable id of the SeatAnchorLayer provider whose context this
+   *  snapshot read from (null when no ambient provider). Lets cross-
+   *  surface diffs prove whether the provider survived a transition. */
+  anchorProviderInstanceId?: string | null;
   chipAnchorSource?: string | null;
   chipAnchorCoordinates?: Record<string, unknown> | null;
   chipRenderer?: string | null;
@@ -476,6 +480,9 @@ export interface PlayerVisualSnapshot {
   chipDOMSelector?: string | null;
   chipRect?: Record<string, number> | null;
   chipComputedStyle?: Record<string, string> | null;
+  /** Walk of `[data-*]` and tag descriptors from chip element upward;
+   *  identifies the exact DOM owner chain of the rendered chip. */
+  domAncestry?: string[] | null;
   status?: string | null;
   projectionMode?: string | null;
   isViewerSelf?: boolean | null;
