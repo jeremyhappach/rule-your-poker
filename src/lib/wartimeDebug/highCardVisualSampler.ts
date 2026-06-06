@@ -201,6 +201,27 @@ function _tick(gameId: string) {
       emitCount: a.emitCount,
       sampledAtMs: Math.round(performance.now() - a.startedAtMs),
     });
+
+    // HIGH_CARD_STATE_VISUAL_DIVERGENCE — emitted whenever hook card
+    // count diverges from DOM card count for the active surface. Carries
+    // full snapshots so the trace can attribute symptom ↔ cause.
+    if (hook && hook.hookCardsLength !== cardNodes.length) {
+      recordWartime('RENDERING', 'HIGH_CARD_STATE_VISUAL_DIVERGENCE', {
+        gameId,
+        surfaceInstanceId: a.surfaceInstanceId,
+        componentKey: a.componentKey,
+        renderPath: a.renderPath,
+        hookCardsLength: hook.hookCardsLength,
+        hookCardIds: hook.hookCardIds,
+        domCardCount: cardNodes.length,
+        domCardKeys,
+        domCardIds,
+        winnerPosition: hook.winnerPosition,
+        isComplete: hook.isComplete,
+        gameStatus: hook.gameStatus,
+        sampledAtMs: Math.round(performance.now() - a.startedAtMs),
+      });
+    }
   }
 
   a.rafId = typeof window !== 'undefined' ? window.requestAnimationFrame(() => _tick(gameId)) : null;

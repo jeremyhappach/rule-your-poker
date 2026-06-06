@@ -39,6 +39,7 @@ import {
   useWartimeOwnership,
   recordPlayerVisualSnapshot,
   probeChipDom,
+  probeChipDomAncestry,
 } from '@/lib/wartimeDebug/surfaces';
 
 /**
@@ -352,6 +353,7 @@ export function NeutralInterstitial({
         logicalSeat: p.position,
         renderedSeatSlot: null,
         seatAnchorSource: seatAnchorSourceLabel,
+        anchorProviderInstanceId: ambient?.providerInstanceId ?? null,
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatClusterDeferred',
         chipStyleSource: 'derivePlayerStatus → status palette',
@@ -365,7 +367,11 @@ export function NeutralInterstitial({
       };
       if (typeof window !== 'undefined') {
         window.requestAnimationFrame(() => {
-          recordPlayerVisualSnapshot({ ..._baseSnap, ...probeChipDom(_pos) });
+          recordPlayerVisualSnapshot({
+            ..._baseSnap,
+            ...probeChipDom(_pos),
+            domAncestry: probeChipDomAncestry(_pos),
+          });
         });
       } else {
         recordPlayerVisualSnapshot(_baseSnap);

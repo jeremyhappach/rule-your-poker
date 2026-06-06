@@ -466,6 +466,10 @@ export interface PlayerVisualSnapshot {
   renderedSeatSlot?: number | string | null;
   seatAnchorSource?: string | null;
   seatAnchorCoordinates?: Record<string, unknown> | null;
+  /** Stable id of the SeatAnchorLayer provider whose context this
+   *  snapshot read from (null when no ambient provider). Lets cross-
+   *  surface diffs prove whether the provider survived a transition. */
+  anchorProviderInstanceId?: string | null;
   chipAnchorSource?: string | null;
   chipAnchorCoordinates?: Record<string, unknown> | null;
   chipRenderer?: string | null;
@@ -476,6 +480,9 @@ export interface PlayerVisualSnapshot {
   chipDOMSelector?: string | null;
   chipRect?: Record<string, number> | null;
   chipComputedStyle?: Record<string, string> | null;
+  /** Walk of `[data-*]` and tag descriptors from chip element upward;
+   *  identifies the exact DOM owner chain of the rendered chip. */
+  domAncestry?: string[] | null;
   status?: string | null;
   projectionMode?: string | null;
   isViewerSelf?: boolean | null;
@@ -489,10 +496,10 @@ const _playerLastSurface = new Map<string, string>();                   // playe
 function _diffSnapshots(a: PlayerVisualSnapshot, b: PlayerVisualSnapshot) {
   const keys: (keyof PlayerVisualSnapshot)[] = [
     'position', 'viewerPosition', 'logicalSeat', 'renderedSeatSlot',
-    'seatAnchorSource', 'seatAnchorCoordinates',
+    'seatAnchorSource', 'seatAnchorCoordinates', 'anchorProviderInstanceId',
     'chipAnchorSource', 'chipAnchorCoordinates',
     'chipRenderer', 'chipStyleSource', 'chipVariant', 'chipValue',
-    'chipDOMSelector', 'chipRect', 'chipComputedStyle',
+    'chipDOMSelector', 'chipRect', 'chipComputedStyle', 'domAncestry',
     'status', 'projectionMode', 'isViewerSelf', 'isSuppressed', 'suppressionReason',
   ];
   const delta: Record<string, { from: unknown; to: unknown }> = {};
@@ -530,13 +537,59 @@ export function recordPlayerVisualSnapshot(snap: PlayerVisualSnapshot): void {
     const prevKey = `${prevSurfaceForPlayer}:${snap.playerId}`;
     const prev = _playerVisualSnapshots.get(prevKey);
     if (prev) {
+      const delta = _diffSnapshots(prev, snap);
       recordWartime('SEATING', `player-visual-transition ${prevSurfaceForPlayer} → ${snap.surface}`, {
         playerId: snap.playerId,
         position: snap.position ?? null,
         from: { surface: prevSurfaceForPlayer, snapshot: prev },
         to:   { surface: snap.surface,         snapshot: snap },
-        delta: _diffSnapshots(prev, snap),
+        delta,
       });
+      // CHIP_RENDER_PATH_DIFF — focused single-event diff that names
+      // exactly which renderer / owner / anchor / style / projection /
+      // slot / DOM-ancestry dimension diverged across the transition.
+      recordWartime(
+        'SEATING',
+        `CHIP_RENDER_PATH_DIFF ${prevSurfaceForPlayer} → ${snap.surface}`,
+        {
+          playerId: snap.playerId,
+          position: snap.position ?? null,
+          rendererChange: {
+            from: prev.chipRenderer ?? null, to: snap.chipRenderer ?? null,
+          },
+          ownerChange: {
+            from: prev.surface, to: snap.surface,
+          },
+          anchorSourceChange: {
+            from: prev.seatAnchorSource ?? null, to: snap.seatAnchorSource ?? null,
+            providerFrom: prev.anchorProviderInstanceId ?? null,
+            providerTo: snap.anchorProviderInstanceId ?? null,
+            providerSurvived:
+              !!(prev.anchorProviderInstanceId && snap.anchorProviderInstanceId &&
+                 prev.anchorProviderInstanceId === snap.anchorProviderInstanceId),
+          },
+          styleSourceChange: {
+            from: prev.chipStyleSource ?? null, to: snap.chipStyleSource ?? null,
+            variantFrom: prev.chipVariant ?? null,
+            variantTo: snap.chipVariant ?? null,
+            statusFrom: prev.status ?? null,
+            statusTo: snap.status ?? null,
+          },
+          projectionChange: {
+            from: prev.projectionMode ?? null, to: snap.projectionMode ?? null,
+          },
+          slotChange: {
+            from: prev.renderedSeatSlot ?? null, to: snap.renderedSeatSlot ?? null,
+          },
+          domAncestryChange: {
+            from: prev.domAncestry ?? null, to: snap.domAncestry ?? null,
+          },
+          rectChange: {
+            from: prev.chipRect ?? null, to: snap.chipRect ?? null,
+          },
+          fullDelta: delta,
+        },
+      );
     }
   }
 }
@@ -956,4 +1009,114 @@ export function probeChipDom(position: number | null | undefined): {
     };
   } catch { /* ignore */ }
   return { chipDOMSelector: selector, chipRect: rect, chipComputedStyle: style };
+}
+
+// =========================================================================
+// DOM ancestry probe — walks up from the chip element capturing tagName +
+// notable `data-*` attributes per ancestor. Used by chip-render-path
+// snapshots so CHIP_RENDER_PATH_DIFF surfaces DOM-owner divergence
+// (e.g. NeutralInterstitial container vs. WaitingTable container)
+// without requiring per-component instrumentation.
+// =========================================================================
+export function probeChipDomAncestry(
+  position: number | null | undefined,
+  maxDepth = 10,
+): string[] {
+  if (position == null || typeof document === 'undefined') return [];
+  const selector = `[data-chip-center="${position}"]`;
+  let el: Element | null = null;
+  try { el = document.querySelector(selector); } catch { return []; }
+  if (!el) return [];
+  const ancestry: string[] = [];
+  let cur: Element | null = el;
+  let depth = 0;
+  while (cur && depth < maxDepth) {
+    const tag = cur.tagName.toLowerCase();
+    const dataAttrs: string[] = [];
+    for (const attr of Array.from(cur.attributes)) {
+      if (attr.name.startsWith('data-') && attr.name !== 'data-state') {
+        const v = attr.value ? `=${attr.value.slice(0, 24)}` : '';
+        dataAttrs.push(`${attr.name}${v}`);
+      }
+    }
+    ancestry.push(`${tag}${dataAttrs.length ? `[${dataAttrs.join('|')}]` : ''}`);
+    cur = cur.parentElement;
+    depth += 1;
+  }
+  return ancestry;
+}
+
+// =========================================================================
+// HIGH-CARD WRITER ATTRIBUTION
+//
+// Emitted IMMEDIATELY BEFORE any code path mutates the visible high-card
+// cards array. Captures producer / callsite / reason / previous+next
+// card identity + a JS stack so the trace can prove the exact writer
+// responsible for the first 2 → 0 disappearance — no inference.
+// =========================================================================
+export interface HighCardWriterPayload {
+  gameId: string;
+  source:
+    | 'host-deal'
+    | 'host-determine-winner'
+    | 'host-complete-replay'
+    | 'non-host-sync'
+    | 'reset-path'
+    | 'unknown';
+  callsite: string;
+  reason: string;
+  previousLength: number;
+  nextLength: number;
+  previousCardIds: string[];
+  nextCardIds: string[];
+  renderPath?: string | null;
+  surfaceInstanceId?: string | null;
+  winnerPosition?: number | null;
+  isComplete?: boolean | null;
+  stack?: string | null;
+}
+export function recordHighCardWriter(payload: HighCardWriterPayload): void {
+  const stack = payload.stack ?? (() => {
+    try {
+      const e = new Error('writer-stack');
+      return (e.stack ?? '').split('\n').slice(0, 12).join('\n');
+    } catch { return null; }
+  })();
+  recordWartime(
+    'GAMEPLAY',
+    `high-card.writer ${payload.source}`,
+    { ...payload, stack } as unknown as Record<string, unknown>,
+  );
+}
+
+// =========================================================================
+// HIGH-CARD DOM vs HOOK DIVERGENCE
+//
+// Emitted from the rAF sampler when the visible DOM card count diverges
+// from the hook card count. Carries both snapshots so the trace can
+// attribute symptom ↔ cause without a second repro.
+// =========================================================================
+export interface HighCardStateVisualDivergencePayload {
+  gameId: string;
+  surfaceInstanceId?: string | null;
+  componentKey?: string | null;
+  renderPath?: string | null;
+  hookCardsLength: number;
+  hookCardIds: string[];
+  domCardCount: number;
+  domCardKeys: string[];
+  domCardIds: string[];
+  winnerPosition?: number | null;
+  isComplete?: boolean | null;
+  gameStatus?: string | null;
+  sampledAtMs?: number | null;
+}
+export function recordHighCardStateVisualDivergence(
+  payload: HighCardStateVisualDivergencePayload,
+): void {
+  recordWartime(
+    'RENDERING',
+    'HIGH_CARD_STATE_VISUAL_DIVERGENCE',
+    payload as unknown as Record<string, unknown>,
+  );
 }

@@ -38,6 +38,7 @@ import {
   recordHighCardStateSource,
   recordHighCardVisibleRenderer,
   recordHighCardPhaseTransition,
+  recordHighCardWriter,
   resetHighCardVisibleRendererCache,
   resetHighCardPhaseCache,
   type HighCardPhase,
@@ -466,6 +467,32 @@ export function useHighCardDealerSelection({
       lastCardsLenRef.current = nextLen;
     }
 
+    // WRITER ATTRIBUTION — emitted BEFORE the React setState so the
+    // trace can prove the exact producer responsible for any
+    // 2 → 0 / 0 → 2 transition without stack inference.
+    {
+      const _prevIds = (hookStateRef.current.cards ?? []).map(
+        (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+      );
+      const _nextIds = (syncedState.cards ?? []).map(
+        (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+      );
+      recordHighCardWriter({
+        gameId,
+        source: 'non-host-sync',
+        callsite: 'src/hooks/useHighCardDealerSelection.ts:469 non-host onCardsUpdate(syncedState.cards)',
+        reason: 'realtime synced-state delivery → mirror into local cards',
+        previousLength: _prevIds.length,
+        nextLength: _nextIds.length,
+        previousCardIds: _prevIds,
+        nextCardIds: _nextIds,
+        renderPath: 'non-host',
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        winnerPosition: syncedState.winnerPosition ?? null,
+        isComplete: !!syncedState.isComplete,
+      });
+    }
+
     onCardsUpdate(syncedState.cards);
 
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
@@ -577,6 +604,27 @@ export function useHighCardDealerSelection({
           lastCardsLenRef.current = allCards.length;
         }
 
+        {
+          const _prevIds = (hookStateRef.current.cards ?? []).map(
+            (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+          );
+          const _nextIds = allCards.map(
+            (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+          );
+          recordHighCardWriter({
+            gameId,
+            source: 'host-deal',
+            callsite: `src/hooks/useHighCardDealerSelection.ts:runSelectionRound round=${roundNum}`,
+            reason: 'host dealt round → onCardsUpdate(allCards)',
+            previousLength: _prevIds.length,
+            nextLength: _nextIds.length,
+            previousCardIds: _prevIds,
+            nextCardIds: _nextIds,
+            renderPath: 'host',
+            surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+          });
+        }
+
         onCardsUpdate(allCards);
 
         // Persist the reveal-only snapshot so non-host subscribers receive
@@ -641,6 +689,26 @@ export function useHighCardDealerSelection({
         return { ...p, isWinner, isDimmed: !isWinner };
       });
 
+      {
+        const _prevIds = (hookStateRef.current.cards ?? []).map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        const _nextIds = updatedCards.map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        recordHighCardWriter({
+          gameId,
+          source: 'host-determine-winner',
+          callsite: `src/hooks/useHighCardDealerSelection.ts:determineWinner round=${roundNum}`,
+          reason: 'host applied winner/dim flags → onCardsUpdate(updatedCards)',
+          previousLength: _prevIds.length,
+          nextLength: _nextIds.length,
+          previousCardIds: _prevIds,
+          nextCardIds: _nextIds,
+          renderPath: 'host',
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
+      }
       onCardsUpdate(updatedCards);
 
       if (winners.length === 1) {
@@ -749,6 +817,28 @@ export function useHighCardDealerSelection({
           dealerSelectionComplete: true,
           gameId,
           surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
+      }
+      {
+        const _prevIds = (hookStateRef.current.cards ?? []).map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        const _nextIds = (nextCards ?? []).map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        recordHighCardWriter({
+          gameId,
+          source: 'host-complete-replay',
+          callsite: 'src/hooks/useHighCardDealerSelection.ts:host-complete-replay onCardsUpdate(nextCards)',
+          reason: 'host completion effect replay → mirror DB cards to local',
+          previousLength: _prevIds.length,
+          nextLength: _nextIds.length,
+          previousCardIds: _prevIds,
+          nextCardIds: _nextIds,
+          renderPath: 'host',
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+          winnerPosition: syncedState.winnerPosition,
+          isComplete: true,
         });
       }
       onCardsUpdate(nextCards);

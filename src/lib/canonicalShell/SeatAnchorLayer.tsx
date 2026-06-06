@@ -28,9 +28,15 @@ interface SeatAnchorContextValue {
   viewerPosition: number | null;
   anchors: ResolvedSeatAnchor[];
   byPosition: Map<number, ResolvedSeatAnchor>;
+  /** Stable identifier for THIS provider instance — changes whenever the
+   *  React-tree position of the provider remounts. Used by Wartime to
+   *  prove whether the provider survived a surface transition. */
+  providerInstanceId: string;
 }
 
 const SeatAnchorContext = createContext<SeatAnchorContextValue | null>(null);
+
+let _seatAnchorProviderSeq = 0;
 
 interface SeatAnchorLayerProps {
   projectionMode: ProjectionMode;
@@ -78,6 +84,13 @@ export function SeatAnchorLayer({
     [seats],
   );
 
+  // Stable per-mount provider id so cross-surface diffs can tell
+  // whether the same provider survived a surface transition.
+  const providerInstanceIdRef = useRef<string>('');
+  if (!providerInstanceIdRef.current) {
+    providerInstanceIdRef.current = `seat-anchor-${++_seatAnchorProviderSeq}`;
+  }
+
   const value = useMemo<SeatAnchorContextValue>(() => {
     const anchors = resolveSeatAnchors({
       projectionMode,
@@ -87,7 +100,13 @@ export function SeatAnchorLayer({
       gameType,
     });
     const byPosition = new Map(anchors.map(a => [a.position, a]));
-    return { projectionMode, viewerPosition, anchors, byPosition };
+    return {
+      projectionMode,
+      viewerPosition,
+      anchors,
+      byPosition,
+      providerInstanceId: providerInstanceIdRef.current,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectionMode, viewerPosition, seatKey, gameId, gameType]);
 
