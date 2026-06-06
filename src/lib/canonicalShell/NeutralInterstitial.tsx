@@ -17,7 +17,10 @@ import { usePublishShellFelt } from './ShellOwnedFeltHost';
 import { ShellHudGrid } from './ShellHudGrid';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 
-import { SeatAnchorLayer, useSeatAnchors } from './SeatAnchorLayer';
+import { useSeatAnchorsOptional } from './SeatAnchorLayer';
+import { recordWartime } from '@/lib/wartimeDebug/core';
+
+
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { derivePlayerStatus } from './participantStatus';
 import { getDisplayName } from '@/lib/botAlias';
@@ -230,7 +233,7 @@ export function NeutralInterstitial({
     });
     recordSurfaceOwnership('NeutralInterstitial', {
       SeatOwner: participants?.length
-        ? 'Slot:NeutralInterstitial.SeatAnchorLayer(LOCAL) → CanonicalSeatClusterDeferred'
+        ? 'Shell:PersistentTableShell.SeatAnchorLayer → CanonicalSeatClusterDeferred'
         : '(none — no participants prop)',
       ChipOwner: participants?.length ? 'CanonicalSeatCluster.chipValue' : '(none)',
       ControlOwner: '(none — neutral interstitial owns no controls)',
@@ -284,19 +287,28 @@ export function NeutralInterstitial({
     ? participants!.find(p => p.user_id === currentUserId)
     : undefined;
   const isViewerSeated = !!viewer;
-  const projectionMode = isViewerSeated ? 'active-canonical' : 'observer-absolute';
-  const viewerPosition = isViewerSeated ? viewer!.position : null;
-  const seatInputs = useMemo(
-    () =>
-      hasParticipants
-        ? participants!.map(p => ({
-            position: p.position,
-            occupied: true,
-            hidden: false,
-          }))
-        : [],
-    [hasParticipants, participants],
-  );
+  // P0 (chip-continuity fix): consume the SHELL-OWNED SeatAnchorLayer
+  // mounted in PersistentTableShell via Game.tsx. The previous local
+  // SeatAnchorLayer wrap forked seat identity from WaitingTable so
+  // every slot transition remounted the provider and reinitialized
+  // CanonicalSeatCluster — read as a visible chip jump. No local
+  // fallback: missing ambient provider is a wiring contract violation
+  // and is recorded for diagnosis.
+  const ambient = useSeatAnchorsOptional();
+  useEffect(() => {
+    if (hasParticipants && !ambient) {
+      recordWartime('SEATING', 'contract-violation.missing-seat-anchor-provider', {
+        surface: 'NeutralInterstitial',
+        gameId: gameId ?? null,
+        gameType: participantGameType ?? null,
+        hint: 'shell SeatAnchorLayer not mounted above this surface',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasParticipants, ambient == null]);
+  const projectionMode = ambient?.projectionMode ?? (isViewerSeated ? 'active-canonical' : 'observer-absolute');
+  const viewerPosition = ambient?.viewerPosition ?? (isViewerSeated ? viewer!.position : null);
+
 
   // P-WAIT.B3: per-participant chip-glyph render trace (Interstitial).
   useEffect(() => {
@@ -314,7 +326,7 @@ export function NeutralInterstitial({
           userId: p.user_id,
           name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
           chipValue: `$${formatChipValue(p.chips ?? 0)}`,
-          seatAnchorSource: 'NeutralInterstitial.SeatAnchorLayer (LOCAL)',
+          seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipStyleSource: 'derivePlayerStatus → status palette',
           projectionMode,
@@ -333,7 +345,7 @@ export function NeutralInterstitial({
         viewerPosition: viewerPos,
         logicalSeat: p.position,
         renderedSeatSlot: null,
-        seatAnchorSource: 'NeutralInterstitial.SeatAnchorLayer (LOCAL)',
+        seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatClusterDeferred',
         chipStyleSource: 'derivePlayerStatus → status palette',
@@ -358,38 +370,31 @@ export function NeutralInterstitial({
 
 
   const seatLayer = hasParticipants ? (
-    <SeatAnchorLayer
-      projectionMode={projectionMode}
-      viewerPosition={viewerPosition}
-      seats={seatInputs}
-      gameId={gameId ?? undefined}
-      gameType={participantGameType ?? undefined}
+    <div
+      data-canonical-shell-interstitial-seats=""
+      data-projection-mode={projectionMode}
+      className="absolute inset-0 z-20 pointer-events-none"
     >
-      <div
-        data-canonical-shell-interstitial-seats=""
-        data-projection-mode={projectionMode}
-        className="absolute inset-0 z-20 pointer-events-none"
-      >
-        {participants!.map(player => {
-          const actualUsername =
-            player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player');
-          const label = getDisplayName(participants as any, player as any, actualUsername);
-          const status = derivePlayerStatus(player as any, null, {
-            hasStayDecision: false,
-          });
-          return (
-            <CanonicalSeatClusterDeferred
-              key={player.id}
-              position={player.position}
-              name={label}
-              chipValue={`$${formatChipValue(player.chips ?? 0)}`}
-              status={status}
-            />
-          );
-        })}
-      </div>
-    </SeatAnchorLayer>
+      {participants!.map(player => {
+        const actualUsername =
+          player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player');
+        const label = getDisplayName(participants as any, player as any, actualUsername);
+        const status = derivePlayerStatus(player as any, null, {
+          hasStayDecision: false,
+        });
+        return (
+          <CanonicalSeatClusterDeferred
+            key={player.id}
+            position={player.position}
+            name={label}
+            chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+            status={status}
+          />
+        );
+      })}
+    </div>
   ) : null;
+
 
   return (
     <div
@@ -429,7 +434,10 @@ function CanonicalSeatClusterDeferred(props: {
   chipValue: string;
   status: ReturnType<typeof derivePlayerStatus>;
 }) {
-  const { byPosition } = useSeatAnchors();
+  const ambient = useSeatAnchorsOptional();
+  const byPosition = ambient?.byPosition;
+  if (!byPosition) return null;
+
   const anchor = byPosition.get(props.position);
   if (!anchor) return null;
   return (

@@ -27,7 +27,7 @@
  * second local map.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   useWaitingRoomActions,
@@ -44,7 +44,9 @@ import {
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
 import { MobileChatPanel } from "@/components/MobileChatPanel";
-import { SeatAnchorLayer, useSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { recordWartime } from "@/lib/wartimeDebug/core";
+
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { observerSlotForPosition } from "@/lib/canonicalShell/seatAnchors";
@@ -93,45 +95,19 @@ const SHELL_TABLE_REGION_HEIGHT = "var(--shell-felt-h)";
 export function CanonicalShellWaitingSurface(
   props: CanonicalShellWaitingSurfaceProps,
 ) {
-  // Derive projection inputs once so the local SeatAnchorLayer mount
-  // gets the same canonical inputs every gameplay surface uses.
-  const { players, currentUserId, gameId, gameType } = props;
-  const viewer = players.find((p) => p.user_id === currentUserId);
-  const isViewerSeated = !!viewer;
-  const projectionMode = isViewerSeated
-    ? "active-canonical"
-    : "observer-absolute";
-  const viewerPosition = isViewerSeated ? viewer!.position : null;
-
-  // Roster fed to the canonical resolver. Waiting players ARE seated
-  // for projection purposes — they're at their authoritative position
-  // even though the hand hasn't committed them yet. This matches the
-  // perspective semantics the user sees during gameplay: the viewer's
-  // own seat is HOME (-1), others remap by clockwise distance.
-  const seatInputs = useMemo(
-    () =>
-      players.map((p) => ({
-        position: p.position,
-        occupied: true,
-        hidden: false,
-      })),
-    [players],
-  );
-
-  return (
-    <SeatAnchorLayer
-      projectionMode={projectionMode}
-      viewerPosition={viewerPosition}
-      seats={seatInputs}
-      gameId={gameId}
-      gameType={gameType ?? undefined}
-    >
-      <WaitingSurfaceBody {...props} />
-    </SeatAnchorLayer>
-  );
+  // P0 (chip-continuity fix): canonical pre-session surfaces consume
+  // the SHELL-OWNED SeatAnchorLayer mounted in PersistentTableShell
+  // via Game.tsx. The previous local SeatAnchorLayer wrap forked seat
+  // identity from NeutralInterstitial — every slot transition
+  // remounted the provider and reinitialized CanonicalSeatCluster,
+  // which read as a visible chip jump. There is no local fallback:
+  // missing ambient provider is a shell wiring contract violation and
+  // is recorded as such for diagnosis.
+  return <WaitingSurfaceBody {...props} />;
 }
 
 function WaitingSurfaceBody({
+
   gameId,
   gameType,
   anteAmount = 0,
@@ -172,10 +148,25 @@ function WaitingSurfaceBody({
     onRejoinRequested: onBotAdded,
   });
 
-  // Canonical seat resolver — same one every gameplay surface reads.
-  // We never recompute slot math here; we read what the shell-owned
-  // layer resolved.
-  const { byPosition, projectionMode } = useSeatAnchors();
+  // Canonical seat resolver — shell-owned (PersistentTableShell).
+  // No local provider; contract violation is recorded if missing so
+  // wiring failures surface in Wartime instead of silently rendering
+  // empty seats.
+  const ambient = useSeatAnchorsOptional();
+  useEffect(() => {
+    if (!ambient) {
+      recordWartime('SEATING', 'contract-violation.missing-seat-anchor-provider', {
+        surface: 'CanonicalShellWaitingSurface',
+        gameId,
+        gameType,
+        hint: 'shell SeatAnchorLayer not mounted above this surface',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ambient == null]);
+  const byPosition = ambient?.byPosition ?? new Map();
+  const projectionMode = ambient?.projectionMode ?? 'observer-absolute';
+
 
   // Host pip discrimination — host is the earliest-joined human (same
   // rule as `useWaitingRoomActions`). We surface it through the
@@ -242,7 +233,7 @@ function WaitingSurfaceBody({
     }
     recordSurfaceGeometry('WaitingTable', {
       geometryProviderId: 'ResponsiveGeometryProvider',
-      seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+      seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
       chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
       chipStyleSource: 'derivePlayerStatus → status palette',
       projectionMode,
@@ -272,7 +263,7 @@ function WaitingSurfaceBody({
           name: player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player'),
           chipValue: `$${formatChipValue(player.chips ?? 0)}`,
           status,
-          seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+          seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipStyleSource: 'derivePlayerStatus → status palette',
           projectionMode,
@@ -291,7 +282,7 @@ function WaitingSurfaceBody({
         viewerPosition: viewerPos,
         logicalSeat: player.position,
         renderedSeatSlot: anchor.slot,
-        seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+        seatAnchorSource: 'PersistentTableShell.SeatAnchorLayer (SHELL)',
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatCluster',
         chipStyleSource: 'derivePlayerStatus → status palette',
