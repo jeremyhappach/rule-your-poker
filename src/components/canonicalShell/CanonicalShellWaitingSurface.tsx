@@ -203,6 +203,52 @@ function WaitingSurfaceBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Waiting-table flight recorder (instrumentation only) ────────
+  useWaitingMount('WaitingTable', {
+    impl: 'CanonicalShellWaitingSurface',
+    gameId,
+    gameType,
+    anteAmount,
+    projectionMode,
+  });
+  useEffect(() => {
+    recordWaitingLifecycle('WaitingTable ready (canonical)', {
+      gameId,
+      gameType,
+      anteAmount,
+      projectionMode,
+      playerCount: players.length,
+      seatedCount: players.filter(p => p.position != null).length,
+      hostUserId: hostUserId?.slice(0, 8) ?? null,
+      isViewerSeated: !!players.find(p => p.user_id === currentUserId),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    recordSurfaceOwnership('WaitingTable', {
+      SeatOwner: 'Shell:CanonicalSeatCluster',
+      ChipOwner: 'Shell:CanonicalSeatCluster.chipValue',
+      ControlOwner: 'Slot:WaitingRoomCTA (Invite/AddBot/Start)',
+      AnnouncementOwner: 'Shell:ShellHudChrome → CanonicalAnnouncementLayer',
+      HUDOwner: 'Shell:ShellHudChrome',
+    }, { gameId, impl: 'CanonicalShellWaitingSurface' });
+  }, [gameId]);
+  useEffect(() => {
+    const anchorSnapshot: Record<string, unknown> = {};
+    for (const [pos, a] of byPosition) {
+      anchorSnapshot[String(pos)] = { slot: a.slot, projection: a.projection };
+    }
+    recordSurfaceGeometry('WaitingTable', {
+      geometryProviderId: 'ResponsiveGeometryProvider',
+      seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+      chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
+      chipStyleSource: 'derivePlayerStatus → status palette',
+      projectionMode,
+      viewerPosition: players.find(p => p.user_id === currentUserId)?.position ?? null,
+      anchorSnapshot,
+    }, { gameId });
+  }, [gameId, projectionMode, byPosition, players, currentUserId]);
+
   const openPositions = ALL_POSITIONS.filter(
     (pos) => !players.some((p) => p.position === pos),
   );
