@@ -30,6 +30,7 @@ import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { recordPlayerVisualSnapshot, probeChipDom } from '@/lib/wartimeDebug/surfaces';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import {
   usePublishShellFelt,
@@ -810,6 +811,40 @@ export const CribbageMobileGameTable = ({
   // When in external dealer selection mode (cribbage_dealer_selection status), use external props
   // Parent (Game.tsx) clears these at the handoff point so no stale session-level cards leak
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
+
+  // Wartime: emit DealerSelection player-visual snapshots so the
+  // cross-surface diff (WaitingTable → NeutralInterstitial → DealerSelection)
+  // captures chip-renderer / anchor / rect deltas for the SAME playerId
+  // as it traverses surfaces. Deferred to rAF so the chip DOM is settled.
+  useEffect(() => {
+    if (!effectiveShowHighCardSelection) return;
+    if (typeof window === 'undefined') return;
+    const raf = window.requestAnimationFrame(() => {
+      for (const player of players) {
+        recordPlayerVisualSnapshot({
+          surface: 'DealerSelection',
+          playerId: player.id,
+          userId: player.user_id,
+          position: player.position,
+          logicalSeat: player.position,
+          renderedSeatSlot: null,
+          seatAnchorSource: 'CribbageMobileGameTable.SeatAnchorLayer (LOCAL)',
+          chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
+          chipRenderer: 'CanonicalSeatCluster',
+          chipStyleSource: 'derivePlayerStatus → status palette',
+          chipVariant: 'dealer-selection',
+          chipValue: null,
+          status: null,
+          projectionMode: null,
+          isViewerSelf: player.user_id === currentUserId,
+          isSuppressed: false,
+          suppressionReason: null,
+          ...probeChipDom(player.position),
+        });
+      }
+    });
+    return () => { try { window.cancelAnimationFrame(raf); } catch { /* noop */ } };
+  }, [effectiveShowHighCardSelection, players, currentUserId]);
 
   // ── HANDOFF TRACE #9: dealer-game showHighCardSelection changes ──
   const prevShowHCRef = useRef(showHighCardSelection);
@@ -6023,7 +6058,12 @@ export const CribbageMobileGameTable = ({
                     winnerPosition={effectiveHighCardWinnerPosition ?? null}
                   />
                 )}
-                <div className="absolute inset-0 flex items-center justify-center z-40">
+                <div
+                  className="absolute inset-0 flex items-center justify-center z-40"
+                  data-wartime-high-card-container={gameId}
+                  data-wartime-surface="HighCardRender"
+                >
+
                   {/* HIGH-CARD INSTRUMENTATION: render-time signature + per-card mount markers.
                       No layout impact. */}
                   {(() => {
@@ -6066,6 +6106,10 @@ export const CribbageMobileGameTable = ({
                             {stack.map((c, idx) => (
                               <div
                                 key={`${c.playerId}-${c.roundNumber}`}
+                                data-wartime-high-card="card"
+                                data-card-key={`${c.playerId}-${c.roundNumber}`}
+                                data-card-id={`p${c.position}:${c.card?.rank ?? '?'}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`}
+                                data-player-position={c.position}
                                 className={cn(
                                   idx > 0 ? 'absolute' : '',
                                   isFinalWinner && idx === stack.length - 1
@@ -6078,6 +6122,7 @@ export const CribbageMobileGameTable = ({
                                   zIndex: idx,
                                 } : undefined}
                               >
+
                                 <WaitingFlightMarker
                                   event={`high-card card-node key=${c.playerId}-${c.roundNumber}`}
                                   payload={{

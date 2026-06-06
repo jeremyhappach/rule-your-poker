@@ -472,6 +472,10 @@ export interface PlayerVisualSnapshot {
   chipStyleSource?: string | null;
   chipVariant?: string | null;
   chipValue?: string | number | null;
+  /** DOM coordinates of the chip element (when locatable). */
+  chipDOMSelector?: string | null;
+  chipRect?: Record<string, number> | null;
+  chipComputedStyle?: Record<string, string> | null;
   status?: string | null;
   projectionMode?: string | null;
   isViewerSelf?: boolean | null;
@@ -488,6 +492,7 @@ function _diffSnapshots(a: PlayerVisualSnapshot, b: PlayerVisualSnapshot) {
     'seatAnchorSource', 'seatAnchorCoordinates',
     'chipAnchorSource', 'chipAnchorCoordinates',
     'chipRenderer', 'chipStyleSource', 'chipVariant', 'chipValue',
+    'chipDOMSelector', 'chipRect', 'chipComputedStyle',
     'status', 'projectionMode', 'isViewerSelf', 'isSuppressed', 'suppressionReason',
   ];
   const delta: Record<string, { from: unknown; to: unknown }> = {};
@@ -647,3 +652,122 @@ export function recordHighCardCardUnmount(payload: Record<string, unknown>): voi
   recordWartime('LIFECYCLE', 'high-card.card-unmount', payload);
 }
 
+
+// =========================================================================
+// HIGH-CARD RAW EVENTS — explicitly NOT deduplicated.
+//
+// The dedup'd `render.HighCardDealerSelection` event masks fast 2→0→2
+// flicker if intermediate frames briefly clear cards. The raw stream
+// records every call so a visual 2→0→2→0 can be reconstructed without
+// inference. Scoped to the high-card window: callers stop emitting once
+// dealer setup begins / surface unmounts.
+// =========================================================================
+
+export function recordHighCardStateRaw(payload: Record<string, unknown>): void {
+  recordWartime('GAMEPLAY', 'high-card.state.raw', payload);
+}
+export function recordHighCardRenderRaw(payload: Record<string, unknown>): void {
+  recordWartime('RENDERING', 'high-card.render.raw', payload);
+}
+export function recordHighCardVisualRaw(payload: Record<string, unknown>): void {
+  recordWartime('RENDERING', 'high-card.visual.raw', payload);
+}
+
+// =========================================================================
+// HIGH-CARD ANIMATION / TIMER RECORDER
+// =========================================================================
+export interface HighCardTimerPayload {
+  timerId?: string | number | null;
+  delayMs?: number | null;
+  phaseFrom?: string | null;
+  phaseTo?: string | null;
+  cardsLength?: number | null;
+  cardIds?: string[] | null;
+  winnerPosition?: number | null;
+  componentKey?: string | null;
+  surfaceInstanceId?: string | null;
+  gameId?: string | null;
+  reason?: string | null;
+}
+export function recordHighCardTimer(event:
+  | 'timeout.scheduled'
+  | 'timeout.fired'
+  | 'timeout.cancelled'
+  | 'phase.changed'
+  | 'reveal.phase'
+  | 'card.reveal.started'
+  | 'card.reveal.completed'
+  | 'winner.phase.started'
+  | 'winner.announcement.started'
+  | 'onComplete.scheduled'
+  | 'onComplete.fired',
+  payload: HighCardTimerPayload,
+): void {
+  recordWartime('ANIMATIONS', `high-card.${event}`, payload as unknown as Record<string, unknown>);
+}
+
+// =========================================================================
+// PLAYER-VISUAL TRANSITION DIFF (named alias — backwards-compatible call
+// path. The auto-diff inside recordPlayerVisualSnapshot already emits a
+// `player-visual-transition` event when the same playerId moves between
+// surfaces. This helper lets producers explicitly tag a cross-surface
+// snapshot pair without depending on emission timing.)
+// =========================================================================
+export function recordPlayerVisualTransitionDiff(args: {
+  fromSurface: string;
+  toSurface: string;
+  playerId: string;
+  from: PlayerVisualSnapshot;
+  to: PlayerVisualSnapshot;
+}): void {
+  recordWartime(
+    'SEATING',
+    `player-visual-transition-diff ${args.fromSurface} → ${args.toSurface}`,
+    {
+      playerId: args.playerId,
+      fromSurface: args.fromSurface,
+      toSurface: args.toSurface,
+      from: args.from,
+      to: args.to,
+      delta: _diffSnapshots(args.from, args.to),
+    },
+  );
+}
+
+// =========================================================================
+// DOM probe helper — used by snapshot producers to populate chipRect /
+// chipComputedStyle so the cross-surface transition diff can reason
+// about pixel-level moves and style deltas.
+// =========================================================================
+export function probeChipDom(position: number | null | undefined): {
+  chipDOMSelector: string | null;
+  chipRect: Record<string, number> | null;
+  chipComputedStyle: Record<string, string> | null;
+} {
+  if (position == null || typeof document === 'undefined') {
+    return { chipDOMSelector: null, chipRect: null, chipComputedStyle: null };
+  }
+  const selector = `[data-chip-center="${position}"]`;
+  let el: Element | null = null;
+  try { el = document.querySelector(selector); } catch { /* ignore */ }
+  if (!el) return { chipDOMSelector: selector, chipRect: null, chipComputedStyle: null };
+  let rect: Record<string, number> | null = null;
+  try {
+    const r = (el as HTMLElement).getBoundingClientRect();
+    rect = {
+      x: Math.round(r.x), y: Math.round(r.y),
+      w: Math.round(r.width), h: Math.round(r.height),
+      cx: Math.round(r.x + r.width / 2), cy: Math.round(r.y + r.height / 2),
+    };
+  } catch { /* ignore */ }
+  let style: Record<string, string> | null = null;
+  try {
+    const cs = window.getComputedStyle(el as HTMLElement);
+    style = {
+      display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
+      transform: cs.transform, zIndex: cs.zIndex, color: cs.color,
+      background: cs.backgroundColor,
+    };
+  } catch { /* ignore */ }
+  return { chipDOMSelector: selector, chipRect: rect, chipComputedStyle: style };
+}

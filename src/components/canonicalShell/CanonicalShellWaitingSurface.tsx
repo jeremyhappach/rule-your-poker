@@ -59,7 +59,7 @@ import {
   recordSurfaceOwnership,
   recordSurfaceGeometry,
 } from "@/lib/canonicalShell/waitingTableFlight";
-import { recordPlayerVisualSnapshot } from "@/lib/wartimeDebug/surfaces";
+import { recordPlayerVisualSnapshot, probeChipDom } from "@/lib/wartimeDebug/surfaces";
 
 interface Player extends WaitingRoomActor {
   id: string;
@@ -281,8 +281,10 @@ function WaitingSurfaceBody({
       );
       // Wartime: cross-surface player visual snapshot (auto-diffs against
       // NeutralInterstitial / DealerSelection snapshots for same playerId).
-      recordPlayerVisualSnapshot({
-        surface: 'WaitingTable',
+      // Defer to next frame so the chip DOM is laid out when probed.
+      const _pos = player.position;
+      const _baseSnap = {
+        surface: 'WaitingTable' as const,
         playerId: player.id,
         userId: player.user_id,
         position: player.position,
@@ -300,7 +302,14 @@ function WaitingSurfaceBody({
         isViewerSelf: player.user_id === currentUserId,
         isSuppressed: player.user_id === currentUserId,
         suppressionReason: player.user_id === currentUserId ? 'self-HOME' : null,
-      });
+      };
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          recordPlayerVisualSnapshot({ ..._baseSnap, ...probeChipDom(_pos) });
+        });
+      } else {
+        recordPlayerVisualSnapshot(_baseSnap);
+      }
     }
   }, [players, byPosition, projectionMode, currentUserId]);
 

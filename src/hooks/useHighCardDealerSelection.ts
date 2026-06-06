@@ -31,7 +31,14 @@ import {
   recordHighCardSurfaceMount,
   recordHighCardSurfaceUnmount,
   recordHighCardRender,
+  recordHighCardStateRaw,
+  recordHighCardRenderRaw,
+  recordHighCardTimer,
 } from '@/lib/wartimeDebug/surfaces';
+import {
+  startHighCardVisualSampler,
+  stopHighCardVisualSampler,
+} from '@/lib/wartimeDebug/highCardVisualSampler';
 
 interface Player {
   id: string;
@@ -122,7 +129,27 @@ export function useHighCardDealerSelection({
       componentKey: `${gameId}:${selectionVariant}`,
       playerCount: players.length,
     });
+    // Start the rAF DOM/CSS/overlay visual sampler scoped to the
+    // active high-card window. Stops on unmount below.
+    startHighCardVisualSampler({
+      gameId,
+      componentKey: `${gameId}:${selectionVariant}`,
+      renderPath: isHost ? 'host' : 'non-host',
+      selectedCardsSource: isHost ? 'local' : 'syncedState',
+      surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+      getHookState: () => ({
+        hookCardsLength: hookStateRef.current.cards.length,
+        hookCardIds: hookStateRef.current.cards.map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        ),
+        expectedCardIds: hookStateRef.current.expectedCardIds,
+        gameStatus: 'dealer_selection',
+        winnerPosition: hookStateRef.current.winnerPosition,
+        isComplete: hookStateRef.current.isComplete,
+      }),
+    });
     return () => {
+      stopHighCardVisualSampler(gameId);
       recordHighCardSurfaceUnmount({
         gameId,
         isHost,
@@ -134,12 +161,30 @@ export function useHighCardDealerSelection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Mount only
 
+  // Mirror of latest hook state for the rAF sampler / raw recorders
+  // (refs so sampler closure does not need to re-bind each render).
+  const hookStateRef = useRef<{
+    cards: DealerSelectionCard[];
+    expectedCardIds: string[];
+    winnerPosition: number | null;
+    isComplete: boolean;
+  }>({ cards: [], expectedCardIds: [], winnerPosition: null, isComplete: false });
+
   // Render-decision + cards-disappeared classifier — emits on every
   // render via signature-keyed cache inside recordHighCardRender.
   const cardsForRender = syncedState?.cards ?? [];
   const cardIdsForRender = cardsForRender.map(
     (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
   );
+
+  // Keep ref in sync for the sampler closure.
+  hookStateRef.current = {
+    cards: cardsForRender,
+    expectedCardIds: cardIdsForRender,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
+  };
+
   recordHighCardRender({
     gameId,
     renderPath: isHost ? 'host' : 'non-host',
@@ -154,6 +199,37 @@ export function useHighCardDealerSelection({
     hideReason: cardsForRender.length === 0 ? 'no-cards' : null,
     componentKey: `${gameId}:${selectionVariant}`,
     gameStatus: 'dealer_selection',
+  });
+
+  // RAW non-deduped per-render state + render emit. Lets the trace
+  // reconstruct rapid sequences (e.g. 2 → 0 → 2 → 0) that the dedup'd
+  // recorder would collapse into a single transition.
+  recordHighCardRenderRaw({
+    gameId,
+    renderPath: isHost ? 'host' : 'non-host',
+    selectedCardsSource: isHost ? 'local' : 'syncedState',
+    componentKey: `${gameId}:${selectionVariant}`,
+    surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+    hookCardsLength: cardsForRender.length,
+    hookCardIds: cardIdsForRender,
+    syncedCardsLength: syncedState?.cards?.length ?? 0,
+    syncedCardIds: (syncedState?.cards ?? []).map(
+      (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+    ),
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
+    shouldRenderCards: cardsForRender.length > 0,
+    hideReason: cardsForRender.length === 0 ? 'no-cards' : null,
+    gameStatus: 'dealer_selection',
+  });
+  recordHighCardStateRaw({
+    gameId,
+    componentKey: `${gameId}:${selectionVariant}`,
+    cardsLength: cardsForRender.length,
+    cardIds: cardIdsForRender,
+    syncedCardsLength: syncedState?.cards?.length ?? 0,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
   });
 
 
@@ -171,15 +247,41 @@ export function useHighCardDealerSelection({
   const CRIBBAGE_TIE_REDEAL_DELAY = 500;
 
   const clearTimeouts = useCallback(() => {
-    timeoutsRef.current.forEach((t) => clearTimeout(t));
+    timeoutsRef.current.forEach((t) => {
+      clearTimeout(t);
+      recordHighCardTimer('timeout.cancelled', {
+        gameId,
+        componentKey: `${gameId}:${selectionVariant}`,
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        reason: 'clearTimeouts',
+      });
+    });
     timeoutsRef.current = [];
-  }, []);
+  }, [gameId, selectionVariant]);
 
+  const timerSeqRef = useRef(0);
   const addTimeout = useCallback((fn: () => void, delay: number) => {
-    const t = setTimeout(fn, delay);
+    const id = ++timerSeqRef.current;
+    recordHighCardTimer('timeout.scheduled', {
+      timerId: id,
+      delayMs: delay,
+      gameId,
+      componentKey: `${gameId}:${selectionVariant}`,
+      surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+    });
+    const t = setTimeout(() => {
+      recordHighCardTimer('timeout.fired', {
+        timerId: id,
+        delayMs: delay,
+        gameId,
+        componentKey: `${gameId}:${selectionVariant}`,
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+      });
+      fn();
+    }, delay);
     timeoutsRef.current.push(t);
     return t;
-  }, []);
+  }, [gameId, selectionVariant]);
 
   const getPlayerName = useCallback(
     (player: Player) => {
