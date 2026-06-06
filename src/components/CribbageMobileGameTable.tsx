@@ -30,7 +30,7 @@ import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
-import { recordPlayerVisualSnapshot, probeChipDom } from '@/lib/wartimeDebug/surfaces';
+import { recordPlayerVisualSnapshot, probeChipDom, probeChipDomAncestry } from '@/lib/wartimeDebug/surfaces';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import {
   usePublishShellFelt,
