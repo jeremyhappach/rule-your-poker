@@ -59,6 +59,7 @@ import {
   recordSurfaceOwnership,
   recordSurfaceGeometry,
 } from "@/lib/canonicalShell/waitingTableFlight";
+import { recordPlayerVisualSnapshot } from "@/lib/wartimeDebug/surfaces";
 
 interface Player extends WaitingRoomActor {
   id: string;
