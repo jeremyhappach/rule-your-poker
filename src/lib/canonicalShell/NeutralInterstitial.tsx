@@ -35,6 +35,7 @@ import {
   useWartimeRender,
   useWartimeOwnership,
   recordPlayerVisualSnapshot,
+  probeChipDom,
 } from '@/lib/wartimeDebug/surfaces';
 
 /**
@@ -323,8 +324,9 @@ export function NeutralInterstitial({
       );
       // Wartime: cross-surface visual snapshot (auto-diffs vs WaitingTable
       // / DealerSelection snapshots for the same playerId).
-      recordPlayerVisualSnapshot({
-        surface: 'NeutralInterstitial',
+      const _pos = p.position;
+      const _baseSnap = {
+        surface: 'NeutralInterstitial' as const,
         playerId: p.id,
         userId: p.user_id,
         position: p.position,
@@ -342,7 +344,14 @@ export function NeutralInterstitial({
         isViewerSelf: p.user_id === currentUserId,
         isSuppressed: p.user_id === currentUserId,
         suppressionReason: p.user_id === currentUserId ? 'self-HOME' : null,
-      });
+      };
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          recordPlayerVisualSnapshot({ ..._baseSnap, ...probeChipDom(_pos) });
+        });
+      } else {
+        recordPlayerVisualSnapshot(_baseSnap);
+      }
     }
   }, [participants, projectionMode, currentUserId]);
 
