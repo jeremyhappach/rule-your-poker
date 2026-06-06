@@ -34,6 +34,7 @@ import {
   useWartimeState,
   useWartimeRender,
   useWartimeOwnership,
+  recordPlayerVisualSnapshot,
 } from '@/lib/wartimeDebug/surfaces';
 
 /**
