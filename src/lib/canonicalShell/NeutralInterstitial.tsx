@@ -40,7 +40,6 @@ import {
   recordPlayerVisualSnapshot,
   probeChipDom,
   probeChipDomAncestry,
-  probeChipDom,
 } from '@/lib/wartimeDebug/surfaces';
 
 /**
