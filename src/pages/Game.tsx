@@ -679,27 +679,7 @@ const Game = () => {
     });
   }, [authReady, user, gameId]);
 
-  // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
-  // event each time the local cards array length changes (mount, deal,
-  // reveal, hide, clear). Lets the recorder attribute high-card
-  // disappearance to a Game-level state mutation vs. a child reset.
-  const _waitDealerCardsLenRef = useRef<number>(-1);
-  useEffect(() => {
-    const next = dealerSelectionCards.length;
-    if (_waitDealerCardsLenRef.current === next) return;
-    const prev = _waitDealerCardsLenRef.current;
-    _waitDealerCardsLenRef.current = next;
-    recordWaitingLifecycle('dealerSelectionCards length changed', {
-      gameId: gameId ?? null,
-      previousLength: prev === -1 ? null : prev,
-      nextLength: next,
-      gameStatus: (game as any)?.status ?? null,
-      gameType: game?.game_type ?? null,
-      hasSyncedState: !!(game as any)?.dealer_selection_state,
-      syncedCardsLen: ((game as any)?.dealer_selection_state?.cards?.length) ?? null,
-      winnerPosition: dealerSelectionWinnerPosition,
-    });
-  }, [dealerSelectionCards, dealerSelectionWinnerPosition, game, gameId]);
+  // P-WAIT.A4 tracker is installed after dealerSelectionCards is declared (see below).
 
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
