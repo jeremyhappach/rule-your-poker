@@ -369,38 +369,31 @@ export function NeutralInterstitial({
 
 
   const seatLayer = hasParticipants ? (
-    <SeatAnchorLayer
-      projectionMode={projectionMode}
-      viewerPosition={viewerPosition}
-      seats={seatInputs}
-      gameId={gameId ?? undefined}
-      gameType={participantGameType ?? undefined}
+    <div
+      data-canonical-shell-interstitial-seats=""
+      data-projection-mode={projectionMode}
+      className="absolute inset-0 z-20 pointer-events-none"
     >
-      <div
-        data-canonical-shell-interstitial-seats=""
-        data-projection-mode={projectionMode}
-        className="absolute inset-0 z-20 pointer-events-none"
-      >
-        {participants!.map(player => {
-          const actualUsername =
-            player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player');
-          const label = getDisplayName(participants as any, player as any, actualUsername);
-          const status = derivePlayerStatus(player as any, null, {
-            hasStayDecision: false,
-          });
-          return (
-            <CanonicalSeatClusterDeferred
-              key={player.id}
-              position={player.position}
-              name={label}
-              chipValue={`$${formatChipValue(player.chips ?? 0)}`}
-              status={status}
-            />
-          );
-        })}
-      </div>
-    </SeatAnchorLayer>
+      {participants!.map(player => {
+        const actualUsername =
+          player.profiles?.username ?? (player.is_bot ? 'Bot' : 'Player');
+        const label = getDisplayName(participants as any, player as any, actualUsername);
+        const status = derivePlayerStatus(player as any, null, {
+          hasStayDecision: false,
+        });
+        return (
+          <CanonicalSeatClusterDeferred
+            key={player.id}
+            position={player.position}
+            name={label}
+            chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+            status={status}
+          />
+        );
+      })}
+    </div>
   ) : null;
+
 
   return (
     <div
