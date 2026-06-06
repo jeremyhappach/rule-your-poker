@@ -41,6 +41,11 @@ import { useSurfaceReadiness } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { recordStartupFlight, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
 import { useWaitingMount, recordWaitingLifecycle } from './waitingTableFlight';
+import {
+  useWartimeSurface,
+  useWartimeState,
+  useWartimeRender,
+} from '@/lib/wartimeDebug/surfaces';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
