@@ -336,7 +336,6 @@ function WaitingSurfaceBody({
         className="relative flex-shrink-0"
         style={{
           height: SHELL_TABLE_REGION_HEIGHT,
-          minHeight: 260,
         }}
       >
         {activeTab === "cards" && (
@@ -374,7 +373,16 @@ function WaitingSurfaceBody({
                     slot={anchor.slot}
                     position={player.position}
                     name={label}
-                    isDealer={player.user_id === hostUserId}
+                    /* Pre-session: dealer badge intentionally suppressed.
+                       The session-host D was a waiting-only decorator
+                       that broke chip-identity continuity across
+                       WaitingTable → NeutralInterstitial →
+                       DealerSelection (the gameplay path does not paint
+                       a D until a cribbage dealer is committed). Held
+                       null here so the same chip renders identically
+                       across the transition; gameplay surfaces own the
+                       dealer badge once gameplay takes ownership. */
+                    isDealer={false}
                     chipValue={`$${formatChipValue(player.chips ?? 0)}`}
                     status={status}
                   />
