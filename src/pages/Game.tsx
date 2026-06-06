@@ -46,6 +46,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
+import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
 
 /**
  * HighCardDealerSelection — Phase C.2 retirement shim.
