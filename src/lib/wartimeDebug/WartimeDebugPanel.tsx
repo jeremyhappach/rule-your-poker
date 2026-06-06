@@ -222,8 +222,9 @@ export function WartimeDebugPanel() {
               type="button"
               className="rounded border border-border bg-muted px-2 py-1 text-[10px]"
               onClick={async () => {
+                const payload = buildWartimeExportText(exportOpts);
                 try {
-                  await navigator.clipboard.writeText(text);
+                  await navigator.clipboard.writeText(payload);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1500);
                 } catch {
@@ -237,22 +238,32 @@ export function WartimeDebugPanel() {
             <button
               type="button"
               className="rounded border border-border bg-muted px-2 py-1 text-[10px]"
-              onClick={() => download(text, 'wartime', 'txt', 'text/plain')}
+              onClick={() => download(buildWartimeExportText(exportOpts), 'wartime', 'txt', 'text/plain')}
             >
               TXT
             </button>
             <button
               type="button"
               className="rounded border border-border bg-muted px-2 py-1 text-[10px]"
-              onClick={() =>
-                download(JSON.stringify(filtered, null, 2), 'wartime', 'json', 'application/json')
-              }
+              onClick={() => download(buildWartimeExportJson(exportOpts), 'wartime', 'json', 'application/json')}
             >
               JSON
             </button>
+            <label
+              className="flex shrink-0 items-center gap-1 rounded border border-border bg-muted px-1.5 py-1 text-[9px]"
+              title="When OFF, exports include the FULL retained ring buffer regardless of filter chips/text. When ON, exports only what the panel currently shows."
+            >
+              <input
+                type="checkbox"
+                checked={exportFilteredOnly}
+                onChange={(e) => setExportFilteredOnly(e.target.checked)}
+              />
+              filtered only
+            </label>
           </div>
         ) : null}
       </div>
+
 
       {expanded ? (
         <>
