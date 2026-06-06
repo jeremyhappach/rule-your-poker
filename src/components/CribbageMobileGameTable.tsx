@@ -5086,6 +5086,8 @@ export const CribbageMobileGameTable = ({
           // Freeze the counting animation so the winning combo remains
           // highlighted while the win sequence plays.
           setCountingWinFrozen(true);
+          // [TERMINAL-PATH] safety/fallback: startNextCribbageHand surfaced the winner.
+          setTerminalPath('fallback');
           await updateState(result.newState);
           triggerWinSequence(result.newState);
           return;
