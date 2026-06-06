@@ -1440,6 +1440,14 @@ export const CribbageMobileGameTable = ({
     chatMessage?: string;
   } | null>(null);
 
+  // ── Terminal-path discriminator ─
+  // Explicitly tags which terminal trigger path produced the win, so the felt
+  // can choose the correct card layout instead of inferring from `!lastHandCount`
+  // (which is ambiguous: both a pegging win AND a reactive counting-frozen win
+  // present as `phase='complete' && !lastHandCount`).
+  type CribbageTerminalPath = 'pegging' | 'counting' | 'hand-counting' | 'crib-counting' | 'fallback';
+  const [terminalPath, setTerminalPath] = useState<CribbageTerminalPath | null>(null);
+
   // ── Sync invariant checks (wired to the ACTUAL rendered mobile state) ─
   const cribMobileInvariantScoringFiredRef = useRef<string | null>(null);
   const cribMobileResultDisplayFiredRef = useRef<string | null>(null);
