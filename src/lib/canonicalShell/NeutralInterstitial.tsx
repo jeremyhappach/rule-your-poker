@@ -433,7 +433,10 @@ function CanonicalSeatClusterDeferred(props: {
   chipValue: string;
   status: ReturnType<typeof derivePlayerStatus>;
 }) {
-  const { byPosition } = useSeatAnchors();
+  const ambient = useSeatAnchorsOptional();
+  const byPosition = ambient?.byPosition;
+  if (!byPosition) return null;
+
   const anchor = byPosition.get(props.position);
   if (!anchor) return null;
   return (
