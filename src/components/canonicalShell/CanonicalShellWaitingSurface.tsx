@@ -291,6 +291,7 @@ function WaitingSurfaceBody({
         logicalSeat: player.position,
         renderedSeatSlot: anchor.slot,
         seatAnchorSource: seatAnchorSourceLabel,
+        anchorProviderInstanceId: ambient?.providerInstanceId ?? null,
         chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
         chipRenderer: 'CanonicalSeatCluster',
         chipStyleSource: 'derivePlayerStatus → status palette',
@@ -304,7 +305,11 @@ function WaitingSurfaceBody({
       };
       if (typeof window !== 'undefined') {
         window.requestAnimationFrame(() => {
-          recordPlayerVisualSnapshot({ ..._baseSnap, ...probeChipDom(_pos) });
+          recordPlayerVisualSnapshot({
+            ..._baseSnap,
+            ...probeChipDom(_pos),
+            domAncestry: probeChipDomAncestry(_pos),
+          });
         });
       } else {
         recordPlayerVisualSnapshot(_baseSnap);
