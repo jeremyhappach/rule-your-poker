@@ -156,6 +156,8 @@ export function PlayfieldSlotController({
   // =============================================================
 
 
+
+
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
   );
