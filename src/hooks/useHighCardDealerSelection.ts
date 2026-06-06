@@ -137,6 +137,19 @@ export function useHighCardDealerSelection({
       componentKey: `${gameId}:${selectionVariant}`,
       playerCount: players.length,
     });
+    // One-time visible-renderer registration so the trace can prove which
+    // renderer owns the cards the user sees.
+    recordHighCardVisibleRenderer({
+      gameId,
+      rendererName: 'HighCardDealerSelection',
+      componentName: 'useHighCardDealerSelection',
+      renderPath: isHost ? 'host' : 'non-host',
+      containerId: `[data-wartime-high-card-container]`,
+      wartimeTagged: true,
+      visibleCardCount: syncedState?.cards?.length ?? 0,
+      surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+    });
+
     // Start the rAF DOM/CSS/overlay visual sampler scoped to the
     // active high-card window. Stops on unmount below.
     startHighCardVisualSampler({
