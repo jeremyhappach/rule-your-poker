@@ -185,9 +185,23 @@ export function useHighCardDealerSelection({
 
   // NON-HOST: react to synced state from database
   const nonHostCardsSeenRef = useRef(false);
+  const lastCardsLenRef = useRef<number>(0);
+  const lastWinnerRef = useRef<number | null>(null);
   useEffect(() => {
     if (isHost) return;
     if (!syncedState) return;
+
+    // P-WAIT.C2: receive-frame trace (every synced-state delivery on non-host).
+    recordWaitingLifecycle('high-card receive frame', {
+      gameId,
+      viewerSide: 'non-host',
+      cardsLength: syncedState.cards?.length ?? 0,
+      isComplete: !!syncedState.isComplete,
+      winnerPosition: syncedState.winnerPosition ?? null,
+      hasAnnouncement: !!syncedState.announcement,
+      stateVersion: null,
+      updatedAt: Date.now(),
+    });
 
     recordDealerSelectionDiag('dealer_selection_state_published', {
       sessionId: gameId,
@@ -209,11 +223,55 @@ export function useHighCardDealerSelection({
     }
 
     lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
+
+    // P-WAIT.C4: cards-change tracing for non-host receive path.
+    const prevLen = lastCardsLenRef.current;
+    const nextLen = syncedState.cards?.length ?? 0;
+    if (prevLen !== nextLen) {
+      recordWaitingLifecycle('high-card cards-change', {
+        gameId,
+        previousLength: prevLen,
+        nextLength: nextLen,
+        positions: (syncedState.cards ?? []).map(c => c.position),
+        source: 'non-host-receive',
+        viewerPosition: null,
+        gameStatus: 'dealer_selection',
+      });
+      if (prevLen === 0 && nextLen > 0) {
+        recordWaitingLifecycle('high-card card-reveal', {
+          gameId, source: 'non-host-receive', cardsLength: nextLen,
+        });
+      } else if (prevLen > 0 && nextLen === 0) {
+        recordWaitingLifecycle('high-card card-hide', {
+          gameId, source: 'non-host-receive', cardsLength: nextLen,
+        });
+      }
+      lastCardsLenRef.current = nextLen;
+    }
+
     onCardsUpdate(syncedState.cards);
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
+    if (syncedState.winnerPosition !== null && lastWinnerRef.current !== syncedState.winnerPosition) {
+      lastWinnerRef.current = syncedState.winnerPosition;
+      recordWaitingLifecycle('high-card winner-determined', {
+        gameId,
+        winnerPosition: syncedState.winnerPosition,
+        round: null,
+        viewerSide: 'non-host',
+        cardsLength: nextLen,
+      });
+    }
+
     if (syncedState.isComplete && syncedState.winnerPosition !== null && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
+      recordWaitingLifecycle('high-card dealer-selected', {
+        gameId,
+        winnerPosition: syncedState.winnerPosition,
+        viewerSide: 'non-host',
+        cardsLength: nextLen,
+        isComplete: true,
+      });
     }
   }, [isHost, syncedState, onCardsUpdate, onWinnerPositionUpdate, gameId, selectionVariant]);
 
