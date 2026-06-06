@@ -8392,6 +8392,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Proven by handoff trace: these persist from the session high-card
             // draw and leak into the dealer-game's HighCardDealerSelection as
             // stale props if not cleared here.
+            recordWaitingLifecycle('dealerSelectionCards cleared', {
+              source: 'all-ante-decisions-in (cribbage entry)',
+              callsite: 'src/pages/Game.tsx:~8395',
+              prevLength: dealerSelectionCards.length,
+              gameId: gameId ?? null,
+            });
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);
             await supabase
