@@ -703,7 +703,7 @@ export function recordHighCardTimer(event:
   | 'onComplete.fired',
   payload: HighCardTimerPayload,
 ): void {
-  recordWartime('ANIMATIONS', `high-card.${event}`, payload);
+  recordWartime('ANIMATIONS', `high-card.${event}`, payload as unknown as Record<string, unknown>);
 }
 
 // =========================================================================
