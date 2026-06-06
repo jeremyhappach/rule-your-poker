@@ -26,10 +26,40 @@ interface AuthGuardOptions {
   pageLabel: string;
 }
 
+/**
+ * Synchronously read the cached Supabase session from localStorage so
+ * host-vs-non-host ownership is known on the very first render and the
+ * shell does not snap from a non-host flash to host once the async
+ * getSession() resolves. The supabase-js client persists sessions under
+ * `sb-<projectref>-auth-token`; we tolerate either the flat or the
+ * `currentSession`-wrapped shape and silently no-op on any error. The
+ * async getSession() below remains authoritative for staleness/expiry.
+ */
+function readCachedUserSync(): User | null {
+  if (typeof window === "undefined") return null;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith("sb-") || !key.endsWith("-auth-token")) continue;
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      const u = parsed?.user ?? parsed?.currentSession?.user ?? null;
+      if (u && typeof u === "object" && typeof u.id === "string") {
+        return u as User;
+      }
+    }
+  } catch {
+    /* localStorage unavailable or session shape changed */
+  }
+  return null;
+}
+
 export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const [isReady, setIsReady] = useState(false);
+  const cachedUser = useRef<User | null>(readCachedUserSync()).current;
+  const [user, setUser] = useState<User | null>(cachedUser);
+  const [isReady, setIsReady] = useState<boolean>(cachedUser !== null);
   const prevAuthEvent = useRef<string | null>(null);
   const recheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
