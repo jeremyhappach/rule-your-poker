@@ -166,6 +166,14 @@ function WaitingSurfaceBody({
   }, [ambient == null]);
   const byPosition = ambient?.byPosition ?? new Map();
   const projectionMode = ambient?.projectionMode ?? 'observer-absolute';
+  // Runtime provider probe — replaces the prior hard-coded
+  // 'PersistentTableShell.SeatAnchorLayer (SHELL)' literal. Traces now
+  // report the actual ambient-provider presence so missing-provider
+  // wiring failures cannot be masked by a string constant.
+  const seatAnchorSourceLabel = ambient == null
+    ? 'NONE (no ambient SeatAnchorLayer)'
+    : 'SHELL (PersistentTableShell.SeatAnchorLayer)';
+
 
 
   // Host pip discrimination — host is the earliest-joined human (same
