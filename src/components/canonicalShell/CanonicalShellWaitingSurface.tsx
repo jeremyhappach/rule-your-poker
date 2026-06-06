@@ -278,8 +278,31 @@ function WaitingSurfaceBody({
           viewerPosition: viewerPos,
         },
       );
+      // Wartime: cross-surface player visual snapshot (auto-diffs against
+      // NeutralInterstitial / DealerSelection snapshots for same playerId).
+      recordPlayerVisualSnapshot({
+        surface: 'WaitingTable',
+        playerId: player.id,
+        userId: player.user_id,
+        position: player.position,
+        viewerPosition: viewerPos,
+        logicalSeat: player.position,
+        renderedSeatSlot: anchor.slot,
+        seatAnchorSource: 'CanonicalShellWaitingSurface.SeatAnchorLayer (LOCAL)',
+        chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
+        chipRenderer: 'CanonicalSeatCluster',
+        chipStyleSource: 'derivePlayerStatus → status palette',
+        chipVariant: 'waiting',
+        chipValue: `$${formatChipValue(player.chips ?? 0)}`,
+        status,
+        projectionMode,
+        isViewerSelf: player.user_id === currentUserId,
+        isSuppressed: player.user_id === currentUserId,
+        suppressionReason: player.user_id === currentUserId ? 'self-HOME' : null,
+      });
     }
   }, [players, byPosition, projectionMode, currentUserId]);
+
 
 
   const openPositions = ALL_POSITIONS.filter(
