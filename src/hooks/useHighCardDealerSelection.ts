@@ -331,6 +331,34 @@ export function useHighCardDealerSelection({
           ...newCards,
         ];
 
+        // P-WAIT.C3 + C4: card-deal + cards-change (host side).
+        const prevHostLen = lastCardsLenRef.current;
+        recordWaitingLifecycle('high-card card-deal', {
+          gameId,
+          round: roundNum,
+          dealt: newCards.length,
+          totalCards: allCards.length,
+          positions: newCards.map(c => c.position),
+          isHost: true,
+        });
+        if (prevHostLen !== allCards.length) {
+          recordWaitingLifecycle('high-card cards-change', {
+            gameId,
+            previousLength: prevHostLen,
+            nextLength: allCards.length,
+            positions: allCards.map(c => c.position),
+            source: 'host-deal',
+            viewerPosition: null,
+            gameStatus: 'dealer_selection',
+          });
+          if (prevHostLen === 0 && allCards.length > 0) {
+            recordWaitingLifecycle('high-card card-reveal', {
+              gameId, source: 'host-deal', cardsLength: allCards.length,
+            });
+          }
+          lastCardsLenRef.current = allCards.length;
+        }
+
         onCardsUpdate(allCards);
 
         // Persist the reveal-only snapshot so non-host subscribers receive
