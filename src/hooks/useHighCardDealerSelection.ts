@@ -819,6 +819,28 @@ export function useHighCardDealerSelection({
           surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
         });
       }
+      {
+        const _prevIds = (hookStateRef.current.cards ?? []).map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        const _nextIds = (nextCards ?? []).map(
+          (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+        );
+        recordHighCardWriter({
+          gameId,
+          source: 'host-complete-replay',
+          callsite: 'src/hooks/useHighCardDealerSelection.ts:host-complete-replay onCardsUpdate(nextCards)',
+          reason: 'host completion effect replay → mirror DB cards to local',
+          previousLength: _prevIds.length,
+          nextLength: _nextIds.length,
+          previousCardIds: _prevIds,
+          nextCardIds: _nextIds,
+          renderPath: 'host',
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+          winnerPosition: syncedState.winnerPosition,
+          isComplete: true,
+        });
+      }
       onCardsUpdate(nextCards);
       onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
