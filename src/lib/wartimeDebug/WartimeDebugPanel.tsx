@@ -41,8 +41,11 @@ export function WartimeDebugPanel() {
 
   const [category, setCategory] = useState<'ALL' | WartimeCategory>(ALL);
   const [filter, setFilter] = useState('');
+  const [exportFilteredOnly, setExportFilteredOnly] = useState(false);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const [copied, setCopied] = useState(false);
+
+
 
   useEffect(() => {
     if (enabled) attachWartimeBridges();
