@@ -829,6 +829,7 @@ export const CribbageMobileGameTable = ({
           logicalSeat: player.position,
           renderedSeatSlot: null,
           seatAnchorSource: 'CribbageMobileGameTable.SeatAnchorLayer (LOCAL)',
+          anchorProviderInstanceId: null,
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipRenderer: 'CanonicalSeatCluster',
           chipStyleSource: 'derivePlayerStatus → status palette',
@@ -840,6 +841,7 @@ export const CribbageMobileGameTable = ({
           isSuppressed: false,
           suppressionReason: null,
           ...probeChipDom(player.position),
+          domAncestry: probeChipDomAncestry(player.position),
         });
       }
     });
