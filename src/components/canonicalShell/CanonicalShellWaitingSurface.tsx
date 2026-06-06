@@ -336,7 +336,6 @@ function WaitingSurfaceBody({
         className="relative flex-shrink-0"
         style={{
           height: SHELL_TABLE_REGION_HEIGHT,
-          minHeight: 260,
         }}
       >
         {activeTab === "cards" && (
