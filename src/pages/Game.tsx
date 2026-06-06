@@ -11003,6 +11003,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             seats={shellEligibleSeats}
             header={mobileHeader}
           >
+            <WaitingFlightMarker
+              event="PersistentTableShell branch=post-hydration"
+              payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
+            />
             {innerTree}
           </PersistentTableShell>
           {/* Gin-only readiness probe (capability-driven, not shell branching).
