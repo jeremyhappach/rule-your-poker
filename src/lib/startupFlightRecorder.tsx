@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { BUILD_META } from '@/lib/buildMeta';
 
 export type StartupFlightCategory =
   | 'PHASE TIMELINE'
@@ -193,6 +194,15 @@ export function StartupFlightRecorderOverlay() {
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  useEffect(() => {
+    recordStartupFlight('PHASE TIMELINE', '[AUDIT] Flight recorder initialized', {
+      maxEvents: MAX_EVENTS,
+      retentionPolicy: 'ring-buffer',
+      mounted: true,
+      version: BUILD_META.commitSha,
+    });
+  }, []);
+
   // Dev chrome: must never occlude canonical HUD rows (identity row sits
   // at the bottom of the viewport). Pinned to the TOP, narrow, with a
   // modest z-index so app modals/dialogs continue to win over it.
@@ -202,7 +212,7 @@ export function StartupFlightRecorderOverlay() {
     top: 8,
     width: expanded ? 'min(96vw, 520px)' : 'auto',
     maxWidth: 'calc(100vw - 16px)',
-    zIndex: 60,
+    zIndex: 2147483647,
     maxHeight: expanded ? '44dvh' : 'auto',
     display: 'grid',
     gridTemplateRows: expanded ? 'auto minmax(0, 1fr)' : 'auto',
@@ -224,7 +234,7 @@ export function StartupFlightRecorderOverlay() {
           className="min-w-0 flex-1 text-left"
         >
           <div className="text-xs font-semibold">
-            {expanded ? '▼' : '▶'} STARTUP FLIGHT RECORDER ({snapshot.length})
+            {expanded ? '▼' : '▶'} STARTUP FLIGHT RECORDER ({snapshot.length} / {MAX_EVENTS})
           </div>
           {expanded ? (
             <div className="text-[10px] text-muted-foreground">visible, selectable, copyable · temporary</div>

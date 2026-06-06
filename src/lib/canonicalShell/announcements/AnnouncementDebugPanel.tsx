@@ -129,7 +129,7 @@ export function AnnouncementDebugPanel() {
         position: 'fixed',
         left: 4,
         top: 4,
-        zIndex: 2147483646,
+        zIndex: 2147483645,
         width: expanded ? 'min(94vw, 460px)' : 'min(78vw, 280px)',
         background: 'rgba(0,0,0,0.85)',
         color: '#fff',
