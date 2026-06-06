@@ -146,11 +146,13 @@ export function PlayfieldSlotController({
   logIfChanged('PSC.input.desiredIdentity', describeSlotIdentity(desiredIdentity), { gameId });
 
   // === Wartime Phase 2 — framework coverage =====================
-  wartimeSurfaceRegister('PlayfieldSlotController', {
+  useWartimeSurface('PlayfieldSlotController', {
     gameId: gameId ?? null,
     desiredIdentity: describeSlotIdentity(desiredIdentity),
     persistentChildrenKey: persistentChildrenKey ?? null,
   });
+  useWartimeState('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
+  useWartimeState('PlayfieldSlotController', 'readyToMountProp', readyToMountProp);
   // =============================================================
 
 
