@@ -1107,11 +1107,11 @@ function WartimeCoverageMatrix() {
               {cats.map((c) => {
                 const ok = row.categories[c];
                 return (
-                  <td key={c} className="px-0 py-1 text-center">
+                  <td key={c} className="px-0 py-1 text-center font-bold">
                     {ok ? (
                       <span className="text-emerald-500">✓</span>
                     ) : (
-                      <span className="text-muted-foreground/60">·</span>
+                      <span className="text-rose-500">✕</span>
                     )}
                   </td>
                 );
