@@ -34,11 +34,19 @@ import {
   recordHighCardStateRaw,
   recordHighCardRenderRaw,
   recordHighCardTimer,
+  recordHighCardCardsClear,
+  recordHighCardStateSource,
+  recordHighCardVisibleRenderer,
+  recordHighCardPhaseTransition,
+  resetHighCardVisibleRendererCache,
+  resetHighCardPhaseCache,
+  type HighCardPhase,
 } from '@/lib/wartimeDebug/surfaces';
 import {
   startHighCardVisualSampler,
   stopHighCardVisualSampler,
 } from '@/lib/wartimeDebug/highCardVisualSampler';
+
 
 interface Player {
   id: string;
