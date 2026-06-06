@@ -596,6 +596,47 @@ const Game = () => {
     totalHands: game?.total_hands ?? null,
     playersCount: players.length,
   });
+
+  // ── P-WAIT.A2/A3: Game route render + first-hydration markers ──
+  // Change-only emit (deduped by signature) on every render.
+  recordWaitingLifecycleIfChanged(
+    `gameRouteRender:${gameId ?? 'none'}`,
+    'Game route render',
+    {
+      routeGameId: gameId ?? null,
+      hasGame: !!game,
+      loading,
+      authReady,
+      status: game?.status ?? null,
+      gameType: game?.game_type ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      playersCount: players.length,
+    },
+  );
+  const _waitMountTRef = useRef<number>(0);
+  if (_waitMountTRef.current === 0 && typeof performance !== 'undefined') {
+    _waitMountTRef.current = performance.now();
+  }
+  const _waitFetchSeqRef = useRef<number>(0);
+  const _waitFirstHydratedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (_game) _waitFetchSeqRef.current += 1;
+    if (!_waitFirstHydratedRef.current && _game) {
+      _waitFirstHydratedRef.current = true;
+      recordWaitingLifecycle('game row first hydrated', {
+        gameId: _game.id ?? gameId ?? null,
+        status: _game.status ?? null,
+        gameType: _game.game_type ?? null,
+        currentGameUuid: (_game as any)?.current_game_uuid ?? null,
+        playersCount: players.length,
+        elapsedMs: typeof performance !== 'undefined'
+          ? Math.round(performance.now() - _waitMountTRef.current)
+          : null,
+        fetchSeq: _waitFetchSeqRef.current,
+      });
+    }
+  }, [_game, gameId, players.length]);
+
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
