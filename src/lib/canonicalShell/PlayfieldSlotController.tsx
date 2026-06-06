@@ -132,6 +132,7 @@ export function PlayfieldSlotController({
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
+  useWaitingMount('PlayfieldSlotController', { gameId: gameId ?? null });
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
   useChangeTracker('PlayfieldSlotController', 'desiredIdentity', describeSlotIdentity(desiredIdentity));
   // Hook-free input-prop transition logging (no new hooks; safe at render).
