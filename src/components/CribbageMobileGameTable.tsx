@@ -6024,6 +6024,28 @@ export const CribbageMobileGameTable = ({
                   />
                 )}
                 <div className="absolute inset-0 flex items-center justify-center z-40">
+                  {/* HIGH-CARD INSTRUMENTATION: render-time signature + per-card mount markers.
+                      No layout impact. */}
+                  {(() => {
+                    const renderedIds = (effectiveHighCardCards ?? []).map(
+                      (c) => `p${c.position}:${c.card?.rank ?? '?'}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}:w${c.isWinner ? 1 : 0}:d${c.isDimmed ? 1 : 0}`,
+                    );
+                    recordWaitingLifecycleIfChanged(
+                      `highcard:render:${gameId}`,
+                      'high-card render signature',
+                      {
+                        surface: 'CribbageMobileGameTable',
+                        gameId,
+                        isDealerSelection,
+                        cardCount: effectiveHighCardCards.length,
+                        positions: highCardPositions,
+                        winnerPosition: effectiveHighCardWinnerPosition ?? null,
+                        renderedIds,
+                        renderPath: isDealerSelection ? 'external-prop' : 'local-state',
+                      },
+                    );
+                    return null;
+                  })()}
                   <div className="flex gap-4 items-start">
                     {highCardPositions.map((position) => {
                       const stack = highCardCardsByPosition?.get(position) ?? [];
@@ -6056,6 +6078,19 @@ export const CribbageMobileGameTable = ({
                                   zIndex: idx,
                                 } : undefined}
                               >
+                                <WaitingFlightMarker
+                                  event={`high-card card-node key=${c.playerId}-${c.roundNumber}`}
+                                  payload={{
+                                    gameId,
+                                    position: c.position,
+                                    rank: c.card?.rank,
+                                    suit: c.card?.suit,
+                                    roundNumber: c.roundNumber,
+                                    isWinner: c.isWinner,
+                                    isDimmed: c.isDimmed,
+                                    surface: 'CribbageMobileGameTable',
+                                  }}
+                                />
                                 <CribbagePlayingCard card={toCribbageCard(c.card as any)} size="md" />
                               </div>
                             ))}
