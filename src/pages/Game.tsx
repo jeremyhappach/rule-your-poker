@@ -648,6 +648,59 @@ const Game = () => {
     }
   }, [_game, gameId, players.length]);
 
+  // P-WAIT.A1: Route entry one-shot — emitted on Game component first mount.
+  // Anchors the "blank shell window" measurement: every subsequent
+  // [WAIT] event timestamp can be subtracted from this to attribute
+  // the 2-3s gap between route entry and WaitingTable mount.
+  useEffect(() => {
+    recordWaitingLifecycle('Game route enter', {
+      routeGameId: gameId ?? null,
+      authReadyAtEnter: authReady,
+      hasUserAtEnter: !!user,
+      tMount: typeof performance !== 'undefined' ? Math.round(performance.now()) : null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // P-WAIT.A1b: Auth ready transition. Fires once when authReady flips
+  // to true (or immediately if already true on first mount).
+  const _waitAuthReadyEmittedRef = useRef(false);
+  useEffect(() => {
+    if (_waitAuthReadyEmittedRef.current) return;
+    if (!authReady) return;
+    _waitAuthReadyEmittedRef.current = true;
+    recordWaitingLifecycle('auth ready', {
+      routeGameId: gameId ?? null,
+      hasUser: !!user,
+      userId: user?.id?.slice(0, 8) ?? null,
+      elapsedMs: typeof performance !== 'undefined'
+        ? Math.round(performance.now() - _waitMountTRef.current)
+        : null,
+    });
+  }, [authReady, user, gameId]);
+
+  // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
+  // event each time the local cards array length changes (mount, deal,
+  // reveal, hide, clear). Lets the recorder attribute high-card
+  // disappearance to a Game-level state mutation vs. a child reset.
+  const _waitDealerCardsLenRef = useRef<number>(-1);
+  useEffect(() => {
+    const next = dealerSelectionCards.length;
+    if (_waitDealerCardsLenRef.current === next) return;
+    const prev = _waitDealerCardsLenRef.current;
+    _waitDealerCardsLenRef.current = next;
+    recordWaitingLifecycle('dealerSelectionCards length changed', {
+      gameId: gameId ?? null,
+      previousLength: prev === -1 ? null : prev,
+      nextLength: next,
+      gameStatus: (game as any)?.status ?? null,
+      gameType: game?.game_type ?? null,
+      hasSyncedState: !!(game as any)?.dealer_selection_state,
+      syncedCardsLen: ((game as any)?.dealer_selection_state?.cards?.length) ?? null,
+      winnerPosition: dealerSelectionWinnerPosition,
+    });
+  }, [dealerSelectionCards, dealerSelectionWinnerPosition, game, gameId]);
+
   // (P9.x revert) Gin-only optimistic bootstrap removed — all gin first-frame
   // state flows through useGameStateSync via currentRound.gin_rummy_state.
 
