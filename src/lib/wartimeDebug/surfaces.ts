@@ -1010,3 +1010,113 @@ export function probeChipDom(position: number | null | undefined): {
   } catch { /* ignore */ }
   return { chipDOMSelector: selector, chipRect: rect, chipComputedStyle: style };
 }
+
+// =========================================================================
+// DOM ancestry probe — walks up from the chip element capturing tagName +
+// notable `data-*` attributes per ancestor. Used by chip-render-path
+// snapshots so CHIP_RENDER_PATH_DIFF surfaces DOM-owner divergence
+// (e.g. NeutralInterstitial container vs. WaitingTable container)
+// without requiring per-component instrumentation.
+// =========================================================================
+export function probeChipDomAncestry(
+  position: number | null | undefined,
+  maxDepth = 10,
+): string[] {
+  if (position == null || typeof document === 'undefined') return [];
+  const selector = `[data-chip-center="${position}"]`;
+  let el: Element | null = null;
+  try { el = document.querySelector(selector); } catch { return []; }
+  if (!el) return [];
+  const ancestry: string[] = [];
+  let cur: Element | null = el;
+  let depth = 0;
+  while (cur && depth < maxDepth) {
+    const tag = cur.tagName.toLowerCase();
+    const dataAttrs: string[] = [];
+    for (const attr of Array.from(cur.attributes)) {
+      if (attr.name.startsWith('data-') && attr.name !== 'data-state') {
+        const v = attr.value ? `=${attr.value.slice(0, 24)}` : '';
+        dataAttrs.push(`${attr.name}${v}`);
+      }
+    }
+    ancestry.push(`${tag}${dataAttrs.length ? `[${dataAttrs.join('|')}]` : ''}`);
+    cur = cur.parentElement;
+    depth += 1;
+  }
+  return ancestry;
+}
+
+// =========================================================================
+// HIGH-CARD WRITER ATTRIBUTION
+//
+// Emitted IMMEDIATELY BEFORE any code path mutates the visible high-card
+// cards array. Captures producer / callsite / reason / previous+next
+// card identity + a JS stack so the trace can prove the exact writer
+// responsible for the first 2 → 0 disappearance — no inference.
+// =========================================================================
+export interface HighCardWriterPayload {
+  gameId: string;
+  source:
+    | 'host-deal'
+    | 'host-determine-winner'
+    | 'host-complete-replay'
+    | 'non-host-sync'
+    | 'reset-path'
+    | 'unknown';
+  callsite: string;
+  reason: string;
+  previousLength: number;
+  nextLength: number;
+  previousCardIds: string[];
+  nextCardIds: string[];
+  renderPath?: string | null;
+  surfaceInstanceId?: string | null;
+  winnerPosition?: number | null;
+  isComplete?: boolean | null;
+  stack?: string | null;
+}
+export function recordHighCardWriter(payload: HighCardWriterPayload): void {
+  const stack = payload.stack ?? (() => {
+    try {
+      const e = new Error('writer-stack');
+      return (e.stack ?? '').split('\n').slice(0, 12).join('\n');
+    } catch { return null; }
+  })();
+  recordWartime(
+    'GAMEPLAY',
+    `high-card.writer ${payload.source}`,
+    { ...payload, stack } as unknown as Record<string, unknown>,
+  );
+}
+
+// =========================================================================
+// HIGH-CARD DOM vs HOOK DIVERGENCE
+//
+// Emitted from the rAF sampler when the visible DOM card count diverges
+// from the hook card count. Carries both snapshots so the trace can
+// attribute symptom ↔ cause without a second repro.
+// =========================================================================
+export interface HighCardStateVisualDivergencePayload {
+  gameId: string;
+  surfaceInstanceId?: string | null;
+  componentKey?: string | null;
+  renderPath?: string | null;
+  hookCardsLength: number;
+  hookCardIds: string[];
+  domCardCount: number;
+  domCardKeys: string[];
+  domCardIds: string[];
+  winnerPosition?: number | null;
+  isComplete?: boolean | null;
+  gameStatus?: string | null;
+  sampledAtMs?: number | null;
+}
+export function recordHighCardStateVisualDivergence(
+  payload: HighCardStateVisualDivergencePayload,
+): void {
+  recordWartime(
+    'RENDERING',
+    'HIGH_CARD_STATE_VISUAL_DIVERGENCE',
+    payload as unknown as Record<string, unknown>,
+  );
+}
