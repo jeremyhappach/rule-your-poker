@@ -17,8 +17,9 @@ import { usePublishShellFelt } from './ShellOwnedFeltHost';
 import { ShellHudGrid } from './ShellHudGrid';
 import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 
-import { useSeatAnchors, useSeatAnchorsOptional } from './SeatAnchorLayer';
+import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { recordWartime } from '@/lib/wartimeDebug/core';
+
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { derivePlayerStatus } from './participantStatus';
