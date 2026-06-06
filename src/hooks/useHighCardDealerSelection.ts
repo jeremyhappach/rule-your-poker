@@ -467,6 +467,32 @@ export function useHighCardDealerSelection({
       lastCardsLenRef.current = nextLen;
     }
 
+    // WRITER ATTRIBUTION — emitted BEFORE the React setState so the
+    // trace can prove the exact producer responsible for any
+    // 2 → 0 / 0 → 2 transition without stack inference.
+    {
+      const _prevIds = (hookStateRef.current.cards ?? []).map(
+        (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+      );
+      const _nextIds = (syncedState.cards ?? []).map(
+        (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+      );
+      recordHighCardWriter({
+        gameId,
+        source: 'non-host-sync',
+        callsite: 'src/hooks/useHighCardDealerSelection.ts:469 non-host onCardsUpdate(syncedState.cards)',
+        reason: 'realtime synced-state delivery → mirror into local cards',
+        previousLength: _prevIds.length,
+        nextLength: _nextIds.length,
+        previousCardIds: _prevIds,
+        nextCardIds: _nextIds,
+        renderPath: 'non-host',
+        surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        winnerPosition: syncedState.winnerPosition ?? null,
+        isComplete: !!syncedState.isComplete,
+      });
+    }
+
     onCardsUpdate(syncedState.cards);
 
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
