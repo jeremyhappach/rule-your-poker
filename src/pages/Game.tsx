@@ -2636,7 +2636,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       stopFallbackPolling();
       supabase.removeChannel(channel);
     };
-  }, [gameId, user]);
+    // Depend on gameId only so the subscription is established immediately
+    // on route entry. User identity is not needed for the public game/player
+    // snapshot; tearing down the channel when `user` changes would re-cost
+    // ~2s of subscription handshake on every auth-state flip.
+  }, [gameId]);
 
   // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume),
   // immediately refetch game data and clear stale caches if the backend shows a different state.
@@ -5496,14 +5500,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchStartedAt = Date.now();
 
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
-    if (!gameId || !user) {
+    if (!gameId) {
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
         file: 'src/pages/Game.tsx',
         function: 'fetchGameData',
         fetchSeq,
-        skipReason: !gameId ? 'no gameId' : 'no user',
+        skipReason: 'no gameId',
       });
-      fetchSpan.end({ skipped: 'no gameId or user' });
+      fetchSpan.end({ skipped: 'no gameId' });
       return;
     }
 
