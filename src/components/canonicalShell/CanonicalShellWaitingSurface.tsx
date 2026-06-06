@@ -61,7 +61,7 @@ import {
   recordSurfaceOwnership,
   recordSurfaceGeometry,
 } from "@/lib/canonicalShell/waitingTableFlight";
-import { recordPlayerVisualSnapshot, probeChipDom } from "@/lib/wartimeDebug/surfaces";
+import { recordPlayerVisualSnapshot, probeChipDom, probeChipDomAncestry } from "@/lib/wartimeDebug/surfaces";
 
 interface Player extends WaitingRoomActor {
   id: string;
