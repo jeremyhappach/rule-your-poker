@@ -5814,11 +5814,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id in ultimate fallback - this may cause cross-game contamination');
           }
           
-          const { data } = await ultimateFallbackQuery
-            .order('hand_number', { ascending: false })
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const { data } = await timedQuery('rounds.ultimate-fallback', 'rounds', () =>
+            ultimateFallbackQuery
+              .order('hand_number', { ascending: false })
+              .order('round_number', { ascending: false })
+              .limit(1)
+              .maybeSingle());
+
           roundData = data;
           console.log('[FETCH] current_round is null, using most recent round:', roundData?.id);
         }
