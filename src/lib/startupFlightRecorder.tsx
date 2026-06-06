@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { BUILD_META } from '@/lib/buildMeta';
 
 export type StartupFlightCategory =
   | 'PHASE TIMELINE'
