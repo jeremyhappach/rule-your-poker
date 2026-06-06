@@ -560,6 +560,15 @@ function buildThreeFiveSevenSnapshot(
 // `if (!game) return null` guard without needing a React hook.
 const __bootstrapFlashDiagCache = new Map<string, string>();
 
+// Module-level stable-identity cache for the shell SeatAnchorLayer
+// roster. Lives outside the component so we can dedupe array identity
+// across renders without introducing a React hook after the
+// `if (!game) return null` early-return guard.
+const __shellSeatRosterCache = new Map<
+  string,
+  { key: string; seats: Array<{ position: number; occupied: boolean; hidden: boolean }> }
+>();
+
 // Stable per-tab mount-instance id so the persisted diag can tell
 // the two clients apart on the next repro without relying on memory.
 // Generated once per page load; survives the early-return guard.
@@ -705,7 +714,7 @@ const Game = () => {
         ? Math.round(performance.now() - _waitMountTRef.current)
         : null,
     });
-  }, [authReady, user, gameId]);
+  }, [authReady, user?.id, gameId]);
 
   // P-WAIT.A4 tracker is installed after dealerSelectionCards is declared (see below).
 
@@ -2738,7 +2747,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handlePageShow as EventListener);
     };
-  }, [gameId, user, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
+  }, [gameId, user?.id, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
   // NOTE: Duplicate rounds subscription was REMOVED to reduce query volume.
   // The main `game-${gameId}` channel already listens to rounds table changes (lines 1155-1188).
@@ -3772,7 +3781,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       // Reset isRunningItBack so it re-computes on next ante_decision phase
       setIsRunningItBack(null);
     }
-  }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
+  }, [game?.id, game?.status, game?.ante_decision_deadline, game?.dealer_position, game?.game_type, game?.ante_amount, game?.pussy_tax_enabled, game?.pussy_tax_value, game?.pot_max_enabled, game?.pot_max_value, game?.chucky_cards, game?.leg_value, game?.legs_to_win, players, user?.id, previousGameConfig, previousGameConfigGameId, hasSessionHistory]);
 
   // Auto-sit-out when ante timer reaches 0 - SKIP when game is paused
   // P0 GUARD (MUT-04): re-fetch authoritative DB state immediately before mutating.
@@ -3827,7 +3836,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     })();
 
     return () => { cancelled = true; };
-  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user]);
+  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user?.id]);
 
   // Session ending tracking (removed toast)
 
@@ -10829,11 +10838,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // sitting_out is still excluded — sitting_out is a gameplay-state
   // signal and the gameplay surfaces deliberately render them
   // separately. observer / left are excluded as before (no seat).
-  const shellEligibleSeats = shellCanonicalFamily
+  // Stable-identity shell seat roster. The surrounding block lives
+  // after the `if (!game) return null` early-return above, so we
+  // CANNOT introduce React hooks here (useMemo/useRef would cause
+  // hook-count mismatches between the pre- and post-hydration
+  // renders — see the inline comment further down). Instead we cache
+  // the last-built array on a module-level Map keyed by gameId, and
+  // reuse it whenever the sorted seat-roster signature is unchanged.
+  // This prevents `players` reference churn from re-creating a fresh
+  // seats array identity on every render, which would otherwise
+  // re-fire the shell SeatAnchorLayer geometry pass and any
+  // downstream effect that depends on `shellEligibleSeats`.
+  const _shellSeatRosterKey = shellCanonicalFamily
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
-        .map(p => ({ position: p.position, occupied: true, hidden: false }))
-    : undefined;
+        .map(p => p.position)
+        .sort((a, b) => a - b)
+        .join(',')
+    : '';
+  let shellEligibleSeats: Array<{ position: number; occupied: boolean; hidden: boolean }> | undefined;
+  if (shellCanonicalFamily && gameId) {
+    const cached = __shellSeatRosterCache.get(gameId);
+    if (cached && cached.key === _shellSeatRosterKey) {
+      shellEligibleSeats = cached.seats;
+    } else {
+      shellEligibleSeats = players
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .map(p => ({ position: p.position, occupied: true, hidden: false }));
+      __shellSeatRosterCache.set(gameId, { key: _shellSeatRosterKey, seats: shellEligibleSeats });
+    }
+  }
   // Same broadening for the seated-viewer projection check so a viewer
   // whose row is `waiting` (just joined) gets 'active-canonical' from
   // the shell — matching the projection the previous local provider

@@ -139,7 +139,12 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
         });
         redirectToAuth("initial-no-session");
       } else {
-        setUser(session.user);
+        // ID-stable promotion: only replace the user object if the id
+        // actually changed. Replacing on every getSession resolution
+        // produces a fresh object reference even when the user is the
+        // same, which invalidates any effect deps that include the
+        // `user` object and re-runs heavy hydration paths.
+        setUser((prev) => (prev && prev.id === session.user.id ? prev : session.user));
         setIsReady(true);
         traceAuthEvent("app-auth-state-change", {
           oldState: "none",
@@ -172,7 +177,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
             clearTimeout(recheckTimerRef.current);
             recheckTimerRef.current = null;
           }
-          setUser(session.user);
+          setUser((prev) => (prev && prev.id === session.user.id ? prev : session.user));
           setIsReady(true);
         } else {
           // ── CRITICAL CHANGE ────────────────────────────────
