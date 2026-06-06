@@ -417,23 +417,27 @@ export function recordSurfaceTransition(
 // -------------------------------------------------------------------------
 // Pre-declare known surfaces so the coverage matrix is visible immediately.
 // -------------------------------------------------------------------------
-const KNOWN_SURFACES = [
-  'Game.route',
-  'PersistentTableShell',
-  'WaitingTable',
-  'NeutralInterstitial',
-  'DealerSelection',
-  'DealerGameSetup',
-  'PlayfieldSlotController',
-  'GameplaySlot',
-  'SeatAnchorLayer',
-  'ChipAnchorLayer',
-  'HUD',
-  'ActivePlayerPane',
-  'Announcements',
-  'Celebrations',
-  'WinOverlays',
-  'CribbageFelt',
-  'HighCardRender',
+// Per-surface declared coverage — reflects what is actually wired in code
+// today. Each entry lists the categories whose hook is present in that
+// surface's source. Surfaces with an empty array are placeholders awaiting
+// Phase 2 wiring.
+const KNOWN_SURFACES: Array<[string, CoverageCategory[]]> = [
+  ['Game.route', []],
+  ['PersistentTableShell', ['IDENTITY', 'LIFECYCLE', 'GEOMETRY', 'STATE', 'RENDER']],
+  ['WaitingTable', []],
+  ['NeutralInterstitial', ['IDENTITY', 'LIFECYCLE', 'OWNERSHIP', 'STATE', 'RENDER']],
+  ['DealerSelection', []],
+  ['DealerGameSetup', []],
+  ['PlayfieldSlotController', ['IDENTITY', 'LIFECYCLE', 'STATE']],
+  ['GameplaySlot', []],
+  ['SeatAnchorLayer', []],
+  ['ChipAnchorLayer', []],
+  ['HUD', []],
+  ['ActivePlayerPane', []],
+  ['Announcements', []],
+  ['Celebrations', []],
+  ['WinOverlays', []],
+  ['CribbageFelt', []],
+  ['HighCardRender', []],
 ];
-for (const s of KNOWN_SURFACES) declareWartimeSurface(s);
+for (const [s, cats] of KNOWN_SURFACES) declareWartimeSurface(s, cats);
