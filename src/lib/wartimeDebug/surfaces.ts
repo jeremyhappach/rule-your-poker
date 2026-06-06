@@ -674,6 +674,144 @@ export function recordHighCardVisualRaw(payload: Record<string, unknown>): void 
 }
 
 // =========================================================================
+// HIGH-CARD ATTRIBUTION HELPERS
+//
+// These give explicit callsite attribution so traces never leave a
+// 2 → 0 → 2 → 0 sequence unattributed. Every code path that can clear,
+// overwrite, or transition high-card visible state must emit one of
+// these BEFORE mutating state.
+// =========================================================================
+
+export interface HighCardClearPayload {
+  /** Producer tag: 'realtime-status-change' | 'cribbage-handoff-complete' |
+   *  'non-host-sync' | 'host-complete-sync' | 'reset-path' | ... */
+  source: string;
+  /** file:line OR symbolic callsite ('useHighCardDealerSelection.non-host-receive'). */
+  callsite: string;
+  reason?: string | null;
+  cardsLengthBeforeClear: number;
+  cardsLengthAfterClear: number;
+  gameStatus?: string | null;
+  winnerPosition?: number | null;
+  dealerSelectionComplete?: boolean | null;
+  currentRoundId?: string | null;
+  dealerGameId?: string | null;
+  gameId?: string | null;
+  surfaceInstanceId?: string | null;
+}
+export function recordHighCardCardsClear(payload: HighCardClearPayload): void {
+  recordWartime('RENDERING', 'high-card.cards-clear', payload as unknown as Record<string, unknown>);
+}
+
+export type HighCardStateSource =
+  | 'local'
+  | 'external-prop'
+  | 'realtime-sync'
+  | 'derived-state'
+  | 'reset-path'
+  | 'host-complete-replay'
+  | 'unknown';
+
+export interface HighCardStateSourcePayload {
+  gameId: string;
+  previousSource: HighCardStateSource | null;
+  newSource: HighCardStateSource;
+  cardCount: number;
+  cardIds: string[];
+  renderPath: string | null;
+  gameStatus?: string | null;
+  surfaceInstanceId?: string | null;
+}
+const _lastHighCardStateSource = new Map<string, HighCardStateSourcePayload>();
+export function recordHighCardStateSource(payload: HighCardStateSourcePayload): void {
+  const prev = _lastHighCardStateSource.get(payload.gameId);
+  // Emit only when source OR card-identity changes — this is the attribution
+  // signal needed to distinguish "local clear" vs "sync overwrite".
+  const sig = `${payload.newSource}|${payload.cardCount}|${payload.cardIds.join(',')}`;
+  const prevSig = prev ? `${prev.newSource}|${prev.cardCount}|${prev.cardIds.join(',')}` : null;
+  if (sig === prevSig) return;
+  const enriched: HighCardStateSourcePayload = {
+    ...payload,
+    previousSource: prev?.newSource ?? null,
+  };
+  _lastHighCardStateSource.set(payload.gameId, enriched);
+  recordWartime(
+    'RENDERING',
+    'high-card.state-source',
+    enriched as unknown as Record<string, unknown>,
+  );
+}
+
+export interface HighCardVisibleRendererPayload {
+  gameId: string;
+  rendererName: string;
+  componentName: string;
+  renderPath: string;
+  containerId?: string | null;
+  wartimeTagged: boolean;
+  visibleCardCount?: number | null;
+  surfaceInstanceId?: string | null;
+}
+const _seenHighCardRenderers = new Set<string>();
+export function recordHighCardVisibleRenderer(payload: HighCardVisibleRendererPayload): void {
+  const key = `${payload.gameId}:${payload.rendererName}:${payload.componentName}`;
+  if (_seenHighCardRenderers.has(key)) return;
+  _seenHighCardRenderers.add(key);
+  recordWartime(
+    'OWNERSHIP',
+    'high-card.visible-renderer',
+    payload as unknown as Record<string, unknown>,
+  );
+}
+export function resetHighCardVisibleRendererCache(gameId?: string): void {
+  if (!gameId) { _seenHighCardRenderers.clear(); return; }
+  for (const k of Array.from(_seenHighCardRenderers)) {
+    if (k.startsWith(`${gameId}:`)) _seenHighCardRenderers.delete(k);
+  }
+}
+
+export type HighCardPhase =
+  | 'waiting'
+  | 'dealing'
+  | 'reveal'
+  | 'winner-announcement'
+  | 'dealer-setup-transition';
+
+export interface HighCardPhasePayload {
+  gameId: string;
+  phase: HighCardPhase;
+  cardsVisible: boolean;
+  cardCount: number;
+  winnerPosition: number | null;
+  gameStatus?: string | null;
+  surfaceInstanceId?: string | null;
+}
+const _lastHighCardPhase = new Map<string, HighCardPhase>();
+export function recordHighCardPhaseTransition(
+  payload: HighCardPhasePayload,
+): void {
+  const prev = _lastHighCardPhase.get(payload.gameId) ?? null;
+  if (prev === payload.phase) return;
+  if (prev !== null) {
+    recordWartime('LIFECYCLE', 'high-card.phase-exit', {
+      ...payload,
+      phase: prev,
+      nextPhase: payload.phase,
+    } as unknown as Record<string, unknown>);
+  }
+  recordWartime('LIFECYCLE', 'high-card.phase-enter', {
+    ...payload,
+    previousPhase: prev,
+  } as unknown as Record<string, unknown>);
+  _lastHighCardPhase.set(payload.gameId, payload.phase);
+}
+export function resetHighCardPhaseCache(gameId?: string): void {
+  if (!gameId) { _lastHighCardPhase.clear(); return; }
+  _lastHighCardPhase.delete(gameId);
+}
+
+
+// =========================================================================
 // HIGH-CARD ANIMATION / TIMER RECORDER
 // =========================================================================
 export interface HighCardTimerPayload {
