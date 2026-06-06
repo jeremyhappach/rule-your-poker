@@ -28,9 +28,15 @@ interface SeatAnchorContextValue {
   viewerPosition: number | null;
   anchors: ResolvedSeatAnchor[];
   byPosition: Map<number, ResolvedSeatAnchor>;
+  /** Stable identifier for THIS provider instance — changes whenever the
+   *  React-tree position of the provider remounts. Used by Wartime to
+   *  prove whether the provider survived a surface transition. */
+  providerInstanceId: string;
 }
 
 const SeatAnchorContext = createContext<SeatAnchorContextValue | null>(null);
+
+let _seatAnchorProviderSeq = 0;
 
 interface SeatAnchorLayerProps {
   projectionMode: ProjectionMode;
