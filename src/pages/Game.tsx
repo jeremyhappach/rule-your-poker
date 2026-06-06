@@ -10829,10 +10829,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // sitting_out is still excluded — sitting_out is a gameplay-state
   // signal and the gameplay surfaces deliberately render them
   // separately. observer / left are excluded as before (no seat).
-  // Memoize by a stable sorted seat-roster signature so unrelated
-  // `players` array reference churn (e.g. realtime patches that don't
-  // change occupancy) doesn't produce a new seats array identity and
-  // re-fire the shell SeatAnchorLayer geometry pass on every render.
+  // Stable-identity shell seat roster. The surrounding block lives
+  // after the `if (!game) return null` early-return above, so we
+  // CANNOT introduce React hooks here (useMemo/useRef would cause
+  // hook-count mismatches between the pre- and post-hydration
+  // renders — see the inline comment further down). Instead we cache
+  // the last-built array on a module-level Map keyed by gameId, and
+  // reuse it whenever the sorted seat-roster signature is unchanged.
+  // This prevents `players` reference churn from re-creating a fresh
+  // seats array identity on every render, which would otherwise
+  // re-fire the shell SeatAnchorLayer geometry pass and any
+  // downstream effect that depends on `shellEligibleSeats`.
   const _shellSeatRosterKey = shellCanonicalFamily
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
@@ -10840,15 +10847,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         .sort((a, b) => a - b)
         .join(',')
     : '';
-  const shellEligibleSeats = useMemo(
-    () => (shellCanonicalFamily
-      ? players
-          .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
-          .map(p => ({ position: p.position, occupied: true, hidden: false }))
-      : undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shellCanonicalFamily, _shellSeatRosterKey]
-  );
+  let shellEligibleSeats: Array<{ position: number; occupied: boolean; hidden: boolean }> | undefined;
+  if (shellCanonicalFamily && gameId) {
+    const cached = __shellSeatRosterCache.get(gameId);
+    if (cached && cached.key === _shellSeatRosterKey) {
+      shellEligibleSeats = cached.seats;
+    } else {
+      shellEligibleSeats = players
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .map(p => ({ position: p.position, occupied: true, hidden: false }));
+      __shellSeatRosterCache.set(gameId, { key: _shellSeatRosterKey, seats: shellEligibleSeats });
+    }
+  }
   // Same broadening for the seated-viewer projection check so a viewer
   // whose row is `waiting` (just joined) gets 'active-canonical' from
   // the shell — matching the projection the previous local provider
