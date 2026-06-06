@@ -8565,8 +8565,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               prevLength: dealerSelectionCards.length,
               gameId: gameId ?? null,
             });
+            recordHighCardCardsClear({
+              source: 'all-ante-decisions-in',
+              callsite: 'src/pages/Game.tsx:8568 ante→cribbage_dealer_selection',
+              reason: 'clearing session-level dealer-selection visuals before entering dealer-game scope',
+              cardsLengthBeforeClear: dealerSelectionCards.length,
+              cardsLengthAfterClear: 0,
+              gameStatus: freshGame?.status ?? null,
+              winnerPosition: dealerSelectionWinnerPosition ?? null,
+              dealerSelectionComplete: null,
+              currentRoundId: currentRound?.id ?? null,
+              dealerGameId: (game as any)?.current_game_uuid ?? null,
+              gameId: gameId ?? null,
+            });
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);
+
             await supabase
               .from('games')
               .update({
