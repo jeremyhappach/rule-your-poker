@@ -38,6 +38,7 @@ import {
   recordHighCardStateSource,
   recordHighCardVisibleRenderer,
   recordHighCardPhaseTransition,
+  recordHighCardWriter,
   resetHighCardVisibleRendererCache,
   resetHighCardPhaseCache,
   type HighCardPhase,
