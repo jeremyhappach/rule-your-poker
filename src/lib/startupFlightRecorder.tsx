@@ -194,6 +194,15 @@ export function StartupFlightRecorderOverlay() {
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const [expanded, setExpanded] = useState(false);
 
+  useEffect(() => {
+    recordStartupFlight('PHASE TIMELINE', '[AUDIT] Flight recorder initialized', {
+      maxEvents: MAX_EVENTS,
+      retentionPolicy: 'ring-buffer',
+      mounted: true,
+      version: BUILD_META.commitSha,
+    });
+  }, []);
+
   // Dev chrome: must never occlude canonical HUD rows (identity row sits
   // at the bottom of the viewport). Pinned to the TOP, narrow, with a
   // modest z-index so app modals/dialogs continue to win over it.
