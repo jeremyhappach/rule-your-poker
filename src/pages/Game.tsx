@@ -9354,6 +9354,24 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             from session entry, so no waiting-specific felt mounts and
             no geometry swap occurs at session start (Phase 3.1c).
             Poker-variant family keeps the legacy WaitingForPlayersTable. */}
+        {game.status === 'waiting' && (() => {
+          const shellKind = resolveShellKind(game.game_type);
+          recordWaitingLifecycleIfChanged(
+            `waitBranch:${gameId ?? 'none'}`,
+            'waiting branch decision',
+            {
+              status: game.status,
+              gameType: game.game_type ?? null,
+              shellKind,
+              branch: shellKind === 'canonical'
+                ? 'CanonicalShellWaitingSurface'
+                : 'WaitingForPlayersTable',
+              hasGame: !!game,
+              playersCount: players.length,
+            },
+          );
+          return null;
+        })()}
         {game.status === 'waiting' && resolveShellKind(game.game_type) === 'canonical' && (
           <CanonicalShellWaitingSurface
             gameId={gameId!}
