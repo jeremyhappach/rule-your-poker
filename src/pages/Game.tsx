@@ -10829,11 +10829,26 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // sitting_out is still excluded — sitting_out is a gameplay-state
   // signal and the gameplay surfaces deliberately render them
   // separately. observer / left are excluded as before (no seat).
-  const shellEligibleSeats = shellCanonicalFamily
+  // Memoize by a stable sorted seat-roster signature so unrelated
+  // `players` array reference churn (e.g. realtime patches that don't
+  // change occupancy) doesn't produce a new seats array identity and
+  // re-fire the shell SeatAnchorLayer geometry pass on every render.
+  const _shellSeatRosterKey = shellCanonicalFamily
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
-        .map(p => ({ position: p.position, occupied: true, hidden: false }))
-    : undefined;
+        .map(p => p.position)
+        .sort((a, b) => a - b)
+        .join(',')
+    : '';
+  const shellEligibleSeats = useMemo(
+    () => (shellCanonicalFamily
+      ? players
+          .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+          .map(p => ({ position: p.position, occupied: true, hidden: false }))
+      : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shellCanonicalFamily, _shellSeatRosterKey]
+  );
   // Same broadening for the seated-viewer projection check so a viewer
   // whose row is `waiting` (just joined) gets 'active-canonical' from
   // the shell — matching the projection the previous local provider
