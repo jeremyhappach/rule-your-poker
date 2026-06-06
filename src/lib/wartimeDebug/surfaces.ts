@@ -537,13 +537,59 @@ export function recordPlayerVisualSnapshot(snap: PlayerVisualSnapshot): void {
     const prevKey = `${prevSurfaceForPlayer}:${snap.playerId}`;
     const prev = _playerVisualSnapshots.get(prevKey);
     if (prev) {
+      const delta = _diffSnapshots(prev, snap);
       recordWartime('SEATING', `player-visual-transition ${prevSurfaceForPlayer} → ${snap.surface}`, {
         playerId: snap.playerId,
         position: snap.position ?? null,
         from: { surface: prevSurfaceForPlayer, snapshot: prev },
         to:   { surface: snap.surface,         snapshot: snap },
-        delta: _diffSnapshots(prev, snap),
+        delta,
       });
+      // CHIP_RENDER_PATH_DIFF — focused single-event diff that names
+      // exactly which renderer / owner / anchor / style / projection /
+      // slot / DOM-ancestry dimension diverged across the transition.
+      recordWartime(
+        'SEATING',
+        `CHIP_RENDER_PATH_DIFF ${prevSurfaceForPlayer} → ${snap.surface}`,
+        {
+          playerId: snap.playerId,
+          position: snap.position ?? null,
+          rendererChange: {
+            from: prev.chipRenderer ?? null, to: snap.chipRenderer ?? null,
+          },
+          ownerChange: {
+            from: prev.surface, to: snap.surface,
+          },
+          anchorSourceChange: {
+            from: prev.seatAnchorSource ?? null, to: snap.seatAnchorSource ?? null,
+            providerFrom: prev.anchorProviderInstanceId ?? null,
+            providerTo: snap.anchorProviderInstanceId ?? null,
+            providerSurvived:
+              !!(prev.anchorProviderInstanceId && snap.anchorProviderInstanceId &&
+                 prev.anchorProviderInstanceId === snap.anchorProviderInstanceId),
+          },
+          styleSourceChange: {
+            from: prev.chipStyleSource ?? null, to: snap.chipStyleSource ?? null,
+            variantFrom: prev.chipVariant ?? null,
+            variantTo: snap.chipVariant ?? null,
+            statusFrom: prev.status ?? null,
+            statusTo: snap.status ?? null,
+          },
+          projectionChange: {
+            from: prev.projectionMode ?? null, to: snap.projectionMode ?? null,
+          },
+          slotChange: {
+            from: prev.renderedSeatSlot ?? null, to: snap.renderedSeatSlot ?? null,
+          },
+          domAncestryChange: {
+            from: prev.domAncestry ?? null, to: snap.domAncestry ?? null,
+          },
+          rectChange: {
+            from: prev.chipRect ?? null, to: snap.chipRect ?? null,
+          },
+          fullDelta: delta,
+        },
+      );
     }
   }
 }
