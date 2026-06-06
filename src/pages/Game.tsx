@@ -5998,7 +5998,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       }
     }
 
+    // ── fetchGameData waterfall summary ─────────────────────────────
+    const postprocessStartOffsetMs = Date.now() - fetchStartedAt;
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.start', {
+      fetchSeq,
+      offsetMs: postprocessStartOffsetMs,
+    });
+    let _slowest: QueryTiming | null = null;
+    for (const q of queryTimings) {
+      if (!_slowest || q.elapsedMs > _slowest.elapsedMs) _slowest = q;
+    }
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData.waterfall', {
+      fetchSeq,
+      totalElapsedMs: Date.now() - fetchStartedAt,
+      queries: queryTimings,
+      queryCount: queryTimings.length,
+      slowestStep: _slowest?.name ?? null,
+      slowestStepElapsedMs: _slowest?.elapsedMs ?? 0,
+      slowestStepTable: _slowest?.table ?? null,
+      preAuth: !authReadyAtFetchStart,
+      authReady: authReadyAtFetchStart,
+      userIdPresent: !!userIdAtFetchStart,
+      setGameOffsetMs: postprocessStartOffsetMs,
+    });
+
     setGame(gameDataToApply);
+    recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
+      fetchSeq,
+      offsetMs: Date.now() - fetchStartedAt,
+      postprocessElapsedMs: Date.now() - fetchStartedAt - postprocessStartOffsetMs,
+    });
+
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData setGame applied', {
       file: 'src/pages/Game.tsx',
       function: 'fetchGameData',
