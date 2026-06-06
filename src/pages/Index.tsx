@@ -1009,33 +1009,100 @@ const Index = () => {
 function WartimeDebugSettingRow() {
   const enabled = useSyncExternalStore(subscribeWartimeEnabled, isWartimeEnabled, isWartimeEnabled);
   const { toast } = useToast();
+  const [showCoverage, setShowCoverage] = useState(false);
   return (
-    <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
-      <div className="space-y-0.5">
-        <Label htmlFor="wartime-debug" className="flex items-center gap-2">
-          <FlaskConical className="h-4 w-4 text-amber-400" />
-          Wartime Debug
-        </Label>
-        <p className="text-xs text-muted-foreground">
-          Platform instrumentation framework. OFF = zero overhead. ON = the Wartime Debug panel appears (top-right) and recording can be started/stopped from the panel.
-        </p>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
+        <div className="space-y-0.5">
+          <Label htmlFor="wartime-debug" className="flex items-center gap-2">
+            <FlaskConical className="h-4 w-4 text-amber-400" />
+            Wartime Debug
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Platform instrumentation framework. OFF = zero overhead. ON = the Wartime Debug panel appears (bottom tray) and recording can be started/stopped from the panel.
+          </p>
+        </div>
+        <Switch
+          id="wartime-debug"
+          checked={enabled}
+          onCheckedChange={(next) => {
+            setWartimeEnabled(next);
+            toast({
+              title: next ? "Wartime Debug Enabled" : "Wartime Debug Disabled",
+              description: next
+                ? "Use the Wartime Debug panel (bottom tray) to start/stop recording."
+                : "All wartime instrumentation collection halted.",
+            });
+          }}
+          className="data-[state=checked]:bg-amber-600"
+        />
       </div>
-      <Switch
-        id="wartime-debug"
-        checked={enabled}
-        onCheckedChange={(next) => {
-          setWartimeEnabled(next);
-          toast({
-            title: next ? "Wartime Debug Enabled" : "Wartime Debug Disabled",
-            description: next
-              ? "Use the Wartime Debug panel (top-right) to start/stop recording."
-              : "All wartime instrumentation collection halted.",
-          });
-        }}
-        className="data-[state=checked]:bg-amber-600"
-      />
+      <div className="rounded-lg border border-amber-600/20 bg-amber-900/10 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setShowCoverage((v) => !v)}
+          className="flex w-full items-center justify-between text-left text-sm font-medium text-amber-200"
+        >
+          <span>{showCoverage ? '▼' : '▶'} Wartime Coverage</span>
+          <span className="text-[10px] text-muted-foreground">
+            per-surface × category matrix
+          </span>
+        </button>
+        {showCoverage ? <WartimeCoverageMatrix /> : null}
+      </div>
     </div>
   );
 }
+
+function WartimeCoverageMatrix() {
+  const rows = useSyncExternalStore(
+    subscribeWartimeCoverage,
+    getWartimeCoverage,
+    getWartimeCoverage,
+  );
+  // Re-render on coverage version bump too
+  useSyncExternalStore(subscribeWartimeCoverage, getWartimeCoverageVersion, getWartimeCoverageVersion);
+  const cats: CoverageCategory[] = COVERAGE_CATEGORIES;
+  return (
+    <div className="mt-2 overflow-x-auto">
+      <table className="w-full text-[11px]">
+        <thead className="text-muted-foreground">
+          <tr>
+            <th className="px-1 py-1 text-left font-medium">Surface</th>
+            {cats.map((c) => (
+              <th key={c} className="px-1 py-1 text-center font-medium">{c}</th>
+            ))}
+            <th className="px-1 py-1 text-right font-medium">mounts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.surface} className="border-t border-amber-600/10">
+              <td className="px-1 py-1 font-mono text-amber-200">{row.surface}</td>
+              {cats.map((c) => {
+                const ok = row.categories[c];
+                return (
+                  <td key={c} className="px-1 py-1 text-center">
+                    {ok ? <span className="text-emerald-400">✅</span> : <span className="text-rose-400">❌</span>}
+                  </td>
+                );
+              })}
+              <td className="px-1 py-1 text-right font-mono text-muted-foreground">
+                {row.mounted}/{row.totalMounts}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        ✅ = category wired (observed at runtime). ❌ = category not yet wired
+        for this surface. A surface is not fully covered until every category
+        is ✅ — bugs occurring in surfaces with ❌ render decisions are a
+        Wartime coverage gap, not just an application bug.
+      </p>
+    </div>
+  );
+}
+
 
 export default Index;
