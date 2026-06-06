@@ -166,7 +166,7 @@ export function recordWaitingLifecycleIfChanged(
  * code. Emits `[WAIT] {event} mount` on mount and `[WAIT] {event}
  * unmount` on unmount. Renders nothing.
  */
-import { createElement } from 'react';
+
 export function WaitingFlightMarker({
   event,
   payload,
