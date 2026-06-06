@@ -89,19 +89,20 @@ const App = () => {
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <LifecycleDebugBadge />
+              {/*
+                Single canonical Debug Tray. Pinned to the bottom of the
+                viewport (above the iOS browser toolbar via safe-area inset).
+                All debug pills live here so nothing covers the shell header,
+                admin controls, dealer controls, announcements, or gameplay.
+              */}
+              <DebugTray>
+                <NetworkSimIndicator />
+                <DebugModeIndicator />
+                <LegacyDebugPanels />
+                <WartimeDebugPanel />
+              </DebugTray>
             </AppNetworkSim>
-            <LifecycleDebugBadge />
-            {/*
-              Single canonical Debug Tray. Pinned to the bottom of the
-              viewport (above the iOS browser toolbar via safe-area inset).
-              All debug pills live here so nothing covers the shell header,
-              admin controls, dealer controls, announcements, or gameplay.
-            */}
-            <DebugTray>
-              <DebugModeIndicator />
-              <LegacyDebugPanels />
-              <WartimeDebugPanel />
-            </DebugTray>
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>
