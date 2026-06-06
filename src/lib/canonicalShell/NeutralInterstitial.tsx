@@ -27,6 +27,7 @@ import {
   useWaitingMount,
   recordSurfaceOwnership,
   recordWaitingLifecycle,
+  recordWaitingLifecycleIfChanged,
 } from './waitingTableFlight';
 
 /**
