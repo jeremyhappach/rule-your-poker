@@ -604,6 +604,27 @@ export function useHighCardDealerSelection({
           lastCardsLenRef.current = allCards.length;
         }
 
+        {
+          const _prevIds = (hookStateRef.current.cards ?? []).map(
+            (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+          );
+          const _nextIds = allCards.map(
+            (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+          );
+          recordHighCardWriter({
+            gameId,
+            source: 'host-deal',
+            callsite: `src/hooks/useHighCardDealerSelection.ts:runSelectionRound round=${roundNum}`,
+            reason: 'host dealt round → onCardsUpdate(allCards)',
+            previousLength: _prevIds.length,
+            nextLength: _nextIds.length,
+            previousCardIds: _prevIds,
+            nextCardIds: _nextIds,
+            renderPath: 'host',
+            surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+          });
+        }
+
         onCardsUpdate(allCards);
 
         // Persist the reveal-only snapshot so non-host subscribers receive
