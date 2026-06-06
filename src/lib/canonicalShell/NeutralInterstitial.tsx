@@ -29,6 +29,12 @@ import {
   recordWaitingLifecycle,
   recordWaitingLifecycleIfChanged,
 } from './waitingTableFlight';
+import {
+  useWartimeSurface,
+  useWartimeState,
+  useWartimeRender,
+  useWartimeOwnership,
+} from '@/lib/wartimeDebug/surfaces';
 
 /**
  * Roster shape consumed by the optional interstitial seat layer.
