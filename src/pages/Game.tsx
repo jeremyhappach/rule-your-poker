@@ -2128,10 +2128,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.game_type]);
 
   useEffect(() => {
-    if (!gameId || !user) {
+    // P0 STARTUP FIX: Initial game hydration must NOT wait on auth readiness.
+    // `games` and `players` are publicly readable (RLS allows anon read), so
+    // we fetch the public snapshot the moment routeGameId is known. Auth
+    // still gates user-specific actions further down; this only unblocks
+    // the initial visual shell so WaitingTable mounts without the ~2s
+    // auth wait observed in Wartime.
+    if (!gameId) {
       recordStartupFlight('EFFECT TIMELINE', 'realtime subscription effect skipped', {
         file: 'src/pages/Game.tsx',
-        skipReason: !gameId ? 'no gameId' : 'no user',
+        skipReason: 'no gameId',
         gameId: gameId ?? null,
       });
       return;
@@ -2630,7 +2636,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       stopFallbackPolling();
       supabase.removeChannel(channel);
     };
-  }, [gameId, user]);
+    // Depend on gameId only so the subscription is established immediately
+    // on route entry. User identity is not needed for the public game/player
+    // snapshot; tearing down the channel when `user` changes would re-cost
+    // ~2s of subscription handshake on every auth-state flip.
+  }, [gameId]);
 
   // AUTO-RESYNC ON RESUME: When the user returns to the tab (iOS BFCache, tab switch, app resume),
   // immediately refetch game data and clear stale caches if the backend shows a different state.
@@ -5490,14 +5500,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchStartedAt = Date.now();
 
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
-    if (!gameId || !user) {
+    if (!gameId) {
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
         file: 'src/pages/Game.tsx',
         function: 'fetchGameData',
         fetchSeq,
-        skipReason: !gameId ? 'no gameId' : 'no user',
+        skipReason: 'no gameId',
       });
-      fetchSpan.end({ skipped: 'no gameId or user' });
+      fetchSpan.end({ skipped: 'no gameId' });
       return;
     }
 
