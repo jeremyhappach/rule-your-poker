@@ -6262,16 +6262,34 @@ export const CribbageMobileGameTable = ({
               const showSeatCardBacks = isObserver || seatPlayer.id !== currentPlayerId;
 
               const ownsCrib = isCribDealer(seatPlayer.id);
+              // Pre-session continuity: while !isGameplayMode (waiting →
+              // interstitial → dealer-selection), mirror the canonical
+              // waiting-surface cluster inputs exactly so the same player's
+              // chip identity (status palette, dealer badge, decorators,
+              // children footprint) is invariant across the transition.
+              // Gameplay-only inputs (cribbage dealer D, crib "C" overlay,
+              // card-back stripes) only attach once gameplay takes
+              // ownership (isGameplayMode === true).
+              const preSession = !isGameplayMode;
+              const preSessionStatus = preSession
+                ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
+                : undefined;
               return (
                 <CanonicalSeatCluster
                   key={seatPlayer.id}
                   slot={slot}
                   position={seatPlayer.position}
                   name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                  /* Red "D" (identity row) — session/dealer-game owner. */
-                  isDealer={seatPlayer.position === dealerPosition}
+                  /* Dealer badge:
+                     - Pre-session: suppressed (matches waiting surface,
+                       which no longer paints a host-D pre-session). Keeps
+                       chip identity stable across WaitingTable →
+                       NeutralInterstitial → DealerSelection.
+                     - Gameplay: cribbage dealer position owns the D. */
+                  isDealer={!preSession && seatPlayer.position === dealerPosition}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
-                  chipOverlay={ownsCrib ? (
+                  status={preSessionStatus}
+                  chipOverlay={!preSession && ownsCrib ? (
                     <div
                       data-canonical-cribbage-crib-badge=""
                       aria-label="Holds the crib"
@@ -6282,7 +6300,7 @@ export const CribbageMobileGameTable = ({
                     </div>
                   ) : undefined}
                 >
-                  {showSeatCardBacks && seatState && seatState.hand.length > 0 && (
+                  {!preSession && showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
                       {seatState.hand.map((_, i) => (
                         <div 
