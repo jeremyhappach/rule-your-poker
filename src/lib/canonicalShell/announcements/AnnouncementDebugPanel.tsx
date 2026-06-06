@@ -22,6 +22,7 @@ import {
   ensureHarnessCacheLoaded,
   subscribeGlobalDebugMode,
 } from '@/lib/debugHarness/runtimeCache';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 
 const KIND_COLOR: Record<string, string> = {
   emit: '#7CFC00',
@@ -122,15 +123,79 @@ export function AnnouncementDebugPanel() {
     font: 'inherit',
   });
 
-  return (
-    <div
-      data-announcement-debug-panel=""
-      style={{
+  const inTray = useInDebugTray();
+
+  // Collapsed pill — sits inside the Debug Tray (or anchors bottom-right
+  // when rendered as a floating fallback). Never covers header / admin.
+  if (!expanded) {
+    const pillStyle: React.CSSProperties = inTray
+      ? { pointerEvents: 'auto', display: 'inline-block' }
+      : {
+          position: 'fixed',
+          right: 8,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+          zIndex: 2147483645,
+          pointerEvents: 'auto',
+        };
+    return (
+      <div style={pillStyle} data-announcement-debug-panel="">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title="Expand Announcement Debug"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'rgba(0,0,0,0.85)',
+            color: '#fff',
+            border: '1px solid #444',
+            borderRadius: 999,
+            padding: '4px 8px',
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          📣 ANN {events.length} ▴
+        </button>
+      </div>
+    );
+  }
+
+  const shellStyle: React.CSSProperties = inTray
+    ? {
+        position: 'fixed',
+        right: 8,
+        left: 8,
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+        marginLeft: 'auto',
+        width: 'auto',
+        maxWidth: 'min(96vw, 460px)',
+        maxHeight: '70dvh',
+        display: 'grid',
+        gridTemplateRows: 'auto auto minmax(0, 1fr)',
+        zIndex: 2147483645,
+        background: 'rgba(0,0,0,0.92)',
+        color: '#fff',
+        border: '1px solid #444',
+        borderRadius: 6,
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSize: 10,
+        lineHeight: 1.3,
+        pointerEvents: 'auto',
+        boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+      }
+    : {
         position: 'fixed',
         left: 4,
         top: 4,
         zIndex: 2147483645,
-        width: expanded ? 'min(94vw, 460px)' : 'min(78vw, 280px)',
+        width: 'min(94vw, 460px)',
         background: 'rgba(0,0,0,0.85)',
         color: '#fff',
         border: '1px solid #444',
@@ -139,7 +204,12 @@ export function AnnouncementDebugPanel() {
         fontSize: 10,
         lineHeight: 1.3,
         pointerEvents: 'auto',
-      }}
+      };
+
+  return (
+    <div
+      data-announcement-debug-panel=""
+      style={shellStyle}
     >
       <div
         style={{
