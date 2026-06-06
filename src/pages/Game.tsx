@@ -2386,8 +2386,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   prevLength: dealerSelectionCards.length,
                   gameId: gameId ?? null,
                 });
+                recordHighCardCardsClear({
+                  source: 'realtime-status-change',
+                  callsite: 'src/pages/Game.tsx:2387 (setDealerSelectionCards([]))',
+                  reason: `status transition to ${newStatus}`,
+                  cardsLengthBeforeClear: dealerSelectionCards.length,
+                  cardsLengthAfterClear: 0,
+                  gameStatus: newStatus,
+                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  dealerSelectionComplete: null,
+                  currentRoundId: currentRound?.id ?? null,
+                  dealerGameId: (game as any)?.current_game_uuid ?? null,
+                  gameId: gameId ?? null,
+                });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
+
                 // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
                 emitCribbageHandoffTrace({
                   gameId: gameId!,
