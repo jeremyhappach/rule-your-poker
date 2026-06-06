@@ -27,6 +27,11 @@ import {
   recordWaitingLifecycle,
   recordWaitingLifecycleIfChanged,
 } from '@/lib/canonicalShell/waitingTableFlight';
+import {
+  recordHighCardSurfaceMount,
+  recordHighCardSurfaceUnmount,
+  recordHighCardRender,
+} from '@/lib/wartimeDebug/surfaces';
 
 interface Player {
   id: string;
