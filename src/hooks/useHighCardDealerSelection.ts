@@ -447,11 +447,27 @@ export function useHighCardDealerSelection({
         recordWaitingLifecycle('high-card card-hide', {
           gameId, source: 'non-host-receive', cardsLength: nextLen,
         });
+        // ATTRIBUTION: realtime sync delivered an empty card set, which will
+        // overwrite the visible cards on non-host. Record callsite before the
+        // overwrite reaches React state.
+        recordHighCardCardsClear({
+          source: 'non-host-sync',
+          callsite: 'src/hooks/useHighCardDealerSelection.ts:non-host-receive',
+          reason: 'syncedState.cards delivered empty array',
+          cardsLengthBeforeClear: prevLen,
+          cardsLengthAfterClear: nextLen,
+          gameStatus: 'dealer_selection',
+          winnerPosition: syncedState.winnerPosition ?? null,
+          dealerSelectionComplete: !!syncedState.isComplete,
+          gameId,
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
       }
       lastCardsLenRef.current = nextLen;
     }
 
     onCardsUpdate(syncedState.cards);
+
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
     if (syncedState.winnerPosition !== null && lastWinnerRef.current !== syncedState.winnerPosition) {
