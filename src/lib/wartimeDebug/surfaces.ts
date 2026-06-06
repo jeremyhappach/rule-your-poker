@@ -703,6 +703,54 @@ export function recordHighCardCardsClear(payload: HighCardClearPayload): void {
   recordWartime('RENDERING', 'high-card.cards-clear', payload as unknown as Record<string, unknown>);
 }
 
+// =========================================================================
+// FIRST 2 → 0 DISAPPEARANCE RECORDER
+//
+// Fires EXACTLY ONCE per gameId for the first transition from
+// previousCardsLength > 0 → nextCardsLength === 0. Centralizes attribution
+// so the very first disappearance is captured no matter which clear
+// callsite (local clear, sync overwrite, render-path switch, remount)
+// caused it.
+// =========================================================================
+
+export interface HighCardFirstDisappearancePayload {
+  gameId: string;
+  previousCards: Array<{ position?: number | null; rank?: string | null; suit?: string | null }>;
+  nextCards: Array<{ position?: number | null; rank?: string | null; suit?: string | null }>;
+  previousLength: number;
+  nextLength: number;
+  /** 'local-state' | 'realtime-sync-overwrite' | 'render-path-switch'
+   *  | 'visibility-gating' | 'component-remount' | 'unknown' */
+  source: string;
+  callsite: string;
+  renderPath?: string | null;
+  surfaceInstanceId?: string | null;
+  gameStatus?: string | null;
+  dealerGameId?: string | null;
+  roundId?: string | null;
+  syncedStateCardsLen?: number | null;
+  hasSyncedState?: boolean | null;
+}
+
+const _seenHighCardFirstDisappearance = new Set<string>();
+
+export function recordHighCardFirstDisappearance(
+  payload: HighCardFirstDisappearancePayload,
+): void {
+  if (_seenHighCardFirstDisappearance.has(payload.gameId)) return;
+  _seenHighCardFirstDisappearance.add(payload.gameId);
+  recordWartime(
+    'RENDERING',
+    'high-card.first-disappearance',
+    payload as unknown as Record<string, unknown>,
+  );
+}
+
+export function resetHighCardFirstDisappearance(gameId?: string): void {
+  if (!gameId) { _seenHighCardFirstDisappearance.clear(); return; }
+  _seenHighCardFirstDisappearance.delete(gameId);
+}
+
 export type HighCardStateSource =
   | 'local'
   | 'external-prop'
