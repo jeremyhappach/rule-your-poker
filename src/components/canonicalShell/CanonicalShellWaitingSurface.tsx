@@ -44,7 +44,9 @@ import {
   type ShellTabId,
 } from "@/lib/canonicalShell/ShellTabBar";
 import { MobileChatPanel } from "@/components/MobileChatPanel";
-import { SeatAnchorLayer, useSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { recordWartime } from "@/lib/wartimeDebug/core";
+
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { observerSlotForPosition } from "@/lib/canonicalShell/seatAnchors";
