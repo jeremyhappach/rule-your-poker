@@ -29,6 +29,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical } from "lucide-react";
 import { useGlobalDebugMode } from "@/lib/debugHarness/useGlobalDebugMode";
+import {
+  isWartimeEnabled,
+  setWartimeEnabled,
+  subscribeWartimeEnabled,
+} from "@/lib/wartimeDebug/core";
+import { useSyncExternalStore } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
@@ -653,12 +659,12 @@ const Index = () => {
                       />
                     </div>
 
-                    {/* Global Debug Mode (master gate for all harnesses) */}
+                    {/* Harnesses (master gate for all debug harnesses) */}
                     <div className="flex items-center justify-between py-2 bg-red-900/20 rounded-lg px-3 border border-red-600/30">
                       <div className="space-y-0.5">
                         <Label htmlFor="global-debug-mode" className="flex items-center gap-2">
                           <FlaskConical className="h-4 w-4 text-red-400" />
-                          Global Debug Mode
+                          Harnesses
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           Master gate for all Debug Harnesses. OFF = harness selections are ignored at runtime (selections preserved). Affects new games only.
@@ -673,13 +679,13 @@ const Index = () => {
                           setIsTogglingDebugMode(false);
                           toast({
                             title: ok
-                              ? next ? "Debug Mode Enabled" : "Debug Mode Disabled"
+                              ? next ? "Harnesses Enabled" : "Harnesses Disabled"
                               : "Error",
                             description: ok
                               ? next
                                 ? "Configured harnesses are now active for NEW games."
                                 : "Harness selections preserved but inert until re-enabled."
-                              : "Failed to toggle Debug Mode",
+                              : "Failed to toggle Harnesses",
                             variant: ok ? "default" : "destructive",
                           });
                         }}
@@ -687,6 +693,10 @@ const Index = () => {
                         className="data-[state=checked]:bg-red-600"
                       />
                     </div>
+
+                    {/* Wartime Debug (platform instrumentation framework) */}
+                    <WartimeDebugSettingRow />
+
 
                     {/* Allow Bot Dealers Toggle */}
                     <div className="flex items-center justify-between py-2">
@@ -995,5 +1005,37 @@ const Index = () => {
     </div>
   );
 };
+
+function WartimeDebugSettingRow() {
+  const enabled = useSyncExternalStore(subscribeWartimeEnabled, isWartimeEnabled, isWartimeEnabled);
+  const { toast } = useToast();
+  return (
+    <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
+      <div className="space-y-0.5">
+        <Label htmlFor="wartime-debug" className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-amber-400" />
+          Wartime Debug
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Platform instrumentation framework. OFF = zero overhead. ON = the Wartime Debug panel appears (top-right) and recording can be started/stopped from the panel.
+        </p>
+      </div>
+      <Switch
+        id="wartime-debug"
+        checked={enabled}
+        onCheckedChange={(next) => {
+          setWartimeEnabled(next);
+          toast({
+            title: next ? "Wartime Debug Enabled" : "Wartime Debug Disabled",
+            description: next
+              ? "Use the Wartime Debug panel (top-right) to start/stop recording."
+              : "All wartime instrumentation collection halted.",
+          });
+        }}
+        className="data-[state=checked]:bg-amber-600"
+      />
+    </div>
+  );
+}
 
 export default Index;

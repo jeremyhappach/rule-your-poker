@@ -23,6 +23,8 @@ import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
 import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
+import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
+import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 
 // Hydrate the Debug Harness cache once at module load so synchronous
 // game-logic call sites see the active selection without awaiting a query.
@@ -87,9 +89,8 @@ const App = () => {
             </AppNetworkSim>
             <LifecycleDebugBadge />
             <DebugModeIndicator />
-            <AnnouncementDebugPanel />
-            {/* <ShellLifecyclePanel /> */}
-            <StartupFlightRecorderOverlay />
+            <LegacyDebugPanels />
+            <WartimeDebugPanel />
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>
@@ -97,5 +98,21 @@ const App = () => {
     </QueryClientProvider>
   );
 };
+
+/**
+ * Legacy debug panels (Announcement Debug + Startup Flight Recorder) are
+ * kept intact but hidden while the Wartime Debug Framework is enabled.
+ * Toggle Wartime Debug from Admin Settings to switch surfaces.
+ */
+function LegacyDebugPanels() {
+  const wartimeEnabled = useWartimeEnabled();
+  if (wartimeEnabled) return null;
+  return (
+    <>
+      <AnnouncementDebugPanel />
+      <StartupFlightRecorderOverlay />
+    </>
+  );
+}
 
 export default App;
