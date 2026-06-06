@@ -21,9 +21,10 @@ import {
   subscribeWartime,
   subscribeWartimeEnabled,
   type WartimeCategory,
-  type WartimeEvent,
 } from './core';
 import { attachWartimeBridges } from './bridges';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+
 
 const ALL: 'ALL' = 'ALL';
 
