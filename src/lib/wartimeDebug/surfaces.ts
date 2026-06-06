@@ -733,3 +733,41 @@ export function recordPlayerVisualTransitionDiff(args: {
     },
   );
 }
+
+// =========================================================================
+// DOM probe helper — used by snapshot producers to populate chipRect /
+// chipComputedStyle so the cross-surface transition diff can reason
+// about pixel-level moves and style deltas.
+// =========================================================================
+export function probeChipDom(position: number | null | undefined): {
+  chipDOMSelector: string | null;
+  chipRect: Record<string, number> | null;
+  chipComputedStyle: Record<string, string> | null;
+} {
+  if (position == null || typeof document === 'undefined') {
+    return { chipDOMSelector: null, chipRect: null, chipComputedStyle: null };
+  }
+  const selector = `[data-chip-center="${position}"]`;
+  let el: Element | null = null;
+  try { el = document.querySelector(selector); } catch { /* ignore */ }
+  if (!el) return { chipDOMSelector: selector, chipRect: null, chipComputedStyle: null };
+  let rect: Record<string, number> | null = null;
+  try {
+    const r = (el as HTMLElement).getBoundingClientRect();
+    rect = {
+      x: Math.round(r.x), y: Math.round(r.y),
+      w: Math.round(r.width), h: Math.round(r.height),
+      cx: Math.round(r.x + r.width / 2), cy: Math.round(r.y + r.height / 2),
+    };
+  } catch { /* ignore */ }
+  let style: Record<string, string> | null = null;
+  try {
+    const cs = window.getComputedStyle(el as HTMLElement);
+    style = {
+      display: cs.display, visibility: cs.visibility, opacity: cs.opacity,
+      transform: cs.transform, zIndex: cs.zIndex, color: cs.color,
+      background: cs.backgroundColor,
+    };
+  } catch { /* ignore */ }
+  return { chipDOMSelector: selector, chipRect: rect, chipComputedStyle: style };
+}
