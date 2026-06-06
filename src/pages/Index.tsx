@@ -29,6 +29,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { UserCircle, Trash2, ShieldAlert, History, Wrench, Settings, FlaskConical } from "lucide-react";
 import { useGlobalDebugMode } from "@/lib/debugHarness/useGlobalDebugMode";
+import {
+  isWartimeEnabled,
+  setWartimeEnabled,
+  subscribeWartimeEnabled,
+} from "@/lib/wartimeDebug/core";
+import { useSyncExternalStore } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VisualPreferences } from "@/components/VisualPreferences";
 import { PlayerManagement } from "@/components/PlayerManagement";
