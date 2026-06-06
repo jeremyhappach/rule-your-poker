@@ -3719,6 +3719,8 @@ export const CribbageMobileGameTable = ({
 
     // Guard immediately to avoid multi-fire on rapid state churn.
     winSequenceScheduledRef.current = winKey;
+    // [TERMINAL-PATH] this branch fires only when counting was never active.
+    setTerminalPath('pegging');
     triggerWinSequence(cribbageState);
   }, [cribbageState?.phase, cribbageState?.winnerPlayerId, roundId, triggerWinSequence]);
 
