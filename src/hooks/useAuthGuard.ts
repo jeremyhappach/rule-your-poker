@@ -177,7 +177,7 @@ export function useAuthGuard({ pageLabel }: AuthGuardOptions) {
             clearTimeout(recheckTimerRef.current);
             recheckTimerRef.current = null;
           }
-          setUser(session.user);
+          setUser((prev) => (prev && prev.id === session.user.id ? prev : session.user));
           setIsReady(true);
         } else {
           // ── CRITICAL CHANGE ────────────────────────────────
