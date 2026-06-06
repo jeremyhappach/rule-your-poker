@@ -27,7 +27,7 @@
  * second local map.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   useWaitingRoomActions,
