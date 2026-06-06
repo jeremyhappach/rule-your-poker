@@ -7963,6 +7963,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Bug A fix: clear stale session-level dealer-selection visuals at the exact
     // handoff point where session-level high-card completes. This prevents the
     // one-frame flash of stale session cards when the dealer-game scope begins.
+    recordWaitingLifecycle('dealerSelectionCards cleared', {
+      source: 'cribbage-handoff-complete',
+      callsite: 'src/pages/Game.tsx:~7959',
+      dealerPosition,
+      prevLength: dealerSelectionCards.length,
+      gameId: gameId ?? null,
+    });
     setDealerSelectionCards([]);
     setDealerSelectionWinnerPosition(null);
 
