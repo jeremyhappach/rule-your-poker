@@ -40,6 +40,7 @@ import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useSurfaceReadiness } from './SurfaceReadinessContract';
 import { ginTrace } from '@/lib/ginStartupTrace';
 import { recordStartupFlight, useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { useWaitingMount, recordWaitingLifecycle } from './waitingTableFlight';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
