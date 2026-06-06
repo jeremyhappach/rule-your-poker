@@ -652,3 +652,84 @@ export function recordHighCardCardUnmount(payload: Record<string, unknown>): voi
   recordWartime('LIFECYCLE', 'high-card.card-unmount', payload);
 }
 
+
+// =========================================================================
+// HIGH-CARD RAW EVENTS — explicitly NOT deduplicated.
+//
+// The dedup'd `render.HighCardDealerSelection` event masks fast 2→0→2
+// flicker if intermediate frames briefly clear cards. The raw stream
+// records every call so a visual 2→0→2→0 can be reconstructed without
+// inference. Scoped to the high-card window: callers stop emitting once
+// dealer setup begins / surface unmounts.
+// =========================================================================
+
+export function recordHighCardStateRaw(payload: Record<string, unknown>): void {
+  recordWartime('GAMEPLAY', 'high-card.state.raw', payload);
+}
+export function recordHighCardRenderRaw(payload: Record<string, unknown>): void {
+  recordWartime('RENDERING', 'high-card.render.raw', payload);
+}
+export function recordHighCardVisualRaw(payload: Record<string, unknown>): void {
+  recordWartime('RENDERING', 'high-card.visual.raw', payload);
+}
+
+// =========================================================================
+// HIGH-CARD ANIMATION / TIMER RECORDER
+// =========================================================================
+export interface HighCardTimerPayload {
+  timerId?: string | number | null;
+  delayMs?: number | null;
+  phaseFrom?: string | null;
+  phaseTo?: string | null;
+  cardsLength?: number | null;
+  cardIds?: string[] | null;
+  winnerPosition?: number | null;
+  componentKey?: string | null;
+  surfaceInstanceId?: string | null;
+  gameId?: string | null;
+  reason?: string | null;
+}
+export function recordHighCardTimer(event:
+  | 'timeout.scheduled'
+  | 'timeout.fired'
+  | 'timeout.cancelled'
+  | 'phase.changed'
+  | 'reveal.phase'
+  | 'card.reveal.started'
+  | 'card.reveal.completed'
+  | 'winner.phase.started'
+  | 'winner.announcement.started'
+  | 'onComplete.scheduled'
+  | 'onComplete.fired',
+  payload: HighCardTimerPayload,
+): void {
+  recordWartime('ANIMATIONS', `high-card.${event}`, payload);
+}
+
+// =========================================================================
+// PLAYER-VISUAL TRANSITION DIFF (named alias — backwards-compatible call
+// path. The auto-diff inside recordPlayerVisualSnapshot already emits a
+// `player-visual-transition` event when the same playerId moves between
+// surfaces. This helper lets producers explicitly tag a cross-surface
+// snapshot pair without depending on emission timing.)
+// =========================================================================
+export function recordPlayerVisualTransitionDiff(args: {
+  fromSurface: string;
+  toSurface: string;
+  playerId: string;
+  from: PlayerVisualSnapshot;
+  to: PlayerVisualSnapshot;
+}): void {
+  recordWartime(
+    'SEATING',
+    `player-visual-transition-diff ${args.fromSurface} → ${args.toSurface}`,
+    {
+      playerId: args.playerId,
+      fromSurface: args.fromSurface,
+      toSurface: args.toSurface,
+      from: args.from,
+      to: args.to,
+      delta: _diffSnapshots(args.from, args.to),
+    },
+  );
+}
