@@ -9041,6 +9041,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             />
           ) : undefined}
         >
+          <WaitingFlightMarker
+            event="PersistentTableShell branch=bootstrap"
+            payload={{ gameId: gameId ?? null, hasGame: !!game, loading: !!loading }}
+          />
           <div
             data-canonical-bootstrap=""
             data-lifecycle-branch="bootstrap"
