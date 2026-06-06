@@ -71,6 +71,19 @@ export function WartimeDebugPanel() {
 
   const text = useMemo(() => formatWartimeEventsAsText(filtered), [filtered]);
 
+  const exportOpts = useMemo(
+    () => ({
+      includeFilteredOnly: exportFilteredOnly,
+      filtered,
+      activeFilters: {
+        category: category === ALL ? null : category,
+        text: filter.trim() || null,
+      },
+    }),
+    [exportFilteredOnly, filtered, category, filter],
+  );
+
+
   if (!enabled) return null;
 
   const durationMs = stats.startedAtMs
