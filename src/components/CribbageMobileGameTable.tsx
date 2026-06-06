@@ -812,6 +812,40 @@ export const CribbageMobileGameTable = ({
   // Parent (Game.tsx) clears these at the handoff point so no stale session-level cards leak
   const effectiveShowHighCardSelection = isDealerSelection || showHighCardSelection;
 
+  // Wartime: emit DealerSelection player-visual snapshots so the
+  // cross-surface diff (WaitingTable → NeutralInterstitial → DealerSelection)
+  // captures chip-renderer / anchor / rect deltas for the SAME playerId
+  // as it traverses surfaces. Deferred to rAF so the chip DOM is settled.
+  useEffect(() => {
+    if (!effectiveShowHighCardSelection) return;
+    if (typeof window === 'undefined') return;
+    const raf = window.requestAnimationFrame(() => {
+      for (const player of players) {
+        recordPlayerVisualSnapshot({
+          surface: 'DealerSelection',
+          playerId: player.id,
+          userId: player.user_id,
+          position: player.position,
+          logicalSeat: player.position,
+          renderedSeatSlot: null,
+          seatAnchorSource: 'CribbageMobileGameTable.SeatAnchorLayer (LOCAL)',
+          chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
+          chipRenderer: 'CanonicalSeatCluster',
+          chipStyleSource: 'derivePlayerStatus → status palette',
+          chipVariant: 'dealer-selection',
+          chipValue: null,
+          status: null,
+          projectionMode: null,
+          isViewerSelf: player.user_id === currentUserId,
+          isSuppressed: false,
+          suppressionReason: null,
+          ...probeChipDom(player.position),
+        });
+      }
+    });
+    return () => { try { window.cancelAnimationFrame(raf); } catch { /* noop */ } };
+  }, [effectiveShowHighCardSelection, players, currentUserId]);
+
   // ── HANDOFF TRACE #9: dealer-game showHighCardSelection changes ──
   const prevShowHCRef = useRef(showHighCardSelection);
   const prevIsDSRef = useRef(isDealerSelection);
