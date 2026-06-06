@@ -2128,10 +2128,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }, [game?.game_type]);
 
   useEffect(() => {
-    if (!gameId || !user) {
+    // P0 STARTUP FIX: Initial game hydration must NOT wait on auth readiness.
+    // `games` and `players` are publicly readable (RLS allows anon read), so
+    // we fetch the public snapshot the moment routeGameId is known. Auth
+    // still gates user-specific actions further down; this only unblocks
+    // the initial visual shell so WaitingTable mounts without the ~2s
+    // auth wait observed in Wartime.
+    if (!gameId) {
       recordStartupFlight('EFFECT TIMELINE', 'realtime subscription effect skipped', {
         file: 'src/pages/Game.tsx',
-        skipReason: !gameId ? 'no gameId' : 'no user',
+        skipReason: 'no gameId',
         gameId: gameId ?? null,
       });
       return;
