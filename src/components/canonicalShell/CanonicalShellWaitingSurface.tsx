@@ -52,6 +52,12 @@ import { derivePlayerStatus } from "@/lib/canonicalShell/participantStatus";
 import { getDisplayName } from "@/lib/botAlias";
 import { formatChipValue } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import {
+  useWaitingMount,
+  recordWaitingLifecycle,
+  recordSurfaceOwnership,
+  recordSurfaceGeometry,
+} from "@/lib/canonicalShell/waitingTableFlight";
 
 interface Player extends WaitingRoomActor {
   id: string;
