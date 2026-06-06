@@ -47,7 +47,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
-import { recordHighCardCardsClear } from "@/lib/wartimeDebug/surfaces";
+import { recordHighCardCardsClear, recordHighCardFirstDisappearance } from "@/lib/wartimeDebug/surfaces";
 
 
 /**
@@ -796,11 +796,17 @@ const Game = () => {
   // reveal, hide, clear). Lets the recorder attribute high-card
   // disappearance to a Game-level state mutation vs. a child reset.
   const _waitDealerCardsLenRef = useRef<number>(-1);
+  const _waitDealerCardsPrevRef = useRef<DealerSelectionCard[]>([]);
   useEffect(() => {
     const next = dealerSelectionCards.length;
-    if (_waitDealerCardsLenRef.current === next) return;
+    if (_waitDealerCardsLenRef.current === next) {
+      _waitDealerCardsPrevRef.current = dealerSelectionCards;
+      return;
+    }
     const prev = _waitDealerCardsLenRef.current;
+    const prevCards = _waitDealerCardsPrevRef.current;
     _waitDealerCardsLenRef.current = next;
+    _waitDealerCardsPrevRef.current = dealerSelectionCards;
     recordWaitingLifecycle('dealerSelectionCards length changed', {
       gameId: gameId ?? null,
       previousLength: prev === -1 ? null : prev,
@@ -811,6 +817,45 @@ const Game = () => {
       syncedCardsLen: ((game as any)?.dealer_selection_state?.cards?.length) ?? null,
       winnerPosition: dealerSelectionWinnerPosition,
     });
+
+    // FIRST 2 → 0 DISAPPEARANCE RECORDER — fires exactly once per gameId
+    // for the first time previousLength > 0 transitions to nextLength === 0.
+    // Captures previous/next cards, source heuristic, render path, surface
+    // instance id, game status, dealerGameId, roundId. Centralized so the
+    // disappearance is attributed regardless of which callsite cleared it.
+    if (gameId && prev > 0 && next === 0) {
+      const syncedCards = (game as any)?.dealer_selection_state?.cards ?? null;
+      const hasSynced = !!(game as any)?.dealer_selection_state;
+      const syncedLen = Array.isArray(syncedCards) ? syncedCards.length : null;
+      // Heuristic source attribution:
+      //   - synced state present AND syncedLen === 0 → realtime-sync-overwrite
+      //   - synced state absent → local-state (local clear / status flip)
+      //   - synced state still has cards but local is 0 → render-path-switch
+      let source: string = 'unknown';
+      if (hasSynced && syncedLen === 0) source = 'realtime-sync-overwrite';
+      else if (!hasSynced) source = 'local-state';
+      else if (hasSynced && (syncedLen ?? 0) > 0 && next === 0) source = 'render-path-switch';
+      recordHighCardFirstDisappearance({
+        gameId,
+        previousCards: prevCards.map(c => ({
+          position: (c as any)?.position ?? null,
+          rank: (c as any)?.rank ?? null,
+          suit: (c as any)?.suit ?? null,
+        })),
+        nextCards: [],
+        previousLength: prev,
+        nextLength: next,
+        source,
+        callsite: 'src/pages/Game.tsx:dealerSelectionCards-length-watcher',
+        renderPath: (game as any)?.game_type ?? null,
+        surfaceInstanceId: `Game:${gameId}`,
+        gameStatus: (game as any)?.status ?? null,
+        dealerGameId: (game as any)?.current_game_uuid ?? null,
+        roundId: currentRound?.id ?? null,
+        syncedStateCardsLen: syncedLen,
+        hasSyncedState: hasSynced,
+      });
+    }
   }, [dealerSelectionCards, dealerSelectionWinnerPosition, game, gameId]);
 
   // ── dealer_selection_diag context push ─────────────────────────────
