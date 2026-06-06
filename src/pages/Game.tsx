@@ -2738,7 +2738,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       window.removeEventListener('focus', handleWindowFocus);
       window.removeEventListener('pageshow', handlePageShow as EventListener);
     };
-  }, [gameId, user, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
+  }, [gameId, user?.id, game?.status, game?.current_round, game?.game_type, clearLiftedCardCaches]);
 
   // NOTE: Duplicate rounds subscription was REMOVED to reduce query volume.
   // The main `game-${gameId}` channel already listens to rounds table changes (lines 1155-1188).
