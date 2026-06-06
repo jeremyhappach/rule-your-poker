@@ -3827,7 +3827,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     })();
 
     return () => { cancelled = true; };
-  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user]);
+  }, [anteTimeLeft, game?.status, game?.is_paused, gameId, players, user?.id]);
 
   // Session ending tracking (removed toast)
 
