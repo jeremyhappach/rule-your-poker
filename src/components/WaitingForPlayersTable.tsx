@@ -12,6 +12,11 @@ import { PerfSession } from "@/lib/perf";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
+import {
+  useWaitingMount,
+  recordWaitingLifecycle,
+  recordSurfaceOwnership,
+} from "@/lib/canonicalShell/waitingTableFlight";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
