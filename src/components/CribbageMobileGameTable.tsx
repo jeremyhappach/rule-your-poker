@@ -6133,6 +6133,7 @@ export const CribbageMobileGameTable = ({
                   countingOutroActive={countingDelayActive && !!countingStateSnapshot}
                   thirtyOneDelayActive={thirtyOneDelayActive}
                   handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
+                  terminalPath={terminalPath}
                 />
 
                 {/* Counting Phase Overlay */}
