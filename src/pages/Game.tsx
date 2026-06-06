@@ -87,6 +87,14 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
       presentationVisibilityState: 'mounted-empty',
       extra: { isHost: props.isHost, surface: 'HighCardDealerSelection-shim', phase: 'mount' },
     });
+    recordWaitingLifecycle('HighCardDealerSelection mount', {
+      gameId: props.gameId,
+      isHost: props.isHost,
+      selectionVariant: props.selectionVariant ?? 'default',
+      playerCount: props.players.length,
+      eligibleCount: props.players.filter(p => !p.sitting_out && (!p.is_bot || props.allowBotDealers)).length,
+      syncedCardCount: props.syncedState?.cards?.length ?? 0,
+    });
     return () => {
       recordDealerSelectionDiag('dealer_selection_surface_mounted', {
         sessionId: props.gameId,
@@ -94,6 +102,9 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
         scope: props.selectionVariant === 'cribbage' ? 'cribbage' : 'session',
         presentationVisibilityState: 'unmounted',
         extra: { surface: 'HighCardDealerSelection-shim', phase: 'unmount' },
+      });
+      recordWaitingLifecycle('HighCardDealerSelection unmount', {
+        gameId: props.gameId,
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
