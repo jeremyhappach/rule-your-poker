@@ -185,6 +185,34 @@ export function NeutralInterstitial({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Waiting-table flight recorder (instrumentation only) ────────
+  useWaitingMount('NeutralInterstitial', {
+    gameId: gameId ?? null,
+    reason: reason ?? null,
+    gameKind: gameKind ?? null,
+    hasCommittedGameKind,
+    participantCount: participants?.length ?? 0,
+  });
+  useEffect(() => {
+    recordWaitingLifecycle('Interstitial ready', {
+      gameId: gameId ?? null,
+      reason: reason ?? null,
+      gameKind: gameKind ?? null,
+      resolvedGameKind,
+      participantCount: participants?.length ?? 0,
+    });
+    recordSurfaceOwnership('NeutralInterstitial', {
+      SeatOwner: participants?.length
+        ? 'Slot:NeutralInterstitial.SeatAnchorLayer(LOCAL) → CanonicalSeatClusterDeferred'
+        : '(none — no participants prop)',
+      ChipOwner: participants?.length ? 'CanonicalSeatCluster.chipValue' : '(none)',
+      ControlOwner: '(none — neutral interstitial owns no controls)',
+      AnnouncementOwner: 'Shell:CanonicalAnnouncementProvider rail',
+      HUDOwner: 'Shell:ShellHudGrid (structure only)',
+    }, { reason });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Slot frame ownership: PlayfieldSlotController owns the outer
   // w-full/h-full/flex-col envelope so neutral and active share
   // identical frame constraints. Background continuity is owned by
