@@ -169,12 +169,6 @@ export function useHighCardDealerSelection({
     winnerPosition: number | null;
     isComplete: boolean;
   }>({ cards: [], expectedCardIds: [], winnerPosition: null, isComplete: false });
-  hookStateRef.current = {
-    cards: cardsForRender,
-    expectedCardIds: cardIdsForRender,
-    winnerPosition: syncedState?.winnerPosition ?? null,
-    isComplete: !!syncedState?.isComplete,
-  };
 
   // Render-decision + cards-disappeared classifier — emits on every
   // render via signature-keyed cache inside recordHighCardRender.
@@ -182,6 +176,15 @@ export function useHighCardDealerSelection({
   const cardIdsForRender = cardsForRender.map(
     (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
   );
+
+  // Keep ref in sync for the sampler closure.
+  hookStateRef.current = {
+    cards: cardsForRender,
+    expectedCardIds: cardIdsForRender,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
+  };
+
   recordHighCardRender({
     gameId,
     renderPath: isHost ? 'host' : 'non-host',
@@ -196,6 +199,37 @@ export function useHighCardDealerSelection({
     hideReason: cardsForRender.length === 0 ? 'no-cards' : null,
     componentKey: `${gameId}:${selectionVariant}`,
     gameStatus: 'dealer_selection',
+  });
+
+  // RAW non-deduped per-render state + render emit. Lets the trace
+  // reconstruct rapid sequences (e.g. 2 → 0 → 2 → 0) that the dedup'd
+  // recorder would collapse into a single transition.
+  recordHighCardRenderRaw({
+    gameId,
+    renderPath: isHost ? 'host' : 'non-host',
+    selectedCardsSource: isHost ? 'local' : 'syncedState',
+    componentKey: `${gameId}:${selectionVariant}`,
+    surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+    hookCardsLength: cardsForRender.length,
+    hookCardIds: cardIdsForRender,
+    syncedCardsLength: syncedState?.cards?.length ?? 0,
+    syncedCardIds: (syncedState?.cards ?? []).map(
+      (c) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}`,
+    ),
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
+    shouldRenderCards: cardsForRender.length > 0,
+    hideReason: cardsForRender.length === 0 ? 'no-cards' : null,
+    gameStatus: 'dealer_selection',
+  });
+  recordHighCardStateRaw({
+    gameId,
+    componentKey: `${gameId}:${selectionVariant}`,
+    cardsLength: cardsForRender.length,
+    cardIds: cardIdsForRender,
+    syncedCardsLength: syncedState?.cards?.length ?? 0,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    isComplete: !!syncedState?.isComplete,
   });
 
 
