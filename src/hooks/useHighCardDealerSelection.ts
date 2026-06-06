@@ -736,8 +736,24 @@ export function useHighCardDealerSelection({
     ) {
       hasCompletedRef.current = true;
       lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
-      onCardsUpdate(syncedState.cards || []);
+      const nextCards = syncedState.cards || [];
+      if (nextCards.length === 0) {
+        recordHighCardCardsClear({
+          source: 'host-complete-sync',
+          callsite: 'src/hooks/useHighCardDealerSelection.ts:host-complete-replay',
+          reason: 'host completion effect replayed with empty cards array',
+          cardsLengthBeforeClear: lastCardsLenRef.current,
+          cardsLengthAfterClear: 0,
+          gameStatus: 'dealer_selection',
+          winnerPosition: syncedState.winnerPosition,
+          dealerSelectionComplete: true,
+          gameId,
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
+      }
+      onCardsUpdate(nextCards);
       onWinnerPositionUpdate?.(syncedState.winnerPosition);
+
 
       const t = setTimeout(() => onComplete(syncedState.winnerPosition!), WINNER_ANNOUNCE_DELAY);
       return () => clearTimeout(t);
