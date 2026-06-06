@@ -75,7 +75,6 @@ export function NetworkSimIndicator() {
           }}
         >
           📶 {shortMode(mode)}
-          {loggingEnabled ? ' · LOG' : ''}
         </button>
       </div>
     );
