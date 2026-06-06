@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import {
   useWaitingMount,
   recordWaitingLifecycle,
+  recordWaitingLifecycleIfChanged,
   recordSurfaceOwnership,
   recordSurfaceGeometry,
 } from "@/lib/canonicalShell/waitingTableFlight";
