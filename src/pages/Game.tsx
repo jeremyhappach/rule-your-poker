@@ -5752,11 +5752,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ? base.eq('dealer_game_id', gameData.current_game_uuid)
             : base;
 
-          const { data } = await query
-            .order('hand_number', { ascending: false })
-            .order('round_number', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const { data } = await timedQuery('rounds.holm-latest', 'rounds', () =>
+            query
+              .order('hand_number', { ascending: false })
+              .order('round_number', { ascending: false })
+              .limit(1)
+              .maybeSingle());
+
 
           roundData = data;
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
