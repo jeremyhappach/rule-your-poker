@@ -10818,26 +10818,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const _shellRoutedGameType =
     _routeShellGameType ?? (_isPokerShellPersistent ? 'holm-game' : null);
   const shellCanonicalFamily = isCanonicalShellFamily(_shellRoutedGameType);
+  // P0 (chip-continuity fix): include `waiting` players in the shell-
+  // owned anchor roster. Waiting players have an authoritative seat
+  // position (they're joined; the hand simply hasn't committed them)
+  // and the canonical WaitingTable + NeutralInterstitial surfaces both
+  // render them. Previously the local SeatAnchorLayer mounts inside
+  // those surfaces shadowed the shell-owned one because the shell
+  // roster excluded `waiting` rows; hoisting to a single ambient
+  // provider requires the shell roster to be the union of both.
+  // sitting_out is still excluded — sitting_out is a gameplay-state
+  // signal and the gameplay surfaces deliberately render them
+  // separately. observer / left are excluded as before (no seat).
   const shellEligibleSeats = shellCanonicalFamily
     ? players
-        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out && !p.waiting)
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
         .map(p => ({ position: p.position, occupied: true, hidden: false }))
     : undefined;
-  // An observer is any viewer who is NOT actively seated — including
-  // a viewer whose player row exists but has status 'observer' / 'left'
-  // or is sitting_out/waiting. Treating those as "active" here would
-  // give them an active-canonical viewerPosition that isn't in the
-  // 2P seated set, defeating canCanonicalize2pActive AND skipping the
-  // canCanonicalize2pObserver branch.
+  // Same broadening for the seated-viewer projection check so a viewer
+  // whose row is `waiting` (just joined) gets 'active-canonical' from
+  // the shell — matching the projection the previous local provider
+  // used and avoiding a projection-mode flip across the WaitingTable
+  // → Interstitial transition.
   const isViewerSeated = !!currentPlayer
     && currentPlayer.status !== 'observer'
     && currentPlayer.status !== 'left'
-    && !currentPlayer.sitting_out
-    && !currentPlayer.waiting;
+    && !currentPlayer.sitting_out;
   const shellViewerPosition = isViewerSeated ? (currentPlayer?.position ?? null) : null;
   const shellProjectionMode: 'active-canonical' | 'observer-absolute' | undefined = shellCanonicalFamily
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
     : undefined;
+
 
   // PR-B.3 instrumentation: hand-1 bootstrap flash diagnostic.
   // IMPORTANT: this block lives AFTER the `if (!game) return null` guard
