@@ -23,6 +23,11 @@ import { derivePlayerStatus } from './participantStatus';
 import { getDisplayName } from '@/lib/botAlias';
 import { formatChipValue } from '@/lib/utils';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import {
+  useWaitingMount,
+  recordSurfaceOwnership,
+  recordWaitingLifecycle,
+} from './waitingTableFlight';
 
 /**
  * Roster shape consumed by the optional interstitial seat layer.
