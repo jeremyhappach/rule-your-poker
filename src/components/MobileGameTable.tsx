@@ -5736,7 +5736,11 @@ export const MobileGameTable = ({
             hand rendering; the bottom card area is suppressed during this phase, so
             the overlay must own complete presentation. */}
         {dealerSelectionCards && dealerSelectionCards.length > 0 && (
-          <div className="absolute inset-0 z-40 pointer-events-none">
+          <div
+            data-wartime-high-card-container={gameId}
+            className="absolute inset-0 z-50 pointer-events-none"
+          >
+
             <DealerSelectionVisibilityTracker
               gameId={gameId}
               cardCount={dealerSelectionCards.length}
