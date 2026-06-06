@@ -1,12 +1,9 @@
 /**
- * DebugModeIndicator — global fixed banner that makes it impossible to
- * unknowingly play rigged games.
+ * DebugModeIndicator — compact pill in the Debug Tray that shows whether
+ * any debug harnesses are armed. Collapsed by default; tap to expand the
+ * full list of active harnesses.
  *
- * Renders ONLY when Global Debug Mode is ON. Lists each game_type that
- * currently has a non-'none' harness armed, with its profile label.
- *
- * Mounted at the App root so it is visible across every route (lobby,
- * Game, debug pages).
+ * UI-only consolidation — no harness behavior changes.
  */
 
 import { useEffect, useState } from 'react';
@@ -18,10 +15,13 @@ import {
   subscribeHarnessCache,
 } from './runtimeCache';
 import { DEBUG_HARNESS_REGISTRY, getHarnessProfile } from './profiles';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 
 export function DebugModeIndicator() {
   const [enabled, setEnabled] = useState<boolean>(isGlobalDebugModeCached());
   const [, force] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const inTray = useInDebugTray();
 
   useEffect(() => {
     void ensureHarnessCacheLoaded();
@@ -43,34 +43,81 @@ export function DebugModeIndicator() {
     })
     .filter((x): x is { gameType: string; label: string } => !!x);
 
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
+  const count = armed.length;
+  const summary = count === 0 ? 'HARNESS ON' : count === 1 ? '1 HARNESS' : `${count} HARNESSES`;
+
+  // Floating fallback when something mounts the indicator outside the tray.
+  const outerStyle: React.CSSProperties = inTray
+    ? { pointerEvents: 'auto', display: 'inline-block' }
+    : {
         position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 2147483646,
-        background: 'hsl(0 84% 45%)',
-        color: 'hsl(0 0% 100%)',
-        fontFamily: 'ui-monospace, monospace',
-        fontSize: 11,
-        lineHeight: 1.3,
-        padding: '4px 10px',
-        textAlign: 'center',
-        letterSpacing: '0.05em',
-        fontWeight: 700,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
-        pointerEvents: 'none',
-      }}
-    >
-      ⚠ DEBUG MODE ACTIVE
-      {armed.length > 0 && (
-        <span style={{ fontWeight: 500, marginLeft: 8, opacity: 0.95 }}>
-          — {armed.map((a) => `${labelForGameType(a.gameType)}: ${a.label}`).join(' · ')}
-        </span>
+        right: 8,
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+        zIndex: 2147483647,
+        pointerEvents: 'auto',
+      };
+
+  return (
+    <div role="status" aria-live="polite" style={outerStyle}>
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          background: 'hsl(0 84% 45%)',
+          color: 'hsl(0 0% 100%)',
+          fontFamily: 'ui-monospace, monospace',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          padding: '4px 8px',
+          borderRadius: 999,
+          border: '1px solid hsl(0 84% 30%)',
+          cursor: 'pointer',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+          whiteSpace: 'nowrap',
+        }}
+        title={expanded ? 'Collapse harness list' : 'Show active harnesses'}
+      >
+        🧪 {summary}
+        {expanded ? ' ▾' : ''}
+      </button>
+      {expanded && (
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            bottom: 'calc(100% + 4px)',
+            minWidth: 220,
+            maxWidth: 'min(80vw, 360px)',
+            background: 'hsl(0 0% 10%)',
+            color: 'hsl(0 0% 100%)',
+            border: '1px solid hsl(0 84% 45%)',
+            borderRadius: 6,
+            padding: '6px 8px',
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: 10,
+            lineHeight: 1.4,
+            boxShadow: '0 6px 16px rgba(0,0,0,0.5)',
+            pointerEvents: 'auto',
+          }}
+        >
+          <div style={{ fontWeight: 700, color: 'hsl(0 84% 65%)', marginBottom: 4 }}>
+            ⚠ DEBUG MODE ACTIVE
+          </div>
+          {armed.length === 0 ? (
+            <div style={{ opacity: 0.7 }}>Global Debug Mode ON · no harness armed</div>
+          ) : (
+            armed.map((a) => (
+              <div key={a.gameType}>
+                <span style={{ opacity: 0.7 }}>{labelForGameType(a.gameType)}:</span>{' '}
+                <span style={{ fontWeight: 600 }}>{a.label}</span>
+              </div>
+            ))
+          )}
+        </div>
       )}
     </div>
   );

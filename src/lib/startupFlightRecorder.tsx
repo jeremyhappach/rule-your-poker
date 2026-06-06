@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { BUILD_META } from '@/lib/buildMeta';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+
 
 export type StartupFlightCategory =
   | 'PHASE TIMELINE'
@@ -193,6 +195,7 @@ export function StartupFlightRecorderOverlay() {
   const text = useMemo(() => formatStartupFlightText(snapshot), [snapshot]);
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const inTray = useInDebugTray();
 
   useEffect(() => {
     recordStartupFlight('PHASE TIMELINE', '[AUDIT] Flight recorder initialized', {
@@ -203,22 +206,66 @@ export function StartupFlightRecorderOverlay() {
     });
   }, []);
 
-  // Dev chrome: must never occlude canonical HUD rows (identity row sits
-  // at the bottom of the viewport). Pinned to the TOP, narrow, with a
-  // modest z-index so app modals/dialogs continue to win over it.
+  // Collapsed pill — sits inside the Debug Tray (or anchors bottom-right
+  // when rendered as a floating fallback). Never covers header / admin.
+  if (!expanded) {
+    const pillStyle: CSSProperties = inTray
+      ? { pointerEvents: 'auto', display: 'inline-block' }
+      : {
+          position: 'fixed',
+          right: 8,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+          zIndex: 2147483647,
+          pointerEvents: 'auto',
+        };
+    return (
+      <div style={pillStyle}>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title="Expand Startup Flight Recorder"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: 'hsl(var(--muted))',
+            color: 'hsl(var(--foreground))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: 999,
+            padding: '4px 8px',
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          🛫 SFR {snapshot.length} ▴
+        </button>
+      </div>
+    );
+  }
+
+  // Expanded panel: anchored to bottom-right, grows UPWARD.
   const shellStyle: CSSProperties = {
     position: 'fixed',
     right: 8,
-    top: 8,
-    width: expanded ? 'min(96vw, 520px)' : 'auto',
-    maxWidth: 'calc(100vw - 16px)',
+    left: 8,
+    bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+    width: 'auto',
+    maxWidth: 'min(96vw, 520px)',
+    marginLeft: 'auto',
     zIndex: 2147483647,
-    maxHeight: expanded ? '44dvh' : 'auto',
+    maxHeight: '60dvh',
     display: 'grid',
-    gridTemplateRows: expanded ? 'auto minmax(0, 1fr)' : 'auto',
+    gridTemplateRows: 'auto minmax(0, 1fr)',
     borderRadius: 8,
     boxShadow: '0 12px 30px hsl(var(--foreground) / 0.22)',
+    pointerEvents: 'auto',
   };
+
 
   return (
     <section

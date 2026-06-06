@@ -25,6 +25,8 @@ import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
+import { DebugTray } from "@/lib/debugTray/DebugTray";
+
 
 // Hydrate the Debug Harness cache once at module load so synchronous
 // game-logic call sites see the active selection without awaiting a query.
@@ -88,9 +90,17 @@ const App = () => {
               </Routes>
             </AppNetworkSim>
             <LifecycleDebugBadge />
-            <DebugModeIndicator />
-            <LegacyDebugPanels />
-            <WartimeDebugPanel />
+            {/*
+              Single canonical Debug Tray. Pinned to the bottom of the
+              viewport (above the iOS browser toolbar via safe-area inset).
+              All debug pills live here so nothing covers the shell header,
+              admin controls, dealer controls, announcements, or gameplay.
+            */}
+            <DebugTray>
+              <DebugModeIndicator />
+              <LegacyDebugPanels />
+              <WartimeDebugPanel />
+            </DebugTray>
           </BrowserRouter>
 
         </ResponsiveGeometryProvider>
@@ -103,6 +113,9 @@ const App = () => {
  * Legacy debug panels (Announcement Debug + Startup Flight Recorder) are
  * kept intact but hidden while the Wartime Debug Framework is enabled.
  * Toggle Wartime Debug from Admin Settings to switch surfaces.
+ *
+ * AnnouncementDebugPanel positions itself top-left; SFR renders as a tray
+ * pill that expands upward.
  */
 function LegacyDebugPanels() {
   const wartimeEnabled = useWartimeEnabled();
@@ -116,3 +129,4 @@ function LegacyDebugPanels() {
 }
 
 export default App;
+

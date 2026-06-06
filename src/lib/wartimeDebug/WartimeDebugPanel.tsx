@@ -21,9 +21,10 @@ import {
   subscribeWartime,
   subscribeWartimeEnabled,
   type WartimeCategory,
-  type WartimeEvent,
 } from './core';
 import { attachWartimeBridges } from './bridges';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+
 
 const ALL: 'ALL' = 'ALL';
 
@@ -34,6 +35,8 @@ export function WartimeDebugPanel() {
   // stats are pulled at render time.
   const stats = getWartimeStats();
   const [expanded, setExpanded] = useState(false);
+  const inTray = useInDebugTray();
+
   const [category, setCategory] = useState<'ALL' | WartimeCategory>(ALL);
   const [filter, setFilter] = useState('');
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -71,19 +74,78 @@ export function WartimeDebugPanel() {
   const durationStr = formatDuration(durationMs);
   const startedStr = stats.startedAtMs ? new Date(stats.startedAtMs).toLocaleTimeString() : '—';
 
+  // When collapsed inside the tray, render only a compact pill (no fixed
+  // positioning — the tray lays it out). When expanded, anchor to the
+  // bottom-right and grow UPWARD so we never cover the shell header or
+  // admin / dealer controls.
+  const recState: 'OFF' | 'READY' | 'REC' = !stats.recording && stats.count === 0
+    ? 'READY'
+    : stats.recording
+      ? 'REC'
+      : 'READY';
+  const pillLabel = stats.recording
+    ? `⚔️ REC ${stats.count}`
+    : stats.count > 0
+      ? `⚔️ ${stats.count}`
+      : `⚔️ ${recState}`;
+
+  if (!expanded) {
+    const pillStyle: CSSProperties = inTray
+      ? { pointerEvents: 'auto', display: 'inline-block' }
+      : {
+          position: 'fixed',
+          right: 8,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+          zIndex: 2147483647,
+          pointerEvents: 'auto',
+        };
+    return (
+      <div style={pillStyle}>
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title="Expand Wartime Debug"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: stats.recording ? '#7a1f1f' : 'hsl(var(--muted))',
+            color: stats.recording ? '#fff' : 'hsl(var(--foreground))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: 999,
+            padding: '4px 8px',
+            fontFamily: 'ui-monospace, monospace',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.04em',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {pillLabel} ▴
+        </button>
+      </div>
+    );
+  }
+
   const shellStyle: CSSProperties = {
     position: 'fixed',
     right: 8,
-    top: 8,
-    width: expanded ? 'min(96vw, 560px)' : 'auto',
-    maxWidth: 'calc(100vw - 16px)',
+    left: 8,
+    bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+    width: 'auto',
+    maxWidth: 'min(96vw, 560px)',
+    marginLeft: 'auto',
     zIndex: 2147483647,
-    maxHeight: expanded ? '70dvh' : 'auto',
+    maxHeight: '70dvh',
     display: 'grid',
-    gridTemplateRows: expanded ? 'auto auto auto minmax(0, 1fr)' : 'auto',
+    gridTemplateRows: 'auto auto auto minmax(0, 1fr)',
     borderRadius: 8,
     boxShadow: '0 12px 30px hsl(var(--foreground) / 0.28)',
+    pointerEvents: 'auto',
   };
+
 
   return (
     <section
