@@ -5508,6 +5508,78 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
 
+    // ── Per-query waterfall instrumentation ──────────────────────────
+    // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
+    // per individual Supabase call so the next Wartime trace can identify
+    // exactly which sub-step accounts for the fetchGameData total.
+    type QueryTiming = {
+      name: string;
+      table: string;
+      elapsedMs: number;
+      rowCount: number;
+      startedAtOffsetMs: number;
+      completedAtOffsetMs: number;
+      error: string | null;
+      preAuth: boolean;
+      authReadyAtStart: boolean;
+      userIdPresent: boolean;
+    };
+    const queryTimings: QueryTiming[] = [];
+    const authReadyAtFetchStart = authReady;
+    const userIdAtFetchStart = user?.id ?? null;
+
+    const timedQuery = async <T,>(
+      name: string,
+      table: string,
+      runner: () => PromiseLike<{ data: T; error: any }>,
+    ): Promise<{ data: T; error: any }> => {
+      const startedAtOffsetMs = Date.now() - fetchStartedAt;
+      const authReadyAtStart = authReady;
+      const userIdPresent = !!user?.id;
+      recordStartupFlight('FETCH TIMELINE', 'fetchGameData.query.start', {
+        fetchSeq,
+        name,
+        table,
+        startedAtOffsetMs,
+        authReadyAtStart,
+        userIdPresent,
+      });
+      const t0 = Date.now();
+      const result = await runner();
+      const completedAtOffsetMs = Date.now() - fetchStartedAt;
+      const elapsedMs = Date.now() - t0;
+      const rowCount = Array.isArray(result?.data)
+        ? (result.data as any[]).length
+        : result?.data
+          ? 1
+          : 0;
+      const errMsg = result?.error ? String((result.error as any).message ?? result.error) : null;
+      queryTimings.push({
+        name,
+        table,
+        elapsedMs,
+        rowCount,
+        startedAtOffsetMs,
+        completedAtOffsetMs,
+        error: errMsg,
+        preAuth: !authReadyAtStart,
+        authReadyAtStart,
+        userIdPresent,
+      });
+      recordStartupFlight('FETCH TIMELINE', 'fetchGameData.query.complete', {
+        fetchSeq,
+        name,
+        table,
+        elapsedMs,
+        rowCount,
+        startedAtOffsetMs,
+        completedAtOffsetMs,
+        error: errMsg,
+        preAuth: !authReadyAtStart,
+      });
+      return result;
+    };
+
     console.log('[FETCH] ========== STARTING FETCH ==========', { fetchSeq });
     if (!gameId) {
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
@@ -5528,14 +5600,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       statusBefore: game?.status ?? null,
       gameTypeBefore: game?.game_type ?? null,
       currentRoundBefore: currentRound?.id ?? null,
+      authReadyAtStart: authReadyAtFetchStart,
+      userIdPresent: !!userIdAtFetchStart,
     });
     console.log('[FETCH] Fetching game data...', { fetchSeq });
 
     // PARALLEL FETCH: Get game, players, and defaults all at once for speed
     const [gameResult, playersResult, defaultsResult] = await Promise.all([
-      supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle(),
-      supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position'),
-      supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single(),
+      timedQuery('games.select+rounds', 'games', () =>
+        supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
+      timedQuery('players.select+profiles', 'players', () =>
+        supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
+      timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
+        supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single()),
     ]);
 
     const { data: gameData, error: gameError } = gameResult;
@@ -5564,6 +5641,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       },
       errors: { game: gameError?.message ?? null, players: playersError?.message ?? null },
     });
+
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
