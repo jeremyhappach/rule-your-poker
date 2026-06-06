@@ -1006,4 +1006,36 @@ const Index = () => {
   );
 };
 
+function WartimeDebugSettingRow() {
+  const enabled = useSyncExternalStore(subscribeWartimeEnabled, isWartimeEnabled, isWartimeEnabled);
+  const { toast } = useToast();
+  return (
+    <div className="flex items-center justify-between py-2 bg-amber-900/20 rounded-lg px-3 border border-amber-600/30">
+      <div className="space-y-0.5">
+        <Label htmlFor="wartime-debug" className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-amber-400" />
+          Wartime Debug
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Platform instrumentation framework. OFF = zero overhead. ON = the Wartime Debug panel appears (top-right) and recording can be started/stopped from the panel.
+        </p>
+      </div>
+      <Switch
+        id="wartime-debug"
+        checked={enabled}
+        onCheckedChange={(next) => {
+          setWartimeEnabled(next);
+          toast({
+            title: next ? "Wartime Debug Enabled" : "Wartime Debug Disabled",
+            description: next
+              ? "Use the Wartime Debug panel (top-right) to start/stop recording."
+              : "All wartime instrumentation collection halted.",
+          });
+        }}
+        className="data-[state=checked]:bg-amber-600"
+      />
+    </div>
+  );
+}
+
 export default Index;
