@@ -131,9 +131,6 @@ interface SurfaceSnapshot {
 }
 
 const _snapshots = new Map<string, SurfaceSnapshot>(); // surface -> latest
-const _lastUnmount: { surface: string; at: number; snap: SurfaceSnapshot } | null = null as
-  | { surface: string; at: number; snap: SurfaceSnapshot }
-  | null;
 let _pendingUnmount: { surface: string; at: number; snap: SurfaceSnapshot } | null = null;
 
 function _diff(
