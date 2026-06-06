@@ -1096,37 +1096,44 @@ function WartimeCoverageMatrix() {
               </th>
             ))}
             <th className="px-1 py-1 text-right font-medium" style={{ width: 44 }}>
-              mnt
+              wired
             </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.surface} className="border-t border-border/40">
-              <td className="truncate px-1 py-1 font-mono text-foreground">{row.surface}</td>
-              {cats.map((c) => {
-                const ok = row.categories[c];
-                return (
-                  <td key={c} className="px-0 py-1 text-center font-bold">
-                    {ok ? (
-                      <span className="text-emerald-500">✓</span>
-                    ) : (
-                      <span className="text-rose-500">✕</span>
-                    )}
-                  </td>
-                );
-              })}
-              <td className="px-1 py-1 text-right font-mono text-muted-foreground">
-                {row.mounted}/{row.totalMounts}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const wiredCount = cats.reduce((n, c) => n + (row.categories[c] ? 1 : 0), 0);
+            const total = cats.length;
+            const fully = wiredCount === total;
+            return (
+              <tr key={row.surface} className="border-t border-border/40">
+                <td className="truncate px-1 py-1 font-mono text-foreground">{row.surface}</td>
+                {cats.map((c) => {
+                  const ok = row.categories[c];
+                  return (
+                    <td key={c} className="px-0 py-1 text-center font-bold">
+                      {ok ? (
+                        <span className="text-emerald-500">✓</span>
+                      ) : (
+                        <span className="text-rose-500">✕</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td
+                  className={`px-1 py-1 text-right font-mono ${fully ? 'text-emerald-500' : wiredCount === 0 ? 'text-rose-500' : 'text-amber-500'}`}
+                >
+                  {wiredCount}/{total}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <p className="mt-2 text-[10px] text-muted-foreground">
-        ✓ = category wired for this surface. · = not yet wired. mnt = currently
-        mounted / total mounts. A surface is fully covered only when every
-        category is ✓.
+        ✓ = category wired in code for this surface. ✕ = not yet wired. The
+        "wired" column shows how many of the {COVERAGE_CATEGORIES.length}{' '}
+        Phase-2 categories that surface has framework hooks for.
       </p>
     </div>
   );
