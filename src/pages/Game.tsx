@@ -47,6 +47,8 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
+import { recordHighCardCardsClear } from "@/lib/wartimeDebug/surfaces";
+
 
 /**
  * HighCardDealerSelection — Phase C.2 retirement shim.
@@ -2384,8 +2386,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   prevLength: dealerSelectionCards.length,
                   gameId: gameId ?? null,
                 });
+                recordHighCardCardsClear({
+                  source: 'realtime-status-change',
+                  callsite: 'src/pages/Game.tsx:2387 (setDealerSelectionCards([]))',
+                  reason: `status transition to ${newStatus}`,
+                  cardsLengthBeforeClear: dealerSelectionCards.length,
+                  cardsLengthAfterClear: 0,
+                  gameStatus: newStatus,
+                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  dealerSelectionComplete: null,
+                  currentRoundId: currentRound?.id ?? null,
+                  dealerGameId: (game as any)?.current_game_uuid ?? null,
+                  gameId: gameId ?? null,
+                });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
+
                 // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
                 emitCribbageHandoffTrace({
                   gameId: gameId!,
@@ -8107,8 +8123,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       prevLength: dealerSelectionCards.length,
       gameId: gameId ?? null,
     });
+    recordHighCardCardsClear({
+      source: 'cribbage-handoff-complete',
+      callsite: 'src/pages/Game.tsx:8126 handleCribbageDealerSelectionComplete',
+      reason: 'session-level dealer-selection completed; clearing stale visuals at handoff',
+      cardsLengthBeforeClear: dealerSelectionCards.length,
+      cardsLengthAfterClear: 0,
+      gameStatus: game?.status ?? null,
+      winnerPosition: dealerPosition,
+      dealerSelectionComplete: true,
+      currentRoundId: currentRound?.id ?? null,
+      dealerGameId: (game as any)?.current_game_uuid ?? null,
+      gameId: gameId ?? null,
+    });
     setDealerSelectionCards([]);
     setDealerSelectionWinnerPosition(null);
+
 
     // ── HANDOFF TRACE #3: parent dealer-selection state cleared (handoff callback) ──
     emitCribbageHandoffTrace({
@@ -8535,8 +8565,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               prevLength: dealerSelectionCards.length,
               gameId: gameId ?? null,
             });
+            recordHighCardCardsClear({
+              source: 'all-ante-decisions-in',
+              callsite: 'src/pages/Game.tsx:8568 ante→cribbage_dealer_selection',
+              reason: 'clearing session-level dealer-selection visuals before entering dealer-game scope',
+              cardsLengthBeforeClear: dealerSelectionCards.length,
+              cardsLengthAfterClear: 0,
+              gameStatus: freshGame?.status ?? null,
+              winnerPosition: dealerSelectionWinnerPosition ?? null,
+              dealerSelectionComplete: null,
+              currentRoundId: currentRound?.id ?? null,
+              dealerGameId: (game as any)?.current_game_uuid ?? null,
+              gameId: gameId ?? null,
+            });
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);
+
             await supabase
               .from('games')
               .update({

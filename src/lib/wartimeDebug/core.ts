@@ -218,6 +218,54 @@ export function recordWartimeTransition(
 }
 
 // ------------------------------------------------------------------
+// State reset / overwrite helpers — Wartime standard.
+//
+// Any authoritative state object that can clear / reset / overwrite /
+// replace / rehydrate MUST emit one of these so attribution is always
+// present in a trace. Use freely for announcements, celebrations,
+// overlays, dealer selection, active player, round/game state, etc.
+//
+// `source`   — short tag identifying the producer/owner (e.g. 'realtime',
+//              'fetch', 'host-handoff', 'sync-effect').
+// `callsite` — file:line or descriptive callsite ('src/foo.ts:123' /
+//              'NeutralInterstitial.onExit'). Always populate.
+// `reason`   — human-readable why ('status_change to dealer_selection').
+// ------------------------------------------------------------------
+export interface StateMutationAttribution {
+  source: string;
+  callsite: string;
+  reason?: string;
+  surface?: string;
+  identityKey?: string | null;
+  previousLength?: number | null;
+  nextLength?: number | null;
+  previousValue?: unknown;
+  nextValue?: unknown;
+  extra?: Record<string, unknown>;
+}
+
+export function recordStateReset(
+  stateName: string,
+  attribution: StateMutationAttribution,
+): void {
+  recordWartime('GAMEPLAY', `state-reset: ${stateName}`, {
+    stateName,
+    ...attribution,
+  });
+}
+
+export function recordStateOverwrite(
+  stateName: string,
+  attribution: StateMutationAttribution,
+): void {
+  recordWartime('GAMEPLAY', `state-overwrite: ${stateName}`, {
+    stateName,
+    ...attribution,
+  });
+}
+
+
+// ------------------------------------------------------------------
 // Subscriptions / accessors
 // ------------------------------------------------------------------
 export function subscribeWartime(cb: () => void): () => void {

@@ -34,11 +34,19 @@ import {
   recordHighCardStateRaw,
   recordHighCardRenderRaw,
   recordHighCardTimer,
+  recordHighCardCardsClear,
+  recordHighCardStateSource,
+  recordHighCardVisibleRenderer,
+  recordHighCardPhaseTransition,
+  resetHighCardVisibleRendererCache,
+  resetHighCardPhaseCache,
+  type HighCardPhase,
 } from '@/lib/wartimeDebug/surfaces';
 import {
   startHighCardVisualSampler,
   stopHighCardVisualSampler,
 } from '@/lib/wartimeDebug/highCardVisualSampler';
+
 
 interface Player {
   id: string;
@@ -129,6 +137,19 @@ export function useHighCardDealerSelection({
       componentKey: `${gameId}:${selectionVariant}`,
       playerCount: players.length,
     });
+    // One-time visible-renderer registration so the trace can prove which
+    // renderer owns the cards the user sees.
+    recordHighCardVisibleRenderer({
+      gameId,
+      rendererName: 'HighCardDealerSelection',
+      componentName: 'useHighCardDealerSelection',
+      renderPath: isHost ? 'host' : 'non-host',
+      containerId: `[data-wartime-high-card-container]`,
+      wartimeTagged: true,
+      visibleCardCount: syncedState?.cards?.length ?? 0,
+      surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+    });
+
     // Start the rAF DOM/CSS/overlay visual sampler scoped to the
     // active high-card window. Stops on unmount below.
     startHighCardVisualSampler({
@@ -157,9 +178,12 @@ export function useHighCardDealerSelection({
         sourceSurface: 'useHighCardDealerSelection',
         componentKey: `${gameId}:${selectionVariant}`,
       });
+      resetHighCardVisibleRendererCache(gameId);
+      resetHighCardPhaseCache(gameId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Mount only
+
 
   // Mirror of latest hook state for the rAF sampler / raw recorders
   // (refs so sampler closure does not need to re-bind each render).
@@ -231,6 +255,37 @@ export function useHighCardDealerSelection({
     winnerPosition: syncedState?.winnerPosition ?? null,
     isComplete: !!syncedState?.isComplete,
   });
+
+  // STATE-SOURCE attribution — emits when visible-card identity changes,
+  // tagged with whether the source was local (host) or realtime-sync (non-host).
+  recordHighCardStateSource({
+    gameId,
+    previousSource: null, // filled by recorder
+    newSource: isHost ? 'local' : 'realtime-sync',
+    cardCount: cardsForRender.length,
+    cardIds: cardIdsForRender,
+    renderPath: isHost ? 'host' : 'non-host',
+    gameStatus: 'dealer_selection',
+    surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+  });
+
+  // PHASE classifier — derived from current authoritative-ish state.
+  const _phase: HighCardPhase = (() => {
+    if (syncedState?.isComplete) return 'dealer-setup-transition';
+    if ((syncedState?.winnerPosition ?? null) !== null) return 'winner-announcement';
+    if (cardsForRender.length > 0) return 'reveal';
+    return 'waiting';
+  })();
+  recordHighCardPhaseTransition({
+    gameId,
+    phase: _phase,
+    cardsVisible: cardsForRender.length > 0,
+    cardCount: cardsForRender.length,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    gameStatus: 'dealer_selection',
+    surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+  });
+
 
 
   const isCribbageVariant = selectionVariant === 'cribbage';
@@ -392,11 +447,27 @@ export function useHighCardDealerSelection({
         recordWaitingLifecycle('high-card card-hide', {
           gameId, source: 'non-host-receive', cardsLength: nextLen,
         });
+        // ATTRIBUTION: realtime sync delivered an empty card set, which will
+        // overwrite the visible cards on non-host. Record callsite before the
+        // overwrite reaches React state.
+        recordHighCardCardsClear({
+          source: 'non-host-sync',
+          callsite: 'src/hooks/useHighCardDealerSelection.ts:non-host-receive',
+          reason: 'syncedState.cards delivered empty array',
+          cardsLengthBeforeClear: prevLen,
+          cardsLengthAfterClear: nextLen,
+          gameStatus: 'dealer_selection',
+          winnerPosition: syncedState.winnerPosition ?? null,
+          dealerSelectionComplete: !!syncedState.isComplete,
+          gameId,
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
       }
       lastCardsLenRef.current = nextLen;
     }
 
     onCardsUpdate(syncedState.cards);
+
     onWinnerPositionUpdate?.(syncedState.winnerPosition);
 
     if (syncedState.winnerPosition !== null && lastWinnerRef.current !== syncedState.winnerPosition) {
@@ -665,8 +736,24 @@ export function useHighCardDealerSelection({
     ) {
       hasCompletedRef.current = true;
       lastAnnouncementRef.current = syncedState.announcement ?? lastAnnouncementRef.current;
-      onCardsUpdate(syncedState.cards || []);
+      const nextCards = syncedState.cards || [];
+      if (nextCards.length === 0) {
+        recordHighCardCardsClear({
+          source: 'host-complete-sync',
+          callsite: 'src/hooks/useHighCardDealerSelection.ts:host-complete-replay',
+          reason: 'host completion effect replayed with empty cards array',
+          cardsLengthBeforeClear: lastCardsLenRef.current,
+          cardsLengthAfterClear: 0,
+          gameStatus: 'dealer_selection',
+          winnerPosition: syncedState.winnerPosition,
+          dealerSelectionComplete: true,
+          gameId,
+          surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+        });
+      }
+      onCardsUpdate(nextCards);
       onWinnerPositionUpdate?.(syncedState.winnerPosition);
+
 
       const t = setTimeout(() => onComplete(syncedState.winnerPosition!), WINNER_ANNOUNCE_DELAY);
       return () => clearTimeout(t);
