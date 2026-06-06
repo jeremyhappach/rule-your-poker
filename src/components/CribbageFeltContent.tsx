@@ -160,6 +160,7 @@ export const CribbageFeltContent = ({
         phaseForLayout,
         winnerPlayerId: cribbageState.winnerPlayerId?.slice(0, 8) ?? null,
         payoutMultiplier: cribbageState.payoutMultiplier ?? 1,
+        terminalPath,
         hasLastHandCount: !!cribbageState.lastHandCount,
         isPeggingWin,
         isCountingPhase,
