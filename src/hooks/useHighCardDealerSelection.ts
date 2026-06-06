@@ -256,6 +256,37 @@ export function useHighCardDealerSelection({
     isComplete: !!syncedState?.isComplete,
   });
 
+  // STATE-SOURCE attribution — emits when visible-card identity changes,
+  // tagged with whether the source was local (host) or realtime-sync (non-host).
+  recordHighCardStateSource({
+    gameId,
+    previousSource: null, // filled by recorder
+    newSource: isHost ? 'local' : 'realtime-sync',
+    cardCount: cardsForRender.length,
+    cardIds: cardIdsForRender,
+    renderPath: isHost ? 'host' : 'non-host',
+    gameStatus: 'dealer_selection',
+    surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+  });
+
+  // PHASE classifier — derived from current authoritative-ish state.
+  const _phase: HighCardPhase = (() => {
+    if (syncedState?.isComplete) return 'dealer-setup-transition';
+    if ((syncedState?.winnerPosition ?? null) !== null) return 'winner-announcement';
+    if (cardsForRender.length > 0) return 'reveal';
+    return 'waiting';
+  })();
+  recordHighCardPhaseTransition({
+    gameId,
+    phase: _phase,
+    cardsVisible: cardsForRender.length > 0,
+    cardCount: cardsForRender.length,
+    winnerPosition: syncedState?.winnerPosition ?? null,
+    gameStatus: 'dealer_selection',
+    surfaceInstanceId: `useHighCardDealerSelection:${gameId}`,
+  });
+
+
 
   const isCribbageVariant = selectionVariant === 'cribbage';
 
