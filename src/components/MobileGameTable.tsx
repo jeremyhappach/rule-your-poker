@@ -710,6 +710,34 @@ export const MobileGameTable = ({
     });
   }, [gameStatus, instanceLabel, gameType]);
 
+  // ── Waiting-table flight recorder (instrumentation only) ────────
+  // Classify which surface this MGT instance is presenting based on
+  // its lifecycle inputs. Emits an ownership snapshot once per
+  // (surface, instanceLabel, gameType) tuple.
+  useEffect(() => {
+    const surface = isWaitingPhase
+      ? 'WaitingSlot'
+      : (gameStatus === 'dealer_selection' ? 'DealerSelection' : 'Gameplay');
+    recordWaitingLifecycle(`MGT presenting ${surface}`, {
+      gameId: gameId ?? null,
+      instanceLabel,
+      gameType: gameType ?? null,
+      gameStatus: gameStatus ?? null,
+      isWaitingPhase,
+      isGameOver,
+      playerCount: players.length,
+    });
+    recordSurfaceOwnership(surface, {
+      SeatOwner: 'Shell:MobileGameTable CanonicalSeatCluster',
+      ChipOwner: 'Shell:MobileGameTable ChipStack',
+      ControlOwner: isWaitingPhase
+        ? 'Slot:waitingSlotContent (Add Bot / Start Game injected)'
+        : 'Slot:MobileGameTable gameplay actions',
+      AnnouncementOwner: 'Shell:CanonicalAnnouncementProvider rail',
+      HUDOwner: 'Shell:ShellHudChrome + ShellTabBar',
+    }, { instanceLabel, gameType: gameType ?? null });
+  }, [isWaitingPhase, gameStatus, gameType, instanceLabel, isGameOver, gameId, players.length]);
+
   // Prevent screen from dimming during gameplay
   useWakeLock(true);
 
