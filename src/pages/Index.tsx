@@ -34,6 +34,14 @@ import {
   setWartimeEnabled,
   subscribeWartimeEnabled,
 } from "@/lib/wartimeDebug/core";
+import {
+  COVERAGE_CATEGORIES,
+  getWartimeCoverage,
+  getWartimeCoverageVersion,
+  subscribeWartimeCoverage,
+  type CoverageCategory,
+  type SurfaceCoverage,
+} from "@/lib/wartimeDebug/surfaces";
 import { useSyncExternalStore } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VisualPreferences } from "@/components/VisualPreferences";
