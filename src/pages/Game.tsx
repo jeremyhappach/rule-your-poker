@@ -2362,6 +2362,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 // selection (e.g. session fall-back-to-waiting → restart) must not survive.
                 // The realtime status branch only fires on actual status change, so clearing
                 // here cannot wipe an in-progress draw.
+                recordWaitingLifecycle('dealerSelectionCards cleared', {
+                  source: 'realtime-status-change',
+                  callsite: 'src/pages/Game.tsx:~2365',
+                  newStatus,
+                  prevLength: dealerSelectionCards.length,
+                  gameId: gameId ?? null,
+                });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
                 // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
@@ -7956,6 +7963,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Bug A fix: clear stale session-level dealer-selection visuals at the exact
     // handoff point where session-level high-card completes. This prevents the
     // one-frame flash of stale session cards when the dealer-game scope begins.
+    recordWaitingLifecycle('dealerSelectionCards cleared', {
+      source: 'cribbage-handoff-complete',
+      callsite: 'src/pages/Game.tsx:~7959',
+      dealerPosition,
+      prevLength: dealerSelectionCards.length,
+      gameId: gameId ?? null,
+    });
     setDealerSelectionCards([]);
     setDealerSelectionWinnerPosition(null);
 
@@ -8378,6 +8392,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // Proven by handoff trace: these persist from the session high-card
             // draw and leak into the dealer-game's HighCardDealerSelection as
             // stale props if not cleared here.
+            recordWaitingLifecycle('dealerSelectionCards cleared', {
+              source: 'all-ante-decisions-in (cribbage entry)',
+              callsite: 'src/pages/Game.tsx:~8395',
+              prevLength: dealerSelectionCards.length,
+              gameId: gameId ?? null,
+            });
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);
             await supabase
@@ -9021,6 +9041,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             />
           ) : undefined}
         >
+          <WaitingFlightMarker
+            event="PersistentTableShell branch=bootstrap"
+            payload={{ gameId: gameId ?? null, hasGame: !!game, loading: !!loading }}
+          />
           <div
             data-canonical-bootstrap=""
             data-lifecycle-branch="bootstrap"
@@ -10983,6 +11007,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             seats={shellEligibleSeats}
             header={mobileHeader}
           >
+            <WaitingFlightMarker
+              event="PersistentTableShell branch=post-hydration"
+              payload={{ gameId: gameId ?? null, gameType: _routeShellGameType ?? null }}
+            />
             {innerTree}
           </PersistentTableShell>
           {/* Gin-only readiness probe (capability-driven, not shell branching).
