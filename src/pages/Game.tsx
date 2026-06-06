@@ -5854,10 +5854,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             payload: { fetchToken, fetchRoundId },
           });
           
-          const { data: cardsData, error: cardsError } = await supabase
-            .from('player_cards')
-            .select('player_id, cards')
-            .eq('round_id', targetRoundId);
+          const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
+            supabase
+              .from('player_cards')
+              .select('player_id, cards')
+              .eq('round_id', targetRoundId));
+
 
           console.log('[FETCH] 🃏 Cards fetch result:', {
             roundId: targetRoundId,
