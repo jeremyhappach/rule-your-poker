@@ -16,6 +16,7 @@ import DicePreview from "./pages/DicePreview";
 import DeadlineDebug from "./pages/DeadlineDebug";
 import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 import { AppNetworkSim } from "@/components/AppNetworkSim";
+import { NetworkSimIndicator } from "@/components/NetworkSimIndicator";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
 import { LifecycleDebugBadge } from "@/lib/canonicalShell/LifecycleDebugBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
