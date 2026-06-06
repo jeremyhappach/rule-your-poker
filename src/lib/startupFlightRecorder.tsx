@@ -203,7 +203,7 @@ export function StartupFlightRecorderOverlay() {
     top: 8,
     width: expanded ? 'min(96vw, 520px)' : 'auto',
     maxWidth: 'calc(100vw - 16px)',
-    zIndex: 60,
+    zIndex: 2147483647,
     maxHeight: expanded ? '44dvh' : 'auto',
     display: 'grid',
     gridTemplateRows: expanded ? 'auto minmax(0, 1fr)' : 'auto',
