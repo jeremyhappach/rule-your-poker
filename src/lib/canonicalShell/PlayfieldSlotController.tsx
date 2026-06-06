@@ -140,6 +140,15 @@ export function PlayfieldSlotController({
   logIfChanged('PSC.input.persistentChildrenKey', persistentChildrenKey ?? '(none)', { gameId });
   logIfChanged('PSC.input.desiredIdentity', describeSlotIdentity(desiredIdentity), { gameId });
 
+  // === Wartime Phase 2 — framework coverage =====================
+  wartimeSurfaceRegister('PlayfieldSlotController', {
+    gameId: gameId ?? null,
+    desiredIdentity: describeSlotIdentity(desiredIdentity),
+    persistentChildrenKey: persistentChildrenKey ?? null,
+  });
+  // =============================================================
+
+
   const surfaceReady = useSurfaceReadiness(
     desiredIdentity ? { dealerGameId: desiredIdentity.dealerGameId, scope: readinessScope } : null,
   );
