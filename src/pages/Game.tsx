@@ -47,7 +47,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
-import { recordHighCardCardsClear, recordHighCardFirstDisappearance } from "@/lib/wartimeDebug/surfaces";
+import { recordHighCardCardsClear, recordHighCardFirstDisappearance, recordHighCardWriter } from "@/lib/wartimeDebug/surfaces";
 
 
 /**
