@@ -6923,19 +6923,13 @@ export const MobileGameTable = ({
       </div>
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
-      <div
-        className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden"
-        style={isWaitingPhase ? ({
-          '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 96px))',
-        } as React.CSSProperties) : undefined}
-        {...swipeHandlers}
-      >
+      <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         {isWaitingPhase ? (
           <ShellHudGrid
             timer={null}
             identity={
               currentPlayer ? (
-                <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden border-t border-border/60 bg-background">
+                <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
                   <p className="text-sm font-semibold text-foreground truncate">
                     {currentPlayer.profiles?.username || 'You'}
                   </p>
