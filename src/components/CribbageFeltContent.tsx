@@ -140,11 +140,16 @@ export const CribbageFeltContent = ({
     (phaseForLayout === 'complete' && terminalPath === 'fallback')
   ) && !isPeggingWin;
 
-  // Show crib on felt only during discarding/cutting/pegging (or pegging win)
+  // Show crib on felt only during discarding/cutting/pegging.
+  // ROOT-CAUSE FIX (pegging-win regression): a pegging win is the terminal
+  // snapshot of the *pegging* state at win determination — not the dealer's
+  // hand-counting layout. Suppress crib + cut card during a pegging win so
+  // only the in-progress sequence stays visible.
   const showCribOnFelt =
     cribbageState.crib.length > 0 &&
     !isCountingPhase &&
-    (phaseForLayout !== 'complete' || isPeggingWin);
+    !isPeggingWin &&
+    phaseForLayout !== 'complete';
 
   // [TERMINAL-CARD-CONTEXT AUDIT] Whenever the felt is in a terminal/complete
   // phase, log exactly which render branch is chosen and what card data is
