@@ -609,6 +609,7 @@ export const MobileGameTable = ({
   onLeaveGameNow,
   isWaitingPhase = false,
   waitingSlotContent,
+  waitingActivePaneContent,
   realMoney = false,
   revealAtShowdown = false,
   externalShowdownCardsCache,
