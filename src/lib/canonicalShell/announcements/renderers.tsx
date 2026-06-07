@@ -152,14 +152,15 @@ export function renderAnnouncement(event: AnnouncementEvent): JSX.Element | null
       );
     }
     case 'waiting_for_players': {
-      const x = p as WaitingPayload;
+      const x = p as WaitingPayload & { text?: string; subtitle?: string };
       return (
         <LifecycleAnnouncement
-          title="Waiting for players"
+          title={x.text ?? 'Waiting for Players'}
           subtitle={
-            x.seated != null && x.needed != null
+            x.subtitle ??
+            (x.seated != null && x.needed != null
               ? `${x.seated} / ${x.needed} seated`
-              : undefined
+              : undefined)
           }
         />
       );
