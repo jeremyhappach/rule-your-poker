@@ -6294,6 +6294,8 @@ export const CribbageMobileGameTable = ({
               // two visible CHIP_RENDER_OWNER for the same seat.
               if (preSession && preSessionSeatOwnedByShell) return null;
               const preSessionStatus = preSession
+                ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
+                : undefined;
               return (
                 <CanonicalSeatCluster
                   key={seatPlayer.id}
