@@ -715,6 +715,15 @@ export const MobileGameTable = ({
   // its lifecycle inputs. Emits an ownership snapshot once per
   // (surface, instanceLabel, gameType) tuple.
   useEffect(() => {
+    const PRE_SESSION_STATUSES = new Set([
+      'waiting',
+      'dealer_selection',
+      'cribbage_dealer_selection',
+      'configuring',
+      'game_selection',
+      'ante_decision',
+    ]);
+    const isPreSessionPhase = !!gameStatus && PRE_SESSION_STATUSES.has(gameStatus);
     const surface = isWaitingPhase
       ? 'WaitingSlot'
       : (gameStatus === 'dealer_selection' ? 'DealerSelection' : 'Gameplay');
@@ -729,7 +738,9 @@ export const MobileGameTable = ({
     });
     recordSurfaceOwnership(surface, {
       SeatOwner: 'Shell:MobileGameTable CanonicalSeatCluster',
-      ChipOwner: 'Shell:MobileGameTable ChipStack',
+      ChipOwner: isPreSessionPhase
+        ? 'Shell:MobileGameTable CanonicalSeatCluster (pre-session identity pill)'
+        : 'Shell:MobileGameTable renderPlayerChip (gameplay glyph)',
       ControlOwner: isWaitingPhase
         ? 'Slot:waitingSlotContent (Add Bot / Start Game injected)'
         : 'Slot:MobileGameTable gameplay actions',
@@ -742,12 +753,28 @@ export const MobileGameTable = ({
   // is derived the same way as the MGT presenting emit above. Signature-
   // keyed so we only emit when the rendered chip identity changes.
   useEffect(() => {
+    const PRE_SESSION_STATUSES = new Set([
+      'waiting',
+      'dealer_selection',
+      'cribbage_dealer_selection',
+      'configuring',
+      'game_selection',
+      'ante_decision',
+    ]);
+    const isPreSessionPhase = !!gameStatus && PRE_SESSION_STATUSES.has(gameStatus);
     const surface = isWaitingPhase
       ? 'WaitingSlot'
       : (gameStatus === 'dealer_selection' ? 'DealerSelection' : 'Gameplay');
+    // During pre-session the seat-map renders the canonical identity
+    // pill via CanonicalSeatCluster (status palette) for every consumer
+    // of MobileGameTable — matching CanonicalShellWaitingSurface. Only
+    // gameplay phases fall back to the per-game chip glyphs.
     const isCanonicalSeat =
-      gameType === 'cribbage' || gameType === 'gin-rummy' || gameType === 'yahtzee';
-    const renderer = isCanonicalSeat ? 'CanonicalSeatCluster.chipValue' : 'ChipStack';
+      isPreSessionPhase ||
+      gameType === 'cribbage' ||
+      gameType === 'gin-rummy' ||
+      gameType === 'yahtzee';
+    const renderer = isCanonicalSeat ? 'CanonicalSeatCluster.chipValue' : 'renderPlayerChip';
     const viewerPos = (players as any[]).find(p => p.user_id === currentUserId)?.position ?? null;
     for (const p of (players as any[])) {
       recordWaitingLifecycleIfChanged(
@@ -761,17 +788,23 @@ export const MobileGameTable = ({
           userId: p.user_id,
           name: p.profiles?.username ?? (p.is_bot ? 'Bot' : 'Player'),
           chipValue: p.chips ?? 0,
-          variant: isCanonicalSeat ? 'status-palette' : 'plain',
+          variant: isCanonicalSeat ? 'status-palette' : 'gameplay-glyph',
           seatAnchorSource: 'MobileGameTable (shell SeatAnchorLayer)',
-          chipAnchorSource: isCanonicalSeat ? 'CanonicalSeatCluster (slot-derived)' : 'PlayerSlot (legacy)',
-          chipStyleSource: isCanonicalSeat ? 'derivePlayerStatus → status palette' : 'ChipStack default',
+          chipAnchorSource: isCanonicalSeat
+            ? 'CanonicalSeatCluster (slot-derived)'
+            : 'renderPlayerChip (gameplay glyph)',
+          chipStyleSource: isCanonicalSeat
+            ? 'derivePlayerStatus → status palette'
+            : 'renderPlayerChip (gameplay glyph)',
           projectionMode: null,
           viewerPosition: viewerPos,
           instanceLabel,
+          isPreSessionPhase,
         },
       );
     }
   }, [players, isWaitingPhase, gameStatus, gameType, instanceLabel, currentUserId]);
+
 
 
   // Prevent screen from dimming during gameplay
