@@ -149,6 +149,11 @@ export interface CanonicalSeatClusterProps {
   /** Player id whose chip this cluster represents (for renderer
    *  ownership attribution). */
   playerId?: string | null;
+  /** Opt-in override: render the viewer's own HOME cluster instead of
+   *  applying canonical self-suppression. Used by pre-session surfaces
+   *  (waiting/interstitial) where identity must be visible on the felt
+   *  because there is no active-player content to anchor it. */
+  allowSelfRender?: boolean;
 }
 
 export function CanonicalSeatCluster({
@@ -170,6 +175,7 @@ export function CanonicalSeatCluster({
   className,
   ownerLabel,
   playerId = null,
+  allowSelfRender = false,
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
@@ -262,7 +268,7 @@ export function CanonicalSeatCluster({
   // active-player content area (and bottom HUD), NOT by a duplicate
   // chip cluster on the felt. Hoisted into the primitive so no
   // consumer needs to remember to suppress self per-render.
-  if (anchors?.viewerPosition != null && anchors.viewerPosition === position) {
+  if (!allowSelfRender && anchors?.viewerPosition != null && anchors.viewerPosition === position) {
     return null;
   }
 
