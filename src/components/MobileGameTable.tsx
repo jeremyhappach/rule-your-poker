@@ -7216,8 +7216,12 @@ export const MobileGameTable = ({
                           (() => {
                             if (currentRound === 3) return null;
                             return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
-                                <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
+                              <div className={cn("flex items-start justify-center w-full", reserveClassName)} style={handReserveStyle}>
+                                <div
+                                  ref={use357Geometry ? __wave2_fit.ref : undefined}
+                                  className={cn(scaleClassName, !use357Geometry && "origin-top")}
+                                  style={handScaleStyle}
+                                >
                                   <PlayerHand
                                     cards={currentPlayerCards}
                                     isHidden={false}
@@ -7234,9 +7238,16 @@ export const MobileGameTable = ({
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>
                         ) : currentPlayerCards.length > 0 ? (
-                          <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")}>
+                          <div className={cn("flex items-start justify-center", reserveClassName, !use357Geometry && gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")} style={handReserveStyle}>
                             <div
-                              className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                              ref={use357Geometry ? __wave2_fit.ref : undefined}
+                              className={cn(
+                                scaleClassName,
+                                !use357Geometry && "origin-top",
+                                isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 && 'animate-rapid-flash',
+                                ((isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold') && 'opacity-40 grayscale-[30%]',
+                              )}
+                              style={handScaleStyle}
                             >
                               <PlayerHand
                                 cards={currentPlayerCards}
@@ -7252,8 +7263,12 @@ export const MobileGameTable = ({
                             </div>
                           </div>
                         ) : (
-                          <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
-                            <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
+                          <div className={cn("flex items-start justify-center w-full", reserveClassName)} style={handReserveStyle}>
+                            <div
+                              ref={use357Geometry ? __wave2_fit.ref : undefined}
+                              className={cn(scaleClassName, !use357Geometry && "origin-top", "opacity-0 pointer-events-none")}
+                              style={handScaleStyle}
+                            >
                               <PlayerHand
                                 cards={[]}
                                 isHidden={true}
