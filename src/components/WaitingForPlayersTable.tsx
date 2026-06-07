@@ -430,10 +430,10 @@ export const WaitingForPlayersTable = ({
               Share
             </Button>
           </div>
-          {identityRow}
         </div>
       );
     }
+
 
     return (
       <div className="h-full w-full flex flex-col items-center justify-start gap-4 pt-3">
