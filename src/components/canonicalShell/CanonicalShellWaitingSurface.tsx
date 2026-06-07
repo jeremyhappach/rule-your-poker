@@ -501,7 +501,7 @@ function WaitingSurfaceBody({
           Actions live in row 4 (pane); identity lives in row 5. */}
       <div
         className="flex-1 bg-background min-h-0"
-        style={{ '--shell-hud-h': 'calc(100% - var(--shell-bottom-slack))' } as React.CSSProperties}
+        style={{ '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 64px))' } as React.CSSProperties}
       >
         <ShellHudGrid
           timer={null}
