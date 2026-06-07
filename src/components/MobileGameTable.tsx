@@ -113,6 +113,8 @@ import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRa
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { usePaneGeometry } from "@/lib/canonicalShell/usePaneGeometry";
+import { useCardRowLayout, useFitToWidthScale } from "@/lib/canonicalShell/useCardRowLayout";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
