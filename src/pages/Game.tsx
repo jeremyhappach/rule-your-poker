@@ -8686,6 +8686,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               dealerGameId: (game as any)?.current_game_uuid ?? null,
               gameId: gameId ?? null,
             });
+            recordHighCardWriter({
+              gameId: gameId ?? '',
+              source: 'ante-to-cribbage-transition',
+              callsite: 'src/pages/Game.tsx:8689 handleAllAnteDecisionsIn setDealerSelectionCards([])',
+              reason: 'ante decisions complete → clearing session-level dealer-selection visuals before entering dealer-game scope',
+              previousLength: dealerSelectionCards.length,
+              nextLength: 0,
+              previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+              nextCardIds: [],
+              renderPath: 'host',
+              surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
+              winnerPosition: dealerSelectionWinnerPosition ?? null,
+              isComplete: null,
+              extra: { trigger: 'handleAllAnteDecisionsIn', freshGameStatus: freshGame?.status ?? null },
+            });
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);
 
