@@ -254,7 +254,10 @@ export function CanonicalSeatCluster({
 
   return (
     <div
+      ref={rootRef}
       data-canonical-seat-cluster=""
+      data-cluster-instance={clusterInstanceIdRef.current}
+      data-provider-instance={providerInstanceId ?? ''}
       data-seat-position={position}
       data-seat-slot={slot}
       data-seat-status={status}
