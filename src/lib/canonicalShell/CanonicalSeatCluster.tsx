@@ -206,6 +206,24 @@ export function CanonicalSeatCluster({
     };
     recordChipRuntimeContinuity(payload);
     noteChipContinuityMount(payload);
+
+    // CHIP_RENDER_OWNER — emitted ONCE per visible chip cluster mount.
+    // Pairs with the unmount below. Two CHIP_RENDER_OWNER events with
+    // the same (playerId, position) and visible=true and no unmount
+    // between them = duplicate renderer (Wartime defect).
+    recordWartime('OWNERSHIP', 'CHIP_RENDER_OWNER', {
+      playerId,
+      position,
+      renderer: 'CanonicalSeatCluster',
+      owner: ownerLabel ?? '(unspecified)',
+      component: ownerLabel ?? '(unspecified)',
+      surface: surfaceLabel,
+      visible: true,
+      providerInstanceId,
+      clusterInstanceId: clusterInstanceIdRef.current,
+      chipDomNodeId: chipEl ? `dom-chip-${clusterInstanceIdRef.current}` : null,
+      phase: 'mount',
+    });
     return () => {
       recordChipRuntimeContinuity({
         phase: 'unmount',
