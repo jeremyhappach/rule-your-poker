@@ -154,6 +154,7 @@ function WaitingSurfaceBody({
   // wiring failures surface in Wartime instead of silently rendering
   // empty seats.
   const ambient = useSeatAnchorsOptional();
+  const preSessionSeatOwned = usePreSessionSeatOwned();
   useEffect(() => {
     if (!ambient) {
       recordWartime('SEATING', 'contract-violation.missing-seat-anchor-provider', {
