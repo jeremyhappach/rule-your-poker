@@ -790,6 +790,14 @@ const Game = () => {
   // messaging is now exclusively owned by the canonical announcement layer.
   const [dealerSelectionCards, setDealerSelectionCards] = useState<DealerSelectionCard[]>([]);
   const [dealerSelectionWinnerPosition, setDealerSelectionWinnerPosition] = useState<number | null>(null);
+  // Live refs so the realtime subscription effect (which closes over
+  // [gameId] only) can read the latest values when evaluating the
+  // high-card clear guard. Without these, the closure reads the initial
+  // empty array and the guard never fires for in-flight draws.
+  const dealerSelectionCardsRef = useRef<DealerSelectionCard[]>([]);
+  const dealerSelectionWinnerPositionRef = useRef<number | null>(null);
+  useEffect(() => { dealerSelectionCardsRef.current = dealerSelectionCards; }, [dealerSelectionCards]);
+  useEffect(() => { dealerSelectionWinnerPositionRef.current = dealerSelectionWinnerPosition; }, [dealerSelectionWinnerPosition]);
 
   // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
   // event each time the local cards array length changes (mount, deal,
