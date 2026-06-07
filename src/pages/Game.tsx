@@ -2429,10 +2429,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 newStatus === 'configuring' ||
                 newStatus === 'game_selection';
               const isDealerSelectionEntry = newStatus === 'dealer_selection';
+              const liveCards = dealerSelectionCardsRef.current;
+              const liveWinner = dealerSelectionWinnerPositionRef.current;
               const hasInFlightHighCardDraw =
                 isDealerSelectionEntry &&
-                dealerSelectionCards.length > 0 &&
-                dealerSelectionWinnerPosition == null;
+                liveCards.length > 0 &&
+                liveWinner == null;
               const shouldClearCardState =
                 (isFreshSetupStatus || isDealerSelectionEntry) && !hasInFlightHighCardDraw;
 
