@@ -6289,9 +6289,11 @@ export const CribbageMobileGameTable = ({
               // card-back stripes) only attach once gameplay takes
               // ownership (isGameplayMode === true).
               const preSession = !isGameplayMode;
+              // Duplicate-owner gate: shell PreSessionSeatLayer owns
+              // pre-game chips when active. Skip rendering here to avoid
+              // two visible CHIP_RENDER_OWNER for the same seat.
+              if (preSession && preSessionSeatOwnedByShell) return null;
               const preSessionStatus = preSession
-                ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
-                : undefined;
               return (
                 <CanonicalSeatCluster
                   key={seatPlayer.id}
