@@ -6925,7 +6925,7 @@ export const MobileGameTable = ({
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div
         className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden"
-        style={isWaitingPhase ? ({ '--shell-hud-h': 'calc(100% - var(--shell-bottom-slack))' } as React.CSSProperties) : undefined}
+        style={isWaitingPhase ? ({ '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 64px))' } as React.CSSProperties) : undefined}
         {...swipeHandlers}
       >
         {isWaitingPhase ? (
