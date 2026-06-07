@@ -819,8 +819,13 @@ const Game = () => {
   // empty array and the guard never fires for in-flight draws.
   const dealerSelectionCardsRef = useRef<DealerSelectionCard[]>([]);
   const dealerSelectionWinnerPositionRef = useRef<number | null>(null);
+  const dealerSelectionSyncedCardsRef = useRef<any[]>([]);
   useEffect(() => { dealerSelectionCardsRef.current = dealerSelectionCards; }, [dealerSelectionCards]);
   useEffect(() => { dealerSelectionWinnerPositionRef.current = dealerSelectionWinnerPosition; }, [dealerSelectionWinnerPosition]);
+  useEffect(() => {
+    const syncedCards = (game as any)?.dealer_selection_state?.cards;
+    dealerSelectionSyncedCardsRef.current = Array.isArray(syncedCards) ? syncedCards : [];
+  }, [game]);
 
   // P-WAIT.A4: dealerSelectionCards length tracker — emits one [WAIT]
   // event each time the local cards array length changes (mount, deal,
