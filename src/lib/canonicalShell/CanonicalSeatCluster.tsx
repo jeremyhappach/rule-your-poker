@@ -58,6 +58,7 @@ import {
   noteChipContinuityMount,
   recordChipRuntimeContinuity,
 } from '@/lib/wartimeDebug/surfaces';
+import { recordWartime } from '@/lib/wartimeDebug/core';
 
 let _csc_seq = 0;
 
