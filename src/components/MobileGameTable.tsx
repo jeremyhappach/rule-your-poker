@@ -60,6 +60,7 @@ import {
   type CanonicalSlot,
 } from "@/lib/canonicalShell/seatAnchors";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
@@ -4306,6 +4307,7 @@ export const MobileGameTable = ({
   // canonical pixel anchors; seat ownership/projection/continuity is
   // the milestone for this PR.
   const shellAnchors = useRequiredSeatAnchors(gameType ?? null);
+  const preSessionSeatOwned = usePreSessionSeatOwned();
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
 
@@ -6673,6 +6675,12 @@ export const MobileGameTable = ({
             const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
 
             if (isPreSessionPhase) {
+              // Wartime FIX #1: when the shell-owned
+              // PreSessionSeatLayer is mounted above (single cluster
+              // set surviving every pre-session phase transition),
+              // skip the local cluster JSX so chip identity does not
+              // remount across WaitingSlot ↔ DealerSelection.
+              if (preSessionSeatOwned) return null;
               // Canonical identity pill — same inputs / palette /
               // primitive as CanonicalShellWaitingSurface. Gameplay-only
               // decorators (turn pulse, leg pips, auto-roll, emoticons,
