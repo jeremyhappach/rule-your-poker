@@ -1062,6 +1062,13 @@ export interface HighCardWriterPayload {
     | 'host-complete-replay'
     | 'non-host-sync'
     | 'reset-path'
+    | 'cribbage-complete-handoff'
+    | 'ante-to-cribbage-transition'
+    | 'setGame-dealer-selection-state-realtime'
+    | 'setGame-fetchGameData'
+    | 'startGame-clear'
+    | 'selectDealer-clear'
+    | 'game-over-restart-clear'
     | 'unknown';
   callsite: string;
   reason: string;
@@ -1074,6 +1081,14 @@ export interface HighCardWriterPayload {
   winnerPosition?: number | null;
   isComplete?: boolean | null;
   stack?: string | null;
+  extra?: Record<string, unknown>;
+}
+const _recentWriters: Array<{ tMs: number; source: string }> = [];
+export function _recentHighCardWritersWithin(windowMs: number): number {
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  let n = 0;
+  for (const w of _recentWriters) if (now - w.tMs <= windowMs) n++;
+  return n;
 }
 export function recordHighCardWriter(payload: HighCardWriterPayload): void {
   const stack = payload.stack ?? (() => {
@@ -1082,10 +1097,132 @@ export function recordHighCardWriter(payload: HighCardWriterPayload): void {
       return (e.stack ?? '').split('\n').slice(0, 12).join('\n');
     } catch { return null; }
   })();
+  const tMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  _recentWriters.push({ tMs, source: payload.source });
+  if (_recentWriters.length > 200) _recentWriters.splice(0, _recentWriters.length - 200);
   recordWartime(
     'GAMEPLAY',
-    `high-card.writer ${payload.source}`,
+    `HIGH_CARD_MUTATION_SOURCE ${payload.source}`,
     { ...payload, stack } as unknown as Record<string, unknown>,
+  );
+}
+
+// ── HIGH_CARD_UNATTRIBUTED_MUTATION ───────────────────────────────────
+// Emitted by the sampler/watcher only when a transition is observed
+// with ZERO matching writer events in the preceding window. This is
+// the contract breach: if a cards change has no writer attribution,
+// classify as Wartime defect.
+export interface HighCardUnattributedMutationPayload {
+  gameId: string | null;
+  previousLength: number;
+  nextLength: number;
+  windowMs: number;
+  recentWritersInWindow: number;
+  surfaceInstanceId?: string | null;
+  componentKey?: string | null;
+  note?: string;
+}
+export function recordHighCardUnattributedMutation(
+  payload: HighCardUnattributedMutationPayload,
+): void {
+  recordWartime(
+    'GAMEPLAY',
+    'HIGH_CARD_UNATTRIBUTED_MUTATION',
+    payload as unknown as Record<string, unknown>,
+  );
+}
+
+// ── CHIP_RUNTIME_CONTINUITY ──────────────────────────────────────────
+// Emitted by CanonicalSeatCluster (and the deferred wrapper) on mount
+// and unmount with stable per-mount instance ids for the seat anchor
+// provider, the cluster React component, and the chip DOM node. A
+// trace can answer YES/NO to "did each layer survive WaitingTable →
+// NeutralInterstitial → DealerSelection" by diffing successive mounts
+// for the same (playerId, position).
+export interface ChipRuntimeContinuityPayload {
+  phase: 'mount' | 'unmount';
+  surface: string;
+  position: number;
+  playerId?: string | null;
+  providerInstanceId: string | null;
+  clusterInstanceId: string;
+  deferredWrapperInstanceId?: string | null;
+  rootDomNodeId?: string | null;
+  chipDomNodeId?: string | null;
+  rootRect?: { x: number; y: number; w: number; h: number } | null;
+}
+export function recordChipRuntimeContinuity(
+  payload: ChipRuntimeContinuityPayload,
+): void {
+  recordWartime(
+    'OWNERSHIP',
+    `CHIP_RUNTIME_CONTINUITY.${payload.phase}`,
+    payload as unknown as Record<string, unknown>,
+  );
+}
+
+export interface ChipInstanceTransitionPayload {
+  position: number;
+  playerId?: string | null;
+  layer: 'provider' | 'cluster' | 'chipDomNode' | 'rootDomNode' | 'deferredWrapper';
+  from: string | null;
+  to: string | null;
+  reason: string;
+  surface?: string | null;
+}
+// Module-scope per-(position) memory so we can emit transitions across
+// surface boundaries even when the previous cluster has already
+// unmounted (its useEffect ran the cleanup, but the next mount can
+// still see what came before via this registry).
+const _chipContinuityMemory = new Map<
+  number,
+  {
+    providerInstanceId: string | null;
+    clusterInstanceId: string | null;
+    chipDomNodeId: string | null;
+    rootDomNodeId: string | null;
+    surface: string;
+  }
+>();
+export function noteChipContinuityMount(p: ChipRuntimeContinuityPayload): void {
+  const prev = _chipContinuityMemory.get(p.position);
+  const next = {
+    providerInstanceId: p.providerInstanceId,
+    clusterInstanceId: p.clusterInstanceId,
+    chipDomNodeId: p.chipDomNodeId ?? null,
+    rootDomNodeId: p.rootDomNodeId ?? null,
+    surface: p.surface,
+  };
+  if (prev) {
+    const layers: Array<[ChipInstanceTransitionPayload['layer'], string | null, string | null]> = [
+      ['provider', prev.providerInstanceId, next.providerInstanceId],
+      ['cluster', prev.clusterInstanceId, next.clusterInstanceId],
+      ['chipDomNode', prev.chipDomNodeId, next.chipDomNodeId],
+      ['rootDomNode', prev.rootDomNodeId, next.rootDomNodeId],
+    ];
+    for (const [layer, from, to] of layers) {
+      if (from !== to) {
+        recordChipInstanceTransition({
+          position: p.position,
+          playerId: p.playerId ?? null,
+          layer,
+          from,
+          to,
+          reason: `surface ${prev.surface} → ${next.surface}`,
+          surface: next.surface,
+        });
+      }
+    }
+  }
+  _chipContinuityMemory.set(p.position, next);
+}
+export function recordChipInstanceTransition(
+  payload: ChipInstanceTransitionPayload,
+): void {
+  recordWartime(
+    'OWNERSHIP',
+    `CHIP_INSTANCE_TRANSITION ${payload.layer}`,
+    payload as unknown as Record<string, unknown>,
   );
 }
 
