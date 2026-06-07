@@ -797,6 +797,22 @@ export function recordHighCardFirstDisappearance(
     'high-card.first-disappearance',
     payload as unknown as Record<string, unknown>,
   );
+  // Wartime contract: if no writer event occurred within the preceding
+  // 500ms window, the disappearance is UNATTRIBUTED — emit the defect
+  // marker so the trace surfaces it without inference.
+  const recent = _recentHighCardWritersWithin(500);
+  if (recent === 0) {
+    recordHighCardUnattributedMutation({
+      gameId: payload.gameId,
+      previousLength: payload.previousLength,
+      nextLength: payload.nextLength,
+      windowMs: 500,
+      recentWritersInWindow: 0,
+      surfaceInstanceId: payload.surfaceInstanceId ?? null,
+      componentKey: null,
+      note: 'first-disappearance with no preceding HIGH_CARD_MUTATION_SOURCE writer event in 500ms window',
+    });
+  }
 }
 
 export function resetHighCardFirstDisappearance(gameId?: string): void {
