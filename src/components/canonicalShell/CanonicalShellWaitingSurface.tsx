@@ -606,19 +606,9 @@ function WaitingSurfaceBody({
                 )}
               </div>
 
-              {/* Identity row — pinned to bottom of pane, below buttons */}
-              {viewerPlayer && (
-                <div className="flex items-center gap-2 text-foreground pt-2 border-t border-border/40 w-full justify-center">
-                  <Users className="w-4 h-4 text-amber-400" />
-                  <span className="font-semibold">
-                    {viewerPlayer.profiles?.username ?? "You"}
-                  </span>
-                  <span className="text-muted-foreground">·</span>
-                  <span className="text-poker-gold font-bold">
-                    ${formatChipValue(viewerPlayer.chips ?? 0)}
-                  </span>
-                </div>
-              )}
+              {/* Identity is owned canonically by PreSessionSeatLayer →
+                  CanonicalSeatCluster (felt). No bespoke identity row here. */}
+
             </div>
           )}
 
