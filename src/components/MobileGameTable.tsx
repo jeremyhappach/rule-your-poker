@@ -7058,67 +7058,39 @@ export const MobileGameTable = ({
           />
         ) : (
           <>
-        {/* PHASE B — CANONICAL ROW 2 (timer / operational HUD).
-            The three previously mutually-exclusive branches (dice clock
-            chip, paused badge, active-player TimerBar) are collapsed
-            into a single canonical timer node. Row geometry mirrors
-            ShellHudGrid row 2: claims var(--hud-h-timer) when a timer
-            node is present, collapses to 0 when none — so games and
-            phases without a timer reclaim the vertical real estate at
-            the shell/game boundary. Full ShellHudGrid composition
-            (announcement + tabs + timer + pane + identity in one grid)
-            is a later phase. */}
+        {/* PHASE B (revised) — CANONICAL TIMER OWNERSHIP.
+            The timer row is owned by the shell. This surface publishes
+            timer state via `useShellTimer` above; the shell renders the
+            single canonical timer presentation here. There are no
+            game-specific timer visuals (no clock chip, no paused pill,
+            no local TimerBar). Row geometry collapses to 0 when the
+            shell has no published state. */}
         <ShellAnnouncementRail />
         {(() => {
-          const diceTimer =
-            diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
-            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
+          // Row 2 geometry is driven entirely by whether the shell
+          // currently has timer state published. We check the same
+          // conditions used to publish above; renderer itself returns
+          // null when no state is published.
+          const hasTimer = !!isPaused || (
+            diceGameplayUiActive &&
+            horsesController.enabled &&
+            horsesController.gamePhase === 'playing' &&
+            !!horsesController.currentTurnPlayerId &&
+            !horsesController.currentTurnPlayer?.is_bot &&
             horsesController.timeLeft !== null
-              ? (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <span
-                    className={cn(
-                      "text-sm font-mono font-bold",
-                      horsesController.timeLeft <= 5
-                        ? "text-destructive"
-                        : horsesController.timeLeft <= 10
-                          ? "text-amber-500"
-                          : "text-foreground",
-                    )}
-                  >
-                    {horsesController.timeLeft}s
-                  </span>
-                  {horsesController.currentTurnPlayerName && (
-                    <span className="text-xs text-muted-foreground">
-                      ({horsesController.currentTurnPlayerName})
-                    </span>
-                  )}
-                </div>
-              )
-              : null;
-
-          const pausedBadge = !diceTimer && isPaused
-            ? (
-              <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
-            )
-            : null;
-
-          const turnTimerBar = !diceTimer && !pausedBadge &&
-            currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided &&
-            timeLeft !== null && timeLeft > 0 && maxTime
-              ? (
-                <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
-              )
-              : null;
-
-          const timerNode = diceTimer ?? pausedBadge ?? turnTimerBar;
-          const hasTimer = timerNode != null;
-
+          ) || (
+            !!currentPlayer &&
+            isPlayerTurn &&
+            roundStatus === 'betting' &&
+            !hasDecided &&
+            timeLeft !== null &&
+            timeLeft > 0 &&
+            !!maxTime
+          );
           return (
             <div
               data-hud-row="timer"
-              data-hud-row-owner="MobileGameTable.gameplay"
+              data-hud-row-owner="Shell:ShellTimerRail"
               data-hud-timer-present={hasTimer ? '1' : '0'}
               style={{
                 height: hasTimer ? 'var(--hud-h-timer)' : '0px',
@@ -7127,12 +7099,13 @@ export const MobileGameTable = ({
                 minHeight: 0,
                 position: 'relative',
               }}
-              className="w-full flex items-center justify-center px-3"
+              className="w-full flex items-center justify-center"
             >
-              {timerNode}
+              <ShellTimerRail />
             </div>
           );
         })()}
+
 
         <ShellTabBar />
 
