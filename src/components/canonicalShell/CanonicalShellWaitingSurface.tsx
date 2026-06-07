@@ -92,7 +92,12 @@ export interface CanonicalShellWaitingSurfaceProps {
 
 const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
 const SHELL_FELT_FRAME_HEIGHT = "var(--shell-felt-h)";
-const SHELL_TABLE_REGION_HEIGHT = "var(--shell-felt-h)";
+// Canonical play/HUD partition: table region is the shell play region
+// (--shell-play-h), HUD region is --shell-hud-h. They sum to the shell
+// flex height by construction — same partition gameplay surfaces use.
+// The felt ellipse (--shell-felt-h) is centered visually inside this
+// region; the region itself MUST NOT shrink to the felt height.
+const SHELL_TABLE_REGION_HEIGHT = "var(--shell-play-h)";
 
 
 export function CanonicalShellWaitingSurface(
