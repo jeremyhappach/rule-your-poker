@@ -7351,72 +7351,12 @@ export const MobileGameTable = ({
               ) : null}
             </div>
             
-            {/* Player info - below action buttons */}
-            {/* TABLET: Bigger font for name and chips */}
-            <div className={cn("flex items-center justify-center gap-2 pb-0", isTablet && "gap-3 mt-2")}>
-              {/* Quick emoticon picker - left of player name */}
-              <QuickEmoticonPicker 
-                onSelect={handleQuickEmoticon} 
-                disabled={isEmoticonSending || !currentPlayer}
-              />
-              <p className={cn(
-                "font-semibold text-foreground",
-                isTablet ? "text-xl" : "text-sm"
-              )}>
-                {currentPlayer.profiles?.username || 'You'}
-                {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? <span className="ml-1 text-destructive font-bold">(sitting out)</span> : currentPlayer.waiting ? <span className="ml-1 text-yellow-500">(waiting)</span> : <span className="ml-1 text-green-500">(active)</span>}
-              </p>
-              <div className="relative pr-6">
-                {/* Show emoticon overlay OR chipstack value */}
-                {emoticonOverlays[currentPlayer.id] ? (
-                  <span
-                    className={cn(
-                      "animate-in fade-in zoom-in duration-200",
-                      isTablet ? "text-3xl" : "text-2xl"
-                    )}
-                    style={{
-                      animation:
-                        emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500
-                          ? 'fadeOutEmoticon 0.5s ease-out forwards'
-                          : undefined,
-                    }}
-                  >
-                    {emoticonOverlays[currentPlayer.id].emoticon}
-                  </span>
-                ) : (
-                  <span
-                    className={cn(
-                      "font-bold",
-                      isTablet ? "text-2xl" : "text-lg",
-                      (lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0 ? 'text-destructive' : 'text-poker-gold'
-                    )}
-                  >
-                    ${formatChipValue(
-                      Math.round(
-                        lockedChipsRef.current?.[currentPlayer.id] ??
-                          displayedChips[currentPlayer.id] ??
-                          currentPlayer.chips,
-                      ),
-                    )}
-                  </span>
-                )}
-                <ValueChangeFlash 
-                  value={0}
-                  prefix="+L"
-                  position="top-right"
-                  manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-                />
-                <ValueChangeFlash 
-                  value={0}
-                  prefix="+$"
-                  position="top-left"
-                  manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
-                />
-              </div>
-              {currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && !isGameOver && !allDecisionsIn && roundStatus === 'betting' && <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
-                  {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
-                </Badge>}
-            </div>
+            {/* Phase A migration: identity row (player name + chips +
+                emoticons + Holm hand-rank badge) is no longer owned by
+                the cards tab. It is rendered tab-agnostically as the
+                canonical row-5 owner below all tab content so chat /
+                lobby / history tabs also see it. */}
+            
             
             {/* Emoticon fade-out animation */}
             <style>{`
@@ -7556,7 +7496,110 @@ export const MobileGameTable = ({
             />
           </div>
         )}
+
+        {/* PHASE A — CANONICAL ROW 5 (identity).
+            Single tab-agnostic owner of the player identity row. Rendered
+            once here, outside every activeTab conditional, so cards /
+            chat / lobby / history all show the same identity row.
+            HorsesMobileCardsTab and the cards-tab JSX no longer render
+            their own identity blocks. Geometry mirrors shell row 5
+            (--hud-h-identity); full ShellHudGrid gameplay migration
+            (timer + pane) happens in subsequent phases. */}
+        <div
+          data-hud-row="identity"
+          data-hud-row-owner="MobileGameTable.gameplay"
+          style={{
+            height: 'var(--hud-h-identity)',
+            flex: '0 0 var(--hud-h-identity)',
+            overflow: 'hidden',
+            minHeight: 0,
+            position: 'relative',
+          }}
+        >
+          {currentPlayer ? (
+            <div className={cn(
+              "w-full h-full flex items-center justify-center px-3",
+              isTablet ? "gap-3" : "gap-2"
+            )}>
+              <QuickEmoticonPicker
+                onSelect={handleQuickEmoticon}
+                disabled={isEmoticonSending || !currentPlayer}
+              />
+              <p className={cn(
+                "font-semibold text-foreground truncate",
+                isTablet ? "text-xl" : "text-sm"
+              )}>
+                {currentPlayer.profiles?.username || 'You'}
+                {(currentPlayer.auto_fold || currentPlayer.sitting_out) && !currentPlayer.waiting ? (
+                  <span className="ml-1 text-destructive font-bold">(sitting out)</span>
+                ) : currentPlayer.waiting ? (
+                  <span className="ml-1 text-yellow-500">(waiting)</span>
+                ) : (
+                  <span className="ml-1 text-green-500">(active)</span>
+                )}
+              </p>
+              <div className="relative pr-6">
+                {emoticonOverlays[currentPlayer.id] ? (
+                  <span
+                    className={cn(
+                      "animate-in fade-in zoom-in duration-200",
+                      isTablet ? "text-3xl" : "text-2xl"
+                    )}
+                    style={{
+                      animation:
+                        emoticonOverlays[currentPlayer.id].expiresAt - Date.now() < 500
+                          ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                          : undefined,
+                    }}
+                  >
+                    {emoticonOverlays[currentPlayer.id].emoticon}
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      "font-bold tabular-nums",
+                      isTablet ? "text-2xl" : "text-lg",
+                      (lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0
+                        ? 'text-destructive'
+                        : 'text-poker-gold'
+                    )}
+                  >
+                    ${formatChipValue(
+                      Math.round(
+                        lockedChipsRef.current?.[currentPlayer.id] ??
+                          displayedChips[currentPlayer.id] ??
+                          currentPlayer.chips,
+                      ),
+                    )}
+                  </span>
+                )}
+                <ValueChangeFlash
+                  value={0}
+                  prefix="+L"
+                  position="top-right"
+                  manualTrigger={winnerLegsFlashTrigger?.playerId === currentPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+                />
+                <ValueChangeFlash
+                  value={0}
+                  prefix="+$"
+                  position="top-left"
+                  manualTrigger={winnerPotFlashTrigger?.playerId === currentPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+                />
+              </div>
+              {diceGameplayUiActive && horsesController.enabled && horsesController.isMyTurn && horsesController.gamePhase === "playing" ? (
+                <Badge variant="outline" className={isTablet ? "text-sm" : "text-xs"}>
+                  Rolls: {horsesController.localHand.rollsRemaining}
+                </Badge>
+              ) : !diceGameplayUiActive && currentPlayerCards.length > 0 && gameType === 'holm-game' && chuckyActive && !isGameOver && !allDecisionsIn && roundStatus === 'betting' ? (
+                <Badge className="bg-poker-gold/20 text-poker-gold border-poker-gold/40 text-xs px-2 py-0.5">
+                  {formatHandRank(evaluateHand(currentPlayerCards, false).rank)}
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
           </>
+
         )}
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
