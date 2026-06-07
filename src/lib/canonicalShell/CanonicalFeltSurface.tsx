@@ -146,6 +146,21 @@ export function CanonicalFeltSurface({
       </div>
 
 
+      {/* Waiting-phase plate — permanent "P-Town Poker" branding on
+          the felt while no game is in progress. Uses the same plate
+          chrome as gameplay so the visual treatment is consistent. */}
+      {isWaitingPhase && (
+        <div
+          data-canonical-felt-plate=""
+          data-canonical-felt-plate-variant="waiting"
+          className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none"
+        >
+          <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
+            P-Town Poker
+          </span>
+        </div>
+      )}
+
       {/* Game-name plate — shared chrome */}
       {!isWaitingPhase && !isNeutralKind && gameKind && (
         <div
