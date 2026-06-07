@@ -448,6 +448,7 @@ function CanonicalSeatClusterDeferred(props: {
   name: string;
   chipValue: string;
   status: ReturnType<typeof derivePlayerStatus>;
+  playerId?: string | null;
 }) {
   const ambient = useSeatAnchorsOptional();
   // CHIP_RUNTIME_CONTINUITY — capture wrapper mount/unmount so we can
@@ -484,6 +485,8 @@ function CanonicalSeatClusterDeferred(props: {
       name={props.name}
       chipValue={props.chipValue}
       status={props.status}
+      ownerLabel="Shell:NeutralInterstitial"
+      playerId={props.playerId ?? null}
     />
   );
 }
