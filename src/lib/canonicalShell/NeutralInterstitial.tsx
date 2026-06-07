@@ -403,6 +403,7 @@ export function NeutralInterstitial({
             name={label}
             chipValue={`$${formatChipValue(player.chips ?? 0)}`}
             status={status}
+            playerId={player.id}
           />
         );
       })}
