@@ -92,7 +92,12 @@ export interface CanonicalShellWaitingSurfaceProps {
 
 const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
 const SHELL_FELT_FRAME_HEIGHT = "var(--shell-felt-h)";
-const SHELL_TABLE_REGION_HEIGHT = "var(--shell-felt-h)";
+// Canonical play/HUD partition: table region is the shell play region
+// (--shell-play-h), HUD region is --shell-hud-h. They sum to the shell
+// flex height by construction — same partition gameplay surfaces use.
+// The felt ellipse (--shell-felt-h) is centered visually inside this
+// region; the region itself MUST NOT shrink to the felt height.
+const SHELL_TABLE_REGION_HEIGHT = "var(--shell-play-h)";
 
 
 export function CanonicalShellWaitingSurface(
@@ -360,14 +365,17 @@ function WaitingSurfaceBody({
       data-canonical-shell-waiting-surface=""
       data-shell-waiting-game-type={gameType}
       data-projection-mode={projectionMode}
-      className="relative w-full h-full flex flex-col flex-1 min-h-0"
+      className="relative w-full h-full flex flex-col"
     >
-      {/* Persistent table region — mirrors canonical gameplay surfaces. */}
+      {/* Canonical play region — height owned by the shell via
+          --shell-play-h. Sibling to the HUD region below; together
+          they form the same partition gameplay surfaces use. */}
       <div
         data-canonical-shell-waiting-table-region=""
-        className="relative flex-shrink-0"
+        className="relative"
         style={{
           height: SHELL_TABLE_REGION_HEIGHT,
+          flex: `0 0 ${SHELL_TABLE_REGION_HEIGHT}`,
         }}
       >
         {activeTab === "cards" && (
@@ -497,9 +505,18 @@ function WaitingSurfaceBody({
         )}
       </div>
 
-      {/* Unified bottom section — canonical 5-row HUD grid.
-          Actions live in row 4 (pane); identity lives in row 5. */}
-      <div className="flex-1 bg-background min-h-0">
+      {/* Canonical HUD region — sibling to the play region above.
+          Height is shell-owned (--shell-hud-h); ShellHudGrid lives
+          directly inside, no flex-1 spacer, no bespoke wrapper.
+          Row 5 (identity) is shell-owned by ShellHudGrid. */}
+      <div
+        data-canonical-shell-waiting-hud-region=""
+        className="bg-background"
+        style={{
+          height: 'var(--shell-hud-h)',
+          flex: '0 0 var(--shell-hud-h)',
+        }}
+      >
         <ShellHudGrid
           timer={null}
           identity={

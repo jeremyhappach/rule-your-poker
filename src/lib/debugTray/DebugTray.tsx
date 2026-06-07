@@ -39,7 +39,7 @@ export function DebugTray({ children }: { children: ReactNode }) {
         justifyContent: 'flex-end',
         gap: 6,
         flexWrap: 'wrap',
-        zIndex: 20,
+        zIndex: 2147483647,
         pointerEvents: 'none',
       }}
     >
