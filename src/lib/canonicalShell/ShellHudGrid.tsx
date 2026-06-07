@@ -79,16 +79,24 @@ export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
     hasPaneSlot: pane != null,
     hasIdentitySlot: identity != null,
   });
+  const hasTimer = timer != null;
   return (
     <div
       data-canonical-shell-hud-grid=""
+      data-hud-timer-present={hasTimer ? '1' : '0'}
       style={{
         height: 'var(--shell-hud-h)',
         flex: '0 0 var(--shell-hud-h)',
         display: 'grid',
-        gridTemplateRows:
-          'var(--hud-h-announcement) var(--hud-h-timer) ' +
-          'var(--hud-h-tabs) var(--hud-h-pane) var(--hud-h-identity)',
+        // Row order: announcement, tabs, timer (conditional), pane, identity.
+        // When no timer is published, the timer row collapses to 0 and the
+        // pane reclaims its height. Collapse only changes at the
+        // shell/game boundary — stable within a single game.
+        gridTemplateRows: hasTimer
+          ? 'var(--hud-h-announcement) var(--hud-h-tabs) ' +
+            'var(--hud-h-timer) var(--hud-h-pane) var(--hud-h-identity)'
+          : 'var(--hud-h-announcement) var(--hud-h-tabs) ' +
+            '0px calc(var(--hud-h-pane) + var(--hud-h-timer)) var(--hud-h-identity)',
         width: '100%',
         overflow: 'hidden',
       }}
@@ -96,11 +104,11 @@ export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
       <div data-hud-row="announcement" style={ROW_STYLE}>
         <ShellAnnouncementRail />
       </div>
-      <div data-hud-row="timer" style={ROW_STYLE}>
-        {timer ?? null}
-      </div>
       <div data-hud-row="tabs" style={ROW_STYLE}>
         <ShellTabBar />
+      </div>
+      <div data-hud-row="timer" style={ROW_STYLE}>
+        {hasTimer ? timer : null}
       </div>
       <div data-hud-row="pane" style={ROW_STYLE}>
         {pane ?? null}
