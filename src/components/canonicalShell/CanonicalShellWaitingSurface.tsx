@@ -327,6 +327,34 @@ function WaitingSurfaceBody({
     (pos) => !players.some((p) => p.position === pos),
   );
 
+  const viewerPlayer = useMemo(
+    () => players.find((p) => p.user_id === currentUserId) ?? null,
+    [players, currentUserId],
+  );
+
+  // Canonical announcement rail — "Waiting for Players" / "Ready to Start!".
+  // Ambient for the whole waiting phase; cleared on unmount.
+  const announcements = useAnnouncements();
+  useEffect(() => {
+    if (!gameId) return;
+    const id = `${gameId}:waiting-table:${actions.hasEnoughPlayers ? 'ready' : 'waiting'}`;
+    announcements.emit({
+      id,
+      type: 'waiting_for_players',
+      scope: { dealerGameId: gameId },
+      payload: {
+        text: actions.hasEnoughPlayers ? 'Ready to Start!' : 'Waiting for Players',
+        subtitle:
+          actions.seatedPlayerCount > 0
+            ? `${actions.seatedPlayerCount} ${actions.seatedPlayerCount === 1 ? 'player' : 'players'} seated`
+            : undefined,
+      },
+    });
+    return () => {
+      announcements.clearAmbient('waiting_for_players');
+    };
+  }, [announcements, gameId, actions.hasEnoughPlayers, actions.seatedPlayerCount]);
+
   return (
     <div
       data-canonical-shell-waiting-surface=""
