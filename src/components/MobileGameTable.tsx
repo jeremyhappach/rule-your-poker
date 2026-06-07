@@ -4307,6 +4307,7 @@ export const MobileGameTable = ({
   // canonical pixel anchors; seat ownership/projection/continuity is
   // the milestone for this PR.
   const shellAnchors = useRequiredSeatAnchors(gameType ?? null);
+  const preSessionSeatOwned = usePreSessionSeatOwned();
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
 
