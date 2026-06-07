@@ -377,8 +377,14 @@ interface MobileGameTableProps {
   isWaitingPhase?: boolean;
   // Canonical slot-owned waiting content (rendered inside the table container,
   // not as a floating overlay). Used by WaitingForPlayersTable to fold the
-  // seated-count + invite/add-bot/start CTAs into the canonical stage.
+  // seated-count message into the canonical stage.
   waitingSlotContent?: React.ReactNode;
+  // Waiting-only active-player content pane. Rendered in the bottom HUD
+  // region (in place of the gameplay cards tab) while `isWaitingPhase` is
+  // true. Hosts the Invite / Add Bot / Start Game (dealer) and Share
+  // (non-dealer) controls so gameplay actions live in the active pane,
+  // not on the felt.
+  waitingActivePaneContent?: React.ReactNode;
   // Real money indicator
   realMoney?: boolean;
   // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
