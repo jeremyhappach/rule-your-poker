@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
