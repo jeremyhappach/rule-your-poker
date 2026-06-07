@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MobileGameTable } from "./MobileGameTable";
 
 import { Button } from "@/components/ui/button";
-import { Share2, Users, Bot, Loader2 } from "lucide-react";
+import { Share2, Bot, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
@@ -17,6 +17,8 @@ import {
   recordWaitingLifecycle,
   recordSurfaceOwnership,
 } from "@/lib/canonicalShell/waitingTableFlight";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { formatChipValue } from "@/lib/utils";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
@@ -387,86 +389,146 @@ export const WaitingForPlayersTable = ({
   // Check if user is an observer (not seated)
   const isObserver = !currentPlayer;
 
-  // Felt message - positioned in center of felt area
-  const renderFeltMessage = () => (
-    <div className="absolute left-0 right-0 flex justify-center z-10 pointer-events-none top-[18%]">
-      <div className="bg-black/70 backdrop-blur-sm rounded-xl px-6 py-4 border border-amber-600/50 max-w-xs text-center">
-        <Users className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-        {isObserver ? (
-          <>
-            <p className="text-amber-300 font-bold text-lg mb-1">Choose a Seat!</p>
-            <p className="text-amber-300/70 text-sm">
-              Game starts when 2+ players are seated
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-amber-300 font-bold text-lg mb-1">
-              {hasEnoughPlayers ? 'Ready to Start!' : 'Waiting for Players'}
-            </p>
-            <p className="text-amber-300/70 text-sm mb-3">
-              {hasEnoughPlayers 
-                ? (isHost ? 'Click Start Game to begin' : 'Waiting for host to start game')
-                : `${seatedPlayerCount}/2+ players seated`
-              }
-            </p>
-            <div className="flex flex-col gap-2 pointer-events-auto">
-              <div className="flex gap-2 justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleInvite}
-                  className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Invite
-                </Button>
-                {isHost && hasOpenSeats && !realMoney && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    disabled={isAddingBot}
-                    aria-busy={isAddingBot}
-                    onClick={(e) => {
-                      // On mobile Safari, :hover can “stick” after tap; keep styles stable and
-                      // avoid leaving the button in a visually “disabled” looking state.
-                      e.currentTarget.blur();
-                      const startBtn = document.querySelector('[data-start-game-btn]') as HTMLButtonElement;
-                      if (startBtn) startBtn.focus();
-                      enqueueAddBot();
-                    }}
-                    className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 hover:text-amber-300 focus-visible:bg-amber-600/10 focus-visible:text-amber-300 active:bg-amber-600/20 active:text-amber-300 disabled:opacity-70"
-                  >
-                    {isAddingBot ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Adding…
-                      </>
-                    ) : (
-                      <>
-                        <Bot className="w-4 h-4 mr-2" />
-                        Add Bot
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-              {isHost && hasEnoughPlayers && (
-                <Button
-                  data-start-game-btn
-                  onClick={handleStartGame}
-                  className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
-                >
-                  🃏 Start Game
-                </Button>
-              )}
-            </div>
-          </>
-        )}
+  // Felt slot content — passive informational message only.
+  // No buttons, no invite controls, no bot controls, no start-game.
+  // Those live in the Active Player Content Pane (bottom HUD).
+  const renderFeltMessage = () => {
+    const playerWord = seatedPlayerCount === 1 ? "Player" : "Players";
+    return (
+      <div className="absolute left-0 right-0 flex justify-center z-10 pointer-events-none top-[18%]">
+        <div className="bg-black/55 backdrop-blur-sm rounded-xl px-5 py-2.5 border border-amber-600/40">
+          <p className="text-amber-200 font-semibold text-base tracking-wide">
+            {seatedPlayerCount} {playerWord} Seated
+          </p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Active Player Content Pane — gameplay actions for the waiting table.
+  // Dealer (host): Invite + Add Bot + Start Game (Start hidden until 2+ seated).
+  // Non-dealer: Share only.
+  const renderActivePane = () => {
+    if (!isHost) {
+      return (
+        <>
+          {currentPlayer && (
+            <div className="flex items-center gap-2 text-foreground">
+              <Users className="w-4 h-4 text-amber-400" />
+              <span className="font-semibold">
+                {currentPlayer.profiles?.username ?? "You"}
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-poker-gold font-bold">
+                ${formatChipValue(currentPlayer.chips ?? 0)}
+              </span>
+            </div>
+          )}
+          <p className="text-sm text-muted-foreground text-center max-w-xs">
+            {hasEnoughPlayers
+              ? "Waiting for host to start the game."
+              : "Share the table link to invite more players."}
+          </p>
+          <Button
+            onClick={handleInvite}
+            className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            Share
+          </Button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        {currentPlayer && (
+          <div className="flex items-center gap-2 text-foreground">
+            <Users className="w-4 h-4 text-amber-400" />
+            <span className="font-semibold">
+              {currentPlayer.profiles?.username ?? "Host"}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-poker-gold font-bold">
+              ${formatChipValue(currentPlayer.chips ?? 0)}
+            </span>
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground text-center max-w-xs">
+          {hasEnoughPlayers
+            ? "Ready when you are."
+            : "Add a bot or invite a friend to fill the table."}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleInvite}
+            className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            Invite
+          </Button>
+          {hasOpenSeats && !realMoney && (
+            <Button
+              variant="outline"
+              type="button"
+              disabled={isAddingBot}
+              aria-busy={isAddingBot}
+              onClick={(e) => {
+                e.currentTarget.blur();
+                enqueueAddBot();
+              }}
+              className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 disabled:opacity-70"
+            >
+              {isAddingBot ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Adding…
+                </>
+              ) : (
+                <>
+                  <Bot className="w-4 h-4 mr-2" />
+                  Add Bot
+                </>
+              )}
+            </Button>
+          )}
+          {hasEnoughPlayers && (
+            <Button
+              data-start-game-btn
+              onClick={handleStartGame}
+              className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+            >
+              🃏 Start Game
+            </Button>
+          )}
+        </div>
+      </>
+    );
+  };
+
+  // Canonical announcement rail — "Waiting for Players" / "Ready to Start!".
+  // Persistent ambient for the entire waiting phase; cleared on unmount.
+  const announcements = useAnnouncements();
+  useEffect(() => {
+    if (!gameId) return;
+    const id = `${gameId}:waiting-table:${hasEnoughPlayers ? 'ready' : 'waiting'}`;
+    announcements.emit({
+      id,
+      type: 'waiting_for_players',
+      scope: { dealerGameId: gameId },
+      payload: {
+        text: hasEnoughPlayers ? 'Ready to Start!' : 'Waiting for Players',
+        subtitle:
+          seatedPlayerCount > 0
+            ? `${seatedPlayerCount} ${seatedPlayerCount === 1 ? 'player' : 'players'} seated`
+            : undefined,
+      },
+    });
+    return () => {
+      announcements.clearAmbient('waiting_for_players');
+    };
+  }, [announcements, gameId, hasEnoughPlayers, seatedPlayerCount]);
 
   // Empty props for the table (no cards, no game state)
   // Only allow seat selection for observers
@@ -504,6 +566,7 @@ export const WaitingForPlayersTable = ({
       onLeaveGameNow={onLeaveGameNow}
       isHost={isHost}
       waitingSlotContent={renderFeltMessage()}
+      waitingActivePaneContent={renderActivePane()}
     />
   );
 };

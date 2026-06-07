@@ -377,8 +377,14 @@ interface MobileGameTableProps {
   isWaitingPhase?: boolean;
   // Canonical slot-owned waiting content (rendered inside the table container,
   // not as a floating overlay). Used by WaitingForPlayersTable to fold the
-  // seated-count + invite/add-bot/start CTAs into the canonical stage.
+  // seated-count message into the canonical stage.
   waitingSlotContent?: React.ReactNode;
+  // Waiting-only active-player content pane. Rendered in the bottom HUD
+  // region (in place of the gameplay cards tab) while `isWaitingPhase` is
+  // true. Hosts the Invite / Add Bot / Start Game (dealer) and Share
+  // (non-dealer) controls so gameplay actions live in the active pane,
+  // not on the felt.
+  waitingActivePaneContent?: React.ReactNode;
   // Real money indicator
   realMoney?: boolean;
   // 3-5-7 reveal at showdown (secret reveal to players who stayed in rounds 1-2)
@@ -603,6 +609,7 @@ export const MobileGameTable = ({
   onLeaveGameNow,
   isWaitingPhase = false,
   waitingSlotContent,
+  waitingActivePaneContent,
   realMoney = false,
   revealAtShowdown = false,
   externalShowdownCardsCache,
@@ -6962,14 +6969,23 @@ export const MobileGameTable = ({
         </div>
         <ShellTabBar />
 
-        
+        {/* WAITING-PHASE ACTIVE PANE — gameplay actions during the
+            waiting table live here, not on the felt. Owners pass
+            Invite / Add Bot / Start Game (dealer) or Share (non-dealer)
+            via `waitingActivePaneContent`. */}
+        {isWaitingPhase && activeTab === 'cards' && (
+          <div className="px-4 py-6 flex-1 flex flex-col items-center justify-center gap-4">
+            {waitingActivePaneContent}
+          </div>
+        )}
+
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {/* PR-B.2: suppress the gameplay cards tab entirely during dealer
             setup / interstitial phases. Previously the previous hand's
             currentPlayerCards remained mounted in the cards tab during
             dealer-game rollover (Holm cards visible on the next-game
             setup screen). Gameplay artifacts must not leak into pre-game. */}
-        {activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
+        {!isWaitingPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
           diceGameplayUiActive ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
@@ -7335,7 +7351,7 @@ export const MobileGameTable = ({
         )}
         
         {/* CARDS TAB - Observer state */}
-        {activeTab === 'cards' && !currentPlayer && <div className="px-4 pb-4 flex-1">
+        {!isWaitingPhase && activeTab === 'cards' && !currentPlayer && <div className="px-4 pb-4 flex-1">
             <div className="flex items-center justify-between mb-3">
               {onLeaveGameNow && (
                 <PlayerOptionsMenu
