@@ -6720,6 +6720,8 @@ export const MobileGameTable = ({
                 hideChipBubble
                 raisePosition={raise}
                 className={playerSlotZIndex}
+                ownerLabel="Slot:MobileGameTable.gameplayChipWrapper"
+                playerId={player.id}
               >
                 {renderPlayerChip(player, slot)}
               </CanonicalSeatCluster>
