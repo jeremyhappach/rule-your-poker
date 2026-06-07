@@ -473,12 +473,120 @@ function WaitingSurfaceBody({
 
         <div className="flex-1 overflow-hidden min-h-0">
           {activeTab === "cards" && (
-            <div className="h-full px-4 py-3 text-center text-xs text-muted-foreground">
-              {actions.isObserver
-                ? openPositions.length > 0
-                  ? "Tap a + on the table to take a seat."
-                  : "Table is full."
-                : "You're seated. Waiting for the host to start the game."}
+            <div className="h-full px-4 py-6 flex flex-col items-center justify-center gap-4">
+              {viewerPlayer && (
+                <div className="flex items-center gap-2 text-foreground">
+                  <Users className="w-4 h-4 text-amber-400" />
+                  <span className="font-semibold">
+                    {viewerPlayer.profiles?.username ?? "You"}
+                  </span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-poker-gold font-bold">
+                    ${formatChipValue(viewerPlayer.chips ?? 0)}
+                  </span>
+                </div>
+              )}
+
+              {actions.viewerNeedsRejoin ? (
+                <>
+                  <p className="text-sm text-muted-foreground text-center max-w-xs">
+                    You're sitting out. Rejoin to be dealt in next game.
+                  </p>
+                  <Button
+                    onClick={actions.handleRejoin}
+                    disabled={actions.isRejoining}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold"
+                  >
+                    {actions.isRejoining ? "Rejoining…" : "Rejoin Game"}
+                  </Button>
+                </>
+              ) : actions.viewerIsWaitingToRejoin ? (
+                <p className="text-sm text-green-300 text-center">
+                  Queued to rejoin — you'll be dealt in next game.
+                </p>
+              ) : actions.isObserver ? (
+                <>
+                  <p className="text-sm text-muted-foreground text-center max-w-xs">
+                    {openPositions.length > 0
+                      ? "Tap a + on the table to take a seat."
+                      : "Table is full."}
+                  </p>
+                  <Button
+                    onClick={actions.handleInvite}
+                    className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </>
+              ) : actions.isHost ? (
+                <>
+                  <p className="text-sm text-muted-foreground text-center max-w-xs">
+                    {actions.hasEnoughPlayers
+                      ? "Ready when you are."
+                      : "Add a bot or invite a friend to fill the table."}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={actions.handleInvite}
+                      className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      Invite
+                    </Button>
+                    {actions.hasOpenSeats && !realMoney && (
+                      <Button
+                        variant="outline"
+                        type="button"
+                        disabled={actions.isAddingBot}
+                        aria-busy={actions.isAddingBot}
+                        onClick={(e) => {
+                          e.currentTarget.blur();
+                          actions.handleAddBot();
+                        }}
+                        className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 disabled:opacity-70"
+                      >
+                        {actions.isAddingBot ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Adding…
+                          </>
+                        ) : (
+                          <>
+                            <Bot className="w-4 h-4 mr-2" />
+                            Add Bot
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    {actions.hasEnoughPlayers && (
+                      <Button
+                        data-start-game-btn
+                        onClick={actions.handleStartGame}
+                        className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                      >
+                        🃏 Start Game
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground text-center max-w-xs">
+                    {actions.hasEnoughPlayers
+                      ? "Waiting for host to start the game."
+                      : "Share the table link to invite more players."}
+                  </p>
+                  <Button
+                    onClick={actions.handleInvite}
+                    className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </>
+              )}
             </div>
           )}
 
