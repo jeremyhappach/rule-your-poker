@@ -424,8 +424,8 @@ export const WaitingForPlayersTable = ({
 
     if (!isHost) {
       return (
-        <div className="h-full w-full flex flex-col items-center justify-between gap-4">
-          <div className="flex-1 w-full flex flex-col items-center justify-center gap-3">
+        <div className="h-full w-full flex flex-col items-center justify-start gap-4 pt-3">
+          <div className="w-full flex flex-col items-center justify-start gap-3">
             <p className="text-sm text-muted-foreground text-center max-w-xs">
               {hasEnoughPlayers
                 ? "Waiting for host to start the game."
@@ -445,8 +445,8 @@ export const WaitingForPlayersTable = ({
     }
 
     return (
-      <div className="h-full w-full flex flex-col items-center justify-between gap-4">
-        <div className="flex-1 w-full flex flex-col items-center justify-center gap-3">
+      <div className="h-full w-full flex flex-col items-center justify-start gap-4 pt-3">
+        <div className="w-full flex flex-col items-center justify-start gap-3">
           <p className="text-sm text-muted-foreground text-center max-w-xs">
             {hasEnoughPlayers
               ? "Ready when you are."
@@ -488,7 +488,7 @@ export const WaitingForPlayersTable = ({
               <Button
                 data-start-game-btn
                 onClick={handleStartGame}
-                className="bg-amber-500 hover:bg-amber-400 text-[hsl(220_45%_12%)] border-2 border-amber-300 font-bold shadow-lg shadow-black/40"
+                className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40"
               >
                 🃏 Start Game
               </Button>
