@@ -5448,6 +5448,11 @@ export const CribbageMobileGameTable = ({
   // the shell-owned SeatAnchorLayer so chips, dealer pips, card backs, and
   // animation endpoints share one projected anchor map on active + observer clients.
   const projectedSeatPlayers = activeSeatPlayers;
+  // Pre-session ownership gate: when the shell PreSessionSeatLayer is
+  // active, it owns all pre-game chip rendering. Suppress this overlay's
+  // pre-session branch to avoid a duplicate visible CHIP_RENDER_OWNER
+  // for the same (playerId, position). Gameplay rendering is unchanged.
+  const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
   // Determine current render mode for felt content (not layout — layout is always the same shell)
