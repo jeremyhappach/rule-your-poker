@@ -486,7 +486,7 @@ export const WaitingForPlayersTable = ({
             )}
           </div>
         </div>
-        {identityRow}
+        
       </div>
     );
   };
