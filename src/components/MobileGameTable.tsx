@@ -7137,6 +7137,17 @@ export const MobileGameTable = ({
                               ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
                               : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
 
+                    // Wave 2 geometry contract — applied to 3-5-7 only.
+                    const use357Geometry = __wave2_is357 && __wave2_cardLayout.totalWidth > 0;
+                    const handScaleStyle: React.CSSProperties | undefined = use357Geometry
+                      ? { transform: `scale(${__wave2_fit.scale})`, transformOrigin: 'top center' }
+                      : undefined;
+                    const handReserveStyle: React.CSSProperties | undefined = use357Geometry
+                      ? { minHeight: `${Math.ceil(__wave2_cardLayout.cardHeight * __wave2_fit.scale)}px` }
+                      : undefined;
+                    const scaleClassName = use357Geometry ? '' : `transform ${currentPlayerHandScaleClass}`;
+                    const reserveClassName = use357Geometry ? '' : currentPlayerHandReserveClass;
+
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
                       ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
                       : [];
