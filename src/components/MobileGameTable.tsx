@@ -3232,6 +3232,55 @@ export const MobileGameTable = ({
     });
   }
 
+  // Publish timer state to the shell-owned canonical timer rail.
+  // Games provide semantic state only (secondsRemaining, totalSeconds,
+  // paused, actorLabel). The shell owns all rendering, colors, and
+  // mount-frame snapping. There is no game-specific timer presentation.
+  {
+    const diceTimerActive =
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.gamePhase === 'playing' &&
+      !!horsesController.currentTurnPlayerId &&
+      !horsesController.currentTurnPlayer?.is_bot &&
+      horsesController.timeLeft !== null;
+
+    const turnTimerActive =
+      !diceTimerActive &&
+      !!currentPlayer &&
+      isPlayerTurn &&
+      roundStatus === 'betting' &&
+      !hasDecided &&
+      timeLeft !== null &&
+      timeLeft > 0 &&
+      !!maxTime;
+
+    let shellTimerState: Parameters<typeof useShellTimer>[0] = null;
+    if (isPaused) {
+      shellTimerState = {
+        secondsRemaining: 0,
+        totalSeconds: 1,
+        paused: true,
+        identityKey: 'paused',
+      };
+    } else if (diceTimerActive) {
+      shellTimerState = {
+        secondsRemaining: horsesController.timeLeft as number,
+        totalSeconds: horsesController.maxTime ?? 30,
+        actorLabel: horsesController.currentTurnPlayerName ?? null,
+        identityKey: `dice-${horsesController.currentTurnPlayerId}`,
+      };
+    } else if (turnTimerActive) {
+      shellTimerState = {
+        secondsRemaining: timeLeft as number,
+        totalSeconds: maxTime as number,
+        identityKey: `turn-${currentRound}-${currentTurnPosition ?? ''}`,
+      };
+    }
+    useShellTimer(shellTimerState);
+  }
+
+
   // Check if we should be in showdown display mode (hide chipstacks, buck, show larger cards)
   // This is true when: 
   // 1. Any player has exposed cards during active showdown, OR
