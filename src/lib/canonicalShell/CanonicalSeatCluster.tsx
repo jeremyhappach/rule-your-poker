@@ -268,7 +268,7 @@ export function CanonicalSeatCluster({
   // active-player content area (and bottom HUD), NOT by a duplicate
   // chip cluster on the felt. Hoisted into the primitive so no
   // consumer needs to remember to suppress self per-render.
-  if (anchors?.viewerPosition != null && anchors.viewerPosition === position) {
+  if (!allowSelfRender && anchors?.viewerPosition != null && anchors.viewerPosition === position) {
     return null;
   }
 
