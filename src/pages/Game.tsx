@@ -11212,6 +11212,73 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     ? (isViewerSeated ? 'active-canonical' : 'observer-absolute')
     : undefined;
 
+  // Wartime FIX #1 — shell-owned pre-session seat layer.
+  // Build a stable participants array for every pre-session phase
+  // (waiting / dealer_selection / configuring / game_selection /
+  // ante_decision / fresh-waiting-no-family). The shell renders one
+  // PreSessionSeatLayer at a stable React tree position so cluster
+  // identity (providerInstanceId, clusterInstanceId, chipDomNodeId)
+  // survives WaitingTable → NeutralInterstitial → WaitingSlot →
+  // DealerSelection → DealerConfig transitions. Layer unmounts (prop
+  // returns null) the moment gameplay takes ownership — gameplay
+  // chip/seat ownership remains unchanged for Cribbage/Gin/Yahtzee/
+  // Horses/Holm/3-5-7.
+  const _PRE_SESSION_STATUSES = new Set<string>([
+    'waiting',
+    'dealer_selection',
+    'cribbage_dealer_selection',
+    'configuring',
+    'game_selection',
+    'ante_decision',
+  ]);
+  const _isPreSessionPhase =
+    (game.status != null && _PRE_SESSION_STATUSES.has(game.status)) ||
+    _isFreshWaitingNoFamily;
+  const _shellPreSessionRosterKey = (shellAnchorEligible && _isPreSessionPhase)
+    ? players
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .map(p => `${p.position}:${p.id}:${Math.round(p.chips ?? 0)}:${p.status ?? ''}:${p.waiting ? 1 : 0}`)
+        .sort()
+        .join('|')
+    : '';
+  let preSessionParticipants:
+    | Array<{
+        id: string;
+        position: number;
+        chips?: number | null;
+        status?: string;
+        user_id?: string | null;
+        is_bot?: boolean | null;
+        waiting?: boolean | null;
+        sitting_out?: boolean | null;
+        profiles?: { username?: string };
+      }>
+    | null = null;
+  if (shellAnchorEligible && _isPreSessionPhase && gameId) {
+    const cached = __shellPreSessionRosterCache.get(gameId);
+    if (cached && cached.key === _shellPreSessionRosterKey) {
+      preSessionParticipants = cached.participants;
+    } else {
+      preSessionParticipants = players
+        .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
+        .map(p => ({
+          id: p.id,
+          position: p.position,
+          chips: p.chips,
+          status: p.status,
+          user_id: p.user_id,
+          is_bot: p.is_bot,
+          waiting: p.waiting,
+          sitting_out: p.sitting_out,
+          profiles: p.profiles,
+        }));
+      __shellPreSessionRosterCache.set(gameId, {
+        key: _shellPreSessionRosterKey,
+        participants: preSessionParticipants,
+      });
+    }
+  }
+
 
 
   // PR-B.3 instrumentation: hand-1 bootstrap flash diagnostic.
