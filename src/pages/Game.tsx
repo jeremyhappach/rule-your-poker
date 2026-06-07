@@ -2530,6 +2530,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Handle dealer selection state changes - immediate sync for all players
           if (!handled && newData && 'dealer_selection_state' in newData) {
             console.log('[REALTIME] 🎯 DEALER SELECTION STATE CHANGED - IMMEDIATE UPDATE!');
+            // ── WRITER ATTRIBUTION: realtime patch into game.dealer_selection_state ──
+            // This is the indirect writer that feeds useHighCardDealerSelection's
+            // syncedState. When newData.dealer_selection_state is null OR carries
+            // cards:[], the downstream non-host effect mirrors that into the
+            // visible cards array. Captured here at the actual mutation point.
+            try {
+              const prevDss: any = (game as any)?.dealer_selection_state ?? null;
+              const nextDss: any = (newData as any).dealer_selection_state ?? null;
+              const prevCards: any[] = Array.isArray(prevDss?.cards) ? prevDss.cards : [];
+              const nextCards: any[] = Array.isArray(nextDss?.cards) ? nextDss.cards : [];
+              recordHighCardWriter({
+                gameId: gameId ?? '',
+                source: 'setGame-dealer-selection-state-realtime',
+                callsite: 'src/pages/Game.tsx:2534 realtime setGame(dealer_selection_state)',
+                reason: nextDss === null
+                  ? 'realtime delivered dealer_selection_state=null (clears synced cards)'
+                  : `realtime delivered dealer_selection_state with ${nextCards.length} cards`,
+                previousLength: prevCards.length,
+                nextLength: nextCards.length,
+                previousCardIds: prevCards.map((c: any) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                nextCardIds: nextCards.map((c: any) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                renderPath: 'indirect-setGame',
+                surfaceInstanceId: `Game.tsx:setGame.dealer_selection_state:${gameId ?? ''}`,
+                winnerPosition: nextDss?.winnerPosition ?? null,
+                isComplete: nextDss?.isComplete ?? null,
+                extra: {
+                  prevDssNull: prevDss === null,
+                  nextDssNull: nextDss === null,
+                  prevAnnouncement: prevDss?.announcement ?? null,
+                  nextAnnouncement: nextDss?.announcement ?? null,
+                },
+              });
+            } catch (_) { /* trace must never throw */ }
             // Direct optimistic update without full fetch for responsiveness
             setGame(prev => prev ? {
               ...prev,
