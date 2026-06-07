@@ -450,14 +450,8 @@ function CanonicalSeatClusterDeferred(props: {
   const ambient = useSeatAnchorsOptional();
   // CHIP_RUNTIME_CONTINUITY — capture wrapper mount/unmount so we can
   // detect the second-level remount seam introduced by this adapter.
-  const wrapperIdRef = (function useWrapperIdRef() {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { useRef } = require('react') as typeof import('react');
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const r = useRef<string>('');
-    if (!r.current) r.current = `csd-p${props.position}-${++_csd_seq}`;
-    return r;
-  })();
+  const wrapperIdRef = useRef<string>('');
+  if (!wrapperIdRef.current) wrapperIdRef.current = `csd-p${props.position}-${++_csd_seq}`;
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     recordWartime('OWNERSHIP', 'CHIP_RUNTIME_CONTINUITY.deferred-wrapper.mount', {
