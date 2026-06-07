@@ -379,6 +379,8 @@ function WaitingSurfaceBody({
                       isDealer={false}
                       chipValue={`$${formatChipValue(player.chips ?? 0)}`}
                       status={status}
+                      ownerLabel="Shell:CanonicalShellWaitingSurface"
+                      playerId={player.id}
                     />
                   );
                 })}
