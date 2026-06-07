@@ -236,6 +236,19 @@ export function CanonicalSeatCluster({
         chipDomNodeId: null,
         rootRect: null,
       });
+      recordWartime('OWNERSHIP', 'CHIP_RENDER_OWNER', {
+        playerId,
+        position,
+        renderer: 'CanonicalSeatCluster',
+        owner: ownerLabel ?? '(unspecified)',
+        component: ownerLabel ?? '(unspecified)',
+        surface: surfaceLabel,
+        visible: false,
+        providerInstanceId,
+        clusterInstanceId: clusterInstanceIdRef.current,
+        chipDomNodeId: null,
+        phase: 'unmount',
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
