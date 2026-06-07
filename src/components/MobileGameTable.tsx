@@ -5771,8 +5771,13 @@ export const MobileGameTable = ({
         {dealerSelectionCards && dealerSelectionCards.length > 0 && (
           <div
             data-wartime-high-card-container={gameId}
+            data-wartime-renderer-instance={`MobileGameTable:${instanceLabel}:${gameId ?? 'no-game'}`}
+            data-wartime-component="MobileGameTable"
+            data-wartime-render-branch="session-dealer-selection-overlay"
+            data-wartime-surface="HighCardRender"
             className="absolute inset-0 z-50 pointer-events-none"
           >
+
 
             <DealerSelectionVisibilityTracker
               gameId={gameId}
