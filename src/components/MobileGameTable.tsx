@@ -109,6 +109,7 @@ import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
+import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRail";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
