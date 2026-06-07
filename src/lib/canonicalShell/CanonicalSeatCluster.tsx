@@ -132,6 +132,21 @@ export interface CanonicalSeatClusterProps {
   hideChipBubble?: boolean;
   /** Optional override for the cluster wrapper. */
   className?: string;
+  /**
+   * CHIP_RENDER_OWNER attribution — identifies which renderer mounted
+   * this visible chip cluster. Required by Wartime to detect duplicate
+   * shell vs gameplay chip ownership during the pre-game overlap window
+   * (waiting → interstitial → dealer-selection → ante-decision).
+   *
+   * Pass a stable string that names the calling component / branch,
+   * e.g. 'Shell:PreSessionSeatLayer',
+   * 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay',
+   * 'Slot:MobileGameTable.preSessionPill'.
+   */
+  ownerLabel?: string;
+  /** Player id whose chip this cluster represents (for renderer
+   *  ownership attribution). */
+  playerId?: string | null;
 }
 
 export function CanonicalSeatCluster({
