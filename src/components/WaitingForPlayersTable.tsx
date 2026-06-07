@@ -488,7 +488,7 @@ export const WaitingForPlayersTable = ({
               <Button
                 data-start-game-btn
                 onClick={handleStartGame}
-                className="bg-amber-500 hover:bg-amber-400 text-[hsl(220_45%_12%)] border-2 border-amber-300 font-bold shadow-lg shadow-black/40"
+                className="bg-poker-chip-green hover:bg-poker-chip-green/80 text-white border-2 border-poker-chip-green font-bold shadow-lg shadow-black/40"
               >
                 🃏 Start Game
               </Button>
