@@ -2453,7 +2453,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   nextLength: 0,
                   previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
                   nextCardIds: [],
-                  renderPath: isHostRef.current ? 'host' : 'non-host',
+                  renderPath: null,
                   surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
                   winnerPosition: dealerSelectionWinnerPosition ?? null,
                   isComplete: null,
