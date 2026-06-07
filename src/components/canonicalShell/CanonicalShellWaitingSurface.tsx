@@ -40,7 +40,7 @@ import {
   usePublishShellFelt,
   deriveFeltGameKind,
 } from "@/lib/canonicalShell/ShellOwnedFeltHost";
-import { ShellHudChrome } from "@/lib/canonicalShell/ShellHudChrome";
+import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import {
   useShellTabBar,
   type ShellTabId,
@@ -497,12 +497,28 @@ function WaitingSurfaceBody({
         )}
       </div>
 
-      {/* Unified bottom section — same shell-chrome/content-pane order
-          as canonical gameplay tables. */}
-      <div className="flex-1 flex flex-col bg-background min-h-0">
-        <ShellHudChrome />
-
-        <div className="flex-1 overflow-hidden min-h-0">
+      {/* Unified bottom section — canonical 5-row HUD grid.
+          Actions live in row 4 (pane); identity lives in row 5. */}
+      <div className="flex-1 bg-background min-h-0">
+        <ShellHudGrid
+          timer={null}
+          identity={
+            viewerPlayer ? (
+              <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {getDisplayName(players, viewerPlayer, viewerPlayer.profiles?.username ?? "You")}
+                </p>
+                <span className={cn(
+                  "font-bold text-lg tabular-nums",
+                  (viewerPlayer.chips ?? 0) < 0 ? "text-destructive" : "text-poker-gold"
+                )}>
+                  ${formatChipValue(viewerPlayer.chips ?? 0)}
+                </span>
+              </div>
+            ) : null
+          }
+          pane={
+            <>
           {activeTab === "cards" && (
             <div className="h-full px-4 pt-3 pb-5 flex flex-col items-center justify-start gap-4">
               {/* Buttons sit immediately under the tab rail */}
@@ -658,7 +674,9 @@ function WaitingSurfaceBody({
               History will appear once the game starts.
             </div>
           )}
-        </div>
+            </>
+          }
+        />
       </div>
     </div>
   );
