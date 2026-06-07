@@ -2459,9 +2459,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               const isDealerSelectionEntry = newStatus === 'dealer_selection';
               const liveCards = dealerSelectionCardsRef.current;
               const liveWinner = dealerSelectionWinnerPositionRef.current;
+              const liveSyncedCards = dealerSelectionSyncedCardsRef.current;
               const hasInFlightHighCardDraw =
                 isDealerSelectionEntry &&
-                liveCards.length > 0 &&
+                (liveCards.length > 0 || liveSyncedCards.length > 0) &&
                 liveWinner == null;
               const shouldClearCardState =
                 (isFreshSetupStatus || isDealerSelectionEntry) && !hasInFlightHighCardDraw;
@@ -2482,17 +2483,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   source: 'realtime-status-change',
                   callsite: 'src/pages/Game.tsx:~2365',
                   newStatus,
-                  prevLength: dealerSelectionCards.length,
+                  prevLength: liveCards.length,
+                  syncedCardsLen: liveSyncedCards.length,
                   gameId: gameId ?? null,
                 });
                 recordHighCardCardsClear({
                   source: 'realtime-status-change',
                   callsite: 'src/pages/Game.tsx (setDealerSelectionCards([]))',
                   reason: `status transition to ${newStatus}`,
-                  cardsLengthBeforeClear: dealerSelectionCards.length,
+                  cardsLengthBeforeClear: liveCards.length,
                   cardsLengthAfterClear: 0,
                   gameStatus: newStatus,
-                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  winnerPosition: liveWinner ?? null,
                   dealerSelectionComplete: null,
                   currentRoundId: currentRound?.id ?? null,
                   dealerGameId: (game as any)?.current_game_uuid ?? null,
@@ -2503,15 +2505,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   source: 'reset-path',
                   callsite: 'src/pages/Game.tsx realtime-status-change setDealerSelectionCards([])',
                   reason: `realtime status transition to ${newStatus} cleared dealerSelectionCards`,
-                  previousLength: dealerSelectionCards.length,
+                  previousLength: liveCards.length,
                   nextLength: 0,
-                  previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  previousCardIds: liveCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
                   nextCardIds: [],
                   renderPath: null,
                   surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
-                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  winnerPosition: liveWinner ?? null,
                   isComplete: null,
-                  extra: { newStatus, trigger: 'realtime-status-change' },
+                  extra: { newStatus, trigger: 'realtime-status-change', syncedCardsLen: liveSyncedCards.length },
                 });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
@@ -2531,15 +2533,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   source: 'reset-path',
                   callsite: 'src/pages/Game.tsx high-card-clear-guard SKIPPED',
                   reason: 'in-flight high-card draw preserved across dealer_selection transition',
-                  previousLength: dealerSelectionCards.length,
-                  nextLength: dealerSelectionCards.length,
-                  previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
-                  nextCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  previousLength: liveCards.length,
+                  nextLength: liveCards.length,
+                  previousCardIds: liveCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  nextCardIds: liveCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
                   renderPath: null,
                   surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
-                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  winnerPosition: liveWinner ?? null,
                   isComplete: null,
-                  extra: { newStatus, trigger: 'realtime-status-change', guard: 'skip-clear' },
+                  extra: { newStatus, trigger: 'realtime-status-change', guard: 'skip-clear', syncedCardsLen: liveSyncedCards.length },
                 });
               }
               
