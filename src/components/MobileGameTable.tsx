@@ -6673,6 +6673,12 @@ export const MobileGameTable = ({
             const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
 
             if (isPreSessionPhase) {
+              // Wartime FIX #1: when the shell-owned
+              // PreSessionSeatLayer is mounted above (single cluster
+              // set surviving every pre-session phase transition),
+              // skip the local cluster JSX so chip identity does not
+              // remount across WaitingSlot ↔ DealerSelection.
+              if (preSessionSeatOwned) return null;
               // Canonical identity pill — same inputs / palette /
               // primitive as CanonicalShellWaitingSurface. Gameplay-only
               // decorators (turn pulse, leg pips, auto-roll, emoticons,
