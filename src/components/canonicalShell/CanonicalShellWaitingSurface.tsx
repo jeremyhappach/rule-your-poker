@@ -347,49 +347,42 @@ function WaitingSurfaceBody({
                 viewer is represented by the active-player content
                 model, not by a duplicate on-table chipstack of
                 themselves. */}
-            <div
-              data-canonical-shell-waiting-seats=""
-              className="absolute inset-0 z-20 pointer-events-none"
-            >
-              {players.map((player) => {
-                const anchor = byPosition.get(player.position);
-                if (!anchor) return null;
-                // Self-suppression is handled by CanonicalSeatCluster
-                // via the SeatAnchorLayer viewerPosition context.
+            {/* Occupied-seat layer — when the shell-owned
+                PreSessionSeatLayer is mounted above (Wartime FIX #1),
+                we DO NOT render local clusters; a single cluster set
+                lives in the shell and survives every pre-session
+                phase swap. Fallback path (shell layer absent) keeps
+                the previous local cluster JSX so missing-shell
+                wiring is recoverable rather than blank. */}
+            {!preSessionSeatOwned && (
+              <div
+                data-canonical-shell-waiting-seats=""
+                className="absolute inset-0 z-20 pointer-events-none"
+              >
+                {players.map((player) => {
+                  const anchor = byPosition.get(player.position);
+                  if (!anchor) return null;
+                  const actualUsername =
+                    player.profiles?.username ?? (player.is_bot ? "Bot" : "Player");
+                  const label = getDisplayName(players, player, actualUsername);
+                  const status = derivePlayerStatus(player, null, {
+                    hasStayDecision: false,
+                  });
 
-
-                const actualUsername =
-                  player.profiles?.username ?? (player.is_bot ? "Bot" : "Player");
-                const label = getDisplayName(players, player, actualUsername);
-                const status = derivePlayerStatus(player, null, {
-                  // No stay/fold decisions exist in waiting; the
-                  // derivation will resolve to 'waiting' or
-                  // 'sitting_out' / 'active' based on player fields.
-                  hasStayDecision: false,
-                });
-
-                return (
-                  <CanonicalSeatCluster
-                    key={player.id}
-                    slot={anchor.slot}
-                    position={player.position}
-                    name={label}
-                    /* Pre-session: dealer badge intentionally suppressed.
-                       The session-host D was a waiting-only decorator
-                       that broke chip-identity continuity across
-                       WaitingTable → NeutralInterstitial →
-                       DealerSelection (the gameplay path does not paint
-                       a D until a cribbage dealer is committed). Held
-                       null here so the same chip renders identically
-                       across the transition; gameplay surfaces own the
-                       dealer badge once gameplay takes ownership. */
-                    isDealer={false}
-                    chipValue={`$${formatChipValue(player.chips ?? 0)}`}
-                    status={status}
-                  />
-                );
-              })}
-            </div>
+                  return (
+                    <CanonicalSeatCluster
+                      key={player.id}
+                      slot={anchor.slot}
+                      position={player.position}
+                      name={label}
+                      isDealer={false}
+                      chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+                      status={status}
+                    />
+                  );
+                })}
+              </div>
+            )}
 
             {/* Open-seat join affordance layer — observers only.
                 Placement is sourced from the SAME canonical slot
