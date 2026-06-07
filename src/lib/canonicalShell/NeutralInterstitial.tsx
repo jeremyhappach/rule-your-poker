@@ -382,7 +382,8 @@ export function NeutralInterstitial({
 
 
 
-  const seatLayer = hasParticipants ? (
+  const preSessionSeatOwned = usePreSessionSeatOwned();
+  const seatLayer = hasParticipants && !preSessionSeatOwned ? (
     <div
       data-canonical-shell-interstitial-seats=""
       data-projection-mode={projectionMode}
