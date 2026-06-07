@@ -148,25 +148,27 @@ export function ShellTimerRail() {
         ? 'bg-yellow-500'
         : 'bg-green-500';
 
-  const caption = paused
-    ? '⏸ Paused'
-    : state.actorLabel
-      ? `${seconds}s remaining · ${state.actorLabel}`
-      : `${seconds}s remaining`;
-
+  // ROOT-CAUSE FIX (helper-text clipping under timer):
+  // The timer row's fixed height (`--hud-h-timer`) clips any text rendered
+  // below the bar. Per the canonical contract, the timer row owns the bar
+  // ONLY — actor identity belongs to the identity row, and any auxiliary
+  // "helper" copy belongs to the active content pane. The bar's length and
+  // color already encode seconds-remaining and urgency. We therefore drop
+  // the caption entirely instead of leaving a half-clipped line under the
+  // bar. `paused` state is conveyed by the muted fill color.
   return (
     <div
       data-canonical-shell-timer-rail=""
       data-shell-timer-paused={paused ? '1' : '0'}
-      className="w-full px-3"
+      aria-label={paused ? 'Paused' : `${seconds} seconds remaining`}
+      className="w-full h-full flex items-center px-3"
     >
-      <div className="h-4 w-full bg-muted rounded-full overflow-hidden border border-border">
+      <div className="h-3 w-full bg-muted rounded-full overflow-hidden border border-border">
         <div
           className={`h-full ${mounted ? 'transition-[width] duration-1000 ease-linear' : ''} ${fillClass}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-center text-muted-foreground mt-0.5">{caption}</p>
     </div>
   );
 }
