@@ -2055,6 +2055,8 @@ export function YahtzeeGameTable({
                 isDealer={dealerPosition === player.position}
                 chipValue={`$${formatChipValue(Math.round(player.chips))}`}
                 scoreLine={`Score: ${total}`}
+                ownerLabel="Gameplay:YahtzeeGameTable.opponentOverlay"
+                playerId={player.id}
               />
             );
           });

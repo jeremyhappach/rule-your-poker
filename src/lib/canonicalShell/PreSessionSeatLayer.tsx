@@ -110,6 +110,8 @@ export function PreSessionSeatLayer({
             chipValue={`$${formatChipValue(player.chips ?? 0)}`}
             status={status}
             isDealer={false}
+            ownerLabel="Shell:PreSessionSeatLayer"
+            playerId={player.id}
           />
         );
       })}

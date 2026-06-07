@@ -58,6 +58,7 @@ import {
   noteChipContinuityMount,
   recordChipRuntimeContinuity,
 } from '@/lib/wartimeDebug/surfaces';
+import { recordWartime } from '@/lib/wartimeDebug/core';
 
 let _csc_seq = 0;
 
@@ -132,6 +133,21 @@ export interface CanonicalSeatClusterProps {
   hideChipBubble?: boolean;
   /** Optional override for the cluster wrapper. */
   className?: string;
+  /**
+   * CHIP_RENDER_OWNER attribution — identifies which renderer mounted
+   * this visible chip cluster. Required by Wartime to detect duplicate
+   * shell vs gameplay chip ownership during the pre-game overlap window
+   * (waiting → interstitial → dealer-selection → ante-decision).
+   *
+   * Pass a stable string that names the calling component / branch,
+   * e.g. 'Shell:PreSessionSeatLayer',
+   * 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay',
+   * 'Slot:MobileGameTable.preSessionPill'.
+   */
+  ownerLabel?: string;
+  /** Player id whose chip this cluster represents (for renderer
+   *  ownership attribution). */
+  playerId?: string | null;
 }
 
 export function CanonicalSeatCluster({
@@ -151,6 +167,8 @@ export function CanonicalSeatCluster({
   raisePosition = false,
   hideChipBubble = false,
   className,
+  ownerLabel,
+  playerId = null,
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
@@ -188,6 +206,24 @@ export function CanonicalSeatCluster({
     };
     recordChipRuntimeContinuity(payload);
     noteChipContinuityMount(payload);
+
+    // CHIP_RENDER_OWNER — emitted ONCE per visible chip cluster mount.
+    // Pairs with the unmount below. Two CHIP_RENDER_OWNER events with
+    // the same (playerId, position) and visible=true and no unmount
+    // between them = duplicate renderer (Wartime defect).
+    recordWartime('OWNERSHIP', 'CHIP_RENDER_OWNER', {
+      playerId,
+      position,
+      renderer: 'CanonicalSeatCluster',
+      owner: ownerLabel ?? '(unspecified)',
+      component: ownerLabel ?? '(unspecified)',
+      surface: surfaceLabel,
+      visible: true,
+      providerInstanceId,
+      clusterInstanceId: clusterInstanceIdRef.current,
+      chipDomNodeId: chipEl ? `dom-chip-${clusterInstanceIdRef.current}` : null,
+      phase: 'mount',
+    });
     return () => {
       recordChipRuntimeContinuity({
         phase: 'unmount',
@@ -199,6 +235,19 @@ export function CanonicalSeatCluster({
         rootDomNodeId: null,
         chipDomNodeId: null,
         rootRect: null,
+      });
+      recordWartime('OWNERSHIP', 'CHIP_RENDER_OWNER', {
+        playerId,
+        position,
+        renderer: 'CanonicalSeatCluster',
+        owner: ownerLabel ?? '(unspecified)',
+        component: ownerLabel ?? '(unspecified)',
+        surface: surfaceLabel,
+        visible: false,
+        providerInstanceId,
+        clusterInstanceId: clusterInstanceIdRef.current,
+        chipDomNodeId: null,
+        phase: 'unmount',
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -2403,6 +2403,8 @@ export const GinRummyGameTable = ({
                       name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
                       isDealer={isCribDealer(seatId)}
                       chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                      ownerLabel="Gameplay:GinRummyGameTable.opponentOverlay"
+                      playerId={seatId}
                     >
                       {showCardBacks && seatState && (
                         <div className="flex -space-x-3 mt-1">

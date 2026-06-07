@@ -6704,6 +6704,8 @@ export const MobileGameTable = ({
                   status={status}
                   isDealer={false}
                   className={playerSlotZIndex}
+                  ownerLabel="Slot:MobileGameTable.preSessionPill"
+                  playerId={player.id}
                 />
               );
             }
@@ -6718,6 +6720,8 @@ export const MobileGameTable = ({
                 hideChipBubble
                 raisePosition={raise}
                 className={playerSlotZIndex}
+                ownerLabel="Slot:MobileGameTable.gameplayChipWrapper"
+                playerId={player.id}
               >
                 {renderPlayerChip(player, slot)}
               </CanonicalSeatCluster>
