@@ -112,7 +112,7 @@ interface GameDefaults {
   reveal_at_showdown: boolean;
 }
 
-export const DealerGameSetup = ({
+const DealerGameSetupInner = ({
   gameId,
   dealerUsername,
   isBot,
