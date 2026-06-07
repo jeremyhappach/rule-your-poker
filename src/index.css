@@ -80,7 +80,7 @@ All colors MUST be HSL.
        on small phones (393×587). Reserve at minimum 16px PLUS the iOS
        safe-area inset so the identity row always has visible slack
        above the viewport edge. */
-    --shell-bottom-slack: max(env(safe-area-inset-bottom, 0px), 48px);
+    --shell-bottom-slack: max(env(safe-area-inset-bottom, 0px), 16px);
 
     /* Derived shell heights. */
     --shell-header-h: max(var(--shell-min-header), calc(var(--shell-r-header) * 100dvh));
