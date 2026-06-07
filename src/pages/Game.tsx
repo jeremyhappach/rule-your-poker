@@ -47,7 +47,7 @@ import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/Canoni
 import { useHighCardDealerSelection, type DealerSelectionCard, type DealerSelectionState } from "@/hooks/useHighCardDealerSelection";
 import { recordDealerSelectionDiag, setDealerSelectionDiagContext } from "@/lib/dealerSelectionDiag";
 import { recordWaitingLifecycle, recordWaitingLifecycleIfChanged, WaitingFlightMarker } from "@/lib/canonicalShell/waitingTableFlight";
-import { recordHighCardCardsClear, recordHighCardFirstDisappearance } from "@/lib/wartimeDebug/surfaces";
+import { recordHighCardCardsClear, recordHighCardFirstDisappearance, recordHighCardWriter } from "@/lib/wartimeDebug/surfaces";
 
 
 /**
@@ -2444,6 +2444,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   dealerGameId: (game as any)?.current_game_uuid ?? null,
                   gameId: gameId ?? null,
                 });
+                recordHighCardWriter({
+                  gameId: gameId ?? '',
+                  source: 'reset-path',
+                  callsite: 'src/pages/Game.tsx:2447 realtime-status-change setDealerSelectionCards([])',
+                  reason: `realtime status transition to ${newStatus} cleared dealerSelectionCards`,
+                  previousLength: dealerSelectionCards.length,
+                  nextLength: 0,
+                  previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  nextCardIds: [],
+                  renderPath: null,
+                  surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
+                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  isComplete: null,
+                  extra: { newStatus, trigger: 'realtime-status-change' },
+                });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
 
@@ -2515,6 +2530,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Handle dealer selection state changes - immediate sync for all players
           if (!handled && newData && 'dealer_selection_state' in newData) {
             console.log('[REALTIME] 🎯 DEALER SELECTION STATE CHANGED - IMMEDIATE UPDATE!');
+            // ── WRITER ATTRIBUTION: realtime patch into game.dealer_selection_state ──
+            // This is the indirect writer that feeds useHighCardDealerSelection's
+            // syncedState. When newData.dealer_selection_state is null OR carries
+            // cards:[], the downstream non-host effect mirrors that into the
+            // visible cards array. Captured here at the actual mutation point.
+            try {
+              const prevDss: any = (game as any)?.dealer_selection_state ?? null;
+              const nextDss: any = (newData as any).dealer_selection_state ?? null;
+              const prevCards: any[] = Array.isArray(prevDss?.cards) ? prevDss.cards : [];
+              const nextCards: any[] = Array.isArray(nextDss?.cards) ? nextDss.cards : [];
+              recordHighCardWriter({
+                gameId: gameId ?? '',
+                source: 'setGame-dealer-selection-state-realtime',
+                callsite: 'src/pages/Game.tsx:2534 realtime setGame(dealer_selection_state)',
+                reason: nextDss === null
+                  ? 'realtime delivered dealer_selection_state=null (clears synced cards)'
+                  : `realtime delivered dealer_selection_state with ${nextCards.length} cards`,
+                previousLength: prevCards.length,
+                nextLength: nextCards.length,
+                previousCardIds: prevCards.map((c: any) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                nextCardIds: nextCards.map((c: any) => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                renderPath: 'indirect-setGame',
+                surfaceInstanceId: `Game.tsx:setGame.dealer_selection_state:${gameId ?? ''}`,
+                winnerPosition: nextDss?.winnerPosition ?? null,
+                isComplete: nextDss?.isComplete ?? null,
+                extra: {
+                  prevDssNull: prevDss === null,
+                  nextDssNull: nextDss === null,
+                  prevAnnouncement: prevDss?.announcement ?? null,
+                  nextAnnouncement: nextDss?.announcement ?? null,
+                },
+              });
+            } catch (_) { /* trace must never throw */ }
             // Direct optimistic update without full fetch for responsiveness
             setGame(prev => prev ? {
               ...prev,
@@ -8181,6 +8229,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       dealerGameId: (game as any)?.current_game_uuid ?? null,
       gameId: gameId ?? null,
     });
+    recordHighCardWriter({
+      gameId: gameId ?? '',
+      source: 'cribbage-complete-handoff',
+      callsite: 'src/pages/Game.tsx:8232 handleCribbageDealerSelectionComplete setDealerSelectionCards([])',
+      reason: 'cribbage dealer selection complete → host clears session-level cards before persisting dealer + creating round 1',
+      previousLength: dealerSelectionCards.length,
+      nextLength: 0,
+      previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+      nextCardIds: [],
+      renderPath: 'host',
+      surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
+      winnerPosition: dealerPosition,
+      isComplete: true,
+      extra: { trigger: 'handleCribbageDealerSelectionComplete', dealerPosition },
+    });
     setDealerSelectionCards([]);
     setDealerSelectionWinnerPosition(null);
 
@@ -8622,6 +8685,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               currentRoundId: currentRound?.id ?? null,
               dealerGameId: (game as any)?.current_game_uuid ?? null,
               gameId: gameId ?? null,
+            });
+            recordHighCardWriter({
+              gameId: gameId ?? '',
+              source: 'ante-to-cribbage-transition',
+              callsite: 'src/pages/Game.tsx:8689 handleAllAnteDecisionsIn setDealerSelectionCards([])',
+              reason: 'ante decisions complete → clearing session-level dealer-selection visuals before entering dealer-game scope',
+              previousLength: dealerSelectionCards.length,
+              nextLength: 0,
+              previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+              nextCardIds: [],
+              renderPath: 'host',
+              surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
+              winnerPosition: dealerSelectionWinnerPosition ?? null,
+              isComplete: null,
+              extra: { trigger: 'handleAllAnteDecisionsIn', freshGameStatus: freshGame?.status ?? null },
             });
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);

@@ -7,7 +7,7 @@
  * slot-entered-neutral / slot-left-neutral telemetry.
  */
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { recordShellEvent } from './diagnostics';
 import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
@@ -440,6 +440,7 @@ export function NeutralInterstitial({
  * own SeatAnchorLayer host. Identical projection semantics to
  * CanonicalShellWaitingSurface.
  */
+let _csd_seq = 0;
 function CanonicalSeatClusterDeferred(props: {
   position: number;
   name: string;
@@ -447,6 +448,28 @@ function CanonicalSeatClusterDeferred(props: {
   status: ReturnType<typeof derivePlayerStatus>;
 }) {
   const ambient = useSeatAnchorsOptional();
+  // CHIP_RUNTIME_CONTINUITY — capture wrapper mount/unmount so we can
+  // detect the second-level remount seam introduced by this adapter.
+  const wrapperIdRef = useRef<string>('');
+  if (!wrapperIdRef.current) wrapperIdRef.current = `csd-p${props.position}-${++_csd_seq}`;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    recordWartime('OWNERSHIP', 'CHIP_RUNTIME_CONTINUITY.deferred-wrapper.mount', {
+      position: props.position,
+      deferredWrapperInstanceId: wrapperIdRef.current,
+      providerInstanceId: ambient?.providerInstanceId ?? null,
+      surface: 'NeutralInterstitial.CanonicalSeatClusterDeferred',
+    });
+    return () => {
+      recordWartime('OWNERSHIP', 'CHIP_RUNTIME_CONTINUITY.deferred-wrapper.unmount', {
+        position: props.position,
+        deferredWrapperInstanceId: wrapperIdRef.current,
+        providerInstanceId: ambient?.providerInstanceId ?? null,
+        surface: 'NeutralInterstitial.CanonicalSeatClusterDeferred',
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const byPosition = ambient?.byPosition;
   if (!byPosition) return null;
 

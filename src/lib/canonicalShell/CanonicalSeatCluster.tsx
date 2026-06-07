@@ -40,7 +40,7 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import {
   getCanonicalSlotPlacement,
@@ -54,6 +54,12 @@ import {
   getParticipantChipFgClass,
   type ParticipantStatus,
 } from './participantStatus';
+import {
+  noteChipContinuityMount,
+  recordChipRuntimeContinuity,
+} from '@/lib/wartimeDebug/surfaces';
+
+let _csc_seq = 0;
 
 export interface CanonicalSeatClusterProps {
   /** Canonical slot this cluster anchors to. Null → not rendered. */
@@ -146,13 +152,64 @@ export function CanonicalSeatCluster({
   hideChipBubble = false,
   className,
 }: CanonicalSeatClusterProps) {
+  // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
+  // mount/unmount events fire regardless of slot/self-suppression
+  // outcomes. The conditional returns below early-out the render but
+  // leave hook order stable.
+  const anchors = useSeatAnchorsOptional();
+  const clusterInstanceIdRef = useRef<string>('');
+  if (!clusterInstanceIdRef.current) {
+    clusterInstanceIdRef.current = `csc-p${position}-${++_csc_seq}`;
+  }
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const providerInstanceId = anchors?.providerInstanceId ?? null;
+  const surfaceLabel =
+    anchors?.projectionMode === 'observer-absolute'
+      ? 'observer-absolute'
+      : (anchors?.viewerPosition != null ? 'active-canonical' : 'unscoped');
+  useEffect(() => {
+    if (slot === null || slot === undefined) return;
+    if (anchors?.viewerPosition != null && anchors.viewerPosition === position) return;
+    const rootEl = rootRef.current;
+    const chipEl = typeof document !== 'undefined'
+      ? (document.querySelector(`[data-chip-center="${position}"]`) as HTMLElement | null)
+      : null;
+    const rect = rootEl?.getBoundingClientRect();
+    const payload = {
+      phase: 'mount' as const,
+      surface: surfaceLabel,
+      position,
+      playerId: null,
+      providerInstanceId,
+      clusterInstanceId: clusterInstanceIdRef.current,
+      rootDomNodeId: rootEl ? `dom-csc-${clusterInstanceIdRef.current}` : null,
+      chipDomNodeId: chipEl ? `dom-chip-${clusterInstanceIdRef.current}` : null,
+      rootRect: rect ? { x: Math.round(rect.x), y: Math.round(rect.y), w: Math.round(rect.width), h: Math.round(rect.height) } : null,
+    };
+    recordChipRuntimeContinuity(payload);
+    noteChipContinuityMount(payload);
+    return () => {
+      recordChipRuntimeContinuity({
+        phase: 'unmount',
+        surface: surfaceLabel,
+        position,
+        playerId: null,
+        providerInstanceId,
+        clusterInstanceId: clusterInstanceIdRef.current,
+        rootDomNodeId: null,
+        chipDomNodeId: null,
+        rootRect: null,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (slot === null || slot === undefined) return null;
 
   // Canonical self-suppression: the local viewer is represented by the
   // active-player content area (and bottom HUD), NOT by a duplicate
   // chip cluster on the felt. Hoisted into the primitive so no
   // consumer needs to remember to suppress self per-render.
-  const anchors = useSeatAnchorsOptional();
   if (anchors?.viewerPosition != null && anchors.viewerPosition === position) {
     return null;
   }
@@ -197,7 +254,10 @@ export function CanonicalSeatCluster({
 
   return (
     <div
+      ref={rootRef}
       data-canonical-seat-cluster=""
+      data-cluster-instance={clusterInstanceIdRef.current}
+      data-provider-instance={providerInstanceId ?? ''}
       data-seat-position={position}
       data-seat-slot={slot}
       data-seat-status={status}

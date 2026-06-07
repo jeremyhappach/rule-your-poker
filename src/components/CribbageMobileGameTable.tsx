@@ -822,6 +822,14 @@ export const CribbageMobileGameTable = ({
     if (typeof window === 'undefined') return;
     const raf = window.requestAnimationFrame(() => {
       for (const player of players) {
+        // Read providerInstanceId from the rendered cluster root so the
+        // cross-surface diff (Waiting → Interstitial → DealerSelection)
+        // can prove provider continuity instead of always reporting null.
+        const clusterEl = document.querySelector(
+          `[data-canonical-seat-cluster][data-seat-position="${player.position}"]`,
+        ) as HTMLElement | null;
+        const providerInstanceId =
+          clusterEl?.getAttribute('data-provider-instance') || null;
         recordPlayerVisualSnapshot({
           surface: 'DealerSelection',
           playerId: player.id,
@@ -830,7 +838,7 @@ export const CribbageMobileGameTable = ({
           logicalSeat: player.position,
           renderedSeatSlot: null,
           seatAnchorSource: 'CribbageMobileGameTable.SeatAnchorLayer (LOCAL)',
-          anchorProviderInstanceId: null,
+          anchorProviderInstanceId: providerInstanceId,
           chipAnchorSource: 'CanonicalSeatCluster (slot-derived)',
           chipRenderer: 'CanonicalSeatCluster',
           chipStyleSource: 'derivePlayerStatus → status palette',
