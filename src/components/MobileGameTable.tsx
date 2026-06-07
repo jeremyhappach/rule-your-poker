@@ -7032,21 +7032,16 @@ export const MobileGameTable = ({
               </>
             }
           />
-        ) : (
-          <>
-        {/* PHASE B (revised) — CANONICAL TIMER OWNERSHIP.
-            The timer row is owned by the shell. This surface publishes
-            timer state via `useShellTimer` above; the shell renders the
-            single canonical timer presentation here. There are no
-            game-specific timer visuals (no clock chip, no paused pill,
-            no local TimerBar). Row geometry collapses to 0 when the
-            shell has no published state. */}
-        <ShellAnnouncementRail />
-        {(() => {
-          // Row 2 geometry is driven entirely by whether the shell
-          // currently has timer state published. We check the same
-          // conditions used to publish above; renderer itself returns
-          // null when no state is published.
+        ) : (() => {
+          /* PHASE C — CANONICAL ROW-4 PANE OWNERSHIP.
+             Gameplay surface now publishes timer / pane / identity through
+             ShellHudGrid. Row 1 (announcement) and row 3 (tabs) are owned
+             entirely by the shell. The pane slot contains the previously
+             free-flowing tab content (cards / observer / chat / lobby /
+             history) wrapped as a single node. Identity is the canonical
+             row-5 owner. No game-specific timer visuals, no free-flowing
+             content below ShellTabBar. Containment / scaling issues exposed
+             by this migration are deferred to a subsequent phase. */
           const hasTimer = !!isPaused || (
             diceGameplayUiActive &&
             horsesController.enabled &&
@@ -7063,491 +7058,414 @@ export const MobileGameTable = ({
             timeLeft > 0 &&
             !!maxTime
           );
-          return (
-            <div
-              data-hud-row="timer"
-              data-hud-row-owner="Shell:ShellTimerRail"
-              data-hud-timer-present={hasTimer ? '1' : '0'}
-              style={{
-                height: hasTimer ? 'var(--hud-h-timer)' : '0px',
-                flex: hasTimer ? '0 0 var(--hud-h-timer)' : '0 0 0px',
-                overflow: 'hidden',
-                minHeight: 0,
-                position: 'relative',
-              }}
-              className="w-full flex items-center justify-center"
-            >
-              <ShellTimerRail />
-            </div>
-          );
-        })()}
 
+          const paneContent = (
+            <>
+              {/* WAITING-PHASE ACTIVE PANE — dead in this branch (handled
+                  by the isWaitingPhase ShellHudGrid above) but preserved
+                  for safety during gameplay/waiting straddle frames. */}
+              {isWaitingPhase && activeTab === 'cards' && (
+                <div className="px-4 py-6 h-full flex flex-col items-center justify-center gap-4">
+                  {waitingActivePaneContent}
+                </div>
+              )}
 
-        <ShellTabBar />
+              {/* CARDS TAB - Player cards, buttons */}
+              {!isWaitingPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
+                diceGameplayUiActive ? (
+                  <HorsesMobileCardsTab
+                    currentUserPlayer={currentPlayer as any}
+                    horses={horsesController}
+                    gameType={gameType}
+                    onEmoticonSelect={handleQuickEmoticon}
+                    isEmoticonSending={isEmoticonSending}
+                    emoticonOverlays={emoticonOverlays}
+                    winnerLegsFlashTrigger={winnerLegsFlashTrigger}
+                    winnerPotFlashTrigger={winnerPotFlashTrigger}
+                    onAutoFoldChange={onAutoFoldChange ? (autoFold) => onAutoFoldChange(currentPlayer.id, autoFold) : undefined}
+                    pendingAutoRollOff={pendingAutoRollOff}
+                  />
+                ) : (
+                  <div className="px-2 flex flex-col h-full">
+                  {(() => {
+                    const isWinner357InAnimation = gameType !== 'holm-game' &&
+                      threeFiveSevenWinnerId === currentPlayer?.id &&
+                      threeFiveSevenWinPhase !== 'idle';
 
-        {/* WAITING-PHASE ACTIVE PANE — gameplay actions during the
-            waiting table live here, not on the felt. Owners pass
-            Invite / Add Bot / Start Game (dealer) or Share (non-dealer)
-            via `waitingActivePaneContent`. */}
-        {isWaitingPhase && activeTab === 'cards' && (
-          <div className="px-4 py-6 flex-1 flex flex-col items-center justify-center gap-4">
-            {waitingActivePaneContent}
-          </div>
-        )}
+                    const currentPlayerHandScaleClass =
+                      gameType !== "holm-game"
+                        ? (currentRound === 1
+                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]")
+                            : currentRound === 2
+                              ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]")
+                              : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]"))
+                        : (isTablet || isDesktop ? "scale-[2.4]" : "scale-[2.3]");
 
-        {/* CARDS TAB - Player cards, buttons, name, chipstack */}
-        {/* PR-B.2: suppress the gameplay cards tab entirely during dealer
-            setup / interstitial phases. Previously the previous hand's
-            currentPlayerCards remained mounted in the cards tab during
-            dealer-game rollover (Holm cards visible on the next-game
-            setup screen). Gameplay artifacts must not leak into pre-game. */}
-        {!isWaitingPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
-          diceGameplayUiActive ? (
-            <HorsesMobileCardsTab
-              currentUserPlayer={currentPlayer as any}
-              horses={horsesController}
-              gameType={gameType}
-              onEmoticonSelect={handleQuickEmoticon}
-              isEmoticonSending={isEmoticonSending}
-              emoticonOverlays={emoticonOverlays}
-              winnerLegsFlashTrigger={winnerLegsFlashTrigger}
-              winnerPotFlashTrigger={winnerPotFlashTrigger}
-              onAutoFoldChange={onAutoFoldChange ? (autoFold) => onAutoFoldChange(currentPlayer.id, autoFold) : undefined}
-              pendingAutoRollOff={pendingAutoRollOff}
-            />
-          ) : (
-            <div className="px-2 flex flex-col flex-1">
-            {/* Cards display - FIRST (above action buttons) */}
-            {(() => {
-              const isWinner357InAnimation = gameType !== 'holm-game' && 
-                threeFiveSevenWinnerId === currentPlayer?.id && 
-                threeFiveSevenWinPhase !== 'idle';
+                    const currentPlayerHandReserveClass =
+                      gameType === "holm-game"
+                        ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]")
+                        : (currentRound === 1
+                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]")
+                            : currentRound === 2
+                              ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
+                              : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
 
-              // Card scaling - maximize use of vertical space
-              // TABLET: Much bigger 357 R1 cards and all cards scaled up
-              const currentPlayerHandScaleClass =
-                gameType !== "holm-game"
-                  ? (currentRound === 1
-                      ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]") // MUCH bigger R1 on tablet
-                      : currentRound === 2
-                        ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]") // Bigger R2 on tablet
-                        : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]")) // Bigger R3 on tablet
-                  : (isTablet || isDesktop ? "scale-[2.4]" : "scale-[2.3]"); // Holm cards on tablet - smaller to match 357 proportions
+                    const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
+                      ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
+                      : [];
+                    const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
 
-              // Reserve space - must fully contain scaled cards so they don't overflow on tablet
-              // TABLET: Adjusted card height reserve for smaller scale
-              const currentPlayerHandReserveClass =
-                gameType === "holm-game"
-                  ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]") // Holm tablet - smaller reserve for smaller scale
-                  : (currentRound === 1
-                      ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]") // Taller for tablet R1
-                      : currentRound === 2
-                        ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]") // Taller for tablet R2
-                        : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]")); // Taller for tablet R3
-
-              // Check if current player has dealer selection cards
-              const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
-                ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
-                : [];
-              const showDealerSelectionCards = currentPlayerDealerCards.length > 0;
-
-              return (
-                <div className={cn(
-                  "flex flex-col items-center",
-                  gameType !== "holm-game" ? "gap-0" : "gap-0",
-                )}>
-                  {/* Dealer Selection Cards for current player */}
-                  {showDealerSelectionCards ? (
-                    <div className="flex flex-col items-center gap-2 py-4">
-                      <div className="flex gap-2">
-                        {currentPlayerDealerCards.map((cardData, idx) => (
-                          <div 
-                            key={`dealer-card-${cardData.roundNumber}-${idx}`}
-                            className="transition-all duration-500"
-                            style={{
-                              opacity: cardData.isRevealed ? 1 : 0.9,
-                              transform: cardData.isRevealed 
-                                ? (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)')
-                                : 'scale(1)',
-                            }}
-                          >
-                            <PlayingCard
-                              card={cardData.card as CardType}
-                              isHidden={!cardData.isRevealed}
-                              size="xl"
-                              isHighlighted={false}
-                              isDimmed={cardData.isDimmed && cardData.isRevealed}
-                              className={cn(
-                                "shadow-2xl transition-all duration-500",
-                                cardData.isDimmed && cardData.isRevealed && "opacity-50"
-                              )}
-                            />
+                    return (
+                      <div className={cn(
+                        "flex flex-col items-center",
+                        gameType !== "holm-game" ? "gap-0" : "gap-0",
+                      )}>
+                        {showDealerSelectionCards ? (
+                          <div className="flex flex-col items-center gap-2 py-4">
+                            <div className="flex gap-2">
+                              {currentPlayerDealerCards.map((cardData, idx) => (
+                                <div
+                                  key={`dealer-card-${cardData.roundNumber}-${idx}`}
+                                  className="transition-all duration-500"
+                                  style={{
+                                    opacity: cardData.isRevealed ? 1 : 0.9,
+                                    transform: cardData.isRevealed
+                                      ? (cardData.isDimmed ? 'scale(0.95)' : 'scale(1)')
+                                      : 'scale(1)',
+                                  }}
+                                >
+                                  <PlayingCard
+                                    card={cardData.card as CardType}
+                                    isHidden={!cardData.isRevealed}
+                                    size="xl"
+                                    isHighlighted={false}
+                                    isDimmed={cardData.isDimmed && cardData.isRevealed}
+                                    className={cn(
+                                      "shadow-2xl transition-all duration-500",
+                                      cardData.isDimmed && cardData.isRevealed && "opacity-50"
+                                    )}
+                                  />
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                        ) : null}
 
-                  {/* Show cards button for 3-5-7 winner */}
-                  {isWinner357InAnimation ? (
-                    (() => {
-                      const isFinalRound = currentRound === 3;
-                      return !winner357ShowCards ? (
-                        <Button 
-                          variant="outline"
-                          size={isFinalRound ? "lg" : "default"}
-                          onClick={() => onWinner357ShowCards?.()}
+                        {isWinner357InAnimation ? (
+                          (() => {
+                            const isFinalRound = currentRound === 3;
+                            return !winner357ShowCards ? (
+                              <Button
+                                variant="outline"
+                                size={isFinalRound ? "lg" : "default"}
+                                onClick={() => onWinner357ShowCards?.()}
+                                className={cn(
+                                  "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
+                                  isFinalRound ? "px-6 py-3 text-base" : "px-4 py-2 text-sm",
+                                )}
+                              >
+                                Show Cards
+                              </Button>
+                            ) : (
+                              <div className="text-sm text-green-400 font-medium">
+                                {isFinalRound ? 'Cards Shown' : 'Cards Tabled'}
+                              </div>
+                            );
+                          })()
+                        ) : null}
+
+                        {isWinner357InAnimation ? (
+                          (() => {
+                            if (currentRound === 3) return null;
+                            return !winner357ShowCards && currentPlayerCards.length > 0 ? (
+                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                                <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
+                                  <PlayerHand
+                                    cards={currentPlayerCards}
+                                    isHidden={false}
+                                    gameType={gameType}
+                                    currentRound={currentRound}
+                                    showSeparated={currentRound === 3}
+                                  />
+                                </div>
+                              </div>
+                            ) : null;
+                          })()
+                        ) : isCurrentPlayerSoloVsChucky ? (
+                          <div className="flex items-center justify-center py-4">
+                            <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
+                          </div>
+                        ) : currentPlayerCards.length > 0 ? (
+                          <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")}>
+                            <div
+                              className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                            >
+                              <PlayerHand
+                                cards={currentPlayerCards}
+                                isHidden={false}
+                                highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                                kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                                hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                                gameType={gameType}
+                                currentRound={currentRound}
+                                showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
+                                tightOverlap={isHolmMultiPlayerShowdown}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                            <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
+                              <PlayerHand
+                                cards={[]}
+                                isHidden={true}
+                                expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <div className={cn(
+                    "flex items-center justify-center",
+                    isTablet ? "min-h-[56px] mt-0 mb-1" : "min-h-[36px] mt-0 mb-1"
+                  )}>
+                    {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
+                      <label className={cn(
+                        "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",
+                        isTablet ? "px-6 py-3" : "px-4 py-2"
+                      )}>
+                        <input
+                          type="checkbox"
+                          checked={true}
+                          onChange={(e) => {
+                            if (!e.target.checked && onAutoFoldChange) {
+                              onAutoFoldChange(currentPlayer.id, false);
+                            }
+                          }}
                           className={cn(
-                            "bg-green-600 hover:bg-green-700 text-white border-green-500 font-bold",
-                            isFinalRound ? "px-6 py-3 text-base" : "px-4 py-2 text-sm",
+                            "rounded border-2 border-border accent-primary",
+                            isTablet ? "w-7 h-7" : "w-5 h-5"
+                          )}
+                        />
+                        <span className={cn(
+                          "font-medium text-foreground",
+                          isTablet ? "text-lg" : "text-sm"
+                        )}>Auto-fold (will sit out next hand)</span>
+                      </label>
+                    ) : canDecide && !currentPlayer.auto_fold ? (
+                      <div className={cn("flex justify-center", isTablet ? "gap-4" : "gap-2")}>
+                        <Button
+                          variant="destructive"
+                          size="default"
+                          onClick={onFold}
+                          className={cn(
+                            "font-bold",
+                            isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
                           )}
                         >
-                          Show Cards
+                          {gameType === 'holm-game' ? 'Fold' : 'Drop'}
                         </Button>
-                      ) : (
-                        <div className="text-sm text-green-400 font-medium">
-                          {isFinalRound ? 'Cards Shown' : 'Cards Tabled'}
-                        </div>
-                      );
-                    })()
-                  ) : null}
-
-                  {/* Cards */}
-                  {isWinner357InAnimation ? (
-                    (() => {
-                      // Round 3 winner doesn't show cards here; they're tabled on the felt.
-                      if (currentRound === 3) return null;
-
-                      return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                        <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
-                          <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
-                            <PlayerHand 
-                              cards={currentPlayerCards} 
-                              isHidden={false} 
-                              gameType={gameType}
-                              currentRound={currentRound}
-                              showSeparated={currentRound === 3}
-                            />
-                          </div>
-                        </div>
-                      ) : null;
-                    })()
-                  ) : isCurrentPlayerSoloVsChucky ? (
-                    // Cards are tabled on the felt - show message instead
-                    <div className="flex items-center justify-center py-4">
-                      <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
-                    </div>
-                  ) : currentPlayerCards.length > 0 ? (
-                    <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")}>
-                      <div
-                        className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
-                      >
-                        <PlayerHand 
-                          cards={currentPlayerCards} 
-                          isHidden={false} 
-                          highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                          kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                          hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                          gameType={gameType}
-                          currentRound={currentRound}
-                          showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
-                          tightOverlap={isHolmMultiPlayerShowdown}
-                        />
+                        <Button
+                          size="default"
+                          onClick={onStay}
+                          className={cn(
+                            "bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold",
+                            isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
+                          )}
+                        >
+                          Stay
+                        </Button>
                       </div>
+                    ) : currentPlayer.sitting_out && !currentPlayer.waiting ? (
+                      <RejoinNextHandButton playerId={currentPlayer.id} />
+                    ) : hasDecided ? (
+                      <Badge
+                        className={cn(
+                          "text-sm px-3 py-0.5 border-transparent",
+                          (pendingDecision || currentPlayer.current_decision) === "stay"
+                            ? "bg-poker-chip-green text-poker-chip-white"
+                            : "bg-poker-chip-red text-poker-chip-white",
+                        )}
+                      >
+                        ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
+                      </Badge>
+                    ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
+                      <div className="flex items-center justify-center gap-6">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={holmPreFold}
+                            onChange={(e) => {
+                              onHolmPreFoldChange?.(e.target.checked);
+                              if (e.target.checked) onHolmPreStayChange?.(false);
+                            }}
+                            className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
+                          />
+                          <span className="text-sm font-medium text-red-500">Fold</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={holmPreStay}
+                            onChange={(e) => {
+                              onHolmPreStayChange?.(e.target.checked);
+                              if (e.target.checked) onHolmPreFoldChange?.(false);
+                            }}
+                            className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
+                          />
+                          <span className="text-sm font-medium text-green-500">Stay</span>
+                        </label>
+                      </div>
+                    ) : currentPlayerCards.length === 0 && roundStatus === 'betting' ? (
+                      <div className="flex gap-2 justify-center opacity-0 pointer-events-none">
+                        <Button variant="destructive" size="default" className="flex-1 max-w-[120px] text-sm font-bold h-9">
+                          {gameType === 'holm-game' ? 'Fold' : 'Drop'}
+                        </Button>
+                        <Button size="default" className="flex-1 max-w-[120px] bg-poker-chip-green text-white text-sm font-bold h-9">
+                          Stay
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <style>{`
+                    @keyframes fadeOutEmoticon {
+                      from { opacity: 1; transform: scale(1); }
+                      to { opacity: 0; transform: scale(0.8); }
+                    }
+                  `}</style>
+                  </div>
+                )
+              )}
+
+              {/* CARDS TAB - Observer state */}
+              {!isWaitingPhase && activeTab === 'cards' && !currentPlayer && (
+                <div className="px-4 pb-4 h-full">
+                  <div className="flex items-center justify-between mb-3">
+                    {onLeaveGameNow && (
+                      <PlayerOptionsMenu
+                        isSittingOut={false}
+                        isObserver={true}
+                        waiting={false}
+                        autoAnte={false}
+                        autoAnteRunback={false}
+                        sitOutNextHand={false}
+                        standUpNextHand={false}
+                        onAutoAnteChange={() => {}}
+                        onAutoAnteRunbackChange={() => {}}
+                        onSitOutNextHandChange={() => {}}
+                        onStandUpNextHandChange={() => {}}
+                        onStandUpNow={() => {}}
+                        onLeaveGameNow={onLeaveGameNow}
+                        variant="mobile"
+                      />
+                    )}
+                  </div>
+                  <p className="text-muted-foreground text-sm text-center mb-3">
+                    You are observing this game
+                  </p>
+                </div>
+              )}
+
+              {/* CHAT TAB */}
+              {activeTab === 'chat' && (
+                <div className="px-3 pb-3 h-full flex flex-col overflow-hidden min-h-0">
+                  {onSendChat ? (
+                    <div className="flex-1 min-h-0 flex flex-col">
+                      <MobileChatPanel
+                        messages={allMessages}
+                        onSend={onSendChat}
+                        isSending={isChatSending}
+                        chatInputValue={externalChatInputValue}
+                        onChatInputChange={externalOnChatInputChange}
+                      />
                     </div>
                   ) : (
-                    /* Invisible placeholder matching card height to prevent layout shift */
-                    <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
-                      <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
-                        <PlayerHand 
-                          cards={[]}
-                          isHidden={true}
-                          expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
-                        />
-                      </div>
-                    </div>
+                    <p className="text-muted-foreground text-sm text-center">Chat not available</p>
                   )}
                 </div>
-              );
-            })()}
-            
-            {/* Action area - BELOW cards (reduced margins to move everything up) */}
-            {/* TABLET: Reduced spacing to compensate for taller cards */}
-            <div className={cn(
-              "flex items-center justify-center",
-              isTablet ? "min-h-[56px] mt-0 mb-1" : "min-h-[36px] mt-0 mb-1"
-            )}>
-              {/* Auto-fold mode - show checkbox instead of stay/fold buttons */}
-              {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
-                <label className={cn(
-                  "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",
-                  isTablet ? "px-6 py-3" : "px-4 py-2"
-                )}>
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={(e) => {
-                      if (!e.target.checked && onAutoFoldChange) {
-                        onAutoFoldChange(currentPlayer.id, false);
-                      }
-                    }}
-                    className={cn(
-                      "rounded border-2 border-border accent-primary",
-                      isTablet ? "w-7 h-7" : "w-5 h-5"
-                    )}
-                  />
-                  <span className={cn(
-                    "font-medium text-foreground",
-                    isTablet ? "text-lg" : "text-sm"
-                  )}>Auto-fold (will sit out next hand)</span>
-                </label>
-              ) : canDecide && !currentPlayer.auto_fold ? (
-                /* Action buttons - TABLET: Wider with maintained gap */
-                <div className={cn("flex justify-center", isTablet ? "gap-4" : "gap-2")}>
-                  <Button 
-                    variant="destructive" 
-                    size="default" 
-                    onClick={onFold} 
-                    className={cn(
-                      "font-bold",
-                      isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
-                    )}
-                  >
-                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
-                  </Button>
-                  <Button 
-                    size="default" 
-                    onClick={onStay} 
-                    className={cn(
-                      "bg-poker-chip-green hover:bg-poker-chip-green/80 text-white font-bold",
-                      isTablet ? "w-[160px] text-lg h-14" : "w-[100px] text-sm h-9"
-                    )}
-                  >
-                    Stay
-                  </Button>
-                </div>
-              ) : currentPlayer.sitting_out && !currentPlayer.waiting ? (
-                /* Rejoin Next Hand button for sitting out players */
-                <RejoinNextHandButton playerId={currentPlayer.id} />
-              ) : hasDecided ? (
-                /* Decision feedback */
-                <Badge
-                  className={cn(
-                    "text-sm px-3 py-0.5 border-transparent",
-                    (pendingDecision || currentPlayer.current_decision) === "stay"
-                      ? "bg-poker-chip-green text-poker-chip-white"
-                      : "bg-poker-chip-red text-poker-chip-white",
-                  )}
-                >
-                  ✓ {(pendingDecision || currentPlayer.current_decision) === "stay" ? "STAYED" : "FOLDED"}
-                </Badge>
-              ) : gameType === 'holm-game' && !canDecide && !hasDecided && roundStatus === 'betting' && currentPlayerCards.length > 0 && !currentPlayer?.auto_fold ? (
-                /* Holm pre-decision checkboxes - render in same spot as action buttons */
-                <div className="flex items-center justify-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={holmPreFold}
-                      onChange={(e) => {
-                        onHolmPreFoldChange?.(e.target.checked);
-                        if (e.target.checked) onHolmPreStayChange?.(false);
-                      }}
-                      className="w-5 h-5 rounded border-2 border-red-500 accent-red-500"
-                    />
-                    <span className="text-sm font-medium text-red-500">Fold</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={holmPreStay}
-                      onChange={(e) => {
-                        onHolmPreStayChange?.(e.target.checked);
-                        if (e.target.checked) onHolmPreFoldChange?.(false);
-                      }}
-                      className="w-5 h-5 rounded border-2 border-green-500 accent-green-500"
-                    />
-                    <span className="text-sm font-medium text-green-500">Stay</span>
-                  </label>
-                </div>
-              ) : currentPlayerCards.length === 0 && roundStatus === 'betting' ? (
-                /* Placeholder while waiting for cards - maintains layout stability */
-                <div className="flex gap-2 justify-center opacity-0 pointer-events-none">
-                  <Button variant="destructive" size="default" className="flex-1 max-w-[120px] text-sm font-bold h-9">
-                    {gameType === 'holm-game' ? 'Fold' : 'Drop'}
-                  </Button>
-                  <Button size="default" className="flex-1 max-w-[120px] bg-poker-chip-green text-white text-sm font-bold h-9">
-                    Stay
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-            
-            {/* Phase A migration: identity row (player name + chips +
-                emoticons + Holm hand-rank badge) is no longer owned by
-                the cards tab. It is rendered tab-agnostically as the
-                canonical row-5 owner below all tab content so chat /
-                lobby / history tabs also see it. */}
-            
-            
-            {/* Emoticon fade-out animation */}
-            <style>{`
-              @keyframes fadeOutEmoticon {
-                from {
-                  opacity: 1;
-                  transform: scale(1);
-                }
-                to {
-                  opacity: 0;
-                  transform: scale(0.8);
-                }
-              }
-            `}</style>
-          </div>
-          )
-        )}
-        
-        {/* CARDS TAB - Observer state */}
-        {!isWaitingPhase && activeTab === 'cards' && !currentPlayer && <div className="px-4 pb-4 flex-1">
-            <div className="flex items-center justify-between mb-3">
-              {onLeaveGameNow && (
-                <PlayerOptionsMenu
-                  isSittingOut={false}
-                  isObserver={true}
-                  waiting={false}
-                  autoAnte={false}
-                  autoAnteRunback={false}
-                  sitOutNextHand={false}
-                  standUpNextHand={false}
-                  onAutoAnteChange={() => {}}
-                  onAutoAnteRunbackChange={() => {}}
-                  onSitOutNextHandChange={() => {}}
-                  onStandUpNextHandChange={() => {}}
-                  onStandUpNow={() => {}}
-                  onLeaveGameNow={onLeaveGameNow}
-                  variant="mobile"
-                />
               )}
-            </div>
-            
-            <p className="text-muted-foreground text-sm text-center mb-3">
-              You are observing this game
-            </p>
-          </div>}
-        
-        {/* CHAT TAB - Dedicated chat section */}
-        {activeTab === 'chat' && (
-          <div className="px-3 pb-3 flex-1 flex flex-col overflow-hidden min-h-0">
-            {onSendChat ? (
-              <div className="flex-1 min-h-0 flex flex-col">
-                <MobileChatPanel
-                  messages={allMessages}
-                  onSend={onSendChat}
-                  isSending={isChatSending}
-                  chatInputValue={externalChatInputValue}
-                  onChatInputChange={externalOnChatInputChange}
-                />
-              </div>
-            ) : (
-              <p className="text-muted-foreground text-sm text-center">Chat not available</p>
-            )}
-          </div>
-        )}
-        
-        {/* LOBBY TAB - Player list */}
-        {activeTab === 'lobby' && <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between mb-2 flex-shrink-0">
-              <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  {gameType === 'holm-game' ? 'Holm' : isDiceGame ? (gameType === 'ship-captain-crew' ? 'Ship' : 'Horses') : '3-5-7'}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
-              {[...players].sort((a, b) => b.chips - a.chips).map(player => {
-                const isCurrentUser = player.user_id === currentUserId;
-                const isDealing = player.position === dealerPosition;
-                const hasBuck = player.position === buckPosition;
-                return (
-                  <div key={player.id} className={`
-                    flex items-center justify-between py-1.5 px-2 rounded-md
-                    ${isCurrentUser ? 'bg-primary/10' : 'bg-transparent'}
-                    ${player.sitting_out ? 'opacity-50' : ''}
-                  `}>
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
-                        {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+
+              {/* LOBBY TAB */}
+              {activeTab === 'lobby' && (
+                <div className="px-3 pb-2 h-full flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                    <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {gameType === 'holm-game' ? 'Holm' : isDiceGame ? (gameType === 'ship-captain-crew' ? 'Ship' : 'Horses') : '3-5-7'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Pot: <span className="text-poker-gold font-bold">${Math.round(displayedPot)}</span>
                       </span>
-                      {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
-                      {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
-                      {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
-                      {player.auto_fold && !player.is_bot && !player.sitting_out && <span className="text-[9px] text-amber-400 italic">folding</span>}
-                      {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {gameType !== 'holm-game' && player.legs > 0 && (
-                        <div className="flex">
-                          {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
-                            <div 
-                              key={i} 
-                              className="w-4 h-4 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm" 
-                              style={{ marginLeft: i > 0 ? '-4px' : '0', zIndex: Math.min(player.legs, legsToWin) - i }}
-                            >
-                              <span className="text-slate-800 font-bold text-[8px]">L</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
-                        ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
-                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>}
-        
-        {/* HISTORY TAB - Hand history */}
-        {activeTab === 'history' && gameId && (
-          <div className="px-3 pb-2 flex-1 flex flex-col overflow-hidden">
-            <HandHistory 
-              gameId={gameId} 
-              currentUserId={currentUserId}
-              currentPlayerId={currentPlayer?.id}
-              currentPlayerChips={currentPlayer?.chips}
-              gameType={gameType}
-              currentRound={currentRound}
-            />
-          </div>
-        )}
+                  <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
+                    {[...players].sort((a, b) => b.chips - a.chips).map(player => {
+                      const isCurrentUser = player.user_id === currentUserId;
+                      const isDealing = player.position === dealerPosition;
+                      const hasBuck = player.position === buckPosition;
+                      return (
+                        <div key={player.id} className={`
+                          flex items-center justify-between py-1.5 px-2 rounded-md
+                          ${isCurrentUser ? 'bg-primary/10' : 'bg-transparent'}
+                          ${player.sitting_out ? 'opacity-50' : ''}
+                        `}>
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span className={`text-sm font-medium truncate ${isCurrentUser ? 'text-primary' : 'text-foreground'}`}>
+                              {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+                            </span>
+                            {isDealing && !is357MultiPlayerShowdown && <span className="text-[9px] px-1 py-0 bg-poker-gold text-black rounded font-bold">D</span>}
+                            {hasBuck && gameType === 'holm-game' && <span className="text-[9px] px-1 py-0 bg-amber-600 text-white rounded font-bold">B</span>}
+                            {player.is_bot && <span className="text-[9px] text-muted-foreground">(Bot)</span>}
+                            {player.auto_fold && !player.is_bot && !player.sitting_out && <span className="text-[9px] text-amber-400 italic">folding</span>}
+                            {player.sitting_out && <span className="text-[9px] text-muted-foreground italic">out</span>}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {gameType !== 'holm-game' && player.legs > 0 && (
+                              <div className="flex">
+                                {Array.from({ length: Math.min(player.legs, legsToWin) }).map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className="w-4 h-4 rounded-full bg-white border border-slate-400 flex items-center justify-center shadow-sm"
+                                    style={{ marginLeft: i > 0 ? '-4px' : '0', zIndex: Math.min(player.legs, legsToWin) - i }}
+                                  >
+                                    <span className="text-slate-800 font-bold text-[8px]">L</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className={`text-right min-w-[45px] font-bold text-sm ${(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-destructive' : 'text-poker-gold'}`}>
+                              ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-        {/* PHASE A — CANONICAL ROW 5 (identity).
-            Single tab-agnostic owner of the player identity row. Rendered
-            once here, outside every activeTab conditional, so cards /
-            chat / lobby / history all show the same identity row.
-            HorsesMobileCardsTab and the cards-tab JSX no longer render
-            their own identity blocks. Geometry mirrors shell row 5
-            (--hud-h-identity); full ShellHudGrid gameplay migration
-            (timer + pane) happens in subsequent phases. */}
-        <div
-          data-hud-row="identity"
-          data-hud-row-owner="MobileGameTable.gameplay"
-          style={{
-            height: 'var(--hud-h-identity)',
-            flex: '0 0 var(--hud-h-identity)',
-            overflow: 'hidden',
-            minHeight: 0,
-            position: 'relative',
-          }}
-        >
-          {currentPlayer ? (
+              {/* HISTORY TAB */}
+              {activeTab === 'history' && gameId && (
+                <div className="px-3 pb-2 h-full flex flex-col overflow-hidden">
+                  <HandHistory
+                    gameId={gameId}
+                    currentUserId={currentUserId}
+                    currentPlayerId={currentPlayer?.id}
+                    currentPlayerChips={currentPlayer?.chips}
+                    gameType={gameType}
+                    currentRound={currentRound}
+                  />
+                </div>
+              )}
+            </>
+          );
+
+          const identityContent = currentPlayer ? (
             <div className={cn(
               "w-full h-full flex items-center justify-center px-3",
               isTablet ? "gap-3" : "gap-2"
@@ -7627,11 +7545,16 @@ export const MobileGameTable = ({
                 </Badge>
               ) : null}
             </div>
-          ) : null}
-        </div>
-          </>
+          ) : null;
 
-        )}
+          return (
+            <ShellHudGrid
+              timer={hasTimer ? <ShellTimerRail /> : null}
+              pane={paneContent}
+              identity={identityContent}
+            />
+          );
+        })()}
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
