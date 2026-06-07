@@ -39,7 +39,7 @@ export const LifecycleAnnouncement = ({
   overlay = false,
 }: LifecycleAnnouncementProps) => {
   const plate = (
-    <div className="w-full bg-poker-gold/95 backdrop-blur-sm rounded-md px-3 py-1 shadow-xl border-2 border-amber-900 animate-scale-in overflow-hidden">
+    <div className="w-full backdrop-blur-sm rounded-md px-3 py-1 shadow-xl border-2 border-amber-900 animate-scale-in overflow-hidden" style={{ background: 'hsl(var(--baby-blue) / 0.95)' }}>
       <p className="text-slate-900 font-bold text-base sm:text-lg leading-tight text-center truncate">
         {title}
         {subtitle && (
