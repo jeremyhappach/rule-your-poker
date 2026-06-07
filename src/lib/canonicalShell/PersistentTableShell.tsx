@@ -249,12 +249,45 @@ export function PersistentTableShell({
             initialIsWaitingPhase={!gameType}
           />
 
-          <div
-            data-canonical-shell-slot-content=""
-            style={{ position: 'relative', zIndex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', flex: 1 }}
+          {/* Pre-session seat layer (Wartime FIX #1). Mounted at a
+              stable JSX position inside the shell so cluster
+              instances survive WaitingTable → NeutralInterstitial →
+              WaitingSlot → DealerSelection → DealerConfig without
+              tearing down. Positioned absolutely over the felt
+              region (var(--shell-felt-h) tall, anchored top-0 of
+              the children flex column). Phase surfaces underneath
+              consume `usePreSessionSeatOwned()` to skip their local
+              cluster JSX while this layer is mounted. */}
+          {preSessionParticipants && preSessionParticipants.length > 0 ? (
+            <div
+              data-canonical-shell-pre-session-seat-region=""
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 'var(--shell-felt-h)',
+                pointerEvents: 'none',
+                zIndex: 2,
+              }}
+            >
+              <PreSessionSeatLayer
+                participants={preSessionParticipants}
+                currentUserId={viewerUserId}
+              />
+            </div>
+          ) : null}
+
+          <PreSessionSeatOwnershipProvider
+            active={!!(preSessionParticipants && preSessionParticipants.length > 0)}
           >
-            {children}
-          </div>
+            <div
+              data-canonical-shell-slot-content=""
+              style={{ position: 'relative', zIndex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', flex: 1 }}
+            >
+              {children}
+            </div>
+          </PreSessionSeatOwnershipProvider>
         </div>
       </div>
 
