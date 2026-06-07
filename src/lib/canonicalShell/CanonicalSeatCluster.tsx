@@ -251,6 +251,7 @@ export function CanonicalSeatCluster({
         chipDomNodeId: null,
         phase: 'unmount',
       });
+      notePresessionGeometryEvent();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
