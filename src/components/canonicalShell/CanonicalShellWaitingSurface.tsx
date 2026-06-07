@@ -503,18 +503,13 @@ function WaitingSurfaceBody({
         className="flex-1 bg-background min-h-0"
         style={{
           '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 64px))',
-          '--hud-r-announcement': 0.085,
-          '--hud-r-timer': 0.07,
-          '--hud-r-tabs': 0.10,
-          '--hud-r-pane': 0.50,
-          '--hud-r-identity': 0.245,
         } as React.CSSProperties}
       >
         <ShellHudGrid
           timer={null}
           identity={
             viewerPlayer ? (
-              <div className="w-full h-full flex items-start justify-center gap-2 px-3 pt-2 overflow-hidden">
+              <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden border-t border-border/60 bg-background">
                 <p className="text-sm font-semibold text-foreground truncate">
                   {getDisplayName(players, viewerPlayer, viewerPlayer.profiles?.username ?? "You")}
                 </p>
