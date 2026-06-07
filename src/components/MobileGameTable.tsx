@@ -6599,31 +6599,86 @@ export const MobileGameTable = ({
             cards) remain owned by `renderPlayerChip` until the
             follow-up styling-unification PR. Cluster handles ONLY
             positioning, projection, and the raise. */}
-        {players.map((player) => {
-          const anchor = shellAnchors?.byPosition.get(player.position);
-          const slot: CanonicalSlot | null = anchor?.slot ?? null;
-          if (slot === null) return null;
-          // Self-suppression is handled inside CanonicalSeatCluster
-          // (returns null when viewerPosition === position), so the
-          // current player never double-renders at HOME on top of the
-          // bottom HUD.
-          const stayed = player.current_decision === 'stay';
-          const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
-          return (
-            <CanonicalSeatCluster
-              key={player.id}
-              slot={slot}
-              position={player.position}
-              name=""
-              chipValue=""
-              hideChipBubble
-              raisePosition={raise}
-              className={playerSlotZIndex}
-            >
-              {renderPlayerChip(player, slot)}
-            </CanonicalSeatCluster>
-          );
-        })}
+        {(() => {
+          // Pre-session canonical chip continuity (Wartime FIX #1).
+          //
+          // During pre-session phases (waiting + dealer-selection +
+          // dealer-game setup), every consumer of MobileGameTable must
+          // present chips through the SAME canonical primitive that
+          // CanonicalShellWaitingSurface uses, so the visible chip layer
+          // does not switch from a canonical pill to the legacy
+          // `renderPlayerChip` glyph as the user transitions
+          // WaitingTable → NeutralInterstitial → DealerSelection. Active
+          // gameplay (in_progress / game_over / ante_decision once a
+          // dealer game is running) keeps the legacy chip element
+          // untouched — this is NOT a multi-game gameplay chip migration.
+          const PRE_SESSION_STATUSES = new Set([
+            'waiting',
+            'dealer_selection',
+            'cribbage_dealer_selection',
+            'configuring',
+            'game_selection',
+            'ante_decision',
+          ]);
+          const isPreSessionPhase =
+            !!gameStatus && PRE_SESSION_STATUSES.has(gameStatus);
+
+          return players.map((player) => {
+            const anchor = shellAnchors?.byPosition.get(player.position);
+            const slot: CanonicalSlot | null = anchor?.slot ?? null;
+            if (slot === null) return null;
+            // Self-suppression is handled inside CanonicalSeatCluster
+            // (returns null when viewerPosition === position), so the
+            // current player never double-renders at HOME on top of the
+            // bottom HUD.
+            const stayed = player.current_decision === 'stay';
+            const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+
+            if (isPreSessionPhase) {
+              // Canonical identity pill — same inputs / palette /
+              // primitive as CanonicalShellWaitingSurface. Gameplay-only
+              // decorators (turn pulse, leg pips, auto-roll, emoticons,
+              // dealer pip, ValueChangeFlash, card backs) are
+              // intentionally suppressed here; they belong to active
+              // gameplay only.
+              const status = derivePlayerStatus(player, null, {
+                hasStayDecision: false,
+              });
+              const displayName = player.is_bot
+                ? getBotAlias(players, player.user_id)
+                : (player.profiles?.username || `P${player.position}`);
+              const chipText = `$${formatChipValue(Math.round(player.chips ?? 0))}`;
+              return (
+                <CanonicalSeatCluster
+                  key={player.id}
+                  slot={slot}
+                  position={player.position}
+                  name={displayName}
+                  chipValue={chipText}
+                  status={status}
+                  isDealer={false}
+                  className={playerSlotZIndex}
+                />
+              );
+            }
+
+            return (
+              <CanonicalSeatCluster
+                key={player.id}
+                slot={slot}
+                position={player.position}
+                name=""
+                chipValue=""
+                hideChipBubble
+                raisePosition={raise}
+                className={playerSlotZIndex}
+              >
+                {renderPlayerChip(player, slot)}
+              </CanonicalSeatCluster>
+            );
+          });
+        })()}
+
 
         
         {/* Dealer button is now shown on player chip stacks (OUTSIDE position), no separate felt button needed */}
