@@ -812,6 +812,31 @@ export const MobileGameTable = ({
   // Device size detection for tablet/desktop responsive sizing
   const { isTablet, isDesktop } = useDeviceSize();
 
+  // ── Responsive Geometry Contract — Wave 2 (3-5-7 active hand only) ──
+  // First geometry consumer. Replaces the per-round/per-device scale
+  // ladder (`scale-[2.8]` / `min-h-[200px]` etc.) for 3-5-7 with a
+  // shell-owned layout derived from `usePaneGeometry` + `useCardRowLayout`.
+  // No other surface consumes these primitives in this wave.
+  const __wave2_paneGeometry = usePaneGeometry();
+  const __wave2_is357 = gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game';
+  const __wave2_cardCount = currentRound === 1 ? 3 : currentRound === 2 ? 5 : currentRound === 3 ? 7 : 0;
+  const __wave2_cardLayout = useCardRowLayout({
+    // ~6% horizontal slack (px-2 wrappers + safe-area gutters).
+    availableWidth: Math.max(0, __wave2_paneGeometry.contentSafeWidth * 0.94),
+    // Hand region claims ~65% of the pane vertically; the remaining
+    // share belongs to the auto-fold/control row below the hand.
+    availableHeight: Math.max(0, __wave2_paneGeometry.contentSafeHeight * 0.65),
+    cardCount: __wave2_cardCount,
+    aspectRatio: 0.7, // playing-card w/h
+    minReadableRankArea: 22,
+    maxOverlapPct: 0.5,
+  });
+  const __wave2_fit = useFitToWidthScale(__wave2_cardLayout.totalWidth, [
+    __wave2_cardCount,
+    __wave2_cardLayout.totalWidth,
+  ]);
+
+
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
     enabled: diceGameplayUiActive,
