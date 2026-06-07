@@ -409,101 +409,94 @@ export const WaitingForPlayersTable = ({
   // Dealer (host): Invite + Add Bot + Start Game (Start hidden until 2+ seated).
   // Non-dealer: Share only.
   const renderActivePane = () => {
+    const identityRow = currentPlayer ? (
+      <div className="flex items-center gap-2 text-foreground pt-2 border-t border-border/40 w-full justify-center">
+        <Users className="w-4 h-4 text-amber-400" />
+        <span className="font-semibold">
+          {currentPlayer.profiles?.username ?? (isHost ? "Host" : "You")}
+        </span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-poker-gold font-bold">
+          ${formatChipValue(currentPlayer.chips ?? 0)}
+        </span>
+      </div>
+    ) : null;
+
     if (!isHost) {
       return (
-        <>
-          {currentPlayer && (
-            <div className="flex items-center gap-2 text-foreground">
-              <Users className="w-4 h-4 text-amber-400" />
-              <span className="font-semibold">
-                {currentPlayer.profiles?.username ?? "You"}
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-poker-gold font-bold">
-                ${formatChipValue(currentPlayer.chips ?? 0)}
-              </span>
-            </div>
-          )}
-          <p className="text-sm text-muted-foreground text-center max-w-xs">
-            {hasEnoughPlayers
-              ? "Waiting for host to start the game."
-              : "Share the table link to invite more players."}
-          </p>
-          <Button
-            onClick={handleInvite}
-            className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-        </>
+        <div className="h-full w-full flex flex-col items-center justify-between gap-4">
+          <div className="flex-1 w-full flex flex-col items-center justify-center gap-3">
+            <p className="text-sm text-muted-foreground text-center max-w-xs">
+              {hasEnoughPlayers
+                ? "Waiting for host to start the game."
+                : "Share the table link to invite more players."}
+            </p>
+            <Button
+              onClick={handleInvite}
+              className="bg-[hsl(220_45%_14%)] hover:bg-[hsl(220_45%_20%)] text-amber-200 border-2 border-amber-500 font-bold shadow-lg shadow-black/40"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Share
+            </Button>
+          </div>
+          {identityRow}
+        </div>
       );
     }
 
     return (
-      <>
-        {currentPlayer && (
-          <div className="flex items-center gap-2 text-foreground">
-            <Users className="w-4 h-4 text-amber-400" />
-            <span className="font-semibold">
-              {currentPlayer.profiles?.username ?? "Host"}
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-poker-gold font-bold">
-              ${formatChipValue(currentPlayer.chips ?? 0)}
-            </span>
+      <div className="h-full w-full flex flex-col items-center justify-between gap-4">
+        <div className="flex-1 w-full flex flex-col items-center justify-center gap-3">
+          <p className="text-sm text-muted-foreground text-center max-w-xs">
+            {hasEnoughPlayers
+              ? "Ready when you are."
+              : "Add a bot or invite a friend to fill the table."}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button
+              onClick={handleInvite}
+              className="bg-[hsl(220_45%_14%)] hover:bg-[hsl(220_45%_20%)] text-amber-200 border-2 border-amber-500 font-bold shadow-lg shadow-black/40"
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              Invite
+            </Button>
+            {hasOpenSeats && !realMoney && (
+              <Button
+                type="button"
+                disabled={isAddingBot}
+                aria-busy={isAddingBot}
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  enqueueAddBot();
+                }}
+                className="bg-[hsl(220_45%_14%)] hover:bg-[hsl(220_45%_20%)] text-amber-200 border-2 border-amber-500 font-bold shadow-lg shadow-black/40 disabled:opacity-70"
+              >
+                {isAddingBot ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding…
+                  </>
+                ) : (
+                  <>
+                    <Bot className="w-4 h-4 mr-2" />
+                    Add Bot
+                  </>
+                )}
+              </Button>
+            )}
+            {hasEnoughPlayers && (
+              <Button
+                data-start-game-btn
+                onClick={handleStartGame}
+                className="bg-amber-500 hover:bg-amber-400 text-[hsl(220_45%_12%)] border-2 border-amber-300 font-bold shadow-lg shadow-black/40"
+              >
+                🃏 Start Game
+              </Button>
+            )}
           </div>
-        )}
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
-          {hasEnoughPlayers
-            ? "Ready when you are."
-            : "Add a bot or invite a friend to fill the table."}
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleInvite}
-            className="border-amber-600 text-amber-300 hover:bg-amber-600/20"
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            Invite
-          </Button>
-          {hasOpenSeats && !realMoney && (
-            <Button
-              variant="outline"
-              type="button"
-              disabled={isAddingBot}
-              aria-busy={isAddingBot}
-              onClick={(e) => {
-                e.currentTarget.blur();
-                enqueueAddBot();
-              }}
-              className="border-amber-600 bg-transparent text-amber-300 hover:bg-amber-600/20 disabled:opacity-70"
-            >
-              {isAddingBot ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Adding…
-                </>
-              ) : (
-                <>
-                  <Bot className="w-4 h-4 mr-2" />
-                  Add Bot
-                </>
-              )}
-            </Button>
-          )}
-          {hasEnoughPlayers && (
-            <Button
-              data-start-game-btn
-              onClick={handleStartGame}
-              className="bg-amber-600 hover:bg-amber-700 text-black font-bold"
-            >
-              🃏 Start Game
-            </Button>
-          )}
         </div>
-      </>
+        {identityRow}
+      </div>
     );
   };
 
