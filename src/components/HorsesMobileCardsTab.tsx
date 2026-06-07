@@ -476,78 +476,11 @@ export function HorsesMobileCardsTab({
         </div>
       )}
 
-      {/* Player info (bottom) - consistent with card games layout */}
-      <div className={cn(
-        "flex items-center justify-center mt-auto pt-0 pb-2",
-        isTablet || isDesktop ? "gap-3" : "gap-2"
-      )}>
-        {/* Quick emoticon picker - left of player name */}
-        {onEmoticonSelect && (
-          <QuickEmoticonPicker 
-            onSelect={onEmoticonSelect} 
-            disabled={isEmoticonSending || !currentUserPlayer}
-          />
-        )}
-        <p className={cn(
-          "font-semibold text-foreground",
-          isTablet || isDesktop ? "text-xl" : "text-sm"
-        )}>
-          {currentUserPlayer.profiles?.username || 'You'}
-          {(currentUserPlayer.auto_fold || currentUserPlayer.sitting_out) && !currentUserPlayer.waiting ? (
-            <span className="ml-1 text-destructive font-bold">(sitting out)</span>
-          ) : currentUserPlayer.waiting ? (
-            <span className="ml-1 text-yellow-500">(waiting)</span>
-          ) : (
-            <span className="ml-1 text-green-500">(active)</span>
-          )}
-        </p>
-        <div className="relative pr-6">
-          {/* Show emoticon overlay OR chipstack value */}
-          {emoticonOverlays && emoticonOverlays[currentUserPlayer.id] ? (
-            <span
-              className={cn(
-                "animate-in fade-in zoom-in duration-200",
-                isTablet || isDesktop ? "text-3xl" : "text-2xl"
-              )}
-              style={{
-                animation:
-                  emoticonOverlays[currentUserPlayer.id].expiresAt - Date.now() < 500
-                    ? 'fadeOutEmoticon 0.5s ease-out forwards'
-                    : undefined,
-              }}
-            >
-              {emoticonOverlays[currentUserPlayer.id].emoticon}
-            </span>
-          ) : (
-            <span
-              className={cn(
-                "font-bold",
-                isTablet || isDesktop ? "text-xl" : "text-lg",
-                currentUserPlayer.chips < 0 ? "text-destructive" : "text-poker-gold"
-              )}
-            >
-              ${formatChipValue(Math.round(currentUserPlayer.chips))}
-            </span>
-          )}
-          <ValueChangeFlash 
-            value={0}
-            prefix="+L"
-            position="top-right"
-            manualTrigger={winnerLegsFlashTrigger?.playerId === currentUserPlayer.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-          />
-          <ValueChangeFlash 
-            value={0}
-            prefix="+$"
-            position="top-left"
-            manualTrigger={winnerPotFlashTrigger?.playerId === currentUserPlayer.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
-          />
-        </div>
-        {horses.isMyTurn && horses.gamePhase === "playing" && (
-          <Badge variant="outline" className={isTablet || isDesktop ? "text-sm" : "text-xs"}>
-            Rolls: {horses.localHand.rollsRemaining}
-          </Badge>
-        )}
-      </div>
+      {/* Phase A migration: identity row (player name + chips + emoticons)
+          is no longer owned here. It is rendered tab-agnostically by
+          MobileGameTable as a single canonical row-5 owner so chat /
+          lobby / history tabs also see it. Do NOT re-add it here. */}
+      
       
       {/* Emoticon fade-out animation */}
       <style>{`
