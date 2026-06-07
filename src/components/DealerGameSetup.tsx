@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,7 @@ interface GameDefaults {
   reveal_at_showdown: boolean;
 }
 
-export const DealerGameSetup = ({
+const DealerGameSetupInner = ({
   gameId,
   dealerUsername,
   isBot,
@@ -2302,4 +2303,19 @@ export const DealerGameSetup = ({
       </Card>
     </div>
   );
+};
+
+/**
+ * Public DealerGameSetup wrapper — portals the modal to document.body
+ * so it escapes the PersistentTableShell stacking context. Without
+ * this, the shell's PreSessionSeatLayer (a nested zIndex:2 region
+ * inside the shell's zIndex:1 stacking context) would paint chip
+ * clusters above this modal's `z-50` because z-50 is bounded by its
+ * parent context. Portaling lifts the entire modal to <body> so
+ * z-50 is global again and the modal fully occludes all seat/chip
+ * layers as required.
+ */
+export const DealerGameSetup = (props: DealerGameSetupProps) => {
+  if (typeof document === 'undefined') return null;
+  return createPortal(<DealerGameSetupInner {...props} />, document.body);
 };
