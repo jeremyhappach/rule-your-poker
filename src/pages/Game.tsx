@@ -2403,9 +2403,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 },
               });
               
-              // CRITICAL FIX: Clear ALL card state when a new game is being set up
-              // This ensures stale cards from previous game types are removed
-              if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'game_selection' || newStatus === 'dealer_selection') {
+              // CRITICAL FIX: Clear ALL card state when a new game is being set up.
+              //
+              // High-card flicker guard (Wartime FIX #2 Part A): when
+              // transitioning INTO `dealer_selection`, an in-flight high-card
+              // draw may already have populated `dealerSelectionCards` locally
+              // (e.g. the host dealt and the non-host received the cards via
+              // its own subscription before the games-row status change was
+              // observed here). Wiping in that case produces the visible 2→0
+              // disappearance attributed in the Wartime export. Preserve the
+              // draw while: (a) entering dealer_selection, (b) cards already
+              // present, (c) winner not yet determined. Other setup statuses
+              // (ante_decision / configuring / game_selection) always clear,
+              // because those are unambiguous fresh-game entries.
+              const isFreshSetupStatus =
+                newStatus === 'ante_decision' ||
+                newStatus === 'configuring' ||
+                newStatus === 'game_selection';
+              const isDealerSelectionEntry = newStatus === 'dealer_selection';
+              const hasInFlightHighCardDraw =
+                isDealerSelectionEntry &&
+                dealerSelectionCards.length > 0 &&
+                dealerSelectionWinnerPosition == null;
+              const shouldClearCardState =
+                (isFreshSetupStatus || isDealerSelectionEntry) && !hasInFlightHighCardDraw;
+
+              if (shouldClearCardState) {
                 console.log('[REALTIME] 🧹 NEW GAME SETUP DETECTED - CLEARING ALL CARD STATE!');
                 setPlayerCards([]);
                 setCardStateContext(null);
@@ -2415,15 +2438,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 cardIdentityRef.current = '';
                 showdownCardsCacheRef.current = new Map();
                 showdownRoundNumberRef.current = null;
-                // CRITICAL: Also clear community cards cache to prevent old cards showing in new game
                 communityCardsCacheRef.current = { cards: null, round: null, show: false };
                 setCommunityCacheEpoch((e) => e + 1);
-                // Always clear local dealer-selection presentation state on any status
-                // boundary into a new setup phase. Entering dealer_selection or
-                // cribbage_dealer_selection is a FRESH draw — stale cards from a prior
-                // selection (e.g. session fall-back-to-waiting → restart) must not survive.
-                // The realtime status branch only fires on actual status change, so clearing
-                // here cannot wipe an in-progress draw.
                 recordWaitingLifecycle('dealerSelectionCards cleared', {
                   source: 'realtime-status-change',
                   callsite: 'src/pages/Game.tsx:~2365',
@@ -2433,7 +2449,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 });
                 recordHighCardCardsClear({
                   source: 'realtime-status-change',
-                  callsite: 'src/pages/Game.tsx:2387 (setDealerSelectionCards([]))',
+                  callsite: 'src/pages/Game.tsx (setDealerSelectionCards([]))',
                   reason: `status transition to ${newStatus}`,
                   cardsLengthBeforeClear: dealerSelectionCards.length,
                   cardsLengthAfterClear: 0,
@@ -2447,7 +2463,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 recordHighCardWriter({
                   gameId: gameId ?? '',
                   source: 'reset-path',
-                  callsite: 'src/pages/Game.tsx:2447 realtime-status-change setDealerSelectionCards([])',
+                  callsite: 'src/pages/Game.tsx realtime-status-change setDealerSelectionCards([])',
                   reason: `realtime status transition to ${newStatus} cleared dealerSelectionCards`,
                   previousLength: dealerSelectionCards.length,
                   nextLength: 0,
@@ -2462,12 +2478,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
 
-                // ── HANDOFF TRACE #3: parent dealer-selection state cleared (realtime handler) ──
                 emitCribbageHandoffTrace({
                   gameId: gameId!,
                   eventType: 'parent_ds_cleared',
                   userId: user?.id ?? null,
                   context: { trigger: 'realtime_status_change', newStatus },
+                });
+              } else if (hasInFlightHighCardDraw) {
+                // Guard fired: announce the suppression so Wartime exports
+                // show why no clear was emitted at this boundary (and there
+                // is no unattributed mutation to chase).
+                recordHighCardWriter({
+                  gameId: gameId ?? '',
+                  source: 'reset-path',
+                  callsite: 'src/pages/Game.tsx high-card-clear-guard SKIPPED',
+                  reason: 'in-flight high-card draw preserved across dealer_selection transition',
+                  previousLength: dealerSelectionCards.length,
+                  nextLength: dealerSelectionCards.length,
+                  previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  nextCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  renderPath: null,
+                  surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
+                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  isComplete: null,
+                  extra: { newStatus, trigger: 'realtime-status-change', guard: 'skip-clear' },
                 });
               }
               
