@@ -419,7 +419,6 @@ function WaitingSurfaceBody({
                       status={status}
                       ownerLabel="Shell:CanonicalShellWaitingSurface"
                       playerId={player.id}
-                      allowSelfRender
                     />
                   );
                 })}

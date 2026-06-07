@@ -112,7 +112,6 @@ export function PreSessionSeatLayer({
             isDealer={false}
             ownerLabel="Shell:PreSessionSeatLayer"
             playerId={player.id}
-            allowSelfRender
           />
         );
       })}
