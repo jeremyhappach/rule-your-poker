@@ -502,7 +502,7 @@ function WaitingSurfaceBody({
       <div
         className="flex-1 bg-background min-h-0"
         style={{
-          '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 64px))',
+          '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 96px))',
         } as React.CSSProperties}
       >
         <ShellHudGrid
