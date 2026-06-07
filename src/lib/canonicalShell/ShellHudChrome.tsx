@@ -115,7 +115,7 @@ export function ShellAnnouncementRail() {
         // Rail owns the gold surface so the inner plate can sit flush
         // edge-to-edge without exposing dark felt strips from its own
         // rounded corners or border.
-        background: hasCanonicalRailEvent ? 'hsl(var(--poker-gold))' : 'transparent',
+        background: hasCanonicalRailEvent ? 'hsl(var(--baby-blue))' : 'transparent',
         // Border treatment: none. The gold fill alone delimits the rail
         // edge-to-edge; mixed top/bottom borders read as accidental.
         border: 'none',
