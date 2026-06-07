@@ -6704,6 +6704,8 @@ export const MobileGameTable = ({
                   status={status}
                   isDealer={false}
                   className={playerSlotZIndex}
+                  ownerLabel="Slot:MobileGameTable.preSessionPill"
+                  playerId={player.id}
                 />
               );
             }
