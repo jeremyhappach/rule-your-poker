@@ -64,15 +64,24 @@ export async function fetchSessionHostPlayerId(
   players: HarnessHostPlayer[],
 ): Promise<string | null> {
   try {
-    const { data } = await supabase
-      .from('games')
-      .select('current_host')
-      .eq('id', gameId)
-      .maybeSingle();
-    return resolveSessionHostPlayerId(
-      { current_host: (data as { current_host?: string | null } | null)?.current_host ?? null },
-      players,
-    );
+    // Always fetch authoritative rows from DB. The caller's `players` array
+    // may be missing `created_at` and/or `is_bot` (different parents shape
+    // the array differently), which silently breaks the non-bot tiebreaker
+    // and causes the harness advantage to land on a bot instead of the
+    // human session host. See mem://constraints/canonical-harness-host-rule.
+    const [gameRes, playersRes] = await Promise.all([
+      supabase.from('games').select('current_host').eq('id', gameId).maybeSingle(),
+      supabase
+        .from('players')
+        .select('id,user_id,is_bot,created_at')
+        .eq('game_id', gameId),
+    ]);
+    const currentHost =
+      (gameRes.data as { current_host?: string | null } | null)?.current_host ?? null;
+    const dbPlayers = (playersRes.data ?? []) as HarnessHostPlayer[];
+    // Prefer DB rows when present; fall back to caller-provided players.
+    const merged = dbPlayers.length > 0 ? dbPlayers : players;
+    return resolveSessionHostPlayerId({ current_host: currentHost }, merged);
   } catch {
     return resolveSessionHostPlayerId(null, players);
   }
