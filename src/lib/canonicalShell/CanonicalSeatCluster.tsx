@@ -166,6 +166,8 @@ export function CanonicalSeatCluster({
   raisePosition = false,
   hideChipBubble = false,
   className,
+  ownerLabel,
+  playerId = null,
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
