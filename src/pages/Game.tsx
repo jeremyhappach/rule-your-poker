@@ -2462,8 +2462,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               const liveSyncedCards = dealerSelectionSyncedCardsRef.current;
               const hasInFlightHighCardDraw =
                 isDealerSelectionEntry &&
-                (liveCards.length > 0 || liveSyncedCards.length > 0) &&
-                liveWinner == null;
+                (liveCards.length > 0 || liveSyncedCards.length > 0);
               const shouldClearCardState =
                 (isFreshSetupStatus || isDealerSelectionEntry) && !hasInFlightHighCardDraw;
 
