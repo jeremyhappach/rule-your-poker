@@ -505,9 +505,18 @@ function WaitingSurfaceBody({
         )}
       </div>
 
-      {/* Unified bottom section — canonical 5-row HUD grid.
-          Actions live in row 4 (pane); identity lives in row 5. */}
-      <div className="flex-1 bg-background min-h-0">
+      {/* Canonical HUD region — sibling to the play region above.
+          Height is shell-owned (--shell-hud-h); ShellHudGrid lives
+          directly inside, no flex-1 spacer, no bespoke wrapper.
+          Row 5 (identity) is shell-owned by ShellHudGrid. */}
+      <div
+        data-canonical-shell-waiting-hud-region=""
+        className="bg-background"
+        style={{
+          height: 'var(--shell-hud-h)',
+          flex: '0 0 var(--shell-hud-h)',
+        }}
+      >
         <ShellHudGrid
           timer={null}
           identity={
