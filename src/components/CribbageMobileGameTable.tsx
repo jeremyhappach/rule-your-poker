@@ -30,6 +30,7 @@ import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { derivePlayerStatus } from '@/lib/canonicalShell/participantStatus';
 import { recordPlayerVisualSnapshot, probeChipDom, probeChipDomAncestry } from '@/lib/wartimeDebug/surfaces';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
