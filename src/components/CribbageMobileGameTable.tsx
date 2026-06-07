@@ -6072,8 +6072,12 @@ export const CribbageMobileGameTable = ({
                 <div
                   className="absolute inset-0 flex items-center justify-center z-40"
                   data-wartime-high-card-container={gameId}
+                  data-wartime-renderer-instance={`CribbageMobileGameTable:${gameId}:${isDealerSelection ? 'session-ds' : 'cribbage-ds'}`}
+                  data-wartime-component="CribbageMobileGameTable"
+                  data-wartime-render-branch={isDealerSelection ? 'session-dealer-selection-overlay' : 'cribbage-dealer-selection-overlay'}
                   data-wartime-surface="HighCardRender"
                 >
+
 
                   {/* HIGH-CARD INSTRUMENTATION: render-time signature + per-card mount markers.
                       No layout impact. */}
