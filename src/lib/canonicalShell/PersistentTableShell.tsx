@@ -55,6 +55,7 @@ import {
   CanonicalAnnouncementDebugTrigger,
 } from './announcements';
 import { ShellTabBarProvider } from './ShellTabBar';
+import { ShellTimerProvider } from './ShellTimerRail';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
 // own their single authoritative felt geometry; the shell no longer
 // renders a second pre-hand felt floor underneath.
@@ -345,7 +346,9 @@ export function PersistentTableShell({
         viewerUserId={viewerUserId}
       >
         <ShellTabBarProvider>
-          <ShellFeltContextProvider>{body}</ShellFeltContextProvider>
+          <ShellTimerProvider>
+            <ShellFeltContextProvider>{body}</ShellFeltContextProvider>
+          </ShellTimerProvider>
         </ShellTabBarProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
