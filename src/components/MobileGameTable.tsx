@@ -6969,14 +6969,23 @@ export const MobileGameTable = ({
         </div>
         <ShellTabBar />
 
-        
+        {/* WAITING-PHASE ACTIVE PANE — gameplay actions during the
+            waiting table live here, not on the felt. Owners pass
+            Invite / Add Bot / Start Game (dealer) or Share (non-dealer)
+            via `waitingActivePaneContent`. */}
+        {isWaitingPhase && activeTab === 'cards' && (
+          <div className="px-4 py-6 flex-1 flex flex-col items-center justify-center gap-4">
+            {waitingActivePaneContent}
+          </div>
+        )}
+
         {/* CARDS TAB - Player cards, buttons, name, chipstack */}
         {/* PR-B.2: suppress the gameplay cards tab entirely during dealer
             setup / interstitial phases. Previously the previous hand's
             currentPlayerCards remained mounted in the cards tab during
             dealer-game rollover (Holm cards visible on the next-game
             setup screen). Gameplay artifacts must not leak into pre-game. */}
-        {activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
+        {!isWaitingPhase && activeTab === 'cards' && currentPlayer && !isDealerConfigPhase && (
           diceGameplayUiActive ? (
             <HorsesMobileCardsTab
               currentUserPlayer={currentPlayer as any}
