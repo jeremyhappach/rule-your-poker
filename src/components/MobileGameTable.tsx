@@ -110,6 +110,7 @@ import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } f
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
+import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 
 // P9.1 — First visible canonical shell visual cutover.
