@@ -27,13 +27,15 @@
  * second local map.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   useWaitingRoomActions,
   type WaitingRoomActor,
 } from "@/hooks/useWaitingRoomActions";
-import { WaitingRoomCTA } from "@/components/canonicalShell/WaitingRoomCTA";
+import { Button } from "@/components/ui/button";
+import { Share2, Bot, Loader2, Users } from "lucide-react";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import {
   usePublishShellFelt,
   deriveFeltGameKind,
