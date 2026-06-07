@@ -2444,6 +2444,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   dealerGameId: (game as any)?.current_game_uuid ?? null,
                   gameId: gameId ?? null,
                 });
+                recordHighCardWriter({
+                  gameId: gameId ?? '',
+                  source: 'reset-path',
+                  callsite: 'src/pages/Game.tsx:2447 realtime-status-change setDealerSelectionCards([])',
+                  reason: `realtime status transition to ${newStatus} cleared dealerSelectionCards`,
+                  previousLength: dealerSelectionCards.length,
+                  nextLength: 0,
+                  previousCardIds: dealerSelectionCards.map(c => `${c.position}:${c.card?.rank}${c.card?.suit?.[0] ?? '?'}`),
+                  nextCardIds: [],
+                  renderPath: isHostRef.current ? 'host' : 'non-host',
+                  surfaceInstanceId: `Game.tsx:setDealerSelectionCards:${gameId ?? ''}`,
+                  winnerPosition: dealerSelectionWinnerPosition ?? null,
+                  isComplete: null,
+                  extra: { newStatus, trigger: 'realtime-status-change' },
+                });
                 setDealerSelectionCards([]);
                 setDealerSelectionWinnerPosition(null);
 
