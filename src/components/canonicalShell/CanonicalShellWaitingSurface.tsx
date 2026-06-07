@@ -499,17 +499,12 @@ function WaitingSurfaceBody({
 
       {/* Unified bottom section — canonical 5-row HUD grid.
           Actions live in row 4 (pane); identity lives in row 5. */}
-      <div
-        className="flex-1 bg-background min-h-0"
-        style={{
-          '--shell-hud-h': 'calc(100% - max(var(--shell-bottom-slack), 96px))',
-        } as React.CSSProperties}
-      >
+      <div className="flex-1 bg-background min-h-0">
         <ShellHudGrid
           timer={null}
           identity={
             viewerPlayer ? (
-              <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden border-t border-border/60 bg-background">
+              <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
                 <p className="text-sm font-semibold text-foreground truncate">
                   {getDisplayName(players, viewerPlayer, viewerPlayer.profiles?.username ?? "You")}
                 </p>
