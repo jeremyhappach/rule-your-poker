@@ -45,6 +45,7 @@ import {
 } from "@/lib/canonicalShell/ShellTabBar";
 import { MobileChatPanel } from "@/components/MobileChatPanel";
 import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
+import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
 import { recordWartime } from "@/lib/wartimeDebug/core";
 
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
