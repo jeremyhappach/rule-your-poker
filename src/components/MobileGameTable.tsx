@@ -110,6 +110,7 @@ import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } f
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { ShellAnnouncementRail } from "@/lib/canonicalShell/ShellHudChrome";
+import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 
 // P9.1 — First visible canonical shell visual cutover.
@@ -6923,6 +6924,90 @@ export const MobileGameTable = ({
       
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
+        {isWaitingPhase ? (
+          <ShellHudGrid
+            timer={null}
+            identity={
+              currentPlayer ? (
+                <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {currentPlayer.profiles?.username || 'You'}
+                  </p>
+                  <span className={cn(
+                    "font-bold text-lg tabular-nums",
+                    currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+                  )}>
+                    ${formatChipValue(Math.round(currentPlayer.chips ?? 0))}
+                  </span>
+                </div>
+              ) : null
+            }
+            pane={
+              <>
+                {activeTab === 'cards' && (
+                  <div className="h-full px-4 pt-3 pb-5 flex flex-col items-center justify-start gap-4">
+                    {waitingActivePaneContent}
+                  </div>
+                )}
+
+                {activeTab === 'chat' && (
+                  <div className="h-full px-3 pb-3 flex flex-col overflow-hidden min-h-0">
+                    {onSendChat ? (
+                      <div className="flex-1 min-h-0 flex flex-col">
+                        <MobileChatPanel
+                          messages={allMessages}
+                          onSend={onSendChat}
+                          isSending={isChatSending}
+                          chatInputValue={externalChatInputValue}
+                          onChatInputChange={externalOnChatInputChange}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm text-center">Chat not available</p>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'lobby' && (
+                  <div className="h-full px-3 pb-2 flex flex-col overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                      <h3 className="text-sm font-bold text-foreground">Game Lobby</h3>
+                    </div>
+                    <div className="flex-1 overflow-y-auto min-h-0 space-y-1">
+                      {players.map(player => {
+                        const isCurrentUser = player.user_id === currentUserId;
+                        return (
+                          <div
+                            key={player.id}
+                            className={cn(
+                              "flex items-center justify-between py-1.5 px-2 rounded-md",
+                              isCurrentUser ? 'bg-primary/10' : 'bg-transparent',
+                              player.sitting_out ? 'opacity-50' : ''
+                            )}
+                          >
+                            <span className={cn("text-sm font-medium truncate", isCurrentUser ? 'text-primary' : 'text-foreground')}>
+                              {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
+                            </span>
+                            <span className="text-right min-w-[45px] font-bold text-sm text-poker-gold">
+                              ${formatChipValue(Math.round(player.chips ?? 0))}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'history' && (
+                  <div className="h-full px-4 py-6 text-center text-muted-foreground text-sm">
+                    History will appear once the game starts.
+                  </div>
+                )}
+              </>
+            }
+          />
+        ) : (
+          <>
         {/* Phase 5 architectural finish line: the canonical announcement
             rail is shell-owned and announcement-only. Operational HUD
             chrome (dice timer chip, paused badge, active player's
@@ -7470,6 +7555,8 @@ export const MobileGameTable = ({
               currentRound={currentRound}
             />
           </div>
+        )}
+          </>
         )}
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
