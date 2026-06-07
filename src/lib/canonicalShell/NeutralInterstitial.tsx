@@ -7,7 +7,7 @@
  * slot-entered-neutral / slot-left-neutral telemetry.
  */
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { recordShellEvent } from './diagnostics';
 import type { CanonicalFeltGameKind } from './ShellOwnedFeltHost';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
