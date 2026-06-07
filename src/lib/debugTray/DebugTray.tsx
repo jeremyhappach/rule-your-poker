@@ -31,7 +31,7 @@ export function DebugTray({ children }: { children: ReactNode }) {
         position: 'fixed',
         left: 0,
         right: 0,
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 40px)',
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
         padding: '0 6px',
         display: 'flex',
         flexDirection: 'row',
@@ -39,7 +39,7 @@ export function DebugTray({ children }: { children: ReactNode }) {
         justifyContent: 'flex-end',
         gap: 6,
         flexWrap: 'wrap',
-        zIndex: 2147483647,
+        zIndex: 20,
         pointerEvents: 'none',
       }}
     >
