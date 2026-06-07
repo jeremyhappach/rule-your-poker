@@ -445,32 +445,22 @@ function WaitingSurfaceBody({
               );
             })()}
 
-            {/* CTA stage — sits on top of the seat layers, centered in
-                the ellipse. */}
+            {/* Passive felt message — "{N} Players Seated". No buttons;
+                gameplay actions live in the Active Player Content Pane. */}
             <div
-              data-canonical-shell-waiting-cta-stage=""
+              data-canonical-shell-waiting-felt-message=""
               className="absolute left-0 right-0 flex items-center justify-center pointer-events-none z-30"
               style={{
                 top: 24,
                 height: SHELL_FELT_FRAME_HEIGHT,
               }}
             >
-              <WaitingRoomCTA
-                isObserver={actions.isObserver}
-                isHost={actions.isHost}
-                hasEnoughPlayers={actions.hasEnoughPlayers}
-                hasOpenSeats={actions.hasOpenSeats}
-                seatedPlayerCount={actions.seatedPlayerCount}
-                realMoney={realMoney}
-                isAddingBot={actions.isAddingBot}
-                viewerNeedsRejoin={actions.viewerNeedsRejoin}
-                viewerIsWaitingToRejoin={actions.viewerIsWaitingToRejoin}
-                isRejoining={actions.isRejoining}
-                onInvite={actions.handleInvite}
-                onAddBot={actions.handleAddBot}
-                onStartGame={actions.handleStartGame}
-                onRejoin={actions.handleRejoin}
-              />
+              <div className="bg-black/55 backdrop-blur-sm rounded-xl px-5 py-2.5 border border-amber-600/40">
+                <p className="text-amber-200 font-semibold text-base tracking-wide">
+                  {actions.seatedPlayerCount}{" "}
+                  {actions.seatedPlayerCount === 1 ? "Player" : "Players"} Seated
+                </p>
+              </div>
             </div>
           </>
         )}
