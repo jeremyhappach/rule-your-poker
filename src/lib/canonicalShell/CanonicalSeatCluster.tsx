@@ -225,6 +225,7 @@ export function CanonicalSeatCluster({
       chipDomNodeId: chipEl ? `dom-chip-${clusterInstanceIdRef.current}` : null,
       phase: 'mount',
     });
+    notePresessionGeometryEvent();
     return () => {
       recordChipRuntimeContinuity({
         phase: 'unmount',
