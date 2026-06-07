@@ -571,6 +571,29 @@ const __shellSeatRosterCache = new Map<
   { key: string; seats: Array<{ position: number; occupied: boolean; hidden: boolean }> }
 >();
 
+// Wartime FIX #1 — stable participants array for the shell-owned
+// pre-session seat layer. Keyed by gameId; the key is recomputed only
+// when meaningful roster fields change so PreSessionSeatLayer receives
+// the SAME array identity across phase transitions and React does not
+// see prop churn.
+const __shellPreSessionRosterCache = new Map<
+  string,
+  {
+    key: string;
+    participants: Array<{
+      id: string;
+      position: number;
+      chips?: number | null;
+      status?: string;
+      user_id?: string | null;
+      is_bot?: boolean | null;
+      waiting?: boolean | null;
+      sitting_out?: boolean | null;
+      profiles?: { username?: string };
+    }>;
+  }
+>();
+
 // Stable per-tab mount-instance id so the persisted diag can tell
 // the two clients apart on the next repro without relying on memory.
 // Generated once per page load; survives the early-return guard.
