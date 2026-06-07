@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MobileGameTable } from "./MobileGameTable";
 
 import { Button } from "@/components/ui/button";
-import { Share2, Users, Bot, Loader2 } from "lucide-react";
+import { Share2, Bot, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AggressionLevel } from "@/lib/botHandStrength";
@@ -17,6 +17,8 @@ import {
   recordWaitingLifecycle,
   recordSurfaceOwnership,
 } from "@/lib/canonicalShell/waitingTableFlight";
+import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { formatChipValue } from "@/lib/utils";
 
 // Keep bot aggression level distribution consistent with the rest of the app.
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
