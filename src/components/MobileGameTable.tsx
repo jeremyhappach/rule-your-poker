@@ -7008,50 +7008,82 @@ export const MobileGameTable = ({
           />
         ) : (
           <>
-        {/* Phase 5 architectural finish line: the canonical announcement
-            rail is shell-owned and announcement-only. Operational HUD
-            chrome (dice timer chip, paused badge, active player's
-            TimerBar) is mechanically relocated into a sibling region
-            BETWEEN the rail and the tab bar — same vertical real estate,
-            no semantic-announcement plates left in this surface. */}
+        {/* PHASE B — CANONICAL ROW 2 (timer / operational HUD).
+            The three previously mutually-exclusive branches (dice clock
+            chip, paused badge, active-player TimerBar) are collapsed
+            into a single canonical timer node. Row geometry mirrors
+            ShellHudGrid row 2: claims var(--hud-h-timer) when a timer
+            node is present, collapses to 0 when none — so games and
+            phases without a timer reclaim the vertical real estate at
+            the shell/game boundary. Full ShellHudGrid composition
+            (announcement + tabs + timer + pane + identity in one grid)
+            is a later phase. */}
         <ShellAnnouncementRail />
-        <div
-          data-shell-operational-hud=""
-          className="w-full flex items-center justify-center px-3 min-h-[28px]"
-        >
-          {diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
-           horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
-           horsesController.timeLeft !== null ? (
-            <div className="flex items-center justify-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                <span
-                  className={cn(
-                    "text-sm font-mono font-bold",
-                    horsesController.timeLeft <= 5
-                      ? "text-destructive"
-                      : horsesController.timeLeft <= 10
-                        ? "text-amber-500"
-                        : "text-foreground",
-                  )}
-                >
-                  {horsesController.timeLeft}s
-                </span>
-                {horsesController.currentTurnPlayerName && (
-                  <span className="text-xs text-muted-foreground">
-                    ({horsesController.currentTurnPlayerName})
+        {(() => {
+          const diceTimer =
+            diceGameplayUiActive && horsesController.enabled && horsesController.gamePhase === 'playing' &&
+            horsesController.currentTurnPlayerId && !horsesController.currentTurnPlayer?.is_bot &&
+            horsesController.timeLeft !== null
+              ? (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-background/60 backdrop-blur-sm border border-border/50">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <span
+                    className={cn(
+                      "text-sm font-mono font-bold",
+                      horsesController.timeLeft <= 5
+                        ? "text-destructive"
+                        : horsesController.timeLeft <= 10
+                          ? "text-amber-500"
+                          : "text-foreground",
+                    )}
+                  >
+                    {horsesController.timeLeft}s
                   </span>
-                )}
-              </div>
-            </div>
-          ) : isPaused ? (
-            <div className="flex items-center justify-center gap-2">
+                  {horsesController.currentTurnPlayerName && (
+                    <span className="text-xs text-muted-foreground">
+                      ({horsesController.currentTurnPlayerName})
+                    </span>
+                  )}
+                </div>
+              )
+              : null;
+
+          const pausedBadge = !diceTimer && isPaused
+            ? (
               <Badge variant="outline" className="text-xs px-2 py-0.5 border-yellow-500 text-yellow-500">⏸ PAUSED</Badge>
+            )
+            : null;
+
+          const turnTimerBar = !diceTimer && !pausedBadge &&
+            currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided &&
+            timeLeft !== null && timeLeft > 0 && maxTime
+              ? (
+                <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
+              )
+              : null;
+
+          const timerNode = diceTimer ?? pausedBadge ?? turnTimerBar;
+          const hasTimer = timerNode != null;
+
+          return (
+            <div
+              data-hud-row="timer"
+              data-hud-row-owner="MobileGameTable.gameplay"
+              data-hud-timer-present={hasTimer ? '1' : '0'}
+              style={{
+                height: hasTimer ? 'var(--hud-h-timer)' : '0px',
+                flex: hasTimer ? '0 0 var(--hud-h-timer)' : '0 0 0px',
+                overflow: 'hidden',
+                minHeight: 0,
+                position: 'relative',
+              }}
+              className="w-full flex items-center justify-center px-3"
+            >
+              {timerNode}
             </div>
-          ) : currentPlayer && isPlayerTurn && roundStatus === 'betting' && !hasDecided && timeLeft !== null && timeLeft > 0 && maxTime ? (
-            <TimerBar key={`timer-${currentRound}-${currentTurnPosition}`} timeLeft={timeLeft} maxTime={maxTime} />
-          ) : null}
-        </div>
+          );
+        })()}
+
         <ShellTabBar />
 
         {/* WAITING-PHASE ACTIVE PANE — gameplay actions during the
