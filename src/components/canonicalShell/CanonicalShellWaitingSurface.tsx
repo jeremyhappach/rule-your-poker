@@ -503,9 +503,9 @@ function WaitingSurfaceBody({
 
         <div className="flex-1 overflow-hidden min-h-0">
           {activeTab === "cards" && (
-            <div className="h-full px-4 py-5 flex flex-col items-center justify-between gap-4">
-              {/* Buttons live between tab row (above) and identity row (below) */}
-              <div className="flex-1 w-full flex flex-col items-center justify-center gap-3">
+            <div className="h-full px-4 pt-3 pb-5 flex flex-col items-center justify-start gap-4">
+              {/* Buttons sit immediately under the tab rail */}
+              <div className="w-full flex flex-col items-center justify-start gap-3">
                 {actions.viewerNeedsRejoin ? (
                   <>
                     <p className="text-sm text-muted-foreground text-center max-w-xs">
