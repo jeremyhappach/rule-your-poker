@@ -2304,3 +2304,18 @@ const DealerGameSetupInner = ({
     </div>
   );
 };
+
+/**
+ * Public DealerGameSetup wrapper — portals the modal to document.body
+ * so it escapes the PersistentTableShell stacking context. Without
+ * this, the shell's PreSessionSeatLayer (a nested zIndex:2 region
+ * inside the shell's zIndex:1 stacking context) would paint chip
+ * clusters above this modal's `z-50` because z-50 is bounded by its
+ * parent context. Portaling lifts the entire modal to <body> so
+ * z-50 is global again and the modal fully occludes all seat/chip
+ * layers as required.
+ */
+export const DealerGameSetup = (props: DealerGameSetupProps) => {
+  if (typeof document === 'undefined') return null;
+  return createPortal(<DealerGameSetupInner {...props} />, document.body);
+};
