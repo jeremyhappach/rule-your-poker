@@ -59,6 +59,7 @@ import {
   recordChipRuntimeContinuity,
 } from '@/lib/wartimeDebug/surfaces';
 import { recordWartime } from '@/lib/wartimeDebug/core';
+import { notePresessionGeometryEvent } from '@/lib/wartimeDebug/presessionGeometrySampler';
 
 let _csc_seq = 0;
 
@@ -224,6 +225,7 @@ export function CanonicalSeatCluster({
       chipDomNodeId: chipEl ? `dom-chip-${clusterInstanceIdRef.current}` : null,
       phase: 'mount',
     });
+    notePresessionGeometryEvent();
     return () => {
       recordChipRuntimeContinuity({
         phase: 'unmount',
@@ -249,6 +251,7 @@ export function CanonicalSeatCluster({
         chipDomNodeId: null,
         phase: 'unmount',
       });
+      notePresessionGeometryEvent();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -310,6 +313,8 @@ export function CanonicalSeatCluster({
       data-seat-position={position}
       data-seat-slot={slot}
       data-seat-status={status}
+      data-owner-label={ownerLabel ?? ''}
+      data-player-id={playerId ?? ''}
       className={cn(
         'absolute pointer-events-none flex gap-1',
         isBottomAnchored ? 'flex-col-reverse' : 'flex-col',

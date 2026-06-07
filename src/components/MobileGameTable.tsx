@@ -61,6 +61,7 @@ import {
 } from "@/lib/canonicalShell/seatAnchors";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
+import { setPresessionGeometryPhase } from "@/lib/wartimeDebug/presessionGeometrySampler";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import { getCanonicalSlotPlacement } from "@/lib/canonicalShell/canonicalSlotPlacement";
 import { ActivePlayerHUD } from "@/lib/canonicalShell/ActivePlayerHUD";
@@ -4308,6 +4309,20 @@ export const MobileGameTable = ({
   // the milestone for this PR.
   const shellAnchors = useRequiredSeatAnchors(gameType ?? null);
   const preSessionSeatOwned = usePreSessionSeatOwned();
+
+  // PRESESSION_GEOMETRY_COMPARE phase tagging — scopes the wartime
+  // sampler to the pre-game window the user cares about and clears it
+  // once gameplay takes over. Does not influence rendering.
+  useEffect(() => {
+    let phase: string | null = null;
+    if (gameStatus === 'waiting_for_players') phase = 'WaitingTable';
+    else if (gameStatus === 'ante_decision') phase = 'AnteDecision';
+    else if (gameStatus === 'dealer_selection' || gameStatus === 'cribbage_dealer_selection') phase = 'CribbageDealerSelection';
+    else if (gameStatus === 'in_progress') phase = 'GameplayStart';
+    else phase = null;
+    setPresessionGeometryPhase(phase);
+    return () => { setPresessionGeometryPhase(null); };
+  }, [gameStatus]);
   const currentPos = currentPlayer?.position ?? 1;
   const otherPlayersRaw = players.filter(p => p.user_id !== currentUserId);
 
