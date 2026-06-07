@@ -59,6 +59,7 @@ import {
   recordChipRuntimeContinuity,
 } from '@/lib/wartimeDebug/surfaces';
 import { recordWartime } from '@/lib/wartimeDebug/core';
+import { notePresessionGeometryEvent } from '@/lib/wartimeDebug/presessionGeometrySampler';
 
 let _csc_seq = 0;
 
