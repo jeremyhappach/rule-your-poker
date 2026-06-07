@@ -149,6 +149,11 @@ export interface CanonicalSeatClusterProps {
   /** Player id whose chip this cluster represents (for renderer
    *  ownership attribution). */
   playerId?: string | null;
+  /** Opt-in override: render the viewer's own HOME cluster instead of
+   *  applying canonical self-suppression. Used by pre-session surfaces
+   *  (waiting/interstitial) where identity must be visible on the felt
+   *  because there is no active-player content to anchor it. */
+  allowSelfRender?: boolean;
 }
 
 export function CanonicalSeatCluster({
