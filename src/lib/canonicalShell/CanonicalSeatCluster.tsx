@@ -40,7 +40,7 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import {
   getCanonicalSlotPlacement,
@@ -54,6 +54,12 @@ import {
   getParticipantChipFgClass,
   type ParticipantStatus,
 } from './participantStatus';
+import {
+  noteChipContinuityMount,
+  recordChipRuntimeContinuity,
+} from '@/lib/wartimeDebug/surfaces';
+
+let _csc_seq = 0;
 
 export interface CanonicalSeatClusterProps {
   /** Canonical slot this cluster anchors to. Null → not rendered. */
