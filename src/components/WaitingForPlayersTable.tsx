@@ -424,8 +424,8 @@ export const WaitingForPlayersTable = ({
 
     if (!isHost) {
       return (
-        <div className="h-full w-full flex flex-col items-center justify-between gap-4">
-          <div className="flex-1 w-full flex flex-col items-center justify-center gap-3">
+        <div className="h-full w-full flex flex-col items-center justify-start gap-4 pt-3">
+          <div className="w-full flex flex-col items-center justify-start gap-3">
             <p className="text-sm text-muted-foreground text-center max-w-xs">
               {hasEnoughPlayers
                 ? "Waiting for host to start the game."
