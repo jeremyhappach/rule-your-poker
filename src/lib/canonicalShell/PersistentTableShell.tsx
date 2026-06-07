@@ -65,6 +65,11 @@ import { ShellTabBarProvider } from './ShellTabBar';
 // publish tab metadata via `useShellTabBar`; they never render tab nav.
 
 import type { ProjectionMode, SeatAnchorInput } from './seatAnchors';
+import {
+  PreSessionSeatLayer,
+  PreSessionSeatOwnershipProvider,
+  type PreSessionParticipant,
+} from './PreSessionSeatLayer';
 
 export interface PersistentTableShellProps {
   gameId?: string;
@@ -78,6 +83,17 @@ export interface PersistentTableShellProps {
    */
   viewerUserId?: string | null;
   seats?: SeatAnchorInput[];
+  /**
+   * Wartime FIX #1 — single shell-mounted pre-session seat/chip
+   * cluster set. When non-null, the shell renders one
+   * `PreSessionSeatLayer` at a stable React tree position so cluster
+   * instances survive every pre-session phase transition
+   * (WaitingTable → NeutralInterstitial → WaitingSlot →
+   * DealerSelection → DealerConfig). Phase surfaces consult
+   * `usePreSessionSeatOwned()` to suppress their local cluster JSX.
+   * Pass `null`/`undefined` once gameplay takes ownership.
+   */
+  preSessionParticipants?: PreSessionParticipant[] | null;
   /**
    * Shell-owned HUD header chrome. Rendered above the canonical
    * announcement rail and the opaque game children. Authored by the
