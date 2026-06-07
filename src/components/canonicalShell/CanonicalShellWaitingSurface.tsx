@@ -365,14 +365,17 @@ function WaitingSurfaceBody({
       data-canonical-shell-waiting-surface=""
       data-shell-waiting-game-type={gameType}
       data-projection-mode={projectionMode}
-      className="relative w-full h-full flex flex-col flex-1 min-h-0"
+      className="relative w-full h-full flex flex-col"
     >
-      {/* Persistent table region — mirrors canonical gameplay surfaces. */}
+      {/* Canonical play region — height owned by the shell via
+          --shell-play-h. Sibling to the HUD region below; together
+          they form the same partition gameplay surfaces use. */}
       <div
         data-canonical-shell-waiting-table-region=""
-        className="relative flex-shrink-0"
+        className="relative"
         style={{
           height: SHELL_TABLE_REGION_HEIGHT,
+          flex: `0 0 ${SHELL_TABLE_REGION_HEIGHT}`,
         }}
       >
         {activeTab === "cards" && (
