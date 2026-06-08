@@ -188,7 +188,7 @@ export function WartimeDebugPanel() {
   };
 
 
-  return (
+  const panel = (
     <section
       data-wartime-debug-panel=""
       className="border border-border bg-background/95 text-foreground backdrop-blur-sm"
