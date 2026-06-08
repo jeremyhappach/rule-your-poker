@@ -1479,6 +1479,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
+  // Monotonic guard: track the freshest games.updated_at we've already applied to local
+  // state. Replaces the prior "latest-wins by fetchSeq" guard which would self-starve
+  // under fetch pressure (fresh row arrives, gets dropped because a newer fetch has
+  // already started). Out-of-order responses are still rejected because their
+  // updated_at will be <= the one we already applied.
+  const lastAppliedGameUpdatedAtRef = useRef<string | null>(null);
 
   // ── Optimistic Gin in-progress seed guard ─────────────────────────────
   // When the dealer client optimistically advances a gin dealerGameId to
