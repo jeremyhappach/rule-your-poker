@@ -10537,6 +10537,49 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     game_selection / configuring / game_over-pre-config.
                     Mounts on top of the persistent MobileGameTable
                     without unmounting it. */}
+                {(() => {
+                  // ── Wartime: poker-shell DealerGameSetup parent branch ──
+                  markRenderBoundary(
+                    'DealerSetupParent.pokerShellOverlay',
+                    () => ({
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      branch: 'poker-shell-overlay',
+                      isHost: isCreator,
+                      isDealer,
+                      dealerPosition: game.dealer_position ?? null,
+                      selectsDealerGameSetup:
+                        (game.status === 'game_selection' ||
+                          game.status === 'configuring' ||
+                          ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
+                        !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                        !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)),
+                    }),
+                    'DEALER_SETUP_PARENT_RENDER_BEGIN',
+                    'DEALER_SETUP_PARENT_RENDER_END',
+                  );
+                  const selected =
+                    (game.status === 'game_selection' ||
+                      game.status === 'configuring' ||
+                      ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
+                    !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                    !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers));
+                  if (selected) {
+                    recordPostCommitEvent('DEALER_SETUP_PARENT_BRANCH_SELECTED', {
+                      branch: 'poker-shell-overlay',
+                      selectedComponent: 'DealerGameSetup',
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      isHost: isCreator,
+                      dealerPosition: game.dealer_position ?? null,
+                    });
+                  }
+                  tickRenderLoopGuard('DealerSetupParent.pokerShellOverlay', () => ({
+                    status: game.status,
+                    gameType: game.game_type ?? null,
+                  }));
+                  return null;
+                })()}
                 {(game.status === 'game_selection' ||
                   game.status === 'configuring' ||
                   ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
