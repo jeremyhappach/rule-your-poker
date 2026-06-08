@@ -2346,6 +2346,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             localGameType: game?.game_type ?? null,
             localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
           });
+          // ── Bridge probe: snapshot every input the upcoming branches read.
+          // Captures both useState `game` (closure-captured at render time —
+          // may be stale) AND the live refs (lastKnownGameTypeRef /
+          // lastKnownRoundRef / gameTypeSwitchingRef). Divergence here is
+          // itself diagnostic.
+          recordLastMile('REALTIME_GAMES_PAYLOAD_EVALUATION', {
+            incomingStatus: newData?.status ?? null,
+            incomingGameType: newData?.game_type ?? null,
+            incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+            incomingCurrentRound: newData?.current_round ?? null,
+            incomingAwaitingNextRound: newData?.awaiting_next_round ?? null,
+            incomingIsPaused: newData?.is_paused ?? null,
+            incomingPotPresent: newData ? ('pot' in newData) : false,
+            incomingHasDealerSelectionStateKey: newData ? ('dealer_selection_state' in newData) : false,
+            payloadUpdatedAt: newData?.updated_at ?? null,
+            localStatusFromState: game?.status ?? null,
+            localGameTypeFromState: game?.game_type ?? null,
+            localGameTypeFromRef: lastKnownGameTypeRef.current ?? null,
+            localCurrentRoundFromState: game?.current_round ?? null,
+            localCurrentRoundFromRef: lastKnownRoundRef.current ?? null,
+            localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+            guards: {
+              gameTypeSwitchingRef: gameTypeSwitchingRef.current,
+              hasGameId: !!gameId,
+              hasGameState: !!game,
+            },
+          });
           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
