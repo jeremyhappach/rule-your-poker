@@ -6352,6 +6352,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
     });
     setGame(gameDataToApply);
+    {
+      const appliedUpdatedAt = (gameDataToApply as any)?.updated_at ?? null;
+      if (appliedUpdatedAt && (!lastAppliedGameUpdatedAtRef.current || appliedUpdatedAt >= lastAppliedGameUpdatedAtRef.current)) {
+        lastAppliedGameUpdatedAtRef.current = appliedUpdatedAt;
+      }
+    }
     recordLastMile('SET_GAME_COMMIT', {
       source: 'fetchGameData',
       fetchSeq,
