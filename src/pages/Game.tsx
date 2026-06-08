@@ -2327,6 +2327,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
+          recordLastMile('REALTIME_GAMES_PAYLOAD', {
+            eventType: payload.eventType,
+            oldStatus: oldData?.status ?? null,
+            newStatus: newData?.status ?? null,
+            oldGameType: oldData?.game_type ?? null,
+            newGameType: newData?.game_type ?? null,
+            oldCurrentGameUuid: oldData?.current_game_uuid ?? null,
+            newCurrentGameUuid: newData?.current_game_uuid ?? null,
+            payloadUpdatedAt: newData?.updated_at ?? null,
+            localStatus: game?.status ?? null,
+            localGameType: game?.game_type ?? null,
+            localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+          });
           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
