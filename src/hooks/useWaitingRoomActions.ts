@@ -18,6 +18,7 @@ import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
+import { recordGameStartTransition } from "@/lib/wartimeDebug/gameStartTransition";
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
