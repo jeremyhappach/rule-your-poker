@@ -2522,6 +2522,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           if (needsRoundSync) {
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'round-sync',
+              destination: 'fetchGameData()',
+              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+              localRound,
+              incomingRound,
+            });
             lastKnownRoundRef.current = incomingRound;
             
             // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
