@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import {
   WARTIME_CATEGORIES,
   buildWartimeExportJson,
