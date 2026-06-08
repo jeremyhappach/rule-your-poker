@@ -2,6 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import {
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  useEffectProbe,
+} from "@/lib/wartimeDebug/postCommitStallTrace";
 
 interface GameSelectionProps {
   onSelectGame: (gameType: string) => void;
