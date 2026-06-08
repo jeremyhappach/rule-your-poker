@@ -5732,6 +5732,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
+    recordLastMile('FETCH_GAME_DATA_BEGIN', {
+      fetchSeq,
+      gameId,
+      currentLocalStatus: game?.status ?? null,
+      currentLocalGameType: game?.game_type ?? null,
+      currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
+    });
 
     // ── Per-query waterfall instrumentation ──────────────────────────
     // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
