@@ -2699,6 +2699,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               fetchGameData();
               // NOTE: Removed redundant 300ms setTimeout refetch - it was causing excessive queries
               handled = true;
+            } else if (newData && 'status' in newData) {
+              // Status key present but not in our whitelist — diagnostic only
+              recordLastMile('REALTIME_GAMES_PAYLOAD_SUPPRESSED', {
+                guardName: 'status-whitelist',
+                reason: 'status present but not in fetch-triggering whitelist',
+                incomingStatus: newData?.status ?? null,
+                incomingGameType: newData?.game_type ?? null,
+                incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+                localStatus: game?.status ?? null,
+                localGameType: game?.game_type ?? null,
+                localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+              });
             }
           }
           
