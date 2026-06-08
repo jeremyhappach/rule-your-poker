@@ -7155,7 +7155,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     });
     let _lmFetchError: string | null = null;
     try {
-      await fetchGameData();
+      await fetchGameData('selectDealer');
     } catch (e: any) {
       _lmFetchError = String(e?.message ?? e);
       throw e;
