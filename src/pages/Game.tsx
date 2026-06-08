@@ -6717,6 +6717,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
 
+    recordGameStartTransition('DEALER_SELECTION_CREATE_BEGIN', {
+      sessionId: gameId,
+      gameType: game?.game_type ?? null,
+      hostUserId: user?.id ?? null,
+      dealerPosition,
+    });
+    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
+      sessionId: gameId,
+      fromStatus: game?.status ?? 'dealer_selection',
+      toStatus: 'game_selection',
+      gameType: game?.game_type ?? null,
+    });
+
     // Set config_deadline ATOMICALLY with status change, using the session-cached timer.
     const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
     const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
@@ -6737,8 +6750,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Failed to select dealer:', error);
+      recordGameStartTransition('DEALER_SELECTION_CREATE_FAILURE', {
+        sessionId: gameId,
+        gameType: game?.game_type ?? null,
+        error: error.message,
+        stack: (error as any)?.stack ?? null,
+        failureReason: 'games-update-failed',
+      });
+      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
+        sessionId: gameId,
+        fromStatus: game?.status ?? 'dealer_selection',
+        attemptedStatus: 'game_selection',
+        reason: error.message,
+      });
       return;
     }
+
+    recordGameStartTransition('DEALER_SELECTION_CREATE_SUCCESS', {
+      sessionId: gameId,
+      dealerGameId: null, // No dealer_games row written here (created later by configure flow)
+      gameType: game?.game_type ?? null,
+      dealerPosition,
+    });
+    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
+      sessionId: gameId,
+      fromStatus: game?.status ?? 'dealer_selection',
+      toStatus: 'game_selection',
+      gameType: game?.game_type ?? null,
+    });
 
     console.log('[DEALER SELECT] Successfully updated game status to game_selection');
 
