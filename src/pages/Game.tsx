@@ -10110,6 +10110,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
+                {(() => {
+                  // ── Wartime: legacy (non-persistent) DealerGameSetup parent branch ──
+                  markRenderBoundary(
+                    'DealerSetupParent.legacy',
+                    () => ({
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      branch: 'legacy-sibling',
+                      isHost: isCreator,
+                      isDealer,
+                      dealerPosition: game.dealer_position ?? null,
+                      treatAsCanonicalRoute: _treatAsCanonicalRoute,
+                      selectsDealerGameSetup: !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)),
+                    }),
+                    'DEALER_SETUP_PARENT_RENDER_BEGIN',
+                    'DEALER_SETUP_PARENT_RENDER_END',
+                  );
+                  if (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) {
+                    recordPostCommitEvent('DEALER_SETUP_PARENT_BRANCH_SELECTED', {
+                      branch: 'legacy-sibling',
+                      selectedComponent: 'DealerGameSetup',
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      isHost: isCreator,
+                      dealerPosition: game.dealer_position ?? null,
+                    });
+                  }
+                  tickRenderLoopGuard('DealerSetupParent.legacy', () => ({
+                    status: game.status,
+                    gameType: game.game_type ?? null,
+                  }));
+                  return null;
+                })()}
                 {/* Phase 1: A2 status-keyed sibling table. `!_treatAsCanonicalRoute`
                     is the route-stable gate; `!isCanonicalShellFamily` is a
                     belt-and-suspenders structural guard so this branch
