@@ -6663,20 +6663,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
     traceMilestone('game_start_from_waiting');
 
-    recordGameStartTransition('GAME_START_HANDLER_ENTER', {
-      sessionId: gameId,
-      status: game?.status ?? null,
-      gameType: game?.game_type ?? null,
-      dealerGameCount: null,
-      currentRoundId: currentRound?.id ?? null,
-      source: 'startGameFromWaiting',
-    });
-    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'waiting',
-      toStatus: 'dealer_selection',
-      gameType: game?.game_type ?? null,
-    });
+    // Start-game probes retired — waiting → dealer_selection attribution
+    // is complete. selectDealer downstream is now the focus.
 
     // Log session event
     await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
@@ -6705,34 +6693,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Start game error:', error);
-      recordGameStartTransition('GAME_START_HANDLER_EXIT', {
-        sessionId: gameId,
-        success: false,
-        failureReason: error.message,
-        resultingStatus: game?.status ?? null,
-        resultingGameType: game?.game_type ?? null,
-      });
-      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
-        sessionId: gameId,
-        fromStatus: game?.status ?? 'waiting',
-        attemptedStatus: 'dealer_selection',
-        reason: error.message,
-      });
       return;
     }
 
-    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'waiting',
-      toStatus: 'dealer_selection',
-      gameType: game?.game_type ?? null,
-    });
-    recordGameStartTransition('GAME_START_HANDLER_EXIT', {
-      sessionId: gameId,
-      success: true,
-      resultingStatus: 'dealer_selection',
-      resultingGameType: game?.game_type ?? null,
-    });
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
