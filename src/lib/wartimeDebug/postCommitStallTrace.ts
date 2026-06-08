@@ -28,6 +28,7 @@
  * de-duplicated to prevent the instrumentation itself from looping.
  */
 
+import { useEffect, useRef } from 'react';
 import { recordWartime } from './core';
 import { persistFreezeEvent } from './freezeRecorder';
 
@@ -42,6 +43,18 @@ export type PostCommitEvent =
   | 'DEALER_SETUP_PARENT_RENDER_BEGIN'
   | 'DEALER_SETUP_PARENT_RENDER_END'
   | 'DEALER_SETUP_PARENT_BRANCH_SELECTED'
+  | 'DEALER_SETUP_INNER_RENDER_BEGIN'
+  | 'DEALER_SETUP_INNER_RENDER_END'
+  | 'DEALER_SETUP_EFFECT_ENTER'
+  | 'DEALER_SETUP_EFFECT_EXIT'
+  | 'SHELL_SLOT_RENDER_BEGIN'
+  | 'SHELL_SLOT_RENDER_END'
+  | 'NEUTRAL_INTERSTITIAL_RENDER_BEGIN'
+  | 'NEUTRAL_INTERSTITIAL_RENDER_END'
+  | 'GAME_SELECTION_SURFACE_RENDER_BEGIN'
+  | 'GAME_SELECTION_SURFACE_RENDER_END'
+  | 'GAME_SELECTION_EFFECT_ENTER'
+  | 'GAME_SELECTION_EFFECT_EXIT'
   | 'POST_COMMIT_RENDER_LOOP_GUARD';
 
 function _now(): number {
