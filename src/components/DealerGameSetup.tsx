@@ -202,10 +202,15 @@ const DealerGameSetupInner = ({
   // Mount delay to prevent brief flash during rapid status transitions
   // The component waits 50ms before rendering to ensure parent isn't about to unmount it
   const [mountReady, setMountReady] = useState(false);
-  useEffect(() => {
-    const mountTimer = setTimeout(() => setMountReady(true), 50);
-    return () => clearTimeout(mountTimer);
-  }, []);
+  useEffect(() => traceGameSelectionEffect(
+    'DealerGameSetupInner',
+    'mountReadyTimer',
+    () => ({}),
+    () => {
+      const mountTimer = setTimeout(() => setMountReady(true), 50);
+      return () => clearTimeout(mountTimer);
+    },
+  ), []);
   
   // Config state - use strings for free text input with validation on save
   const [anteAmount, setAnteAmount] = useState("2");
