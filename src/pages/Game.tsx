@@ -2346,6 +2346,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             localGameType: game?.game_type ?? null,
             localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
           });
+          // ── Bridge probe: snapshot every input the upcoming branches read.
+          // Captures both useState `game` (closure-captured at render time —
+          // may be stale) AND the live refs (lastKnownGameTypeRef /
+          // lastKnownRoundRef / gameTypeSwitchingRef). Divergence here is
+          // itself diagnostic.
+          recordLastMile('REALTIME_GAMES_PAYLOAD_EVALUATION', {
+            incomingStatus: newData?.status ?? null,
+            incomingGameType: newData?.game_type ?? null,
+            incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+            incomingCurrentRound: newData?.current_round ?? null,
+            incomingAwaitingNextRound: newData?.awaiting_next_round ?? null,
+            incomingIsPaused: newData?.is_paused ?? null,
+            incomingPotPresent: newData ? ('pot' in newData) : false,
+            incomingHasDealerSelectionStateKey: newData ? ('dealer_selection_state' in newData) : false,
+            payloadUpdatedAt: newData?.updated_at ?? null,
+            localStatusFromState: game?.status ?? null,
+            localGameTypeFromState: game?.game_type ?? null,
+            localGameTypeFromRef: lastKnownGameTypeRef.current ?? null,
+            localCurrentRoundFromState: game?.current_round ?? null,
+            localCurrentRoundFromRef: lastKnownRoundRef.current ?? null,
+            localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+            guards: {
+              gameTypeSwitchingRef: gameTypeSwitchingRef.current,
+              hasGameId: !!gameId,
+              hasGameState: !!game,
+            },
+          });
           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
@@ -2397,6 +2424,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // This ensures players who join mid-session get fresh state
           if (incomingGameType && incomingGameType !== localGameType) {
             console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED (detected via local state):', localGameType, '->', incomingGameType, '- CLEARING ALL CARD STATE!');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'game-type-change',
+              destination: 'setGame(optimistic) + fetchGameData(200ms)',
+              expectedNextAction: 'SET_GAME_ATTEMPT(realtime-game-type-change)',
+              incomingGameType,
+              localGameType,
+            });
             // Update ref immediately
             lastKnownGameTypeRef.current = incomingGameType;
             lastKnownRoundRef.current = null;
@@ -2451,6 +2485,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI (dealer only)
           if (gameTypeSwitchingRef.current) {
             console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_SUPPRESSED', {
+              guardName: 'gameTypeSwitchingRef',
+              reason: 'game type switch in progress',
+              incomingStatus: newData?.status ?? null,
+              incomingGameType: newData?.game_type ?? null,
+              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+              localStatus: game?.status ?? null,
+              localGameType: game?.game_type ?? null,
+              localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+            });
             recordLastMile('SET_GAME_SUPPRESSED', {
               source: 'realtime',
               guardName: 'gameTypeSwitchingRef',
@@ -2478,6 +2522,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           if (needsRoundSync) {
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'round-sync',
+              destination: 'fetchGameData()',
+              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+              localRound,
+              incomingRound,
+            });
             lastKnownRoundRef.current = incomingRound;
             
             // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
@@ -2509,6 +2560,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended' || newStatus === 'cribbage_dealer_selection' || newStatus === 'dealer_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
+              recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+                branch: 'status-change',
+                destination: 'fetchGameData()',
+                expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+                newStatus,
+                localStatus: game?.status ?? null,
+              });
               if (newStatus === 'in_progress' || newStatus === 'ante_decision') {
                 console.log('[GIN_RUNTIME_TIMELINE] realtime:games.status observed', { t: Date.now(), newStatus, oldStatus: game?.status ?? null });
               }
@@ -2641,6 +2699,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               fetchGameData();
               // NOTE: Removed redundant 300ms setTimeout refetch - it was causing excessive queries
               handled = true;
+            } else if (newData && 'status' in newData) {
+              // Status key present but not in our whitelist — diagnostic only
+              recordLastMile('REALTIME_GAMES_PAYLOAD_SUPPRESSED', {
+                guardName: 'status-whitelist',
+                reason: 'status present but not in fetch-triggering whitelist',
+                incomingStatus: newData?.status ?? null,
+                incomingGameType: newData?.game_type ?? null,
+                incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+                localStatus: game?.status ?? null,
+                localGameType: game?.game_type ?? null,
+                localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+              });
             }
           }
           
@@ -2654,6 +2724,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // The cache will be cleared naturally when new round data arrives and is validated as different
               // setCardStateContext, setCachedRoundData, maxRevealedRef are updated elsewhere when new cards arrive
             }
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'awaiting-next-round',
+              destination: 'fetchGameData()',
+              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+              awaitingNextRound: newData.awaiting_next_round,
+            });
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             handled = true;
@@ -2663,6 +2739,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'is_paused' in newData) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', newData.is_paused, 'remaining:', newData.paused_time_remaining);
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'is-paused',
+              destination: 'setGame(optimistic) + fetchGameData()',
+              expectedNextAction: 'SET_GAME_ATTEMPT(fetchGameData)',
+              isPaused: newData.is_paused,
+            });
             
             // CRITICAL: Update ref and clear interval SYNCHRONOUSLY before React render cycle
             isPausedRef.current = newData.is_paused;
@@ -2686,6 +2768,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'pot' in newData) {
             // CRITICAL: Pot changes need immediate sync for all players
             console.log('[REALTIME] 💰 POT CHANGED - IMMEDIATE FETCH!', newData.pot);
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'pot',
+              destination: 'fetchGameData()',
+              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+              pot: newData.pot,
+            });
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             handled = true;
@@ -2694,6 +2782,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Handle dealer selection state changes - immediate sync for all players
           if (!handled && newData && 'dealer_selection_state' in newData) {
             console.log('[REALTIME] 🎯 DEALER SELECTION STATE CHANGED - IMMEDIATE UPDATE!');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'dealer-selection-state',
+              destination: 'setGame(optimistic dealer_selection_state only — NO fetchGameData)',
+              expectedNextAction: 'partial setGame; no FETCH_GAME_DATA_BEGIN',
+              nextDssNull: ((newData as any)?.dealer_selection_state ?? null) === null,
+            });
             // ── WRITER ATTRIBUTION: realtime patch into game.dealer_selection_state ──
             // This is the indirect writer that feeds useHighCardDealerSelection's
             // syncedState. When newData.dealer_selection_state is null OR carries
@@ -2738,6 +2832,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Fallback to debounced fetch if nothing else handled
           if (!handled) {
             console.log('[REALTIME] No specific trigger, using debounced fetch');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'fallback-debounced',
+              destination: 'debouncedFetch() → fetchGameData()',
+              expectedNextAction: 'eventual FETCH_GAME_DATA_BEGIN',
+              keysInNewData: newData ? Object.keys(newData) : [],
+            });
             debouncedFetch();
           }
         })
@@ -5868,6 +5968,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         fetchSeq,
         skipReason: 'no gameId',
       });
+      recordLastMile('FETCH_GAME_DATA_SKIPPED', {
+        fetchSeq,
+        skipReason: 'no gameId',
+      });
       fetchSpan.end({ skipped: 'no gameId' });
       return;
     }
@@ -5944,20 +6048,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (gameError) {
       const code = (gameError as any)?.code;
       if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
-        // P0 GUARD (NAV-02): a single fetch returning "0 rows" can be a transient
-        // post-write replica race. Defer to the polling checkGameExists effect, which
-        // requires repeated strikes + a fresh confirm before navigating.
         console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
+        recordLastMile('SET_GAME_SUPPRESSED', {
+          source: 'fetchGameData',
+          guardName: 'missing-game-fetch-deferred',
+          reason: 'PGRST116 / 0 rows — deferred to checkGameExists poll',
+          fetchSeq,
+          errorCode: code ?? null,
+          errorMessage: gameError.message ?? null,
+        });
         return;
       }
 
       console.error('Failed to fetch game:', gameError);
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'gameError',
+        reason: 'gameError returned from select',
+        fetchSeq,
+        errorCode: code ?? null,
+        errorMessage: gameError.message ?? null,
+      });
       return;
     }
 
     if (!gameData) {
-      // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'missing-game-data-deferred',
+        reason: 'gameData is null — deferred to checkGameExists poll',
+        fetchSeq,
+      });
       return;
     }
 
