@@ -246,3 +246,42 @@ export function _resetPostCommitStallCounters(): void {
   _loopState.clear();
   _sigCache.clear();
 }
+
+// ── 4. Effect probe hook ───────────────────────────────────────────────
+//
+// Wraps a useEffect to emit ENTER on mount/dep change and EXIT on
+// cleanup. Also counts re-entries through tickRenderLoopGuard so a
+// looping effect trips POST_COMMIT_RENDER_LOOP_GUARD.
+export function useEffectProbe(
+  component: string,
+  effectName: string,
+  enterEvent: PostCommitEvent,
+  exitEvent: PostCommitEvent,
+  payloadFn: () => Record<string, unknown>,
+  deps: ReadonlyArray<unknown> = [],
+): void {
+  const renderCountRef = useRef(0);
+  useEffect(() => {
+    const start = _now();
+    renderCountRef.current += 1;
+    const basePayload = payloadFn();
+    const tag = `${component}.effect.${effectName}`;
+    tickRenderLoopGuard(tag, () => basePayload);
+    recordPostCommitEvent(enterEvent, {
+      component,
+      effectName,
+      renderCount: renderCountRef.current,
+      ...basePayload,
+    });
+    return () => {
+      recordPostCommitEvent(exitEvent, {
+        component,
+        effectName,
+        renderCount: renderCountRef.current,
+        elapsedMs: Math.round(_now() - start),
+        ...basePayload,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
