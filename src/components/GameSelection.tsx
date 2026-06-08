@@ -29,6 +29,35 @@ export const GameSelection = ({
   onSitOut,
   onEndSession
 }: GameSelectionProps) => {
+  markRenderBoundary(
+    'GameSelectionSurface',
+    () => ({
+      lastGameType: lastGameType ?? null,
+      isFirstHand,
+      activePlayerCount,
+      activeHumanCount,
+    }),
+    'GAME_SELECTION_SURFACE_RENDER_BEGIN',
+    'GAME_SELECTION_SURFACE_RENDER_END',
+  );
+  tickRenderLoopGuard('GameSelectionSurface', () => ({
+    lastGameType: lastGameType ?? null,
+    isFirstHand,
+    activePlayerCount,
+  }));
+  useEffectProbe(
+    'GameSelectionSurface',
+    'mount',
+    'GAME_SELECTION_EFFECT_ENTER',
+    'GAME_SELECTION_EFFECT_EXIT',
+    () => ({
+      lastGameType: lastGameType ?? null,
+      isFirstHand,
+      activePlayerCount,
+      activeHumanCount,
+    }),
+    [],
+  );
 
   const cardGames = [
     {
