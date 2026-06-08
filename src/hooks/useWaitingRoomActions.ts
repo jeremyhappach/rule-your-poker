@@ -332,9 +332,24 @@ export function useWaitingRoomActions({
     recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:click', {
       hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
     });
+    recordGameStartTransition('GAME_START_REQUESTED', {
+      sessionId: gameId,
+      userId: currentUserId ?? null,
+      currentStatus: 'waiting',
+      currentGameType: null,
+      selectedGameType: null,
+      hasEnoughPlayers,
+      alreadyTriggered: gameStartTriggeredRef.current,
+      source: 'useWaitingRoomActions.handleStartGame',
+    });
     if (!hasEnoughPlayers || gameStartTriggeredRef.current) {
       recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:skipped', {
         hasEnoughPlayers, alreadyTriggered: gameStartTriggeredRef.current,
+      });
+      recordGameStartTransition('GAME_START_HANDLER_EXIT', {
+        sessionId: gameId,
+        success: false,
+        failureReason: !hasEnoughPlayers ? 'not-enough-players' : 'already-triggered',
       });
       return;
     }
@@ -342,9 +357,14 @@ export function useWaitingRoomActions({
     console.log("🃏 SHUFFLE UP AND DEAL! 🃏");
     setTimeout(() => {
       recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:fire');
+      recordGameStartTransition('GAME_START_HANDLER_ENTER', {
+        sessionId: gameId,
+        userId: currentUserId ?? null,
+        source: 'useWaitingRoomActions.handleStartGame:fire',
+      });
       onGameStart();
     }, 500);
-  }, [hasEnoughPlayers, onGameStart]);
+  }, [hasEnoughPlayers, onGameStart, gameId, currentUserId]);
 
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;
