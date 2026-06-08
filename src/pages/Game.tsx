@@ -5874,10 +5874,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       errors: { game: gameError?.message ?? null, players: playersError?.message ?? null },
     });
 
+    recordLastMile('FETCH_GAME_DATA_RESULT', {
+      fetchSeq,
+      elapsedMs: Date.now() - fetchStartedAt,
+      returnedStatus: (gameData as any)?.status ?? null,
+      returnedGameType: (gameData as any)?.game_type ?? null,
+      returnedCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+      returnedUpdatedAt: (gameData as any)?.updated_at ?? null,
+      error: gameError?.message ?? null,
+      stale: isStale(),
+    });
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
       console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'isStale-post-parallel',
+        reason: 'newer fetchSeq in flight',
+        fetchSeq,
+        latestFetchSeq: fetchSeqRef.current,
+        incomingStatus: (gameData as any)?.status ?? null,
+        incomingGameType: (gameData as any)?.game_type ?? null,
+        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+        localStatus: game?.status ?? null,
+        localGameType: game?.game_type ?? null,
+        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+      });
       return;
     }
 
