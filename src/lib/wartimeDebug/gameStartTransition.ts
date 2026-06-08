@@ -12,6 +12,7 @@
  */
 
 import { recordWartime } from './core';
+import { persistFreezeEvent } from './freezeRecorder';
 
 export type GameStartEvent =
   | 'GAME_START_REQUESTED'
@@ -36,6 +37,7 @@ export function recordGameStartTransition(
   // eslint-disable-next-line no-console
   console.debug(`[GST] ${event}`, enriched);
   recordWartime('GAMEPLAY', `gameStart.${event}`, enriched);
+  persistFreezeEvent(`gst.${event}`, 'gameStartTransition', enriched);
 }
 
 // ── PlayfieldSlotController de-duper ────────────────────────────────

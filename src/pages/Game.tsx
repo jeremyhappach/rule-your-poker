@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { recordGameStartTransition } from "@/lib/wartimeDebug/gameStartTransition";
+import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -648,6 +649,31 @@ const Game = () => {
   }, [game?.pot, game?.status, gameId]);
 
   const potForDisplay = game?.pot ?? lastNonNullPotRef.current ?? 0;
+
+  // ── FREEZE_REC: publish current game snapshot for the temporary
+  // dealer-selection freeze recorder. Side-effect only; no UI impact.
+  useEffect(() => {
+    setFreezeRecorderContext({
+      gameId: game?.id ?? gameId ?? null,
+      userId: user?.id ?? null,
+      status: game?.status ?? null,
+      gameType: (game?.game_type as string | null) ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      dealerSelectionState: (game as any)?.dealer_selection_state ?? null,
+      configComplete: (game as any)?.config_complete ?? null,
+      dealerPosition: (game as any)?.dealer_position ?? null,
+    });
+  }, [
+    game?.id,
+    gameId,
+    user?.id,
+    game?.status,
+    game?.game_type,
+    (game as any)?.current_game_uuid,
+    (game as any)?.dealer_selection_state,
+    (game as any)?.config_complete,
+    (game as any)?.dealer_position,
+  ]);
 
   // DEBUG: disable polling-based safety nets to isolate race conditions (reload to apply)
   const safetyPollsDisabled = useMemo(() => isSafetyPollingDisabled(), []);

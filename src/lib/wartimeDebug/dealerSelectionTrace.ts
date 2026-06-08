@@ -7,6 +7,7 @@
  */
 
 import { recordWartime } from './core';
+import { persistFreezeEvent } from './freezeRecorder';
 
 export type DealerSelectionEvent =
   | 'DEALER_SELECTION_INIT_BEGIN'
@@ -26,6 +27,7 @@ export function recordDealerSelectionTrace(
   // eslint-disable-next-line no-console
   console.debug(`[DST] ${event}`, enriched);
   recordWartime('GAMEPLAY', `dealerSelection.${event}`, enriched);
+  persistFreezeEvent(`dst.${event}`, 'dealerSelectionTrace', enriched);
 }
 
 /** De-dupe noisy effect-driven events when nothing meaningful changed. */
