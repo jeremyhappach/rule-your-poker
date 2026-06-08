@@ -6265,8 +6265,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ? base.eq('dealer_game_id', gameData.current_game_uuid)
             : base;
 
-          const { data } = await timedQuery('rounds.holm-latest', 'rounds', () =>
+          const { data } = await timedQuery('rounds.holm-latest', 'rounds', (signal) =>
             query
+              .abortSignal(signal)
               .order('hand_number', { ascending: false })
               .order('round_number', { ascending: false })
               .limit(1)
@@ -6277,7 +6278,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
-          const { data } = await timedQuery('rounds.357-current', 'rounds', () =>
+          const { data } = await timedQuery('rounds.357-current', 'rounds', (signal) =>
             supabase
               .from('rounds')
               .select('id, round_number, cards_dealt')
@@ -6285,6 +6286,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .eq('dealer_game_id', gameData.current_game_uuid)
               .eq('hand_number', gameData.total_hands)
               .eq('round_number', gameData.current_round)
+              .abortSignal(signal)
               .maybeSingle());
 
           roundData = data;
@@ -6304,8 +6306,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id - this may cause cross-game contamination');
           }
           
-          const { data } = await timedQuery('rounds.fallback-by-round', 'rounds', () =>
+          const { data } = await timedQuery('rounds.fallback-by-round', 'rounds', (signal) =>
             fallbackQuery
+              .abortSignal(signal)
               .order('hand_number', { ascending: false })
               .order('created_at', { ascending: false })
               .limit(1)
@@ -6327,8 +6330,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id in ultimate fallback - this may cause cross-game contamination');
           }
           
-          const { data } = await timedQuery('rounds.ultimate-fallback', 'rounds', () =>
+          const { data } = await timedQuery('rounds.ultimate-fallback', 'rounds', (signal) =>
             ultimateFallbackQuery
+              .abortSignal(signal)
               .order('hand_number', { ascending: false })
               .order('round_number', { ascending: false })
               .limit(1)
@@ -6367,10 +6371,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             payload: { fetchToken, fetchRoundId },
           });
           
-          const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
+          const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', (signal) =>
             supabase
               .from('player_cards')
               .select('player_id, cards')
+              .abortSignal(signal)
               .eq('round_id', targetRoundId));
 
 
