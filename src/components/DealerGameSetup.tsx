@@ -167,19 +167,25 @@ const DealerGameSetupInner = ({
     isBot,
     previousGameType: previousGameType ?? null,
   });
-  useEffect(() => {
-    recordWaitingLifecycle('DealerConfig entered', {
-      gameId, isBot, previousGameType: previousGameType ?? null,
-    });
-    recordSurfaceOwnership('DealerConfig', {
-      SeatOwner: '(not applicable — modal form)',
-      ChipOwner: '(not applicable)',
-      ControlOwner: 'Slot:DealerGameSetup (game/config tabs)',
-      AnnouncementOwner: 'Shell:SessionLifecycleAnnouncer (dealer_configuring ambient)',
-      HUDOwner: '(none)',
-    }, { gameId });
+  useEffect(() => traceGameSelectionEffect(
+    'DealerGameSetupInner',
+    'recordWaitingLifecycle',
+    () => ({}),
+    () => {
+      recordWaitingLifecycle('DealerConfig entered', {
+        gameId, isBot, previousGameType: previousGameType ?? null,
+      });
+      recordSurfaceOwnership('DealerConfig', {
+        SeatOwner: '(not applicable — modal form)',
+        ChipOwner: '(not applicable)',
+        ControlOwner: 'Slot:DealerGameSetup (game/config tabs)',
+        AnnouncementOwner: 'Shell:SessionLifecycleAnnouncer (dealer_configuring ambient)',
+        HUDOwner: '(none)',
+      }, { gameId });
+    },
+  ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    []);
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
