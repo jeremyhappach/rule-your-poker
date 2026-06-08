@@ -2782,6 +2782,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Handle dealer selection state changes - immediate sync for all players
           if (!handled && newData && 'dealer_selection_state' in newData) {
             console.log('[REALTIME] 🎯 DEALER SELECTION STATE CHANGED - IMMEDIATE UPDATE!');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'dealer-selection-state',
+              destination: 'setGame(optimistic dealer_selection_state only — NO fetchGameData)',
+              expectedNextAction: 'partial setGame; no FETCH_GAME_DATA_BEGIN',
+              nextDssNull: ((newData as any)?.dealer_selection_state ?? null) === null,
+            });
             // ── WRITER ATTRIBUTION: realtime patch into game.dealer_selection_state ──
             // This is the indirect writer that feeds useHighCardDealerSelection's
             // syncedState. When newData.dealer_selection_state is null OR carries
