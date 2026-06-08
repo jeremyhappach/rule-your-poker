@@ -139,19 +139,6 @@ const DealerGameSetupInner = ({
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
   // runtime path (and therefore why shell chrome appears missing).
-  // ── WARTIME: game-selection render/mount probes (Bucket D isolation) ──
-  const _gstRenderProbe = useGameSelectionRenderProbe('DealerGameSetupInner', () => ({
-    gameId,
-    isBot,
-    previousGameType: previousGameType ?? null,
-    dealerPosition,
-    isFirstHand,
-  }));
-  useGameSelectionMountProbe('DealerGameSetupInner', () => ({
-    gameId,
-    isBot,
-    previousGameType: previousGameType ?? null,
-  }));
 
   useLifecycleMount('DealerGameSetup', {
     gameId,
@@ -165,25 +152,19 @@ const DealerGameSetupInner = ({
     isBot,
     previousGameType: previousGameType ?? null,
   });
-  useEffect(() => traceGameSelectionEffect(
-    'DealerGameSetupInner',
-    'recordWaitingLifecycle',
-    () => ({}),
-    () => {
-      recordWaitingLifecycle('DealerConfig entered', {
-        gameId, isBot, previousGameType: previousGameType ?? null,
-      });
-      recordSurfaceOwnership('DealerConfig', {
-        SeatOwner: '(not applicable — modal form)',
-        ChipOwner: '(not applicable)',
-        ControlOwner: 'Slot:DealerGameSetup (game/config tabs)',
-        AnnouncementOwner: 'Shell:SessionLifecycleAnnouncer (dealer_configuring ambient)',
-        HUDOwner: '(none)',
-      }, { gameId });
-    },
-  ),
+  useEffect(() => {
+    recordWaitingLifecycle('DealerConfig entered', {
+      gameId, isBot, previousGameType: previousGameType ?? null,
+    });
+    recordSurfaceOwnership('DealerConfig', {
+      SeatOwner: '(not applicable — modal form)',
+      ChipOwner: '(not applicable)',
+      ControlOwner: 'Slot:DealerGameSetup (game/config tabs)',
+      AnnouncementOwner: 'Shell:SessionLifecycleAnnouncer (dealer_configuring ambient)',
+      HUDOwner: '(none)',
+    }, { gameId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []);
+  }, []);
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
@@ -200,15 +181,10 @@ const DealerGameSetupInner = ({
   // Mount delay to prevent brief flash during rapid status transitions
   // The component waits 50ms before rendering to ensure parent isn't about to unmount it
   const [mountReady, setMountReady] = useState(false);
-  useEffect(() => traceGameSelectionEffect(
-    'DealerGameSetupInner',
-    'mountReadyTimer',
-    () => ({}),
-    () => {
-      const mountTimer = setTimeout(() => setMountReady(true), 50);
-      return () => clearTimeout(mountTimer);
-    },
-  ), []);
+  useEffect(() => {
+    const mountTimer = setTimeout(() => setMountReady(true), 50);
+    return () => clearTimeout(mountTimer);
+  }, []);
   
   // Config state - use strings for free text input with validation on save
   const [anteAmount, setAnteAmount] = useState("2");
