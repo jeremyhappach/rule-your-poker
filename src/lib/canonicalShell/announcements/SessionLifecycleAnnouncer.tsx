@@ -199,12 +199,22 @@ export function SessionLifecycleAnnouncer({
     }
 
     // No ambient should be owned by us this frame. Teardown ONLY if the
-    // currently-active ambient is one we emitted (don't clobber).
+    // currently-active ambient is one we emitted (don't clobber), except
+    // for dealer-selection: that rail is strictly status-authoritative.
+    // If the shell still holds `dealer_selection_in_progress` after the
+    // DB status has left `dealer_selection`, it is stale even if our local
+    // ownership latch was lost across a shell/surface remount.
+    const staleDealerSelectionAmbient =
+      ctx?.ambient?.type === 'dealer_selection_in_progress' &&
+      gameStatus !== 'dealer_selection';
     if (
-      lastAmbientIdRef.current &&
-      ctx?.ambient?.id === lastAmbientIdRef.current
+      (lastAmbientIdRef.current &&
+        ctx?.ambient?.id === lastAmbientIdRef.current) ||
+      staleDealerSelectionAmbient
     ) {
-      announcements.clearAmbient();
+      announcements.clearAmbient(
+        staleDealerSelectionAmbient ? 'dealer_selection_in_progress' : undefined,
+      );
     }
     lastAmbientIdRef.current = null;
   }, [
