@@ -6802,9 +6802,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Successfully updated game status to game_selection');
 
-    // Immediate refetch to ensure UI updates immediately
-    await fetchGameData();
-    
+    // ── Wartime: last-mile probe around post-commit fetchGameData ───
+    const _lmFetchStart = Date.now();
+    recordLastMile('POST_SELECT_DEALER_FETCH_BEGIN', {
+      sessionId: gameId,
+      caller: 'selectDealer',
+      expectedStatus: 'game_selection',
+      previousStatus: game?.status ?? null,
+      previousGameType: game?.game_type ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+    });
+    let _lmFetchError: string | null = null;
+    try {
+      await fetchGameData();
+    } catch (e: any) {
+      _lmFetchError = String(e?.message ?? e);
+      throw e;
+    } finally {
+      recordLastMile('POST_SELECT_DEALER_FETCH_EXIT', {
+        sessionId: gameId,
+        caller: 'selectDealer',
+        success: _lmFetchError === null,
+        elapsedMs: Date.now() - _lmFetchStart,
+        error: _lmFetchError,
+      });
+    }
+
     // Secondary refetch after short delay for any race conditions
     setTimeout(() => fetchGameData(), 300);
   };
