@@ -11567,6 +11567,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // renders a second felt floor underneath the slot.
 
 
+  // ── Wartime: Game.tsx render boundary (post-state, pre-return) ──
+  // Emits GAME_ROUTE_RENDER_BEGIN immediately (signature-deduped) and
+  // schedules GAME_ROUTE_RENDER_END via microtask. Absence of END is
+  // diagnostic of a main-thread lock during render commit.
+  markRenderBoundary(
+    'Game.route',
+    () => ({
+      gameId: gameId ?? null,
+      status: game?.status ?? null,
+      gameType: game?.game_type ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      loading: loading ?? null,
+      authReady,
+      hasGame: !!game,
+      isHost: isCreator,
+      dealerPosition: game?.dealer_position ?? null,
+      treatAsCanonicalRoute: _treatAsCanonicalRoute ?? null,
+      isPokerShellPersistent: _isPokerShellPersistent ?? null,
+    }),
+    'GAME_ROUTE_RENDER_BEGIN',
+    'GAME_ROUTE_RENDER_END',
+  );
+
   return (
     <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync
