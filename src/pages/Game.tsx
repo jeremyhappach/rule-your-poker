@@ -5875,16 +5875,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Removed failsafe - countdown component now handles completion reliably
 
-  const fetchGameData = async () => {
+  const fetchGameData = async (callerArg?: string) => {
+    const caller = typeof callerArg === 'string' ? callerArg : 'unspecified';
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
+    const localStatusAtFetchStart = game?.status ?? null;
+    const localGameTypeAtFetchStart = game?.game_type ?? null;
+    const expectedStatusAtFetchStart = localStatusAtFetchStart === 'dealer_selection' ? 'game_selection' : null;
     recordLastMile('FETCH_GAME_DATA_BEGIN', {
       fetchSeq,
+      caller,
       gameId,
-      currentLocalStatus: game?.status ?? null,
-      currentLocalGameType: game?.game_type ?? null,
+      currentLocalStatus: localStatusAtFetchStart,
+      currentLocalGameType: localGameTypeAtFetchStart,
       currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
     });
 
@@ -5903,29 +5908,110 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       preAuth: boolean;
       authReadyAtStart: boolean;
       userIdPresent: boolean;
+      hung: boolean;
+      aborted: boolean;
     };
     const queryTimings: QueryTiming[] = [];
     const authReadyAtFetchStart = authReady;
     const userIdAtFetchStart = user?.id ?? null;
+    const FETCH_QUERY_TIMEOUT_MS = 5000;
+    const queryStates = new Map<string, { status: 'pending' | 'complete' | 'hung' | 'aborted'; startedAt: number }>();
+    let fetchDataHungEmitted = false;
+    const getOutstandingQueries = () => Array.from(queryStates.entries())
+      .filter(([, state]) => state.status === 'pending' || state.status === 'hung')
+      .map(([queryName]) => queryName);
 
     const timedQuery = async <T,>(
       name: string,
       table: string,
-      runner: () => PromiseLike<{ data: T; error: any }>,
+      runner: (signal: AbortSignal) => PromiseLike<{ data: T; error: any }>,
     ): Promise<{ data: T; error: any }> => {
       const startedAtOffsetMs = Date.now() - fetchStartedAt;
       const authReadyAtStart = authReady;
       const userIdPresent = !!user?.id;
+      const queryStartedAt = Date.now();
+      queryStates.set(name, { status: 'pending', startedAt: queryStartedAt });
+      recordLastMile('FETCH_QUERY_BEGIN', {
+        fetchSeq,
+        caller,
+        queryName: name,
+        localStatus: localStatusAtFetchStart,
+        localGameType: localGameTypeAtFetchStart,
+        expectedStatus: expectedStatusAtFetchStart,
+        timestamp: new Date().toISOString(),
+      });
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData.query.start', {
         fetchSeq,
+        caller,
         name,
         table,
         startedAtOffsetMs,
         authReadyAtStart,
         userIdPresent,
       });
-      const t0 = Date.now();
-      const result = await runner();
+      const abortController = new AbortController();
+      const queryPromise = Promise.resolve()
+        .then(() => runner(abortController.signal))
+        .then(
+          (result) => ({ kind: 'result' as const, result }),
+          (error) => ({ kind: 'error' as const, error }),
+        );
+      const timeoutPromise = new Promise<{ kind: 'timeout' }>((resolve) => {
+        setTimeout(() => resolve({ kind: 'timeout' }), FETCH_QUERY_TIMEOUT_MS);
+      });
+      const raced = await Promise.race([queryPromise, timeoutPromise]);
+      const t0 = queryStartedAt;
+      if (raced.kind === 'timeout') {
+        const elapsedMs = Date.now() - t0;
+        queryStates.set(name, { status: 'hung', startedAt: queryStartedAt });
+        const outstandingQueries = getOutstandingQueries();
+        recordLastMile('FETCH_QUERY_HUNG', {
+          fetchSeq,
+          queryName: name,
+          elapsedMs,
+          caller,
+          localStatus: localStatusAtFetchStart,
+          expectedStatus: expectedStatusAtFetchStart,
+          outstandingQueries,
+        });
+        if (!fetchDataHungEmitted) {
+          fetchDataHungEmitted = true;
+          recordLastMile('FETCH_GAME_DATA_HUNG', {
+            fetchSeq,
+            elapsedMs: Date.now() - fetchStartedAt,
+            caller,
+            localStatus: localStatusAtFetchStart,
+            expectedStatus: expectedStatusAtFetchStart,
+            outstandingQueries,
+          });
+        }
+        abortController.abort();
+        queryStates.set(name, { status: 'aborted', startedAt: queryStartedAt });
+        recordLastMile('FETCH_QUERY_ABORTED', {
+          fetchSeq,
+          queryName: name,
+          elapsedMs: Date.now() - t0,
+          reason: 'timeout-abort-controller',
+        });
+        queryTimings.push({
+          name,
+          table,
+          elapsedMs,
+          rowCount: 0,
+          startedAtOffsetMs,
+          completedAtOffsetMs: Date.now() - fetchStartedAt,
+          error: 'FETCH_QUERY_TIMEOUT',
+          preAuth: !authReadyAtStart,
+          authReadyAtStart,
+          userIdPresent,
+          hung: true,
+          aborted: true,
+        });
+        return { data: null as T, error: { message: `FETCH_QUERY_TIMEOUT: ${name}`, code: 'FETCH_QUERY_TIMEOUT' } };
+      }
+      const result = raced.kind === 'result'
+        ? raced.result
+        : { data: null as T, error: raced.error };
       const completedAtOffsetMs = Date.now() - fetchStartedAt;
       const elapsedMs = Date.now() - t0;
       const rowCount = Array.isArray(result?.data)
@@ -5934,6 +6020,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           ? 1
           : 0;
       const errMsg = result?.error ? String((result.error as any).message ?? result.error) : null;
+      queryStates.set(name, { status: 'complete', startedAt: queryStartedAt });
       queryTimings.push({
         name,
         table,
@@ -5945,9 +6032,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         preAuth: !authReadyAtStart,
         authReadyAtStart,
         userIdPresent,
+        hung: false,
+        aborted: false,
+      });
+      recordLastMile('FETCH_QUERY_RESULT', {
+        fetchSeq,
+        queryName: name,
+        elapsedMs,
+        rowCount,
+        returnedStatus: name === 'games.select+rounds' ? (result?.data as any)?.status ?? null : null,
+        returnedGameType: name === 'games.select+rounds' ? (result?.data as any)?.game_type ?? null : null,
+        error: errMsg,
       });
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData.query.complete', {
         fetchSeq,
+        caller,
         name,
         table,
         elapsedMs,
@@ -5991,12 +6090,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // PARALLEL FETCH: Get game, players, and defaults all at once for speed
     const [gameResult, playersResult, defaultsResult] = await Promise.all([
-      timedQuery('games.select+rounds', 'games', () =>
-        supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
-      timedQuery('players.select+profiles', 'players', () =>
-        supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
-      timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
-        supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single()),
+      timedQuery('games.select+rounds', 'games', (signal) =>
+        supabase.from('games').select('*, rounds(*)').eq('id', gameId).abortSignal(signal).maybeSingle()),
+      timedQuery('players.select+profiles', 'players', (signal) =>
+        supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position').abortSignal(signal)),
+      timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', (signal) =>
+        supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').abortSignal(signal).single()),
     ]);
 
     const { data: gameData, error: gameError } = gameResult;
