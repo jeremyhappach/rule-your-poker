@@ -140,6 +140,37 @@ const DealerGameSetupInner = ({
   // can prove whether the legacy `configuring` sibling branch is the
   // runtime path (and therefore why shell chrome appears missing).
 
+  // ── Wartime: DealerGameSetupInner render boundary + loop guard ─────
+  markRenderBoundary(
+    'DealerGameSetupInner',
+    () => ({
+      gameId,
+      isBot,
+      previousGameType: previousGameType ?? null,
+      dealerPosition,
+    }),
+    'DEALER_SETUP_INNER_RENDER_BEGIN',
+    'DEALER_SETUP_INNER_RENDER_END',
+  );
+  tickRenderLoopGuard('DealerGameSetupInner', () => ({
+    gameId,
+    isBot,
+    previousGameType: previousGameType ?? null,
+  }));
+  useEffectProbe(
+    'DealerGameSetupInner',
+    'mount',
+    'DEALER_SETUP_EFFECT_ENTER',
+    'DEALER_SETUP_EFFECT_EXIT',
+    () => ({
+      gameId,
+      isBot,
+      previousGameType: previousGameType ?? null,
+      dealerPosition,
+    }),
+    [],
+  );
+
   useLifecycleMount('DealerGameSetup', {
     gameId,
     isBot,
