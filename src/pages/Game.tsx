@@ -7,6 +7,7 @@ import {
   recordPostCommitEvent,
 } from "@/lib/wartimeDebug/postCommitStallTrace";
 import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
+import { recordLastMile } from "@/lib/wartimeDebug/lastMileStateTrace";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -2326,6 +2327,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
+          recordLastMile('REALTIME_GAMES_PAYLOAD', {
+            eventType: payload.eventType,
+            oldStatus: oldData?.status ?? null,
+            newStatus: newData?.status ?? null,
+            oldGameType: oldData?.game_type ?? null,
+            newGameType: newData?.game_type ?? null,
+            oldCurrentGameUuid: oldData?.current_game_uuid ?? null,
+            newCurrentGameUuid: newData?.current_game_uuid ?? null,
+            payloadUpdatedAt: newData?.updated_at ?? null,
+            localStatus: game?.status ?? null,
+            localGameType: game?.game_type ?? null,
+            localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+          });
           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
@@ -2388,6 +2402,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 ? newData.current_round
                 : (incomingGameType === 'holm-game' ? 1 : null);
 
+            recordLastMile('SET_GAME_ATTEMPT', {
+              source: 'realtime-game-type-change',
+              incomingStatus: newData?.status ?? null,
+              incomingGameType: incomingGameType ?? null,
+              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+              currentLocalStatus: game?.status ?? null,
+              currentLocalGameType: game?.game_type ?? null,
+              currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
+            });
             setGame(prevGame => prevGame ? {
               ...prevGame,
               game_type: incomingGameType,
@@ -2397,7 +2420,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               awaiting_next_round: false,
               status: newData?.status || prevGame.status
             } : null);
-            
+            recordLastMile('SET_GAME_COMMIT', {
+              source: 'realtime-game-type-change',
+              previousStatus: game?.status ?? null,
+              nextStatus: newData?.status ?? game?.status ?? null,
+              previousGameType: game?.game_type ?? null,
+              nextGameType: incomingGameType ?? null,
+              previousCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+              nextCurrentGameUuid: newData?.current_game_uuid ?? null,
+            });
+
             // Clear all card state for this client
             setPlayerCards([]);
             setCardStateContext(null);
@@ -2413,6 +2445,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI (dealer only)
           if (gameTypeSwitchingRef.current) {
             console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
+            recordLastMile('SET_GAME_SUPPRESSED', {
+              source: 'realtime',
+              guardName: 'gameTypeSwitchingRef',
+              reason: 'game type switch in progress',
+              incomingStatus: newData?.status ?? null,
+              incomingGameType: newData?.game_type ?? null,
+              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+              localStatus: game?.status ?? null,
+              localGameType: game?.game_type ?? null,
+              localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+            });
             return;
           }
 
@@ -5731,6 +5774,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
+    recordLastMile('FETCH_GAME_DATA_BEGIN', {
+      fetchSeq,
+      gameId,
+      currentLocalStatus: game?.status ?? null,
+      currentLocalGameType: game?.game_type ?? null,
+      currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
+    });
 
     // ── Per-query waterfall instrumentation ──────────────────────────
     // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
@@ -5866,10 +5916,33 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       errors: { game: gameError?.message ?? null, players: playersError?.message ?? null },
     });
 
+    recordLastMile('FETCH_GAME_DATA_RESULT', {
+      fetchSeq,
+      elapsedMs: Date.now() - fetchStartedAt,
+      returnedStatus: (gameData as any)?.status ?? null,
+      returnedGameType: (gameData as any)?.game_type ?? null,
+      returnedCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+      returnedUpdatedAt: (gameData as any)?.updated_at ?? null,
+      error: gameError?.message ?? null,
+      stale: isStale(),
+    });
 
     // If a newer fetch started while this one was in-flight, ignore this response.
     if (isStale()) {
       console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'isStale-post-parallel',
+        reason: 'newer fetchSeq in flight',
+        fetchSeq,
+        latestFetchSeq: fetchSeqRef.current,
+        incomingStatus: (gameData as any)?.status ?? null,
+        incomingGameType: (gameData as any)?.game_type ?? null,
+        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+        localStatus: game?.status ?? null,
+        localGameType: game?.game_type ?? null,
+        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+      });
       return;
     }
 
@@ -6168,6 +6241,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
     if (isStale()) {
       console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'isStale-pre-setGame',
+        reason: 'newer fetchSeq in flight',
+        fetchSeq,
+        latestFetchSeq: fetchSeqRef.current,
+        incomingStatus: (gameData as any)?.status ?? null,
+        incomingGameType: (gameData as any)?.game_type ?? null,
+        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+        localStatus: game?.status ?? null,
+        localGameType: game?.game_type ?? null,
+        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+      });
       return;
     }
 
@@ -6246,7 +6332,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setGameOffsetMs: postprocessStartOffsetMs,
     });
 
+    recordLastMile('SET_GAME_ATTEMPT', {
+      source: 'fetchGameData',
+      fetchSeq,
+      incomingStatus: (gameDataToApply as any)?.status ?? null,
+      incomingGameType: (gameDataToApply as any)?.game_type ?? null,
+      incomingCurrentGameUuid: (gameDataToApply as any)?.current_game_uuid ?? null,
+      currentLocalStatus: game?.status ?? null,
+      currentLocalGameType: game?.game_type ?? null,
+      currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
+    });
     setGame(gameDataToApply);
+    recordLastMile('SET_GAME_COMMIT', {
+      source: 'fetchGameData',
+      fetchSeq,
+      previousStatus: game?.status ?? null,
+      nextStatus: (gameDataToApply as any)?.status ?? null,
+      previousGameType: game?.game_type ?? null,
+      nextGameType: (gameDataToApply as any)?.game_type ?? null,
+      previousCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+      nextCurrentGameUuid: (gameDataToApply as any)?.current_game_uuid ?? null,
+    });
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
       fetchSeq,
       offsetMs: Date.now() - fetchStartedAt,
@@ -6801,9 +6907,32 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Successfully updated game status to game_selection');
 
-    // Immediate refetch to ensure UI updates immediately
-    await fetchGameData();
-    
+    // ── Wartime: last-mile probe around post-commit fetchGameData ───
+    const _lmFetchStart = Date.now();
+    recordLastMile('POST_SELECT_DEALER_FETCH_BEGIN', {
+      sessionId: gameId,
+      caller: 'selectDealer',
+      expectedStatus: 'game_selection',
+      previousStatus: game?.status ?? null,
+      previousGameType: game?.game_type ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+    });
+    let _lmFetchError: string | null = null;
+    try {
+      await fetchGameData();
+    } catch (e: any) {
+      _lmFetchError = String(e?.message ?? e);
+      throw e;
+    } finally {
+      recordLastMile('POST_SELECT_DEALER_FETCH_EXIT', {
+        sessionId: gameId,
+        caller: 'selectDealer',
+        success: _lmFetchError === null,
+        elapsedMs: Date.now() - _lmFetchStart,
+        error: _lmFetchError,
+      });
+    }
+
     // Secondary refetch after short delay for any race conditions
     setTimeout(() => fetchGameData(), 300);
   };
