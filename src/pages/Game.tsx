@@ -6777,13 +6777,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       resultingStatus: 'game_selection',
       resultingGameType: game?.game_type ?? null,
     });
-    recordSelectDealerTrace('SELECT_DEALER_EXIT', {
-      sessionId: gameId,
-      success: true,
-      failureReason: null,
-      resultingStatus: 'game_selection',
-      resultingGameType: game?.game_type ?? null,
-    });
 
     // ── Wartime: post-commit main-thread tick markers ──────────────
     // Determine whether the main thread stalls immediately after EXIT
