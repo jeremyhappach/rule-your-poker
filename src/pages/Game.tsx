@@ -2402,6 +2402,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 ? newData.current_round
                 : (incomingGameType === 'holm-game' ? 1 : null);
 
+            recordLastMile('SET_GAME_ATTEMPT', {
+              source: 'realtime-game-type-change',
+              incomingStatus: newData?.status ?? null,
+              incomingGameType: incomingGameType ?? null,
+              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+              currentLocalStatus: game?.status ?? null,
+              currentLocalGameType: game?.game_type ?? null,
+              currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
+            });
             setGame(prevGame => prevGame ? {
               ...prevGame,
               game_type: incomingGameType,
@@ -2411,7 +2420,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               awaiting_next_round: false,
               status: newData?.status || prevGame.status
             } : null);
-            
+            recordLastMile('SET_GAME_COMMIT', {
+              source: 'realtime-game-type-change',
+              previousStatus: game?.status ?? null,
+              nextStatus: newData?.status ?? game?.status ?? null,
+              previousGameType: game?.game_type ?? null,
+              nextGameType: incomingGameType ?? null,
+              previousCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+              nextCurrentGameUuid: newData?.current_game_uuid ?? null,
+            });
+
             // Clear all card state for this client
             setPlayerCards([]);
             setCardStateContext(null);
@@ -2427,6 +2445,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI (dealer only)
           if (gameTypeSwitchingRef.current) {
             console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
+            recordLastMile('SET_GAME_SUPPRESSED', {
+              source: 'realtime',
+              guardName: 'gameTypeSwitchingRef',
+              reason: 'game type switch in progress',
+              incomingStatus: newData?.status ?? null,
+              incomingGameType: newData?.game_type ?? null,
+              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+              localStatus: game?.status ?? null,
+              localGameType: game?.game_type ?? null,
+              localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+            });
             return;
           }
 
