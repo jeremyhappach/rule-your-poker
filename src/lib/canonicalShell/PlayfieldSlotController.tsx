@@ -230,14 +230,14 @@ export function PlayfieldSlotController({
       newValue: snapshot,
     });
     ginTrace('slot.state', snapshot);
-    recordSlotResolutionIfChanged({
+    recordSurfaceResolutionIfChanged({
       sessionId: gameId ?? null,
       status: phase,
       gameType: mountedIdentity?.gameType ?? desiredIdentity?.gameType ?? null,
-      selectedSlot: describeSlotIdentity(mountedIdentity),
       selectedSurface: describeSlotIdentity(desiredIdentity),
+      selectedSlot: describeSlotIdentity(mountedIdentity),
+      desiredIdentity: describeSlotIdentity(desiredIdentity),
       dealerGameId: desiredIdentity?.dealerGameId ?? mountedIdentity?.dealerGameId ?? null,
-      dealerSelectionState: null,
       readyToMount,
       surfaceReady,
       readyToMountProp,
