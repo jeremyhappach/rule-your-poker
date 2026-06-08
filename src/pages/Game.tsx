@@ -2768,6 +2768,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'pot' in newData) {
             // CRITICAL: Pot changes need immediate sync for all players
             console.log('[REALTIME] 💰 POT CHANGED - IMMEDIATE FETCH!', newData.pot);
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'pot',
+              destination: 'fetchGameData()',
+              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+              pot: newData.pot,
+            });
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             handled = true;
