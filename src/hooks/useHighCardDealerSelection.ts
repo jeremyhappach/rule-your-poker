@@ -856,26 +856,8 @@ export function useHighCardDealerSelection({
       return () => clearTimeout(t);
     }
 
-    // ── Wartime: INIT_BEGIN (de-duped per gameId/eligibleKey) ─────────
-    recordDealerSelectionTraceIfChanged(
-      `init-begin:${gameId}`,
-      'DEALER_SELECTION_INIT_BEGIN',
-      {
-        sessionId: gameId,
-        gameType: isCribbageVariant ? 'cribbage' : 'session',
-        status: 'dealer_selection',
-        isHost,
-        allowBotDealers,
-        eligibleDealerCount: eligibleDealers.length,
-        eligibleDealerIds: eligibleDealers.map((p) => p.id),
-        eligibleDealerPositions: eligibleDealers.map((p) => p.position),
-        currentDealerId: eligibleDealers[0]?.id ?? null,
-        playerCount: players.length,
-        sittingOutCount: sortedPlayers.filter((p) => p.sitting_out).length,
-        botCount: sortedPlayers.filter((p) => p.is_bot).length,
-        hasInitialized: hasInitializedRef.current,
-      },
-    );
+    // DST.INIT_BEGIN retired — eligibility attribution complete.
+
 
     if (hasInitializedRef.current) return;
 
