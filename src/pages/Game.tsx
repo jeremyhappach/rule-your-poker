@@ -5993,6 +5993,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           elapsedMs: Date.now() - t0,
           reason: 'timeout-abort-controller',
         });
+        recordLastMile('FETCH_QUERY_RESULT', {
+          fetchSeq,
+          queryName: name,
+          elapsedMs: Date.now() - t0,
+          rowCount: 0,
+          returnedStatus: null,
+          returnedGameType: null,
+          error: 'FETCH_QUERY_TIMEOUT',
+        });
         queryTimings.push({
           name,
           table,
