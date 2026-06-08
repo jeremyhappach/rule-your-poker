@@ -2724,6 +2724,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // The cache will be cleared naturally when new round data arrives and is validated as different
               // setCardStateContext, setCachedRoundData, maxRevealedRef are updated elsewhere when new cards arrive
             }
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'awaiting-next-round',
+              destination: 'fetchGameData()',
+              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
+              awaitingNextRound: newData.awaiting_next_round,
+            });
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             handled = true;
