@@ -46,6 +46,10 @@ import {
   useWartimeState,
 } from '@/lib/wartimeDebug/surfaces';
 import { recordSurfaceResolutionIfChanged } from '@/lib/wartimeDebug/selectDealerTrace';
+import {
+  markRenderBoundary,
+  tickRenderLoopGuard,
+} from '@/lib/wartimeDebug/postCommitStallTrace';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
