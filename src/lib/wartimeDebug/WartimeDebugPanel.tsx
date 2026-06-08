@@ -38,7 +38,10 @@ export function WartimeDebugPanel() {
   // stats are pulled at render time.
   const stats = getWartimeStats();
   const [expanded, setExpanded] = useState(false);
-  const inTray = useInDebugTray();
+  // inTray no longer affects layout (we always portal to body), but kept
+  // referenced so the hook subscription remains stable across debug tray
+  // mounts/unmounts.
+  void useInDebugTray();
 
   const [category, setCategory] = useState<'ALL' | WartimeCategory>(ALL);
   const [filter, setFilter] = useState('');
