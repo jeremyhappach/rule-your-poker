@@ -2739,6 +2739,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'is_paused' in newData) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', newData.is_paused, 'remaining:', newData.paused_time_remaining);
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'is-paused',
+              destination: 'setGame(optimistic) + fetchGameData()',
+              expectedNextAction: 'SET_GAME_ATTEMPT(fetchGameData)',
+              isPaused: newData.is_paused,
+            });
             
             // CRITICAL: Update ref and clear interval SYNCHRONOUSLY before React render cycle
             isPausedRef.current = newData.is_paused;
