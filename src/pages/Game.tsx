@@ -1479,6 +1479,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
+  // Monotonic guard: track the freshest games.updated_at we've already applied to local
+  // state. Replaces the prior "latest-wins by fetchSeq" guard which would self-starve
+  // under fetch pressure (fresh row arrives, gets dropped because a newer fetch has
+  // already started). Out-of-order responses are still rejected because their
+  // updated_at will be <= the one we already applied.
+  const lastAppliedGameUpdatedAtRef = useRef<string | null>(null);
 
   // ── Optimistic Gin in-progress seed guard ─────────────────────────────
   // When the dealer client optimistically advances a gin dealerGameId to
@@ -5927,24 +5933,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       stale: isStale(),
     });
 
-    // If a newer fetch started while this one was in-flight, ignore this response.
-    if (isStale()) {
-      console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
-      recordLastMile('SET_GAME_SUPPRESSED', {
-        source: 'fetchGameData',
-        guardName: 'isStale-post-parallel',
-        reason: 'newer fetchSeq in flight',
-        fetchSeq,
-        latestFetchSeq: fetchSeqRef.current,
-        incomingStatus: (gameData as any)?.status ?? null,
-        incomingGameType: (gameData as any)?.game_type ?? null,
-        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
-        localStatus: game?.status ?? null,
-        localGameType: game?.game_type ?? null,
-        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-      });
-      return;
-    }
+    // NOTE: The previous "isStale by fetchSeq" early-return here was removed.
+    // Under fetch pressure (e.g., GameLobby polling + realtime triggers), a newer
+    // fetchSeq is almost always in flight by the time the previous response
+    // resolves, which caused every fresh response to be discarded — a livelock
+    // (Bucket C-3). Out-of-order responses are now rejected later via the
+    // monotonic `lastAppliedGameUpdatedAtRef` guard immediately before setGame.
+
 
     if (gameError) {
       const code = (gameError as any)?.code;
@@ -6237,16 +6232,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This is critical for the waiting phase where bots are added and need to appear immediately
     setPlayers((playersData || []).sort((a, b) => a.position - b.position));
 
-    // Apply game state only if this fetch is still the most recent.
-    // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
-    if (isStale()) {
-      console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
+    // Monotonic guard: only reject if the incoming row is strictly OLDER than
+    // what we've already applied. This still prevents out-of-order regressions
+    // (the original intent) without livelocking when many fetches overlap and
+    // every one of them happens to be carrying the same fresh authoritative row.
+    const incomingUpdatedAt = (gameData as any)?.updated_at ?? null;
+    const lastAppliedUpdatedAt = lastAppliedGameUpdatedAtRef.current;
+    if (
+      incomingUpdatedAt &&
+      lastAppliedUpdatedAt &&
+      incomingUpdatedAt < lastAppliedUpdatedAt
+    ) {
+      console.log('[FETCH] Ignoring older fetch (updated_at regression)', {
+        fetchSeq,
+        incomingUpdatedAt,
+        lastAppliedUpdatedAt,
+      });
       recordLastMile('SET_GAME_SUPPRESSED', {
         source: 'fetchGameData',
-        guardName: 'isStale-pre-setGame',
-        reason: 'newer fetchSeq in flight',
+        guardName: 'updated_at-monotonic',
+        reason: 'incoming updated_at older than last applied',
         fetchSeq,
-        latestFetchSeq: fetchSeqRef.current,
+        incomingUpdatedAt,
+        lastAppliedUpdatedAt,
         incomingStatus: (gameData as any)?.status ?? null,
         incomingGameType: (gameData as any)?.game_type ?? null,
         incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
@@ -6256,6 +6264,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       return;
     }
+
 
     // ── Optimistic Gin seed regression guard ──────────────────────────
     // If we have an active optimistic seed for this dealerGameId and the
@@ -6343,6 +6352,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
     });
     setGame(gameDataToApply);
+    {
+      const appliedUpdatedAt = (gameDataToApply as any)?.updated_at ?? null;
+      if (appliedUpdatedAt && (!lastAppliedGameUpdatedAtRef.current || appliedUpdatedAt >= lastAppliedGameUpdatedAtRef.current)) {
+        lastAppliedGameUpdatedAtRef.current = appliedUpdatedAt;
+      }
+    }
     recordLastMile('SET_GAME_COMMIT', {
       source: 'fetchGameData',
       fetchSeq,
