@@ -6794,19 +6794,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME SELECTION] Selected game:', gameType, 'Previous:', lastKnownGameTypeRef.current);
 
-    recordGameStartTransition('GAME_START_REQUESTED', {
-      sessionId: gameId,
-      userId: user?.id ?? null,
-      currentStatus: game?.status ?? null,
-      currentGameType: lastKnownGameTypeRef.current ?? game?.game_type ?? null,
-      selectedGameType: gameType,
-      source: 'handleGameSelection',
-    });
-    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
+    recordSelectDealerTrace('STATUS_TRANSITION_ATTEMPT', {
       sessionId: gameId,
       fromStatus: game?.status ?? 'game_selection',
       toStatus: 'configuring',
-      gameType,
+      sourceFunction: 'handleGameSelection',
     });
 
     // GUARD: Prevent realtime updates from overwriting optimistic UI during switch
@@ -6859,21 +6851,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Failed to start configuration:', error);
-      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
+      recordSelectDealerTrace('STATUS_TRANSITION_REJECT', {
         sessionId: gameId,
         fromStatus: game?.status ?? 'game_selection',
-        attemptedStatus: 'configuring',
+        toStatus: 'configuring',
+        sourceFunction: 'handleGameSelection',
         reason: error.message,
       });
       return;
     }
 
-    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
+    recordSelectDealerTrace('STATUS_TRANSITION_COMMIT', {
       sessionId: gameId,
       fromStatus: game?.status ?? 'game_selection',
       toStatus: 'configuring',
-      gameType,
+      sourceFunction: 'handleGameSelection',
     });
+    recordSelectDealerTrace('GAME_SELECTION_READY', {
+      sessionId: gameId,
+      status: 'configuring',
+      gameType,
+      setupOwner: user?.id ?? null,
+      dealerPosition: game?.dealer_position ?? null,
+    });
+
 
 
 
