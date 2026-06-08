@@ -141,6 +141,20 @@ const DealerGameSetupInner = ({
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
   // runtime path (and therefore why shell chrome appears missing).
+  // ── WARTIME: game-selection render/mount probes (Bucket D isolation) ──
+  const _gstRenderProbe = useGameSelectionRenderProbe('DealerGameSetupInner', () => ({
+    gameId,
+    isBot,
+    previousGameType: previousGameType ?? null,
+    dealerPosition,
+    isFirstHand,
+  }));
+  useGameSelectionMountProbe('DealerGameSetupInner', () => ({
+    gameId,
+    isBot,
+    previousGameType: previousGameType ?? null,
+  }));
+
   useLifecycleMount('DealerGameSetup', {
     gameId,
     isBot,
