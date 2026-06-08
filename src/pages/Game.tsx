@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { recordSelectDealerTrace } from "@/lib/wartimeDebug/selectDealerTrace";
+import {
+  schedulePostCommitTicks,
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  recordPostCommitEvent,
+} from "@/lib/wartimeDebug/postCommitStallTrace";
 import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
