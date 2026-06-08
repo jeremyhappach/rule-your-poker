@@ -2485,6 +2485,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI (dealer only)
           if (gameTypeSwitchingRef.current) {
             console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_SUPPRESSED', {
+              guardName: 'gameTypeSwitchingRef',
+              reason: 'game type switch in progress',
+              incomingStatus: newData?.status ?? null,
+              incomingGameType: newData?.game_type ?? null,
+              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
+              localStatus: game?.status ?? null,
+              localGameType: game?.game_type ?? null,
+              localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+            });
             recordLastMile('SET_GAME_SUPPRESSED', {
               source: 'realtime',
               guardName: 'gameTypeSwitchingRef',
