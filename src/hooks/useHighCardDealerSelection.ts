@@ -47,6 +47,10 @@ import {
   startHighCardVisualSampler,
   stopHighCardVisualSampler,
 } from '@/lib/wartimeDebug/highCardVisualSampler';
+import {
+  recordDealerSelectionTrace,
+  recordDealerSelectionTraceIfChanged,
+} from '@/lib/wartimeDebug/dealerSelectionTrace';
 
 
 interface Player {
