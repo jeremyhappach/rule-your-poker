@@ -2832,6 +2832,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Fallback to debounced fetch if nothing else handled
           if (!handled) {
             console.log('[REALTIME] No specific trigger, using debounced fetch');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'fallback-debounced',
+              destination: 'debouncedFetch() → fetchGameData()',
+              expectedNextAction: 'eventual FETCH_GAME_DATA_BEGIN',
+              keysInNewData: newData ? Object.keys(newData) : [],
+            });
             debouncedFetch();
           }
         })
