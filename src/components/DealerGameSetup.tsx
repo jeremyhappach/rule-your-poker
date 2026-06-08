@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
-// Wartime: prior DealerGameSetupInner render/mount/effect probes removed —
-// the stall has been attributed UPSTREAM of this component (no gst.*
-// events fire). New probes live in @/lib/wartimeDebug/postCommitStallTrace
-// and are wired into Game.tsx + PlayfieldSlotController only.
+import {
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  useEffectProbe,
+} from "@/lib/wartimeDebug/postCommitStallTrace";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
