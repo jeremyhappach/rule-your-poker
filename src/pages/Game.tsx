@@ -6865,8 +6865,23 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Failed to start configuration:', error);
+      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
+        sessionId: gameId,
+        fromStatus: game?.status ?? 'game_selection',
+        attemptedStatus: 'configuring',
+        reason: error.message,
+      });
       return;
     }
+
+    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
+      sessionId: gameId,
+      fromStatus: game?.status ?? 'game_selection',
+      toStatus: 'configuring',
+      gameType,
+    });
+
+
 
     // Manual refetch to update UI after DB is updated
     // Clear the guard AFTER the fetch so realtime doesn't overwrite during transition
