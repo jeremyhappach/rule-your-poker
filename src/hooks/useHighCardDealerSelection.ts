@@ -47,10 +47,10 @@ import {
   startHighCardVisualSampler,
   stopHighCardVisualSampler,
 } from '@/lib/wartimeDebug/highCardVisualSampler';
-import {
-  recordDealerSelectionTrace,
-  recordDealerSelectionTraceIfChanged,
-} from '@/lib/wartimeDebug/dealerSelectionTrace';
+// dealer-selection-init/draw probes retired — eligibility and decision-path
+// questions were answered by the prior trace; downstream attribution now lives
+// in @/lib/wartimeDebug/selectDealerTrace.
+
 
 
 interface Player {
