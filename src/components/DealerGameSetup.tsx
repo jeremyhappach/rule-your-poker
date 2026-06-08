@@ -241,8 +241,16 @@ const DealerGameSetupInner = ({
   const [threeFiveSevenDefaults, setThreeFiveSevenDefaults] = useState<GameDefaults | null>(null);
   const [cribbageDefaults, setCribbageDefaults] = useState<any | null>(null);
 
-  // Fetch defaults for both game types on mount
   useEffect(() => {
+    recordGameSelectionTrace('GAME_SELECTION_EFFECT_ENTER', {
+      component: 'DealerGameSetupInner',
+      effectName: 'fetchAllDefaults',
+      depsSummary: {
+        previousGameType: previousGameType ?? null,
+        hasPreviousGameConfig: !!previousGameConfig,
+      },
+    });
+    const effectStart = performance.now();
     const fetchAllDefaults = async () => {
       const [holmResult, threeFiveSevenResult] = await Promise.all([
         supabase.from('game_defaults').select('*').eq('game_type', 'holm').single(),
@@ -282,6 +290,12 @@ const DealerGameSetupInner = ({
         }
         
         setLoadingDefaults(false);
+        recordGameSelectionTrace('GAME_SELECTION_EFFECT_EXIT', {
+          component: 'DealerGameSetupInner',
+          effectName: 'fetchAllDefaults',
+          elapsedMs: Math.round(performance.now() - effectStart),
+          branch: 'previousGameConfig',
+        });
         return;
       }
       
@@ -298,10 +312,24 @@ const DealerGameSetupInner = ({
       }
       
       setLoadingDefaults(false);
+      recordGameSelectionTrace('GAME_SELECTION_EFFECT_EXIT', {
+        component: 'DealerGameSetupInner',
+        effectName: 'fetchAllDefaults',
+        elapsedMs: Math.round(performance.now() - effectStart),
+        branch: 'defaults',
+      });
     };
 
-    fetchAllDefaults();
+    fetchAllDefaults().catch((err) => {
+      recordGameSelectionTrace('GAME_SELECTION_EFFECT_EXIT', {
+        component: 'DealerGameSetupInner',
+        effectName: 'fetchAllDefaults',
+        elapsedMs: Math.round(performance.now() - effectStart),
+        error: String(err?.message ?? err),
+      });
+    });
   }, [previousGameType, previousGameConfig]);
+
 
   // Apply defaults when game type changes
   const applyDefaults = (defaults: GameDefaults) => {
