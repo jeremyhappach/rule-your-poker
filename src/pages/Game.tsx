@@ -619,6 +619,15 @@ const Game = () => {
   const isMobile = useIsMobile();
   const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
+  // ── Wartime: Game.tsx route render-loop guard (pre-state) ───────
+  // Counts every render of the route component itself. Emits
+  // POST_COMMIT_RENDER_LOOP_GUARD once if we exceed 50 renders/sec
+  // or 200 cumulative renders. Reads `gameId` only — no state yet
+  // available — additional context is attached below at boundary.
+  tickRenderLoopGuard('Game.route', () => ({
+    gameId: gameId ?? null,
+    authReady,
+  }));
   const [_game, setGame] = useState<GameData | null>(null);
   // Post-hydration continuity: once the session has loaded a real game,
   // we never re-enter the empty bootstrap branch even if `_game` flips
