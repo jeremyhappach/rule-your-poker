@@ -230,6 +230,19 @@ export function PlayfieldSlotController({
       newValue: snapshot,
     });
     ginTrace('slot.state', snapshot);
+    recordSlotResolutionIfChanged({
+      sessionId: gameId ?? null,
+      status: phase,
+      gameType: mountedIdentity?.gameType ?? desiredIdentity?.gameType ?? null,
+      selectedSlot: describeSlotIdentity(mountedIdentity),
+      selectedSurface: describeSlotIdentity(desiredIdentity),
+      dealerGameId: desiredIdentity?.dealerGameId ?? mountedIdentity?.dealerGameId ?? null,
+      dealerSelectionState: null,
+      readyToMount,
+      surfaceReady,
+      readyToMountProp,
+      readinessScope: readinessScope ?? null,
+    });
   }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp, readinessScope]);
 
   // ShellLifecyclePanel: phase transitions, mount-identity changes,
