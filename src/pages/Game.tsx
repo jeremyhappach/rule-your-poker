@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
-import { recordGameStartTransition } from "@/lib/wartimeDebug/gameStartTransition";
+import { recordSelectDealerTrace } from "@/lib/wartimeDebug/selectDealerTrace";
 import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -6663,20 +6663,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
     traceMilestone('game_start_from_waiting');
 
-    recordGameStartTransition('GAME_START_HANDLER_ENTER', {
-      sessionId: gameId,
-      status: game?.status ?? null,
-      gameType: game?.game_type ?? null,
-      dealerGameCount: null,
-      currentRoundId: currentRound?.id ?? null,
-      source: 'startGameFromWaiting',
-    });
-    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'waiting',
-      toStatus: 'dealer_selection',
-      gameType: game?.game_type ?? null,
-    });
+    // Start-game probes retired — waiting → dealer_selection attribution
+    // is complete. selectDealer downstream is now the focus.
 
     // Log session event
     await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
@@ -6705,34 +6693,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Start game error:', error);
-      recordGameStartTransition('GAME_START_HANDLER_EXIT', {
-        sessionId: gameId,
-        success: false,
-        failureReason: error.message,
-        resultingStatus: game?.status ?? null,
-        resultingGameType: game?.game_type ?? null,
-      });
-      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
-        sessionId: gameId,
-        fromStatus: game?.status ?? 'waiting',
-        attemptedStatus: 'dealer_selection',
-        reason: error.message,
-      });
       return;
     }
 
-    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'waiting',
-      toStatus: 'dealer_selection',
-      gameType: game?.game_type ?? null,
-    });
-    recordGameStartTransition('GAME_START_HANDLER_EXIT', {
-      sessionId: gameId,
-      success: true,
-      resultingStatus: 'dealer_selection',
-      resultingGameType: game?.game_type ?? null,
-    });
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
@@ -6743,17 +6706,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
 
-    recordGameStartTransition('DEALER_SELECTION_CREATE_BEGIN', {
+    const dealerUserId = players.find((p) => p.position === dealerPosition)?.user_id ?? null;
+    recordSelectDealerTrace('SELECT_DEALER_ENTER', {
       sessionId: gameId,
+      status: game?.status ?? null,
       gameType: game?.game_type ?? null,
-      hostUserId: user?.id ?? null,
       dealerPosition,
+      dealerUserId,
     });
-    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
+    recordSelectDealerTrace('STATUS_TRANSITION_ATTEMPT', {
       sessionId: gameId,
       fromStatus: game?.status ?? 'dealer_selection',
       toStatus: 'game_selection',
-      gameType: game?.game_type ?? null,
+      sourceFunction: 'selectDealer',
     });
 
     // Set config_deadline ATOMICALLY with status change, using the session-cached timer.
@@ -6776,34 +6741,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Failed to select dealer:', error);
-      recordGameStartTransition('DEALER_SELECTION_CREATE_FAILURE', {
-        sessionId: gameId,
-        gameType: game?.game_type ?? null,
-        error: error.message,
-        stack: (error as any)?.stack ?? null,
-        failureReason: 'games-update-failed',
-      });
-      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
+      recordSelectDealerTrace('STATUS_TRANSITION_REJECT', {
         sessionId: gameId,
         fromStatus: game?.status ?? 'dealer_selection',
-        attemptedStatus: 'game_selection',
+        toStatus: 'game_selection',
+        sourceFunction: 'selectDealer',
         reason: error.message,
+      });
+      recordSelectDealerTrace('SELECT_DEALER_EXIT', {
+        sessionId: gameId,
+        success: false,
+        failureReason: error.message,
+        resultingStatus: game?.status ?? null,
+        resultingGameType: game?.game_type ?? null,
       });
       return;
     }
 
-    recordGameStartTransition('DEALER_SELECTION_CREATE_SUCCESS', {
-      sessionId: gameId,
-      dealerGameId: null, // No dealer_games row written here (created later by configure flow)
-      gameType: game?.game_type ?? null,
-      dealerPosition,
-    });
-    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
+    recordSelectDealerTrace('STATUS_TRANSITION_COMMIT', {
       sessionId: gameId,
       fromStatus: game?.status ?? 'dealer_selection',
       toStatus: 'game_selection',
-      gameType: game?.game_type ?? null,
+      sourceFunction: 'selectDealer',
     });
+    recordSelectDealerTrace('SELECT_DEALER_EXIT', {
+      sessionId: gameId,
+      success: true,
+      failureReason: null,
+      resultingStatus: 'game_selection',
+      resultingGameType: game?.game_type ?? null,
+    });
+
 
     console.log('[DEALER SELECT] Successfully updated game status to game_selection');
 
@@ -6826,19 +6794,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME SELECTION] Selected game:', gameType, 'Previous:', lastKnownGameTypeRef.current);
 
-    recordGameStartTransition('GAME_START_REQUESTED', {
-      sessionId: gameId,
-      userId: user?.id ?? null,
-      currentStatus: game?.status ?? null,
-      currentGameType: lastKnownGameTypeRef.current ?? game?.game_type ?? null,
-      selectedGameType: gameType,
-      source: 'handleGameSelection',
-    });
-    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
+    recordSelectDealerTrace('STATUS_TRANSITION_ATTEMPT', {
       sessionId: gameId,
       fromStatus: game?.status ?? 'game_selection',
       toStatus: 'configuring',
-      gameType,
+      sourceFunction: 'handleGameSelection',
     });
 
     // GUARD: Prevent realtime updates from overwriting optimistic UI during switch
@@ -6891,21 +6851,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Failed to start configuration:', error);
-      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
+      recordSelectDealerTrace('STATUS_TRANSITION_REJECT', {
         sessionId: gameId,
         fromStatus: game?.status ?? 'game_selection',
-        attemptedStatus: 'configuring',
+        toStatus: 'configuring',
+        sourceFunction: 'handleGameSelection',
         reason: error.message,
       });
       return;
     }
 
-    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
+    recordSelectDealerTrace('STATUS_TRANSITION_COMMIT', {
       sessionId: gameId,
       fromStatus: game?.status ?? 'game_selection',
       toStatus: 'configuring',
-      gameType,
+      sourceFunction: 'handleGameSelection',
     });
+    recordSelectDealerTrace('GAME_SELECTION_READY', {
+      sessionId: gameId,
+      status: 'configuring',
+      gameType,
+      setupOwner: user?.id ?? null,
+      dealerPosition: game?.dealer_position ?? null,
+    });
+
 
 
 
