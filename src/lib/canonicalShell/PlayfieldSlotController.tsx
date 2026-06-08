@@ -45,6 +45,7 @@ import {
   useWartimeSurface,
   useWartimeState,
 } from '@/lib/wartimeDebug/surfaces';
+import { recordSlotResolutionIfChanged } from '@/lib/wartimeDebug/gameStartTransition';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
