@@ -6290,7 +6290,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setGameOffsetMs: postprocessStartOffsetMs,
     });
 
+    recordLastMile('SET_GAME_ATTEMPT', {
+      source: 'fetchGameData',
+      fetchSeq,
+      incomingStatus: (gameDataToApply as any)?.status ?? null,
+      incomingGameType: (gameDataToApply as any)?.game_type ?? null,
+      incomingCurrentGameUuid: (gameDataToApply as any)?.current_game_uuid ?? null,
+      currentLocalStatus: game?.status ?? null,
+      currentLocalGameType: game?.game_type ?? null,
+      currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
+    });
     setGame(gameDataToApply);
+    recordLastMile('SET_GAME_COMMIT', {
+      source: 'fetchGameData',
+      fetchSeq,
+      previousStatus: game?.status ?? null,
+      nextStatus: (gameDataToApply as any)?.status ?? null,
+      previousGameType: game?.game_type ?? null,
+      nextGameType: (gameDataToApply as any)?.game_type ?? null,
+      previousCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+      nextCurrentGameUuid: (gameDataToApply as any)?.current_game_uuid ?? null,
+    });
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
       fetchSeq,
       offsetMs: Date.now() - fetchStartedAt,
