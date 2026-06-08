@@ -5968,6 +5968,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         fetchSeq,
         skipReason: 'no gameId',
       });
+      recordLastMile('FETCH_GAME_DATA_SKIPPED', {
+        fetchSeq,
+        skipReason: 'no gameId',
+      });
       fetchSpan.end({ skipped: 'no gameId' });
       return;
     }
