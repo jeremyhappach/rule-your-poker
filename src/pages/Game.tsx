@@ -6048,20 +6048,38 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (gameError) {
       const code = (gameError as any)?.code;
       if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
-        // P0 GUARD (NAV-02): a single fetch returning "0 rows" can be a transient
-        // post-write replica race. Defer to the polling checkGameExists effect, which
-        // requires repeated strikes + a fresh confirm before navigating.
         console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
+        recordLastMile('SET_GAME_SUPPRESSED', {
+          source: 'fetchGameData',
+          guardName: 'missing-game-fetch-deferred',
+          reason: 'PGRST116 / 0 rows — deferred to checkGameExists poll',
+          fetchSeq,
+          errorCode: code ?? null,
+          errorMessage: gameError.message ?? null,
+        });
         return;
       }
 
       console.error('Failed to fetch game:', gameError);
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'gameError',
+        reason: 'gameError returned from select',
+        fetchSeq,
+        errorCode: code ?? null,
+        errorMessage: gameError.message ?? null,
+      });
       return;
     }
 
     if (!gameData) {
-      // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'missing-game-data-deferred',
+        reason: 'gameData is null — deferred to checkGameExists poll',
+        fetchSeq,
+      });
       return;
     }
 
