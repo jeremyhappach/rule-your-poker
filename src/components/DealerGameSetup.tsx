@@ -1,6 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import {
+  useGameSelectionRenderProbe,
+  useGameSelectionMountProbe,
+  traceGameSelectionEffect,
+  recordGameSelectionTrace,
+} from "@/lib/wartimeDebug/gameSelectionTrace";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
