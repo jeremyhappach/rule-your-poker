@@ -6636,25 +6636,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
     traceMilestone('game_start_from_waiting');
-    
+
+    recordGameStartTransition('GAME_START_HANDLER_ENTER', {
+      sessionId: gameId,
+      status: game?.status ?? null,
+      gameType: game?.game_type ?? null,
+      dealerGameCount: null,
+      currentRoundId: currentRound?.id ?? null,
+      source: 'startGameFromWaiting',
+    });
+    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
+      sessionId: gameId,
+      fromStatus: game?.status ?? 'waiting',
+      toStatus: 'dealer_selection',
+      gameType: game?.game_type ?? null,
+    });
+
     // Log session event
     await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
     
-    // Recovery-waiting hygiene: when starting from a waiting state that
-    // followed an in-progress session (rather than a fresh session), the
-    // games row can still hold stale lifecycle fields from the prior
-    // dealer game — current_game_uuid pinned to the old game, stale
-    // config_deadline / config_complete from a prior configuring pass,
-    // awaiting_next_round latched true, etc. Without clearing them, the
-    // dealer_selection bootstrap reads pre-recovery scaffolding and the
-    // Start Game click hangs. We always clear them on the waiting →
-    // dealer_selection cutover; fresh sessions already have null values
-    // so this is a no-op for them.
-    //
-    // Active players: promote seated, non-observer/left, non-sitting-out
-    // (OR explicitly waiting-to-rejoin) players to active. NEVER blanket
-    // clear sitting_out across observers/left — that resurrects players
-    // who deliberately left.
     await supabase
       .from('players')
       .update({ sitting_out: false, waiting: false })
@@ -6679,8 +6679,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Start game error:', error);
+      recordGameStartTransition('GAME_START_HANDLER_EXIT', {
+        sessionId: gameId,
+        success: false,
+        failureReason: error.message,
+        resultingStatus: game?.status ?? null,
+        resultingGameType: game?.game_type ?? null,
+      });
+      recordGameStartTransition('STATUS_TRANSITION_REJECT', {
+        sessionId: gameId,
+        fromStatus: game?.status ?? 'waiting',
+        attemptedStatus: 'dealer_selection',
+        reason: error.message,
+      });
       return;
     }
+
+    recordGameStartTransition('STATUS_TRANSITION_COMMIT', {
+      sessionId: gameId,
+      fromStatus: game?.status ?? 'waiting',
+      toStatus: 'dealer_selection',
+      gameType: game?.game_type ?? null,
+    });
+    recordGameStartTransition('GAME_START_HANDLER_EXIT', {
+      sessionId: gameId,
+      success: true,
+      resultingStatus: 'dealer_selection',
+      resultingGameType: game?.game_type ?? null,
+    });
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
