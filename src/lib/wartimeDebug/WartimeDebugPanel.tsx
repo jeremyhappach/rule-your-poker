@@ -108,21 +108,36 @@ export function WartimeDebugPanel() {
       ? `⚔️ ${stats.count}`
       : `⚔️ ${recState}`;
 
+  // The pill is ALWAYS rendered as a `position: fixed` element at the
+  // bottom-right corner, regardless of whether DebugTray is the parent.
+  // This guarantees expansion remains possible even when another overlay
+  // (modal, full-bleed announcement plate, etc.) covers the tray flex
+  // row. Previously the tray-mode pill relied on inheriting the tray's
+  // stacking context, which made the pill un-tappable whenever a
+  // sibling overlay rendered later in the document with an equal
+  // z-index.
   if (!expanded) {
-    const pillStyle: CSSProperties = inTray
-      ? { pointerEvents: 'auto', display: 'inline-block' }
-      : {
+    const pill = (
+      <div
+        data-wartime-pill=""
+        style={{
           position: 'fixed',
           right: 8,
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
           zIndex: 2147483647,
           pointerEvents: 'auto',
-        };
-    return (
-      <div style={pillStyle}>
+          isolation: 'isolate',
+        }}
+      >
         <button
           type="button"
           onClick={() => setExpanded(true)}
+          onPointerDown={(e) => {
+            // Defensive: some full-bleed overlays swallow click via
+            // pointer capture. Promote expansion on pointerdown too.
+            e.stopPropagation();
+            setExpanded(true);
+          }}
           title="Expand Wartime Debug"
           style={{
             display: 'inline-flex',
@@ -132,7 +147,7 @@ export function WartimeDebugPanel() {
             color: stats.recording ? '#fff' : 'hsl(var(--foreground))',
             border: '1px solid hsl(var(--border))',
             borderRadius: 999,
-            padding: '4px 8px',
+            padding: '6px 10px',
             fontFamily: 'ui-monospace, monospace',
             fontSize: 10,
             fontWeight: 700,
@@ -140,13 +155,20 @@ export function WartimeDebugPanel() {
             cursor: 'pointer',
             boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
             whiteSpace: 'nowrap',
+            touchAction: 'manipulation',
           }}
         >
           {pillLabel} ▴
         </button>
       </div>
     );
+    // Portal to <body> so no ancestor stacking context can hide it.
+    if (typeof document !== 'undefined') {
+      return createPortal(pill, document.body);
+    }
+    return pill;
   }
+
 
   const shellStyle: CSSProperties = {
     position: 'fixed',
