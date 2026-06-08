@@ -20,6 +20,11 @@ import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { recordWartime } from '@/lib/wartimeDebug/core';
+import {
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  useEffectProbe,
+} from '@/lib/wartimeDebug/postCommitStallTrace';
 
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
