@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
-import {
-  useGameSelectionRenderProbe,
-  useGameSelectionMountProbe,
-  traceGameSelectionEffect,
-  recordGameSelectionTrace,
-} from "@/lib/wartimeDebug/gameSelectionTrace";
+// Wartime: prior DealerGameSetupInner render/mount/effect probes removed —
+// the stall has been attributed UPSTREAM of this component (no gst.*
+// events fire). New probes live in @/lib/wartimeDebug/postCommitStallTrace
+// and are wired into Game.tsx + PlayfieldSlotController only.
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,19 +139,6 @@ const DealerGameSetupInner = ({
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
   // runtime path (and therefore why shell chrome appears missing).
-  // ── WARTIME: game-selection render/mount probes (Bucket D isolation) ──
-  const _gstRenderProbe = useGameSelectionRenderProbe('DealerGameSetupInner', () => ({
-    gameId,
-    isBot,
-    previousGameType: previousGameType ?? null,
-    dealerPosition,
-    isFirstHand,
-  }));
-  useGameSelectionMountProbe('DealerGameSetupInner', () => ({
-    gameId,
-    isBot,
-    previousGameType: previousGameType ?? null,
-  }));
 
   useLifecycleMount('DealerGameSetup', {
     gameId,
@@ -167,25 +152,19 @@ const DealerGameSetupInner = ({
     isBot,
     previousGameType: previousGameType ?? null,
   });
-  useEffect(() => traceGameSelectionEffect(
-    'DealerGameSetupInner',
-    'recordWaitingLifecycle',
-    () => ({}),
-    () => {
-      recordWaitingLifecycle('DealerConfig entered', {
-        gameId, isBot, previousGameType: previousGameType ?? null,
-      });
-      recordSurfaceOwnership('DealerConfig', {
-        SeatOwner: '(not applicable — modal form)',
-        ChipOwner: '(not applicable)',
-        ControlOwner: 'Slot:DealerGameSetup (game/config tabs)',
-        AnnouncementOwner: 'Shell:SessionLifecycleAnnouncer (dealer_configuring ambient)',
-        HUDOwner: '(none)',
-      }, { gameId });
-    },
-  ),
+  useEffect(() => {
+    recordWaitingLifecycle('DealerConfig entered', {
+      gameId, isBot, previousGameType: previousGameType ?? null,
+    });
+    recordSurfaceOwnership('DealerConfig', {
+      SeatOwner: '(not applicable — modal form)',
+      ChipOwner: '(not applicable)',
+      ControlOwner: 'Slot:DealerGameSetup (game/config tabs)',
+      AnnouncementOwner: 'Shell:SessionLifecycleAnnouncer (dealer_configuring ambient)',
+      HUDOwner: '(none)',
+    }, { gameId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []);
+  }, []);
   // Selection step: game selection -> config
   const [selectionStep, setSelectionStep] = useState<SelectionStep>('game');
   // Default to previous game type if provided, otherwise holm-game (always default to holm for new sessions)
@@ -202,15 +181,10 @@ const DealerGameSetupInner = ({
   // Mount delay to prevent brief flash during rapid status transitions
   // The component waits 50ms before rendering to ensure parent isn't about to unmount it
   const [mountReady, setMountReady] = useState(false);
-  useEffect(() => traceGameSelectionEffect(
-    'DealerGameSetupInner',
-    'mountReadyTimer',
-    () => ({}),
-    () => {
-      const mountTimer = setTimeout(() => setMountReady(true), 50);
-      return () => clearTimeout(mountTimer);
-    },
-  ), []);
+  useEffect(() => {
+    const mountTimer = setTimeout(() => setMountReady(true), 50);
+    return () => clearTimeout(mountTimer);
+  }, []);
   
   // Config state - use strings for free text input with validation on save
   const [anteAmount, setAnteAmount] = useState("2");
@@ -242,15 +216,6 @@ const DealerGameSetupInner = ({
   const [cribbageDefaults, setCribbageDefaults] = useState<any | null>(null);
 
   useEffect(() => {
-    recordGameSelectionTrace('GAME_SELECTION_EFFECT_ENTER', {
-      component: 'DealerGameSetupInner',
-      effectName: 'fetchAllDefaults',
-      depsSummary: {
-        previousGameType: previousGameType ?? null,
-        hasPreviousGameConfig: !!previousGameConfig,
-      },
-    });
-    const effectStart = performance.now();
     const fetchAllDefaults = async () => {
       const [holmResult, threeFiveSevenResult] = await Promise.all([
         supabase.from('game_defaults').select('*').eq('game_type', 'holm').single(),
@@ -290,12 +255,6 @@ const DealerGameSetupInner = ({
         }
         
         setLoadingDefaults(false);
-        recordGameSelectionTrace('GAME_SELECTION_EFFECT_EXIT', {
-          component: 'DealerGameSetupInner',
-          effectName: 'fetchAllDefaults',
-          elapsedMs: Math.round(performance.now() - effectStart),
-          branch: 'previousGameConfig',
-        });
         return;
       }
       
@@ -312,22 +271,9 @@ const DealerGameSetupInner = ({
       }
       
       setLoadingDefaults(false);
-      recordGameSelectionTrace('GAME_SELECTION_EFFECT_EXIT', {
-        component: 'DealerGameSetupInner',
-        effectName: 'fetchAllDefaults',
-        elapsedMs: Math.round(performance.now() - effectStart),
-        branch: 'defaults',
-      });
     };
 
-    fetchAllDefaults().catch((err) => {
-      recordGameSelectionTrace('GAME_SELECTION_EFFECT_EXIT', {
-        component: 'DealerGameSetupInner',
-        effectName: 'fetchAllDefaults',
-        elapsedMs: Math.round(performance.now() - effectStart),
-        error: String(err?.message ?? err),
-      });
-    });
+    fetchAllDefaults();
   }, [previousGameType, previousGameConfig]);
 
 

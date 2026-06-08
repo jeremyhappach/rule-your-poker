@@ -1,5 +1,11 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
 import { recordSelectDealerTrace } from "@/lib/wartimeDebug/selectDealerTrace";
+import {
+  schedulePostCommitTicks,
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  recordPostCommitEvent,
+} from "@/lib/wartimeDebug/postCommitStallTrace";
 import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -613,6 +619,15 @@ const Game = () => {
   const isMobile = useIsMobile();
   const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
+  // ── Wartime: Game.tsx route render-loop guard (pre-state) ───────
+  // Counts every render of the route component itself. Emits
+  // POST_COMMIT_RENDER_LOOP_GUARD once if we exceed 50 renders/sec
+  // or 200 cumulative renders. Reads `gameId` only — no state yet
+  // available — additional context is attached below at boundary.
+  tickRenderLoopGuard('Game.route', () => ({
+    gameId: gameId ?? null,
+    authReady,
+  }));
   const [_game, setGame] = useState<GameData | null>(null);
   // Post-hydration continuity: once the session has loaded a real game,
   // we never re-enter the empty bootstrap branch even if `_game` flips
@@ -6772,6 +6787,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       resultingGameType: game?.game_type ?? null,
     });
 
+    // ── Wartime: post-commit main-thread tick markers ──────────────
+    // Determine whether the main thread stalls immediately after EXIT
+    // (microtask never fires), during the next macrotask (timeout 0
+    // never fires), or during the next frame (rAF never fires).
+    schedulePostCommitTicks({
+      sessionId: gameId,
+      resultingStatus: 'game_selection',
+      dealerPosition,
+      dealerUserId,
+    });
+
 
     console.log('[DEALER SELECT] Successfully updated game status to game_selection');
 
@@ -10084,6 +10110,39 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
+                {(() => {
+                  // ── Wartime: legacy (non-persistent) DealerGameSetup parent branch ──
+                  markRenderBoundary(
+                    'DealerSetupParent.legacy',
+                    () => ({
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      branch: 'legacy-sibling',
+                      isHost: isCreator,
+                      isDealer,
+                      dealerPosition: game.dealer_position ?? null,
+                      treatAsCanonicalRoute: _treatAsCanonicalRoute,
+                      selectsDealerGameSetup: !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)),
+                    }),
+                    'DEALER_SETUP_PARENT_RENDER_BEGIN',
+                    'DEALER_SETUP_PARENT_RENDER_END',
+                  );
+                  if (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) {
+                    recordPostCommitEvent('DEALER_SETUP_PARENT_BRANCH_SELECTED', {
+                      branch: 'legacy-sibling',
+                      selectedComponent: 'DealerGameSetup',
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      isHost: isCreator,
+                      dealerPosition: game.dealer_position ?? null,
+                    });
+                  }
+                  tickRenderLoopGuard('DealerSetupParent.legacy', () => ({
+                    status: game.status,
+                    gameType: game.game_type ?? null,
+                  }));
+                  return null;
+                })()}
                 {/* Phase 1: A2 status-keyed sibling table. `!_treatAsCanonicalRoute`
                     is the route-stable gate; `!isCanonicalShellFamily` is a
                     belt-and-suspenders structural guard so this branch
@@ -10478,6 +10537,49 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     game_selection / configuring / game_over-pre-config.
                     Mounts on top of the persistent MobileGameTable
                     without unmounting it. */}
+                {(() => {
+                  // ── Wartime: poker-shell DealerGameSetup parent branch ──
+                  markRenderBoundary(
+                    'DealerSetupParent.pokerShellOverlay',
+                    () => ({
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      branch: 'poker-shell-overlay',
+                      isHost: isCreator,
+                      isDealer,
+                      dealerPosition: game.dealer_position ?? null,
+                      selectsDealerGameSetup:
+                        (game.status === 'game_selection' ||
+                          game.status === 'configuring' ||
+                          ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
+                        !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                        !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)),
+                    }),
+                    'DEALER_SETUP_PARENT_RENDER_BEGIN',
+                    'DEALER_SETUP_PARENT_RENDER_END',
+                  );
+                  const selected =
+                    (game.status === 'game_selection' ||
+                      game.status === 'configuring' ||
+                      ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
+                    !is357WinAnimationActive && !horsesWinPotTriggerId &&
+                    !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers));
+                  if (selected) {
+                    recordPostCommitEvent('DEALER_SETUP_PARENT_BRANCH_SELECTED', {
+                      branch: 'poker-shell-overlay',
+                      selectedComponent: 'DealerGameSetup',
+                      status: game.status,
+                      gameType: game.game_type ?? null,
+                      isHost: isCreator,
+                      dealerPosition: game.dealer_position ?? null,
+                    });
+                  }
+                  tickRenderLoopGuard('DealerSetupParent.pokerShellOverlay', () => ({
+                    status: game.status,
+                    gameType: game.game_type ?? null,
+                  }));
+                  return null;
+                })()}
                 {(game.status === 'game_selection' ||
                   game.status === 'configuring' ||
                   ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
@@ -11540,6 +11642,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // single authoritative canonical felt; the shell no longer
   // renders a second felt floor underneath the slot.
 
+
+  // ── Wartime: Game.tsx render boundary (post-state, pre-return) ──
+  // Emits GAME_ROUTE_RENDER_BEGIN immediately (signature-deduped) and
+  // schedules GAME_ROUTE_RENDER_END via microtask. Absence of END is
+  // diagnostic of a main-thread lock during render commit.
+  markRenderBoundary(
+    'Game.route',
+    () => ({
+      gameId: gameId ?? null,
+      status: game?.status ?? null,
+      gameType: game?.game_type ?? null,
+      currentGameUuid: (game as any)?.current_game_uuid ?? null,
+      loading: loading ?? null,
+      authReady,
+      hasGame: !!game,
+      isHost: isCreator,
+      dealerPosition: game?.dealer_position ?? null,
+      treatAsCanonicalRoute: _treatAsCanonicalRoute ?? null,
+      isPokerShellPersistent: _isPokerShellPersistent ?? null,
+    }),
+    'GAME_ROUTE_RENDER_BEGIN',
+    'GAME_ROUTE_RENDER_END',
+  );
 
   return (
     <VisualPreferencesProvider userId={user?.id}>
