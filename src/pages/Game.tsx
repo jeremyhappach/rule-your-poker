@@ -6232,16 +6232,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This is critical for the waiting phase where bots are added and need to appear immediately
     setPlayers((playersData || []).sort((a, b) => a.position - b.position));
 
-    // Apply game state only if this fetch is still the most recent.
-    // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
-    if (isStale()) {
-      console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
+    // Monotonic guard: only reject if the incoming row is strictly OLDER than
+    // what we've already applied. This still prevents out-of-order regressions
+    // (the original intent) without livelocking when many fetches overlap and
+    // every one of them happens to be carrying the same fresh authoritative row.
+    const incomingUpdatedAt = (gameData as any)?.updated_at ?? null;
+    const lastAppliedUpdatedAt = lastAppliedGameUpdatedAtRef.current;
+    if (
+      incomingUpdatedAt &&
+      lastAppliedUpdatedAt &&
+      incomingUpdatedAt < lastAppliedUpdatedAt
+    ) {
+      console.log('[FETCH] Ignoring older fetch (updated_at regression)', {
+        fetchSeq,
+        incomingUpdatedAt,
+        lastAppliedUpdatedAt,
+      });
       recordLastMile('SET_GAME_SUPPRESSED', {
         source: 'fetchGameData',
-        guardName: 'isStale-pre-setGame',
-        reason: 'newer fetchSeq in flight',
+        guardName: 'updated_at-monotonic',
+        reason: 'incoming updated_at older than last applied',
         fetchSeq,
-        latestFetchSeq: fetchSeqRef.current,
+        incomingUpdatedAt,
+        lastAppliedUpdatedAt,
         incomingStatus: (gameData as any)?.status ?? null,
         incomingGameType: (gameData as any)?.game_type ?? null,
         incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
@@ -6251,6 +6264,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       });
       return;
     }
+
 
     // ── Optimistic Gin seed regression guard ──────────────────────────
     // If we have an active optimistic seed for this dealerGameId and the
