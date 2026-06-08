@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
-// Wartime: prior DealerGameSetupInner render/mount/effect probes removed —
-// the stall has been attributed UPSTREAM of this component (no gst.*
-// events fire). New probes live in @/lib/wartimeDebug/postCommitStallTrace
-// and are wired into Game.tsx + PlayfieldSlotController only.
+import {
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  useEffectProbe,
+} from "@/lib/wartimeDebug/postCommitStallTrace";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,6 +140,37 @@ const DealerGameSetupInner = ({
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
   // runtime path (and therefore why shell chrome appears missing).
+
+  // ── Wartime: DealerGameSetupInner render boundary + loop guard ─────
+  markRenderBoundary(
+    'DealerGameSetupInner',
+    () => ({
+      gameId,
+      isBot,
+      previousGameType: previousGameType ?? null,
+      dealerPosition,
+    }),
+    'DEALER_SETUP_INNER_RENDER_BEGIN',
+    'DEALER_SETUP_INNER_RENDER_END',
+  );
+  tickRenderLoopGuard('DealerGameSetupInner', () => ({
+    gameId,
+    isBot,
+    previousGameType: previousGameType ?? null,
+  }));
+  useEffectProbe(
+    'DealerGameSetupInner',
+    'mount',
+    'DEALER_SETUP_EFFECT_ENTER',
+    'DEALER_SETUP_EFFECT_EXIT',
+    () => ({
+      gameId,
+      isBot,
+      previousGameType: previousGameType ?? null,
+      dealerPosition,
+    }),
+    [],
+  );
 
   useLifecycleMount('DealerGameSetup', {
     gameId,

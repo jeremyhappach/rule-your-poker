@@ -28,6 +28,7 @@
  * de-duplicated to prevent the instrumentation itself from looping.
  */
 
+import { useEffect, useRef } from 'react';
 import { recordWartime } from './core';
 import { persistFreezeEvent } from './freezeRecorder';
 
@@ -42,6 +43,18 @@ export type PostCommitEvent =
   | 'DEALER_SETUP_PARENT_RENDER_BEGIN'
   | 'DEALER_SETUP_PARENT_RENDER_END'
   | 'DEALER_SETUP_PARENT_BRANCH_SELECTED'
+  | 'DEALER_SETUP_INNER_RENDER_BEGIN'
+  | 'DEALER_SETUP_INNER_RENDER_END'
+  | 'DEALER_SETUP_EFFECT_ENTER'
+  | 'DEALER_SETUP_EFFECT_EXIT'
+  | 'SHELL_SLOT_RENDER_BEGIN'
+  | 'SHELL_SLOT_RENDER_END'
+  | 'NEUTRAL_INTERSTITIAL_RENDER_BEGIN'
+  | 'NEUTRAL_INTERSTITIAL_RENDER_END'
+  | 'GAME_SELECTION_SURFACE_RENDER_BEGIN'
+  | 'GAME_SELECTION_SURFACE_RENDER_END'
+  | 'GAME_SELECTION_EFFECT_ENTER'
+  | 'GAME_SELECTION_EFFECT_EXIT'
   | 'POST_COMMIT_RENDER_LOOP_GUARD';
 
 function _now(): number {
@@ -232,4 +245,43 @@ export function markRenderBoundary(
 export function _resetPostCommitStallCounters(): void {
   _loopState.clear();
   _sigCache.clear();
+}
+
+// ── 4. Effect probe hook ───────────────────────────────────────────────
+//
+// Wraps a useEffect to emit ENTER on mount/dep change and EXIT on
+// cleanup. Also counts re-entries through tickRenderLoopGuard so a
+// looping effect trips POST_COMMIT_RENDER_LOOP_GUARD.
+export function useEffectProbe(
+  component: string,
+  effectName: string,
+  enterEvent: PostCommitEvent,
+  exitEvent: PostCommitEvent,
+  payloadFn: () => Record<string, unknown>,
+  deps: ReadonlyArray<unknown> = [],
+): void {
+  const renderCountRef = useRef(0);
+  useEffect(() => {
+    const start = _now();
+    renderCountRef.current += 1;
+    const basePayload = payloadFn();
+    const tag = `${component}.effect.${effectName}`;
+    tickRenderLoopGuard(tag, () => basePayload);
+    recordPostCommitEvent(enterEvent, {
+      component,
+      effectName,
+      renderCount: renderCountRef.current,
+      ...basePayload,
+    });
+    return () => {
+      recordPostCommitEvent(exitEvent, {
+        component,
+        effectName,
+        renderCount: renderCountRef.current,
+        elapsedMs: Math.round(_now() - start),
+        ...basePayload,
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 }

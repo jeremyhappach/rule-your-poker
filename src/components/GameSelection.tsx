@@ -2,6 +2,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Lock, Spade, Dice5, RotateCcw, UserMinus, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import {
+  markRenderBoundary,
+  tickRenderLoopGuard,
+  useEffectProbe,
+} from "@/lib/wartimeDebug/postCommitStallTrace";
 
 interface GameSelectionProps {
   onSelectGame: (gameType: string) => void;
@@ -24,6 +29,35 @@ export const GameSelection = ({
   onSitOut,
   onEndSession
 }: GameSelectionProps) => {
+  markRenderBoundary(
+    'GameSelectionSurface',
+    () => ({
+      lastGameType: lastGameType ?? null,
+      isFirstHand,
+      activePlayerCount,
+      activeHumanCount,
+    }),
+    'GAME_SELECTION_SURFACE_RENDER_BEGIN',
+    'GAME_SELECTION_SURFACE_RENDER_END',
+  );
+  tickRenderLoopGuard('GameSelectionSurface', () => ({
+    lastGameType: lastGameType ?? null,
+    isFirstHand,
+    activePlayerCount,
+  }));
+  useEffectProbe(
+    'GameSelectionSurface',
+    'mount',
+    'GAME_SELECTION_EFFECT_ENTER',
+    'GAME_SELECTION_EFFECT_EXIT',
+    () => ({
+      lastGameType: lastGameType ?? null,
+      isFirstHand,
+      activePlayerCount,
+      activeHumanCount,
+    }),
+    [],
+  );
 
   const cardGames = [
     {
