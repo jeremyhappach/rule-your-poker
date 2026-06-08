@@ -749,6 +749,15 @@ export function useHighCardDealerSelection({
             scope: isCribbageVariant ? 'cribbage' : 'session',
             extra: { round: roundNum },
           });
+          recordDealerSelectionTrace('DEALER_SELECTION_DRAW_COMPLETE', {
+            sessionId: gameId,
+            dealerGameId: `${gameId}:host`,
+            winnerId: winnerPlayer.id,
+            winnerPosition: winnerPlayer.position,
+            round: roundNum,
+            cardCount: updatedCards.length,
+          });
+
 
           addTimeout(() => {
             recordWaitingLifecycle('high-card dealer-selected', {
