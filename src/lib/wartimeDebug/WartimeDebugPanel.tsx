@@ -315,6 +315,11 @@ export function WartimeDebugPanel() {
       ) : null}
     </section>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(panel, document.body);
+  }
+  return panel;
 }
 
 function CategoryChip({
