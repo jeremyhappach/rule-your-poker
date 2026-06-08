@@ -6800,6 +6800,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME SELECTION] Selected game:', gameType, 'Previous:', lastKnownGameTypeRef.current);
 
+    recordGameStartTransition('GAME_START_REQUESTED', {
+      sessionId: gameId,
+      userId: user?.id ?? null,
+      currentStatus: game?.status ?? null,
+      currentGameType: lastKnownGameTypeRef.current ?? game?.game_type ?? null,
+      selectedGameType: gameType,
+      source: 'handleGameSelection',
+    });
+    recordGameStartTransition('STATUS_TRANSITION_ATTEMPT', {
+      sessionId: gameId,
+      fromStatus: game?.status ?? 'game_selection',
+      toStatus: 'configuring',
+      gameType,
+    });
+
     // GUARD: Prevent realtime updates from overwriting optimistic UI during switch
     gameTypeSwitchingRef.current = true;
 
