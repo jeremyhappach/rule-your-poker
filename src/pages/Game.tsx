@@ -2424,6 +2424,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // This ensures players who join mid-session get fresh state
           if (incomingGameType && incomingGameType !== localGameType) {
             console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED (detected via local state):', localGameType, '->', incomingGameType, '- CLEARING ALL CARD STATE!');
+            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
+              branch: 'game-type-change',
+              destination: 'setGame(optimistic) + fetchGameData(200ms)',
+              expectedNextAction: 'SET_GAME_ATTEMPT(realtime-game-type-change)',
+              incomingGameType,
+              localGameType,
+            });
             // Update ref immediately
             lastKnownGameTypeRef.current = incomingGameType;
             lastKnownRoundRef.current = null;
