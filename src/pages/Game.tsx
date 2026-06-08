@@ -2478,7 +2478,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             maxRevealedRef.current = 0;
             if (debounceTimer) clearTimeout(debounceTimer);
             // Fetch fresh data after a short delay to allow DB to settle
-            setTimeout(() => fetchGameData(), 200);
+            setTimeout(() => fetchGameData('realtime.game-type-change.delayed'), 200);
             return;
           }
           
@@ -2546,7 +2546,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             
             if (debounceTimer) clearTimeout(debounceTimer);
-            fetchGameData();
+            fetchGameData('realtime.round-sync');
             return;
           }
           
@@ -2696,7 +2696,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                // (Bug A fix moved to handleCribbageDealerSelectionComplete callback)
               
               if (debounceTimer) clearTimeout(debounceTimer);
-              fetchGameData();
+              fetchGameData('realtime.status-change');
               // NOTE: Removed redundant 300ms setTimeout refetch - it was causing excessive queries
               handled = true;
             } else if (newData && 'status' in newData) {
