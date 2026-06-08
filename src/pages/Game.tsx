@@ -6199,6 +6199,19 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
     if (isStale()) {
       console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
+      recordLastMile('SET_GAME_SUPPRESSED', {
+        source: 'fetchGameData',
+        guardName: 'isStale-pre-setGame',
+        reason: 'newer fetchSeq in flight',
+        fetchSeq,
+        latestFetchSeq: fetchSeqRef.current,
+        incomingStatus: (gameData as any)?.status ?? null,
+        incomingGameType: (gameData as any)?.game_type ?? null,
+        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
+        localStatus: game?.status ?? null,
+        localGameType: game?.game_type ?? null,
+        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
+      });
       return;
     }
 
