@@ -140,6 +140,23 @@ export function PlayfieldSlotController({
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
+  // ── Wartime: PSC resolution boundary + loop guard ──────────────
+  tickRenderLoopGuard('PlayfieldSlotController', () => ({
+    gameId: gameId ?? null,
+    desiredIdentity: describeSlotIdentity(desiredIdentity),
+    persistentChildrenKey: persistentChildrenKey ?? null,
+  }));
+  markRenderBoundary(
+    'PlayfieldSlotController',
+    () => ({
+      gameId: gameId ?? null,
+      desiredIdentity: describeSlotIdentity(desiredIdentity),
+      persistentChildrenKey: persistentChildrenKey ?? null,
+      readyToMountProp,
+    }),
+    'PSC_RESOLUTION_BEGIN',
+    'PSC_RESOLUTION_END',
+  );
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
   useWaitingMount('PlayfieldSlotController', { gameId: gameId ?? null });
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
