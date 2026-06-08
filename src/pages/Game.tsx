@@ -5933,24 +5933,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       stale: isStale(),
     });
 
-    // If a newer fetch started while this one was in-flight, ignore this response.
-    if (isStale()) {
-      console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
-      recordLastMile('SET_GAME_SUPPRESSED', {
-        source: 'fetchGameData',
-        guardName: 'isStale-post-parallel',
-        reason: 'newer fetchSeq in flight',
-        fetchSeq,
-        latestFetchSeq: fetchSeqRef.current,
-        incomingStatus: (gameData as any)?.status ?? null,
-        incomingGameType: (gameData as any)?.game_type ?? null,
-        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
-        localStatus: game?.status ?? null,
-        localGameType: game?.game_type ?? null,
-        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-      });
-      return;
-    }
+    // NOTE: The previous "isStale by fetchSeq" early-return here was removed.
+    // Under fetch pressure (e.g., GameLobby polling + realtime triggers), a newer
+    // fetchSeq is almost always in flight by the time the previous response
+    // resolves, which caused every fresh response to be discarded — a livelock
+    // (Bucket C-3). Out-of-order responses are now rejected later via the
+    // monotonic `lastAppliedGameUpdatedAtRef` guard immediately before setGame.
+
 
     if (gameError) {
       const code = (gameError as any)?.code;
