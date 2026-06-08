@@ -853,11 +853,40 @@ export function useHighCardDealerSelection({
       return () => clearTimeout(t);
     }
 
+    // ── Wartime: INIT_BEGIN (de-duped per gameId/eligibleKey) ─────────
+    recordDealerSelectionTraceIfChanged(
+      `init-begin:${gameId}`,
+      'DEALER_SELECTION_INIT_BEGIN',
+      {
+        sessionId: gameId,
+        gameType: isCribbageVariant ? 'cribbage' : 'session',
+        status: 'dealer_selection',
+        isHost,
+        allowBotDealers,
+        eligibleDealerCount: eligibleDealers.length,
+        eligibleDealerIds: eligibleDealers.map((p) => p.id),
+        eligibleDealerPositions: eligibleDealers.map((p) => p.position),
+        currentDealerId: eligibleDealers[0]?.id ?? null,
+        playerCount: players.length,
+        sittingOutCount: sortedPlayers.filter((p) => p.sitting_out).length,
+        botCount: sortedPlayers.filter((p) => p.is_bot).length,
+        hasInitialized: hasInitializedRef.current,
+      },
+    );
+
     if (hasInitializedRef.current) return;
 
     if (eligibleDealers.length === 0) {
       hasInitializedRef.current = true;
       const activePlayers = sortedPlayers.filter((p) => !p.sitting_out);
+      recordDealerSelectionTrace('DEALER_SELECTION_INIT_DECISION', {
+        sessionId: gameId,
+        decision: 'skip',
+        reason: 'no-eligible-dealers',
+        isHost,
+        activePlayerCount: activePlayers.length,
+        fallbackDealerPosition: (activePlayers[0] ?? sortedPlayers[0])?.position ?? 1,
+      });
       if (activePlayers.length === 0) {
         onComplete(sortedPlayers[0]?.position || 1);
       } else {
@@ -869,13 +898,35 @@ export function useHighCardDealerSelection({
     if (eligibleDealers.length === 1) {
       hasInitializedRef.current = true;
       console.log('[HIGH CARD] Only one eligible dealer, bypassing selection');
+      recordDealerSelectionTrace('DEALER_SELECTION_INIT_DECISION', {
+        sessionId: gameId,
+        decision: 'skip',
+        reason: 'single-eligible-dealer-bypass',
+        isHost,
+        winnerPosition: eligibleDealers[0].position,
+        winnerId: eligibleDealers[0].id,
+        willCallOnComplete: isHost,
+      });
       if (isHost) {
         onComplete(eligibleDealers[0].position);
+      } else {
+        recordDealerSelectionTrace('DEALER_SELECTION_WAIT_CONDITION', {
+          sessionId: gameId,
+          reason: 'non-host-awaiting-host-bypass',
+          waitingForIds: [eligibleDealers[0].id],
+          completedIds: [],
+        });
       }
       return;
     }
 
     if (!isHost) {
+      recordDealerSelectionTrace('DEALER_SELECTION_WAIT_CONDITION', {
+        sessionId: gameId,
+        reason: 'non-host-awaiting-host-draw',
+        waitingForIds: eligibleDealers.map((p) => p.id),
+        completedIds: [],
+      });
       return;
     }
 
@@ -897,6 +948,26 @@ export function useHighCardDealerSelection({
       extra: { eligibleDealers: eligibleDealers.length },
     });
 
+    recordDealerSelectionTrace('DEALER_SELECTION_INIT_DECISION', {
+      sessionId: gameId,
+      decision: 'create',
+      reason: 'multi-eligible-host-draws',
+      isHost: true,
+      eligibleDealerCount: eligibleDealers.length,
+    });
+    recordDealerSelectionTrace('DEALER_SELECTION_PARTICIPANTS', {
+      sessionId: gameId,
+      dealerGameId: `${gameId}:host`,
+      participantCount: eligibleDealers.length,
+      participantIds: eligibleDealers.map((p) => p.id),
+      participantPositions: eligibleDealers.map((p) => p.position),
+    });
+    recordDealerSelectionTrace('DEALER_SELECTION_DRAW_BEGIN', {
+      sessionId: gameId,
+      dealerGameId: `${gameId}:host`,
+      participantCount: eligibleDealers.length,
+    });
+
     recordWaitingLifecycle('high-card-start', {
       gameId,
       isHost,
@@ -906,6 +977,7 @@ export function useHighCardDealerSelection({
     });
 
     runSelectionRound(eligibleDealers, 1, []);
+
 
     return () => clearTimeouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
