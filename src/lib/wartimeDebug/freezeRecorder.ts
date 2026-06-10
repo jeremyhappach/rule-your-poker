@@ -260,19 +260,45 @@ function start(): void {
     });
   } catch { /* */ }
 
-  // heartbeat — proves main thread + network round-trip every 2s
+  // boot marker — reports the previous session's last local breadcrumb
+  // so we can tell whether JS kept beating after its last DB row.
+  try {
+    const prev = window.localStorage.getItem(LAST_BEAT_KEY);
+    rawPersist('freeze.PAGE_BOOT', { previousBeat: prev ? JSON.parse(prev) : null });
+    persist('freeze.PAGE_BOOT', 'freezeRecorder', 'boot', {
+      previousBeat: prev ? JSON.parse(prev) : null,
+    });
+  } catch { /* */ }
+
+  // heartbeat — DUAL CHANNEL every 2s:
+  //   channel=sdk → supabase-js insert (existing path)
+  //   channel=raw → direct fetch to PostgREST, bypassing supabase-js
+  // Divergence (raw continues, sdk stops) = supabase client wedged,
+  // main thread alive. Both stopping = genuine main-thread halt.
+  // A synchronous localStorage breadcrumb survives even total network
+  // loss and is reported by freeze.PAGE_BOOT on next load.
   let hbN = 0;
   setInterval(() => {
     if (!_enabled) return;
     hbN += 1;
+    const perfNow = typeof performance !== 'undefined' ? Math.round(performance.now()) : null;
+    const visibility = typeof document !== 'undefined' ? document.visibilityState : null;
+    try {
+      window.localStorage.setItem(LAST_BEAT_KEY, JSON.stringify({
+        sessionId: SESSION_ID, n: hbN, perfNow, iso: new Date().toISOString(),
+      }));
+    } catch { /* */ }
     persist('heartbeat', 'freezeRecorder', 'heartbeat', {
       n: hbN,
-      perfNow: typeof performance !== 'undefined' ? Math.round(performance.now()) : null,
+      channel: 'sdk',
+      perfNow,
+      visibility,
     });
+    rawPersist('heartbeat.raw', { n: hbN, perfNow, visibility });
   }, 2000);
 
   // eslint-disable-next-line no-console
-  console.info('[FREEZE_REC] enabled — persisting dealer-selection trace to debug_events');
+  console.info('[FREEZE_REC] enabled — persisting dealer-selection trace to debug_events (dual-channel heartbeat)');
 }
 
 // auto-start on module load when flag already set
