@@ -214,13 +214,13 @@ export const PlayerHand = ({
               key={index}
               isHidden
               size={cardSize}
-              className={`${useFannedArc ? '-ml-4 first:ml-0' : overlapClass} ${round1NarrowTallClass} animate-fade-in`}
-              style={{
+              className={`${useFannedArc ? (dynActive ? 'first:ml-0' : '-ml-4 first:ml-0') : effectiveOverlapClass} ${effectiveRound1Class} animate-fade-in`}
+              style={composeStyle({
                 transform: `rotate(${rotation}deg) translateY(${verticalOffset}px)`,
                 animationDelay: `${index * 150}ms`,
                 animationFillMode: 'backwards',
                 transformOrigin: 'bottom center'
-              }}
+              }, useFannedArc) /* fanned arc: keep dyn overlap; otherwise use overlapClass */ }
             />
           );
         })}
