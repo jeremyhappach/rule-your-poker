@@ -65,4 +65,27 @@ describe('resolveCardRowLayout', () => {
       }
     }
   });
+
+  it('readability-first: width is monotonically non-increasing as count grows', () => {
+    // For any fixed budget, more cards must never produce *larger* cards
+    // (which would happen if the resolver inflated overlap to grow width).
+    for (const budget of [80, 120, 160, 200, 280, 400, 600]) {
+      const w3 = resolveCardRowLayout({ availableWidth: budget, count: 3 })!.cardWidth;
+      const w5 = resolveCardRowLayout({ availableWidth: budget, count: 5 })!.cardWidth;
+      const w7 = resolveCardRowLayout({ availableWidth: budget, count: 7 })!.cardWidth;
+      expect(w3).toBeGreaterThanOrEqual(w5 - 1e-6);
+      expect(w5).toBeGreaterThanOrEqual(w7 - 1e-6);
+    }
+  });
+
+  it('readability-first: prefers zero overlap until min-width floor is hit', () => {
+    // Budget comfortably fits min-width cards edge-to-edge → overlap must be 0.
+    const r = resolveCardRowLayout({
+      availableWidth: 28 * 7 + 50, // well above 7 × minCardWidth
+      count: 7,
+      minCardWidth: 28,
+      maxCardWidth: 80,
+    });
+    expect(r!.overlapPx).toBe(0);
+  });
 });
