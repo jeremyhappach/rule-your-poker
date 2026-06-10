@@ -127,6 +127,18 @@ function persist(
   // also sent over the raw fetch transport with the SAME seq, tagged
   // channel='raw-mirror'. Dedupe at query time on (sessionId, seq).
   rawSend(eventType, seq, 'raw-mirror', enriched);
+  // Synchronous last-emit breadcrumb — survives total network loss.
+  // Reported by freeze.PAGE_BOOT (previousEmit) on next load so we know
+  // the exact last event the main thread produced before the halt.
+  try {
+    window.localStorage.setItem(LAST_EMIT_KEY, JSON.stringify({
+      sessionId: SESSION_ID,
+      seq,
+      eventType,
+      iso: enriched.timestamp,
+      perfNow: typeof performance !== 'undefined' ? Math.round(performance.now()) : null,
+    }));
+  } catch { /* */ }
 }
 
 // Exposed so call-site instrumentation (gameStartTransition,
@@ -283,14 +295,18 @@ function start(): void {
     });
   } catch { /* */ }
 
-  // boot marker — reports the previous session's last local breadcrumb
-  // so we can tell whether JS kept beating after its last DB row.
+  // boot marker — reports the previous session's last local breadcrumbs
+  // (heartbeat + last emitted event) so we can tell whether JS kept
+  // running after its last delivered DB row, and what it emitted last.
   try {
     const prev = window.localStorage.getItem(LAST_BEAT_KEY);
-    rawPersist('freeze.PAGE_BOOT', { previousBeat: prev ? JSON.parse(prev) : null });
-    persist('freeze.PAGE_BOOT', 'freezeRecorder', 'boot', {
+    const prevEmit = window.localStorage.getItem(LAST_EMIT_KEY);
+    const bootPayload = {
       previousBeat: prev ? JSON.parse(prev) : null,
-    });
+      previousEmit: prevEmit ? JSON.parse(prevEmit) : null,
+    };
+    rawPersist('freeze.PAGE_BOOT', bootPayload);
+    persist('freeze.PAGE_BOOT', 'freezeRecorder', 'boot', bootPayload);
   } catch { /* */ }
 
   // heartbeat — DUAL CHANNEL every 2s:
