@@ -2332,6 +2332,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `id=eq.${gameId}`
         },
         tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'games' }, simulateRealtime('games', (payload) => {
+          // ── WARTIME DIAGNOSTIC: defer entire body to a microtask so the
+          // realtime callback returns immediately (REALTIME_CALLBACK_END
+          // fires). If the dealer_selection→game_selection freeze
+          // disappears with this in place, the structural fix is
+          // enqueue-only realtime ingestion. If the freeze persists, the
+          // pathology lives inside the render path after state apply and
+          // we revert/bisect the geometry-contract rollout.
+          queueMicrotask(() => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           recordLastMile('REALTIME_GAMES_PAYLOAD', {
@@ -2841,6 +2849,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             debouncedFetch();
           }
+          });
         }))
       )
       .on(
