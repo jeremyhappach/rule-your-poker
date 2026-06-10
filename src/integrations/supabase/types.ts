@@ -293,7 +293,7 @@ export type Database = {
           client_role: string | null
           created_at: string
           event_type: string
-          game_id: string
+          game_id: string | null
           id: string
           payload: Json
           round_id: string | null
@@ -303,7 +303,7 @@ export type Database = {
           client_role?: string | null
           created_at?: string
           event_type: string
-          game_id: string
+          game_id?: string | null
           id?: string
           payload?: Json
           round_id?: string | null
@@ -313,7 +313,7 @@ export type Database = {
           client_role?: string | null
           created_at?: string
           event_type?: string
-          game_id?: string
+          game_id?: string | null
           id?: string
           payload?: Json
           round_id?: string | null
