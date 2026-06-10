@@ -169,6 +169,7 @@ const RAW_URL = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/debug_events`;
 const RAW_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 const AUTH_STORAGE_KEY = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
 const LAST_BEAT_KEY = 'ptp_freeze_last_beat';
+const LAST_EMIT_KEY = 'ptp_freeze_last_emit';
 
 let _lastRawStatus: number | string | null = null;
 
