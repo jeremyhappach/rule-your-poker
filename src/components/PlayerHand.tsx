@@ -163,14 +163,14 @@ export const PlayerHand = ({
     maxCardWidth: 56,
     maxOverlapRatio: 0.6,
   });
-  const dyn357Style: React.CSSProperties | null =
+  const dyn357Style: CSSProperties | null =
     is357Game && dyn357
       ? {
           width: `${dyn357.cardWidth}px`,
           height: `${dyn357.cardHeight}px`,
         }
       : null;
-  const dyn357OverlapStyle: React.CSSProperties | null =
+  const dyn357OverlapStyle: CSSProperties | null =
     is357Game && dyn357
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
@@ -180,7 +180,7 @@ export const PlayerHand = ({
   const dynActive = !!dyn357Style;
   const effectiveOverlapClass = dynActive ? 'first:ml-0' : overlapClass;
   const effectiveRound1Class = dynActive ? '' : round1NarrowTallClass;
-  const composeStyle = (base?: React.CSSProperties, includeOverlap = true): React.CSSProperties | undefined => {
+  const composeStyle = (base?: CSSProperties, includeOverlap = true): CSSProperties | undefined => {
     if (!dynActive) return base;
     return {
       ...(base || {}),
