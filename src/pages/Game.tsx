@@ -2861,6 +2861,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'players' }, simulateRealtime('players', (payload) => {
+          // WARTIME: defer body off realtime callback stack (enqueue-only pattern).
+          queueMicrotask(() => {
           recordStartupFlight('REALTIME TIMELINE', 'players callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'players realtime callback',
@@ -2918,6 +2920,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             debouncedFetch();
           }
+          });
         }))
       )
       .on(
@@ -2929,6 +2932,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'rounds' }, simulateRealtime('rounds', (payload) => {
+          // WARTIME: defer body off realtime callback stack (enqueue-only pattern).
+          queueMicrotask(() => {
           recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'rounds realtime callback',
@@ -2998,6 +3003,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
+          });
         }))
       )
       .subscribe((status) => {
