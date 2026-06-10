@@ -2849,6 +2849,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             debouncedFetch();
           }
+          });
         }))
       )
       .on(
