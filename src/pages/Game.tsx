@@ -2989,7 +2989,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
-        })
+        }))
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
