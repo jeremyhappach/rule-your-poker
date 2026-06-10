@@ -349,10 +349,10 @@ export const PlayerHand = ({
             isKicker={isKicker}
             isDimmed={isDimmed}
             isWild={isWild}
-            className={`${overlapClass} ${round1NarrowTallClass}`}
-            style={{
+            className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+            style={composeStyle({
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
-            }}
+            })}
           />
         );
       })}
