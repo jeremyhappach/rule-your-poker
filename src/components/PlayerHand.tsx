@@ -348,7 +348,7 @@ export const PlayerHand = ({
     const allCardsOrdered = [...unusedCards, ...usedCards];
     
     return (
-      <div className="flex items-end">
+      <div className="flex items-end" ref={is357Game ? measureRef : undefined}>
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
           const usedDisplayIndex = isUnused ? 0 : displayIndex - unusedCards.length;
