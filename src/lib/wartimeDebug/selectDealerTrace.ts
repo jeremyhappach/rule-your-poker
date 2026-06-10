@@ -33,7 +33,10 @@ export type SelectDealerEvent =
   | 'GAME_SELECTION_READY'
   | 'SELECT_DEALER_QUERY_BEGIN'
   | 'SELECT_DEALER_QUERY_RESULT'
-  | 'SELECT_DEALER_QUERY_HUNG';
+  | 'SELECT_DEALER_QUERY_HUNG'
+  | 'UPDATE_CALL_BEGIN'
+  | 'UPDATE_PROMISE_CREATED'
+  | 'UPDATE_AWAIT_RESOLVED';
 
 export function recordSelectDealerTrace(
   event: SelectDealerEvent,
