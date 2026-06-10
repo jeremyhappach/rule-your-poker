@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
@@ -188,10 +188,53 @@ export const PlayerHand = ({
       ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
     };
   };
-  
+
+  // ─── Wave 2A measurement probe ────────────────────────────────────────────
+  // Diagnostic only — logs resolver output vs. actual rendered DOM size for
+  // 3-5-7 hands so we can verify the resolver is driving the final render.
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    if (!is357Game || isHidden) return;
+    const el = measureRef.current;
+    if (!el) return;
+    const firstCard = el.querySelector<HTMLElement>(':scope > *');
+    const rowRect = el.getBoundingClientRect();
+    const cardRect = firstCard?.getBoundingClientRect();
+    const overlapRatio =
+      dyn357 && dyn357.cardWidth > 0
+        ? dyn357.overlapPx / dyn357.cardWidth
+        : null;
+    // eslint-disable-next-line no-console
+    console.log('[357-measure]', {
+      round: currentRound,
+      count: displayCardCount,
+      availableWidth:
+        is357Game && play.measured ? play.width * SEAT_SHARE_357 : null,
+      playWidth: play.width,
+      playMeasured: play.measured,
+      resolver: dyn357
+        ? {
+            cardWidth: dyn357.cardWidth,
+            cardHeight: dyn357.cardHeight,
+            overlapPx: dyn357.overlapPx,
+            overlapRatio,
+            totalWidth: dyn357.totalWidth,
+          }
+        : null,
+      rendered: cardRect
+        ? {
+            cardWidth: cardRect.width,
+            cardHeight: cardRect.height,
+            rowWidth: rowRect.width,
+          }
+        : null,
+    });
+  });
+
   // Render card backs for hidden cards
   if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
     const count = isHidden ? displayCardCount : expectedCardCount!;
+    
     
     // For 3-5-7 games with multiple cards, use fanned arc layout
     const useFannedArc = is357Game && count >= 3;
@@ -305,7 +348,7 @@ export const PlayerHand = ({
     const allCardsOrdered = [...unusedCards, ...usedCards];
     
     return (
-      <div className="flex items-end">
+      <div className="flex items-end" ref={is357Game ? measureRef : undefined}>
         {allCardsOrdered.map(({ card, originalIndex, isWild }, displayIndex) => {
           const isUnused = displayIndex < unusedCards.length;
           const usedDisplayIndex = isUnused ? 0 : displayIndex - unusedCards.length;
@@ -335,7 +378,8 @@ export const PlayerHand = ({
   }
 
   return (
-    <div className="flex">
+    <div className="flex" ref={is357Game ? measureRef : undefined}>
+
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
