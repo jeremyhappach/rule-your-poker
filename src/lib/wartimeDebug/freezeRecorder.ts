@@ -88,10 +88,11 @@ function persist(
 ): void {
   if (!_enabled) return;
   _seq += 1;
+  const seq = _seq;
   const enriched = {
     sessionId: SESSION_ID,
     tabId: SESSION_ID,
-    seq: _seq,
+    seq,
     timestamp: new Date().toISOString(),
     sourceFile,
     sourceFunction,
@@ -120,6 +121,24 @@ function persist(
         console.warn('[FREEZE_REC] insert failed:', error.message);
       }
     });
+  // RAW MIRROR — session b972cde8 proved the SDK can wedge while the
+  // page keeps emitting: seqs 371–414 were persisted via supabase-js
+  // only and were permanently lost. Every persisted event is therefore
+  // also sent over the raw fetch transport with the SAME seq, tagged
+  // channel='raw-mirror'. Dedupe at query time on (sessionId, seq).
+  rawSend(eventType, seq, 'raw-mirror', enriched);
+  // Synchronous last-emit breadcrumb — survives total network loss.
+  // Reported by freeze.PAGE_BOOT (previousEmit) on next load so we know
+  // the exact last event the main thread produced before the halt.
+  try {
+    window.localStorage.setItem(LAST_EMIT_KEY, JSON.stringify({
+      sessionId: SESSION_ID,
+      seq,
+      eventType,
+      iso: enriched.timestamp,
+      perfNow: typeof performance !== 'undefined' ? Math.round(performance.now()) : null,
+    }));
+  } catch { /* */ }
 }
 
 // Exposed so call-site instrumentation (gameStartTransition,
@@ -150,6 +169,7 @@ const RAW_URL = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/debug_events`;
 const RAW_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 const AUTH_STORAGE_KEY = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
 const LAST_BEAT_KEY = 'ptp_freeze_last_beat';
+const LAST_EMIT_KEY = 'ptp_freeze_last_emit';
 
 let _lastRawStatus: number | string | null = null;
 
@@ -164,25 +184,31 @@ function readAccessTokenSync(): string | null {
   }
 }
 
-function rawPersist(eventType: string, payload: Record<string, unknown>): void {
+// Shared raw transport. `seq` is supplied by the caller so the
+// raw-mirror copy of an SDK persist carries the SAME seq (dedupe key:
+// sessionId+seq+channel). Hoisted function declaration — callable from
+// persist() above.
+function rawSend(
+  eventType: string,
+  seq: number,
+  channel: 'raw' | 'raw-mirror',
+  payload: Record<string, unknown>,
+): void {
   if (!_enabled) return;
-  _seq += 1;
   const token = readAccessTokenSync();
   const body = JSON.stringify({
     game_id: _ctx.gameId,
     user_id: _ctx.userId,
     client_role: 'freeze-recorder',
-    event_type: eventType,
+    event_type: channel === 'raw-mirror' ? `${eventType}` : eventType,
     payload: {
-      sessionId: SESSION_ID,
-      tabId: SESSION_ID,
-      seq: _seq,
-      channel: 'raw',
-      timestamp: new Date().toISOString(),
+      channel,
       hadToken: token != null,
       lastRawStatus: _lastRawStatus,
-      ctx: { status: _ctx.status, gameType: _ctx.gameType },
       ...payload,
+      sessionId: SESSION_ID,
+      tabId: SESSION_ID,
+      seq,
     },
   });
   try {
@@ -202,6 +228,16 @@ function rawPersist(eventType: string, payload: Record<string, unknown>): void {
   } catch (e) {
     _lastRawStatus = String((e as Error)?.message ?? e);
   }
+}
+
+function rawPersist(eventType: string, payload: Record<string, unknown>): void {
+  if (!_enabled) return;
+  _seq += 1;
+  rawSend(eventType, _seq, 'raw', {
+    timestamp: new Date().toISOString(),
+    ctx: { status: _ctx.status, gameType: _ctx.gameType },
+    ...payload,
+  });
 }
 
 // ── wartime mirror ───────────────────────────────────────────
@@ -260,14 +296,18 @@ function start(): void {
     });
   } catch { /* */ }
 
-  // boot marker — reports the previous session's last local breadcrumb
-  // so we can tell whether JS kept beating after its last DB row.
+  // boot marker — reports the previous session's last local breadcrumbs
+  // (heartbeat + last emitted event) so we can tell whether JS kept
+  // running after its last delivered DB row, and what it emitted last.
   try {
     const prev = window.localStorage.getItem(LAST_BEAT_KEY);
-    rawPersist('freeze.PAGE_BOOT', { previousBeat: prev ? JSON.parse(prev) : null });
-    persist('freeze.PAGE_BOOT', 'freezeRecorder', 'boot', {
+    const prevEmit = window.localStorage.getItem(LAST_EMIT_KEY);
+    const bootPayload = {
       previousBeat: prev ? JSON.parse(prev) : null,
-    });
+      previousEmit: prevEmit ? JSON.parse(prevEmit) : null,
+    };
+    rawPersist('freeze.PAGE_BOOT', bootPayload);
+    persist('freeze.PAGE_BOOT', 'freezeRecorder', 'boot', bootPayload);
   } catch { /* */ }
 
   // heartbeat — DUAL CHANNEL every 2s:
