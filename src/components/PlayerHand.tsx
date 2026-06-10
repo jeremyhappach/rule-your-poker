@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useLayoutEffect, useRef, type CSSProperties } from "react";
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
