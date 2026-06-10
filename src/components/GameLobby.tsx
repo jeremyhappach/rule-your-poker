@@ -145,10 +145,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'games'
         },
-        () => {
-          // Realtime triggered - fetch updates
-          fetchGames();
-        }
+        tracedRealtimeCallback(
+          { channel: 'games-lobby-channel', table: 'games' },
+          () => { fetchGames(); },
+        )
       )
       .subscribe();
 
@@ -162,10 +162,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'players'
         },
-        () => {
-          // Realtime triggered - fetch updates
-          fetchGames();
-        }
+        tracedRealtimeCallback(
+          { channel: 'players-lobby-channel', table: 'players' },
+          () => { fetchGames(); },
+        )
       )
       .subscribe();
 
