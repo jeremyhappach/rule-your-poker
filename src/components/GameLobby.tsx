@@ -191,7 +191,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const fetchGames = async () => {
+    const _fetchStart = performance.now();
+    recordFetchSpan('GAMELOBBY_FETCH', 'BEGIN', {});
     const perf = new PerfSession("GameLobby.fetchGames", 300);
+    try {
 
     // Fetch games + their current players in ONE query (avoid N+1).
     const { data: gamesData, error } = await perf.step("games.select", () =>
