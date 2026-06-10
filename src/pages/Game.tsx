@@ -7111,22 +7111,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer')
     );
 
+    // ── WARTIME TEST 1+3: .select() removed from the UPDATE; pre/post-await
+    // markers around promise creation. UPDATE_CALL_BEGIN → builder constructed;
+    // UPDATE_PROMISE_CREATED → fetch dispatched (thenable coerced); silence
+    // after that = death while awaiting the request return path.
+    recordSelectDealerTrace('UPDATE_CALL_BEGIN', { ..._ctx, selectChained: false });
+    const _updateBuilder = supabase
+      .from('games')
+      .update({
+        status: 'game_selection',
+        dealer_position: dealerPosition,
+        config_deadline: configDeadline,
+        dealer_selection_state: null,
+      })
+      .eq('id', gameId);
+    // Coercing the PostgrestBuilder thenable dispatches the underlying fetch.
+    const _updatePromise: Promise<{ error: any; data?: any }> = Promise.resolve(
+      _updateBuilder as unknown as PromiseLike<{ error: any; data?: any }>
+    );
+    recordSelectDealerTrace('UPDATE_PROMISE_CREATED', { ..._ctx, selectChained: false });
     const updateRes = await tracedSelectDealerQuery<{ error: any; data?: any }>(
-      'games.update.status=game_selection',
+      'games.update.status=game_selection.no_select',
       _ctx,
-      () =>
-        supabase
-          .from('games')
-          .update({
-            status: 'game_selection',
-            dealer_position: dealerPosition,
-            config_deadline: configDeadline,
-            dealer_selection_state: null,
-          })
-          .eq('id', gameId)
-          .select('id,status,game_type,current_game_uuid,dealer_position,config_deadline')
+      () => _updatePromise
     );
     const error = updateRes.error;
+    recordSelectDealerTrace('UPDATE_AWAIT_RESOLVED', {
+      ..._ctx,
+      selectChained: false,
+      success: !error,
+      error: error ? String(error.message ?? error) : null,
+    });
 
     // Post-update verification select to determine whether the row reached
     // game_selection independently of any client-side state propagation.
