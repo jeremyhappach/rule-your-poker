@@ -378,7 +378,8 @@ export const PlayerHand = ({
   }
 
   return (
-    <div className="flex">
+    <div className="flex" ref={is357Game ? measureRef : undefined}>
+
       {sortedCardsWithIndices.map(({ card, originalIndex, isWild }, displayIndex) => {
         const isHighlighted = highlightedIndices.includes(originalIndex);
         const isKicker = kickerIndices.includes(originalIndex);
