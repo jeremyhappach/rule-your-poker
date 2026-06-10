@@ -1,5 +1,12 @@
+import type { CSSProperties } from "react";
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
+import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
+import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
+
+// Wave 2A: rough per-seat horizontal allocation around the canonical felt.
+// Used only to compute an availableWidth budget for 3-5-7 hand rows.
+const SEAT_SHARE_357 = 0.24;
 
 interface PlayerHandProps {
   cards: CardType[];
@@ -126,7 +133,7 @@ export const PlayerHand = ({
     is357Game && currentRound === 1 && displayCardCount === 3
       ? "w-10 h-16 sm:w-11 sm:h-[4.25rem]"
       : "";
-  
+
   // Calculate overlap based on card count and tightOverlap flag
   const getOverlapClass = () => {
     if (tightOverlap) {
@@ -139,8 +146,48 @@ export const PlayerHand = ({
     if (displayCardCount >= 5) return '-ml-2 sm:-ml-2 first:ml-0';
     return '-ml-1 first:ml-0';
   };
-  
+
   const overlapClass = getOverlapClass();
+
+  // ─── Wave 2A: 3-5-7 dynamic card row layout ───────────────────────────────
+  // Pure resolver — when geometry is not yet measured, returns null and we
+  // fall back to the existing className ladder (zero visual change before
+  // geometry is ready). Only active on the 3-5-7 paths; other games are
+  // byte-identical to pre-Wave-2A.
+  const play = usePlayGeometry();
+  const dyn357 = useCardRowLayout({
+    availableWidth: is357Game && play.measured ? play.width * SEAT_SHARE_357 : 0,
+    count: displayCardCount,
+    aspect: 0.71,
+    minCardWidth: 28,
+    maxCardWidth: 56,
+    maxOverlapRatio: 0.6,
+  });
+  const dyn357Style: CSSProperties | null =
+    is357Game && dyn357
+      ? {
+          width: `${dyn357.cardWidth}px`,
+          height: `${dyn357.cardHeight}px`,
+        }
+      : null;
+  const dyn357OverlapStyle: CSSProperties | null =
+    is357Game && dyn357
+      ? { marginLeft: `-${dyn357.overlapPx}px` }
+      : null;
+  // When dynamic layout is active, drop the static Tailwind w/h + -ml ladder
+  // so inline styles win cleanly. Non-357 paths keep `overlapClass` /
+  // `round1NarrowTallClass` untouched.
+  const dynActive = !!dyn357Style;
+  const effectiveOverlapClass = dynActive ? 'first:ml-0' : overlapClass;
+  const effectiveRound1Class = dynActive ? '' : round1NarrowTallClass;
+  const composeStyle = (base?: CSSProperties, includeOverlap = true): CSSProperties | undefined => {
+    if (!dynActive) return base;
+    return {
+      ...(base || {}),
+      ...(dyn357Style || {}),
+      ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
+    };
+  };
   
   // Render card backs for hidden cards
   if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
@@ -168,13 +215,13 @@ export const PlayerHand = ({
               key={index}
               isHidden
               size={cardSize}
-              className={`${useFannedArc ? '-ml-4 first:ml-0' : overlapClass} ${round1NarrowTallClass} animate-fade-in`}
-              style={{
+              className={`${useFannedArc ? (dynActive ? 'first:ml-0' : '-ml-4 first:ml-0') : effectiveOverlapClass} ${effectiveRound1Class} animate-fade-in`}
+              style={composeStyle({
                 transform: `rotate(${rotation}deg) translateY(${verticalOffset}px)`,
                 animationDelay: `${index * 150}ms`,
                 animationFillMode: 'backwards',
                 transformOrigin: 'bottom center'
-              }}
+              }, useFannedArc) /* fanned arc: keep dyn overlap; otherwise use overlapClass */ }
             />
           );
         })}
@@ -275,11 +322,11 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={!isUnused && isWild}
-              className={`${overlapClass} ${round1NarrowTallClass}`}
-              style={{
+              className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+              style={composeStyle({
                 transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
                 opacity: isUnused ? 0.4 : 1,
-              }}
+              })}
             />
           );
         })}
@@ -303,10 +350,10 @@ export const PlayerHand = ({
             isKicker={isKicker}
             isDimmed={isDimmed}
             isWild={isWild}
-            className={`${overlapClass} ${round1NarrowTallClass}`}
-            style={{
+            className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+            style={composeStyle({
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
-            }}
+            })}
           />
         );
       })}
