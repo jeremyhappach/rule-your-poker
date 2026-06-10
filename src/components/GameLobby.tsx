@@ -148,7 +148,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         },
         tracedRealtimeCallback(
           { channel: 'games-lobby-channel', table: 'games' },
-          () => { fetchGames(); },
+          () => { queueMicrotask(() => { fetchGames(); }); },
         )
       )
       .subscribe();
