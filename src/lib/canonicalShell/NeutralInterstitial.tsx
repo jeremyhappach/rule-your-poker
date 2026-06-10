@@ -20,11 +20,6 @@ import { useShellTabBar, type ShellTabId } from './ShellTabBar';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { recordWartime } from '@/lib/wartimeDebug/core';
-import {
-  markRenderBoundary,
-  tickRenderLoopGuard,
-  useEffectProbe,
-} from '@/lib/wartimeDebug/postCommitStallTrace';
 
 
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
@@ -117,34 +112,6 @@ export function NeutralInterstitial({
   currentUserId,
   participantGameType,
 }: NeutralInterstitialProps) {
-  markRenderBoundary(
-    'NeutralInterstitial',
-    () => ({
-      gameId: gameId ?? null,
-      reason: reason ?? null,
-      gameKind: gameKind ?? null,
-      participantCount: participants?.length ?? 0,
-    }),
-    'NEUTRAL_INTERSTITIAL_RENDER_BEGIN',
-    'NEUTRAL_INTERSTITIAL_RENDER_END',
-  );
-  tickRenderLoopGuard('NeutralInterstitial', () => ({
-    gameId: gameId ?? null,
-    reason: reason ?? null,
-    gameKind: gameKind ?? null,
-  }));
-  useEffectProbe(
-    'NeutralInterstitial',
-    'mount',
-    'DEALER_SETUP_EFFECT_ENTER',
-    'DEALER_SETUP_EFFECT_EXIT',
-    () => ({
-      gameId: gameId ?? null,
-      reason: reason ?? null,
-      gameKind: gameKind ?? null,
-    }),
-    [],
-  );
   const geometry = useGeometryTokensOptional();
   // No fake-default game kind. If the caller did not supply one (truly
   // pre-game, no committed gameType yet), we still need a kind to satisfy

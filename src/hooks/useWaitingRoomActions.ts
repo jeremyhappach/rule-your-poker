@@ -18,9 +18,6 @@ import { PerfSession } from "@/lib/perf";
 import { useDoorbellSound } from "@/hooks/useDoorbellSound";
 import { getNextBotNumber, makeBotUsername } from "@/lib/botNaming";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
-// Start-game / handler-enter probes retired — duplicate-click and dual
-// invocation theories were disproved by the prior wartime trace.
-
 
 const BOT_AGGRESSION_WEIGHTS: { level: AggressionLevel; weight: number }[] = [
   { level: "very_conservative", weight: 5 },
@@ -346,7 +343,7 @@ export function useWaitingRoomActions({
       recordAnnouncementDebugEvent('lifecycle', 'handleStartGame:onGameStart:fire');
       onGameStart();
     }, 500);
-  }, [hasEnoughPlayers, onGameStart, gameId, currentUserId]);
+  }, [hasEnoughPlayers, onGameStart]);
 
   const handleInvite = useCallback(() => {
     const gameUrl = window.location.href;

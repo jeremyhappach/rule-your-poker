@@ -113,8 +113,6 @@ import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRa
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
-import { usePaneGeometry } from "@/lib/canonicalShell/usePaneGeometry";
-import { useCardRowLayout, useFitToWidthScale } from "@/lib/canonicalShell/useCardRowLayout";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -813,31 +811,6 @@ export const MobileGameTable = ({
   
   // Device size detection for tablet/desktop responsive sizing
   const { isTablet, isDesktop } = useDeviceSize();
-
-  // ── Responsive Geometry Contract — Wave 2 (3-5-7 active hand only) ──
-  // First geometry consumer. Replaces the per-round/per-device scale
-  // ladder (`scale-[2.8]` / `min-h-[200px]` etc.) for 3-5-7 with a
-  // shell-owned layout derived from `usePaneGeometry` + `useCardRowLayout`.
-  // No other surface consumes these primitives in this wave.
-  const __wave2_paneGeometry = usePaneGeometry();
-  const __wave2_is357 = gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game';
-  const __wave2_cardCount = currentRound === 1 ? 3 : currentRound === 2 ? 5 : currentRound === 3 ? 7 : 0;
-  const __wave2_cardLayout = useCardRowLayout({
-    // ~6% horizontal slack (px-2 wrappers + safe-area gutters).
-    availableWidth: Math.max(0, __wave2_paneGeometry.contentSafeWidth * 0.94),
-    // Hand region claims ~65% of the pane vertically; the remaining
-    // share belongs to the auto-fold/control row below the hand.
-    availableHeight: Math.max(0, __wave2_paneGeometry.contentSafeHeight * 0.65),
-    cardCount: __wave2_cardCount,
-    aspectRatio: 0.7, // playing-card w/h
-    minReadableRankArea: 22,
-    maxOverlapPct: 0.5,
-  });
-  const __wave2_fit = useFitToWidthScale(__wave2_cardLayout.totalWidth, [
-    __wave2_cardCount,
-    __wave2_cardLayout.totalWidth,
-  ]);
-
 
   // Dice game controller - enabled for Horses and Ship Captain Crew
   const horsesController = useHorsesMobileController({
@@ -7137,17 +7110,6 @@ export const MobileGameTable = ({
                               ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
                               : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
 
-                    // Wave 2 geometry contract — applied to 3-5-7 only.
-                    const use357Geometry = __wave2_is357 && __wave2_cardLayout.totalWidth > 0;
-                    const handScaleStyle: React.CSSProperties | undefined = use357Geometry
-                      ? { transform: `scale(${__wave2_fit.scale})`, transformOrigin: 'top center' }
-                      : undefined;
-                    const handReserveStyle: React.CSSProperties | undefined = use357Geometry
-                      ? { minHeight: `${Math.ceil(__wave2_cardLayout.cardHeight * __wave2_fit.scale)}px` }
-                      : undefined;
-                    const scaleClassName = use357Geometry ? '' : `transform ${currentPlayerHandScaleClass}`;
-                    const reserveClassName = use357Geometry ? '' : currentPlayerHandReserveClass;
-
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
                       ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
                       : [];
@@ -7216,12 +7178,8 @@ export const MobileGameTable = ({
                           (() => {
                             if (currentRound === 3) return null;
                             return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                              <div className={cn("flex items-start justify-center w-full", reserveClassName)} style={handReserveStyle}>
-                                <div
-                                  ref={use357Geometry ? __wave2_fit.ref : undefined}
-                                  className={cn(scaleClassName, !use357Geometry && "origin-top")}
-                                  style={handScaleStyle}
-                                >
+                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                                <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
                                   <PlayerHand
                                     cards={currentPlayerCards}
                                     isHidden={false}
@@ -7238,16 +7196,9 @@ export const MobileGameTable = ({
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>
                         ) : currentPlayerCards.length > 0 ? (
-                          <div className={cn("flex items-start justify-center", reserveClassName, !use357Geometry && gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")} style={handReserveStyle}>
+                          <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")}>
                             <div
-                              ref={use357Geometry ? __wave2_fit.ref : undefined}
-                              className={cn(
-                                scaleClassName,
-                                !use357Geometry && "origin-top",
-                                isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 && 'animate-rapid-flash',
-                                ((isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold') && 'opacity-40 grayscale-[30%]',
-                              )}
-                              style={handScaleStyle}
+                              className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                             >
                               <PlayerHand
                                 cards={currentPlayerCards}
@@ -7263,12 +7214,8 @@ export const MobileGameTable = ({
                             </div>
                           </div>
                         ) : (
-                          <div className={cn("flex items-start justify-center w-full", reserveClassName)} style={handReserveStyle}>
-                            <div
-                              ref={use357Geometry ? __wave2_fit.ref : undefined}
-                              className={cn(scaleClassName, !use357Geometry && "origin-top", "opacity-0 pointer-events-none")}
-                              style={handScaleStyle}
-                            >
+                          <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                            <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
                               <PlayerHand
                                 cards={[]}
                                 isHidden={true}

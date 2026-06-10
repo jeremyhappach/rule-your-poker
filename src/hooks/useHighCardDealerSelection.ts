@@ -47,10 +47,6 @@ import {
   startHighCardVisualSampler,
   stopHighCardVisualSampler,
 } from '@/lib/wartimeDebug/highCardVisualSampler';
-// dealer-selection-init/draw probes retired — eligibility and decision-path
-// questions were answered by the prior trace; downstream attribution now lives
-// in @/lib/wartimeDebug/selectDealerTrace.
-
 
 
 interface Player {
@@ -749,9 +745,6 @@ export function useHighCardDealerSelection({
             scope: isCribbageVariant ? 'cribbage' : 'session',
             extra: { round: roundNum },
           });
-          // DST.DRAW_COMPLETE retired — covered by recordDealerSelectionDiag above.
-
-
 
           addTimeout(() => {
             recordWaitingLifecycle('high-card dealer-selected', {
@@ -856,9 +849,6 @@ export function useHighCardDealerSelection({
       return () => clearTimeout(t);
     }
 
-    // DST.INIT_BEGIN retired — eligibility attribution complete.
-
-
     if (hasInitializedRef.current) return;
 
     if (eligibleDealers.length === 0) {
@@ -877,7 +867,6 @@ export function useHighCardDealerSelection({
       console.log('[HIGH CARD] Only one eligible dealer, bypassing selection');
       if (isHost) {
         onComplete(eligibleDealers[0].position);
-      } else {
       }
       return;
     }
@@ -904,7 +893,6 @@ export function useHighCardDealerSelection({
       extra: { eligibleDealers: eligibleDealers.length },
     });
 
-
     recordWaitingLifecycle('high-card-start', {
       gameId,
       isHost,
@@ -914,7 +902,6 @@ export function useHighCardDealerSelection({
     });
 
     runSelectionRound(eligibleDealers, 1, []);
-
 
     return () => clearTimeouts();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -15,7 +15,6 @@ import { getTimerSettingsAsync } from "@/hooks/useGlobalTimerSettings";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { PerfSession } from "@/lib/perf";
-import { tracedRealtimeCallback, recordFetchSpan } from "@/lib/wartimeDebug/realtimeCallbackTrace";
 import { Settings, Info, Wrench } from "lucide-react";
 import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
@@ -146,10 +145,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'games'
         },
-        tracedRealtimeCallback(
-          { channel: 'games-lobby-channel', table: 'games' },
-          () => { queueMicrotask(() => { fetchGames(); }); },
-        )
+        () => {
+          // Realtime triggered - fetch updates
+          fetchGames();
+        }
       )
       .subscribe();
 
@@ -163,10 +162,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
           schema: 'public',
           table: 'players'
         },
-        tracedRealtimeCallback(
-          { channel: 'players-lobby-channel', table: 'players' },
-          () => { queueMicrotask(() => { fetchGames(); }); },
-        )
+        () => {
+          // Realtime triggered - fetch updates
+          fetchGames();
+        }
       )
       .subscribe();
 
@@ -191,10 +190,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
   };
 
   const fetchGames = async () => {
-    const _fetchStart = performance.now();
-    recordFetchSpan('GAMELOBBY_FETCH', 'BEGIN', {});
     const perf = new PerfSession("GameLobby.fetchGames", 300);
-    try {
 
     // Fetch games + their current players in ONE query (avoid N+1).
     const { data: gamesData, error } = await perf.step("games.select", () =>
@@ -226,10 +222,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         variant: "destructive",
       });
       perf.done({ error: error.message });
-      recordFetchSpan('GAMELOBBY_FETCH', 'END', {
-        error: error.message,
-        elapsedMs: Math.round(performance.now() - _fetchStart),
-      });
       return;
     }
 
@@ -314,18 +306,6 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     setGames(gamesWithPlayers);
     setLoading(false);
     perf.done({ gameCount: gamesData?.length ?? 0 });
-    recordFetchSpan('GAMELOBBY_FETCH', 'END', {
-      rowCount: gamesData?.length ?? 0,
-      elapsedMs: Math.round(performance.now() - _fetchStart),
-    });
-    } catch (e: any) {
-      recordFetchSpan('GAMELOBBY_FETCH', 'END', {
-        threw: true,
-        error: String(e?.message ?? e),
-        elapsedMs: Math.round(performance.now() - _fetchStart),
-      });
-      throw e;
-    }
   };
 
   const createGame = async () => {

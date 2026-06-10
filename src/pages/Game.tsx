@@ -1,14 +1,4 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
-import { recordSelectDealerTrace, tracedSelectDealerQuery } from "@/lib/wartimeDebug/selectDealerTrace";
-import {
-  schedulePostCommitTicks,
-  markRenderBoundary,
-  tickRenderLoopGuard,
-  recordPostCommitEvent,
-} from "@/lib/wartimeDebug/postCommitStallTrace";
-import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
-import { recordLastMile } from "@/lib/wartimeDebug/lastMileStateTrace";
-import { tracedRealtimeCallback } from "@/lib/wartimeDebug/realtimeCallbackTrace";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -621,15 +611,6 @@ const Game = () => {
   const isMobile = useIsMobile();
   const { user, isReady: authReady } = useAuthGuard({ pageLabel: "Game" });
   const [isSuperuser, setIsSuperuser] = useState(false);
-  // ── Wartime: Game.tsx route render-loop guard (pre-state) ───────
-  // Counts every render of the route component itself. Emits
-  // POST_COMMIT_RENDER_LOOP_GUARD once if we exceed 50 renders/sec
-  // or 200 cumulative renders. Reads `gameId` only — no state yet
-  // available — additional context is attached below at boundary.
-  tickRenderLoopGuard('Game.route', () => ({
-    gameId: gameId ?? null,
-    authReady,
-  }));
   const [_game, setGame] = useState<GameData | null>(null);
   // Post-hydration continuity: once the session has loaded a real game,
   // we never re-enter the empty bootstrap branch even if `_game` flips
@@ -666,31 +647,6 @@ const Game = () => {
   }, [game?.pot, game?.status, gameId]);
 
   const potForDisplay = game?.pot ?? lastNonNullPotRef.current ?? 0;
-
-  // ── FREEZE_REC: publish current game snapshot for the temporary
-  // dealer-selection freeze recorder. Side-effect only; no UI impact.
-  useEffect(() => {
-    setFreezeRecorderContext({
-      gameId: game?.id ?? gameId ?? null,
-      userId: user?.id ?? null,
-      status: game?.status ?? null,
-      gameType: (game?.game_type as string | null) ?? null,
-      currentGameUuid: (game as any)?.current_game_uuid ?? null,
-      dealerSelectionState: (game as any)?.dealer_selection_state ?? null,
-      configComplete: (game as any)?.config_complete ?? null,
-      dealerPosition: (game as any)?.dealer_position ?? null,
-    });
-  }, [
-    game?.id,
-    gameId,
-    user?.id,
-    game?.status,
-    game?.game_type,
-    (game as any)?.current_game_uuid,
-    (game as any)?.dealer_selection_state,
-    (game as any)?.config_complete,
-    (game as any)?.dealer_position,
-  ]);
 
   // DEBUG: disable polling-based safety nets to isolate race conditions (reload to apply)
   const safetyPollsDisabled = useMemo(() => isSafetyPollingDisabled(), []);
@@ -1480,12 +1436,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Prevent out-of-order fetches from reverting UI state (e.g., game_selection ↔ ante_decision flicker).
   const fetchSeqRef = useRef(0);
-  // Monotonic guard: track the freshest games.updated_at we've already applied to local
-  // state. Replaces the prior "latest-wins by fetchSeq" guard which would self-starve
-  // under fetch pressure (fresh row arrives, gets dropped because a newer fetch has
-  // already started). Out-of-order responses are still rejected because their
-  // updated_at will be <= the one we already applied.
-  const lastAppliedGameUpdatedAtRef = useRef<string | null>(null);
 
   // ── Optimistic Gin in-progress seed guard ─────────────────────────────
   // When the dealer client optimistically advances a gin dealerGameId to
@@ -2331,57 +2281,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'games' }, simulateRealtime('games', (payload) => {
-          // ── WARTIME DIAGNOSTIC: defer entire body to a microtask so the
-          // realtime callback returns immediately (REALTIME_CALLBACK_END
-          // fires). If the dealer_selection→game_selection freeze
-          // disappears with this in place, the structural fix is
-          // enqueue-only realtime ingestion. If the freeze persists, the
-          // pathology lives inside the render path after state apply and
-          // we revert/bisect the geometry-contract rollout.
-          queueMicrotask(() => {
+        simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
-          recordLastMile('REALTIME_GAMES_PAYLOAD', {
-            eventType: payload.eventType,
-            oldStatus: oldData?.status ?? null,
-            newStatus: newData?.status ?? null,
-            oldGameType: oldData?.game_type ?? null,
-            newGameType: newData?.game_type ?? null,
-            oldCurrentGameUuid: oldData?.current_game_uuid ?? null,
-            newCurrentGameUuid: newData?.current_game_uuid ?? null,
-            payloadUpdatedAt: newData?.updated_at ?? null,
-            localStatus: game?.status ?? null,
-            localGameType: game?.game_type ?? null,
-            localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-          });
-          // ── Bridge probe: snapshot every input the upcoming branches read.
-          // Captures both useState `game` (closure-captured at render time —
-          // may be stale) AND the live refs (lastKnownGameTypeRef /
-          // lastKnownRoundRef / gameTypeSwitchingRef). Divergence here is
-          // itself diagnostic.
-          recordLastMile('REALTIME_GAMES_PAYLOAD_EVALUATION', {
-            incomingStatus: newData?.status ?? null,
-            incomingGameType: newData?.game_type ?? null,
-            incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
-            incomingCurrentRound: newData?.current_round ?? null,
-            incomingAwaitingNextRound: newData?.awaiting_next_round ?? null,
-            incomingIsPaused: newData?.is_paused ?? null,
-            incomingPotPresent: newData ? ('pot' in newData) : false,
-            incomingHasDealerSelectionStateKey: newData ? ('dealer_selection_state' in newData) : false,
-            payloadUpdatedAt: newData?.updated_at ?? null,
-            localStatusFromState: game?.status ?? null,
-            localGameTypeFromState: game?.game_type ?? null,
-            localGameTypeFromRef: lastKnownGameTypeRef.current ?? null,
-            localCurrentRoundFromState: game?.current_round ?? null,
-            localCurrentRoundFromRef: lastKnownRoundRef.current ?? null,
-            localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-            guards: {
-              gameTypeSwitchingRef: gameTypeSwitchingRef.current,
-              hasGameId: !!gameId,
-              hasGameState: !!game,
-            },
-          });
           recordStartupFlight('REALTIME TIMELINE', 'games callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'games realtime callback',
@@ -2433,13 +2335,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // This ensures players who join mid-session get fresh state
           if (incomingGameType && incomingGameType !== localGameType) {
             console.log('[REALTIME] 🎯🎯🎯 GAME TYPE CHANGED (detected via local state):', localGameType, '->', incomingGameType, '- CLEARING ALL CARD STATE!');
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'game-type-change',
-              destination: 'setGame(optimistic) + fetchGameData(200ms)',
-              expectedNextAction: 'SET_GAME_ATTEMPT(realtime-game-type-change)',
-              incomingGameType,
-              localGameType,
-            });
             // Update ref immediately
             lastKnownGameTypeRef.current = incomingGameType;
             lastKnownRoundRef.current = null;
@@ -2451,15 +2346,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 ? newData.current_round
                 : (incomingGameType === 'holm-game' ? 1 : null);
 
-            recordLastMile('SET_GAME_ATTEMPT', {
-              source: 'realtime-game-type-change',
-              incomingStatus: newData?.status ?? null,
-              incomingGameType: incomingGameType ?? null,
-              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
-              currentLocalStatus: game?.status ?? null,
-              currentLocalGameType: game?.game_type ?? null,
-              currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
-            });
             setGame(prevGame => prevGame ? {
               ...prevGame,
               game_type: incomingGameType,
@@ -2469,16 +2355,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               awaiting_next_round: false,
               status: newData?.status || prevGame.status
             } : null);
-            recordLastMile('SET_GAME_COMMIT', {
-              source: 'realtime-game-type-change',
-              previousStatus: game?.status ?? null,
-              nextStatus: newData?.status ?? game?.status ?? null,
-              previousGameType: game?.game_type ?? null,
-              nextGameType: incomingGameType ?? null,
-              previousCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-              nextCurrentGameUuid: newData?.current_game_uuid ?? null,
-            });
-
+            
             // Clear all card state for this client
             setPlayerCards([]);
             setCardStateContext(null);
@@ -2487,34 +2364,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             maxRevealedRef.current = 0;
             if (debounceTimer) clearTimeout(debounceTimer);
             // Fetch fresh data after a short delay to allow DB to settle
-            setTimeout(() => fetchGameData('realtime.game-type-change.delayed'), 200);
+            setTimeout(() => fetchGameData(), 200);
             return;
           }
           
           // GUARD: Skip realtime fetches during game type switches to prevent overwriting optimistic UI (dealer only)
           if (gameTypeSwitchingRef.current) {
             console.log('[REALTIME] ⏸️ Skipping fetch - game type switch in progress');
-            recordLastMile('REALTIME_GAMES_PAYLOAD_SUPPRESSED', {
-              guardName: 'gameTypeSwitchingRef',
-              reason: 'game type switch in progress',
-              incomingStatus: newData?.status ?? null,
-              incomingGameType: newData?.game_type ?? null,
-              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
-              localStatus: game?.status ?? null,
-              localGameType: game?.game_type ?? null,
-              localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-            });
-            recordLastMile('SET_GAME_SUPPRESSED', {
-              source: 'realtime',
-              guardName: 'gameTypeSwitchingRef',
-              reason: 'game type switch in progress',
-              incomingStatus: newData?.status ?? null,
-              incomingGameType: newData?.game_type ?? null,
-              incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
-              localStatus: game?.status ?? null,
-              localGameType: game?.game_type ?? null,
-              localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-            });
             return;
           }
 
@@ -2531,13 +2387,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           
           if (needsRoundSync) {
             console.log('[REALTIME] 🔄🔄🔄 ROUND CHANGED/SYNC:', localRound, '->', incomingRound, '- FORCING SYNC!');
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'round-sync',
-              destination: 'fetchGameData()',
-              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
-              localRound,
-              incomingRound,
-            });
             lastKnownRoundRef.current = incomingRound;
             
             // FIX 2: Hard clear on hand boundary — stale cards are unacceptable
@@ -2555,7 +2404,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             
             if (debounceTimer) clearTimeout(debounceTimer);
-            fetchGameData('realtime.round-sync');
+            fetchGameData();
             return;
           }
           
@@ -2569,13 +2418,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // CRITICAL: Immediately fetch for any status change that affects UI flow
             if (newStatus === 'ante_decision' || newStatus === 'configuring' || newStatus === 'in_progress' || newStatus === 'game_selection' || newStatus === 'waiting' || newStatus === 'game_over' || newStatus === 'session_ended' || newStatus === 'cribbage_dealer_selection' || newStatus === 'dealer_selection') {
               console.log('[REALTIME] 🎮 STATUS CHANGED TO:', newStatus, '- IMMEDIATE FETCH!');
-              recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-                branch: 'status-change',
-                destination: 'fetchGameData()',
-                expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
-                newStatus,
-                localStatus: game?.status ?? null,
-              });
               if (newStatus === 'in_progress' || newStatus === 'ante_decision') {
                 console.log('[GIN_RUNTIME_TIMELINE] realtime:games.status observed', { t: Date.now(), newStatus, oldStatus: game?.status ?? null });
               }
@@ -2705,21 +2547,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                // (Bug A fix moved to handleCribbageDealerSelectionComplete callback)
               
               if (debounceTimer) clearTimeout(debounceTimer);
-              fetchGameData('realtime.status-change');
+              fetchGameData();
               // NOTE: Removed redundant 300ms setTimeout refetch - it was causing excessive queries
               handled = true;
-            } else if (newData && 'status' in newData) {
-              // Status key present but not in our whitelist — diagnostic only
-              recordLastMile('REALTIME_GAMES_PAYLOAD_SUPPRESSED', {
-                guardName: 'status-whitelist',
-                reason: 'status present but not in fetch-triggering whitelist',
-                incomingStatus: newData?.status ?? null,
-                incomingGameType: newData?.game_type ?? null,
-                incomingCurrentGameUuid: newData?.current_game_uuid ?? null,
-                localStatus: game?.status ?? null,
-                localGameType: game?.game_type ?? null,
-                localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-              });
             }
           }
           
@@ -2733,12 +2563,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // The cache will be cleared naturally when new round data arrives and is validated as different
               // setCardStateContext, setCachedRoundData, maxRevealedRef are updated elsewhere when new cards arrive
             }
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'awaiting-next-round',
-              destination: 'fetchGameData()',
-              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
-              awaitingNextRound: newData.awaiting_next_round,
-            });
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             handled = true;
@@ -2748,12 +2572,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'is_paused' in newData) {
             // Immediately update local game state for pause - don't wait for fetch
             console.log('[REALTIME] ⏸️ PAUSE STATE CHANGED - IMMEDIATE LOCAL UPDATE!', newData.is_paused, 'remaining:', newData.paused_time_remaining);
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'is-paused',
-              destination: 'setGame(optimistic) + fetchGameData()',
-              expectedNextAction: 'SET_GAME_ATTEMPT(fetchGameData)',
-              isPaused: newData.is_paused,
-            });
             
             // CRITICAL: Update ref and clear interval SYNCHRONOUSLY before React render cycle
             isPausedRef.current = newData.is_paused;
@@ -2777,12 +2595,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           if (!handled && newData && 'pot' in newData) {
             // CRITICAL: Pot changes need immediate sync for all players
             console.log('[REALTIME] 💰 POT CHANGED - IMMEDIATE FETCH!', newData.pot);
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'pot',
-              destination: 'fetchGameData()',
-              expectedNextAction: 'FETCH_GAME_DATA_BEGIN → SET_GAME_ATTEMPT(fetchGameData)',
-              pot: newData.pot,
-            });
             if (debounceTimer) clearTimeout(debounceTimer);
             fetchGameData();
             handled = true;
@@ -2791,12 +2603,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Handle dealer selection state changes - immediate sync for all players
           if (!handled && newData && 'dealer_selection_state' in newData) {
             console.log('[REALTIME] 🎯 DEALER SELECTION STATE CHANGED - IMMEDIATE UPDATE!');
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'dealer-selection-state',
-              destination: 'setGame(optimistic dealer_selection_state only — NO fetchGameData)',
-              expectedNextAction: 'partial setGame; no FETCH_GAME_DATA_BEGIN',
-              nextDssNull: ((newData as any)?.dealer_selection_state ?? null) === null,
-            });
             // ── WRITER ATTRIBUTION: realtime patch into game.dealer_selection_state ──
             // This is the indirect writer that feeds useHighCardDealerSelection's
             // syncedState. When newData.dealer_selection_state is null OR carries
@@ -2841,16 +2647,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // Fallback to debounced fetch if nothing else handled
           if (!handled) {
             console.log('[REALTIME] No specific trigger, using debounced fetch');
-            recordLastMile('REALTIME_GAMES_PAYLOAD_FORWARD', {
-              branch: 'fallback-debounced',
-              destination: 'debouncedFetch() → fetchGameData()',
-              expectedNextAction: 'eventual FETCH_GAME_DATA_BEGIN',
-              keysInNewData: newData ? Object.keys(newData) : [],
-            });
             debouncedFetch();
           }
-          });
-        }))
+        })
       )
       .on(
         'postgres_changes',
@@ -2860,9 +2659,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'players',
           filter: `game_id=eq.${gameId}`
         },
-        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'players' }, simulateRealtime('players', (payload) => {
-          // WARTIME: defer body off realtime callback stack (enqueue-only pattern).
-          queueMicrotask(() => {
+        simulateRealtime('players', (payload) => {
           recordStartupFlight('REALTIME TIMELINE', 'players callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'players realtime callback',
@@ -2920,8 +2717,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             debouncedFetch();
           }
-          });
-        }))
+        })
       )
       .on(
         'postgres_changes',
@@ -2931,9 +2727,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'rounds' }, simulateRealtime('rounds', (payload) => {
-          // WARTIME: defer body off realtime callback stack (enqueue-only pattern).
-          queueMicrotask(() => {
+        simulateRealtime('rounds', (payload) => {
           recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'rounds realtime callback',
@@ -3003,8 +2797,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
-          });
-        }))
+        })
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
@@ -5891,23 +5684,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
   // Removed failsafe - countdown component now handles completion reliably
 
-  const fetchGameData = async (callerArg?: string) => {
-    const caller = typeof callerArg === 'string' ? callerArg : 'unspecified';
+  const fetchGameData = async () => {
     const fetchSeq = ++fetchSeqRef.current;
     const isStale = () => fetchSeq !== fetchSeqRef.current;
     const fetchSpan = startSpan('fetchGameData');
     const fetchStartedAt = Date.now();
-    const localStatusAtFetchStart = game?.status ?? null;
-    const localGameTypeAtFetchStart = game?.game_type ?? null;
-    const expectedStatusAtFetchStart = localStatusAtFetchStart === 'dealer_selection' ? 'game_selection' : null;
-    recordLastMile('FETCH_GAME_DATA_BEGIN', {
-      fetchSeq,
-      caller,
-      gameId,
-      currentLocalStatus: localStatusAtFetchStart,
-      currentLocalGameType: localGameTypeAtFetchStart,
-      currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
-    });
 
     // ── Per-query waterfall instrumentation ──────────────────────────
     // Captures startedAtOffsetMs / completedAtOffsetMs / elapsedMs / rowCount
@@ -5924,119 +5705,29 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       preAuth: boolean;
       authReadyAtStart: boolean;
       userIdPresent: boolean;
-      hung: boolean;
-      aborted: boolean;
     };
     const queryTimings: QueryTiming[] = [];
     const authReadyAtFetchStart = authReady;
     const userIdAtFetchStart = user?.id ?? null;
-    const FETCH_QUERY_TIMEOUT_MS = 5000;
-    const queryStates = new Map<string, { status: 'pending' | 'complete' | 'hung' | 'aborted'; startedAt: number }>();
-    let fetchDataHungEmitted = false;
-    const getOutstandingQueries = () => Array.from(queryStates.entries())
-      .filter(([, state]) => state.status === 'pending' || state.status === 'hung')
-      .map(([queryName]) => queryName);
 
     const timedQuery = async <T,>(
       name: string,
       table: string,
-      runner: (signal: AbortSignal) => PromiseLike<{ data: T; error: any }>,
+      runner: () => PromiseLike<{ data: T; error: any }>,
     ): Promise<{ data: T; error: any }> => {
       const startedAtOffsetMs = Date.now() - fetchStartedAt;
       const authReadyAtStart = authReady;
       const userIdPresent = !!user?.id;
-      const queryStartedAt = Date.now();
-      queryStates.set(name, { status: 'pending', startedAt: queryStartedAt });
-      recordLastMile('FETCH_QUERY_BEGIN', {
-        fetchSeq,
-        caller,
-        queryName: name,
-        localStatus: localStatusAtFetchStart,
-        localGameType: localGameTypeAtFetchStart,
-        expectedStatus: expectedStatusAtFetchStart,
-        timestamp: new Date().toISOString(),
-      });
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData.query.start', {
         fetchSeq,
-        caller,
         name,
         table,
         startedAtOffsetMs,
         authReadyAtStart,
         userIdPresent,
       });
-      const abortController = new AbortController();
-      const queryPromise = Promise.resolve()
-        .then(() => runner(abortController.signal))
-        .then(
-          (result) => ({ kind: 'result' as const, result }),
-          (error) => ({ kind: 'error' as const, error }),
-        );
-      const timeoutPromise = new Promise<{ kind: 'timeout' }>((resolve) => {
-        setTimeout(() => resolve({ kind: 'timeout' }), FETCH_QUERY_TIMEOUT_MS);
-      });
-      const raced = await Promise.race([queryPromise, timeoutPromise]);
-      const t0 = queryStartedAt;
-      if (raced.kind === 'timeout') {
-        const elapsedMs = Date.now() - t0;
-        queryStates.set(name, { status: 'hung', startedAt: queryStartedAt });
-        const outstandingQueries = getOutstandingQueries();
-        recordLastMile('FETCH_QUERY_HUNG', {
-          fetchSeq,
-          queryName: name,
-          elapsedMs,
-          caller,
-          localStatus: localStatusAtFetchStart,
-          expectedStatus: expectedStatusAtFetchStart,
-          outstandingQueries,
-        });
-        if (!fetchDataHungEmitted) {
-          fetchDataHungEmitted = true;
-          recordLastMile('FETCH_GAME_DATA_HUNG', {
-            fetchSeq,
-            elapsedMs: Date.now() - fetchStartedAt,
-            caller,
-            localStatus: localStatusAtFetchStart,
-            expectedStatus: expectedStatusAtFetchStart,
-            outstandingQueries,
-          });
-        }
-        abortController.abort();
-        queryStates.set(name, { status: 'aborted', startedAt: queryStartedAt });
-        recordLastMile('FETCH_QUERY_ABORTED', {
-          fetchSeq,
-          queryName: name,
-          elapsedMs: Date.now() - t0,
-          reason: 'timeout-abort-controller',
-        });
-        recordLastMile('FETCH_QUERY_RESULT', {
-          fetchSeq,
-          queryName: name,
-          elapsedMs: Date.now() - t0,
-          rowCount: 0,
-          returnedStatus: null,
-          returnedGameType: null,
-          error: 'FETCH_QUERY_TIMEOUT',
-        });
-        queryTimings.push({
-          name,
-          table,
-          elapsedMs,
-          rowCount: 0,
-          startedAtOffsetMs,
-          completedAtOffsetMs: Date.now() - fetchStartedAt,
-          error: 'FETCH_QUERY_TIMEOUT',
-          preAuth: !authReadyAtStart,
-          authReadyAtStart,
-          userIdPresent,
-          hung: true,
-          aborted: true,
-        });
-        return { data: null as T, error: { message: `FETCH_QUERY_TIMEOUT: ${name}`, code: 'FETCH_QUERY_TIMEOUT' } };
-      }
-      const result = raced.kind === 'result'
-        ? raced.result
-        : { data: null as T, error: raced.error };
+      const t0 = Date.now();
+      const result = await runner();
       const completedAtOffsetMs = Date.now() - fetchStartedAt;
       const elapsedMs = Date.now() - t0;
       const rowCount = Array.isArray(result?.data)
@@ -6045,7 +5736,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           ? 1
           : 0;
       const errMsg = result?.error ? String((result.error as any).message ?? result.error) : null;
-      queryStates.set(name, { status: 'complete', startedAt: queryStartedAt });
       queryTimings.push({
         name,
         table,
@@ -6057,21 +5747,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         preAuth: !authReadyAtStart,
         authReadyAtStart,
         userIdPresent,
-        hung: false,
-        aborted: false,
-      });
-      recordLastMile('FETCH_QUERY_RESULT', {
-        fetchSeq,
-        queryName: name,
-        elapsedMs,
-        rowCount,
-        returnedStatus: name === 'games.select+rounds' ? (result?.data as any)?.status ?? null : null,
-        returnedGameType: name === 'games.select+rounds' ? (result?.data as any)?.game_type ?? null : null,
-        error: errMsg,
       });
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData.query.complete', {
         fetchSeq,
-        caller,
         name,
         table,
         elapsedMs,
@@ -6089,10 +5767,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       recordStartupFlight('FETCH TIMELINE', 'fetchGameData skipped', {
         file: 'src/pages/Game.tsx',
         function: 'fetchGameData',
-        fetchSeq,
-        skipReason: 'no gameId',
-      });
-      recordLastMile('FETCH_GAME_DATA_SKIPPED', {
         fetchSeq,
         skipReason: 'no gameId',
       });
@@ -6115,12 +5789,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     // PARALLEL FETCH: Get game, players, and defaults all at once for speed
     const [gameResult, playersResult, defaultsResult] = await Promise.all([
-      timedQuery('games.select+rounds', 'games', (signal) =>
-        supabase.from('games').select('*, rounds(*)').eq('id', gameId).abortSignal(signal).maybeSingle()),
-      timedQuery('players.select+profiles', 'players', (signal) =>
-        supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position').abortSignal(signal)),
-      timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', (signal) =>
-        supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').abortSignal(signal).single()),
+      timedQuery('games.select+rounds', 'games', () =>
+        supabase.from('games').select('*, rounds(*)').eq('id', gameId).maybeSingle()),
+      timedQuery('players.select+profiles', 'players', () =>
+        supabase.from('players').select('*, profiles(username, aggression_level)').eq('game_id', gameId).neq('status', 'left').order('position')),
+      timedQuery('game_defaults.allow_bot_dealers', 'game_defaults', () =>
+        supabase.from('game_defaults').select('allow_bot_dealers').eq('game_type', 'holm').single()),
     ]);
 
     const { data: gameData, error: gameError } = gameResult;
@@ -6150,60 +5824,30 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       errors: { game: gameError?.message ?? null, players: playersError?.message ?? null },
     });
 
-    recordLastMile('FETCH_GAME_DATA_RESULT', {
-      fetchSeq,
-      elapsedMs: Date.now() - fetchStartedAt,
-      returnedStatus: (gameData as any)?.status ?? null,
-      returnedGameType: (gameData as any)?.game_type ?? null,
-      returnedCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
-      returnedUpdatedAt: (gameData as any)?.updated_at ?? null,
-      error: gameError?.message ?? null,
-      stale: isStale(),
-    });
 
-    // NOTE: The previous "isStale by fetchSeq" early-return here was removed.
-    // Under fetch pressure (e.g., GameLobby polling + realtime triggers), a newer
-    // fetchSeq is almost always in flight by the time the previous response
-    // resolves, which caused every fresh response to be discarded — a livelock
-    // (Bucket C-3). Out-of-order responses are now rejected later via the
-    // monotonic `lastAppliedGameUpdatedAtRef` guard immediately before setGame.
-
+    // If a newer fetch started while this one was in-flight, ignore this response.
+    if (isStale()) {
+      console.log('[FETCH] Ignoring stale fetch response (post parallel query)', { fetchSeq, latest: fetchSeqRef.current });
+      return;
+    }
 
     if (gameError) {
       const code = (gameError as any)?.code;
       if (code === 'PGRST116' || String(gameError.message ?? '').toLowerCase().includes('0 rows')) {
+        // P0 GUARD (NAV-02): a single fetch returning "0 rows" can be a transient
+        // post-write replica race. Defer to the polling checkGameExists effect, which
+        // requires repeated strikes + a fresh confirm before navigating.
         console.log('[FETCH] missing-game-fetch-deferred (will be handled by poll if persistent)');
-        recordLastMile('SET_GAME_SUPPRESSED', {
-          source: 'fetchGameData',
-          guardName: 'missing-game-fetch-deferred',
-          reason: 'PGRST116 / 0 rows — deferred to checkGameExists poll',
-          fetchSeq,
-          errorCode: code ?? null,
-          errorMessage: gameError.message ?? null,
-        });
         return;
       }
 
       console.error('Failed to fetch game:', gameError);
-      recordLastMile('SET_GAME_SUPPRESSED', {
-        source: 'fetchGameData',
-        guardName: 'gameError',
-        reason: 'gameError returned from select',
-        fetchSeq,
-        errorCode: code ?? null,
-        errorMessage: gameError.message ?? null,
-      });
       return;
     }
 
     if (!gameData) {
+      // P0 GUARD (NAV-02): same as above — do not navigate from a single null fetch.
       console.log('[FETCH] missing-game-data-deferred (will be handled by poll if persistent)');
-      recordLastMile('SET_GAME_SUPPRESSED', {
-        source: 'fetchGameData',
-        guardName: 'missing-game-data-deferred',
-        reason: 'gameData is null — deferred to checkGameExists poll',
-        fetchSeq,
-      });
       return;
     }
 
@@ -6290,9 +5934,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             ? base.eq('dealer_game_id', gameData.current_game_uuid)
             : base;
 
-          const { data } = await timedQuery('rounds.holm-latest', 'rounds', (signal) =>
+          const { data } = await timedQuery('rounds.holm-latest', 'rounds', () =>
             query
-              .abortSignal(signal)
               .order('hand_number', { ascending: false })
               .order('round_number', { ascending: false })
               .limit(1)
@@ -6303,7 +5946,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         } else if (gameData.current_round && gameData.current_game_uuid && typeof gameData.total_hands === 'number') {
           // 3-5-7: round_number cycles 1/2/3 each hand, so we MUST key by hand_number too.
           // This prevents Hand 2 Round 1 from accidentally matching Hand 1 Round 1 within the same dealer game.
-          const { data } = await timedQuery('rounds.357-current', 'rounds', (signal) =>
+          const { data } = await timedQuery('rounds.357-current', 'rounds', () =>
             supabase
               .from('rounds')
               .select('id, round_number, cards_dealt')
@@ -6311,7 +5954,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               .eq('dealer_game_id', gameData.current_game_uuid)
               .eq('hand_number', gameData.total_hands)
               .eq('round_number', gameData.current_round)
-              .abortSignal(signal)
               .maybeSingle());
 
           roundData = data;
@@ -6331,9 +5973,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id - this may cause cross-game contamination');
           }
           
-          const { data } = await timedQuery('rounds.fallback-by-round', 'rounds', (signal) =>
+          const { data } = await timedQuery('rounds.fallback-by-round', 'rounds', () =>
             fallbackQuery
-              .abortSignal(signal)
               .order('hand_number', { ascending: false })
               .order('created_at', { ascending: false })
               .limit(1)
@@ -6355,9 +5996,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.warn('[FETCH] ⚠️ Missing dealer_game_id in ultimate fallback - this may cause cross-game contamination');
           }
           
-          const { data } = await timedQuery('rounds.ultimate-fallback', 'rounds', (signal) =>
+          const { data } = await timedQuery('rounds.ultimate-fallback', 'rounds', () =>
             ultimateFallbackQuery
-              .abortSignal(signal)
               .order('hand_number', { ascending: false })
               .order('round_number', { ascending: false })
               .limit(1)
@@ -6396,11 +6036,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             payload: { fetchToken, fetchRoundId },
           });
           
-          const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', (signal) =>
+          const { data: cardsData, error: cardsError } = await timedQuery('player_cards.by-round', 'player_cards', () =>
             supabase
               .from('player_cards')
               .select('player_id, cards')
-              .abortSignal(signal)
               .eq('round_id', targetRoundId));
 
 
@@ -6483,39 +6122,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // This is critical for the waiting phase where bots are added and need to appear immediately
     setPlayers((playersData || []).sort((a, b) => a.position - b.position));
 
-    // Monotonic guard: only reject if the incoming row is strictly OLDER than
-    // what we've already applied. This still prevents out-of-order regressions
-    // (the original intent) without livelocking when many fetches overlap and
-    // every one of them happens to be carrying the same fresh authoritative row.
-    const incomingUpdatedAt = (gameData as any)?.updated_at ?? null;
-    const lastAppliedUpdatedAt = lastAppliedGameUpdatedAtRef.current;
-    if (
-      incomingUpdatedAt &&
-      lastAppliedUpdatedAt &&
-      incomingUpdatedAt < lastAppliedUpdatedAt
-    ) {
-      console.log('[FETCH] Ignoring older fetch (updated_at regression)', {
-        fetchSeq,
-        incomingUpdatedAt,
-        lastAppliedUpdatedAt,
-      });
-      recordLastMile('SET_GAME_SUPPRESSED', {
-        source: 'fetchGameData',
-        guardName: 'updated_at-monotonic',
-        reason: 'incoming updated_at older than last applied',
-        fetchSeq,
-        incomingUpdatedAt,
-        lastAppliedUpdatedAt,
-        incomingStatus: (gameData as any)?.status ?? null,
-        incomingGameType: (gameData as any)?.game_type ?? null,
-        incomingCurrentGameUuid: (gameData as any)?.current_game_uuid ?? null,
-        localStatus: game?.status ?? null,
-        localGameType: game?.game_type ?? null,
-        localCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-      });
+    // Apply game state only if this fetch is still the most recent.
+    // This prevents game state flickering (e.g., modal remounts) from out-of-order responses.
+    if (isStale()) {
+      console.log('[FETCH] Ignoring stale fetch results for game state', { fetchSeq, latest: fetchSeqRef.current });
       return;
     }
-
 
     // ── Optimistic Gin seed regression guard ──────────────────────────
     // If we have an active optimistic seed for this dealerGameId and the
@@ -6592,33 +6204,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       setGameOffsetMs: postprocessStartOffsetMs,
     });
 
-    recordLastMile('SET_GAME_ATTEMPT', {
-      source: 'fetchGameData',
-      fetchSeq,
-      incomingStatus: (gameDataToApply as any)?.status ?? null,
-      incomingGameType: (gameDataToApply as any)?.game_type ?? null,
-      incomingCurrentGameUuid: (gameDataToApply as any)?.current_game_uuid ?? null,
-      currentLocalStatus: game?.status ?? null,
-      currentLocalGameType: game?.game_type ?? null,
-      currentLocalGameUuid: (game as any)?.current_game_uuid ?? null,
-    });
     setGame(gameDataToApply);
-    {
-      const appliedUpdatedAt = (gameDataToApply as any)?.updated_at ?? null;
-      if (appliedUpdatedAt && (!lastAppliedGameUpdatedAtRef.current || appliedUpdatedAt >= lastAppliedGameUpdatedAtRef.current)) {
-        lastAppliedGameUpdatedAtRef.current = appliedUpdatedAt;
-      }
-    }
-    recordLastMile('SET_GAME_COMMIT', {
-      source: 'fetchGameData',
-      fetchSeq,
-      previousStatus: game?.status ?? null,
-      nextStatus: (gameDataToApply as any)?.status ?? null,
-      previousGameType: game?.game_type ?? null,
-      nextGameType: (gameDataToApply as any)?.game_type ?? null,
-      previousCurrentGameUuid: (game as any)?.current_game_uuid ?? null,
-      nextCurrentGameUuid: (gameDataToApply as any)?.current_game_uuid ?? null,
-    });
     recordStartupFlight('FETCH TIMELINE', 'fetchGameData.postprocess.complete', {
       fetchSeq,
       offsetMs: Date.now() - fetchStartedAt,
@@ -7049,13 +6635,25 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[GAME START] SHUFFLE UP AND DEAL! Moving to dealer_selection');
     traceMilestone('game_start_from_waiting');
-
-    // Start-game probes retired — waiting → dealer_selection attribution
-    // is complete. selectDealer downstream is now the focus.
-
+    
     // Log session event
     await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
     
+    // Recovery-waiting hygiene: when starting from a waiting state that
+    // followed an in-progress session (rather than a fresh session), the
+    // games row can still hold stale lifecycle fields from the prior
+    // dealer game — current_game_uuid pinned to the old game, stale
+    // config_deadline / config_complete from a prior configuring pass,
+    // awaiting_next_round latched true, etc. Without clearing them, the
+    // dealer_selection bootstrap reads pre-recovery scaffolding and the
+    // Start Game click hangs. We always clear them on the waiting →
+    // dealer_selection cutover; fresh sessions already have null values
+    // so this is a no-op for them.
+    //
+    // Active players: promote seated, non-observer/left, non-sitting-out
+    // (OR explicitly waiting-to-rejoin) players to active. NEVER blanket
+    // clear sitting_out across observers/left — that resurrects players
+    // who deliberately left.
     await supabase
       .from('players')
       .update({ sitting_out: false, waiting: false })
@@ -7083,7 +6681,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       return;
     }
 
-
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
   };
@@ -7093,160 +6690,34 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     console.log('[DEALER SELECT] Selected dealer at position:', dealerPosition);
 
-    const dealerUserId = players.find((p) => p.position === dealerPosition)?.user_id ?? null;
-    recordSelectDealerTrace('SELECT_DEALER_ENTER', {
-      sessionId: gameId,
-      status: game?.status ?? null,
-      gameType: game?.game_type ?? null,
-      dealerPosition,
-      dealerUserId,
-    });
-    recordSelectDealerTrace('STATUS_TRANSITION_ATTEMPT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'dealer_selection',
-      toStatus: 'game_selection',
-      sourceFunction: 'selectDealer',
-    });
-
     // Set config_deadline ATOMICALLY with status change, using the session-cached timer.
     const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
     const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
     
     // Log session events
-    const _ctx = {
-      sessionId: gameId,
-      dealerPosition,
-      dealerUserId,
-      fromStatus: game?.status ?? 'dealer_selection',
-      toStatus: 'game_selection',
-    };
-    await tracedSelectDealerQuery('logStatusChanged', _ctx, () =>
-      logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`)
-    );
-    await tracedSelectDealerQuery('logConfigDeadlineSet', _ctx, () =>
-      logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer')
-    );
-
-    // ── WARTIME TEST 1+3: .select() removed from the UPDATE; pre/post-await
-    // markers around promise creation. UPDATE_CALL_BEGIN → builder constructed;
-    // UPDATE_PROMISE_CREATED → fetch dispatched (thenable coerced); silence
-    // after that = death while awaiting the request return path.
-    recordSelectDealerTrace('UPDATE_CALL_BEGIN', { ..._ctx, selectChained: false });
-    const _updateBuilder = supabase
+    await logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`);
+    await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer');
+    
+    const { error } = await supabase
       .from('games')
-      .update({
+      .update({ 
         status: 'game_selection',
         dealer_position: dealerPosition,
         config_deadline: configDeadline,
-        dealer_selection_state: null,
+        dealer_selection_state: null // Clear selection state after dealer is chosen
       })
       .eq('id', gameId);
-    // Coercing the PostgrestBuilder thenable dispatches the underlying fetch.
-    const _updatePromise: Promise<{ error: any; data?: any }> = Promise.resolve(
-      _updateBuilder as unknown as PromiseLike<{ error: any; data?: any }>
-    );
-    recordSelectDealerTrace('UPDATE_PROMISE_CREATED', { ..._ctx, selectChained: false });
-    const updateRes = await tracedSelectDealerQuery<{ error: any; data?: any }>(
-      'games.update.status=game_selection.no_select',
-      _ctx,
-      () => _updatePromise
-    );
-    const error = updateRes.error;
-    recordSelectDealerTrace('UPDATE_AWAIT_RESOLVED', {
-      ..._ctx,
-      selectChained: false,
-      success: !error,
-      error: error ? String(error.message ?? error) : null,
-    });
-
-    // Post-update verification select to determine whether the row reached
-    // game_selection independently of any client-side state propagation.
-    if (!error) {
-      void tracedSelectDealerQuery(
-        'games.verify.post_update',
-        _ctx,
-        () =>
-          supabase
-            .from('games')
-            .select('id,status,game_type,current_game_uuid,dealer_position,config_deadline')
-            .eq('id', gameId)
-            .maybeSingle()
-      );
-    }
 
     if (error) {
       console.error('Failed to select dealer:', error);
-      recordSelectDealerTrace('STATUS_TRANSITION_REJECT', {
-        sessionId: gameId,
-        fromStatus: game?.status ?? 'dealer_selection',
-        toStatus: 'game_selection',
-        sourceFunction: 'selectDealer',
-        reason: error.message,
-      });
-      recordSelectDealerTrace('SELECT_DEALER_EXIT', {
-        sessionId: gameId,
-        success: false,
-        failureReason: error.message,
-        resultingStatus: game?.status ?? null,
-        resultingGameType: game?.game_type ?? null,
-      });
       return;
     }
 
-    recordSelectDealerTrace('STATUS_TRANSITION_COMMIT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'dealer_selection',
-      toStatus: 'game_selection',
-      sourceFunction: 'selectDealer',
-    });
-    recordSelectDealerTrace('SELECT_DEALER_EXIT', {
-      sessionId: gameId,
-      success: true,
-      failureReason: null,
-      resultingStatus: 'game_selection',
-      resultingGameType: game?.game_type ?? null,
-    });
-
-    // ── Wartime: post-commit main-thread tick markers ──────────────
-    // Determine whether the main thread stalls immediately after EXIT
-    // (microtask never fires), during the next macrotask (timeout 0
-    // never fires), or during the next frame (rAF never fires).
-    schedulePostCommitTicks({
-      sessionId: gameId,
-      resultingStatus: 'game_selection',
-      dealerPosition,
-      dealerUserId,
-    });
-
-
     console.log('[DEALER SELECT] Successfully updated game status to game_selection');
 
-    // ── Wartime: last-mile probe around post-commit fetchGameData ───
-    const _lmFetchStart = Date.now();
-    recordLastMile('POST_SELECT_DEALER_FETCH_BEGIN', {
-      sessionId: gameId,
-      caller: 'selectDealer',
-      expectedStatus: 'game_selection',
-      previousStatus: game?.status ?? null,
-      previousGameType: game?.game_type ?? null,
-      currentGameUuid: (game as any)?.current_game_uuid ?? null,
-    });
-    let _lmFetchError: string | null = null;
-    try {
-      await fetchGameData('selectDealer');
-    } catch (e: any) {
-      _lmFetchError = String(e?.message ?? e);
-      throw e;
-    } finally {
-      recordLastMile('POST_SELECT_DEALER_FETCH_EXIT', {
-        sessionId: gameId,
-        caller: 'selectDealer',
-        success: _lmFetchError === null,
-        elapsedMs: Date.now() - _lmFetchStart,
-        error: _lmFetchError,
-      });
-    }
-
+    // Immediate refetch to ensure UI updates immediately
+    await fetchGameData();
+    
     // Secondary refetch after short delay for any race conditions
     setTimeout(() => fetchGameData(), 300);
   };
@@ -7262,13 +6733,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (!gameId) return;
 
     console.log('[GAME SELECTION] Selected game:', gameType, 'Previous:', lastKnownGameTypeRef.current);
-
-    recordSelectDealerTrace('STATUS_TRANSITION_ATTEMPT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'game_selection',
-      toStatus: 'configuring',
-      sourceFunction: 'handleGameSelection',
-    });
 
     // GUARD: Prevent realtime updates from overwriting optimistic UI during switch
     gameTypeSwitchingRef.current = true;
@@ -7320,32 +6784,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     if (error) {
       console.error('Failed to start configuration:', error);
-      recordSelectDealerTrace('STATUS_TRANSITION_REJECT', {
-        sessionId: gameId,
-        fromStatus: game?.status ?? 'game_selection',
-        toStatus: 'configuring',
-        sourceFunction: 'handleGameSelection',
-        reason: error.message,
-      });
       return;
     }
-
-    recordSelectDealerTrace('STATUS_TRANSITION_COMMIT', {
-      sessionId: gameId,
-      fromStatus: game?.status ?? 'game_selection',
-      toStatus: 'configuring',
-      sourceFunction: 'handleGameSelection',
-    });
-    recordSelectDealerTrace('GAME_SELECTION_READY', {
-      sessionId: gameId,
-      status: 'configuring',
-      gameType,
-      setupOwner: user?.id ?? null,
-      dealerPosition: game?.dealer_position ?? null,
-    });
-
-
-
 
     // Manual refetch to update UI after DB is updated
     // Clear the guard AFTER the fetch so realtime doesn't overwrite during transition
@@ -10553,39 +9993,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               ((game.status === 'game_over' || game.status === 'session_ended') && !(game as any).config_complete)
             )) ? (
               <div className="relative">
-                {(() => {
-                  // ── Wartime: legacy (non-persistent) DealerGameSetup parent branch ──
-                  markRenderBoundary(
-                    'DealerSetupParent.legacy',
-                    () => ({
-                      status: game.status,
-                      gameType: game.game_type ?? null,
-                      branch: 'legacy-sibling',
-                      isHost: isCreator,
-                      isDealer,
-                      dealerPosition: game.dealer_position ?? null,
-                      treatAsCanonicalRoute: _treatAsCanonicalRoute,
-                      selectsDealerGameSetup: !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)),
-                    }),
-                    'DEALER_SETUP_PARENT_RENDER_BEGIN',
-                    'DEALER_SETUP_PARENT_RENDER_END',
-                  );
-                  if (isDealer || (dealerPlayer?.is_bot && allowBotDealers)) {
-                    recordPostCommitEvent('DEALER_SETUP_PARENT_BRANCH_SELECTED', {
-                      branch: 'legacy-sibling',
-                      selectedComponent: 'DealerGameSetup',
-                      status: game.status,
-                      gameType: game.game_type ?? null,
-                      isHost: isCreator,
-                      dealerPosition: game.dealer_position ?? null,
-                    });
-                  }
-                  tickRenderLoopGuard('DealerSetupParent.legacy', () => ({
-                    status: game.status,
-                    gameType: game.game_type ?? null,
-                  }));
-                  return null;
-                })()}
                 {/* Phase 1: A2 status-keyed sibling table. `!_treatAsCanonicalRoute`
                     is the route-stable gate; `!isCanonicalShellFamily` is a
                     belt-and-suspenders structural guard so this branch
@@ -10980,49 +10387,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     game_selection / configuring / game_over-pre-config.
                     Mounts on top of the persistent MobileGameTable
                     without unmounting it. */}
-                {(() => {
-                  // ── Wartime: poker-shell DealerGameSetup parent branch ──
-                  markRenderBoundary(
-                    'DealerSetupParent.pokerShellOverlay',
-                    () => ({
-                      status: game.status,
-                      gameType: game.game_type ?? null,
-                      branch: 'poker-shell-overlay',
-                      isHost: isCreator,
-                      isDealer,
-                      dealerPosition: game.dealer_position ?? null,
-                      selectsDealerGameSetup:
-                        (game.status === 'game_selection' ||
-                          game.status === 'configuring' ||
-                          ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
-                        !is357WinAnimationActive && !horsesWinPotTriggerId &&
-                        !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers)),
-                    }),
-                    'DEALER_SETUP_PARENT_RENDER_BEGIN',
-                    'DEALER_SETUP_PARENT_RENDER_END',
-                  );
-                  const selected =
-                    (game.status === 'game_selection' ||
-                      game.status === 'configuring' ||
-                      ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
-                    !is357WinAnimationActive && !horsesWinPotTriggerId &&
-                    !!(isDealer || (dealerPlayer?.is_bot && allowBotDealers));
-                  if (selected) {
-                    recordPostCommitEvent('DEALER_SETUP_PARENT_BRANCH_SELECTED', {
-                      branch: 'poker-shell-overlay',
-                      selectedComponent: 'DealerGameSetup',
-                      status: game.status,
-                      gameType: game.game_type ?? null,
-                      isHost: isCreator,
-                      dealerPosition: game.dealer_position ?? null,
-                    });
-                  }
-                  tickRenderLoopGuard('DealerSetupParent.pokerShellOverlay', () => ({
-                    status: game.status,
-                    gameType: game.game_type ?? null,
-                  }));
-                  return null;
-                })()}
                 {(game.status === 'game_selection' ||
                   game.status === 'configuring' ||
                   ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
@@ -12085,29 +11449,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // single authoritative canonical felt; the shell no longer
   // renders a second felt floor underneath the slot.
 
-
-  // ── Wartime: Game.tsx render boundary (post-state, pre-return) ──
-  // Emits GAME_ROUTE_RENDER_BEGIN immediately (signature-deduped) and
-  // schedules GAME_ROUTE_RENDER_END via microtask. Absence of END is
-  // diagnostic of a main-thread lock during render commit.
-  markRenderBoundary(
-    'Game.route',
-    () => ({
-      gameId: gameId ?? null,
-      status: game?.status ?? null,
-      gameType: game?.game_type ?? null,
-      currentGameUuid: (game as any)?.current_game_uuid ?? null,
-      loading: loading ?? null,
-      authReady,
-      hasGame: !!game,
-      isHost: isCreator,
-      dealerPosition: game?.dealer_position ?? null,
-      treatAsCanonicalRoute: _treatAsCanonicalRoute ?? null,
-      isPokerShellPersistent: _isPokerShellPersistent ?? null,
-    }),
-    'GAME_ROUTE_RENDER_BEGIN',
-    'GAME_ROUTE_RENDER_END',
-  );
 
   return (
     <VisualPreferencesProvider userId={user?.id}>

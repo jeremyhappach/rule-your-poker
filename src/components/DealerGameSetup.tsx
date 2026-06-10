@@ -1,11 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
-import {
-  markRenderBoundary,
-  tickRenderLoopGuard,
-  useEffectProbe,
-} from "@/lib/wartimeDebug/postCommitStallTrace";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,38 +135,6 @@ const DealerGameSetupInner = ({
   // Confirms which render path actually mounts DealerGameSetup, so we
   // can prove whether the legacy `configuring` sibling branch is the
   // runtime path (and therefore why shell chrome appears missing).
-
-  // ── Wartime: DealerGameSetupInner render boundary + loop guard ─────
-  markRenderBoundary(
-    'DealerGameSetupInner',
-    () => ({
-      gameId,
-      isBot,
-      previousGameType: previousGameType ?? null,
-      dealerPosition,
-    }),
-    'DEALER_SETUP_INNER_RENDER_BEGIN',
-    'DEALER_SETUP_INNER_RENDER_END',
-  );
-  tickRenderLoopGuard('DealerGameSetupInner', () => ({
-    gameId,
-    isBot,
-    previousGameType: previousGameType ?? null,
-  }));
-  useEffectProbe(
-    'DealerGameSetupInner',
-    'mount',
-    'DEALER_SETUP_EFFECT_ENTER',
-    'DEALER_SETUP_EFFECT_EXIT',
-    () => ({
-      gameId,
-      isBot,
-      previousGameType: previousGameType ?? null,
-      dealerPosition,
-    }),
-    [],
-  );
-
   useLifecycleMount('DealerGameSetup', {
     gameId,
     isBot,
@@ -247,6 +210,7 @@ const DealerGameSetupInner = ({
   const [threeFiveSevenDefaults, setThreeFiveSevenDefaults] = useState<GameDefaults | null>(null);
   const [cribbageDefaults, setCribbageDefaults] = useState<any | null>(null);
 
+  // Fetch defaults for both game types on mount
   useEffect(() => {
     const fetchAllDefaults = async () => {
       const [holmResult, threeFiveSevenResult] = await Promise.all([
@@ -307,7 +271,6 @@ const DealerGameSetupInner = ({
 
     fetchAllDefaults();
   }, [previousGameType, previousGameConfig]);
-
 
   // Apply defaults when game type changes
   const applyDefaults = (defaults: GameDefaults) => {

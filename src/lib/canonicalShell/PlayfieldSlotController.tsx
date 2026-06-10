@@ -45,11 +45,6 @@ import {
   useWartimeSurface,
   useWartimeState,
 } from '@/lib/wartimeDebug/surfaces';
-import { recordSurfaceResolutionIfChanged } from '@/lib/wartimeDebug/selectDealerTrace';
-import {
-  markRenderBoundary,
-  tickRenderLoopGuard,
-} from '@/lib/wartimeDebug/postCommitStallTrace';
 
 export interface PlayfieldSlotControllerProps {
   desiredIdentity: PlayfieldSlotIdentity;
@@ -140,35 +135,6 @@ export function PlayfieldSlotController({
   children,
 }: PlayfieldSlotControllerProps) {
   useLifecycleMount('PlayfieldSlotController');
-  // ── Wartime: PSC resolution boundary + loop guard ──────────────
-  tickRenderLoopGuard('PlayfieldSlotController', () => ({
-    gameId: gameId ?? null,
-    desiredIdentity: describeSlotIdentity(desiredIdentity),
-    persistentChildrenKey: persistentChildrenKey ?? null,
-  }));
-  markRenderBoundary(
-    'PlayfieldSlotController',
-    () => ({
-      gameId: gameId ?? null,
-      desiredIdentity: describeSlotIdentity(desiredIdentity),
-      persistentChildrenKey: persistentChildrenKey ?? null,
-      readyToMountProp,
-    }),
-    'PSC_RESOLUTION_BEGIN',
-    'PSC_RESOLUTION_END',
-  );
-  // Wartime: shell-slot render boundary (separate from PSC resolution so
-  // a hang between resolution and slot mount is attributable).
-  markRenderBoundary(
-    'PlayfieldSlotController.shellSlot',
-    () => ({
-      gameId: gameId ?? null,
-      desiredIdentity: describeSlotIdentity(desiredIdentity),
-      persistentChildrenKey: persistentChildrenKey ?? null,
-    }),
-    'SHELL_SLOT_RENDER_BEGIN',
-    'SHELL_SLOT_RENDER_END',
-  );
   useStartupMountTrace('PlayfieldSlotController', { gameId: gameId ?? null });
   useWaitingMount('PlayfieldSlotController', { gameId: gameId ?? null });
   useChangeTracker('PlayfieldSlotController', 'persistentChildrenKey', persistentChildrenKey ?? '(none)');
@@ -263,19 +229,6 @@ export function PlayfieldSlotController({
       newValue: snapshot,
     });
     ginTrace('slot.state', snapshot);
-    recordSurfaceResolutionIfChanged({
-      sessionId: gameId ?? null,
-      status: phase,
-      gameType: mountedIdentity?.gameType ?? desiredIdentity?.gameType ?? null,
-      selectedSurface: describeSlotIdentity(desiredIdentity),
-      selectedSlot: describeSlotIdentity(mountedIdentity),
-      desiredIdentity: describeSlotIdentity(desiredIdentity),
-      dealerGameId: desiredIdentity?.dealerGameId ?? mountedIdentity?.dealerGameId ?? null,
-      readyToMount,
-      surfaceReady,
-      readyToMountProp,
-      readinessScope: readinessScope ?? null,
-    });
   }, [gameId, phase, desiredIdentity, mountedIdentity, readyToMount, surfaceReady, readyToMountProp, readinessScope]);
 
   // ShellLifecyclePanel: phase transitions, mount-identity changes,
