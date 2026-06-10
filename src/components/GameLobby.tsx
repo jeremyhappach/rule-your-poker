@@ -15,6 +15,7 @@ import { getTimerSettingsAsync } from "@/hooks/useGlobalTimerSettings";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
 import { PerfSession } from "@/lib/perf";
+import { tracedRealtimeCallback, recordFetchSpan } from "@/lib/wartimeDebug/realtimeCallbackTrace";
 import { Settings, Info, Wrench } from "lucide-react";
 import { GameRules } from "@/components/GameRules";
 import peoriaSkyline from "@/assets/peoria-skyline.jpg";
