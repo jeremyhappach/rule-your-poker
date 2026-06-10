@@ -8,6 +8,7 @@ import {
 } from "@/lib/wartimeDebug/postCommitStallTrace";
 import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
 import { recordLastMile } from "@/lib/wartimeDebug/lastMileStateTrace";
+import { tracedRealtimeCallback } from "@/lib/wartimeDebug/realtimeCallbackTrace";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
@@ -2330,7 +2331,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        simulateRealtime('games', (payload) => {
+        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'games' }, simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           recordLastMile('REALTIME_GAMES_PAYLOAD', {
@@ -2840,7 +2841,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             debouncedFetch();
           }
-        })
+        }))
       )
       .on(
         'postgres_changes',
@@ -2850,7 +2851,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'players',
           filter: `game_id=eq.${gameId}`
         },
-        simulateRealtime('players', (payload) => {
+        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'players' }, simulateRealtime('players', (payload) => {
           recordStartupFlight('REALTIME TIMELINE', 'players callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'players realtime callback',
@@ -2908,7 +2909,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           } else {
             debouncedFetch();
           }
-        })
+        }))
       )
       .on(
         'postgres_changes',
@@ -2918,7 +2919,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        simulateRealtime('rounds', (payload) => {
+        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'rounds' }, simulateRealtime('rounds', (payload) => {
           recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'rounds realtime callback',
@@ -2988,7 +2989,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             console.log('[REALTIME] Other round change, using debounced fetch');
             debouncedFetch();
           }
-        })
+        }))
       )
       .subscribe((status) => {
         console.log('[SUBSCRIPTION] Status:', status);
