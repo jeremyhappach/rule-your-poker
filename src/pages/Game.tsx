@@ -2331,7 +2331,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'games',
           filter: `id=eq.${gameId}`
         },
-        simulateRealtime('games', (payload) => {
+        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'games' }, simulateRealtime('games', (payload) => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           recordLastMile('REALTIME_GAMES_PAYLOAD', {
