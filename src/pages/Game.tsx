@@ -8,6 +8,7 @@ import {
 } from "@/lib/wartimeDebug/postCommitStallTrace";
 import { setFreezeRecorderContext } from "@/lib/wartimeDebug/freezeRecorder";
 import { recordLastMile } from "@/lib/wartimeDebug/lastMileStateTrace";
+import { tracedRealtimeCallback } from "@/lib/wartimeDebug/realtimeCallbackTrace";
 import { useGameStateSync, getHolmProgress, getThreeFiveSevenProgress } from "@/lib/gameStateSync";
 import type { HolmAuthoritativeSnapshot } from "@/lib/gameStateSync";
 import type { ThreeFiveSevenAuthoritativeSnapshot } from "@/lib/gameStateSync";
