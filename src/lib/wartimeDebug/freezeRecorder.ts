@@ -133,6 +133,77 @@ export function persistFreezeEvent(
   persist(eventType, source, source, payload);
 }
 
+// ── RAW transport — bypasses supabase-js entirely ────────────
+//
+// DISCRIMINATOR for the freeze investigation: every prior "freeze"
+// signal (heartbeat rows stopping, UPDATE never resolving, fetches
+// never returning) flows through the supabase-js client. A wedged
+// client (e.g. auth navigator.locks deadlock during token refresh)
+// is indistinguishable in debug_events from a halted main thread.
+//
+// rawPersist() POSTs directly to PostgREST with fetch(keepalive),
+// reading the access token synchronously from localStorage. If RAW
+// heartbeats continue while SDK heartbeats stop → main thread is
+// ALIVE and the supabase client is wedged. If both stop → genuine
+// main-thread halt.
+const RAW_URL = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/debug_events`;
+const RAW_ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const AUTH_STORAGE_KEY = `sb-${import.meta.env.VITE_SUPABASE_PROJECT_ID}-auth-token`;
+const LAST_BEAT_KEY = 'ptp_freeze_last_beat';
+
+let _lastRawStatus: number | string | null = null;
+
+function readAccessTokenSync(): string | null {
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { access_token?: string };
+    return parsed?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function rawPersist(eventType: string, payload: Record<string, unknown>): void {
+  if (!_enabled) return;
+  _seq += 1;
+  const token = readAccessTokenSync();
+  const body = JSON.stringify({
+    game_id: _ctx.gameId,
+    user_id: _ctx.userId,
+    client_role: 'freeze-recorder',
+    event_type: eventType,
+    payload: {
+      sessionId: SESSION_ID,
+      tabId: SESSION_ID,
+      seq: _seq,
+      channel: 'raw',
+      timestamp: new Date().toISOString(),
+      hadToken: token != null,
+      lastRawStatus: _lastRawStatus,
+      ctx: { status: _ctx.status, gameType: _ctx.gameType },
+      ...payload,
+    },
+  });
+  try {
+    fetch(RAW_URL, {
+      method: 'POST',
+      keepalive: true,
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: RAW_ANON,
+        Authorization: `Bearer ${token ?? RAW_ANON}`,
+        Prefer: 'return=minimal',
+      },
+      body,
+    })
+      .then((r) => { _lastRawStatus = r.status; })
+      .catch((e) => { _lastRawStatus = String(e?.message ?? e); });
+  } catch (e) {
+    _lastRawStatus = String((e as Error)?.message ?? e);
+  }
+}
+
 // ── wartime mirror ───────────────────────────────────────────
 function shouldMirror(ev: WartimeEvent): boolean {
   if (ev.category === 'GAMEPLAY') return true;
@@ -189,19 +260,45 @@ function start(): void {
     });
   } catch { /* */ }
 
-  // heartbeat — proves main thread + network round-trip every 2s
+  // boot marker — reports the previous session's last local breadcrumb
+  // so we can tell whether JS kept beating after its last DB row.
+  try {
+    const prev = window.localStorage.getItem(LAST_BEAT_KEY);
+    rawPersist('freeze.PAGE_BOOT', { previousBeat: prev ? JSON.parse(prev) : null });
+    persist('freeze.PAGE_BOOT', 'freezeRecorder', 'boot', {
+      previousBeat: prev ? JSON.parse(prev) : null,
+    });
+  } catch { /* */ }
+
+  // heartbeat — DUAL CHANNEL every 2s:
+  //   channel=sdk → supabase-js insert (existing path)
+  //   channel=raw → direct fetch to PostgREST, bypassing supabase-js
+  // Divergence (raw continues, sdk stops) = supabase client wedged,
+  // main thread alive. Both stopping = genuine main-thread halt.
+  // A synchronous localStorage breadcrumb survives even total network
+  // loss and is reported by freeze.PAGE_BOOT on next load.
   let hbN = 0;
   setInterval(() => {
     if (!_enabled) return;
     hbN += 1;
+    const perfNow = typeof performance !== 'undefined' ? Math.round(performance.now()) : null;
+    const visibility = typeof document !== 'undefined' ? document.visibilityState : null;
+    try {
+      window.localStorage.setItem(LAST_BEAT_KEY, JSON.stringify({
+        sessionId: SESSION_ID, n: hbN, perfNow, iso: new Date().toISOString(),
+      }));
+    } catch { /* */ }
     persist('heartbeat', 'freezeRecorder', 'heartbeat', {
       n: hbN,
-      perfNow: typeof performance !== 'undefined' ? Math.round(performance.now()) : null,
+      channel: 'sdk',
+      perfNow,
+      visibility,
     });
+    rawPersist('heartbeat.raw', { n: hbN, perfNow, visibility });
   }, 2000);
 
   // eslint-disable-next-line no-console
-  console.info('[FREEZE_REC] enabled — persisting dealer-selection trace to debug_events');
+  console.info('[FREEZE_REC] enabled — persisting dealer-selection trace to debug_events (dual-channel heartbeat)');
 }
 
 // auto-start on module load when flag already set
