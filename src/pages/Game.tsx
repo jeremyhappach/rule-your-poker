@@ -2841,7 +2841,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             });
             debouncedFetch();
           }
-        })
+        }))
       )
       .on(
         'postgres_changes',
