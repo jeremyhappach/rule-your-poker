@@ -2919,7 +2919,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           table: 'rounds',
           filter: `game_id=eq.${gameId}`
         },
-        simulateRealtime('rounds', (payload) => {
+        tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'rounds' }, simulateRealtime('rounds', (payload) => {
           recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'rounds realtime callback',
