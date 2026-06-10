@@ -2932,6 +2932,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           filter: `game_id=eq.${gameId}`
         },
         tracedRealtimeCallback({ channel: `game-${gameId}`, table: 'rounds' }, simulateRealtime('rounds', (payload) => {
+          // WARTIME: defer body off realtime callback stack (enqueue-only pattern).
+          queueMicrotask(() => {
           recordStartupFlight('REALTIME TIMELINE', 'rounds callback fired / payload received', {
             file: 'src/pages/Game.tsx',
             function: 'rounds realtime callback',
