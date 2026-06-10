@@ -88,10 +88,11 @@ function persist(
 ): void {
   if (!_enabled) return;
   _seq += 1;
+  const seq = _seq;
   const enriched = {
     sessionId: SESSION_ID,
     tabId: SESSION_ID,
-    seq: _seq,
+    seq,
     timestamp: new Date().toISOString(),
     sourceFile,
     sourceFunction,
@@ -120,6 +121,12 @@ function persist(
         console.warn('[FREEZE_REC] insert failed:', error.message);
       }
     });
+  // RAW MIRROR — session b972cde8 proved the SDK can wedge while the
+  // page keeps emitting: seqs 371–414 were persisted via supabase-js
+  // only and were permanently lost. Every persisted event is therefore
+  // also sent over the raw fetch transport with the SAME seq, tagged
+  // channel='raw-mirror'. Dedupe at query time on (sessionId, seq).
+  rawSend(eventType, seq, 'raw-mirror', enriched);
 }
 
 // Exposed so call-site instrumentation (gameStartTransition,
