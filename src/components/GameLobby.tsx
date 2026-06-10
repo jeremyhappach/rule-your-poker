@@ -165,7 +165,7 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         },
         tracedRealtimeCallback(
           { channel: 'players-lobby-channel', table: 'players' },
-          () => { fetchGames(); },
+          () => { queueMicrotask(() => { fetchGames(); }); },
         )
       )
       .subscribe();
