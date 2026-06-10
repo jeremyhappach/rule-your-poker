@@ -54,7 +54,7 @@ export function recordSelectDealerTrace(
 export async function tracedSelectDealerQuery<T>(
   queryName: string,
   context: Record<string, unknown>,
-  exec: () => Promise<T>,
+  exec: () => PromiseLike<T>,
 ): Promise<T> {
   const start = Date.now();
   recordSelectDealerTrace('SELECT_DEALER_QUERY_BEGIN', { queryName, ...context });
