@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, useRef, useCallback, useMemo } from "react";
-import { recordSelectDealerTrace } from "@/lib/wartimeDebug/selectDealerTrace";
+import { recordSelectDealerTrace, tracedSelectDealerQuery } from "@/lib/wartimeDebug/selectDealerTrace";
 import {
   schedulePostCommitTicks,
   markRenderBoundary,
