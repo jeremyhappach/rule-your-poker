@@ -226,6 +226,10 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
         variant: "destructive",
       });
       perf.done({ error: error.message });
+      recordFetchSpan('GAMELOBBY_FETCH', 'END', {
+        error: error.message,
+        elapsedMs: Math.round(performance.now() - _fetchStart),
+      });
       return;
     }
 
