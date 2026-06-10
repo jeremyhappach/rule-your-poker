@@ -132,7 +132,7 @@ export const PlayerHand = ({
     is357Game && currentRound === 1 && displayCardCount === 3
       ? "w-10 h-16 sm:w-11 sm:h-[4.25rem]"
       : "";
-  
+
   // Calculate overlap based on card count and tightOverlap flag
   const getOverlapClass = () => {
     if (tightOverlap) {
@@ -145,8 +145,48 @@ export const PlayerHand = ({
     if (displayCardCount >= 5) return '-ml-2 sm:-ml-2 first:ml-0';
     return '-ml-1 first:ml-0';
   };
-  
+
   const overlapClass = getOverlapClass();
+
+  // ─── Wave 2A: 3-5-7 dynamic card row layout ───────────────────────────────
+  // Pure resolver — when geometry is not yet measured, returns null and we
+  // fall back to the existing className ladder (zero visual change before
+  // geometry is ready). Only active on the 3-5-7 paths; other games are
+  // byte-identical to pre-Wave-2A.
+  const play = usePlayGeometry();
+  const dyn357 = useCardRowLayout({
+    availableWidth: is357Game && play.measured ? play.width * SEAT_SHARE_357 : 0,
+    count: displayCardCount,
+    aspect: 0.71,
+    minCardWidth: 28,
+    maxCardWidth: 56,
+    maxOverlapRatio: 0.6,
+  });
+  const dyn357Style: React.CSSProperties | null =
+    is357Game && dyn357
+      ? {
+          width: `${dyn357.cardWidth}px`,
+          height: `${dyn357.cardHeight}px`,
+        }
+      : null;
+  const dyn357OverlapStyle: React.CSSProperties | null =
+    is357Game && dyn357
+      ? { marginLeft: `-${dyn357.overlapPx}px` }
+      : null;
+  // When dynamic layout is active, drop the static Tailwind w/h + -ml ladder
+  // so inline styles win cleanly. Non-357 paths keep `overlapClass` /
+  // `round1NarrowTallClass` untouched.
+  const dynActive = !!dyn357Style;
+  const effectiveOverlapClass = dynActive ? 'first:ml-0' : overlapClass;
+  const effectiveRound1Class = dynActive ? '' : round1NarrowTallClass;
+  const composeStyle = (base?: React.CSSProperties, includeOverlap = true): React.CSSProperties | undefined => {
+    if (!dynActive) return base;
+    return {
+      ...(base || {}),
+      ...(dyn357Style || {}),
+      ...(includeOverlap ? (dyn357OverlapStyle || {}) : {}),
+    };
+  };
   
   // Render card backs for hidden cards
   if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
