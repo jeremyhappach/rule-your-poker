@@ -171,25 +171,31 @@ function readAccessTokenSync(): string | null {
   }
 }
 
-function rawPersist(eventType: string, payload: Record<string, unknown>): void {
+// Shared raw transport. `seq` is supplied by the caller so the
+// raw-mirror copy of an SDK persist carries the SAME seq (dedupe key:
+// sessionId+seq+channel). Hoisted function declaration — callable from
+// persist() above.
+function rawSend(
+  eventType: string,
+  seq: number,
+  channel: 'raw' | 'raw-mirror',
+  payload: Record<string, unknown>,
+): void {
   if (!_enabled) return;
-  _seq += 1;
   const token = readAccessTokenSync();
   const body = JSON.stringify({
     game_id: _ctx.gameId,
     user_id: _ctx.userId,
     client_role: 'freeze-recorder',
-    event_type: eventType,
+    event_type: channel === 'raw-mirror' ? `${eventType}` : eventType,
     payload: {
-      sessionId: SESSION_ID,
-      tabId: SESSION_ID,
-      seq: _seq,
-      channel: 'raw',
-      timestamp: new Date().toISOString(),
+      channel,
       hadToken: token != null,
       lastRawStatus: _lastRawStatus,
-      ctx: { status: _ctx.status, gameType: _ctx.gameType },
       ...payload,
+      sessionId: SESSION_ID,
+      tabId: SESSION_ID,
+      seq,
     },
   });
   try {
@@ -209,6 +215,16 @@ function rawPersist(eventType: string, payload: Record<string, unknown>): void {
   } catch (e) {
     _lastRawStatus = String((e as Error)?.message ?? e);
   }
+}
+
+function rawPersist(eventType: string, payload: Record<string, unknown>): void {
+  if (!_enabled) return;
+  _seq += 1;
+  rawSend(eventType, _seq, 'raw', {
+    timestamp: new Date().toISOString(),
+    ctx: { status: _ctx.status, gameType: _ctx.gameType },
+    ...payload,
+  });
 }
 
 // ── wartime mirror ───────────────────────────────────────────
