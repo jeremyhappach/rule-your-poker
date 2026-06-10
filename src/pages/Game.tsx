@@ -7097,18 +7097,51 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
     
     // Log session events
-    await logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`);
-    await logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer');
-    
-    const { error } = await supabase
-      .from('games')
-      .update({ 
-        status: 'game_selection',
-        dealer_position: dealerPosition,
-        config_deadline: configDeadline,
-        dealer_selection_state: null // Clear selection state after dealer is chosen
-      })
-      .eq('id', gameId);
+    const _ctx = {
+      sessionId: gameId,
+      dealerPosition,
+      dealerUserId,
+      fromStatus: game?.status ?? 'dealer_selection',
+      toStatus: 'game_selection',
+    };
+    await tracedSelectDealerQuery('logStatusChanged', _ctx, () =>
+      logStatusChanged(gameId, user?.id, 'dealer_selection', 'game_selection', `Dealer selected at position ${dealerPosition}`)
+    );
+    await tracedSelectDealerQuery('logConfigDeadlineSet', _ctx, () =>
+      logConfigDeadlineSet(gameId, user?.id, configDeadline, 'selectDealer')
+    );
+
+    const updateRes = await tracedSelectDealerQuery<{ error: any; data?: any }>(
+      'games.update.status=game_selection',
+      _ctx,
+      () =>
+        supabase
+          .from('games')
+          .update({
+            status: 'game_selection',
+            dealer_position: dealerPosition,
+            config_deadline: configDeadline,
+            dealer_selection_state: null,
+          })
+          .eq('id', gameId)
+          .select('id,status,game_type,current_game_uuid,dealer_position,config_deadline')
+    );
+    const error = updateRes.error;
+
+    // Post-update verification select to determine whether the row reached
+    // game_selection independently of any client-side state propagation.
+    if (!error) {
+      void tracedSelectDealerQuery(
+        'games.verify.post_update',
+        _ctx,
+        () =>
+          supabase
+            .from('games')
+            .select('id,status,game_type,current_game_uuid,dealer_position,config_deadline')
+            .eq('id', gameId)
+            .maybeSingle()
+      );
+    }
 
     if (error) {
       console.error('Failed to select dealer:', error);
