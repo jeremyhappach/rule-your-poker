@@ -321,11 +321,11 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={!isUnused && isWild}
-              className={`${overlapClass} ${round1NarrowTallClass}`}
-              style={{
+              className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
+              style={composeStyle({
                 transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
                 opacity: isUnused ? 0.4 : 1,
-              }}
+              })}
             />
           );
         })}
