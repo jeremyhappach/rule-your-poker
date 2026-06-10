@@ -2339,21 +2339,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // enqueue-only realtime ingestion. If the freeze persists, the
           // pathology lives inside the render path after state apply and
           // we revert/bisect the geometry-contract rollout.
-          queueMicrotask(() => { __gamesCallbackBody(payload); });
-        }))
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'games',
-          filter: `id=eq.${gameId}__never_match_disabled_original_subscription`
-        },
-        // Original synchronous body extracted into an inner function so the
-        // microtask deferral above can invoke it. This subscription stub is
-        // never bound (filter never matches); only kept to host the closure.
-        ((__noop: any) => __noop)((payload: any) => {
+          queueMicrotask(() => {
           const newData = payload.new as any;
           const oldData = payload.old as any;
           recordLastMile('REALTIME_GAMES_PAYLOAD', {
