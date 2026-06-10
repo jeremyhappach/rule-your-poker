@@ -310,6 +310,18 @@ export const GameLobby = ({ userId }: GameLobbyProps) => {
     setGames(gamesWithPlayers);
     setLoading(false);
     perf.done({ gameCount: gamesData?.length ?? 0 });
+    recordFetchSpan('GAMELOBBY_FETCH', 'END', {
+      rowCount: gamesData?.length ?? 0,
+      elapsedMs: Math.round(performance.now() - _fetchStart),
+    });
+    } catch (e: any) {
+      recordFetchSpan('GAMELOBBY_FETCH', 'END', {
+        threw: true,
+        error: String(e?.message ?? e),
+        elapsedMs: Math.round(performance.now() - _fetchStart),
+      });
+      throw e;
+    }
   };
 
   const createGame = async () => {
