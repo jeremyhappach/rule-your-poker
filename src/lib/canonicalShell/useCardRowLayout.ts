@@ -85,10 +85,19 @@ export function resolveCardRowLayout(input: CardRowLayoutInput): CardRowLayout |
     };
   }
 
-  // Try max width first. If the row fits with zero overlap, we're done.
-  const ideal = Math.min(maxCardWidth, availableWidth / count);
-  if (ideal >= minCardWidth && ideal * count <= availableWidth) {
-    const w = ideal;
+  // Readability-first sizing:
+  //   1. Prefer zero overlap. Pick the largest cardWidth ≤ maxCardWidth that
+  //      fits the row edge-to-edge: cardWidth = min(maxCardWidth, avail/count).
+  //   2. Only when that width would fall below minCardWidth do we clamp to
+  //      minCardWidth and introduce the smallest overlap needed to fit
+  //      (capped at maxOverlapRatio to preserve the rank/suit corner).
+  //
+  // This guarantees monotonic shrink with count: width(3) ≥ width(5) ≥
+  // width(7) for any fixed availableWidth — the resolver never *grows*
+  // a card by hiding more of it.
+  const zeroOverlapWidth = Math.min(maxCardWidth, availableWidth / count);
+  if (zeroOverlapWidth >= minCardWidth) {
+    const w = zeroOverlapWidth;
     return {
       cardWidth: w,
       cardHeight: w / aspect,
@@ -97,20 +106,9 @@ export function resolveCardRowLayout(input: CardRowLayoutInput): CardRowLayout |
     };
   }
 
-  // Otherwise pick the largest cardWidth in [minCardWidth, maxCardWidth]
-  // such that the required overlap stays within maxOverlapRatio.
-  //   totalWidth = cardWidth * (1 + (count - 1) * (1 - overlapRatio)) ≤ availableWidth
-  //   overlapRatio = 1 - (availableWidth / cardWidth - 1) / (count - 1)
-  // Solve for the cardWidth where overlapRatio == maxOverlapRatio:
-  //   cardWidth = availableWidth / (1 + (count - 1) * (1 - maxOverlapRatio))
-  const maxFittable =
-    availableWidth / (1 + (count - 1) * (1 - maxOverlapRatio));
-  const cardWidth = Math.max(
-    minCardWidth,
-    Math.min(maxCardWidth, maxFittable),
-  );
-
-  // Recompute overlap from the resolved cardWidth, clamped to bounds.
+  // Budget too tight for zero-overlap min-width cards. Clamp width to the
+  // readability floor and compute the overlap required to fit.
+  const cardWidth = minCardWidth;
   const rawOverlapRatio =
     1 - (availableWidth / cardWidth - 1) / (count - 1);
   const overlapRatio = Math.max(0, Math.min(maxOverlapRatio, rawOverlapRatio));
