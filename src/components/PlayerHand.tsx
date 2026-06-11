@@ -27,16 +27,27 @@ interface PlayerHandProps {
   availableHeightPx?: number;
   /**
    * Wave 2A (3-5-7). Optional explicit horizontal budget. When omitted,
-   * the hand measures its own parent container's layout `clientWidth`
-   * via ResizeObserver and uses that as the resolver budget — which is
-   * the correct "active-player hand pane" area, not a seat-allocation
-   * share. `clientWidth` returns unscaled CSS layout pixels even when
-   * a `transform: scale` wrapper is applied, so the resolver sizes in
-   * the same coordinate space inline styles render in (pre-transform).
-   * The visual CSS scale then uniformly inflates the rendered DOM.
+   * the hand walks up to the canonical `[data-357-active-pane-content]`
+   * ancestor and uses its layout `clientWidth` as the resolver budget.
+   * That ancestor is a non-shrink-wrapping pane container, so it does
+   * not collapse around the cards (the immediate parent does, which
+   * caused a feedback loop where the cards' own size drove the budget).
+   * `clientWidth` returns unscaled CSS layout pixels even when a
+   * `transform: scale` wrapper sits between the pane and PlayerHand,
+   * so the resolver sizes in the same coordinate space inline styles
+   * render in (pre-transform). When a wrapper scale is supplied via
+   * `wrapperScale`, the measured pane width is divided by it so the
+   * post-transform footprint still fits the pane.
    */
   availableWidthPx?: number;
-}
+  /**
+   * Wave 2A (3-5-7). CSS `transform: scale` applied by the caller
+   * around PlayerHand. Used only to convert the measured pane width
+   * (in post-transform pixels) into the unscaled budget the resolver
+   * works in. Defaults to 1.
+   */
+  wrapperScale?: number;
+
 
 
 // Get wild rank based on round (3-5-7 game only)
