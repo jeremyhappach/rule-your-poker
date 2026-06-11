@@ -59,8 +59,9 @@ describe('resolveCardRowLayout', () => {
   it('tight pane grows overlap (at ceiling width) before shrinking cards', () => {
     // Ceiling fan would overflow; resolver should pick maxCardWidth and grow overlap to fit.
     const r = resolveCardRowLayout({
-      availableWidth: 200,
-      count: 7,
+      availableWidth: 250,
+      count: 5,
+
       maxCardWidth: 80,
       preferredOverlapRatio: 0.18,
       maxOverlapRatio: 0.6,
