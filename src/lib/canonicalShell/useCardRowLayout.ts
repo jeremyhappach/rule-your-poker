@@ -166,6 +166,7 @@ export function useCardRowLayout(input: CardRowLayoutInput): CardRowLayout | nul
     () => resolveCardRowLayout(input),
     [
       input.availableWidth,
+      input.availableHeight,
       input.count,
       input.aspect,
       input.minCardWidth,
