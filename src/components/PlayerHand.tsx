@@ -191,21 +191,32 @@ export const PlayerHand = ({
   // resolver works in the same unscaled pixel space inline styles use.
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
+  const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
   useLayoutEffect(() => {
     if (!is357Game) return;
     const el = measureRef.current;
     if (!el) return;
     const pane = el.closest<HTMLElement>('[data-357-active-pane-content]');
-    if (!pane) return;
+    const parent = el.parentElement;
     const update = () => {
-      const w = pane.clientWidth;
-      if (Number.isFinite(w) && w > 0) {
-        setMeasuredPaneWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+      if (pane) {
+        const w = pane.clientWidth;
+        if (Number.isFinite(w) && w > 0) {
+          setMeasuredPaneWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+        }
+      } else if (parent) {
+        // Fallback for non-active-pane sites (seated players, etc.) —
+        // those use static wrappers that don't shrink-wrap pathologically.
+        const w = parent.clientWidth;
+        if (Number.isFinite(w) && w > 0) {
+          setMeasuredParentWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+        }
       }
     };
     update();
     const ro = new ResizeObserver(update);
-    ro.observe(pane);
+    if (pane) ro.observe(pane);
+    else if (parent) ro.observe(parent);
     return () => ro.disconnect();
   }, [is357Game, currentRound, displayCardCount, isHidden]);
 
@@ -214,8 +225,12 @@ export const PlayerHand = ({
     is357Game
       ? (typeof availableWidthPx === 'number' && availableWidthPx > 0
           ? availableWidthPx
-          : measuredPaneWidth > 0 ? measuredPaneWidth / safeWrapperScale : 0)
+          : measuredPaneWidth > 0
+            ? measuredPaneWidth / safeWrapperScale
+            : measuredParentWidth)
       : 0;
+
+
 
 
 
