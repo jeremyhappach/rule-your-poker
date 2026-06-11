@@ -1,39 +1,41 @@
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils";
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
-import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
 import { supabase } from "@/integrations/supabase/client";
-
-// Wave 2A: rough per-seat horizontal allocation around the canonical felt.
-// Used only to compute an availableWidth budget for 3-5-7 hand rows.
-const SEAT_SHARE_357 = 0.24;
 
 interface PlayerHandProps {
   cards: CardType[];
   isHidden?: boolean;
   expectedCardCount?: number;
-  highlightedIndices?: number[];  // Indices of cards that are part of winning hand
-  kickerIndices?: number[];       // Indices of kicker cards
-  hasHighlights?: boolean;        // Whether highlights are active (to dim non-highlighted cards)
-  gameType?: string | null;       // Game type for wild card determination
-  currentRound?: number;          // Current round for wild card determination
-  showSeparated?: boolean;        // For round 3, show unused cards separated to left
-  tightOverlap?: boolean;         // Use tighter spacing for multi-player showdown
-  unusedCardsBelow?: boolean;     // For 3-5-7 showdown: render unused cards in separate row
-  isRightSide?: boolean;          // For positioning unused cards on outer edge (right side of table)
-  isBottomPosition?: boolean;     // For bottom positions, unused cards go above instead of below
+  highlightedIndices?: number[];
+  kickerIndices?: number[];
+  hasHighlights?: boolean;
+  gameType?: string | null;
+  currentRound?: number;
+  showSeparated?: boolean;
+  tightOverlap?: boolean;
+  unusedCardsBelow?: boolean;
+  isRightSide?: boolean;
+  isBottomPosition?: boolean;
   /**
-   * Wave 2A contract param (3-5-7 only). Vertical budget for the hand
-   * row in CSS pixels — already net of the contract-owned action-strip
-   * reservation (ACTION_STRIP_RESERVE_PX). When provided, the resolver
-   * additionally clamps cardHeight so cards never intrude into the
-   * action strip region (Drop / Stay / STAYED badge). Pass the
-   * *unscaled* reserve so callers that apply a CSS `transform: scale`
-   * wrapper must divide their reserve box by the wrapper scale before
-   * passing it in.
+   * Wave 2A (3-5-7). Vertical budget already net of the contract-owned
+   * action-strip reservation. Pass the *unscaled* reserve when the
+   * caller wraps PlayerHand in a CSS `transform: scale` (divide the
+   * scaled reserve by the wrapper scale).
    */
   availableHeightPx?: number;
+  /**
+   * Wave 2A (3-5-7). Optional explicit horizontal budget. When omitted,
+   * the hand measures its own parent container's layout `clientWidth`
+   * via ResizeObserver and uses that as the resolver budget — which is
+   * the correct "active-player hand pane" area, not a seat-allocation
+   * share. `clientWidth` returns unscaled CSS layout pixels even when
+   * a `transform: scale` wrapper is applied, so the resolver sizes in
+   * the same coordinate space inline styles render in (pre-transform).
+   * The visual CSS scale then uniformly inflates the rendered DOM.
+   */
+  availableWidthPx?: number;
 }
 
 
