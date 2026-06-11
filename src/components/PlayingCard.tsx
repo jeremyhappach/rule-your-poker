@@ -46,7 +46,17 @@ interface PlayingCardProps {
   isKicker?: boolean;       // Card is a kicker
   isDimmed?: boolean;       // Card is not part of winning hand (dim it)
   isWild?: boolean;         // Card is a wild card (3-5-7 games)
+  /**
+   * When provided, the face renders in "fill" mode: legacy stacked
+   * layout (rank top, suit bottom, justify-between, ~zero padding) with
+   * inline font-size derived from this width so the rank/suit fill the
+   * available card area. Used by dynamic-geometry consumers (e.g. the
+   * Wave 2A 3-5-7 hand row) so the resolver-computed cardWidth drives
+   * face typography too — no Tailwind text-step quantization.
+   */
+  faceFillPx?: number;
 }
+
 
 // Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
 // Taller/narrower cards with larger face content
@@ -111,6 +121,7 @@ export const PlayingCard = ({
   isKicker = false,
   isDimmed = false,
   isWild = false,
+  faceFillPx,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const { isTablet } = useDeviceSize();
@@ -243,16 +254,31 @@ export const PlayingCard = ({
     boxShadow: '0 0 8px 2px rgba(251, 191, 36, 0.6), inset 0 0 4px rgba(251, 191, 36, 0.3)',
   } : {};
     
+  // Face-fill mode: when consumer drives dynamic card width (e.g. the
+  // Wave 2A 3-5-7 hand row), render the legacy stacked face layout
+  // (rank top, suit bottom, justify-between, ~zero padding) and scale
+  // rank/suit typography off the resolved width so the card area is
+  // fully utilised — matching the legacy 3-5-7 card presentation.
+  const fillMode = typeof faceFillPx === 'number' && faceFillPx > 0;
+  const rankPx = fillMode ? Math.round((faceFillPx as number) * 0.62) : undefined;
+  const suitPx = fillMode ? Math.round((faceFillPx as number) * 0.70) : undefined;
+
   return (
     <Card
-      className={`${sizeClasses.container} flex flex-col items-center justify-center p-0 shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200`}
+      className={`${sizeClasses.container} flex flex-col items-center ${fillMode ? 'justify-between py-0.5' : 'justify-center p-0'} shadow-xl ${isWild ? '' : borderColor} ${className} transition-transform duration-200 overflow-hidden`}
       style={{ backgroundColor: cardFaceStyle.backgroundColor, ...textColorStyle, ...dimStyle, ...wildCardStyles, ...style, transform: combinedTransform }}
     >
-      <span className={`${sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}>
+      <span
+        className={`${fillMode ? 'font-black' : sizeClasses.rank} leading-none ${isFourColor ? cardFaceStyle.textColor : ''}`}
+        style={fillMode ? { fontSize: `${rankPx}px`, lineHeight: 1 } : undefined}
+      >
         {card.rank}
       </span>
       {!isFourColor && (
-        <span className={`${sizeClasses.suit} leading-none mt-0`}>
+        <span
+          className={`${fillMode ? '' : sizeClasses.suit} leading-none ${fillMode ? '' : 'mt-0'}`}
+          style={fillMode ? { fontSize: `${suitPx}px`, lineHeight: 1 } : undefined}
+        >
           {normalizedSuit}
         </span>
       )}

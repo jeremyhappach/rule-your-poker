@@ -23,7 +23,19 @@ interface PlayerHandProps {
   unusedCardsBelow?: boolean;     // For 3-5-7 showdown: render unused cards in separate row
   isRightSide?: boolean;          // For positioning unused cards on outer edge (right side of table)
   isBottomPosition?: boolean;     // For bottom positions, unused cards go above instead of below
+  /**
+   * Wave 2A contract param (3-5-7 only). Vertical budget for the hand
+   * row in CSS pixels — already net of the contract-owned action-strip
+   * reservation (ACTION_STRIP_RESERVE_PX). When provided, the resolver
+   * additionally clamps cardHeight so cards never intrude into the
+   * action strip region (Drop / Stay / STAYED badge). Pass the
+   * *unscaled* reserve so callers that apply a CSS `transform: scale`
+   * wrapper must divide their reserve box by the wrapper scale before
+   * passing it in.
+   */
+  availableHeightPx?: number;
 }
+
 
 // Get wild rank based on round (3-5-7 game only)
 const getWildRank = (round: number): string | null => {
@@ -48,7 +60,8 @@ export const PlayerHand = ({
   tightOverlap = false,
   unusedCardsBelow = false,
   isRightSide = false,
-  isBottomPosition = false
+  isBottomPosition = false,
+  availableHeightPx,
 }: PlayerHandProps) => {
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -158,6 +171,10 @@ export const PlayerHand = ({
   const play = usePlayGeometry();
   const dyn357 = useCardRowLayout({
     availableWidth: is357Game && play.measured ? play.width * SEAT_SHARE_357 : 0,
+    availableHeight:
+      is357Game && typeof availableHeightPx === 'number' && availableHeightPx > 0
+        ? availableHeightPx
+        : undefined,
     count: displayCardCount,
     aspect: 0.71,
     minCardWidth: 28,
@@ -379,6 +396,7 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={!isUnused && isWild}
+              faceFillPx={dynActive && !isUnused ? dyn357!.cardWidth : undefined}
               className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
               style={composeStyle({
                 transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
@@ -408,6 +426,7 @@ export const PlayerHand = ({
             isKicker={isKicker}
             isDimmed={isDimmed}
             isWild={isWild}
+            faceFillPx={dynActive ? dyn357!.cardWidth : undefined}
             className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
             style={composeStyle({
               transform: `rotate(${displayIndex * 2 - (sortedCardsWithIndices.length - 1)}deg)`,
