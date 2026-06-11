@@ -167,13 +167,43 @@ export const PlayerHand = ({
   const overlapClass = getOverlapClass();
 
   // ─── Wave 2A: 3-5-7 dynamic card row layout ───────────────────────────────
-  // Pure resolver — when geometry is not yet measured, returns null and we
-  // fall back to the existing className ladder (zero visual change before
-  // geometry is ready). Only active on the 3-5-7 paths; other games are
-  // byte-identical to pre-Wave-2A.
-  const play = usePlayGeometry();
+  // The active-player hand is a pane artifact, not a seat artifact. The
+  // resolver budget is therefore sourced from the actual layout width of
+  // the hand row's parent container (measured via ResizeObserver on the
+  // row's ref) — NOT a per-seat share of the canonical felt. `clientWidth`
+  // returns the unscaled CSS layout width even when a `transform: scale`
+  // wrapper is applied by the caller, so the resolver sizes in the same
+  // coordinate space the inline `style.width/height` render in. The CSS
+  // scale then uniformly inflates the rendered DOM and stays in proportion
+  // with the resolver output (rendered ≈ resolver × wrapperScale).
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
+  useLayoutEffect(() => {
+    if (!is357Game) return;
+    const el = measureRef.current;
+    const parent = el?.parentElement;
+    if (!parent) return;
+    const update = () => {
+      const w = parent.clientWidth;
+      if (Number.isFinite(w) && w > 0) {
+        setMeasuredParentWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+      }
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, [is357Game, currentRound, displayCardCount, isHidden]);
+
+  const effectiveAvailableWidth =
+    is357Game
+      ? (typeof availableWidthPx === 'number' && availableWidthPx > 0
+          ? availableWidthPx
+          : measuredParentWidth)
+      : 0;
+
   const dyn357 = useCardRowLayout({
-    availableWidth: is357Game && play.measured ? play.width * SEAT_SHARE_357 : 0,
+    availableWidth: effectiveAvailableWidth,
     availableHeight:
       is357Game && typeof availableHeightPx === 'number' && availableHeightPx > 0
         ? availableHeightPx
@@ -181,7 +211,9 @@ export const PlayerHand = ({
     count: displayCardCount,
     aspect: 0.71,
     minCardWidth: 28,
-    maxCardWidth: 56,
+    // Pre-transform ceiling. With wrapper scales of ~1.6–2.8× in
+    // MobileGameTable, this caps the rendered card width at ~160–220 px.
+    maxCardWidth: 80,
     maxOverlapRatio: 0.6,
   });
   const dyn357Style: CSSProperties | null =
@@ -195,9 +227,6 @@ export const PlayerHand = ({
     is357Game && dyn357
       ? { marginLeft: `-${dyn357.overlapPx}px` }
       : null;
-  // When dynamic layout is active, drop the static Tailwind w/h + -ml ladder
-  // so inline styles win cleanly. Non-357 paths keep `overlapClass` /
-  // `round1NarrowTallClass` untouched.
   const dynActive = !!dyn357Style;
   const effectiveOverlapClass = dynActive ? 'first:ml-0' : overlapClass;
   const effectiveRound1Class = dynActive ? '' : round1NarrowTallClass;
@@ -211,36 +240,39 @@ export const PlayerHand = ({
   };
 
   // ─── Wave 2A measurement probe ────────────────────────────────────────────
-  // Diagnostic only — persists resolver output vs. actual rendered DOM size
-  // for 3-5-7 hands to debug_events so values are readable without DevTools.
-  // Throttled to one row per unique (round, count, availableWidth-rounded)
-  // signature per mount to avoid spam.
-  const measureRef = useRef<HTMLDivElement | null>(null);
+  // Persists resolver output vs. actual rendered DOM size to debug_events.
+  // Throttled per (round, count, parentWidth-rounded) signature per mount.
   const measureSentRef = useRef<Set<string>>(new Set());
   useLayoutEffect(() => {
     if (!is357Game || isHidden) return;
-    if (!play.measured) return;
     const el = measureRef.current;
     if (!el) return;
+    const parent = el.parentElement;
+    if (!parent) return;
     const firstCard = el.querySelector<HTMLElement>(':scope > *');
     if (!firstCard) return;
     const rowRect = el.getBoundingClientRect();
     const cardRect = firstCard.getBoundingClientRect();
-    const availableWidth = play.width * SEAT_SHARE_357;
+    const parentClientWidth = parent.clientWidth;
+    const parentRectWidth = parent.getBoundingClientRect().width;
+    const wrapperScale =
+      parentClientWidth > 0 ? parentRectWidth / parentClientWidth : null;
     const overlapRatio =
       dyn357 && dyn357.cardWidth > 0
         ? dyn357.overlapPx / dyn357.cardWidth
         : null;
-    const sig = `${currentRound}|${displayCardCount}|${Math.round(availableWidth)}`;
+    const sig = `${currentRound}|${displayCardCount}|${Math.round(parentClientWidth)}`;
     if (measureSentRef.current.has(sig)) return;
     measureSentRef.current.add(sig);
     const payload = {
       probe: '357-measure',
       round: currentRound,
       count: displayCardCount,
-      availableWidth,
-      playWidth: play.width,
-      playMeasured: play.measured,
+      availableWidth: effectiveAvailableWidth,
+      parentClientWidth,
+      parentRectWidth,
+      wrapperScale,
+      availableHeightPx: availableHeightPx ?? null,
       resolver: dyn357
         ? {
             cardWidth: dyn357.cardWidth,
@@ -257,12 +289,12 @@ export const PlayerHand = ({
       },
       ts: new Date().toISOString(),
     };
-    // Fire-and-forget; do not block render.
     void supabase
       .from('debug_events')
       .insert({ event_type: '357-geometry-probe', payload })
       .then(() => {});
   });
+
 
 
   // Render card backs for hidden cards
