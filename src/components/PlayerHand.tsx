@@ -171,6 +171,10 @@ export const PlayerHand = ({
   const play = usePlayGeometry();
   const dyn357 = useCardRowLayout({
     availableWidth: is357Game && play.measured ? play.width * SEAT_SHARE_357 : 0,
+    availableHeight:
+      is357Game && typeof availableHeightPx === 'number' && availableHeightPx > 0
+        ? availableHeightPx
+        : undefined,
     count: displayCardCount,
     aspect: 0.71,
     minCardWidth: 28,
