@@ -23,7 +23,19 @@ interface PlayerHandProps {
   unusedCardsBelow?: boolean;     // For 3-5-7 showdown: render unused cards in separate row
   isRightSide?: boolean;          // For positioning unused cards on outer edge (right side of table)
   isBottomPosition?: boolean;     // For bottom positions, unused cards go above instead of below
+  /**
+   * Wave 2A contract param (3-5-7 only). Vertical budget for the hand
+   * row in CSS pixels — already net of the contract-owned action-strip
+   * reservation (ACTION_STRIP_RESERVE_PX). When provided, the resolver
+   * additionally clamps cardHeight so cards never intrude into the
+   * action strip region (Drop / Stay / STAYED badge). Pass the
+   * *unscaled* reserve so callers that apply a CSS `transform: scale`
+   * wrapper must divide their reserve box by the wrapper scale before
+   * passing it in.
+   */
+  availableHeightPx?: number;
 }
+
 
 // Get wild rank based on round (3-5-7 game only)
 const getWildRank = (round: number): string | null => {
