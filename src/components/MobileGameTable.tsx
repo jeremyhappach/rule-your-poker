@@ -7086,7 +7086,7 @@ export const MobileGameTable = ({
                     pendingAutoRollOff={pendingAutoRollOff}
                   />
                 ) : (
-                  <div className="px-2 flex flex-col h-full">
+                  <div className="px-2 flex flex-col h-full" data-357-active-pane-content="">
                   {(() => {
                     const isWinner357InAnimation = gameType !== 'holm-game' &&
                       threeFiveSevenWinnerId === currentPlayer?.id &&
@@ -7206,7 +7206,7 @@ export const MobileGameTable = ({
                           (() => {
                             if (currentRound === 3) return null;
                             return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
                                 <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
                                   <PlayerHand
                                     cards={currentPlayerCards}
@@ -7225,7 +7225,7 @@ export const MobileGameTable = ({
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>
                         ) : currentPlayerCards.length > 0 ? (
-                          <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")}>
+                          <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")} data-357-active-hand-region="">
                             <div
                               className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                             >
@@ -7244,7 +7244,7 @@ export const MobileGameTable = ({
                             </div>
                           </div>
                         ) : (
-                          <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)}>
+                          <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
                             <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
                               <PlayerHand
                                 cards={[]}
