@@ -121,6 +121,7 @@ export const PlayingCard = ({
   isKicker = false,
   isDimmed = false,
   isWild = false,
+  faceFillPx,
 }: PlayingCardProps) => {
   const { getCardBackColors, getCardBackId, getEffectiveDeckColorMode } = useVisualPreferences();
   const { isTablet } = useDeviceSize();
