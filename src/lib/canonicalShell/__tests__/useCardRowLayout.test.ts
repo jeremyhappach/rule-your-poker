@@ -88,4 +88,25 @@ describe('resolveCardRowLayout', () => {
     });
     expect(r!.overlapPx).toBe(0);
   });
+
+  it('availableHeight clamps cardHeight so the resolver never spends reserved vertical space', () => {
+    // Plenty of width, but height budget caps cardHeight at 60px (aspect 0.71 ⇒ width ≤ 42.6).
+    const r = resolveCardRowLayout({
+      availableWidth: 1000,
+      availableHeight: 60,
+      count: 3,
+      aspect: 0.71,
+      maxCardWidth: 80,
+    });
+    expect(r!.cardHeight).toBeLessThanOrEqual(60 + 1e-6);
+    expect(r!.cardWidth).toBeLessThanOrEqual(60 * 0.71 + 1e-6);
+  });
+
+  it('availableHeight is ignored when zero / undefined / non-finite', () => {
+    const base = resolveCardRowLayout({ availableWidth: 1000, count: 3, maxCardWidth: 80 })!;
+    const zero = resolveCardRowLayout({ availableWidth: 1000, availableHeight: 0, count: 3, maxCardWidth: 80 })!;
+    const nan = resolveCardRowLayout({ availableWidth: 1000, availableHeight: NaN, count: 3, maxCardWidth: 80 })!;
+    expect(zero.cardWidth).toBe(base.cardWidth);
+    expect(nan.cardWidth).toBe(base.cardWidth);
+  });
 });
