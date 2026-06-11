@@ -7215,6 +7215,8 @@ export const MobileGameTable = ({
                                     currentRound={currentRound}
                                     showSeparated={currentRound === 3}
                                     availableHeightPx={handAvailableHeightPx357}
+                                    wrapperScale={handScaleNum}
+
                                   />
                                 </div>
                               </div>
