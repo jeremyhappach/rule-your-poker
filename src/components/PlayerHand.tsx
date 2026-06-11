@@ -3,6 +3,7 @@ import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils"
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
+import { supabase } from "@/integrations/supabase/client";
 
 // Wave 2A: rough per-seat horizontal allocation around the canonical felt.
 // Used only to compute an availableWidth budget for 3-5-7 hand rows.
@@ -190,26 +191,34 @@ export const PlayerHand = ({
   };
 
   // ─── Wave 2A measurement probe ────────────────────────────────────────────
-  // Diagnostic only — logs resolver output vs. actual rendered DOM size for
-  // 3-5-7 hands so we can verify the resolver is driving the final render.
+  // Diagnostic only — persists resolver output vs. actual rendered DOM size
+  // for 3-5-7 hands to debug_events so values are readable without DevTools.
+  // Throttled to one row per unique (round, count, availableWidth-rounded)
+  // signature per mount to avoid spam.
   const measureRef = useRef<HTMLDivElement | null>(null);
+  const measureSentRef = useRef<Set<string>>(new Set());
   useLayoutEffect(() => {
     if (!is357Game || isHidden) return;
+    if (!play.measured) return;
     const el = measureRef.current;
     if (!el) return;
     const firstCard = el.querySelector<HTMLElement>(':scope > *');
+    if (!firstCard) return;
     const rowRect = el.getBoundingClientRect();
-    const cardRect = firstCard?.getBoundingClientRect();
+    const cardRect = firstCard.getBoundingClientRect();
+    const availableWidth = play.width * SEAT_SHARE_357;
     const overlapRatio =
       dyn357 && dyn357.cardWidth > 0
         ? dyn357.overlapPx / dyn357.cardWidth
         : null;
-    // eslint-disable-next-line no-console
-    console.log('[357-measure]', {
+    const sig = `${currentRound}|${displayCardCount}|${Math.round(availableWidth)}`;
+    if (measureSentRef.current.has(sig)) return;
+    measureSentRef.current.add(sig);
+    const payload = {
+      probe: '357-measure',
       round: currentRound,
       count: displayCardCount,
-      availableWidth:
-        is357Game && play.measured ? play.width * SEAT_SHARE_357 : null,
+      availableWidth,
       playWidth: play.width,
       playMeasured: play.measured,
       resolver: dyn357
@@ -221,15 +230,20 @@ export const PlayerHand = ({
             totalWidth: dyn357.totalWidth,
           }
         : null,
-      rendered: cardRect
-        ? {
-            cardWidth: cardRect.width,
-            cardHeight: cardRect.height,
-            rowWidth: rowRect.width,
-          }
-        : null,
-    });
+      rendered: {
+        cardWidth: cardRect.width,
+        cardHeight: cardRect.height,
+        rowWidth: rowRect.width,
+      },
+      ts: new Date().toISOString(),
+    };
+    // Fire-and-forget; do not block render.
+    void supabase
+      .from('debug_events')
+      .insert({ event_type: '357-geometry-probe', payload })
+      .then(() => {});
   });
+
 
   // Render card backs for hidden cards
   if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
