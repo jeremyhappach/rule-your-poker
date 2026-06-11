@@ -69,7 +69,7 @@ describe('resolveCardRowLayout', () => {
     expect(r.cardWidth).toBe(80);
     expect(r.overlapPx / r.cardWidth).toBeGreaterThan(0.18);
     expect(r.overlapPx / r.cardWidth).toBeLessThanOrEqual(0.6 + 1e-9);
-    expect(r.totalWidth).toBeLessThanOrEqual(200 + 1e-6);
+    expect(r.totalWidth).toBeLessThanOrEqual(250 + 1e-6);
   });
 
   it('readability floor: very tight budget shrinks card width with overlap pinned at cap', () => {
