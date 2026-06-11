@@ -70,8 +70,20 @@ export interface CardRowLayoutInput {
   /**
    * Maximum fraction of a card's width that may be hidden by the
    * following card. Default 0.6 — keeps the rank/suit corner visible.
+   * Only reached when the budget is genuinely too tight for the
+   * preferred fan.
    */
   maxOverlapRatio?: number;
+  /**
+   * Target overlap fraction for "thoughtful fan" presentation.
+   * Overlap is treated as a readability tool (groups the hand into a
+   * single visual frame, preserves generous rank/suit visibility) — not
+   * merely a fit mechanism. The resolver sizes cards as if this overlap
+   * is always present, so it is naturally consumed even when there is
+   * leftover horizontal budget. Default 0.18 (≈ rank/suit corner stays
+   * fully visible on the trailing edge of every covered card).
+   */
+  preferredOverlapRatio?: number;
 }
 
 
