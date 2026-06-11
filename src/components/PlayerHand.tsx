@@ -3,6 +3,7 @@ import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils"
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { usePlayGeometry } from "@/lib/canonicalShell/usePlayGeometry";
+import { supabase } from "@/integrations/supabase/client";
 
 // Wave 2A: rough per-seat horizontal allocation around the canonical felt.
 // Used only to compute an availableWidth budget for 3-5-7 hand rows.
