@@ -7114,8 +7114,22 @@ export const MobileGameTable = ({
                             : currentRound === 2
                               ? (isTablet || isDesktop ? 180 : 105)
                               : (isTablet || isDesktop ? 160 : 90));
-                    const currentPlayerHandScaleClass = `scale-[${handScaleNum}]`;
-                    const currentPlayerHandReserveClass = `min-h-[${handReserveNum}px]`;
+                    const currentPlayerHandScaleClass =
+                      gameType !== "holm-game"
+                        ? (currentRound === 1
+                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]")
+                            : currentRound === 2
+                              ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]")
+                              : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]"))
+                        : (isTablet || isDesktop ? "scale-[2.4]" : "scale-[2.3]");
+                    const currentPlayerHandReserveClass =
+                      gameType === "holm-game"
+                        ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]")
+                        : (currentRound === 1
+                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]")
+                            : currentRound === 2
+                              ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
+                              : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
                     // Unscaled vertical budget for the resolver. Reserve box
                     // height divided by the wrapper scale, minus ~4px slack
                     // for the ±2° rotation each card applies.
