@@ -31,9 +31,34 @@
  */
 import { useMemo } from 'react';
 
+/**
+ * Contract-owned vertical reservation for the 3-5-7 action strip
+ * (Drop / Stay buttons or the STAYED / FOLDED badge). Consumers that
+ * lay out a hand-area sibling above the action strip should size the
+ * strip with this token (or its tablet equivalent) so the resolver and
+ * the action-strip layout share a single source of truth — no
+ * game-specific magic margins. Values include button height + the
+ * ~8px breathing room used by the current strip container.
+ */
+export const ACTION_STRIP_RESERVE_PX = {
+  /** Phone / compact: 36px button + ~8px gap. */
+  compact: 44,
+  /** Tablet / comfortable: 56px button + ~12px gap. */
+  comfortable: 68,
+} as const;
+
 export interface CardRowLayoutInput {
   /** Horizontal budget for the row in CSS pixels. */
   availableWidth: number;
+  /**
+   * Optional vertical budget for the row in CSS pixels. When provided,
+   * cardWidth is additionally clamped so cardHeight (= cardWidth /
+   * aspect) never exceeds this value. Consumers should pass the
+   * geometry of the hand-area sibling *after* the contract-owned
+   * action-strip reservation has been subtracted, so the resolver
+   * never spends space that belongs to the action strip.
+   */
+  availableHeight?: number;
   /** Number of cards in the row. */
   count: number;
   /** Card aspect ratio (width / height). Standard playing card ≈ 0.71. */
@@ -48,6 +73,7 @@ export interface CardRowLayoutInput {
    */
   maxOverlapRatio?: number;
 }
+
 
 export interface CardRowLayout {
   /** Resolved card width in px. */
