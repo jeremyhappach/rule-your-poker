@@ -110,3 +110,33 @@ a `hideChipBubble` cluster.
 
 **Status:** tracked separately from Wave 2A geometry. No code change
 in this pass.
+
+## Wave 2A budget-source correction (post-probe)
+
+The original wiring sourced `availableWidth = playWidth × 0.24` ("per-seat
+share" of the canonical felt). The persistent geometry probe proved this
+was wrong: on a 393 px viewport it gave the active-player hand only ~89 px
+of horizontal budget, forcing 3-card hands to be tiny and 5-card hands
+into the readability-floor fallback (cardWidth pinned to 28, overlap ~46%).
+The CSS `transform: scale-[1.6]…2.8` wrapper applied by MobileGameTable
+then visually inflated everything ~1.6–2.8× — masking the real constraint
+and decoupling the rendered DOM size from the resolver output.
+
+**Fix:** the active-player hand is a *pane* artifact, not a seat artifact.
+`PlayerHand` (3-5-7 path) now measures its own parent container's
+`clientWidth` via ResizeObserver and uses that as the resolver budget.
+`clientWidth` returns the unscaled CSS layout width even when the parent
+has a `transform: scale` applied, so the resolver sizes in the same
+pre-transform coordinate space the inline `style.width/height` render in.
+The wrapper scale uniformly inflates the rendered DOM and stays in
+proportion with the resolver output: `rendered ≈ resolver × wrapperScale`.
+
+`SEAT_SHARE_357` and the `usePlayGeometry` import were removed from
+`PlayerHand`. Callers may pass an explicit `availableWidthPx` to override
+the measurement, but the default measured path is what 3-5-7 uses today.
+`maxCardWidth` was raised to 80 px to give wrapper scales of ~2.8× room
+to render legible cards without artificial clamping.
+
+Probe payload now records `parentClientWidth`, `parentRectWidth`,
+and the derived `wrapperScale`, so resolver vs. rendered correctness can
+be verified end-to-end against `debug_events`.
