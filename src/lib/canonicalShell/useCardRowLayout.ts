@@ -134,43 +134,45 @@ export function resolveCardRowLayout(input: CardRowLayoutInput): CardRowLayout |
     };
   }
 
-  // Readability-first, "thoughtful fan" sizing:
+  // Readability-first sizing — availableWidth is an UPPER BOUND, not a
+  // target footprint. Algorithm:
   //
-  //   The objective is to maximize artifact size within the pane while
-  //   maintaining canonical aspect ratio. Artifact size is bounded by
-  //   the *first* boundary encountered — vertical or horizontal — not
-  //   horizontal alone. Overlap is treated as an intentional readability
-  //   tool (groups the hand into one visual frame, preserves rank/suit
-  //   visibility), not merely a fit mechanism.
-  //
-  //   Algorithm:
-  //     1. Compute the preferred-fan horizontal capacity:
-  //          rowSpan(w) = w · (1 + (n-1)·(1 - preferredOverlap))
-  //        Solving rowSpan = availableWidth gives the width ceiling
-  //        from the horizontal budget at the *preferred* fan density.
-  //     2. The vertical ceiling is already baked into maxCardWidth.
-  //     3. cardWidth = min(maxCardWidth, widthFromHorizontalBudget) —
-  //        whichever boundary is hit first wins.
-  //     4. While that width stays ≥ minCardWidth, keep overlap exactly
-  //        at preferredOverlap. A height-bound hand therefore leaves
-  //        horizontal slack instead of inflating cards by hiding more
-  //        of them; the fan stays generous and scannable.
-  //     5. Only if the preferred-fan width drops below the readability
-  //        floor do we clamp width to minCardWidth and grow overlap
-  //        (capped at maxOverlapRatio) — the degenerate small-pane
-  //        fallback.
-  //
-  //   The 3-card ≥ 5-card ≥ 7-card relationship emerges naturally:
-  //   growing count increases the fan-density divisor, which
-  //   monotonically shrinks the horizontal-budget width ceiling. It is
-  //   never targeted as a sizing rule.
-  const fanDensity = 1 + (count - 1) * (1 - preferredOverlapRatio);
-  const widthFromHorizontalBudget = availableWidth / fanDensity;
-  const idealWidth = Math.min(maxCardWidth, widthFromHorizontalBudget);
+  //   1. Pick card width from the ceilings (max card width, height-bound
+  //      max width). The pane budget does not pull cards *down*; it only
+  //      caps overflow.
+  //   2. Compute the natural row footprint at the preferred overlap.
+  //      If that footprint fits inside availableWidth, we're done — the
+  //      hand sits as a tasteful fan with horizontal slack, and 3-card
+  //      hands stay just as large as 5- or 7-card hands at the same
+  //      ceiling. The 3 ≥ 5 ≥ 7 width relationship is *not* targeted.
+  //   3. If the natural row overflows, increase overlap (still at the
+  //      same card width) up to maxOverlapRatio to make it fit.
+  //   4. If even maxOverlapRatio cannot contain the row, shrink the
+  //      card width to fit at maxOverlapRatio, clamped at minCardWidth
+  //      (the readability floor).
+  const cardWidthCeiling = maxCardWidth; // already height- and max-bounded
+  const naturalDensity = 1 + (count - 1) * (1 - preferredOverlapRatio);
+  const naturalTotalAtCeiling = cardWidthCeiling * naturalDensity;
 
-  if (idealWidth >= minCardWidth) {
-    const cardWidth = idealWidth;
+  if (naturalTotalAtCeiling <= availableWidth) {
+    const cardWidth = cardWidthCeiling;
     const overlapPx = cardWidth * preferredOverlapRatio;
+    return {
+      cardWidth,
+      cardHeight: cardWidth / aspect,
+      overlapPx,
+      totalWidth: naturalTotalAtCeiling,
+    };
+  }
+
+  // Step 3: grow overlap at the ceiling card width to make it fit.
+  // Solve cardWidth + (count-1)*(cardWidth - overlap) = availableWidth.
+  const overlapToFit = cardWidthCeiling - (availableWidth - cardWidthCeiling) / (count - 1);
+  const overlapRatioToFit = overlapToFit / cardWidthCeiling;
+
+  if (overlapRatioToFit <= maxOverlapRatio + 1e-9) {
+    const cardWidth = cardWidthCeiling;
+    const overlapPx = Math.max(cardWidth * preferredOverlapRatio, overlapToFit);
     const totalWidth = cardWidth + (count - 1) * (cardWidth - overlapPx);
     return {
       cardWidth,
@@ -180,18 +182,11 @@ export function resolveCardRowLayout(input: CardRowLayoutInput): CardRowLayout |
     };
   }
 
-  // Degenerate small-pane fallback: pin to readability floor, grow
-  // overlap up to the rank/suit-corner cap to make the row fit. Never
-  // dips below preferredOverlapRatio (small panes only ever need more
-  // overlap, not less).
-  const cardWidth = minCardWidth;
-  const rawOverlapRatio =
-    1 - (availableWidth / cardWidth - 1) / (count - 1);
-  const overlapRatio = Math.max(
-    preferredOverlapRatio,
-    Math.min(maxOverlapRatio, rawOverlapRatio),
-  );
-  const overlapPx = cardWidth * overlapRatio;
+  // Step 4: pin overlap at maxOverlapRatio and shrink card width to fit.
+  const cappedDensity = 1 + (count - 1) * (1 - maxOverlapRatio);
+  const widthAtCap = availableWidth / cappedDensity;
+  const cardWidth = Math.max(minCardWidth, widthAtCap);
+  const overlapPx = cardWidth * maxOverlapRatio;
   const totalWidth = cardWidth + (count - 1) * (cardWidth - overlapPx);
 
   return {
@@ -201,6 +196,7 @@ export function resolveCardRowLayout(input: CardRowLayoutInput): CardRowLayout |
     totalWidth,
   };
 }
+
 
 export function useCardRowLayout(input: CardRowLayoutInput): CardRowLayout | null {
   return useMemo(

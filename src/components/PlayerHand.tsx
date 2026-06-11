@@ -27,16 +27,28 @@ interface PlayerHandProps {
   availableHeightPx?: number;
   /**
    * Wave 2A (3-5-7). Optional explicit horizontal budget. When omitted,
-   * the hand measures its own parent container's layout `clientWidth`
-   * via ResizeObserver and uses that as the resolver budget — which is
-   * the correct "active-player hand pane" area, not a seat-allocation
-   * share. `clientWidth` returns unscaled CSS layout pixels even when
-   * a `transform: scale` wrapper is applied, so the resolver sizes in
-   * the same coordinate space inline styles render in (pre-transform).
-   * The visual CSS scale then uniformly inflates the rendered DOM.
+   * the hand walks up to the canonical `[data-357-active-pane-content]`
+   * ancestor and uses its layout `clientWidth` as the resolver budget.
+   * That ancestor is a non-shrink-wrapping pane container, so it does
+   * not collapse around the cards (the immediate parent does, which
+   * caused a feedback loop where the cards' own size drove the budget).
+   * `clientWidth` returns unscaled CSS layout pixels even when a
+   * `transform: scale` wrapper sits between the pane and PlayerHand,
+   * so the resolver sizes in the same coordinate space inline styles
+   * render in (pre-transform). When a wrapper scale is supplied via
+   * `wrapperScale`, the measured pane width is divided by it so the
+   * post-transform footprint still fits the pane.
    */
   availableWidthPx?: number;
+  /**
+   * Wave 2A (3-5-7). CSS `transform: scale` applied by the caller
+   * around PlayerHand. Used only to convert the measured pane width
+   * (in post-transform pixels) into the unscaled budget the resolver
+   * works in. Defaults to 1.
+   */
+  wrapperScale?: number;
 }
+
 
 
 // Get wild rank based on round (3-5-7 game only)
@@ -65,7 +77,9 @@ export const PlayerHand = ({
   isBottomPosition = false,
   availableHeightPx,
   availableWidthPx,
+  wrapperScale = 1,
 }: PlayerHandProps) => {
+
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
     '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
@@ -167,37 +181,58 @@ export const PlayerHand = ({
   const overlapClass = getOverlapClass();
 
   // ─── Wave 2A: 3-5-7 dynamic card row layout ───────────────────────────────
-  // The active-player hand is a pane artifact, not a seat artifact.
-  // CURRENTLY this still measures the immediate parent transform wrapper;
-  // persistent probe data has proven that parent can be shrink-wrapped by
-  // the cards themselves. Do not tune resolver math from this value. The
-  // probe below also records the canonical HUD pane / hand-region ancestors
-  // so the valid budget source can be attributed before rewiring.
+  // The active-player hand is a pane artifact, not a seat artifact. The
+  // immediate parent is a shrink-wrapping transform/flex wrapper whose
+  // width is *driven by the cards*, which created a feedback loop:
+  //   ResizeObserver → smaller width → smaller cards → smaller wrapper.
+  // We instead climb to the canonical `[data-357-active-pane-content]`
+  // ancestor — a non-shrink-wrapping pane container — and divide its
+  // post-transform width by the caller-supplied `wrapperScale` so the
+  // resolver works in the same unscaled pixel space inline styles use.
   const measureRef = useRef<HTMLDivElement | null>(null);
+  const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
   const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
   useLayoutEffect(() => {
     if (!is357Game) return;
     const el = measureRef.current;
-    const parent = el?.parentElement;
-    if (!parent) return;
+    if (!el) return;
+    const pane = el.closest<HTMLElement>('[data-357-active-pane-content]');
+    const parent = el.parentElement;
     const update = () => {
-      const w = parent.clientWidth;
-      if (Number.isFinite(w) && w > 0) {
-        setMeasuredParentWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+      if (pane) {
+        const w = pane.clientWidth;
+        if (Number.isFinite(w) && w > 0) {
+          setMeasuredPaneWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+        }
+      } else if (parent) {
+        // Fallback for non-active-pane sites (seated players, etc.) —
+        // those use static wrappers that don't shrink-wrap pathologically.
+        const w = parent.clientWidth;
+        if (Number.isFinite(w) && w > 0) {
+          setMeasuredParentWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+        }
       }
     };
     update();
     const ro = new ResizeObserver(update);
-    ro.observe(parent);
+    if (pane) ro.observe(pane);
+    else if (parent) ro.observe(parent);
     return () => ro.disconnect();
   }, [is357Game, currentRound, displayCardCount, isHidden]);
 
+  const safeWrapperScale = Number.isFinite(wrapperScale) && wrapperScale > 0 ? wrapperScale : 1;
   const effectiveAvailableWidth =
     is357Game
       ? (typeof availableWidthPx === 'number' && availableWidthPx > 0
           ? availableWidthPx
-          : measuredParentWidth)
+          : measuredPaneWidth > 0
+            ? measuredPaneWidth / safeWrapperScale
+            : measuredParentWidth)
       : 0;
+
+
+
+
 
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
