@@ -89,12 +89,24 @@ export interface CardRowLayout {
 export function resolveCardRowLayout(input: CardRowLayoutInput): CardRowLayout | null {
   const {
     availableWidth,
+    availableHeight,
     count,
     aspect = 0.71,
     minCardWidth = 28,
-    maxCardWidth = 80,
+    maxCardWidth: maxCardWidthIn = 80,
     maxOverlapRatio = 0.6,
   } = input;
+
+  // Vertical clamp: when an available height is supplied, the largest
+  // legible card cannot be taller than that — so derive a height-bound
+  // max width and fold it into the existing maxCardWidth ceiling. This
+  // keeps the resolver out of any region the consumer has explicitly
+  // reserved (e.g. the contract-owned action-strip exclusion zone).
+  const maxCardWidth =
+    Number.isFinite(availableHeight) && (availableHeight as number) > 0
+      ? Math.min(maxCardWidthIn, (availableHeight as number) * aspect)
+      : maxCardWidthIn;
+
 
   if (!Number.isFinite(availableWidth) || availableWidth <= 0) return null;
   if (!Number.isFinite(count) || count <= 0) return null;
