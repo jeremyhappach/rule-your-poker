@@ -396,6 +396,7 @@ export const PlayerHand = ({
               isKicker={isKicker}
               isDimmed={isDimmed}
               isWild={!isUnused && isWild}
+              faceFillPx={dynActive && !isUnused ? dyn357!.cardWidth : undefined}
               className={`${effectiveOverlapClass} ${effectiveRound1Class}`}
               style={composeStyle({
                 transform: `rotate(${displayIndex * 2 - (allCardsOrdered.length - 1)}deg)`,
