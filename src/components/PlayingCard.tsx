@@ -46,7 +46,17 @@ interface PlayingCardProps {
   isKicker?: boolean;       // Card is a kicker
   isDimmed?: boolean;       // Card is not part of winning hand (dim it)
   isWild?: boolean;         // Card is a wild card (3-5-7 games)
+  /**
+   * When provided, the face renders in "fill" mode: legacy stacked
+   * layout (rank top, suit bottom, justify-between, ~zero padding) with
+   * inline font-size derived from this width so the rank/suit fill the
+   * available card area. Used by dynamic-geometry consumers (e.g. the
+   * Wave 2A 3-5-7 hand row) so the resolver-computed cardWidth drives
+   * face typography too — no Tailwind text-step quantization.
+   */
+  faceFillPx?: number;
 }
+
 
 // Card sizing: proper playing card aspect ratio (~2.5:3.5 or ~0.71)
 // Taller/narrower cards with larger face content
