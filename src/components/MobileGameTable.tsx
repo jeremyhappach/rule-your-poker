@@ -7092,23 +7092,37 @@ export const MobileGameTable = ({
                       threeFiveSevenWinnerId === currentPlayer?.id &&
                       threeFiveSevenWinPhase !== 'idle';
 
-                    const currentPlayerHandScaleClass =
-                      gameType !== "holm-game"
+                    // Numeric scale + reserve for the visible-player hand box.
+                    // Keeping these as numbers lets us (a) derive the Tailwind
+                    // class strings and (b) pass the Wave 2A
+                    // `availableHeightPx` budget to PlayerHand — the resolver
+                    // then clamps cardHeight so cards never overflow the
+                    // reserve box into the action-strip sibling below.
+                    const handScaleNum =
+                      gameType !== 'holm-game'
                         ? (currentRound === 1
-                            ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[1.6]")
+                            ? (isTablet || isDesktop ? 2.8 : 1.6)
                             : currentRound === 2
-                              ? (isTablet || isDesktop ? "scale-[2.8]" : "scale-[2.2]")
-                              : (isTablet || isDesktop ? "scale-[2.6]" : "scale-[2.1]"))
-                        : (isTablet || isDesktop ? "scale-[2.4]" : "scale-[2.3]");
-
-                    const currentPlayerHandReserveClass =
-                      gameType === "holm-game"
-                        ? (isTablet || isDesktop ? "min-h-[170px]" : "min-h-[130px]")
+                              ? (isTablet || isDesktop ? 2.8 : 2.2)
+                              : (isTablet || isDesktop ? 2.6 : 2.1))
+                        : (isTablet || isDesktop ? 2.4 : 2.3);
+                    const handReserveNum =
+                      gameType === 'holm-game'
+                        ? (isTablet || isDesktop ? 170 : 130)
                         : (currentRound === 1
-                            ? (isTablet || isDesktop ? "min-h-[200px]" : "min-h-[120px]")
+                            ? (isTablet || isDesktop ? 200 : 120)
                             : currentRound === 2
-                              ? (isTablet || isDesktop ? "min-h-[180px]" : "min-h-[105px]")
-                              : (isTablet || isDesktop ? "min-h-[160px]" : "min-h-[90px]"));
+                              ? (isTablet || isDesktop ? 180 : 105)
+                              : (isTablet || isDesktop ? 160 : 90));
+                    const currentPlayerHandScaleClass = `scale-[${handScaleNum}]`;
+                    const currentPlayerHandReserveClass = `min-h-[${handReserveNum}px]`;
+                    // Unscaled vertical budget for the resolver. Reserve box
+                    // height divided by the wrapper scale, minus ~4px slack
+                    // for the ±2° rotation each card applies.
+                    const handAvailableHeightPx357 =
+                      gameType !== 'holm-game'
+                        ? Math.max(20, handReserveNum / handScaleNum - 4)
+                        : undefined;
 
                     const currentPlayerDealerCards = currentPlayer && dealerSelectionCards
                       ? dealerSelectionCards.filter(c => c.position === currentPlayer.position)
