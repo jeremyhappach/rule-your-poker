@@ -7268,9 +7268,18 @@ export const MobileGameTable = ({
                   })()}
 
                   <div className={cn(
+                    // Stable allocation: this strip swaps between buttons,
+                    // badges, auto-fold label, and pre-decision checkboxes
+                    // across the hand lifecycle. The geometry contract
+                    // requires the gameplay artifact above (the hand) not
+                    // to shift when this sibling's content changes. We
+                    // reserve the height of the *tallest* variant
+                    // (auto-fold label ≈ 52px mobile, ≈ 64px tablet) so
+                    // every transition centers content inside a fixed box.
                     "flex items-center justify-center",
-                    isTablet ? "min-h-[56px] mt-0 mb-1" : "min-h-[36px] mt-0 mb-1"
+                    isTablet ? "h-[64px] mt-0 mb-1" : "h-[52px] mt-0 mb-1"
                   )}>
+
                     {currentPlayer.auto_fold && !currentPlayer.sitting_out ? (
                       <label className={cn(
                         "flex items-center gap-3 cursor-pointer rounded-lg border border-border bg-transparent",

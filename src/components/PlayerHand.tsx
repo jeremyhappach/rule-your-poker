@@ -221,7 +221,20 @@ export const PlayerHand = ({
   }, [is357Game, currentRound, displayCardCount, isHidden]);
 
   const safeWrapperScale = Number.isFinite(wrapperScale) && wrapperScale > 0 ? wrapperScale : 1;
-  const effectiveAvailableWidth =
+  // Wild-card glow + border footprint (unscaled CSS px). The wild-card
+  // styling applies `border: 3px` + `box-shadow: 0 0 8px 2px ...`, so the
+  // rendered artifact extends ~10px beyond the card bounds on each side
+  // (regardless of wrapper scale — these values are defined in pre-
+  // transform CSS pixels). The geometry contract must budget for the
+  // maximum rendered artifact, not just the base card bounds. We reserve
+  // this on every axis whenever a wild rank is in play so highlighted
+  // cards never collide with the action strip or pane edges.
+  const WILD_ARTIFACT_PAD_PX = 12;
+  const reservesWildArtifact = is357Game && wildRank !== null;
+  const widthArtifactReserve = reservesWildArtifact ? WILD_ARTIFACT_PAD_PX * 2 : 0;
+  const heightArtifactReserve = reservesWildArtifact ? WILD_ARTIFACT_PAD_PX * 2 : 0;
+
+  const rawEffectiveWidth =
     is357Game
       ? (typeof availableWidthPx === 'number' && availableWidthPx > 0
           ? availableWidthPx
@@ -229,17 +242,19 @@ export const PlayerHand = ({
             ? measuredPaneWidth / safeWrapperScale
             : measuredParentWidth)
       : 0;
-
-
-
-
+  const effectiveAvailableWidth = Math.max(0, rawEffectiveWidth - widthArtifactReserve);
+  const rawEffectiveHeight =
+    is357Game && typeof availableHeightPx === 'number' && availableHeightPx > 0
+      ? availableHeightPx
+      : undefined;
+  const effectiveAvailableHeight =
+    typeof rawEffectiveHeight === 'number'
+      ? Math.max(20, rawEffectiveHeight - heightArtifactReserve)
+      : undefined;
 
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
-    availableHeight:
-      is357Game && typeof availableHeightPx === 'number' && availableHeightPx > 0
-        ? availableHeightPx
-        : undefined,
+    availableHeight: effectiveAvailableHeight,
     count: displayCardCount,
     aspect: 0.71,
     minCardWidth: 28,
