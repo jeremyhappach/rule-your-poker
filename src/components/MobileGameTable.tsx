@@ -7250,6 +7250,9 @@ export const MobileGameTable = ({
                                 cards={[]}
                                 isHidden={true}
                                 expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
+                                gameType={gameType}
+                                currentRound={currentRound}
+                                availableHeightPx={handAvailableHeightPx357}
                               />
                             </div>
                           </div>
