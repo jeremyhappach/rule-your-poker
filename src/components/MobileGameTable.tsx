@@ -7242,6 +7242,8 @@ export const MobileGameTable = ({
                                 showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
                                 tightOverlap={isHolmMultiPlayerShowdown}
                                 availableHeightPx={handAvailableHeightPx357}
+                                wrapperScale={handScaleNum}
+
                               />
                             </div>
                           </div>
