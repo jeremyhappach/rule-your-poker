@@ -181,37 +181,43 @@ export const PlayerHand = ({
   const overlapClass = getOverlapClass();
 
   // ─── Wave 2A: 3-5-7 dynamic card row layout ───────────────────────────────
-  // The active-player hand is a pane artifact, not a seat artifact.
-  // CURRENTLY this still measures the immediate parent transform wrapper;
-  // persistent probe data has proven that parent can be shrink-wrapped by
-  // the cards themselves. Do not tune resolver math from this value. The
-  // probe below also records the canonical HUD pane / hand-region ancestors
-  // so the valid budget source can be attributed before rewiring.
+  // The active-player hand is a pane artifact, not a seat artifact. The
+  // immediate parent is a shrink-wrapping transform/flex wrapper whose
+  // width is *driven by the cards*, which created a feedback loop:
+  //   ResizeObserver → smaller width → smaller cards → smaller wrapper.
+  // We instead climb to the canonical `[data-357-active-pane-content]`
+  // ancestor — a non-shrink-wrapping pane container — and divide its
+  // post-transform width by the caller-supplied `wrapperScale` so the
+  // resolver works in the same unscaled pixel space inline styles use.
   const measureRef = useRef<HTMLDivElement | null>(null);
-  const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
+  const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
   useLayoutEffect(() => {
     if (!is357Game) return;
     const el = measureRef.current;
-    const parent = el?.parentElement;
-    if (!parent) return;
+    if (!el) return;
+    const pane = el.closest<HTMLElement>('[data-357-active-pane-content]');
+    if (!pane) return;
     const update = () => {
-      const w = parent.clientWidth;
+      const w = pane.clientWidth;
       if (Number.isFinite(w) && w > 0) {
-        setMeasuredParentWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
+        setMeasuredPaneWidth((prev) => (Math.abs(prev - w) > 0.5 ? w : prev));
       }
     };
     update();
     const ro = new ResizeObserver(update);
-    ro.observe(parent);
+    ro.observe(pane);
     return () => ro.disconnect();
   }, [is357Game, currentRound, displayCardCount, isHidden]);
 
+  const safeWrapperScale = Number.isFinite(wrapperScale) && wrapperScale > 0 ? wrapperScale : 1;
   const effectiveAvailableWidth =
     is357Game
       ? (typeof availableWidthPx === 'number' && availableWidthPx > 0
           ? availableWidthPx
-          : measuredParentWidth)
+          : measuredPaneWidth > 0 ? measuredPaneWidth / safeWrapperScale : 0)
       : 0;
+
+
 
   const dyn357 = useCardRowLayout({
     availableWidth: effectiveAvailableWidth,
