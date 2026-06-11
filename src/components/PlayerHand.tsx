@@ -167,15 +167,12 @@ export const PlayerHand = ({
   const overlapClass = getOverlapClass();
 
   // ─── Wave 2A: 3-5-7 dynamic card row layout ───────────────────────────────
-  // The active-player hand is a pane artifact, not a seat artifact. The
-  // resolver budget is therefore sourced from the actual layout width of
-  // the hand row's parent container (measured via ResizeObserver on the
-  // row's ref) — NOT a per-seat share of the canonical felt. `clientWidth`
-  // returns the unscaled CSS layout width even when a `transform: scale`
-  // wrapper is applied by the caller, so the resolver sizes in the same
-  // coordinate space the inline `style.width/height` render in. The CSS
-  // scale then uniformly inflates the rendered DOM and stays in proportion
-  // with the resolver output (rendered ≈ resolver × wrapperScale).
+  // The active-player hand is a pane artifact, not a seat artifact.
+  // CURRENTLY this still measures the immediate parent transform wrapper;
+  // persistent probe data has proven that parent can be shrink-wrapped by
+  // the cards themselves. Do not tune resolver math from this value. The
+  // probe below also records the canonical HUD pane / hand-region ancestors
+  // so the valid budget source can be attributed before rewiring.
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
   useLayoutEffect(() => {
@@ -255,6 +252,19 @@ export const PlayerHand = ({
     const cardRect = firstCard.getBoundingClientRect();
     const parentClientWidth = parent.clientWidth;
     const parentRectWidth = parent.getBoundingClientRect().width;
+    const activeHandRegion = el.closest<HTMLElement>('[data-357-active-hand-region]');
+    const activePaneContent = el.closest<HTMLElement>('[data-357-active-pane-content]');
+    const hudPane = el.closest<HTMLElement>('[data-hud-row="pane"]');
+    const measureBox = (node: HTMLElement | null) => {
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return {
+        clientWidth: node.clientWidth,
+        clientHeight: node.clientHeight,
+        rectWidth: rect.width,
+        rectHeight: rect.height,
+      };
+    };
     const wrapperScale =
       parentClientWidth > 0 ? parentRectWidth / parentClientWidth : null;
     const overlapRatio =
@@ -273,6 +283,12 @@ export const PlayerHand = ({
       parentRectWidth,
       wrapperScale,
       availableHeightPx: availableHeightPx ?? null,
+      geometrySources: {
+        measuredParent: measureBox(parent),
+        activeHandRegion: measureBox(activeHandRegion),
+        activePaneContent: measureBox(activePaneContent),
+        hudPane: measureBox(hudPane),
+      },
       resolver: dyn357
         ? {
             cardWidth: dyn357.cardWidth,
