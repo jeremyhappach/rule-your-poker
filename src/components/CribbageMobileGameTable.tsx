@@ -6405,7 +6405,7 @@ export const CribbageMobileGameTable = ({
           ) : null
         }
         pane={
-          <div className="h-full overflow-hidden">
+          <div className="h-full overflow-hidden" data-cribbage-active-pane-content="">
             {/* Cards tab during high-card or bootstrap modes intentionally
                 renders nothing. All passive lifecycle messaging
                 ("Drawing for dealer...", "Awaiting ante decisions...",

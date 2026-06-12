@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
@@ -6,6 +6,36 @@ import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+
+/**
+ * Discrete CribbagePlayingCard size ladder (width px → size token).
+ * Kept in sync with sizeStyles in CribbagePlayingCard.tsx.
+ * Wave 2C consumes useCardRowLayout to resolve a fluid cardWidth from
+ * the pane budget, then nearest-snaps to this ladder so card
+ * readability (font / suit sizing) stays on the discrete typographic
+ * scale the component already supports — no fluid card mode added.
+ */
+const CRIBBAGE_CARD_SIZE_LADDER: ReadonlyArray<{ size: 'xs' | 'sm' | 'md' | 'lg'; width: number }> = [
+  { size: 'xs', width: 24 },
+  { size: 'sm', width: 32 },
+  { size: 'md', width: 40 },
+  { size: 'lg', width: 48 },
+];
+
+function snapToCardSize(resolvedWidth: number): 'xs' | 'sm' | 'md' | 'lg' {
+  let best = CRIBBAGE_CARD_SIZE_LADDER[0];
+  let bestDelta = Math.abs(resolvedWidth - best.width);
+  for (let i = 1; i < CRIBBAGE_CARD_SIZE_LADDER.length; i++) {
+    const entry = CRIBBAGE_CARD_SIZE_LADDER[i];
+    const delta = Math.abs(resolvedWidth - entry.width);
+    if (delta < bestDelta) {
+      best = entry;
+      bestDelta = delta;
+    }
+  }
+  return best.size;
+}
 
 interface Player {
   id: string;
@@ -257,6 +287,60 @@ export const CribbageMobileCardsTab = ({
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
   const cardCount = renderedHand.length;
 
+  // ────────────────────────────────────────────────────────────────
+  // Wave 2C — geometry-resolver consumer for the viewer hand row.
+  //
+  // Budget owner: the shell-owned ShellHudGrid pane wrapper, marked
+  // by [data-cribbage-active-pane-content] in CribbageMobileGameTable.
+  // The pane is sized by the shell HUD grid (fixed row 4 height +
+  // outer width); the cards row cannot feed back into pane width, so
+  // there is no measurement loop. Mirrors the 3-5-7 pattern.
+  //
+  // After the geometry resolver returns a cardWidth, we nearest-snap
+  // to CribbagePlayingCard's discrete xs/sm/md/lg ladder. Overlap is
+  // applied as inline `marginLeft` on cards after the first, replacing
+  // both the count-keyed `scale-[…]` cascade and the legacy
+  // `-space-x-3 / gap-1` overlap classes.
+  // ────────────────────────────────────────────────────────────────
+  const handRowRef = useRef<HTMLDivElement | null>(null);
+  const [paneWidthPx, setPaneWidthPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = handRowRef.current;
+    if (!el) return;
+    const pane = el.closest<HTMLElement>('[data-cribbage-active-pane-content]');
+    if (!pane) return;
+    const measure = () => {
+      const w = pane.clientWidth;
+      setPaneWidthPx(prev => (prev !== null && Math.abs(prev - w) < 0.5 ? prev : w));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(pane);
+    return () => ro.disconnect();
+  }, []);
+
+  const handLayout = useCardRowLayout({
+    availableWidth: paneWidthPx ?? 0,
+    count: cardCount > 0 ? cardCount : 1,
+    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect (40×60, 32×48, …)
+    minCardWidth: 24,
+    maxCardWidth: 48,
+    preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
+    maxOverlapRatio: 0.55,
+  });
+  const resolvedCardSize: 'xs' | 'sm' | 'md' | 'lg' = handLayout
+    ? snapToCardSize(handLayout.cardWidth)
+    : 'md';
+  // Snap-aware overlap: scale the resolver's overlap fraction onto the
+  // snapped card width so adjacent cards remain visually consistent
+  // with the discrete render width (the resolver works in fluid px).
+  const snappedCardWidthPx =
+    CRIBBAGE_CARD_SIZE_LADDER.find(e => e.size === resolvedCardSize)?.width ?? 40;
+  const overlapPx = handLayout
+    ? Math.round((handLayout.overlapPx / Math.max(handLayout.cardWidth, 1)) * snappedCardWidthPx)
+    : 0;
+
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
 
@@ -313,23 +397,21 @@ export const CribbageMobileCardsTab = ({
 
   return (
     <div className="h-full px-2 flex flex-col">
-      {/* Cards display - adaptive layout */}
+      {/* Cards display — Wave 2C geometry consumer.
+          Width budget = pane ([data-cribbage-active-pane-content]).
+          Card size = nearest-snapped from useCardRowLayout cardWidth.
+          Overlap = inline marginLeft on cards after the first. */}
       <div className="flex items-center justify-center min-h-[92px] py-0">
-        <div 
-          className={cn(
-            "flex justify-center origin-center",
-            // Pre-discard: tighter spacing with overlap for 6 cards
-            isPreDiscard ? "-space-x-3" : "gap-1",
-            // Scale based on card count - slightly smaller to free up vertical space
-            cardCount <= 4 ? "scale-[1.55]" : cardCount <= 5 ? "scale-[1.35]" : "scale-[1.18]"
-          )}
+        <div
+          ref={handRowRef}
+          className="flex justify-center origin-center"
         >
           {renderedHand.map((card, index) => {
             const isSelected = selectedCards.includes(index);
-            const isPlayable = cribbageState.phase === 'pegging' && 
-              isMyTurn && 
+            const isPlayable = cribbageState.phase === 'pegging' &&
+              isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
-            
+
             return (
               <button
                 key={index}
@@ -353,14 +435,18 @@ export const CribbageMobileCardsTab = ({
                     !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-2 [@media(hover:hover)_and_(pointer:fine)]:hover:z-10"
                 )}
-                style={{ zIndex: isSelected ? 10 : index }}
+                style={{
+                  zIndex: isSelected ? 10 : index,
+                  marginLeft: index === 0 ? 0 : -overlapPx,
+                }}
               >
-                <CribbagePlayingCard card={card} size="md" />
+                <CribbagePlayingCard card={card} size={resolvedCardSize} />
               </button>
             );
           })}
         </div>
       </div>
+
 
       {/* Action area - tighter to cards */}
       <div className="flex items-center justify-center min-h-[28px]">
