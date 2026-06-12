@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { CribbageState, CribbageCard } from '@/lib/cribbageTypes';
@@ -6,6 +6,36 @@ import { hasPlayableCard, getCardPointValue } from '@/lib/cribbageScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
+import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+
+/**
+ * Discrete CribbagePlayingCard size ladder (width px → size token).
+ * Kept in sync with sizeStyles in CribbagePlayingCard.tsx.
+ * Wave 2C consumes useCardRowLayout to resolve a fluid cardWidth from
+ * the pane budget, then nearest-snaps to this ladder so card
+ * readability (font / suit sizing) stays on the discrete typographic
+ * scale the component already supports — no fluid card mode added.
+ */
+const CRIBBAGE_CARD_SIZE_LADDER: ReadonlyArray<{ size: 'xs' | 'sm' | 'md' | 'lg'; width: number }> = [
+  { size: 'xs', width: 24 },
+  { size: 'sm', width: 32 },
+  { size: 'md', width: 40 },
+  { size: 'lg', width: 48 },
+];
+
+function snapToCardSize(resolvedWidth: number): 'xs' | 'sm' | 'md' | 'lg' {
+  let best = CRIBBAGE_CARD_SIZE_LADDER[0];
+  let bestDelta = Math.abs(resolvedWidth - best.width);
+  for (let i = 1; i < CRIBBAGE_CARD_SIZE_LADDER.length; i++) {
+    const entry = CRIBBAGE_CARD_SIZE_LADDER[i];
+    const delta = Math.abs(resolvedWidth - entry.width);
+    if (delta < bestDelta) {
+      best = entry;
+      bestDelta = delta;
+    }
+  }
+  return best.size;
+}
 
 interface Player {
   id: string;
