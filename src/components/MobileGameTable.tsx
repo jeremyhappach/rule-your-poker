@@ -3471,9 +3471,14 @@ export const MobileGameTable = ({
     if (!projectedText) return;
 
     const kind = isGameOver ? 'match' : 'round';
-    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:${currentRound}:${kind}:${projectedText}`;
+    // Game-scoped dedupe: identity churn (handContextId / currentRound) is
+    // intentionally NOT part of the key. A given projectedText emits once
+    // per game, then is retired.
+    const key = `${gameId ?? 'no-game'}:${kind}:${projectedText}`;
     if (lastEmittedResultRef.current === key) return;
+    if (retiredResultTextsRef.current.texts.has(lastRoundResult)) return;
     lastEmittedResultRef.current = key;
+    retiredResultTextsRef.current.texts.add(lastRoundResult);
 
     if (isGameOver) {
       announcements.clearAmbient();
