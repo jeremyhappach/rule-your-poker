@@ -71,6 +71,24 @@ import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPla
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
+import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+
+/**
+ * Wave 2B: opponent card-back strip width budget.
+ *
+ * Sourced from canonical `screenWidth` (ResponsiveGeometryProvider →
+ * useDeviceSize → window.innerWidth) — NOT from any DOM measurement.
+ * The opponent strip is absolutely positioned inside a CanonicalSeatCluster
+ * at a fixed seat anchor; its rendered width can never feed back into
+ * screenWidth, so no measurement loop is possible.
+ *
+ * Fraction is tuned to stay clear of the score pegboard rail above and
+ * the cluster's identity/chip stack below at every device class. Hard
+ * floor/ceiling clamps keep the row legible on extreme widths.
+ */
+const OPPONENT_STRIP_WIDTH_FRACTION = 0.22;
+const OPPONENT_STRIP_MIN_WIDTH_PX = 56;
+const OPPONENT_STRIP_MAX_WIDTH_PX = 180;
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 // Phase 2: ShellHudGrid imposes the deterministic 5-row HUD grid.
 // Gin's Phase 5 diagnostic local gold plate is preserved inside the
