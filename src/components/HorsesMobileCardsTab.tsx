@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +14,32 @@ import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { EmoticonOverlay } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { supabase } from "@/integrations/supabase/client";
+
+// Wave 2D: discrete HorsesDie size ladder (must match HorsesDie sizeClasses).
+// The resolver returns a fluid die edge in px; we snap to the nearest bucket
+// so the rendered die uses the existing token-based Tailwind classes (which
+// also drive pip sizing). Snap nearest, not floor — readability is preferred.
+const HORSES_DIE_SIZE_LADDER = [
+  { px: 28, size: "xs" as const },
+  { px: 36, size: "sm" as const },
+  { px: 48, size: "md" as const },
+  { px: 72, size: "lg" as const },
+  { px: 96, size: "xl" as const },
+];
+function snapToDieSize(px: number): "xs" | "sm" | "md" | "lg" | "xl" {
+  let best = HORSES_DIE_SIZE_LADDER[0];
+  let bestDist = Math.abs(px - best.px);
+  for (let i = 1; i < HORSES_DIE_SIZE_LADDER.length; i++) {
+    const d = Math.abs(px - HORSES_DIE_SIZE_LADDER[i].px);
+    if (d < bestDist) {
+      best = HORSES_DIE_SIZE_LADDER[i];
+      bestDist = d;
+    }
+  }
+  return best.size;
+}
 
 // Active-player dice roll mask durations (matches useHorsesMobileController constants)
 const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
@@ -275,8 +300,62 @@ export function HorsesMobileCardsTab({
   // roll label should never exceed 3 (and we hide the button after roll 3)
   const rollNumber = Math.min(3, Math.max(1, 4 - horses.localHand.rollsRemaining));
 
+  // Wave 2D — fluid dice-row sizing.
+  // The dice tray is an active-player pane artifact: its horizontal budget
+  // is the pane width, not a seat slice. We measure the pane (this
+  // component's own root, tagged `data-horses-active-pane-content`) via
+  // ResizeObserver and feed it to `useDieRowLayout` (thin wrapper over the
+  // shared artifact-row algorithm; no duplicated math). The resolver
+  // returns a fluid `dieSize` which we snap to the existing HorsesDie
+  // ladder (xs/sm/md/lg/xl) so pip sizing and Tailwind tokens stay
+  // canonical. First-frame fallback (null) uses the legacy device-class
+  // size — zero visual regression before the observer fires.
+  const paneContentRef = useRef<HTMLDivElement | null>(null);
+  const [paneWidthPx, setPaneWidthPx] = useState(0);
+  useLayoutEffect(() => {
+    const el = paneContentRef.current;
+    if (!el) return;
+    const pane = el.closest<HTMLElement>('[data-horses-active-pane-content]');
+    if (!pane) return;
+    const update = () => {
+      const w = pane.clientWidth;
+      setPaneWidthPx((prev) => (Math.abs(prev - w) < 0.5 ? prev : w));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(pane);
+    return () => ro.disconnect();
+  }, []);
+
+  const DICE_COUNT = 5;
+  // Subtract the same px-2 horizontal padding the root applies, so the
+  // resolver sees the inside-pane budget actually available to the dice row.
+  const PANE_HORIZONTAL_PADDING_PX = 16; // px-2 × 2 sides
+  const dieRowLayout = useDieRowLayout({
+    availableWidth: Math.max(0, paneWidthPx - PANE_HORIZONTAL_PADDING_PX),
+    count: DICE_COUNT,
+    minDieSize: 28,
+    maxDieSize: 96,
+    gapPx: isTablet || isDesktop ? 8 : 4,
+  });
+  const resolvedDieSize = dieRowLayout
+    ? snapToDieSize(dieRowLayout.dieSize)
+    : (isTablet || isDesktop ? "xl" : "lg");
+  // Reserve vertical room equal to die edge + small breathing room for the
+  // HOLD indicator. Falls back to the legacy reservation before measurement.
+  const reservedDieRowHeightPx = dieRowLayout
+    ? Math.round(dieRowLayout.dieSize + 8)
+    : (isTablet || isDesktop ? 100 : 60);
+  const placeholderHeightPx = dieRowLayout
+    ? Math.round(dieRowLayout.dieSize + 4)
+    : (isTablet || isDesktop ? 100 : 52);
+
   return (
-    <div className="px-2 flex flex-col flex-1 relative">
+    <div
+      ref={paneContentRef}
+      data-horses-active-pane-content=""
+      className="px-2 flex flex-col flex-1 relative"
+    >
       {/* Debug overlay toggle + panel (DEV only) - TEMPORARILY HIDDEN
       {import.meta.env.DEV && (
         <>
@@ -299,12 +378,16 @@ export function HorsesMobileCardsTab({
       )}
       */}
 
-      {/* Dice area - shows dice only, badge shows in action area below */}
-      {/* TABLET: Larger dice area to accommodate bigger dice */}
-      <div className={cn(
-        "flex items-center justify-center mb-1",
-        isTablet || isDesktop ? "gap-2 min-h-[100px]" : "gap-1 min-h-[60px]"
-      )}>
+      {/* Dice area - shows dice only, badge shows in action area below.
+          Wave 2D: dimensions and gap come from the resolver (inline style),
+          replacing the previous device-class min-h / gap cascade. */}
+      <div
+        className="flex items-center justify-center mb-1"
+        style={{
+          minHeight: `${reservedDieRowHeightPx}px`,
+          gap: `${dieRowLayout?.gapPx ?? (isTablet || isDesktop ? 8 : 4)}px`,
+        }}
+      >
         {showHoldDice && holdDice ? (
           // Show hold dice during first 1.5 seconds of hold period (no flicker)
           holdDice.map((die: any, idx: number) => (
@@ -314,7 +397,7 @@ export function HorsesMobileCardsTab({
               isHeld={false}
               isRolling={false}
               canToggle={false}
-              size={isTablet || isDesktop ? "xl" : "lg"}
+              size={resolvedDieSize}
               showWildHighlight={!isSCC}
             />
           ))
@@ -343,16 +426,17 @@ export function HorsesMobileCardsTab({
                 isRolling={shouldAnimate}
                 canToggle={!isSCC && !rolling && horses.localHand.rollsRemaining > 0 && horses.localHand.rollsRemaining < 3}
                 onToggle={() => horses.handleToggleHold(idx)}
-                size={isTablet || isDesktop ? "xl" : "lg"}
+                size={resolvedDieSize}
                 showWildHighlight={!isSCC}
               />
             );
           })
         ) : (
           // Placeholder to reserve space before first roll or when showing result badge
-          <div className={isTablet || isDesktop ? "h-[100px]" : "h-[52px]"} />
+          <div style={{ height: `${placeholderHeightPx}px` }} />
         )}
       </div>
+
 
       {/* Action buttons (always in same position below dice area) */}
       {/* TABLET: Larger buttons with more height/width */}
