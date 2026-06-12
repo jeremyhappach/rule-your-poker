@@ -88,15 +88,19 @@ export function ShellHudGrid({ timer, pane, identity }: ShellHudGridProps) {
         height: 'var(--shell-hud-h)',
         flex: '0 0 var(--shell-hud-h)',
         display: 'grid',
-        // Row order: announcement, tabs, timer (conditional), pane, identity.
-        // When no timer is published, the timer row collapses to 0 and the
-        // pane reclaims its height. Collapse only changes at the
-        // shell/game boundary — stable within a single game.
-        gridTemplateRows: hasTimer
-          ? 'var(--hud-h-announcement) var(--hud-h-tabs) ' +
-            'var(--hud-h-timer) var(--hud-h-pane) var(--hud-h-identity)'
-          : 'var(--hud-h-announcement) var(--hud-h-tabs) ' +
-            '0px calc(var(--hud-h-pane) + var(--hud-h-timer)) var(--hud-h-identity)',
+        // GEOMETRY CONTRACT — rows own geometry; content occupies rows.
+        // The timer row is ALWAYS reserved, even when no timer content is
+        // published this frame. Conditional collapse was a contract
+        // violation: when `hasTimer` flipped between lifecycle states
+        // (decision pending → resolved, paused toggling, announcement
+        // open/close), the pane row absorbed `--hud-h-timer` and the
+        // active-player hand re-resolved to a different geometry,
+        // producing visible card hopping. Holding all five row tracks
+        // constant guarantees gameplay artifacts do not move when
+        // higher-row content appears/disappears.
+        gridTemplateRows:
+          'var(--hud-h-announcement) var(--hud-h-tabs) ' +
+          'var(--hud-h-timer) var(--hud-h-pane) var(--hud-h-identity)',
         width: '100%',
         overflow: 'hidden',
       }}
