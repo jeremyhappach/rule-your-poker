@@ -397,23 +397,21 @@ export const CribbageMobileCardsTab = ({
 
   return (
     <div className="h-full px-2 flex flex-col">
-      {/* Cards display - adaptive layout */}
+      {/* Cards display — Wave 2C geometry consumer.
+          Width budget = pane ([data-cribbage-active-pane-content]).
+          Card size = nearest-snapped from useCardRowLayout cardWidth.
+          Overlap = inline marginLeft on cards after the first. */}
       <div className="flex items-center justify-center min-h-[92px] py-0">
-        <div 
-          className={cn(
-            "flex justify-center origin-center",
-            // Pre-discard: tighter spacing with overlap for 6 cards
-            isPreDiscard ? "-space-x-3" : "gap-1",
-            // Scale based on card count - slightly smaller to free up vertical space
-            cardCount <= 4 ? "scale-[1.55]" : cardCount <= 5 ? "scale-[1.35]" : "scale-[1.18]"
-          )}
+        <div
+          ref={handRowRef}
+          className="flex justify-center origin-center"
         >
           {renderedHand.map((card, index) => {
             const isSelected = selectedCards.includes(index);
-            const isPlayable = cribbageState.phase === 'pegging' && 
-              isMyTurn && 
+            const isPlayable = cribbageState.phase === 'pegging' &&
+              isMyTurn &&
               getCardPointValue(card) + cribbageState.pegging.currentCount <= 31;
-            
+
             return (
               <button
                 key={index}
@@ -437,14 +435,18 @@ export const CribbageMobileCardsTab = ({
                     !isSelected &&
                     "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-2 [@media(hover:hover)_and_(pointer:fine)]:hover:z-10"
                 )}
-                style={{ zIndex: isSelected ? 10 : index }}
+                style={{
+                  zIndex: isSelected ? 10 : index,
+                  marginLeft: index === 0 ? 0 : -overlapPx,
+                }}
               >
-                <CribbagePlayingCard card={card} size="md" />
+                <CribbagePlayingCard card={card} size={resolvedCardSize} />
               </button>
             );
           })}
         </div>
       </div>
+
 
       {/* Action area - tighter to cards */}
       <div className="flex items-center justify-center min-h-[28px]">
