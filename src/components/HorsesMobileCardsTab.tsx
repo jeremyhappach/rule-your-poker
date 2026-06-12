@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +14,32 @@ import { HorsesPlayerForController } from "@/hooks/useHorsesMobileController";
 import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { EmoticonOverlay } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { supabase } from "@/integrations/supabase/client";
+
+// Wave 2D: discrete HorsesDie size ladder (must match HorsesDie sizeClasses).
+// The resolver returns a fluid die edge in px; we snap to the nearest bucket
+// so the rendered die uses the existing token-based Tailwind classes (which
+// also drive pip sizing). Snap nearest, not floor — readability is preferred.
+const HORSES_DIE_SIZE_LADDER = [
+  { px: 28, size: "xs" as const },
+  { px: 36, size: "sm" as const },
+  { px: 48, size: "md" as const },
+  { px: 72, size: "lg" as const },
+  { px: 96, size: "xl" as const },
+];
+function snapToDieSize(px: number): "xs" | "sm" | "md" | "lg" | "xl" {
+  let best = HORSES_DIE_SIZE_LADDER[0];
+  let bestDist = Math.abs(px - best.px);
+  for (let i = 1; i < HORSES_DIE_SIZE_LADDER.length; i++) {
+    const d = Math.abs(px - HORSES_DIE_SIZE_LADDER[i].px);
+    if (d < bestDist) {
+      best = HORSES_DIE_SIZE_LADDER[i];
+      bestDist = d;
+    }
+  }
+  return best.size;
+}
 
 // Active-player dice roll mask durations (matches useHorsesMobileController constants)
 const ACTIVE_FIRST_ROLL_MS = 1300;   // Roll 1: ~1.3s
