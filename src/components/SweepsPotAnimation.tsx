@@ -35,8 +35,10 @@ export const SweepsPotAnimation = ({ show, playerName, onComplete }: SweepsPotAn
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center z-[1000] pointer-events-none overflow-hidden">
-      {/* Animated gold/rainbow background pulse */}
+    <div className="fixed inset-0 flex items-center justify-center z-[1000] pointer-events-none overflow-hidden">
+      {/* Animated gold/rainbow background pulse — fixed so the pot-win
+          banner sits above shell HUD chrome regardless of any stacking
+          contexts created inside the gameplay container. */}
       <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/30 via-amber-400/40 to-yellow-500/30 animate-pulse" />
       
       {/* Firework sparkles */}
