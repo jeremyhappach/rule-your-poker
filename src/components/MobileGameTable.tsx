@@ -3447,7 +3447,12 @@ export const MobileGameTable = ({
       threeFiveSevenWinPhase !== 'idle' ||
       lastThreeFiveSevenTriggerRef.current !== null
     ) && lastRoundResult.includes('won the game');
-    if (isLegWin || isGameWinViaOverlay) return;
+    if (isLegWin || isGameWinViaOverlay) {
+      // Overlay owns this text — retire it so the rail never re-emits it
+      // when the overlay suppression flag drops on a later identity tick.
+      if (lastRoundResult) retiredResultTextsRef.current.texts.add(lastRoundResult);
+      return;
+    }
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
     // Holm: gate until community card 4 finishes flipping.
