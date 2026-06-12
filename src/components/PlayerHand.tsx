@@ -221,18 +221,22 @@ export const PlayerHand = ({
   }, [is357Game, currentRound, displayCardCount, isHidden]);
 
   const safeWrapperScale = Number.isFinite(wrapperScale) && wrapperScale > 0 ? wrapperScale : 1;
-  // Wild-card glow + border footprint (unscaled CSS px). The wild-card
-  // styling applies `border: 3px` + `box-shadow: 0 0 8px 2px ...`, so the
-  // rendered artifact extends ~10px beyond the card bounds on each side
-  // (regardless of wrapper scale — these values are defined in pre-
-  // transform CSS pixels). The geometry contract must budget for the
-  // maximum rendered artifact, not just the base card bounds. We reserve
-  // this on every axis whenever a wild rank is in play so highlighted
-  // cards never collide with the action strip or pane edges.
-  const WILD_ARTIFACT_PAD_PX = 12;
+  // Wild-card OUTSIDE footprint (unscaled CSS px). Decomposition:
+  //   • border: 3px solid — uses border-box (shadcn Card default), so it
+  //     paints INSIDE the box. Zero outside contribution.
+  //   • box-shadow: 0 0 8px 2px — outset shadow with spread=2 + blur=8.
+  //     Maximum theoretical extent is 10px, but the blur tail fades
+  //     quadratically and is not visually present past ~the spread plus
+  //     half the blur. The perceptible solid-glow halo is ≈ 6px.
+  //   • inset shadow component — inside the box, no outside contribution.
+  // We reserve only the perceptible halo, not the full mathematical
+  // blur tail, so highlighted hands stay close to the non-highlighted
+  // card size while still guaranteeing no collision with the action
+  // strip or pane edges. Constant in pre-transform CSS px.
+  const WILD_OUTSIDE_HALO_PX = 6;
   const reservesWildArtifact = is357Game && wildRank !== null;
-  const widthArtifactReserve = reservesWildArtifact ? WILD_ARTIFACT_PAD_PX * 2 : 0;
-  const heightArtifactReserve = reservesWildArtifact ? WILD_ARTIFACT_PAD_PX * 2 : 0;
+  const widthArtifactReserve = reservesWildArtifact ? WILD_OUTSIDE_HALO_PX * 2 : 0;
+  const heightArtifactReserve = reservesWildArtifact ? WILD_OUTSIDE_HALO_PX * 2 : 0;
 
   const rawEffectiveWidth =
     is357Game
