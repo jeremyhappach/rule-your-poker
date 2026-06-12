@@ -287,6 +287,60 @@ export const CribbageMobileCardsTab = ({
   const isPreDiscard = cribbageState.phase === 'discarding' && !haveDiscarded;
   const cardCount = renderedHand.length;
 
+  // ────────────────────────────────────────────────────────────────
+  // Wave 2C — geometry-resolver consumer for the viewer hand row.
+  //
+  // Budget owner: the shell-owned ShellHudGrid pane wrapper, marked
+  // by [data-cribbage-active-pane-content] in CribbageMobileGameTable.
+  // The pane is sized by the shell HUD grid (fixed row 4 height +
+  // outer width); the cards row cannot feed back into pane width, so
+  // there is no measurement loop. Mirrors the 3-5-7 pattern.
+  //
+  // After the geometry resolver returns a cardWidth, we nearest-snap
+  // to CribbagePlayingCard's discrete xs/sm/md/lg ladder. Overlap is
+  // applied as inline `marginLeft` on cards after the first, replacing
+  // both the count-keyed `scale-[…]` cascade and the legacy
+  // `-space-x-3 / gap-1` overlap classes.
+  // ────────────────────────────────────────────────────────────────
+  const handRowRef = useRef<HTMLDivElement | null>(null);
+  const [paneWidthPx, setPaneWidthPx] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const el = handRowRef.current;
+    if (!el) return;
+    const pane = el.closest<HTMLElement>('[data-cribbage-active-pane-content]');
+    if (!pane) return;
+    const measure = () => {
+      const w = pane.clientWidth;
+      setPaneWidthPx(prev => (prev !== null && Math.abs(prev - w) < 0.5 ? prev : w));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(pane);
+    return () => ro.disconnect();
+  }, []);
+
+  const handLayout = useCardRowLayout({
+    availableWidth: paneWidthPx ?? 0,
+    count: cardCount > 0 ? cardCount : 1,
+    aspect: 2 / 3, // CribbagePlayingCard intrinsic aspect (40×60, 32×48, …)
+    minCardWidth: 24,
+    maxCardWidth: 48,
+    preferredOverlapRatio: isPreDiscard ? 0.32 : 0.05,
+    maxOverlapRatio: 0.55,
+  });
+  const resolvedCardSize: 'xs' | 'sm' | 'md' | 'lg' = handLayout
+    ? snapToCardSize(handLayout.cardWidth)
+    : 'md';
+  // Snap-aware overlap: scale the resolver's overlap fraction onto the
+  // snapped card width so adjacent cards remain visually consistent
+  // with the discrete render width (the resolver works in fluid px).
+  const snappedCardWidthPx =
+    CRIBBAGE_CARD_SIZE_LADDER.find(e => e.size === resolvedCardSize)?.width ?? 40;
+  const overlapPx = handLayout
+    ? Math.round((handLayout.overlapPx / Math.max(handLayout.cardWidth, 1)) * snappedCardWidthPx)
+    : 0;
+
   const handleCardClick = (index: number) => {
     if (!myPlayerState) return;
 
