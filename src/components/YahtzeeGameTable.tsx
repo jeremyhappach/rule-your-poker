@@ -2175,7 +2175,10 @@ export function YahtzeeGameTable({
                     here would leave a ~60px empty gap before the
                     opponent scorecard. */}
                 {showMyDice && (
-                  <div className="flex items-center justify-center gap-1 mb-1">
+                  <div
+                    className="flex items-center justify-center mb-1"
+                    style={{ gap: `${dieRowLayout?.gapPx ?? 4}px` }}
+                  >
                     {localDice.map((die, idx) => {
                       const heldAtRollStart = heldSnapshotRef.current?.[idx] ?? die.isHeld;
                       const shouldAnimate = rolling && !heldAtRollStart;
@@ -2189,7 +2192,7 @@ export function YahtzeeGameTable({
                           isRolling={shouldAnimate}
                           canToggle={!rolling && localRollsRemaining > 0 && localRollsRemaining < 3}
                           onToggle={() => handleToggleHold(idx)}
-                          size="lg"
+                          size={resolvedDieSize}
                           showWildHighlight={false}
                         />
                       );
