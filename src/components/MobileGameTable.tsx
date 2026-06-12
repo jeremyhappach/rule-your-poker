@@ -3518,9 +3518,11 @@ export const MobileGameTable = ({
     if (!lastRoundResult) return;
     const projected = lastRoundResult.split('|||')[0];
     if (!projected) return;
-    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:dice-match:${projected}`;
+    const key = `${gameId ?? 'no-game'}:dice-match:${projected}`;
     if (lastEmittedResultRef.current === key) return;
+    if (retiredResultTextsRef.current.texts.has(lastRoundResult)) return;
     lastEmittedResultRef.current = key;
+    retiredResultTextsRef.current.texts.add(lastRoundResult);
     announcements.clearAmbient();
     announcements.emit({
       id: `match_win:${key}`,
