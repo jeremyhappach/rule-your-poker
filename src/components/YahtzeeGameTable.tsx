@@ -5,7 +5,7 @@
  * tab bar, timer, and bottom section structure as MobileGameTable does for Horses/SCC.
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
 import { useGameStateSync, getYahtzeeProgress } from "@/lib/gameStateSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { HorsesDie } from "./HorsesDie";
+import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { DiceTraceControl } from "./DiceTraceControl";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
@@ -62,6 +63,29 @@ import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+
+// Wave 2E: discrete die size ladder (must match HorsesDie sizeClasses).
+// The resolver returns a fluid die edge in px; we snap to the nearest bucket
+// so the rendered die uses the existing token-based Tailwind classes.
+const DIE_SIZE_LADDER = [
+  { px: 28, size: "xs" as const },
+  { px: 36, size: "sm" as const },
+  { px: 48, size: "md" as const },
+  { px: 72, size: "lg" as const },
+  { px: 96, size: "xl" as const },
+];
+function snapToDieSize(px: number): "xs" | "sm" | "md" | "lg" | "xl" {
+  let best = DIE_SIZE_LADDER[0];
+  let bestDist = Math.abs(px - best.px);
+  for (let i = 1; i < DIE_SIZE_LADDER.length; i++) {
+    const d = Math.abs(px - DIE_SIZE_LADDER[i].px);
+    if (d < bestDist) {
+      best = DIE_SIZE_LADDER[i];
+      bestDist = d;
+    }
+  }
+  return best.size;
+}
 
 // Shell-owned felt is the sole canonical mount — no local visual flag.
 
@@ -541,6 +565,31 @@ export function YahtzeeGameTable({
   const rolling = uiRolling || isRolling;
   const rollNumber = Math.min(3, Math.max(1, 4 - localRollsRemaining));
   const showMyDice = isMyTurn && gamePhase === "playing" && localRollsRemaining < 3;
+
+  // Wave 2E — fluid dice-row sizing.
+  const paneContentRef = useRef<HTMLDivElement | null>(null);
+  const [paneWidthPx, setPaneWidthPx] = useState(0);
+  useLayoutEffect(() => {
+    const el = paneContentRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      setPaneWidthPx((prev) => (Math.abs(prev - w) < 0.5 ? prev : w));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const dieRowLayout = useDieRowLayout({
+    availableWidth: Math.max(0, paneWidthPx - 16), // px-2 × 2 sides
+    count: 5,
+    minDieSize: 28,
+    maxDieSize: 96,
+    gapPx: 4,
+  });
+  const resolvedDieSize = dieRowLayout ? snapToDieSize(dieRowLayout.dieSize) : "lg";
 
   // ── Cause B: Yahtzee scorecard sticky-mount latch ─────────────────────
   // The interactive scorecard mounts on `isMyTurn`. During turn transitions
@@ -2117,7 +2166,7 @@ export function YahtzeeGameTable({
           <div className="h-full overflow-hidden">
             {/* CARDS/DICE TAB */}
             {activeTab === 'cards' && (
-              <div className="px-2 h-full overflow-y-auto flex flex-col justify-start pt-2">
+              <div ref={paneContentRef} data-yahtzee-active-pane-content="" className="px-2 h-full overflow-y-auto flex flex-col justify-start pt-2">
 
 
                 {/* Dice area — only reserve space when actually rendering
