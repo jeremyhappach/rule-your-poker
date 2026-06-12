@@ -2425,17 +2425,11 @@ export const GinRummyGameTable = ({
                       playerId={seatId}
                     >
                       {showCardBacks && seatState && (
-                        <div className="flex -space-x-3 mt-1">
-                          {seatState.hand.map((_, i) => (
-                            <div
-                              key={i}
-                              className="w-3.5 h-5 rounded-sm border border-white/20"
-                              style={{
-                                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                              }}
-                            />
-                          ))}
-                        </div>
+                        <OpponentCardBackStrip
+                          count={seatState.hand.length}
+                          color={cardBackColors.color}
+                          darkColor={cardBackColors.darkColor}
+                        />
                       )}
                     </CanonicalSeatCluster>
                   );
