@@ -221,22 +221,6 @@ export const PlayerHand = ({
   }, [is357Game, currentRound, displayCardCount, isHidden]);
 
   const safeWrapperScale = Number.isFinite(wrapperScale) && wrapperScale > 0 ? wrapperScale : 1;
-  // Wild-card OUTSIDE footprint (unscaled CSS px). Decomposition:
-  //   • border: 3px solid — uses border-box (shadcn Card default), so it
-  //     paints INSIDE the box. Zero outside contribution.
-  //   • box-shadow: 0 0 8px 2px — outset shadow with spread=2 + blur=8.
-  //     Maximum theoretical extent is 10px, but the blur tail fades
-  //     quadratically and is not visually present past ~the spread plus
-  //     half the blur. The perceptible solid-glow halo is ≈ 6px.
-  //   • inset shadow component — inside the box, no outside contribution.
-  // We reserve only the perceptible halo, not the full mathematical
-  // blur tail, so highlighted hands stay close to the non-highlighted
-  // card size while still guaranteeing no collision with the action
-  // strip or pane edges. Constant in pre-transform CSS px.
-  const WILD_OUTSIDE_HALO_PX = 6;
-  const reservesWildArtifact = is357Game && wildRank !== null;
-  const widthArtifactReserve = reservesWildArtifact ? WILD_OUTSIDE_HALO_PX * 2 : 0;
-  const heightArtifactReserve = reservesWildArtifact ? WILD_OUTSIDE_HALO_PX * 2 : 0;
 
   const rawEffectiveWidth =
     is357Game
@@ -246,14 +230,14 @@ export const PlayerHand = ({
             ? measuredPaneWidth / safeWrapperScale
             : measuredParentWidth)
       : 0;
-  const effectiveAvailableWidth = Math.max(0, rawEffectiveWidth - widthArtifactReserve);
+  const effectiveAvailableWidth = Math.max(0, rawEffectiveWidth);
   const rawEffectiveHeight =
     is357Game && typeof availableHeightPx === 'number' && availableHeightPx > 0
       ? availableHeightPx
       : undefined;
   const effectiveAvailableHeight =
     typeof rawEffectiveHeight === 'number'
-      ? Math.max(20, rawEffectiveHeight - heightArtifactReserve)
+      ? Math.max(20, rawEffectiveHeight)
       : undefined;
 
   const dyn357 = useCardRowLayout({
