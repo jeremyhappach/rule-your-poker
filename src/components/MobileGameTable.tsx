@@ -3413,7 +3413,29 @@ export const MobileGameTable = ({
   // (B + C) Holm / 3-5-7 round + game-over result plate →
   //   round_win (transient, mid-hand)
   //   match_win (transient, game-over, extended TTL to persist through overlays)
+  // Retired-text latch (game-scoped). Once a lastRoundResult value has been
+  // emitted (or short-circuited as owned by an overlay) for the current
+  // gameId, it MUST NOT re-emit when identity advances (handContextId /
+  // currentRound bump, new cards arrive, overlay suppression drops, etc.).
+  // Key intentionally OMITS handContextId / currentRound so identity churn
+  // cannot re-key a stale result. Latch resets when gameId changes.
   const lastEmittedResultRef = useRef<string | null>(null);
+  const retiredResultTextsRef = useRef<{ gameId: string | null; texts: Set<string> }>({ gameId: null, texts: new Set() });
+  // Whenever the raw lastRoundResult value changes, retire the prior value
+  // so it can never re-emit even if it briefly reappears under new identity.
+  const prevRawResultRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentGameId = gameId ?? null;
+    if (retiredResultTextsRef.current.gameId !== currentGameId) {
+      retiredResultTextsRef.current = { gameId: currentGameId, texts: new Set() };
+      prevRawResultRef.current = null;
+    }
+    const prev = prevRawResultRef.current;
+    if (prev && prev !== lastRoundResult) {
+      retiredResultTextsRef.current.texts.add(prev);
+    }
+    prevRawResultRef.current = lastRoundResult ?? null;
+  }, [gameId, lastRoundResult]);
   useEffect(() => {
     if (isDiceGame) return; // dice games handled separately below
     if (!lastRoundResult) return;
@@ -3425,7 +3447,12 @@ export const MobileGameTable = ({
       threeFiveSevenWinPhase !== 'idle' ||
       lastThreeFiveSevenTriggerRef.current !== null
     ) && lastRoundResult.includes('won the game');
-    if (isLegWin || isGameWinViaOverlay) return;
+    if (isLegWin || isGameWinViaOverlay) {
+      // Overlay owns this text — retire it so the rail never re-emits it
+      // when the overlay suppression flag drops on a later identity tick.
+      if (lastRoundResult) retiredResultTextsRef.current.texts.add(lastRoundResult);
+      return;
+    }
     // Don't surface stale result during setup phases for a new hand.
     if (gameStatus === 'configuring' || gameStatus === 'ante_decision') return;
     // Holm: gate until community card 4 finishes flipping.
@@ -3449,9 +3476,14 @@ export const MobileGameTable = ({
     if (!projectedText) return;
 
     const kind = isGameOver ? 'match' : 'round';
-    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:${currentRound}:${kind}:${projectedText}`;
+    // Game-scoped dedupe: identity churn (handContextId / currentRound) is
+    // intentionally NOT part of the key. A given projectedText emits once
+    // per game, then is retired.
+    const key = `${gameId ?? 'no-game'}:${kind}:${projectedText}`;
     if (lastEmittedResultRef.current === key) return;
+    if (retiredResultTextsRef.current.texts.has(lastRoundResult)) return;
     lastEmittedResultRef.current = key;
+    retiredResultTextsRef.current.texts.add(lastRoundResult);
 
     if (isGameOver) {
       announcements.clearAmbient();
@@ -3486,9 +3518,11 @@ export const MobileGameTable = ({
     if (!lastRoundResult) return;
     const projected = lastRoundResult.split('|||')[0];
     if (!projected) return;
-    const key = `${gameId ?? 'no-game'}:${handContextId ?? 'no-hand'}:dice-match:${projected}`;
+    const key = `${gameId ?? 'no-game'}:dice-match:${projected}`;
     if (lastEmittedResultRef.current === key) return;
+    if (retiredResultTextsRef.current.texts.has(lastRoundResult)) return;
     lastEmittedResultRef.current = key;
+    retiredResultTextsRef.current.texts.add(lastRoundResult);
     announcements.clearAmbient();
     announcements.emit({
       id: `match_win:${key}`,
