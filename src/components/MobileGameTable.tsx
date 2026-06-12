@@ -3441,13 +3441,15 @@ export const MobileGameTable = ({
     if (!lastRoundResult) return;
     if (lastRoundResult.startsWith('357_SWEEP:')) return; // sweep overlay owns it
     // 3-5-7 leg/game-win overlays own these messages — suppress rail.
+    // 3-5-7 LEG win overlay (LegEarnedAnimation) owns the "won a leg" text —
+    // suppress rail and retire it. GAME-WIN ("won the game") is intentionally
+    // NOT suppressed: the canonical match_win emit drives the shell-owned
+    // CanonicalCelebrationLayer (confetti) and the lifecycle rail winner
+    // plate, while the bespoke 3-5-7 win sequence (LegsToPlayer → PotToPlayer
+    // → tabled winner cards) plays underneath. This restores the intended
+    // pot-won → sweep → announcement → celebration → chip transfer sequence.
     const isLegWin = gameType !== 'holm-game' && !!threeFiveSevenWinTriggerId && lastRoundResult.includes('won a leg');
-    const isGameWinViaOverlay = gameType !== 'holm-game' && (
-      threeFiveSevenWinTriggerId ||
-      threeFiveSevenWinPhase !== 'idle' ||
-      lastThreeFiveSevenTriggerRef.current !== null
-    ) && lastRoundResult.includes('won the game');
-    if (isLegWin || isGameWinViaOverlay) {
+    if (isLegWin) {
       // Overlay owns this text — retire it so the rail never re-emits it
       // when the overlay suppression flag drops on a later identity tick.
       if (lastRoundResult) retiredResultTextsRef.current.texts.add(lastRoundResult);

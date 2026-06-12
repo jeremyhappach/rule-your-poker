@@ -35,8 +35,10 @@ export const SweepTheLegsAnimation = ({ show, onComplete }: SweepTheLegsAnimatio
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center z-[1000] pointer-events-none overflow-hidden">
-      {/* Dark dramatic overlay */}
+    <div className="fixed inset-0 flex flex-col items-center justify-center z-[1000] pointer-events-none overflow-hidden">
+      {/* Dark dramatic overlay — fixed so it escapes any local stacking
+          context created by the gameplay container and reliably renders
+          above the shell HUD chrome during the leg-sweep beat. */}
       <div className="absolute inset-0 bg-black/45" />
       
       {/* Karate leg sweep image - the hero visual */}
