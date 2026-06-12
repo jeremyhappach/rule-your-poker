@@ -3413,7 +3413,29 @@ export const MobileGameTable = ({
   // (B + C) Holm / 3-5-7 round + game-over result plate →
   //   round_win (transient, mid-hand)
   //   match_win (transient, game-over, extended TTL to persist through overlays)
+  // Retired-text latch (game-scoped). Once a lastRoundResult value has been
+  // emitted (or short-circuited as owned by an overlay) for the current
+  // gameId, it MUST NOT re-emit when identity advances (handContextId /
+  // currentRound bump, new cards arrive, overlay suppression drops, etc.).
+  // Key intentionally OMITS handContextId / currentRound so identity churn
+  // cannot re-key a stale result. Latch resets when gameId changes.
   const lastEmittedResultRef = useRef<string | null>(null);
+  const retiredResultTextsRef = useRef<{ gameId: string | null; texts: Set<string> }>({ gameId: null, texts: new Set() });
+  // Whenever the raw lastRoundResult value changes, retire the prior value
+  // so it can never re-emit even if it briefly reappears under new identity.
+  const prevRawResultRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentGameId = gameId ?? null;
+    if (retiredResultTextsRef.current.gameId !== currentGameId) {
+      retiredResultTextsRef.current = { gameId: currentGameId, texts: new Set() };
+      prevRawResultRef.current = null;
+    }
+    const prev = prevRawResultRef.current;
+    if (prev && prev !== lastRoundResult) {
+      retiredResultTextsRef.current.texts.add(prev);
+    }
+    prevRawResultRef.current = lastRoundResult ?? null;
+  }, [gameId, lastRoundResult]);
   useEffect(() => {
     if (isDiceGame) return; // dice games handled separately below
     if (!lastRoundResult) return;
