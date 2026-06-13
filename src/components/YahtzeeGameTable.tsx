@@ -837,7 +837,7 @@ export function YahtzeeGameTable({
       ...myPs,
       rollsRemaining: currentLocalRollsRemaining,
       dice: myPs.dice.map((d, i) => ({
-        ...d,
+        ...(currentLocalDice[i] ?? d),
         isHeld: currentLocalDice[i]?.isHeld ?? d.isHeld,
       })),
     };
