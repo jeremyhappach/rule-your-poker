@@ -444,18 +444,17 @@ export function HorsesMobileCardsTab({
       </div>
 
 
-      {/* Action buttons (always in same position below dice area) */}
-      {/* TABLET: Larger buttons with more height/width */}
-      <div className={cn(
-        "flex items-center justify-center",
-        isTablet || isDesktop ? "min-h-[64px] mt-2 mb-2" : "min-h-[36px] mt-1 mb-1"
-      )}>
+      {/* Action strip (Wave 2F.3 — ActionStripSlot owns reservation/centering).
+          Slot reservation: compact=44px / comfortable=68px. Existing button
+          heights (h-9 / h-14) fit within reservation; badges & pills swap in
+          place with zero layout shift. */}
+      <ActionStripSlot
+        density={isTablet || isDesktop ? "comfortable" : "compact"}
+        className="mt-1 mb-1"
+      >
         {horses.gamePhase === "playing" && horses.isMyTurn ? (
           horses.localHand.rollsRemaining > 0 ? (
-            <div className={cn(
-              "flex items-center justify-center",
-              isTablet || isDesktop ? "gap-4" : "gap-2"
-            )}>
+            <ActionStripButtonRow className={cn(isTablet || isDesktop ? "gap-4" : "gap-2")}>
               {/* Left spacer keeps the Roll button perfectly centered even when Lock appears */}
               <div className={cn(isTablet || isDesktop ? "h-14 w-14" : "h-9 w-9")} aria-hidden="true" />
 
@@ -496,16 +495,18 @@ export function HorsesMobileCardsTab({
                 // Right placeholder keeps layout stable on roll 1
                 <div className={cn(isTablet || isDesktop ? "h-14 w-14" : "h-9 w-9")} aria-hidden="true" />
               )}
-            </div>
+            </ActionStripButtonRow>
           ) : (
-            // After roll 3, hide the Roll button entirely
-            <Badge className="text-sm px-3 py-1.5 font-medium">✓ Locked In</Badge>
+            // After roll 3, Roll button is replaced by Locked In badge (same reservation).
+            <ActionStripBadge tone="success" className="text-sm px-3 py-1.5 font-semibold">
+              ✓ Locked In
+            </ActionStripBadge>
           )
         ) : showResultBadge && effectiveResult ? (
-          // Styled result badge persists from turn completion through game end (including win animations)
-          // Uses effectiveResult which includes sticky cache for stability during transitions
+          // Result badge persists from turn completion through game end.
+          // Keep the rich result components as direct slot children so dice/cargo
+          // glyph rendering stays untouched — the slot still owns reservation.
           isSCC ? (
-            // SCC: Show cargo dice visually (same as felt display)
             <SCCHandResultDisplay
               description={effectiveResult.description}
               cargoDice={effectiveCargoDice}
@@ -513,32 +514,30 @@ export function HorsesMobileCardsTab({
               size={isTablet || isDesktop ? "md" : "sm"}
             />
           ) : (
-            // Horses: Use badge wrapper with HorsesHandResultDisplay
-            <Badge 
-              variant="secondary" 
+            <Badge
+              variant="secondary"
               className={cn(
                 "font-bold",
                 isTablet || isDesktop ? "text-xl px-6 py-3" : "text-lg px-4 py-2",
                 horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '') && "bg-green-600 text-white"
               )}
             >
-              <HorsesHandResultDisplay 
-                description={effectiveResult.description} 
+              <HorsesHandResultDisplay
+                description={effectiveResult.description}
                 isWinning={horses.currentlyWinningPlayerIds.includes(horses.myPlayer?.id ?? '')}
                 size={isTablet || isDesktop ? "md" : "sm"}
               />
             </Badge>
           )
         ) : isWaitingForYourTurn ? (
-          <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
+          <ActionStripStatusPill emphasis="muted">
             Waiting — {horses.currentTurnPlayerName ? `${horses.currentTurnPlayerName}'s turn` : "Next turn"}
-          </Badge>
+          </ActionStripStatusPill>
         ) : (
-          <Badge variant="secondary" className="text-sm px-3 py-1.5 font-medium">
-            Ready
-          </Badge>
+          <ActionStripStatusPill emphasis="muted">Ready</ActionStripStatusPill>
         )}
-      </div>
+      </ActionStripSlot>
+
 
       {/* Auto-fold checkbox for reconnection - always show when auto_fold is true */}
       {currentUserPlayer.auto_fold && (
