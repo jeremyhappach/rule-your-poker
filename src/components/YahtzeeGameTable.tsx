@@ -964,6 +964,8 @@ export function YahtzeeGameTable({
     }
 
     const newPs = scoreYahtzeeCategory(myPs, category);
+    localDiceRef.current = newPs.dice;
+    localRollsRemainingRef.current = newPs.rollsRemaining;
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
