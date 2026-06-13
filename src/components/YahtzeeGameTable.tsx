@@ -882,7 +882,7 @@ export function YahtzeeGameTable({
     console.log('[YAHTZEE_SYNC] Local optimistic roll snapshot', describeYahtzeeSnapshot(newState));
     yahtzeeSync.applyOptimistic(newState);
     await updateYahtzeeState(currentRoundId, newState);
-  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, rolling, localDice]);
+  }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling]);
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback(async (dieIndex: number) => {
