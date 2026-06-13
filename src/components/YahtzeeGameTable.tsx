@@ -60,6 +60,12 @@ import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { recordAnnouncementDebugEvent } from "@/lib/canonicalShell/announcements/announcementDebugLog";
 import { useRequiredSeatAnchors } from "@/lib/canonicalShell/SeatAnchorLayer";
+import {
+  ActionStripSlot,
+  ActionStripButtonRow,
+  ActionStripBadge,
+  ActionStripStatusPill,
+} from "@/components/canonicalShell/actionStrip";
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -2200,23 +2206,33 @@ export function YahtzeeGameTable({
                   </div>
                 )}
 
-                {/* Roll button — only shown on my turn */}
-                {gamePhase === 'playing' && isMyTurn && !scoringInProgress && (
-                  <div className="flex items-center justify-center mt-1 mb-1">
-                    {localRollsRemaining > 0 ? (
-                      <Button
-                        size="default"
-                        onClick={handleRoll}
-                        disabled={rolling}
-                        className="font-bold text-sm h-9 px-6"
-                      >
-                        <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
-                        Roll {rollNumber}
-                      </Button>
+                {/* Action strip (Wave 2F.2) — single canonical slot owns
+                    the reservation across Roll → Waiting → Pick-a-category
+                    so the dice tray above and any sibling below never
+                    reflow when the variant swaps. Only rendered on my turn;
+                    opponent-turn UI uses the opponent scorecard block below. */}
+                {gamePhase === 'playing' && isMyTurn && (
+                  <ActionStripSlot className="mt-1 mb-1" density="compact">
+                    {scoringInProgress ? (
+                      <ActionStripStatusPill emphasis="muted">
+                        Scoring…
+                      </ActionStripStatusPill>
+                    ) : localRollsRemaining > 0 ? (
+                      <ActionStripButtonRow>
+                        <Button
+                          size="sm"
+                          onClick={handleRoll}
+                          disabled={rolling}
+                          className="font-bold text-sm px-6"
+                        >
+                          <RotateCcw className="w-4 h-4 mr-2 animate-slow-pulse-red" />
+                          Roll {rollNumber}
+                        </Button>
+                      </ActionStripButtonRow>
                     ) : (
-                      <Badge className="text-sm px-3 py-1.5 font-medium">Pick a category</Badge>
+                      <ActionStripBadge tone="info">Pick a category</ActionStripBadge>
                     )}
-                  </div>
+                  </ActionStripSlot>
                 )}
 
                 {/* Opponent scorecard when it's not my turn */}
