@@ -15,6 +15,12 @@ import { useHorsesMobileController } from "@/hooks/useHorsesMobileController";
 import { EmoticonOverlay } from "@/hooks/useChipStackEmoticons";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
 import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
+import {
+  ActionStripSlot,
+  ActionStripButtonRow,
+  ActionStripBadge,
+  ActionStripStatusPill,
+} from "@/components/canonicalShell/actionStrip";
 import { supabase } from "@/integrations/supabase/client";
 
 // Wave 2D: discrete HorsesDie size ladder (must match HorsesDie sizeClasses).
