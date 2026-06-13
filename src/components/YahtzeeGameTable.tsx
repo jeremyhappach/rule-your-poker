@@ -522,6 +522,10 @@ export function YahtzeeGameTable({
   const localDiceRef = useRef<YahtzeeDie[]>([]);
   useEffect(() => { localDiceRef.current = localDice; }, [localDice]);
   const [localRollsRemaining, setLocalRollsRemaining] = useState(3);
+  // Ref mirror of localRollsRemaining. During the acting player's turn, roll count
+  // is local-owned just like dice; handlers must not depend on a stale DB snapshot.
+  const localRollsRemainingRef = useRef(3);
+  useEffect(() => { localRollsRemainingRef.current = localRollsRemaining; }, [localRollsRemaining]);
   // Ref for pending debounced hold DB write (batches rapid toggles into one write)
   const pendingHoldUpdateRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -675,6 +679,8 @@ export function YahtzeeGameTable({
 
     // Seed localDice from the DB state
     turnSeededKeyRef.current = turnKey;
+    localDiceRef.current = ps.dice;
+    localRollsRemainingRef.current = ps.rollsRemaining;
     setLocalDice(ps.dice);
     setLocalRollsRemaining(ps.rollsRemaining);
     console.log('[YAHTZEE] Turn seeded from DB', { turnKey, rollsRemaining: ps.rollsRemaining });
@@ -799,17 +805,21 @@ export function YahtzeeGameTable({
     }
     const rawState = authoritativeYahtzeeState;
     const myPs = rawState?.playerStates?.[myPlayer.id];
-    if (!myPs || myPs.rollsRemaining <= 0) {
+    const currentLocalRollsRemaining = localRollsRemainingRef.current;
+    if (!myPs || currentLocalRollsRemaining <= 0) {
       console.warn('[YAHTZEE] handleRoll blocked: no player state or no rolls', {
         hasRawState: !!rawState,
         hasPs: !!myPs,
-        rolls: myPs?.rollsRemaining,
+        rolls: currentLocalRollsRemaining,
         snapshot: describeYahtzeeSnapshot(rawState),
       });
       return;
     }
 
-    const isFirstRoll = myPs.rollsRemaining === 3;
+    const turnKey = `${currentTurnPlayerId}-${currentRoundId}`;
+    turnSeededKeyRef.current = turnKey;
+
+    const isFirstRoll = currentLocalRollsRemaining === 3;
     const duration = isFirstRoll ? FIRST_ROLL_MS : ROLL_AGAIN_MS;
 
     // Use ref to get the LATEST localDice — avoids stale closure when user
@@ -825,13 +835,16 @@ export function YahtzeeGameTable({
     // The DB state may be stale if the user toggled holds that haven't synced yet.
     const psWithLocalHolds = {
       ...myPs,
+      rollsRemaining: currentLocalRollsRemaining,
       dice: myPs.dice.map((d, i) => ({
-        ...d,
+        ...(currentLocalDice[i] ?? d),
         isHeld: currentLocalDice[i]?.isHeld ?? d.isHeld,
       })),
     };
 
     const newPs = rollYahtzeeDice(psWithLocalHolds);
+    localDiceRef.current = newPs.dice;
+    localRollsRemainingRef.current = newPs.rollsRemaining;
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
@@ -869,7 +882,7 @@ export function YahtzeeGameTable({
     console.log('[YAHTZEE_SYNC] Local optimistic roll snapshot', describeYahtzeeSnapshot(newState));
     yahtzeeSync.applyOptimistic(newState);
     await updateYahtzeeState(currentRoundId, newState);
-  }, [isMyTurn, currentRoundId, authoritativeYahtzeeState, myPlayer, rolling, localDice]);
+  }, [isMyTurn, currentRoundId, currentTurnPlayerId, authoritativeYahtzeeState, myPlayer, rolling]);
 
   /* ---- Hold toggle ---- */
   const handleToggleHold = useCallback(async (dieIndex: number) => {
@@ -951,6 +964,8 @@ export function YahtzeeGameTable({
     }
 
     const newPs = scoreYahtzeeCategory(myPs, category);
+    localDiceRef.current = newPs.dice;
+    localRollsRemainingRef.current = newPs.rollsRemaining;
     setLocalDice(newPs.dice);
     setLocalRollsRemaining(newPs.rollsRemaining);
 
