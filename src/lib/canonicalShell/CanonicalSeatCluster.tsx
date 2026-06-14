@@ -425,33 +425,42 @@ export function CanonicalSeatCluster({
           length. Long names truncate with ellipsis instead of
           stretching the pill. */}
       {!hideChipBubble && (() => {
-        // Wave 3C.3a — name row, chip presentation, chip HUD, and
-        // chip-disc-children slots. All four default to behavior
-        // identical to the pre-3C.3a render (no consumer changes).
+        // Wave 3C.3c — stable footprint contract:
+        //   1. Name row always reserves a fixed dealer-pip slot on the
+        //      right so the name stays centered whether or not the
+        //      player is dealer. No re-centering when the pip appears.
+        //   2. The chip cell is a fixed 60×60 reservation rendered
+        //      unconditionally (HUD-frame sized). chipPresentation
+        //      controls CONTENTS, never the cell. 'hidden' renders an
+        //      invisible placeholder; a ReactNode replacement renders
+        //      INSIDE the reserved cell, centered. chipHUD wraps the
+        //      cell contents in every state so the HUD frame is also
+        //      stable.
+        //   3. Pill `gap-2` separates name row from chip cell so the
+        //      HUD halo cannot collide with the dealer pip / name.
         const nameRow = namePlacement === 'none' ? null : (
-          <div className="flex items-center gap-1 w-full justify-center min-w-0">
-            <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
+          <div
+            className="grid items-center w-full"
+            style={{ gridTemplateColumns: '14px minmax(0,1fr) 14px' }}
+          >
+            <span /> {/* reserved left spacer — balances dealer pip slot */}
+            <span className="text-[10px] text-white/95 font-medium truncate min-w-0 text-center">
               {name}
             </span>
-            {isDealer && (
-              <div className="w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-[6px] leading-none">D</span>
-              </div>
-            )}
+            <div
+              aria-hidden={!isDealer}
+              className={cn(
+                'w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
+                !isDealer && 'invisible',
+              )}
+            >
+              <span className="text-white font-bold text-[6px] leading-none">D</span>
+            </div>
           </div>
         );
 
         // Default chip-disc node (chipPresentation === 'auto').
-        //
-        // Wave 3C consolidation: the cluster no longer hand-rolls a
-        // bespoke 32 px disc. It consumes the canonical primitive
-        // (`CanonicalChipDisc size="cluster"` → 40 px mobile / 44 px
-        // tablet, text-xs/text-sm) so every consumer — waiting,
-        // interstitial, Gin, Cribbage, Holm (3C.3b), and the
-        // remaining games as they cut over — renders the SAME chip.
-        // We pass `amount={null}` and render the pre-formatted
-        // `chipValue` via children so callers retain full control of
-        // value formatting + the status palette's `chipFgClass`.
+        // Cluster preset → 40 px mobile / 44 px tablet.
         const defaultChipDisc = (
           <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
             <CanonicalChipDisc
@@ -502,28 +511,42 @@ export function CanonicalSeatCluster({
           </div>
         );
 
-        // chipPresentation: 'auto' → default disc, 'hidden' → no chip
-        // body, ReactNode → replacement rendered in place of the disc.
-        let chipBody: ReactNode;
+        // chipPresentation: 'auto' → default disc, 'hidden' → invisible
+        // placeholder (preserves cell), ReactNode → replacement inside
+        // the reserved cell.
+        let chipContent: ReactNode;
         if (chipPresentation === 'hidden') {
-          chipBody = null;
+          chipContent = <div className="w-10 h-10 invisible" aria-hidden />;
         } else if (chipPresentation === 'auto') {
-          chipBody = defaultChipDisc;
+          chipContent = defaultChipDisc;
         } else {
-          chipBody = chipPresentation;
+          chipContent = chipPresentation;
         }
 
-        // chipHUD: optional wrapper element (e.g. ActivePlayerHUD
-        // countdown ring). We clone and inject the chipBody as its
-        // children. No-op when chipHUD is absent.
-        if (chipBody !== null && chipHUD && isValidElement(chipHUD)) {
-          chipBody = cloneElement(chipHUD, { children: chipBody } as never);
+        // chipHUD wraps the contents in EVERY state (including hidden)
+        // so the HUD frame footprint is stable across active/inactive
+        // and the chip cell never collapses.
+        let chipCellContents: ReactNode = chipContent;
+        if (chipHUD && isValidElement(chipHUD)) {
+          chipCellContents = cloneElement(chipHUD, { children: chipContent } as never);
         }
+
+        // Reserved 60×60 chip cell. Always rendered. HUD/disc/
+        // replacement center inside this box. Eliminates "chip
+        // disappears / hops" between states.
+        const chipCell = (
+          <div
+            data-canonical-seat-chip-cell=""
+            className="relative flex items-center justify-center w-[60px] h-[60px]"
+          >
+            {chipCellContents}
+          </div>
+        );
 
         return (
           <div
             className={cn(
-              'relative flex flex-col items-center gap-0.5 rounded-2xl px-2 py-1',
+              'relative flex flex-col items-center gap-2 rounded-2xl px-2 py-1',
               'w-[96px]',
               'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
               'backdrop-blur-[2px]',
@@ -538,7 +561,7 @@ export function CanonicalSeatCluster({
               </div>
             )}
             {namePlacement === 'above-chip' && nameRow}
-            {chipBody}
+            {chipCell}
             {scoreLine && (
               <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
                 {scoreLine}
@@ -548,6 +571,7 @@ export function CanonicalSeatCluster({
           </div>
         );
       })()}
+
 
       {children && (
         <div data-canonical-seat-cluster-content="" className="flex flex-col items-center">
