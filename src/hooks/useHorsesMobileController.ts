@@ -1300,6 +1300,17 @@ export function useHorsesMobileController({
     // Force local-hand reset path to re-evaluate against the new round identity.
     lastResetTurnKeyRef.current = null;
 
+    // P1 FIX (Wave 2F.3 smoke): `localHand` sources the active roller's felt
+    // dice. Without resetting it here, switching dealer games (e.g. Horses →
+    // SCC) leaves the prior game's dice in `localHand` for the 1–2 frames
+    // between the new round-id arriving and `isMyTurn` re-evaluating true on
+    // the new round — producing a brief stale-dice flash for the active roller
+    // only. The `isMyTurn` effect (L796) still re-syncs DB state in
+    // immediately; this just guarantees the carryover never paints.
+    const freshBoundaryHand = isSCC ? createInitialSCCHand() : createInitialHand();
+    setLocalHand(freshBoundaryHand);
+    localHandRef.current = freshBoundaryHand;
+
     // Display overlays — must drop together with refs above so DiceTableLayout
     // does not re-cache the previous round's terminal frame.
     setObserverDisplayState(null);
