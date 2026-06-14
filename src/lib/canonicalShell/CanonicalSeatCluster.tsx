@@ -325,6 +325,7 @@ export function CanonicalSeatCluster({
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
+  const chipRingClass = getParticipantChipRingClass(statusRing);
 
   // Inner/outer side resolution. The cluster knows the slot, so games
   // pass "innerDecoration" / "outerDecoration" without needing to
