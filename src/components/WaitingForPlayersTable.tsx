@@ -136,7 +136,7 @@ export const WaitingForPlayersTable = ({
     });
     recordSurfaceOwnership('WaitingTable', {
       SeatOwner: 'Shell:MobileGameTable seat clusters',
-      ChipOwner: 'Shell:MobileGameTable ChipStack',
+      ChipOwner: 'Shell:CanonicalChipDisc (via MobileGameTable)',
       ControlOwner: 'Slot:WaitingForPlayersTable (Invite/AddBot/Start)',
       AnnouncementOwner: 'Shell:CanonicalAnnouncementProvider rail',
       HUDOwner: 'Shell:ShellTabBar via MobileGameTable',

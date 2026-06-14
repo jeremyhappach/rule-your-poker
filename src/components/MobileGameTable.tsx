@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { PlayingCard } from "./PlayingCard";
-import { ChipStack } from "./ChipStack";
+import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
@@ -4668,71 +4668,58 @@ export const MobileGameTable = ({
           className={`relative ${isClickable ? 'cursor-pointer' : ''}`}
           onClick={isClickable ? () => onPlayerClick(player) : undefined}
         >
-          {/* Green background now used for stayed players instead of ring - see getPlayerChipBgColor */}
-          {/* Yellow ring for current turn (no pulse on ring, pulse on circle) */}
-          {isTheirTurn && playerDecision !== 'stay' && (
-            <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
-          )}
-          <div className={cn("relative", isTablet ? "w-16 h-16" : "w-12 h-12")} data-chip-center={player.position}>
-            {/* Background chip circle - dimmed when folded */}
-            {/* TABLET: Bigger chip circles for other players */}
-            <div className={cn(
-              "absolute inset-0 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50",
-              isTablet ? "w-16 h-16" : "w-12 h-12",
-              chipBgColor,
-              playerDecision === 'fold' && 'opacity-50',
-              isTheirTurn && playerDecision !== 'stay' && 'animate-turn-pulse',
-              isClickable && 'active:scale-95'
-            )}>
-              {/* Show chip value when no emoticon */}
-              {/* TABLET: Bigger text */}
-              {!emoticonOverlays[player.id] && (
-                <span className={cn(
-                  "font-bold leading-none",
-                  isTablet ? "text-base" : "text-sm",
-                  (lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips) < 0 ? 'text-red-600' : 'text-slate-800'
-                )}>
-                  ${formatChipValue(Math.round(lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips))}
-                </span>
-              )}
-              {/* Flash for legs received */}
-              <ValueChangeFlash 
-                value={0}
-                prefix="+L"
-                position="top-right"
-                manualTrigger={winnerLegsFlashTrigger?.playerId === player.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-              />
-              {/* Flash for pot received */}
-              <ValueChangeFlash 
-                value={0}
-                prefix="+$"
-                position="top-left"
-                manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
-              />
-            </div>
-            {/* Emoticon overlay - NOT affected by fold dimming */}
-            {/* TABLET: Bigger emoticon overlay */}
-            {emoticonOverlays[player.id] && (
+          {/* Wave 3 / 3A: shell-owned chip disc.
+              The turn ring is suppressed on `stay` (Holm) — was the prior behavior.
+              ValueChangeFlash siblings live INSIDE the disc body (children).
+              Emoticon overlay lives ALONGSIDE the disc body (overlay) so it
+              survives fold dimming and sits on top of the value text. */}
+          <CanonicalChipDisc
+            amount={emoticonOverlays[player.id]
+              ? null
+              : (lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips)}
+            bgClass={chipBgColor}
+            showTurnRing={isTheirTurn && playerDecision !== 'stay'}
+            pulseDisc={isTheirTurn && playerDecision !== 'stay'}
+            folded={playerDecision === 'fold'}
+            clickable={isClickable}
+            positionAnchor={player.position}
+            size="gameplay"
+            overlay={emoticonOverlays[player.id] ? (
               <div className={cn(
                 "absolute inset-0 rounded-full flex items-center justify-center z-10",
                 isTablet ? "w-16 h-16" : "w-12 h-12"
               )}>
-                <span 
+                <span
                   className={cn(
                     "animate-in fade-in zoom-in duration-200",
                     isTablet ? "text-2xl" : "text-xl"
                   )}
                   style={{
-                    animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
-                      ? 'fadeOutEmoticon 0.5s ease-out forwards' 
+                    animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500
+                      ? 'fadeOutEmoticon 0.5s ease-out forwards'
                       : undefined
                   }}
                 >
                   {emoticonOverlays[player.id].emoticon}
                 </span>
               </div>
-            )}
-          </div>
+            ) : undefined}
+          >
+            {/* Flash for legs received */}
+            <ValueChangeFlash
+              value={0}
+              prefix="+L"
+              position="top-right"
+              manualTrigger={winnerLegsFlashTrigger?.playerId === player.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
+            />
+            {/* Flash for pot received */}
+            <ValueChangeFlash
+              value={0}
+              prefix="+$"
+              position="top-left"
+              manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+            />
+          </CanonicalChipDisc>
         </div>
       </div>;
     

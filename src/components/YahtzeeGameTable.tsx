@@ -18,6 +18,7 @@ import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { DiceTraceControl } from "./DiceTraceControl";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
+import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
@@ -1890,24 +1891,15 @@ export function YahtzeeGameTable({
         )}>
           {getPlayerUsername(player)}
         </span>
-        <div className="relative">
-          {isTheirTurn && (
-            <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
-          )}
-          <div
-            data-chip-center={player.position}
-            className={cn(
-            "relative w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50 bg-slate-300",
-            isTheirTurn && "animate-turn-pulse",
-          )}>
-            <span className={cn(
-              "font-bold text-sm leading-none",
-              player.chips < 0 ? "text-red-600" : "text-slate-800"
-            )}>
-              ${formatChipValue(Math.round(player.chips))}
-            </span>
-          </div>
-        </div>
+        {/* Wave 3 / 3A: shell-owned chip disc. Yahtzee uses the mobile-only
+            compact preset (no tablet doubling). */}
+        <CanonicalChipDisc
+          amount={player.chips}
+          size="gameplay-compact"
+          showTurnRing={isTheirTurn}
+          pulseDisc={isTheirTurn}
+          positionAnchor={player.position}
+        />
       </div>
     );
   };
