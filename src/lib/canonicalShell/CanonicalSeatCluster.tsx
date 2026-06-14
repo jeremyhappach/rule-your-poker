@@ -52,7 +52,9 @@ import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import {
   getParticipantChipBgClass,
   getParticipantChipFgClass,
+  getParticipantChipRingClass,
   type ParticipantStatus,
+  type CanonicalSeatStatusRing,
 } from './participantStatus';
 import {
   noteChipContinuityMount,
