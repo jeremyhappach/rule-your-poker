@@ -15,6 +15,10 @@
  *     intrude on stock/discard, pegboards, or center-stack overlays.
  *   - Perimeter slots (corners + mid-sides) sit at the felt edge, far
  *     enough out to align with the rail rather than the inner play area.
+ *   - Bottom perimeter slots anchor by their FULL seat envelope bottom,
+ *     not by an old chip point. The cluster may add cards, HUD rings,
+ *     emoticons, or hidden-chip placeholders without spilling into the
+ *     announcement rail / HUDStack below the play region.
  *   - Identical for active-canonical and observer-absolute projections —
  *     the projection layer (seatAnchors.ts) decides which seat maps to
  *     which slot; this module decides where each slot paints.
@@ -57,7 +61,7 @@ export function getCanonicalSlotPlacement(
       return variant === 'open-seat'
         ? { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' }
         : { className: 'bottom-[1%] right-[6%] items-end scale-90' };
-    case 0:  return { className: 'top-[78%] left-[10%] items-start' };
+    case 0:  return { className: 'bottom-[4%] left-[10%] items-start' };
     case 1:  return { className: 'top-[50%] left-[4%] -translate-y-1/2 items-start' };
     // Slot 2 (upper-left perimeter). For inherently-2P face-to-face
     // canonicalization the opponent lives here in BOTH active-canonical
@@ -75,7 +79,7 @@ export function getCanonicalSlotPlacement(
       ? { className: 'top-[2%] right-[1%] items-end scale-90' }
       : { className: 'top-[14%] right-[12%] items-end' };
     case 4:  return { className: 'top-[50%] right-[4%] -translate-y-1/2 items-end' };
-    case 5:  return { className: 'top-[78%] right-[10%] items-end' };
+    case 5:  return { className: 'bottom-[4%] right-[10%] items-end' };
     default: return { className: 'top-2 left-2 items-start' };
   }
 }
