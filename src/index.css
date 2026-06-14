@@ -101,6 +101,12 @@ All colors MUST be HSL.
     --shell-felt-w:   min(94vw, 720px);
     --shell-felt-h:   min(var(--shell-play-h), calc(var(--shell-felt-w) / 1.09));
 
+    /* Seat-safe clearance inside the play region. Bottom seats reserve
+       their full envelope above the play/HUD boundary instead of using
+       the old chip-center point, so announcement/HUD chrome can never
+       cover the canonical opponent seat. */
+    --shell-seat-safe-bottom: max(8px, calc(var(--shell-play-h) * 0.04));
+
 
     /* HUD internal row ratios (sum to 1.0).
        Retuned 2026-06-01: announcement rail tightened after typography
