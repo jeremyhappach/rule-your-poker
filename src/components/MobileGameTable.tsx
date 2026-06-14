@@ -70,6 +70,7 @@ import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
   derivePlayerStatus,
   getParticipantChipBgClass,
+  type CanonicalSeatStatusRing,
 } from "@/lib/canonicalShell/participantStatus";
 // PersistentTableShell ownership lifted to Game.tsx in Phase 5;
 // MobileGameTable no longer mounts an inner shell to avoid duplicate
@@ -98,6 +99,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  type ReactNode,
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
@@ -5034,7 +5036,277 @@ export const MobileGameTable = ({
         )}
       </div>;
   };
+  /**
+   * Wave 3C.3b — Holm-only canonical gameplay seat.
+   *
+   * Renders the opponent gameplay seat for Holm via the canonical
+   * CanonicalSeatCluster pill (using the additive 3C.3a slots:
+   * chipHUD / chipDiscChildren / chipPresentation / namePlacement).
+   * The cluster now owns: background plate, name, dealer badge,
+   * chip counter, status ring, chip transport endpoint, emoticon
+   * slot. Holm continues to own: card backs, exposed showdown
+   * cards, gameplay artifacts (passed as cluster children).
+   *
+   * Scope: Holm only. 357 / Horses / SCC keep `renderPlayerChip` +
+   * `hideChipBubble` until their own wave.
+   */
+  const renderHolmCanonicalSeat = (player: Player, slot: CanonicalSlot) => {
+    const isTheirTurn = currentTurnPosition === player.position && !awaitingNextRound;
+    const isCurrentUser = player.user_id === currentUserId;
+    const playerDecision = player.current_decision;
+    const cards = getPlayerCards(player.id);
+    const apparentIsActivePlayer = player.status === 'active' && !player.sitting_out;
+    const hasFolded = playerDecision === 'fold';
+    const showCardBacks =
+      apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && !hasFolded;
+    const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
+    const isDealer = dealerPosition === player.position;
+    const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
+    const isBottomPosition = slot === 0 || slot === 5 || slot === -1;
+    const isUpperCorner = slot === 2 || slot === 3;
+    const isMiddlePosition = slot === 1 || slot === 4;
+    const isRightSideSlot = slot >= 3;
+
+    const stayed = playerDecision === 'stay';
+    const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+
+    // Showdown / chip-replacement derivation.
+    const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
+    const isInAnnouncementShowdown =
+      isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
+    const isShowdown = hasExposedCards || isInAnnouncementShowdown;
+    const isHolmWinWinner = !!holmWinPotTriggerId && winnerPlayerId === player.id;
+    const soloLockedId = soloVsChuckyPlayerIdLocked;
+    const isSoloVsChuckyPlayerForChip =
+      isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
+    const hideChipForShowdown =
+      isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip;
+    const soloAreaPlayerId = isSoloVsChucky
+      ? (soloLockedId || players.find(p => p.current_decision === 'stay')?.id || null)
+      : null;
+    const isSoloVsChuckyPlayerRaw =
+      soloAreaPlayerId !== null && soloAreaPlayerId === player.id && player.id !== currentPlayer?.id;
+    const shouldHideForTabling = isHolmWinWinner || isSoloVsChuckyPlayerForChip || isSoloVsChuckyPlayerRaw;
+
+    // Chip palette via shared participant-status helper (parity with
+    // legacy getPlayerChipBgColor).
+    const participantStatus = derivePlayerStatus(player, playerDecision, {
+      hasStayDecision: true,
+    });
+
+    // Identity row.
+    const displayName = player.is_bot
+      ? getBotAlias(players, player.user_id)
+      : (player.profiles?.username || `P${player.position}`);
+
+    // Chip text — preserves the legacy displayedChips / lockedChips
+    // animation source. Hidden when emoticon overlay is active (the
+    // overlay paints over the value).
+    const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
+    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+    // Status ring: 'turn' while it's their decision window (and they
+    // have not already stayed).
+    const showTurnRing = isTheirTurn && playerDecision !== 'stay';
+    const statusRing: CanonicalSeatStatusRing | undefined = showTurnRing ? 'turn' : undefined;
+
+    // ActivePlayerHUD wraps the chip-disc body so the countdown ring
+    // is preserved 1:1. The HUD's children are injected by the cluster
+    // via cloneElement.
+    const chipHUD = (
+      <ActivePlayerHUD
+        timeLeft={timeLeft}
+        maxTime={maxTime}
+        isActive={isTheirTurn && roundStatus === 'betting'}
+        size={52}
+        seatPosition={player.position}
+        gameId={gameId}
+        gameType={gameType}
+      />
+    );
+
+    // ValueChangeFlash siblings rendered INSIDE the canonical disc.
+    const chipDiscChildren = (
+      <>
+        <ValueChangeFlash
+          value={0}
+          prefix="+L"
+          position="top-right"
+          manualTrigger={
+            winnerLegsFlashTrigger?.playerId === player.id
+              ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
+              : null
+          }
+        />
+        <ValueChangeFlash
+          value={0}
+          prefix="+$"
+          position="top-left"
+          manualTrigger={
+            winnerPotFlashTrigger?.playerId === player.id
+              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
+              : null
+          }
+        />
+      </>
+    );
+
+    // Emoticon overlay (paints over the disc face) — matches legacy
+    // CanonicalChipDisc.overlay path.
+    const emoticon = emoticonOverlays[player.id];
+    const chipOverlay = emoticon ? (
+      <div className="absolute inset-0 rounded-full flex items-center justify-center z-10">
+        <span
+          className="text-xl animate-in fade-in zoom-in duration-200"
+          style={{
+            animation:
+              emoticon.expiresAt - Date.now() < 500
+                ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                : undefined,
+          }}
+        >
+          {emoticon.emoticon}
+        </span>
+      </div>
+    ) : undefined;
+
+    // Chip presentation. Showdown hides the chip; if an emoticon is
+    // pending it paints in place of the chip (legacy emoticonOverlayElement).
+    let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
+    if (hideChipForShowdown) {
+      if (emoticon) {
+        chipPresentation = (
+          <div className="w-12 h-12 rounded-full bg-slate-700/80 border-2 border-slate-600/50 flex items-center justify-center">
+            <span
+              className="text-xl animate-in fade-in zoom-in duration-200"
+              style={{
+                animation:
+                  emoticon.expiresAt - Date.now() < 500
+                    ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                    : undefined,
+              }}
+            >
+              {emoticon.emoticon}
+            </span>
+          </div>
+        );
+      } else {
+        chipPresentation = 'hidden';
+      }
+    }
+
+    // Cards (gameplay artifact owned by Holm) — rendered as cluster
+    // children below the pill.
+    const isLosingPlayer =
+      isShowingAnnouncement && !!winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
+    const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
+    const playerExplicitlyStayed = playerDecision === 'stay';
+
+    const showNameBelowCards = isShowdown && hideChipForShowdown && (isUpperCorner || isMiddlePosition);
+    const showNameBelowChip = isUpperCorner && !hideChipForShowdown;
+
+    let namePlacement: 'above-chip' | 'below-chip' | 'none';
+    if (showNameBelowCards) namePlacement = 'none';
+    else if (showNameBelowChip) namePlacement = 'below-chip';
+    else namePlacement = 'above-chip';
+
+    const cardsNode = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
+      <div
+        className={cn(
+          'flex scale-100 origin-top relative z-40',
+          isLosingPlayer && 'opacity-40 grayscale-[30%]',
+          showNameBelowCards && isUpperCorner && '-mb-2',
+        )}
+      >
+        <PlayerHand
+          cards={cards}
+          isHidden={false}
+          highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
+          kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
+          hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
+          gameType={gameType}
+          currentRound={currentRound}
+          showSeparated={false}
+          tightOverlap={isHolmMultiPlayerShowdown}
+          unusedCardsBelow={false}
+          isRightSide={isRightSideSlot}
+          isBottomPosition={isBottomPosition}
+        />
+      </div>
+    ) : (
+      !shouldHideForTabling && showCardBacks && cardCountToShow > 0 && (
+        <div className={cn('flex', hasFolded && 'animate-[foldCards_1.5s_ease-out_forwards]')}>
+          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
+            <div
+              key={i}
+              className="w-3 h-5 rounded-[2px] border border-amber-600/50"
+              style={{
+                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                marginLeft: i > 0 ? '-5px' : '0',
+                zIndex: cardCountToShow - i,
+                animationDelay: hasFolded ? `${i * 0.05}s` : '0s',
+              }}
+            />
+          ))}
+        </div>
+      )
+    );
+
+    const nameBelowCardsNode = showNameBelowCards && (
+      <div className={isUpperCorner ? 'mt-2' : ''}>
+        <span
+          className={cn(
+            'truncate leading-none font-bold',
+            isTablet || isDesktop
+              ? 'text-sm max-w-[90px] bg-white text-black px-1.5 py-0.5 rounded'
+              : 'text-[11px] max-w-[70px] text-white drop-shadow-md font-semibold',
+          )}
+        >
+          {displayName}
+          {isCurrentUser && (
+            <span
+              className={cn(
+                'ml-1 font-medium',
+                isTablet || isDesktop ? 'text-xs text-black/70' : 'text-[10px] text-white/70',
+              )}
+            >
+              R{currentRound}
+            </span>
+          )}
+        </span>
+      </div>
+    );
+
+    return (
+      <CanonicalSeatCluster
+        key={player.id}
+        slot={slot}
+        position={player.position}
+        name={displayName}
+        chipValue={chipText}
+        isDealer={isDealer}
+        status={participantStatus}
+        statusRing={statusRing}
+        chipHUD={chipHUD}
+        chipDiscChildren={chipDiscChildren}
+        chipOverlay={chipOverlay}
+        chipPresentation={chipPresentation}
+        namePlacement={namePlacement}
+        dimChip={hasFolded}
+        onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
+        raisePosition={raise}
+        className={playerSlotZIndex}
+        ownerLabel="Slot:MobileGameTable.holmCanonicalSeat"
+        playerId={player.id}
+      >
+        {cardsNode}
+        {nameBelowCardsNode}
+      </CanonicalSeatCluster>
+    );
+  };
+
   return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
@@ -6785,6 +7057,15 @@ export const MobileGameTable = ({
                   playerId={player.id}
                 />
               );
+            }
+
+            // Wave 3C.3b: Holm gameplay seats route through the
+            // canonical CanonicalSeatCluster pill (via
+            // renderHolmCanonicalSeat) using the 3C.3a additive slots.
+            // 357 / Horses / SCC keep the legacy hideChipBubble +
+            // renderPlayerChip carve-out until their own wave.
+            if (gameType === 'holm-game') {
+              return renderHolmCanonicalSeat(player, slot);
             }
 
             return (
