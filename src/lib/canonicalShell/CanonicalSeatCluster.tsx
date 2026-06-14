@@ -40,7 +40,7 @@
  * Placement is sourced ONLY from CanonicalSlot via canonicalSlotPlacement.
  */
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import {
   getCanonicalSlotPlacement,
