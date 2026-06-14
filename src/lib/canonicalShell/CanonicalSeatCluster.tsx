@@ -441,53 +441,63 @@ export function CanonicalSeatCluster({
         );
 
         // Default chip-disc node (chipPresentation === 'auto').
+        //
+        // Wave 3C consolidation: the cluster no longer hand-rolls a
+        // bespoke 32 px disc. It consumes the canonical primitive
+        // (`CanonicalChipDisc size="cluster"` → 40 px mobile / 44 px
+        // tablet, text-xs/text-sm) so every consumer — waiting,
+        // interstitial, Gin, Cribbage, Holm (3C.3b), and the
+        // remaining games as they cut over — renders the SAME chip.
+        // We pass `amount={null}` and render the pre-formatted
+        // `chipValue` via children so callers retain full control of
+        // value formatting + the status palette's `chipFgClass`.
         const defaultChipDisc = (
-          <div
-            data-chip-center={position}
-            data-canonical-seat-status-ring={statusRing ?? ''}
-            onClick={onChipClick}
-            className={cn(
-              'relative w-8 h-8 rounded-full flex items-center justify-center border border-white/40',
-              chipBgClass,
-              chipRingClass,
-              dimChip && 'opacity-50',
-              onChipClick && 'cursor-pointer active:scale-95 pointer-events-auto',
-            )}
-          >
-            <span className={cn('text-[10px] font-bold', chipFgClass)}>
-              {chipValue}
-            </span>
-            {chipDiscChildren}
-            {chipOverlay && (
-              <div
-                data-canonical-seat-chip-overlay=""
-                className="absolute inset-0 pointer-events-none"
-              >
-                {chipOverlay}
-              </div>
-            )}
-            {innerDecoration && (
-              <div
-                data-canonical-seat-decoration="inner"
-                className={cn(
-                  'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
-                  innerSideClass,
-                )}
-              >
-                {innerDecoration}
-              </div>
-            )}
-            {outerDecoration && (
-              <div
-                data-canonical-seat-decoration="outer"
-                className={cn(
-                  'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
-                  outerSideClass,
-                )}
-              >
-                {outerDecoration}
-              </div>
-            )}
+          <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
+            <CanonicalChipDisc
+              size="cluster"
+              amount={null}
+              bgClass={chipBgClass}
+              ringClass={chipRingClass}
+              folded={dimChip}
+              clickable={!!onChipClick}
+              onClick={onChipClick}
+              positionAnchor={position}
+            >
+              <span className={cn('font-bold leading-none', chipFgClass)}>
+                {chipValue}
+              </span>
+              {chipDiscChildren}
+              {chipOverlay && (
+                <div
+                  data-canonical-seat-chip-overlay=""
+                  className="absolute inset-0 pointer-events-none"
+                >
+                  {chipOverlay}
+                </div>
+              )}
+              {innerDecoration && (
+                <div
+                  data-canonical-seat-decoration="inner"
+                  className={cn(
+                    'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
+                    innerSideClass,
+                  )}
+                >
+                  {innerDecoration}
+                </div>
+              )}
+              {outerDecoration && (
+                <div
+                  data-canonical-seat-decoration="outer"
+                  className={cn(
+                    'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
+                    outerSideClass,
+                  )}
+                >
+                  {outerDecoration}
+                </div>
+              )}
+            </CanonicalChipDisc>
           </div>
         );
 
