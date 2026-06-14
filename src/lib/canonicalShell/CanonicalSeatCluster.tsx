@@ -377,6 +377,14 @@ export function CanonicalSeatCluster({
             'backdrop-blur-[2px]',
           )}
         >
+          {avatar && (
+            <div
+              data-canonical-seat-avatar=""
+              className="flex items-center justify-center"
+            >
+              {avatar}
+            </div>
+          )}
           <div className="flex items-center gap-1 w-full justify-center min-w-0">
             <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
               {name}
@@ -389,10 +397,12 @@ export function CanonicalSeatCluster({
           </div>
           <div
             data-chip-center={position}
+            data-canonical-seat-status-ring={statusRing ?? ''}
             onClick={onChipClick}
             className={cn(
               'relative w-8 h-8 rounded-full flex items-center justify-center border border-white/40',
               chipBgClass,
+              chipRingClass,
               dimChip && 'opacity-50',
               onChipClick && 'cursor-pointer active:scale-95 pointer-events-auto',
             )}
