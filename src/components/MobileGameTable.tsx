@@ -5202,13 +5202,13 @@ export const MobileGameTable = ({
     const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
     const playerExplicitlyStayed = playerDecision === 'stay';
 
-    const showNameBelowCards = isShowdown && hideChipForShowdown && (isUpperCorner || isMiddlePosition);
-    const showNameBelowChip = isUpperCorner && !hideChipForShowdown;
+    // Wave 3C.3c — stable name placement during Holm gameplay. Name
+    // is always rendered above the chip across active/inactive/
+    // showdown/emoticon/dealer states. Eliminates active-state
+    // hopping caused by namePlacement migration.
+    const showNameBelowCards = false;
+    const namePlacement: 'above-chip' | 'below-chip' | 'none' = 'above-chip';
 
-    let namePlacement: 'above-chip' | 'below-chip' | 'none';
-    if (showNameBelowCards) namePlacement = 'none';
-    else if (showNameBelowChip) namePlacement = 'below-chip';
-    else namePlacement = 'above-chip';
 
     const cardsNode = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
       <div
