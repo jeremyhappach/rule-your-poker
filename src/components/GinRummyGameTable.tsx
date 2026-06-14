@@ -2492,6 +2492,7 @@ export const GinRummyGameTable = ({
                       name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
                       isDealer={isCribDealer(seatId)}
                       chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                      statusRing={seatPlayer.sitting_out || (seatPlayer as any).auto_fold ? 'sitting_out' : 'active'}
                       ownerLabel="Gameplay:GinRummyGameTable.opponentOverlay"
                       playerId={seatId}
                     >
