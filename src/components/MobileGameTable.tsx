@@ -4663,9 +4663,12 @@ export const MobileGameTable = ({
           </div>
         )}
         
-        {/* Main chip stack - clickable for host to control players */}
-        <div 
-          className={`relative ${isClickable ? 'cursor-pointer' : ''}`}
+        {/* Main chip stack - clickable for host to control players.
+            Wave 3B: stack-root identity owned by CanonicalChipstack
+            (thin wrapper — visuals unchanged). */}
+        <CanonicalChipstack
+          position={player.position}
+          clickable={isClickable}
           onClick={isClickable ? () => onPlayerClick(player) : undefined}
         >
           {/* Wave 3 / 3A: shell-owned chip disc.
@@ -4720,7 +4723,8 @@ export const MobileGameTable = ({
               manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
             />
           </CanonicalChipDisc>
-        </div>
+        </CanonicalChipstack>
+
       </div>;
     
     const nameElement = (
