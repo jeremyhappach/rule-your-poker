@@ -48,8 +48,10 @@ interface CanonicalChipDiscProps {
   size?: CanonicalChipDiscSize;
   /** Force value text to red even when amount >= 0 (caller may have richer color rules). */
   forceNegativeColor?: boolean;
-  /** Sibling overlays rendered INSIDE the disc div (ValueChangeFlash etc.). */
+  /** Sibling overlays rendered INSIDE the disc body (ValueChangeFlash etc.). */
   children?: ReactNode;
+  /** Sibling overlays rendered ALONGSIDE the disc body inside the same relative wrapper (emoticon overlay etc.). */
+  overlay?: ReactNode;
 }
 
 export const CanonicalChipDisc = ({
@@ -63,6 +65,7 @@ export const CanonicalChipDisc = ({
   size = 'gameplay',
   forceNegativeColor = false,
   children,
+  overlay,
 }: CanonicalChipDiscProps) => {
   const { isTablet } = useDeviceSize();
 
@@ -102,6 +105,7 @@ export const CanonicalChipDisc = ({
         )}
         {children}
       </div>
+      {overlay}
     </div>
   );
 };
