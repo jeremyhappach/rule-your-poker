@@ -254,6 +254,10 @@ export function CanonicalSeatCluster({
   allowSelfRender = false,
   avatar,
   statusRing,
+  chipHUD,
+  chipDiscChildren,
+  chipPresentation = 'auto',
+  namePlacement = 'above-chip',
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
