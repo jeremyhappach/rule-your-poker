@@ -41,6 +41,7 @@
  */
 
 import { cloneElement, isValidElement, useEffect, useRef, type ReactElement, type ReactNode } from 'react';
+import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 import { cn } from '@/lib/utils';
 import {
   getCanonicalSlotPlacement,
