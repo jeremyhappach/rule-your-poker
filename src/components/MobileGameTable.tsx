@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
+import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";

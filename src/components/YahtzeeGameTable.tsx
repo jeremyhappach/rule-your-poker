@@ -19,6 +19,7 @@ import { DiceTableLayout } from "./DiceTableLayout";
 import { DiceTraceControl } from "./DiceTraceControl";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
+import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
@@ -1892,14 +1893,18 @@ export function YahtzeeGameTable({
           {getPlayerUsername(player)}
         </span>
         {/* Wave 3 / 3A: shell-owned chip disc. Yahtzee uses the mobile-only
-            compact preset (no tablet doubling). */}
-        <CanonicalChipDisc
-          amount={player.chips}
-          size="gameplay-compact"
-          showTurnRing={isTheirTurn}
-          pulseDisc={isTheirTurn}
-          positionAnchor={player.position}
-        />
+            compact preset (no tablet doubling).
+            Wave 3B: stack-root identity owned by CanonicalChipstack
+            (thin wrapper — visuals unchanged). */}
+        <CanonicalChipstack position={player.position}>
+          <CanonicalChipDisc
+            amount={player.chips}
+            size="gameplay-compact"
+            showTurnRing={isTheirTurn}
+            pulseDisc={isTheirTurn}
+            positionAnchor={player.position}
+          />
+        </CanonicalChipstack>
       </div>
     );
   };
