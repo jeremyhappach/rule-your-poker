@@ -6311,6 +6311,7 @@ export const CribbageMobileGameTable = ({
                   isDealer={!preSession && seatPlayer.position === dealerPosition}
                   chipValue={`$${formatChipValue(seatPlayer.chips)}`}
                   status={preSessionStatus}
+                  statusRing={preSessionStatus}
                   ownerLabel={preSession
                     ? 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay[preSession]'
                     : 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay[gameplay]'}

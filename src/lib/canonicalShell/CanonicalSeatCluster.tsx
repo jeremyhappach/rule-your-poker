@@ -52,7 +52,9 @@ import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import {
   getParticipantChipBgClass,
   getParticipantChipFgClass,
+  getParticipantChipRingClass,
   type ParticipantStatus,
+  type CanonicalSeatStatusRing,
 } from './participantStatus';
 import {
   noteChipContinuityMount,
@@ -154,6 +156,29 @@ export interface CanonicalSeatClusterProps {
    *  (waiting/interstitial) where identity must be visible on the felt
    *  because there is no active-player content to anchor it. */
   allowSelfRender?: boolean;
+  /**
+   * Wave 3C.1 — CanonicalOpponentSeat avatar slot.
+   *
+   * Optional arbitrary node rendered inside the felt pill ABOVE the
+   * identity row (name + dealer pip). Intended for a per-player
+   * avatar / team logo / profile glyph. Sized by the caller (the
+   * cluster does not impose a fixed avatar geometry — different
+   * surfaces may want different sizes). Omit for the legacy
+   * identity-row-only rendering — zero visual change.
+   */
+  avatar?: ReactNode;
+  /**
+   * Wave 3C.1 — CanonicalOpponentSeat status-ring slot.
+   *
+   * Opt-in colored ring around the chip disc. Independent of the
+   * chip FILL color (which is owned by `status`) so games can
+   * express transient turn highlighting ('turn') without disturbing
+   * the participant-status palette. Resolves via
+   * `getParticipantChipRingClass`. 'active' / null / undefined →
+   * no ring (default — passive consumers can pass-through their
+   * existing `status` and only non-active seats gain a ring).
+   */
+  statusRing?: CanonicalSeatStatusRing;
 }
 
 export function CanonicalSeatCluster({
@@ -176,6 +201,8 @@ export function CanonicalSeatCluster({
   ownerLabel,
   playerId = null,
   allowSelfRender = false,
+  avatar,
+  statusRing,
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
@@ -298,6 +325,7 @@ export function CanonicalSeatCluster({
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
+  const chipRingClass = getParticipantChipRingClass(statusRing);
 
   // Inner/outer side resolution. The cluster knows the slot, so games
   // pass "innerDecoration" / "outerDecoration" without needing to
@@ -349,6 +377,14 @@ export function CanonicalSeatCluster({
             'backdrop-blur-[2px]',
           )}
         >
+          {avatar && (
+            <div
+              data-canonical-seat-avatar=""
+              className="flex items-center justify-center"
+            >
+              {avatar}
+            </div>
+          )}
           <div className="flex items-center gap-1 w-full justify-center min-w-0">
             <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
               {name}
@@ -361,10 +397,12 @@ export function CanonicalSeatCluster({
           </div>
           <div
             data-chip-center={position}
+            data-canonical-seat-status-ring={statusRing ?? ''}
             onClick={onChipClick}
             className={cn(
               'relative w-8 h-8 rounded-full flex items-center justify-center border border-white/40',
               chipBgClass,
+              chipRingClass,
               dimChip && 'opacity-50',
               onChipClick && 'cursor-pointer active:scale-95 pointer-events-auto',
             )}

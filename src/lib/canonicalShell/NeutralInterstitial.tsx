@@ -486,6 +486,7 @@ function CanonicalSeatClusterDeferred(props: {
       name={props.name}
       chipValue={props.chipValue}
       status={props.status}
+      statusRing={props.status}
       ownerLabel="Shell:NeutralInterstitial"
       playerId={props.playerId ?? null}
     />

@@ -98,3 +98,44 @@ export function getParticipantChipFgClass(
 ): string {
   return 'text-slate-900';
 }
+
+/**
+ * CanonicalOpponentSeat (Wave 3C.1) status-ring vocabulary.
+ *
+ *   'turn'   → yellow turn-pulse ring (game-driven, not in
+ *              ParticipantStatus because it's transient per-turn)
+ *   plus any ParticipantStatus
+ *
+ * `null` / undefined  →  no ring (default — no visual change for
+ * consumers that haven't opted in).
+ */
+export type CanonicalSeatStatusRing = ParticipantStatus | 'turn' | null;
+
+/**
+ * Canonical Tailwind ring class for the chip bubble. Returns '' for
+ * 'active' (no ring — the white fill alone reads as default) so
+ * passive consumers can pass-through their existing `status` value
+ * without painting rings on every seat.
+ *
+ * Wave 3C.1: opt-in only. Cluster renders nothing if `statusRing`
+ * prop is omitted; renders this class on the chip disc if provided.
+ */
+export function getParticipantChipRingClass(
+  ring: CanonicalSeatStatusRing | undefined,
+): string {
+  switch (ring) {
+    case 'turn':
+      return 'ring-2 ring-yellow-400';
+    case 'waiting':
+      return 'ring-2 ring-yellow-400';
+    case 'sitting_out':
+      return 'ring-2 ring-red-500';
+    case 'stayed':
+      return 'ring-2 ring-green-500';
+    case 'active':
+    case null:
+    case undefined:
+    default:
+      return '';
+  }
+}

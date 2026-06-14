@@ -109,6 +109,7 @@ export function PreSessionSeatLayer({
             name={label}
             chipValue={`$${formatChipValue(player.chips ?? 0)}`}
             status={status}
+            statusRing={status}
             isDealer={false}
             ownerLabel="Shell:PreSessionSeatLayer"
             playerId={player.id}
