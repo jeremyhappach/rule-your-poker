@@ -179,6 +179,57 @@ export interface CanonicalSeatClusterProps {
    * existing `status` and only non-active seats gain a ring).
    */
   statusRing?: CanonicalSeatStatusRing;
+  /**
+   * Wave 3C.3a — chip HUD wrapper slot.
+   *
+   * Optional React element that WRAPS the chip-disc node. Used to
+   * mount a countdown ring (ActivePlayerHUD) or a future shell-owned
+   * chip HUD around the chip body without the cluster knowing about
+   * the HUD's internals. The cluster clones the element and injects
+   * the chip-disc node as its `children`. Omit → chip is rendered
+   * inline (current behavior, zero visual change).
+   */
+  chipHUD?: ReactElement;
+  /**
+   * Wave 3C.3a — children rendered INSIDE the chip disc.
+   *
+   * Intended for value-change flash siblings (+$, +L) and future
+   * shell-owned chip effects that must paint over the disc face.
+   * Sits alongside the value text and the `chipOverlay` slot. Omit
+   * → nothing extra is rendered (current behavior, zero visual
+   * change).
+   */
+  chipDiscChildren?: ReactNode;
+  /**
+   * Wave 3C.3a — chip presentation mode.
+   *
+   *  - 'auto'   : render the canonical chip disc as today (default).
+   *  - 'hidden' : suppress the chip disc entirely (identity row +
+   *               decorations still render; outer cluster geometry
+   *               preserved). Used for Holm showdown / emoticon
+   *               fallback cases that want to hide the chip but keep
+   *               the seat anchored.
+   *  - ReactNode: render the provided node IN PLACE of the chip disc
+   *               (e.g. a dice-result badge that replaces the chip
+   *               for Horses/SCC completed players).
+   *
+   * Default 'auto' keeps every existing consumer pixel-identical.
+   */
+  chipPresentation?: 'auto' | 'hidden' | ReactNode;
+  /**
+   * Wave 3C.3a — name row placement within the identity pill.
+   *
+   *  - 'above-chip' : render the name+dealer row above the chip
+   *                   (default — current behavior).
+   *  - 'below-chip' : render the name+dealer row below the chip
+   *                   (below the score line if present).
+   *  - 'none'       : suppress the name+dealer row entirely. Use
+   *                   when the consumer is rendering its own name
+   *                   element outside the cluster.
+   *
+   * Default 'above-chip' preserves every existing consumer's layout.
+   */
+  namePlacement?: 'above-chip' | 'below-chip' | 'none';
 }
 
 export function CanonicalSeatCluster({
