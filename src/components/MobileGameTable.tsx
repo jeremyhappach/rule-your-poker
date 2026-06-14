@@ -70,6 +70,7 @@ import { resolveChipEndpoint } from "@/lib/canonicalShell/chipEndpoints";
 import {
   derivePlayerStatus,
   getParticipantChipBgClass,
+  type CanonicalSeatStatusRing,
 } from "@/lib/canonicalShell/participantStatus";
 // PersistentTableShell ownership lifted to Game.tsx in Phase 5;
 // MobileGameTable no longer mounts an inner shell to avoid duplicate
