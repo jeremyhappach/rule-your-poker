@@ -38,8 +38,10 @@ export interface ActivePlayerHUDProps {
   seatPosition?: number;
   gameId?: string;
   gameType?: string;
-  /** The content this HUD frames (typically the player's chip stack). */
-  children: ReactNode;
+  /** The content this HUD frames (typically the player's chip stack).
+   *  Optional so the cluster (Wave 3C.3a chipHUD slot) can mount this
+   *  as a wrapper element and inject the chip body via cloneElement. */
+  children?: ReactNode;
 }
 
 /**
