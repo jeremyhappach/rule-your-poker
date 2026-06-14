@@ -98,6 +98,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  type ReactNode,
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
 import { useChipStackEmoticons } from "@/hooks/useChipStackEmoticons";
