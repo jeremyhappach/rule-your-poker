@@ -423,23 +423,11 @@ export function CanonicalSeatCluster({
           shell seat geometry does NOT shift based on player-name
           length. Long names truncate with ellipsis instead of
           stretching the pill. */}
-      {!hideChipBubble && (
-        <div
-          className={cn(
-            'relative flex flex-col items-center gap-0.5 rounded-2xl px-2 py-1',
-            'w-[96px]',
-            'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
-            'backdrop-blur-[2px]',
-          )}
-        >
-          {avatar && (
-            <div
-              data-canonical-seat-avatar=""
-              className="flex items-center justify-center"
-            >
-              {avatar}
-            </div>
-          )}
+      {!hideChipBubble && (() => {
+        // Wave 3C.3a — name row, chip presentation, chip HUD, and
+        // chip-disc-children slots. All four default to behavior
+        // identical to the pre-3C.3a render (no consumer changes).
+        const nameRow = namePlacement === 'none' ? null : (
           <div className="flex items-center gap-1 w-full justify-center min-w-0">
             <span className="text-[10px] text-white/95 font-medium truncate min-w-0">
               {name}
@@ -450,6 +438,10 @@ export function CanonicalSeatCluster({
               </div>
             )}
           </div>
+        );
+
+        // Default chip-disc node (chipPresentation === 'auto').
+        const defaultChipDisc = (
           <div
             data-chip-center={position}
             data-canonical-seat-status-ring={statusRing ?? ''}
@@ -465,6 +457,7 @@ export function CanonicalSeatCluster({
             <span className={cn('text-[10px] font-bold', chipFgClass)}>
               {chipValue}
             </span>
+            {chipDiscChildren}
             {chipOverlay && (
               <div
                 data-canonical-seat-chip-overlay=""
@@ -496,13 +489,54 @@ export function CanonicalSeatCluster({
               </div>
             )}
           </div>
-          {scoreLine && (
-            <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
-              {scoreLine}
-            </span>
-          )}
-        </div>
-      )}
+        );
+
+        // chipPresentation: 'auto' → default disc, 'hidden' → no chip
+        // body, ReactNode → replacement rendered in place of the disc.
+        let chipBody: ReactNode;
+        if (chipPresentation === 'hidden') {
+          chipBody = null;
+        } else if (chipPresentation === 'auto') {
+          chipBody = defaultChipDisc;
+        } else {
+          chipBody = chipPresentation;
+        }
+
+        // chipHUD: optional wrapper element (e.g. ActivePlayerHUD
+        // countdown ring). We clone and inject the chipBody as its
+        // children. No-op when chipHUD is absent.
+        if (chipBody !== null && chipHUD && isValidElement(chipHUD)) {
+          chipBody = cloneElement(chipHUD, { children: chipBody } as never);
+        }
+
+        return (
+          <div
+            className={cn(
+              'relative flex flex-col items-center gap-0.5 rounded-2xl px-2 py-1',
+              'w-[96px]',
+              'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
+              'backdrop-blur-[2px]',
+            )}
+          >
+            {avatar && (
+              <div
+                data-canonical-seat-avatar=""
+                className="flex items-center justify-center"
+              >
+                {avatar}
+              </div>
+            )}
+            {namePlacement === 'above-chip' && nameRow}
+            {chipBody}
+            {scoreLine && (
+              <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
+                {scoreLine}
+              </span>
+            )}
+            {namePlacement === 'below-chip' && nameRow}
+          </div>
+        );
+      })()}
 
       {children && (
         <div data-canonical-seat-cluster-content="" className="flex flex-col items-center">
