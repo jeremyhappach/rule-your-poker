@@ -378,6 +378,7 @@ export function CanonicalSeatCluster({
   // playable space above it. Top/middle slots keep the natural
   // identity → chip → content stack.
   const isBottomAnchored = slot === -1 || slot === -3 || slot === 0 || slot === 5;
+  const isBottomPerimeterSeat = slot === 0 || slot === 5;
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
@@ -413,6 +414,7 @@ export function CanonicalSeatCluster({
         'transition-all duration-300',
         className,
       )}
+      style={isBottomPerimeterSeat ? { marginBottom: 'var(--shell-seat-safe-bottom)' } : undefined}
     >
       {/* Felt-toned backdrop pill — wraps identity + chip only.
           Game-owned children sit OUTSIDE this pill so card geometry
