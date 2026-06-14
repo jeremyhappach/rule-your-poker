@@ -1,33 +1,41 @@
 /**
- * CanonicalChipDisc — Wave 3 / 3A.
+ * CanonicalChipDisc — Wave 3 / 3A + 3C consolidation.
  *
  * Shell-owned per-seat chip disc. Single source of truth for:
- *   - disc geometry (mobile w-12/h-12, tablet w-16/h-16)
- *   - chip value typography (mobile text-sm, tablet text-base)
+ *   - disc geometry per preset
+ *   - chip value typography per preset
  *   - turn-pulse yellow ring overlay
  *   - folded opacity dim
  *   - `data-chip-center` anchor attribute (consumed by chip-fly origins)
+ *   - optional status-driven ring class
  *
- * Scope (3A consumers): Holm, 3-5-7, Horses, SCC, Yahtzee.
- * Skipped (per Wave 3 inventory): Gin, Cribbage — bespoke seat anchors.
- *
- * Explicitly out of scope for 3A:
- *   - pot disc, dealer button, chip transport, settlement math.
+ * Presets:
+ *   - 'gameplay'        : mobile w-12 / tablet w-16 — MGT-resident
+ *                         games (Holm/357/Horses/SCC).
+ *   - 'gameplay-compact': fixed w-12 — Yahtzee (mobile-only).
+ *   - 'cluster'         : mobile w-10 / tablet w-11 — CanonicalOpponentSeat
+ *                         identity-pill chip. Sized to fit the 96 px felt
+ *                         pill alongside name + dealer pip + score line
+ *                         while staying legible (3C.3 consolidation —
+ *                         replaces the cluster's hand-rolled 32 px disc).
  *
  * The caller still owns:
  *   - bg color class (resolved via getParticipantChipBgClass / status palette)
  *   - chip value sourcing (lockedChipsRef vs displayedChips vs player.chips)
  *   - sibling overlays (ValueChangeFlash, emoticon overlay) — passed as children
+ *   - ring class for non-yellow status rings (passed via ringClass)
  */
 
 import { ReactNode } from 'react';
 import { cn, formatChipValue } from '@/lib/utils';
 import { useDeviceSize } from '@/hooks/useDeviceSize';
 
-export type CanonicalChipDiscSize = 'gameplay' | 'gameplay-compact';
+export type CanonicalChipDiscSize = 'gameplay' | 'gameplay-compact' | 'cluster';
 
 interface CanonicalChipDiscProps {
-  /** Chip amount displayed inside the disc. Pass `null` to suppress the value (e.g. emoticon overlay active). */
+  /** Chip amount displayed inside the disc. Pass `null` to suppress the
+   *  value (e.g. emoticon overlay active, or caller renders its own
+   *  value via children). */
   amount: number | null;
   /** Tailwind bg class for the disc fill — resolved by caller via status palette. Defaults to `bg-slate-300`. */
   bgClass?: string;
@@ -39,12 +47,15 @@ interface CanonicalChipDiscProps {
   folded?: boolean;
   /** Adds `active:scale-95` for host click affordance. */
   clickable?: boolean;
+  /** Optional click handler attached to the disc body. */
+  onClick?: () => void;
+  /** Extra ring class(es) appended to the disc body (e.g. status-driven
+   *  colored rings from `getParticipantChipRingClass`). Independent of
+   *  `showTurnRing`, which paints a yellow sibling overlay. */
+  ringClass?: string;
   /** Position number for the `data-chip-center` anchor attribute consumed by chip-fly origins. */
   positionAnchor?: number;
-  /**
-   * 'gameplay' = mobile w-12 / tablet w-16 (MGT-resident games: Holm/357/Horses/SCC).
-   * 'gameplay-compact' = fixed w-12 (Yahtzee — mobile-only surface).
-   */
+  /** Disc size preset — see file header. */
   size?: CanonicalChipDiscSize;
   /** Force value text to red even when amount >= 0 (caller may have richer color rules). */
   forceNegativeColor?: boolean;
@@ -61,6 +72,8 @@ export const CanonicalChipDisc = ({
   pulseDisc = false,
   folded = false,
   clickable = false,
+  onClick,
+  ringClass,
   positionAnchor,
   size = 'gameplay',
   forceNegativeColor = false,
@@ -69,11 +82,18 @@ export const CanonicalChipDisc = ({
 }: CanonicalChipDiscProps) => {
   const { isTablet } = useDeviceSize();
 
-  // Tablet sizing applies ONLY to the gameplay preset. The compact preset
-  // (Yahtzee) is mobile-only and intentionally fixed at w-12.
-  const tabletScale = size === 'gameplay' && isTablet;
-  const discSize = tabletScale ? 'w-16 h-16' : 'w-12 h-12';
-  const valueTextSize = tabletScale ? 'text-base' : 'text-sm';
+  let discSize: string;
+  let valueTextSize: string;
+  if (size === 'cluster') {
+    discSize = isTablet ? 'w-11 h-11' : 'w-10 h-10';
+    valueTextSize = isTablet ? 'text-sm' : 'text-xs';
+  } else if (size === 'gameplay' && isTablet) {
+    discSize = 'w-16 h-16';
+    valueTextSize = 'text-base';
+  } else {
+    discSize = 'w-12 h-12';
+    valueTextSize = 'text-sm';
+  }
 
   const isNegative = forceNegativeColor || (amount !== null && amount < 0);
 
@@ -83,13 +103,16 @@ export const CanonicalChipDisc = ({
         <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
       )}
       <div
+        onClick={onClick}
         className={cn(
           'absolute inset-0 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50',
           discSize,
           bgClass,
+          ringClass,
           folded && 'opacity-50',
           pulseDisc && 'animate-turn-pulse',
           clickable && 'active:scale-95',
+          onClick && 'cursor-pointer pointer-events-auto',
         )}
       >
         {amount !== null && (
