@@ -202,7 +202,7 @@ describe('CanonicalSeatCluster — new decorator vocabulary', () => {
     renderInLayer(
       <CanonicalSeatCluster slot={1} position={2} name="A" chipValue="$1" dimChip />,
     );
-    expect(container.querySelector('[data-chip-center="2"]')!.className).toContain(
+    expect(container.querySelector('[data-chip-center="2"] > div')!.className).toContain(
       'opacity-50',
     );
   });
@@ -217,7 +217,7 @@ describe('CanonicalSeatCluster — new decorator vocabulary', () => {
         onChipClick={() => {}}
       />,
     );
-    const chip = container.querySelector('[data-chip-center="2"]')!;
+    const chip = container.querySelector('[data-chip-center="2"] > div')!;
     expect(chip.className).toContain('cursor-pointer');
     expect(chip.className).toContain('pointer-events-auto');
   });
