@@ -380,6 +380,33 @@ export function CanonicalSeatCluster({
   const isBottomAnchored = slot === -1 || slot === -3 || slot === 0 || slot === 5;
   const isBottomPerimeterSeat = slot === 0 || slot === 5;
 
+  // Wave 3C.3e — identity hugs the rail, gameplay points inward.
+  // Derive default name placement from slot geometry:
+  //   top seats     → NAME above CHIP
+  //   bottom seats  → CHIP above NAME
+  //   side seats    → horizontal row, name on OUTER side (slot 1 left,
+  //                   slot 4 right)
+  // Callers may still override via the `namePlacement` prop ('none' is
+  // always respected); the derived value only fires when the caller
+  // accepted the default ('above-chip').
+  type SeatOrientation =
+    | 'vertical-name-top'
+    | 'vertical-name-bottom'
+    | 'horizontal-name-left'
+    | 'horizontal-name-right';
+  let seatOrientation: SeatOrientation;
+  if (slot === 1) seatOrientation = 'horizontal-name-left';
+  else if (slot === 4) seatOrientation = 'horizontal-name-right';
+  else if (isBottomAnchored) seatOrientation = 'vertical-name-bottom';
+  else seatOrientation = 'vertical-name-top';
+
+  const effectiveNamePlacement: 'above-chip' | 'below-chip' | 'none' =
+    namePlacement === 'none'
+      ? 'none'
+      : seatOrientation === 'vertical-name-bottom'
+        ? 'below-chip'
+        : 'above-chip';
+
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
   const chipRingClass = getParticipantChipRingClass(statusRing);
