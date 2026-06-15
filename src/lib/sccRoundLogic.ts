@@ -11,6 +11,7 @@ import { logRaceConditionGuard } from "./gameStateDebugLog";
 import { logSCCAnteApplied } from "./sccSyncDiagnostics";
 import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
 import type { HorsesRoundCallerContext } from "./horsesRoundLogic";
+import { nextClockwise } from "./canonicalShell/seatRing";
 
 /**
  * Start a new Ship Captain Crew round
