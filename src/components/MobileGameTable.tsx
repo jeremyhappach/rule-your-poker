@@ -4533,6 +4533,8 @@ export const MobileGameTable = ({
   };
 
   const [holmTurnTraceRows, setHolmTurnTraceRows] = useState<HolmTurnTraceRow[]>([]);
+  const holmTurnTraceSeenRef = useRef<Set<string>>(new Set());
+  const holmTurnTracePrevDecisionRef = useRef<Map<string, string>>(new Map());
 
   const getTracePlayerName = useCallback((player: Player | undefined): string => {
     if (!player) return '—';
@@ -4625,12 +4627,57 @@ export const MobileGameTable = ({
     const onAction = (event: Event) => {
       const detail = (event as CustomEvent<HolmTurnTraceActionEvent>).detail;
       if (!detail || detail.gameId !== gameId) return;
+      const key = `${detail.roundId ?? holmTraceRoundId ?? 'round'}:${detail.actualActingPlayerId}:${detail.actionTaken}`;
+      if (holmTurnTraceSeenRef.current.has(key)) return;
+      holmTurnTraceSeenRef.current.add(key);
       const row = buildHolmTurnTraceRow(detail);
       setHolmTurnTraceRows(prev => [...prev.slice(-40), row]);
     };
     window.addEventListener(HOLM_TURN_TRACE_ACTION_EVENT, onAction);
     return () => window.removeEventListener(HOLM_TURN_TRACE_ACTION_EVENT, onAction);
-  }, [buildHolmTurnTraceRow, gameId, gameType]);
+  }, [buildHolmTurnTraceRow, gameId, gameType, holmTraceRoundId]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const next = new Map<string, string>();
+    const observedActions: HolmTurnTraceActionEvent[] = [];
+    for (const player of players) {
+      const decision = player.decision_locked && (player.current_decision === 'stay' || player.current_decision === 'fold')
+        ? player.current_decision
+        : null;
+      if (!decision) continue;
+      const decisionKey = `${holmTraceRoundId ?? 'round'}:${player.id}:${decision}`;
+      next.set(player.id, decisionKey);
+      const prevKey = holmTurnTracePrevDecisionRef.current.get(player.id);
+      if (prevKey !== decisionKey && !holmTurnTraceSeenRef.current.has(decisionKey)) {
+        holmTurnTraceSeenRef.current.add(decisionKey);
+        observedActions.push({
+          gameId: gameId ?? '',
+          timestamp: new Date().toISOString(),
+          handNumber: holmTraceHandNumber ?? null,
+          roundId: holmTraceRoundId ?? null,
+          dbCurrentTurnPosition: holmTraceDbCurrentTurnPosition ?? null,
+          actualActingPlayerId: player.id,
+          actualActingPlayerPosition: player.position,
+          actorKind: player.is_bot ? 'bot' : 'human',
+          actionTaken: decision,
+          source: 'MobileGameTable:observed-decision-lock',
+        });
+      }
+    }
+    holmTurnTracePrevDecisionRef.current = next;
+    if (observedActions.length === 0) return;
+    const rows = observedActions.map(buildHolmTurnTraceRow);
+    setHolmTurnTraceRows(prev => [...prev, ...rows].slice(-40));
+  }, [
+    buildHolmTurnTraceRow,
+    gameId,
+    gameType,
+    holmTraceDbCurrentTurnPosition,
+    holmTraceHandNumber,
+    holmTraceRoundId,
+    players,
+  ]);
 
   const getPlayerAtSlot = (slotIndex: number): Player | undefined => {
     const targetDistance = slotIndex + 1; // slot 0 = 1 seat away, slot 1 = 2 seats away, etc.
