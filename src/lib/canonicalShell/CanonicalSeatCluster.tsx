@@ -631,6 +631,21 @@ export function CanonicalSeatCluster({
         </div>
       )}
 
+      {!hideChipBubble
+        && effectiveNamePlacement === 'above-chip'
+        && nameRow
+        && nameSide === 'inner-horizontal' && (
+        <div
+          data-canonical-seat-inner-name=""
+          className={cn(
+            'absolute top-1/2 -translate-y-1/2 pointer-events-none flex items-center',
+            isRightSide ? 'right-full mr-[4px]' : 'left-full ml-[4px]',
+          )}
+        >
+          {nameRow}
+        </div>
+      )}
+
       {belowChipNodes.length > 0 && (
         <div
           data-canonical-seat-below=""
