@@ -444,17 +444,17 @@ export function CanonicalSeatCluster({
           <div
             data-canonical-seat-name-row=""
             className={cn(
-              'grid items-center w-full rounded-md px-1.5 py-0.5',
+              'grid items-center w-full rounded-sm px-1 py-0',
               // Subtle backdrop ONLY behind the name — exists so the
               // label remains readable when the seat anchor sits
               // partially off the felt (rail / chrome). No full pill.
               'bg-black/35 backdrop-blur-[1px]',
             )}
-            style={{ gridTemplateColumns: '12px minmax(0,1fr) 12px' }}
+            style={{ gridTemplateColumns: '10px minmax(0,1fr) 10px' }}
           >
             <span />
             <span
-              className="text-[10px] text-white font-medium truncate min-w-0 text-center leading-tight"
+              className="text-[10px] text-white font-medium truncate min-w-0 text-center leading-[1.05]"
               style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
             >
               {name}
@@ -462,11 +462,11 @@ export function CanonicalSeatCluster({
             <div
               aria-hidden={!isDealer}
               className={cn(
-                'w-2.5 h-2.5 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
+                'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
                 !isDealer && 'invisible',
               )}
             >
-              <span className="text-white font-bold text-[6px] leading-none">D</span>
+              <span className="text-white font-bold text-[5px] leading-none">D</span>
             </div>
           </div>
         );
@@ -536,27 +536,29 @@ export function CanonicalSeatCluster({
           chipCellContents = cloneElement(chipHUD, { children: chipContent } as never);
         }
 
-        // Reserved chip cell — 56×56 (was 60×60). Stable footprint.
+        // Reserved chip cell — content-driven 44×44 (chip disc is 40×40
+        // with 2px breathing on each side for the HUD frame ring).
+        // Tighter than 56×56 so the name visually attaches to the chip.
         const chipCell = (
           <div
             data-canonical-seat-chip-cell=""
-            className="relative flex items-center justify-center w-[56px] h-[56px]"
+            className="relative flex items-center justify-center w-[44px] h-[44px]"
           >
             {chipCellContents}
           </div>
         );
 
-        // Tightened pill: no full background plate. The name carries
-        // its own readability backdrop; the chip stands on its own
-        // felt. Gap shrunk so name visually attaches to the chip.
-        // Width tightened (96 → 78) to free felt space for community
-        // cards and let the seat sit farther out on the rail.
+        // Wave 3C.3d — content-driven pill. No fixed plate width.
+        // Pill hugs its content (name + chip) with a min/max envelope
+        // so long names truncate and short names don't waste felt.
+        // gap-0 makes the name visually tangent to the chip — name
+        // reads as a label attached to the chip, not as a floating
+        // row above it.
         return (
           <div
             data-canonical-seat-pill=""
             className={cn(
-              'relative flex flex-col items-center gap-0.5',
-              'w-[78px]',
+              'relative flex flex-col items-center gap-0 w-fit min-w-[56px] max-w-[88px]',
             )}
           >
             {avatar && (
@@ -569,6 +571,7 @@ export function CanonicalSeatCluster({
             )}
             {namePlacement === 'above-chip' && nameRow}
             {chipCell}
+
             {scoreLine && (
               <span
                 className="text-[10px] font-semibold text-poker-gold leading-none"
