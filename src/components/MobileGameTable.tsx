@@ -236,6 +236,39 @@ interface PlayerCards {
   player_id: string;
   cards: CardType[];
 }
+
+interface HolmTurnTraceSeatMapping {
+  position: number;
+  playerName: string;
+  canonicalSlot: number | null;
+  chipDomRectCenter: { x: number; y: number } | null;
+}
+
+interface HolmTurnTraceRow {
+  id: string;
+  timestamp: string;
+  handNumber: number | null;
+  roundId: string | null;
+  dealerPosition: number | null;
+  buckPosition: number | null;
+  dbCurrentTurnPosition: number | null;
+  holmViewCurrentTurnPosition: number | null;
+  mobileGameTableCurrentTurnPosition: number | null;
+  actualActingPlayerId: string | null;
+  actualActingPlayerPosition: number | null;
+  actorKind: 'bot' | 'human' | null;
+  actionTaken: string;
+  chipRingPosition: number | null;
+  actionControlsEnabledPosition: number | null;
+  spotlightInputPosition: number | null;
+  spotlightDomTargetPosition: number | null;
+  spotlightDomTargetPlayerName: string | null;
+  dataChipCenterElementFound: boolean;
+  targetRect: { x: number; y: number } | null;
+  seatMapping: HolmTurnTraceSeatMapping[];
+  assertions: Record<string, boolean | null>;
+}
+
 interface ChatBubbleData {
   id: string;
   user_id: string;
