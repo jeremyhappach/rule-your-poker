@@ -379,6 +379,8 @@ export function CanonicalSeatCluster({
   // identity → chip → content stack.
   const isBottomAnchored = slot === -1 || slot === -3 || slot === 0 || slot === 5;
   const isBottomPerimeterSeat = slot === 0 || slot === 5;
+  const isTopRowSlot = slot === 2 || slot === 3 || slot === -2;
+  const isMiddleRowSlot = slot === 1 || slot === 4;
 
   // Wave 3C.4a — CHIP ANCHOR INVARIANT.
   //
@@ -387,14 +389,6 @@ export function CanonicalSeatCluster({
   // children) is absolutely positioned relative to the chip cell so the
   // chip's `data-chip-center` rect is invariant regardless of which
   // siblings mount or unmount.
-  //
-  // Growth direction (which side of the chip artifacts grow toward) is
-  // derived from the slot's table position:
-  //   - top-row slots (2, 3, -2)                : grow DOWN
-  //   - middle-row slots (1, 4)                 : grow DOWN
-  //   - bottom-row slots (0, 5, -1, -3)         : grow UP
-  // Name plate sits between chip and growth side (closest to chip);
-  // children sit further out in the growth direction.
   const growsDown = !isBottomAnchored;
 
   type SeatOrientation = 'vertical-name-top';
@@ -402,6 +396,28 @@ export function CanonicalSeatCluster({
 
   const effectiveNamePlacement: 'above-chip' | 'none' =
     namePlacement === 'none' ? 'none' : 'above-chip';
+
+  // Wave 3C.4a follow-up — INWARD NAME PROJECTION.
+  //
+  // The elliptical felt has `overflow:hidden`. A name plate rendered
+  // straight above an arc-edge chip clips against the ellipse mask.
+  // The shell resolves this without touching slot placement or the
+  // chip anchor: the name row always projects toward the felt center.
+  //
+  //   - bottom-row slots (0, 5, -1, -3)  → name ABOVE chip (current).
+  //   - top-row slots (2, 3, -2)         → name BELOW chip.
+  //   - middle-row slots (1, 4)          → name HORIZONTALLY INWARD
+  //                                        (right of chip for left
+  //                                        slots, left of chip for
+  //                                        right slots).
+  //
+  // The chip's [data-chip-center] rect, spotlight origin, and chip-
+  // transport endpoints are untouched. Games never specify this.
+  type NameSide = 'above' | 'below' | 'inner-horizontal';
+  const nameSide: NameSide =
+    isTopRowSlot ? 'below'
+    : isMiddleRowSlot ? 'inner-horizontal'
+    : 'above';
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
@@ -515,7 +531,7 @@ export function CanonicalSeatCluster({
     }
   }
 
-  // Above-chip stack: avatar + name (and children if growth UP).
+  // Above-chip stack: avatar (always above) + name when projecting up.
   const aboveChipNodes: ReactNode[] = [];
   if (!hideChipBubble) {
     if (avatar) {
@@ -529,13 +545,17 @@ export function CanonicalSeatCluster({
         </div>,
       );
     }
-    if (effectiveNamePlacement === 'above-chip' && nameRow) {
+    if (effectiveNamePlacement === 'above-chip' && nameRow && nameSide === 'above') {
       aboveChipNodes.push(<div key="name">{nameRow}</div>);
     }
   }
 
-  // Below-chip stack: score line (and children if growth DOWN).
+  // Below-chip stack: name (when projecting down) THEN score line
+  // (and children if growth DOWN). Name is closest to the chip.
   const belowChipNodes: ReactNode[] = [];
+  if (!hideChipBubble && effectiveNamePlacement === 'above-chip' && nameRow && nameSide === 'below') {
+    belowChipNodes.push(<div key="name">{nameRow}</div>);
+  }
   if (!hideChipBubble && scoreLine) {
     belowChipNodes.push(
       <span
@@ -608,6 +628,21 @@ export function CanonicalSeatCluster({
           className="absolute inset-0 flex items-center justify-center"
         >
           {chipCellContents}
+        </div>
+      )}
+
+      {!hideChipBubble
+        && effectiveNamePlacement === 'above-chip'
+        && nameRow
+        && nameSide === 'inner-horizontal' && (
+        <div
+          data-canonical-seat-inner-name=""
+          className={cn(
+            'absolute top-1/2 -translate-y-1/2 pointer-events-none flex items-center',
+            isRightSide ? 'right-full mr-[4px]' : 'left-full ml-[4px]',
+          )}
+        >
+          {nameRow}
         </div>
       )}
 
