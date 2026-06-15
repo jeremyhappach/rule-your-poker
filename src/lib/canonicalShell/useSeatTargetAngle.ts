@@ -18,10 +18,20 @@ import { useEffect, useState } from 'react';
 
 const FULL = Math.PI * 2;
 
-function rad2conic(rad: number): number {
-  // Standard math angle (atan2 dy, dx — east = 0, ccw +) → conic-gradient
-  // angle (north = 0, clockwise +). Conic = 90° - mathDeg, wrapped.
-  let deg = 90 - (rad * 180) / Math.PI;
+function screenAtan2ToConic(rad: number): number {
+  // `atan2(dy, dx)` here is called with SCREEN coordinates (Y grows
+  // downward). In that basis, east=0 and the angle increases CLOCKWISE
+  // as Y grows (because +y is down on screen). Conic-gradient also
+  // measures clockwise, but from NORTH (12 o'clock). To rotate the
+  // zero axis from east to north we ADD 90°, not subtract.
+  //
+  // Sanity:
+  //   chip directly NORTH of center → dx=0, dy<0 → atan2 = -π/2 →
+  //     conic = -90 + 90 = 0°  ✓
+  //   chip directly EAST  → dx>0, dy=0 → atan2 = 0 → conic = 90° ✓
+  //   chip directly SOUTH → dx=0, dy>0 → atan2 = +π/2 → conic = 180° ✓
+  //   chip directly WEST  → dx<0, dy=0 → atan2 = π → conic = 270 → -90° ✓
+  let deg = (rad * 180) / Math.PI + 90;
   while (deg > 180) deg -= 360;
   while (deg < -180) deg += 360;
   return deg;
@@ -42,10 +52,10 @@ function measureAngle(frame: HTMLElement, position: number): number | null {
   const dx = tx - cx;
   const dy = ty - cy;
   if (dx === 0 && dy === 0) return null;
-  // atan2(dy, dx) is the standard east-zero ccw angle in radians.
-  // Conic gradients measure from north, clockwise — convert via rad2conic.
-  return rad2conic(Math.atan2(dy, dx));
+  // Screen-space atan2 → conic (north=0, clockwise+).
+  return screenAtan2ToConic(Math.atan2(dy, dx));
 }
+
 
 void FULL;
 
