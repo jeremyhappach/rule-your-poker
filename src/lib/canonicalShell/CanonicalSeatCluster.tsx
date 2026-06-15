@@ -531,7 +531,7 @@ export function CanonicalSeatCluster({
     }
   }
 
-  // Above-chip stack: avatar + name (and children if growth UP).
+  // Above-chip stack: avatar (always above) + name when projecting up.
   const aboveChipNodes: ReactNode[] = [];
   if (!hideChipBubble) {
     if (avatar) {
@@ -545,7 +545,7 @@ export function CanonicalSeatCluster({
         </div>,
       );
     }
-    if (effectiveNamePlacement === 'above-chip' && nameRow) {
+    if (effectiveNamePlacement === 'above-chip' && nameRow && nameSide === 'above') {
       aboveChipNodes.push(<div key="name">{nameRow}</div>);
     }
   }
