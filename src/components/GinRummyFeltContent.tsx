@@ -157,6 +157,7 @@ export const GinRummyFeltContent = ({
   currentPlayerId,
   opponentId,
   currentTurnSlot,
+  currentTurnPosition,
   getPlayerUsername,
   cardBackColors,
   onDrawStock,
@@ -180,6 +181,7 @@ export const GinRummyFeltContent = ({
       {/* Turn Spotlight */}
       <GinCanonicalTurnSpotlight
         currentTurnSlot={currentTurnSlot}
+        currentTurnPosition={currentTurnPosition}
         isVisible={ginState.phase === 'playing' || ginState.phase === 'first_draw'}
       />
 
