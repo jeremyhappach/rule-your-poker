@@ -19,6 +19,7 @@ import { AppNetworkSim } from "@/components/AppNetworkSim";
 import { NetworkSimIndicator } from "@/components/NetworkSimIndicator";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
 import { LifecycleDebugBadge } from "@/lib/canonicalShell/LifecycleDebugBadge";
+import { LayoutFaultBadge } from "@/lib/wave4LayoutResolver/LayoutFaultBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
@@ -90,6 +91,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <LifecycleDebugBadge />
+              <LayoutFaultBadge />
               {/*
                 Single canonical Debug Tray. Pinned to the bottom of the
                 viewport (above the iOS browser toolbar via safe-area inset).
