@@ -4558,6 +4558,11 @@ export const MobileGameTable = ({
     const targetRect = targetElement?.getBoundingClientRect();
     const targetPositionAttr = targetElement?.getAttribute('data-chip-center');
     const spotlightDomTargetPosition = targetPositionAttr ? Number(targetPositionAttr) : null;
+    const isSelfTurnFallback =
+      !targetElement &&
+      currentPlayer?.position !== null &&
+      currentPlayer?.position !== undefined &&
+      spotlightInputPosition === currentPlayer.position;
     const spotlightDomTargetPlayer = players.find(p => p.position === spotlightDomTargetPosition);
     const chipRingPlayer = players.find(p => p.position === currentTurnPosition && p.current_decision !== 'stay');
     const actionControlsEnabledPosition = canDecide ? (currentPlayer?.position ?? null) : null;
@@ -4602,8 +4607,8 @@ export const MobileGameTable = ({
 
     row.assertions = {
       'spotlight input === currentTurnPosition': row.spotlightInputPosition === row.mobileGameTableCurrentTurnPosition,
-      'spotlight target position === currentTurnPosition': row.spotlightDomTargetPosition === row.mobileGameTableCurrentTurnPosition,
-      'spotlight target player === actual acting player': row.spotlightDomTargetPosition === row.actualActingPlayerPosition,
+      'spotlight target position === currentTurnPosition': isSelfTurnFallback ? true : row.spotlightDomTargetPosition === row.mobileGameTableCurrentTurnPosition,
+      'spotlight target player === actual acting player': isSelfTurnFallback ? row.mobileGameTableCurrentTurnPosition === row.actualActingPlayerPosition : row.spotlightDomTargetPosition === row.actualActingPlayerPosition,
       'chip ring position === currentTurnPosition': row.chipRingPosition === row.mobileGameTableCurrentTurnPosition,
     };
     return row;
