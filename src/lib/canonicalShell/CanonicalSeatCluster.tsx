@@ -391,9 +391,7 @@ export function CanonicalSeatCluster({
   // accepted the default ('above-chip').
   type SeatOrientation =
     | 'vertical-name-top'
-    | 'vertical-name-bottom'
-    | 'horizontal-name-left'
-    | 'horizontal-name-right';
+    | 'vertical-name-bottom';
   // Wave 3C.3f — two layouts only:
   //   TOP + SIDE  → NameAbove
   //   BOTTOM      → NameBelow
