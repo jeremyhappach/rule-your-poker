@@ -5991,6 +5991,21 @@ export const CribbageMobileGameTable = ({
       >
         {/* Shell host owns the canonical felt + backdrop. No local floor slab. */}
 
+        {/* Wave 4 — Phase 5A: Cribbage chrome host (shadow overlay).
+            Runs descriptors → resolver → ArtifactHost against live geometry.
+            Default: invisible (pointer-events:none). Flip on with `?wave4=1`
+            or `localStorage.wave4=1`. Faults always emit to telemetry. */}
+        <Wave4CribbageChromeHost
+          phase="pegging"
+          viewerSeatPosition={typeof currentUserPosition === 'number' ? currentUserPosition : null}
+          opponentSeatPositions={[0, 1, 2, 3].filter(
+            (p) => p !== currentUserPosition,
+          )}
+          cutCardRevealed={true}
+          cribVisible={true}
+        />
+
+
         {/* Felt-content frame — shared canonical ellipse envelope. */}
         <div
           className="relative z-10"
