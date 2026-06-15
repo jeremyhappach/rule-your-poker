@@ -25,7 +25,6 @@ function debugEnabled(): boolean {
   }
   // Vite's import.meta.env.DEV — defaults true in dev preview, false in prod.
   try {
-    // @ts-expect-error import.meta is available in Vite runtime
     return !!import.meta.env?.DEV;
   } catch {
     return false;
