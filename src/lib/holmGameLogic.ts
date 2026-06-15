@@ -262,22 +262,27 @@ async function moveToNextHolmPlayerTurn(gameId: string, fromPosition: number) {
     return;
   }
   
-  const positions = undecidedPlayers.map(p => p.position).sort((a, b) => a - b);
-  
-  // CRITICAL: Use fromPosition (the position we KNOW just decided) instead of round.current_turn_position
-  // This eliminates the race condition where current_turn_position might have already been updated by another client
+  // SHARED SEAT-RING CONTRACT: poker-clockwise = action passes to dealer's
+  // LEFT. nextClockwise resolves the visually-next occupied seat regardless
+  // of raw position numbering, so turn order matches the canonical seat
+  // anchors used by the shell renderer.
+  const positions = undecidedPlayers.map(p => p.position);
+
   let nextPosition: number;
-  
-  // Find the next position that is HIGHER than fromPosition, or wrap to lowest
-  const higherPositions = positions.filter(p => p > fromPosition);
-  if (higherPositions.length > 0) {
-    // There's a higher position, take the lowest one (next clockwise)
-    nextPosition = Math.min(...higherPositions);
+  if (positions.includes(fromPosition)) {
+    // Edge case: the player who "just decided" is still flagged undecided
+    // (e.g. timer expiry race). Step from them.
+    nextPosition = nextClockwise(fromPosition, positions);
   } else {
-    // No higher positions, wrap to the lowest position
-    nextPosition = Math.min(...positions);
+    // fromPosition already cleared from the undecided ring — pick the seat
+    // immediately clockwise of it within the full active ring, then snap
+    // forward until we land on an undecided seat.
+    const allActivePositions = allPlayers.map(p => p.position);
+    let probe = nextClockwise(fromPosition, allActivePositions);
+    while (!positions.includes(probe)) probe = nextClockwise(probe, allActivePositions);
+    nextPosition = probe;
   }
-  
+
   console.log('[HOLM TURN] *** MOVING TURN from position', fromPosition, 'to', nextPosition, '***');
   console.log('[HOLM TURN] undecided positions:', positions, 'nextPosition (clockwise):', nextPosition);
   
@@ -422,17 +427,16 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
   let buckPosition = passedBuckPosition ?? gameConfig.buck_position;
   
   if (!buckPosition || effectiveIsFirstHand) {
-    // First hand - buck starts one position to the LEFT of dealer (clockwise order)
-    // In clockwise rotation, LEFT means the NEXT higher position number.
+    // First hand — buck starts one seat CLOCKWISE (left) of dealer per the
+    // shared seat-ring contract. The contract resolves "clockwise" against
+    // the canonical seat anchors so render and game logic cannot disagree.
     //
     // IMPORTANT: do NOT filter on status='active' here. When transitioning
     // from another completed game (e.g. Gin → Holm), players retain stale
     // per-hand statuses like 'folded' from the previous dealer game; the
-    // end-of-game evaluation does not reset status back to 'active'. Filtering
-    // on 'active' would yield 0 rows and fall through to buckPosition=dealer,
-    // which is the Gin → Holm transition contamination bug. Source the seat
-    // cohort the same way the round bootstrap does: seated, not sitting out,
-    // not observer/left.
+    // end-of-game evaluation does not reset status back to 'active'. Source
+    // the seat cohort the same way the round bootstrap does: seated, not
+    // sitting out, not observer/left.
     const { data: allPlayers } = await supabase
       .from('players')
       .select('position, status, sitting_out')
@@ -441,16 +445,11 @@ export async function startHolmRound(gameId: string, isFirstHand: boolean = fals
       .neq('status', 'observer')
       .neq('status', 'left')
       .order('position');
-    
+
     if (allPlayers && allPlayers.length > 0) {
-      const occupiedPositions = allPlayers.map(p => p.position).sort((a, b) => a - b);
-      const dealerIndex = occupiedPositions.indexOf(dealerPosition);
-      
-      // Get the NEXT position in clockwise order (one to the LEFT of dealer)
-      // Clockwise = ascending position numbers, wrapping from max to min
-      const nextIndex = (dealerIndex + 1) % occupiedPositions.length;
-      buckPosition = occupiedPositions[nextIndex];
-      console.log('[HOLM] Occupied positions:', occupiedPositions, 'Dealer at index:', dealerIndex, 'Buck goes to index:', nextIndex, 'position:', buckPosition);
+      const occupiedPositions = allPlayers.map(p => p.position);
+      buckPosition = getBuckStartPosition(dealerPosition, occupiedPositions);
+      console.log('[HOLM] Occupied positions:', occupiedPositions, 'dealer:', dealerPosition, 'buck (seatRing):', buckPosition);
     } else {
       buckPosition = dealerPosition;
     }
@@ -2549,7 +2548,8 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
-  // Compute next buck position (clockwise)
+  // Compute next buck position via shared seat-ring contract (clockwise =
+  // poker action-passing direction = one seat LEFT of current buck).
   const { data: players } = await supabase
     .from('players')
     .select('position')
@@ -2563,10 +2563,8 @@ export async function proceedToNextHolmRound(gameId: string) {
     return;
   }
 
-  const positions = players.map((p) => p.position).sort((a, b) => a - b);
-  const currentBuckIndex = positions.indexOf(game.buck_position);
-  const nextBuckIndex = (currentBuckIndex + 1) % positions.length;
-  const newBuckPosition = positions[nextBuckIndex];
+  const positions = players.map((p) => p.position);
+  const newBuckPosition = nextClockwise(game.buck_position, positions);
 
   console.log('[HOLM NEXT] Buck rotating from', game.buck_position, 'to', newBuckPosition);
 
