@@ -2071,8 +2071,9 @@ export const MobileGameTable = ({
     setHolmCommunityFullyRevealed(false);
     if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
     
-    // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
-    stickyTurnPositionRef.current = { position: null, handContextId: to, visited: new Set() };
+    // (Spotlight has no per-hand cache to reset — it derives from currentTurnPosition.)
+    void to;
+
     
     // NOTE: currentPlayerCardsRef is reset separately in the useMemo that computes currentPlayerCards
     // because it's defined later in the component (after currentPlayer is computed)
