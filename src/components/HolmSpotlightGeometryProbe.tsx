@@ -1,21 +1,30 @@
 /**
- * HolmSpotlightGeometryProbe — temporary inventory overlay.
+ * HolmSpotlightGeometryProbe — geometry-only investigation overlay.
  *
- * Draws three dots on the screen to prove (or disprove) that the DOM
- * node feeding `useSeatTargetAngle` is the same visual anchor as the
- * rendered chip disc.
+ * Renders, per render frame:
+ *   GREEN dot  = chipCenter (rect center of [data-chip-center="N"])
+ *   BLUE dot   = feltCenter (rect center of [data-canonical-felt-surface]
+ *                — also samples [data-canonical-shell-felt-frame] for
+ *                comparison, since useSeatTargetAngle/spotlight apex
+ *                actually use the FRAME, not the surface)
+ *   RED line   = the ray ACTUALLY rendered by TurnSpotlight, drawn from
+ *                the spotlight overlay's own 50%/50% apex along
+ *                `renderedWedgeAngleDeg` (read from
+ *                [data-turn-spotlight-overlay] data attrs)
  *
- *   RED   = spotlight apex target (the point the cone is aimed at,
- *           derived the SAME way as useSeatTargetAngle: center of
- *           [data-chip-center="N"].getBoundingClientRect())
- *   BLUE  = data-chip-center rect center (what spotlight uses today)
- *   GREEN = visible chip disc center (the inner .rounded-full.border-2
- *           node — the thing the user actually sees)
+ * Prints, per render:
+ *   currentTurnPosition
+ *   targetPlayer (best-effort, from seat cluster name row)
+ *   targetSlot (the position number — slot = position in canonical shell)
+ *   chipCenterX/Y
+ *   feltCenterX/Y (surface) + frameCenterX/Y
+ *   computedAngleDeg   (atan2 from frame center → chip center, conic)
+ *   renderedWedgeAngleDeg (what TurnSpotlight is actually painting)
+ *   deltaAngleDeg = computed - rendered
+ *   legacySlotAngleDeg = legacy slot→angle table (the old observer table)
+ *                        for the same position, for diff comparison
  *
- * Also prints a small JSON block with all three rects + the felt
- * surface rect so we can copy/paste the divergence.
- *
- * Holm only. Inventory only. No fixes.
+ * Holm only. No spotlight visuals changed; this is a pure overlay.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -24,35 +33,45 @@ interface Props {
   position: number | null;
 }
 
-interface Sample {
-  position: number;
-  chipCenterRect: DOMRect | null;
-  visibleDiscRect: DOMRect | null;
-  feltRect: DOMRect | null;
-  chipCenter: { x: number; y: number } | null;
-  visibleCenter: { x: number; y: number } | null;
-  feltCenter: { x: number; y: number } | null;
-  visibleDiscNodeDesc: string | null;
-  chipNodeOuterHTMLHead: string | null;
+// Legacy observer slot→angle table preserved verbatim from TurnSpotlight's
+// non-shell fallback (observer branch). Used here ONLY for diff reporting.
+const LEGACY_OBSERVER_ANGLES: Record<number, number> = {
+  1: -45, 2: -90, 3: -135, 4: 180, 5: 135, 6: 90, 7: 45,
+};
+
+function conicFromCenters(
+  cx: number, cy: number, tx: number, ty: number,
+): number | null {
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return null;
+  let deg = 90 - (Math.atan2(dy, dx) * 180) / Math.PI;
+  while (deg > 180) deg -= 360;
+  while (deg < -180) deg += 360;
+  return deg;
 }
 
-function describeNode(el: Element | null): string | null {
-  if (!el) return null;
-  const tag = el.tagName.toLowerCase();
-  const cls = (el.getAttribute('class') || '').slice(0, 80);
-  return `${tag}.${cls}`;
+function center(r: DOMRect | null): { x: number; y: number } | null {
+  if (!r) return null;
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+}
+
+interface Sample {
+  position: number;
+  targetPlayerName: string | null;
+  chipRect: DOMRect | null;
+  surfaceRect: DOMRect | null;
+  frameRect: DOMRect | null;
+  overlayRect: DOMRect | null;
+  renderedRotation: number | null;
 }
 
 export function HolmSpotlightGeometryProbe({ position }: Props) {
-  const [sample, setSample] = useState<Sample | null>(null);
+  const [s, setS] = useState<Sample | null>(null);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (position === null || position === undefined) {
-      setSample(null);
-      return;
-    }
-
+    if (position === null || position === undefined) { setS(null); return; }
     let cancelled = false;
 
     const tick = () => {
@@ -60,43 +79,36 @@ export function HolmSpotlightGeometryProbe({ position }: Props) {
       const chipEl = document.querySelector<HTMLElement>(
         `[data-chip-center="${position}"]`,
       );
-      const feltEl = document.querySelector<HTMLElement>(
+      const surfaceEl = document.querySelector<HTMLElement>(
         '[data-canonical-felt-surface]',
-      ) ?? document.querySelector<HTMLElement>('[data-canonical-shell-felt-frame]');
+      );
+      const frameEl = document.querySelector<HTMLElement>(
+        '[data-canonical-shell-felt-frame]',
+      );
+      const overlayEl = document.querySelector<HTMLElement>(
+        '[data-turn-spotlight-overlay]',
+      );
+      const seatEl = document.querySelector<HTMLElement>(
+        `[data-canonical-seat-cluster][data-seat-position="${position}"]`,
+      );
+      const nameEl = seatEl?.querySelector<HTMLElement>(
+        '[data-canonical-seat-name-row]',
+      ) ?? null;
 
-      // Find the actual visible chip body — the inner border-2 rounded-full
-      // disc that the user sees. Fall back to the wrapper itself.
-      let visibleDisc: HTMLElement | null = null;
-      if (chipEl) {
-        visibleDisc =
-          chipEl.querySelector<HTMLElement>('.rounded-full.border-2') ??
-          chipEl.querySelector<HTMLElement>('.rounded-full');
-      }
+      const rotAttr = overlayEl?.getAttribute('data-turn-spotlight-rotation');
+      const renderedRotation = rotAttr !== null && rotAttr !== undefined && rotAttr !== ''
+        ? Number(rotAttr)
+        : null;
 
-      const chipRect = chipEl?.getBoundingClientRect() ?? null;
-      const discRect = visibleDisc?.getBoundingClientRect() ?? null;
-      const feltRect = feltEl?.getBoundingClientRect() ?? null;
-
-      const next: Sample = {
+      setS({
         position,
-        chipCenterRect: chipRect,
-        visibleDiscRect: discRect,
-        feltRect,
-        chipCenter: chipRect
-          ? { x: chipRect.left + chipRect.width / 2, y: chipRect.top + chipRect.height / 2 }
-          : null,
-        visibleCenter: discRect
-          ? { x: discRect.left + discRect.width / 2, y: discRect.top + discRect.height / 2 }
-          : null,
-        feltCenter: feltRect
-          ? { x: feltRect.left + feltRect.width / 2, y: feltRect.top + feltRect.height / 2 }
-          : null,
-        visibleDiscNodeDesc: describeNode(visibleDisc),
-        chipNodeOuterHTMLHead: chipEl
-          ? (chipEl.outerHTML.slice(0, 160))
-          : null,
-      };
-      setSample(next);
+        targetPlayerName: (nameEl?.textContent || '').trim().slice(0, 40) || null,
+        chipRect: chipEl?.getBoundingClientRect() ?? null,
+        surfaceRect: surfaceEl?.getBoundingClientRect() ?? null,
+        frameRect: frameEl?.getBoundingClientRect() ?? null,
+        overlayRect: overlayEl?.getBoundingClientRect() ?? null,
+        renderedRotation,
+      });
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -107,78 +119,114 @@ export function HolmSpotlightGeometryProbe({ position }: Props) {
     };
   }, [position]);
 
-  if (!sample) return null;
-  const { chipCenter, visibleCenter, feltCenter } = sample;
+  if (!s) return null;
+
+  const chipC = center(s.chipRect);
+  const surfaceC = center(s.surfaceRect);
+  const frameC = center(s.frameRect);
+  const overlayC = center(s.overlayRect);
+
+  // Computed angle uses the SAME basis as useSeatTargetAngle: the felt
+  // frame center (NOT the surface).
+  const computedAngleDeg = frameC && chipC
+    ? conicFromCenters(frameC.x, frameC.y, chipC.x, chipC.y)
+    : null;
+  const renderedWedgeAngleDeg = s.renderedRotation;
+  const deltaAngleDeg =
+    computedAngleDeg !== null && renderedWedgeAngleDeg !== null
+      ? Math.round((computedAngleDeg - renderedWedgeAngleDeg) * 10) / 10
+      : null;
+  const legacySlotAngleDeg = LEGACY_OBSERVER_ANGLES[s.position] ?? null;
+
+  // RED line: ray actually rendered by TurnSpotlight — origin =
+  // overlay center (its conic apex is `at 50% 50%`), angle =
+  // renderedRotation, in conic basis (0=north, clockwise+).
+  const rayOrigin = overlayC;
+  const rayLength = 320;
+  let rayEnd: { x: number; y: number } | null = null;
+  if (rayOrigin && renderedWedgeAngleDeg !== null) {
+    // conic → math: math = 90 - conic (degrees, CCW from east)
+    const mathRad = ((90 - renderedWedgeAngleDeg) * Math.PI) / 180;
+    rayEnd = {
+      x: rayOrigin.x + Math.cos(mathRad) * rayLength,
+      // screen Y is inverted vs math Y
+      y: rayOrigin.y - Math.sin(mathRad) * rayLength,
+    };
+  }
 
   const dot = (
-    color: string,
-    x: number,
-    y: number,
-    label: string,
+    color: string, x: number, y: number, label: string,
   ) => (
     <div
       style={{
-        position: 'fixed',
-        left: x - 6,
-        top: y - 6,
-        width: 12,
-        height: 12,
-        borderRadius: '50%',
-        background: color,
-        border: '2px solid white',
-        pointerEvents: 'none',
-        zIndex: 99999,
+        position: 'fixed', left: x - 6, top: y - 6, width: 12, height: 12,
+        borderRadius: '50%', background: color, border: '2px solid white',
+        pointerEvents: 'none', zIndex: 99999,
         boxShadow: '0 0 0 1px black',
       }}
       title={label}
     />
   );
 
-  // RED = spotlight target point = same calc as useSeatTargetAngle:
-  // chip rect center. We render slightly offset so it doesn't perfectly
-  // overlap BLUE when they agree.
-  const redOffset = 3;
-  const dxBlueGreen = chipCenter && visibleCenter
-    ? Math.round(visibleCenter.x - chipCenter.x)
-    : null;
-  const dyBlueGreen = chipCenter && visibleCenter
-    ? Math.round(visibleCenter.y - chipCenter.y)
-    : null;
+  const fmt = (n: number | null) => n === null ? 'n/a' : String(Math.round(n));
+  const fmt1 = (n: number | null) => n === null ? 'n/a' : (Math.round(n * 10) / 10).toFixed(1);
 
   return (
     <>
-      {feltCenter && dot('rgba(255,255,255,0.6)', feltCenter.x, feltCenter.y, 'felt center')}
-      {chipCenter && dot('#ff2222', chipCenter.x + redOffset, chipCenter.y - redOffset, 'RED spotlight target')}
-      {chipCenter && dot('#2266ff', chipCenter.x, chipCenter.y, 'BLUE data-chip-center')}
-      {visibleCenter && dot('#22cc44', visibleCenter.x, visibleCenter.y, 'GREEN visible disc')}
+      {/* RED ray as a thin rotated bar from overlay center */}
+      {rayOrigin && rayEnd && (
+        <svg
+          style={{
+            position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh',
+            pointerEvents: 'none', zIndex: 99998,
+          }}
+        >
+          <line
+            x1={rayOrigin.x} y1={rayOrigin.y}
+            x2={rayEnd.x} y2={rayEnd.y}
+            stroke="#ff2222" strokeWidth={2}
+          />
+          <circle cx={rayOrigin.x} cy={rayOrigin.y} r={3} fill="#ff2222" />
+        </svg>
+      )}
+
+      {surfaceC && dot('#2266ff', surfaceC.x, surfaceC.y, 'BLUE felt surface center')}
+      {frameC && dot('rgba(0,180,255,0.8)', frameC.x, frameC.y, 'cyan felt frame center')}
+      {chipC && dot('#22cc44', chipC.x, chipC.y, 'GREEN chip center')}
 
       <div
         style={{
-          position: 'fixed',
-          left: 8,
-          bottom: 8,
-          maxWidth: 380,
-          padding: 8,
-          background: 'rgba(0,0,0,0.85)',
-          color: 'white',
-          fontFamily: 'ui-monospace, monospace',
-          fontSize: 10,
-          lineHeight: 1.3,
-          borderRadius: 4,
-          zIndex: 99999,
-          pointerEvents: 'none',
+          position: 'fixed', left: 8, bottom: 8, maxWidth: 380, padding: 8,
+          background: 'rgba(0,0,0,0.88)', color: 'white',
+          fontFamily: 'ui-monospace, monospace', fontSize: 10, lineHeight: 1.35,
+          borderRadius: 4, zIndex: 99999, pointerEvents: 'none',
           border: '1px solid rgba(255,255,255,0.3)',
         }}
       >
         <div style={{ fontWeight: 700, marginBottom: 4 }}>
-          SPOTLIGHT GEOMETRY PROBE — pos {sample.position}
+          HOLM SPOTLIGHT GEOMETRY
         </div>
-        <div>RED (spotlight target / chipRect center): {chipCenter ? `${Math.round(chipCenter.x)},${Math.round(chipCenter.y)}` : 'null'}</div>
-        <div>BLUE (data-chip-center rect): {chipCenter ? `${Math.round(chipCenter.x)},${Math.round(chipCenter.y)}` : 'null'}</div>
-        <div>GREEN (visible disc): {visibleCenter ? `${Math.round(visibleCenter.x)},${Math.round(visibleCenter.y)}` : 'null'}</div>
-        <div>Δ (GREEN - BLUE): {dxBlueGreen !== null ? `${dxBlueGreen}, ${dyBlueGreen}` : 'n/a'} px</div>
-        <div>felt center: {feltCenter ? `${Math.round(feltCenter.x)},${Math.round(feltCenter.y)}` : 'null'}</div>
-        <div style={{ marginTop: 4, opacity: 0.7 }}>visibleDisc node: {sample.visibleDiscNodeDesc ?? 'n/a'}</div>
+        <div>currentTurnPosition: {s.position}</div>
+        <div>targetPlayer: {s.targetPlayerName ?? 'n/a'}</div>
+        <div>targetSlot: {s.position}</div>
+        <div>chipCenter: {chipC ? `${fmt(chipC.x)}, ${fmt(chipC.y)}` : 'n/a'}</div>
+        <div>feltCenter (surface): {surfaceC ? `${fmt(surfaceC.x)}, ${fmt(surfaceC.y)}` : 'n/a'}</div>
+        <div>feltCenter (frame*): {frameC ? `${fmt(frameC.x)}, ${fmt(frameC.y)}` : 'n/a'}</div>
+        <div>overlayCenter (ray apex): {overlayC ? `${fmt(overlayC.x)}, ${fmt(overlayC.y)}` : 'n/a'}</div>
+        <div style={{ marginTop: 4 }}>
+          computedAngleDeg (frame→chip): {fmt1(computedAngleDeg)}
+        </div>
+        <div>
+          renderedWedgeAngleDeg: {fmt1(renderedWedgeAngleDeg)}
+        </div>
+        <div style={{ color: deltaAngleDeg !== null && Math.abs(deltaAngleDeg) > 1 ? '#ff6666' : '#66ff88' }}>
+          deltaAngleDeg: {fmt1(deltaAngleDeg)}
+        </div>
+        <div>legacySlotAngleDeg (observer table): {fmt1(legacySlotAngleDeg)}</div>
+        <div style={{ marginTop: 4, opacity: 0.7 }}>
+          * spotlight apex uses frame, not surface. If frame ≠ surface,
+          the ray will look off-center even with a correct angle.
+        </div>
       </div>
     </>
   );
