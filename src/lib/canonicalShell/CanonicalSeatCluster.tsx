@@ -394,10 +394,14 @@ export function CanonicalSeatCluster({
     | 'vertical-name-bottom'
     | 'horizontal-name-left'
     | 'horizontal-name-right';
+  // Wave 3C.3f — two layouts only:
+  //   TOP + SIDE  → NameAbove
+  //   BOTTOM      → NameBelow
+  // Side seats (1, 4) intentionally use the vertical TOP layout so
+  // the chip remains the primary artifact and the name attaches to
+  // it the same way as the top corners.
   let seatOrientation: SeatOrientation;
-  if (slot === 1) seatOrientation = 'horizontal-name-left';
-  else if (slot === 4) seatOrientation = 'horizontal-name-right';
-  else if (isBottomAnchored) seatOrientation = 'vertical-name-bottom';
+  if (isBottomAnchored) seatOrientation = 'vertical-name-bottom';
   else seatOrientation = 'vertical-name-top';
 
   const effectiveNamePlacement: 'above-chip' | 'below-chip' | 'none' =
