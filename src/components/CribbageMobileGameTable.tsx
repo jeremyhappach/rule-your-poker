@@ -76,6 +76,7 @@ import { traceGoRace, peggingSnapshot } from '@/lib/cribbageGoRaceTrace';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
+import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import {
   checkStaleDealerGameRender,
   checkCribbagePhaseRenderMismatch,
