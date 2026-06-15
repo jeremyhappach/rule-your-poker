@@ -626,6 +626,10 @@ export const MobileGameTable = ({
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
+  holmTraceHandNumber,
+  holmTraceRoundId,
+  holmTraceDbCurrentTurnPosition,
+  holmTraceHolmViewCurrentTurnPosition,
 }: MobileGameTableProps) => {
   useStartupMountTrace('MobileGameTable', { gameId: gameId ?? null, gameType: gameType ?? null, instanceLabel });
   useStartupRenderTrace('MobileGameTable', {
