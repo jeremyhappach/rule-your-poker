@@ -276,6 +276,71 @@ interface ChatBubbleData {
   username?: string;
   expiresAt: number;
 }
+
+function HolmTurnTracePanel({ rows }: { rows: HolmTurnTraceRow[] }) {
+  const [copied, setCopied] = useState(false);
+  if (rows.length === 0) return null;
+
+  const copyTrace = async () => {
+    await navigator.clipboard.writeText(JSON.stringify(rows, null, 2));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
+
+  const valueClass = (ok: boolean | null) => ok === false ? 'text-destructive font-bold' : '';
+
+  return (
+    <div className="fixed left-2 right-2 top-2 z-[9999] max-h-[42vh] overflow-hidden rounded border border-border bg-background/95 text-foreground shadow-xl backdrop-blur">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1">
+        <div className="text-xs font-bold tracking-wide">HOLM TURN TRACE</div>
+        <Button size="sm" variant="secondary" className="h-7 px-2 text-xs" onClick={copyTrace}>
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+      <div className="max-h-[36vh] overflow-auto p-2 text-[10px] leading-tight">
+        <table className="min-w-[1600px] border-collapse">
+          <thead className="sticky top-0 bg-background">
+            <tr className="text-left">
+              {['timestamp','hand','roundId','dealer','buck','DB turn','holmView','MGT prop','actor id','actor pos','bot/human','action','chip ring','controls','spot input','DOM pos','DOM player','found','rect','seat mapping','assertions'].map(h => (
+                <th key={h} className="border-b border-border px-1 py-1 font-semibold">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => {
+              const hasMismatch = Object.values(row.assertions).some(v => v === false);
+              return (
+                <tr key={row.id} className={cn('align-top', hasMismatch && 'bg-destructive/10')}>
+                  <td className="border-b border-border/60 px-1 py-1">{row.timestamp}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.handNumber ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.roundId?.slice(0, 8) ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.dealerPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.buckPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.dbCurrentTurnPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.holmViewCurrentTurnPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.mobileGameTableCurrentTurnPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.actualActingPlayerId?.slice(0, 8) ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.actualActingPlayerPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.actorKind ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.actionTaken}</td>
+                  <td className={cn('border-b border-border/60 px-1 py-1', valueClass(row.assertions['chip ring position === currentTurnPosition']))}>{row.chipRingPosition ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.actionControlsEnabledPosition ?? '—'}</td>
+                  <td className={cn('border-b border-border/60 px-1 py-1', valueClass(row.assertions['spotlight input === currentTurnPosition']))}>{row.spotlightInputPosition ?? '—'}</td>
+                  <td className={cn('border-b border-border/60 px-1 py-1', valueClass(row.assertions['spotlight target position === currentTurnPosition']))}>{row.spotlightDomTargetPosition ?? '—'}</td>
+                  <td className={cn('border-b border-border/60 px-1 py-1', valueClass(row.assertions['spotlight target player === actual acting player']))}>{row.spotlightDomTargetPlayerName ?? '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.dataChipCenterElementFound ? 'yes' : 'no'}</td>
+                  <td className="border-b border-border/60 px-1 py-1">{row.targetRect ? `${Math.round(row.targetRect.x)},${Math.round(row.targetRect.y)}` : '—'}</td>
+                  <td className="border-b border-border/60 px-1 py-1 whitespace-pre">{row.seatMapping.map(s => `${s.position}:${s.playerName}:slot ${s.canonicalSlot ?? '—'}:${s.chipDomRectCenter ? `${Math.round(s.chipDomRectCenter.x)},${Math.round(s.chipDomRectCenter.y)}` : 'no-chip'}`).join('\n')}</td>
+                  <td className="border-b border-border/60 px-1 py-1 whitespace-pre">{Object.entries(row.assertions).map(([k, v]) => `${v === false ? '✗' : v === true ? '✓' : '·'} ${k}`).join('\n')}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 // (legacy local TimerBar removed — timer presentation is owned by
 //  the canonical shell via ShellTimerRail. Games publish state only.)
 
