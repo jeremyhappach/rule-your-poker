@@ -1170,6 +1170,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const horsesWinProcessedRef = useRef<string | null>(null); // Track processed win messages to prevent duplicates
   
   // 3-5-7 win animation state (when player wins final leg)
+  // ⚠ TODO WAVE 5 — see src/lib/357/UNDER_CONSTRUCTION.md.
+  // The route-level ThreeFiveSevenWinController is parked behind Wave 5
+  // (CanonicalPhaseEngine). Local trigger state still strands the
+  // animation sequence on MGT/Game remount; fix lives in Wave 5.
   const [threeFiveSevenWinTriggerId, setThreeFiveSevenWinTriggerId] = useState<string | null>(null);
   const [threeFiveSevenWinPotAmount, setThreeFiveSevenWinPotAmount] = useState<number>(0);
   const [threeFiveSevenWinnerId, setThreeFiveSevenWinnerId] = useState<string | null>(null);
