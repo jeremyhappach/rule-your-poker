@@ -76,6 +76,7 @@ import { traceGoRace, peggingSnapshot } from '@/lib/cribbageGoRaceTrace';
 import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
+import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import {
   checkStaleDealerGameRender,
   checkCribbagePhaseRenderMismatch,
@@ -5990,6 +5991,22 @@ export const CribbageMobileGameTable = ({
         }}
       >
         {/* Shell host owns the canonical felt + backdrop. No local floor slab. */}
+
+        {/* Wave 4 — Phase 5A: Cribbage chrome host (shadow overlay).
+            Runs descriptors → resolver → ArtifactHost against live geometry.
+            Default: invisible (pointer-events:none). Flip on with `?wave4=1`
+            or `localStorage.wave4=1`. Faults always emit to telemetry. */}
+        <Wave4CribbageChromeHost
+          phase="pegging"
+          viewerSeatPosition={currentPlayer?.position ?? null}
+          opponentSeatPositions={[0, 1, 2, 3].filter(
+            (p) => p !== (currentPlayer?.position ?? -1),
+          )}
+          cutCardRevealed={true}
+          cribVisible={true}
+        />
+
+
 
         {/* Felt-content frame — shared canonical ellipse envelope. */}
         <div
