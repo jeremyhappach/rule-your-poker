@@ -11,12 +11,16 @@ import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
+import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
   currentPlayerId: string | undefined;
   opponentId: string;
   currentTurnSlot?: CanonicalSlot | null;
+  /** Authoritative seat position (1..7) of the current turn player.
+   *  When provided, drives the spotlight via chip-center geometry. */
+  currentTurnPosition?: number | null;
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
   onDrawStock?: () => void;
@@ -52,9 +56,11 @@ const SLOT_TO_SPOTLIGHT_ANGLE: Record<CanonicalSlot, number> = {
 
 const GinCanonicalTurnSpotlight = ({
   currentTurnSlot,
+  currentTurnPosition,
   isVisible,
 }: {
   currentTurnSlot: CanonicalSlot | null | undefined;
+  currentTurnPosition: number | null | undefined;
   isVisible: boolean;
 }) => {
   const [opacity, setOpacity] = useState(0);
@@ -62,30 +68,50 @@ const GinCanonicalTurnSpotlight = ({
   const enabled = isVisible && currentTurnSlot !== null && currentTurnSlot !== undefined;
   const shellFrame = useShellFeltFrameElement(enabled);
   const anchors = useSeatAnchorsOptional();
-  // In observer-2P canonicalization, HOME (-1) is projected to the
-  // bottom-LEFT perimeter (not center-bottom), so the default 180°
-  // straight-down cone visibly misses the target cluster. Re-aim to
-  // the bottom-left rail in that projection only.
   const isObserverProjection =
     anchors?.projectionMode === 'observer-absolute' || anchors?.viewerPosition == null;
+
+  // Single geometry contract — derive apex angle from the canonical
+  // chip cluster's actual DOM rect. No slot-to-angle table.
+  const isMyTurn =
+    !isObserverProjection &&
+    anchors?.viewerPosition != null &&
+    currentTurnPosition === anchors.viewerPosition;
+  const measuredAngle = useSeatTargetAngle(
+    shellFrame,
+    !isMyTurn ? currentTurnPosition ?? null : null,
+    enabled,
+  );
 
   useEffect(() => {
     if (!enabled) {
       setOpacity(0);
       return;
     }
+    if (isMyTurn) {
+      setRotation(180);
+      setOpacity(1);
+      return;
+    }
+    if (measuredAngle !== null) {
+      setRotation(measuredAngle);
+      setOpacity(1);
+      return;
+    }
+    // Geometry not ready — fall back to slot map so the cone is at
+    // least pointed roughly while measurement settles.
     const slot = currentTurnSlot as CanonicalSlot;
-    let angle = SLOT_TO_SPOTLIGHT_ANGLE[slot];
+    let angle = SLOT_TO_SPOTLIGHT_ANGLE[slot] ?? 180;
     if (slot === -1 && isObserverProjection) {
-      angle = -135; // bottom-left rail
+      angle = -135;
     }
     setRotation(angle);
     setOpacity(1);
-  }, [currentTurnSlot, enabled, isObserverProjection]);
+  }, [enabled, isMyTurn, measuredAngle, currentTurnSlot, isObserverProjection]);
 
   if (!enabled || !shellFrame) return null;
 
-  const beamHalfAngle = 30;
+  const beamHalfAngle = 25;
   // Portaled into the canonical felt SURFACE node which enforces the
   // exact canonical ellipse via overflow:hidden + rounded-[50%/45%].
   // No local clipPath — that produced a visibly-offset second ellipse
@@ -131,6 +157,7 @@ export const GinRummyFeltContent = ({
   currentPlayerId,
   opponentId,
   currentTurnSlot,
+  currentTurnPosition,
   getPlayerUsername,
   cardBackColors,
   onDrawStock,
@@ -154,6 +181,7 @@ export const GinRummyFeltContent = ({
       {/* Turn Spotlight */}
       <GinCanonicalTurnSpotlight
         currentTurnSlot={currentTurnSlot}
+        currentTurnPosition={currentTurnPosition}
         isVisible={ginState.phase === 'playing' || ginState.phase === 'first_draw'}
       />
 

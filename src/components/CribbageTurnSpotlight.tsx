@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
 
 interface CribbageTurnSpotlightProps {
   /** Player ID whose turn it is */
@@ -14,44 +15,36 @@ interface CribbageTurnSpotlightProps {
   totalPlayers: number;
   /** Ordered list of opponent player IDs (in turn order, excluding current player) */
   opponentIds?: string[];
-  /**
-   * Canonical seat slot of the player whose turn it is, derived from the
-   * shell-owned SeatAnchorLayer. When provided this is the authoritative
-   * angle source for BOTH active and observer projections (so observers
-   * rebind as turn ownership changes instead of being pinned at -45°).
-   * When null/undefined, falls back to the legacy player-count math.
-   */
+  /** Authoritative seat position (1..7) for the current turn player. When
+   *  provided and `shellOwned`, the spotlight derives its apex angle
+   *  directly from the CanonicalOpponentSeat chip geometry. */
+  currentTurnPosition?: number | null;
+  /** Position of the local viewer (for self-turn fallback). */
+  currentPlayerPosition?: number | null;
+  /** Legacy slot-based fallback — used only when geometry measurement
+   *  is unavailable. */
   currentTurnSlot?: CanonicalSlot | null;
-  /**
-   * Geometry mask for the spotlight overlay. Defaults to the legacy
-   * Cribbage circular frame; shell-owned felt passes the shared ellipse
-   * so the spotlight cannot visually recreate the old circular felt.
-   */
+  /** Geometry mask for the spotlight overlay (non-shell-owned only). */
   clipPath?: string;
-  /**
-   * Shell-aware mode. When true, the spotlight portals itself into the
-   * canonical shell felt frame so the ellipse clip aligns with the
-   * actual canonical ellipse geometry instead of the larger parent box.
-   */
+  /** Portal into the canonical shell felt frame when true. */
   shellOwned?: boolean;
 }
 
 const SLOT_TO_ANGLE: Record<number, number> = {
-  [-2]: 0,      // FACE_TO_FACE — top center
-  [-1]: 180,    // HOME — bottom center
-  0: -135,      // bottom-left
-  1: -90,       // mid-left
-  2: -45,       // top-left
-  3: 45,        // top-right
-  4: 90,        // mid-right
-  5: 135,       // bottom-right
+  [-2]: 0,
+  [-1]: 180,
+  0: -135,
+  1: -90,
+  2: -45,
+  3: 45,
+  4: 90,
+  5: 135,
 };
 
 /**
- * A spotlight for cribbage that points toward the active player.
- * Prefers the canonical seat anchor slot when supplied (single source of
- * truth shared with chip clusters), otherwise falls back to legacy
- * relative math for safety.
+ * Cribbage turn spotlight. In shell-owned mode the apex angle is
+ * derived from CanonicalOpponentSeat geometry (single source of
+ * truth). Slot-based fallback retained for safety only.
  */
 export const CribbageTurnSpotlight = ({
   currentTurnPlayerId,
@@ -59,19 +52,24 @@ export const CribbageTurnSpotlight = ({
   isVisible,
   totalPlayers,
   opponentIds = [],
+  currentTurnPosition,
+  currentPlayerPosition,
   currentTurnSlot,
   clipPath: clipPathProp = 'ellipse(50% 50% at 50% 50%)',
   shellOwned = false,
 }: CribbageTurnSpotlightProps) => {
-  // Shell-owned mode portals into the canonical felt SURFACE node,
-  // which already enforces the exact canonical ellipse via
-  // `overflow: hidden` + `rounded-[50%/45%]`. Drop the approximated
-  // inner clip in that case so the spotlight doesn't paint a second
-  // offset oval against the surface's true geometry.
   const clipPath = shellOwned ? undefined : clipPathProp;
   const [opacity, setOpacity] = useState(0);
   const [rotation, setRotation] = useState(0);
   const shellFrame = useShellFeltFrameElement(shellOwned && isVisible);
+
+  const isMyTurn = currentTurnPlayerId === currentPlayerId;
+
+  const measuredAngle = useSeatTargetAngle(
+    shellOwned ? shellFrame : null,
+    shellOwned && !isMyTurn ? currentTurnPosition ?? null : null,
+    shellOwned && isVisible && !!currentTurnPlayerId,
+  );
 
   useEffect(() => {
     if (!isVisible || !currentTurnPlayerId) {
@@ -79,23 +77,33 @@ export const CribbageTurnSpotlight = ({
       return;
     }
 
-    let angle: number;
+    // Shell-owned: derive from CanonicalOpponentSeat geometry.
+    if (shellOwned) {
+      if (isMyTurn) {
+        setRotation(180);
+        setOpacity(1);
+        return;
+      }
+      if (measuredAngle !== null) {
+        setRotation(measuredAngle);
+        setOpacity(1);
+        return;
+      }
+      // Fall through to slot-map fallback if we have one — better than
+      // a missing apex while the seat lays out.
+    }
 
-    // Preferred path: derive from canonical slot so observer + active
-    // share one geometry truth and observer rebinds with turn ownership.
+    let angle: number;
     if (currentTurnSlot !== undefined && currentTurnSlot !== null) {
       angle = SLOT_TO_ANGLE[currentTurnSlot] ?? 180;
     } else {
-      const isMyTurn = currentTurnPlayerId === currentPlayerId;
       if (isMyTurn) {
         angle = 180;
       } else {
         const opponentIndex = opponentIds.indexOf(currentTurnPlayerId);
-        if (totalPlayers === 2) {
-          angle = -45;
-        } else if (totalPlayers === 3) {
-          angle = opponentIndex === 0 ? -45 : 45;
-        } else {
+        if (totalPlayers === 2) angle = -45;
+        else if (totalPlayers === 3) angle = opponentIndex === 0 ? -45 : 45;
+        else {
           if (opponentIndex === 0) angle = -45;
           else if (opponentIndex === 1) angle = 45;
           else angle = 135;
@@ -105,25 +113,34 @@ export const CribbageTurnSpotlight = ({
 
     setRotation(angle);
     setOpacity(1);
-  }, [isVisible, currentTurnPlayerId, currentPlayerId, totalPlayers, opponentIds, currentTurnSlot]);
+  }, [
+    isVisible,
+    currentTurnPlayerId,
+    currentPlayerId,
+    totalPlayers,
+    opponentIds,
+    currentTurnSlot,
+    shellOwned,
+    isMyTurn,
+    measuredAngle,
+  ]);
 
+  // currentPlayerPosition is accepted for API parity with TurnSpotlight
+  // but no longer needed for legacy fallback math.
+  void currentPlayerPosition;
 
   if (!isVisible || !currentTurnPlayerId) {
     return null;
   }
 
-  const beamHalfAngle = 30;
+  // Narrow cone — apex now centered on canonical seat geometry.
+  const beamHalfAngle = 25;
 
   const overlay = (
     <>
-      {/* Golden glow in spotlight area - z-5 to stay behind pegboard (z-10) and count (z-20) */}
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
-        style={{
-          opacity,
-          transition: 'opacity 0.4s ease-out',
-          clipPath,
-        }}
+        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath }}
       >
         <div
           className="absolute inset-0"
@@ -136,14 +153,9 @@ export const CribbageTurnSpotlight = ({
         />
       </div>
 
-      {/* Dim overlay with spotlight cutout */}
       <div
         className="absolute inset-0 pointer-events-none z-[5]"
-        style={{
-          opacity,
-          transition: 'opacity 0.4s ease-out',
-          clipPath,
-        }}
+        style={{ opacity, transition: 'opacity 0.4s ease-out', clipPath }}
       >
         <div
           className="absolute inset-0"
@@ -158,10 +170,6 @@ export const CribbageTurnSpotlight = ({
     </>
   );
 
-  // Shell-aware mode: portal into the canonical felt frame so the
-  // ellipse clip uses the true canonical geometry. Prevents the legacy
-  // giant circular backing artifact from leaking against the larger
-  // parent box.
   if (shellOwned) {
     if (!shellFrame) return null;
     return createPortal(overlay, shellFrame);

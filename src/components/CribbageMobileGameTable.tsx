@@ -6214,6 +6214,12 @@ export const CribbageMobileGameTable = ({
                   isVisible={viewState.phase === 'pegging' || (countingDelayActive && !!countingStateSnapshot)}
                   totalPlayers={activeSeatPlayers.length}
                   opponentIds={projectedSeatPlayers.map(o => o.id)}
+                  currentTurnPosition={
+                    viewState.pegging.currentTurnPlayerId
+                      ? activeSeatPlayers.find(p => p.id === viewState.pegging.currentTurnPlayerId)?.position ?? null
+                      : null
+                  }
+                  currentPlayerPosition={currentPlayer?.position ?? null}
                   currentTurnSlot={
                     viewState.pegging.currentTurnPlayerId
                       ? playerSlotById.get(viewState.pegging.currentTurnPlayerId) ?? null

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
 
 interface TurnSpotlightProps {
   /** The position of the player whose turn it is (absolute 1-7) */
@@ -22,9 +23,10 @@ interface TurnSpotlightProps {
   /**
    * Shell-aware mode. When true, the spotlight portals itself into the
    * canonical shell felt frame so its `absolute inset-0` + ellipse clip
-   * aligns with the actual canonical ellipse instead of leaking against
-   * the much larger parent box (which produced the legacy giant gray
-   * backing artifact under the poker shell cutover).
+   * aligns with the actual canonical ellipse. In shell mode the apex
+   * angle is also DERIVED from the live CanonicalOpponentSeat chip
+   * geometry (`[data-chip-center="<position>"]`) so seat placement is
+   * the single geometry source of truth — no slot-to-angle map.
    */
   shellOwned?: boolean;
 }
@@ -32,7 +34,18 @@ interface TurnSpotlightProps {
 /**
  * A triangular spotlight beam that emanates from the table center
  * and points toward the current turn player's chip stack.
- * Also dims the rest of the table to draw attention to the active player.
+ *
+ * Geometry contract (shell-owned mode):
+ *   - The apex angle is computed from CanonicalOpponentSeat's actual
+ *     chip-center DOM rect (via `useSeatTargetAngle`).
+ *   - There is NO slot-to-angle table, NO legacy chip coordinate,
+ *     and NO game-specific special casing.
+ *   - When CanonicalOpponentSeat moves, the spotlight follows
+ *     automatically with zero changes here.
+ *
+ * Self-turn fallback: the local viewer's chip cluster is canonically
+ * self-suppressed, so when it's the viewer's own turn we anchor at
+ * 180° (south / HOME bottom-center).
  */
 export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   currentTurnPosition,
@@ -48,9 +61,27 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   const [rotation, setRotation] = useState<number>(0);
   const [opacity, setOpacity] = useState<number>(0);
 
-  // Calculate the rotation angle to point at the target player
+  const shellFrame = useShellFeltFrameElement(shellOwned && isVisible && !disabled);
+
+  // Self-turn detection — drives the HOME fallback for shell mode
+  // (the local viewer's cluster is canonically suppressed, so no chip
+  // element exists to measure).
+  const isMyTurn =
+    !isObserver &&
+    currentPlayerPosition !== null &&
+    currentPlayerPosition !== undefined &&
+    currentTurnPosition === currentPlayerPosition;
+
+  const measuredAngle = useSeatTargetAngle(
+    shellOwned ? shellFrame : null,
+    shellOwned && !isMyTurn ? currentTurnPosition ?? null : null,
+    shellOwned && isVisible && !disabled,
+  );
+
+  // Legacy (non-shell) angle fallback retained for the standalone
+  // poker-table path that hasn't migrated to the canonical shell.
   useEffect(() => {
-    // Must have valid turn position and visibility
+    if (shellOwned) return; // shell mode uses measuredAngle effect below
     if (!isVisible || currentTurnPosition === null || currentTurnPosition === undefined) {
       setOpacity(0);
       return;
@@ -59,47 +90,22 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     let angle: number;
 
     if (isObserver) {
-      // OBSERVER MODE: Use absolute positions (1-7)
       const observerAngles: Record<number, number> = {
-        1: -45,   // Top-left
-        2: -90,   // Left
-        3: -135,  // Bottom-left
-        4: 180,   // Bottom center
-        5: 135,   // Bottom-right
-        6: 90,    // Right
-        7: 45,    // Top-right
+        1: -45, 2: -90, 3: -135, 4: 180, 5: 135, 6: 90, 7: 45,
       };
       angle = observerAngles[currentTurnPosition] ?? 0;
     } else {
-      // SEATED PLAYER MODE: Use relative slots based on clockwise distance
-      // Require valid currentPlayerPosition for seated mode
       if (currentPlayerPosition === null || currentPlayerPosition === undefined) {
         setOpacity(0);
         return;
       }
-
-      // Check if it's the current player's turn (comparing absolute positions)
-      const isMyTurn = currentPlayerPosition === currentTurnPosition;
-      
-      if (isMyTurn) {
-        // Current player's turn - point to bottom center
+      if (currentPlayerPosition === currentTurnPosition) {
         angle = 180;
       } else {
-        // Calculate relative slot using clockwise distance from current player
         const distance = getClockwiseDistance(currentTurnPosition);
-        const relativeSlot = distance - 1; // Convert to 0-5 for slot index
-        
-        // Slot layout for seated players (relative to current player at bottom center):
-        //   Slot 2 (top-left)      Slot 3 (top-right)
-        //   Slot 1 (left)          Slot 4 (right)
-        //   Slot 0 (bottom-left)   [ME]   Slot 5 (bottom-right)
+        const relativeSlot = distance - 1;
         const slotAngles: Record<number, number> = {
-          0: -135,  // Bottom-left (1 seat away clockwise)
-          1: -90,   // Left (2 seats away)
-          2: -45,   // Top-left (3 seats away)
-          3: 45,    // Top-right (4 seats away)
-          4: 90,    // Right (5 seats away)
-          5: 135,   // Bottom-right (6 seats away)
+          0: -135, 1: -90, 2: -45, 3: 45, 4: 90, 5: 135,
         };
         angle = slotAngles[relativeSlot] ?? 0;
       }
@@ -107,27 +113,38 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
     setRotation(angle);
     setOpacity(1);
-  }, [isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance]);
+  }, [shellOwned, isVisible, currentTurnPosition, currentPlayerPosition, isObserver, getClockwiseDistance]);
 
-  const shellFrame = useShellFeltFrameElement(shellOwned && isVisible && !disabled);
+  // Shell-mode angle: derive from CanonicalOpponentSeat geometry.
+  useEffect(() => {
+    if (!shellOwned) return;
+    if (!isVisible || currentTurnPosition === null || currentTurnPosition === undefined) {
+      setOpacity(0);
+      return;
+    }
+    if (isMyTurn) {
+      setRotation(180);
+      setOpacity(1);
+      return;
+    }
+    if (measuredAngle === null) {
+      // Seat hasn't laid out yet — keep current opacity so a stale
+      // angle doesn't flash; the next measurement will rotate in.
+      return;
+    }
+    setRotation(measuredAngle);
+    setOpacity(1);
+  }, [shellOwned, isVisible, currentTurnPosition, isMyTurn, measuredAngle]);
 
   if (!isVisible || currentTurnPosition === null || disabled) {
     return null;
   }
 
-  // Wave 3C.3f — widened to align with canonical opponent seat centers,
-  // which sit on the outer rail rather than the historical inner chip
-  // anchor. 32° half-angle covers the seat envelope without bleeding.
-  const beamHalfAngle = 32;
+  // Narrow cone — the apex is now centered on the canonical seat, so
+  // the original 25° half-angle is wide enough to wash over the chip
+  // cluster without needing the temporary 32° widening.
+  const beamHalfAngle = 25;
 
-  // Clip path. In shell-owned mode the spotlight is portaled INTO the
-  // canonical felt SURFACE node, which already enforces the exact
-  // canonical ellipse via `overflow: hidden` + `rounded-[50%/45%]`.
-  // We therefore drop the approximated `ellipse(50% 50%)` clip — it
-  // doesn't match the canonical 50%/45% radius and visibly produced a
-  // second offset oval. Outside shell-owned mode we keep the legacy
-  // ellipse clip for the standalone poker table; dice games use full
-  // coverage with no clip.
   const clipStyle = shellOwned
     ? undefined
     : useFullCoverage
@@ -136,7 +153,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
   const overlay = (
     <>
-      {/* Golden glow in spotlight area */}
       <div
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
@@ -156,7 +172,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
         />
       </div>
 
-      {/* Dim overlay with spotlight cutout */}
       <div
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
@@ -178,11 +193,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     </>
   );
 
-  // Shell-aware mode: portal into the canonical felt frame so the
-  // ellipse clip uses the true canonical geometry. If the frame
-  // hasn't mounted yet, render nothing this frame (prevents the
-  // legacy giant-circle backing artifact from leaking against the
-  // larger parent box).
   if (shellOwned) {
     if (!shellFrame) return null;
     return createPortal(overlay, shellFrame);
@@ -190,4 +200,3 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
 
   return overlay;
 };
-
