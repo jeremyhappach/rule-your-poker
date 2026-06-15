@@ -1219,15 +1219,10 @@ export const MobileGameTable = ({
   // This prevents the hand result banner from appearing before card 4 is visually revealed.
   const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
   const holmRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
-   // The spotlight should only move forward to the next player, never jump back to a previous position.
-   // We track the last confirmed turn position, the handContextId it belongs to, and visited positions.
-   const stickyTurnPositionRef = useRef<{ position: number | null; handContextId: string | null; visited: Set<number> }>({
-     position: null,
-     handContextId: null,
-     visited: new Set(),
-  });
+  // Spotlight is a pure projection of currentTurnPosition — no sticky cache,
+  // no visited-set, no independent turn ownership. See spotlight render site.
+
+
 
   
   // Flash triggers for winner's chipstack when receiving legs/pot
@@ -2076,8 +2071,9 @@ export const MobileGameTable = ({
     setHolmCommunityFullyRevealed(false);
     if (holmRevealTimerRef.current) { clearTimeout(holmRevealTimerRef.current); holmRevealTimerRef.current = null; }
     
-    // Spotlight sticky turn position (prevents spotlight snap-back on new hand)
-    stickyTurnPositionRef.current = { position: null, handContextId: to, visited: new Set() };
+    // (Spotlight has no per-hand cache to reset — it derives from currentTurnPosition.)
+    void to;
+
     
     // NOTE: currentPlayerCardsRef is reset separately in the useMemo that computes currentPlayerCards
     // because it's defined later in the component (after currentPlayer is computed)
@@ -5343,44 +5339,27 @@ export const MobileGameTable = ({
         
         {/* Turn Spotlight - Holm games and Dice games */}
         {gameType === 'holm-game' && (() => {
-          // SPOTLIGHT FIX: Compute sticky turn position to prevent "snap back" during DB sync.
-          // The spotlight should only move to a NEW position, never revert to a previously visited one.
-          const rawTurnPos = currentTurnPosition ?? null;
-          const cachedPos = stickyTurnPositionRef.current.position;
-          const cachedHand = stickyTurnPositionRef.current.handContextId;
-          
-          // Reset sticky position on new hand
-          if (handContextId !== cachedHand) {
-            stickyTurnPositionRef.current = { position: rawTurnPos, handContextId: handContextId ?? null, visited: new Set(rawTurnPos !== null ? [rawTurnPos] : []) };
-          } else if (rawTurnPos !== null && rawTurnPos !== cachedPos) {
-            // Only update if this position hasn't been visited before in this hand
-            // This prevents brief regression to a prior player's position during DB sync
-            if (!stickyTurnPositionRef.current.visited.has(rawTurnPos)) {
-              stickyTurnPositionRef.current.visited.add(rawTurnPos);
-              stickyTurnPositionRef.current = { ...stickyTurnPositionRef.current, position: rawTurnPos };
-            }
-            // If rawTurnPos was already visited, keep the current cached position
-          }
-          // If rawTurnPos is null but we have a cached position for the SAME hand, keep showing cached
-          // This prevents the spotlight from briefly disappearing during DB sync gaps.
-          // EXCEPTION: If allDecisionsIn is true, the spotlight should hide (round is complete).
-          
-          const stickyTurnPosition = allDecisionsIn 
-            ? null 
-            : (stickyTurnPositionRef.current.position ?? null);
-          
+          // SPOTLIGHT OWNERSHIP CONTRACT:
+          // The spotlight is a pure projection of the authoritative active
+          // player (currentTurnPosition). It does NOT maintain visited-set
+          // semantics, sticky position caches, or any independent notion of
+          // turn identity. It must match the chip ring, action UI, and bot
+          // actor at all times. Smoothing is visual-only (opacity/angle
+          // transitions inside <TurnSpotlight>) — never target identity.
+          const spotlightPosition = allDecisionsIn ? null : (currentTurnPosition ?? null);
+
           return (
             <TurnSpotlight
-              currentTurnPosition={stickyTurnPosition}
+              currentTurnPosition={spotlightPosition}
               currentPlayerPosition={currentPlayer?.position ?? null}
               isObserver={!currentPlayer}
               getClockwiseDistance={getClockwiseDistance}
               containerRef={tableContainerRef}
               isVisible={
-                roundStatus === 'betting' && 
-                !allDecisionsIn && 
-                !awaitingNextRound && 
-                stickyTurnPosition !== null &&
+                roundStatus === 'betting' &&
+                !allDecisionsIn &&
+                !awaitingNextRound &&
+                spotlightPosition !== null &&
                 !isWaitingPhase &&
                 !isSoloVsChucky &&
                 !soloVsChuckyTableLocked
@@ -5389,6 +5368,7 @@ export const MobileGameTable = ({
             />
           );
         })()}
+
 
         
         {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
