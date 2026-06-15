@@ -1,114 +1,133 @@
+## Wave 3C.4a — Chip Anchor Invariant
 
-# Phase 1 — Canonical Seat System
+**Contract — CHIP ANCHOR INVARIANT.** `data-chip-center` is the seat origin. After initial seat mount, across:
 
-Goal: one seat renderer, one projection system, one styling system across waiting → dealer setup → interstitial → gameplay. After this phase, lifecycle phase changes never move seats within a given projection mode, and there is exactly one seat-rendering code path in the entire app.
+```
+Waiting → Interstitial → Gameplay pre-deal → Card backs → Showdown
+        → Win animation → Next hand
+```
 
-## Continuity contract (projection-scoped)
+the chip's `getBoundingClientRect()` drift is **0 px** (not ±0). Spotlight, ante / chopped / sweep, bucks-on-you, pot transport, and all future win animations depend on this.
 
-Seat coordinates are stable **within a projection mode**, not necessarily across projection modes.
+**Root cause.** `CanonicalSeatCluster` slots 1 and 4 use `top-[50%] -translate-y-1/2`. The cluster currently renders pill + chip in flow with consumer `{children}` (card backs, showdown cards, leg pips) appended below. When children mount, cluster height grows and `-translate-y-1/2` shifts the entire cluster — including the chip and `data-chip-center` — upward.
 
-**Observer projection** (viewer is not seated):
-- Uses absolute seat positioning for multiplayer games.
-- May apply intentional face-to-face ergonomic adjustments for 2P games (Cribbage / Gin / Yahtzee), as already encoded in `canonicalized2p` + `occupied-2p-face` placement.
-- For a given observer, seat coordinates for a given player identity are **identical** across waiting, dealer setup, interstitial, and gameplay. An observer must never see a player jump seats because the lifecycle phase changed.
+**Fix — chip-centered coordinate system.** Restructure `src/lib/canonicalShell/CanonicalSeatCluster.tsx` so the chip is the layout origin and every other artifact is anchored to it.
 
-**Active-player projection** (viewer is seated):
-- Activated when the user joins/sits; viewer remains in active-player projection for the remainder of the session.
-- Viewer is rendered via the active content area + bottom HUD; their on-felt cluster is self-suppressed.
-- Other seats are projected relative to the viewer (HOME-relative slotting).
-- May legitimately differ from observer projection.
-- May legitimately differ between game families when an intentional ergonomic rule exists (e.g. Holm may position the opponent differently from Cribbage). Family-level differences are a property of the projection, not the lifecycle.
-- For a given seated viewer, seat coordinates for a given player identity are **identical** across waiting, dealer setup, interstitial, and gameplay.
+1. **Chip zone**: a fixed-size wrapper sized exactly to the `CanonicalChipDisc`. This is the *only* element that participates in slot anchoring (slot top/bottom/middle rules target it). Its center is therefore invariant regardless of what siblings render.
+2. **Name plate / dealer pip / status overlays**: absolutely positioned siblings of the chip, anchored to chip edges (e.g. `absolute bottom-full mb-1 left-1/2 -translate-x-1/2` for "above-chip"). They do not contribute to the cluster's measured height.
+3. **`children` + decorator slots** (cards, leg pips, showdown artifacts): absolutely positioned overlay anchored to the chip, with growth direction determined by row:
+   - top-row seats (0, 5): grow downward from chip.
+   - bottom-row seats (2, 3): grow upward from chip.
+   - middle-row seats (1, 4): grow downward.
+4. Public surface (`namePlacement`, `chipOverlay`, `innerDecoration`, `outerDecoration`, `chipDiscDecorators`) preserved. Only wrapper positioning changes from in-flow to chip-anchored absolute.
+5. Update `CanonicalSeatCluster.test.tsx` assertions that lock in the old in-flow layout.
 
-**What is NOT acceptable, in either mode:**
-- Lifecycle-driven seat movement. Waiting → setup, setup → interstitial, interstitial → gameplay, and gameplay → next dealer-game must not change the rendered coordinate of any player.
+**Verification.** In preview, log `[data-chip-center]` rect for slots 1 and 4 at each phase listed in the contract. Drift must read 0 px. Spotlight angle, chip-transport endpoints, and leg-indicator placement all derive from `[data-chip-center]` and are therefore invariant by construction.
 
-**What IS acceptable:**
-- Coordinate differences driven by projection-mode change (observer → active, or vice versa on join).
-- Coordinate differences driven by an intentional game-family ergonomic rule, encoded in the projection layer (`seatAnchors.ts` / `canonicalSlotPlacement.ts`).
+**Acceptance:**
+- Chip rect identical across every phase (0 px drift).
+- Spotlight unchanged.
+- Transport endpoints (ante, chopped, sweep, pot, bucks-on-you) unchanged.
+- Showdown spacing unchanged.
+- No chip lift on middle seats.
 
-## What the audit found
+---
 
-Five distinct seat renderers exist today. Three gameplay tables (Gin, Cribbage, Yahtzee) already go through `CanonicalSeatCluster` + `SeatAnchorLayer`. Three places diverge:
+## Wave 3C.4b — `ThreeFiveSevenWinController`
 
-1. **`MobileGameTable`** (Holm / 3-5-7 / Horses / SCC, AND the background table during waiting and dealer setup for those families) — hand-rolls its own `slotPositions` map, a separate `getObserverSlotFromPosition` map for observer mode, and a custom `w-12/h-12` chip circle plus a bare `<span>` nameplate. Primary cause of lifecycle-driven divergence for the four dice/poker families.
-2. **`CanonicalShellWaitingSurface`** — already uses `CanonicalSeatCluster`, but bypasses `getBotAlias`, so bots show `"Bot 665153"` (raw DB name) instead of `"Bot 1"`. Also omits the `$` prefix used in gameplay.
-3. **`WaitingForPlayersTable`** add-bot path — writes `"Bot {6-char-hex}"` directly to `profiles.username`, diverging from `botNaming.ts`'s sequential scheme.
+**Location** (per pushback): `src/lib/357/ThreeFiveSevenWinController.tsx`. **Not** in `canonicalShell/`. Game-specific controllers do not live in the shell; they are the inputs Wave 5's `CanonicalPhaseEngine` will eventually generalize over.
 
-`DealerGameSetup` / `DealerConfig` / `NeutralInterstitial` render no seat clusters themselves — they sit on top of `MobileGameTable`. Fixing `MobileGameTable` automatically fixes setup and interstitial.
+**Ownership — controller owns everything.** Per pushback, MGT stays out of phase orchestration entirely. The controller owns:
 
-## Hard end-state constraint (per user direction)
+- phase state machine
+- timers
+- completion refs / trigger dedupe
+- snapshots (winnerId, potAmount, leg positions, chip rects)
+- **animation rendering** (`LegEarnedAnimation`, `LegsToPlayerAnimation`, `PotToPlayerAnimation`)
+- **overlay mount** — the controller renders the overlay tree itself, portalled into the felt surface (`[data-canonical-felt-surface]`), so MGT does not need a single `if phase === …` branch.
 
-When this phase ships, `MobileGameTable` has **exactly one** seat-rendering path. No family flags, no per-family bespoke branches:
+MGT remains gameplay-only: seat rendering, game artifacts, no phase awareness. Game.tsx detects the backend outcome and emits a trigger; that is its only role.
 
-- The local `slotPositions` map is deleted, not gated.
-- `getObserverSlotFromPosition` is deleted, not gated.
-- `renderPlayerChip` is deleted, not gated.
-- Every seat in every family in every phase resolves through `useSeatAnchors().byPosition.get(position)` and renders through `CanonicalSeatCluster`.
-- Observer projection is exclusively `SeatAnchorLayer`'s `'observer-absolute'` mode; active projection is exclusively `'active-canonical'`. Game-family ergonomic rules live inside `seatAnchors.ts` / `canonicalSlotPlacement.ts` (where they already live for the 2P face-to-face case), not inside `MobileGameTable`.
+### File layout
 
-If validation surfaces a per-family blocker, the resolution is to extend the canonical projection layer to cover the case, not to reintroduce a bespoke branch. The work ships behind a single PR so no intermediate mixed state ever lands.
+```
+src/lib/357/
+  ThreeFiveSevenWinController.tsx     # provider + overlay renderer
+  useThreeFiveSevenWinController.ts   # consumer hooks (trigger)
+  threeFiveSevenWinMachine.ts         # pure reducer + phase enum
+```
 
-## Cutover plan
+### State machine
 
-### Step 1 — Single source of truth for display names
-- Migrate `WaitingForPlayersTable`'s add-bot path to call `botNaming.ts:makeBotUsername` so the DB row is `"Bot N"` from insertion.
-- Route every name render site through `getDisplayName` from `botAlias.ts`. Specifically: fix `CanonicalShellWaitingSurface` (currently raw `profiles.username`) and the `MobileGameTable` positional fallback. No render site reads `profiles.username` directly for a seat label after this step.
+```
+IDLE → LEG_EARNED → LEGS_TO_PLAYER → POT_TO_PLAYER → DELAY → IDLE
+```
 
-### Step 2 — Mount `SeatAnchorLayer` for every `MobileGameTable` family
-- Wrap `MobileGameTable`'s seat region in `<SeatAnchorLayer>` with the same projection-mode resolution Gin/Cribbage/Yahtzee already use: `'active-canonical'` when the viewer is seated, `'observer-absolute'` when not.
-- The provider mounts simultaneously for Holm, 3-5-7, Horses, and SCC since they all flow through `MobileGameTable`.
-- Projection mode is set once on join and persists for the rest of the session — never toggled by lifecycle phase.
+Transitions:
+- `IDLE → LEG_EARNED`: on `trigger({ winTriggerId, winnerId, potAmount, legPositions })`. Dedupe by `winTriggerId`. Snapshot all payload values into controller state — never re-read from DB after this.
+- `LEG_EARNED → LEGS_TO_PLAYER`: on `LegEarnedAnimation.onComplete`.
+- `LEGS_TO_PLAYER → POT_TO_PLAYER`: on `LegsToPlayerAnimation.onComplete`.
+- `POT_TO_PLAYER → DELAY`: on `PotToPlayerAnimation.onComplete`.
+- `DELAY → IDLE`: controller-owned `setTimeout`.
 
-### Step 3 — Replace bespoke seat code in one PR
-- Delete `slotPositions`, `getObserverSlotFromPosition`, and `renderPlayerChip` in `MobileGameTable`.
-- Render every seat (active and observer) through `<CanonicalSeatCluster>`, with game-owned decorators (leg indicator, buck indicator, dealer pip, status tints, chip-transfer endpoint markers) moved into the cluster's `children` slot so they ride the canonical anchor.
-- Any family-specific ergonomic difference that needs to survive (e.g. Holm-specific opponent placement, if one exists today and is intentional) is expressed in `seatAnchors.ts` / `canonicalSlotPlacement.ts` keyed on `gameType`, not in `MobileGameTable`.
-- Active-player content area and bottom HUD are untouched.
+### Survival contract (the real Wave 5 proto-objective)
 
-### Step 4 — Waiting / setup / interstitial inherit canonical seats automatically
-- Because `WaitingForPlayersTable` and `DealerGameSetup` render `MobileGameTable` underneath, Step 3 gives them canonical seat geometry with zero additional change. This is what makes lifecycle-driven movement structurally impossible in the new layout.
-- For canonical-shell families (Cribbage / Gin / Yahtzee waiting), update `CanonicalShellWaitingSurface` to use `getDisplayName` and the `$` prefix so waiting matches gameplay verbatim.
-- `NeutralInterstitial` already renders no seats; confirm nothing else paints seat chrome on top of it during dealer rollover.
+The controller must survive:
+- MGT remount
+- seat remount
+- showdown remount
+- shell remount
+- lazy-route churn
 
-### Step 5 — Lock geometry, truncation, and chip formatting
-- `CanonicalSeatCluster` already pins width to `w-[96px]` and uses `truncate min-w-0` on the name span. Audit all call sites for prop overrides that widen, restyle, or remove the pill — remove them.
-- Standardize `chipValue` everywhere to `` `$${formatChipValue(chips)}` ``.
+Only **route exit** kills it.
 
-### Step 6 — Registry + invariant
-- Add `holm`, `three_five_seven`, `horses`, `scc` to `CANONICAL_SHELL_FAMILY` (as required for the seat provider mount) and `CANONICAL_SEAT_CONSUMERS` so `useRequiredSeatAnchors` throws in dev if any future change tries to render seats outside the provider.
+Implementation: mount `<ThreeFiveSevenWinControllerProvider>` at `App.tsx` (route-level, outside the route's render boundary that hosts `Game.tsx` / MGT), so the provider's React subtree is stable across every remount inside the route. The overlay portal targets `[data-canonical-felt-surface]` and re-attaches when the surface remounts; controller state survives because it lives in the provider above.
 
-## Acceptance criteria
+Test: force an MGT remount mid-`LEGS_TO_PLAYER`. Sequence must complete through `IDLE`. This single test is the prototype acceptance for Wave 5.
 
-- **Single path:** `MobileGameTable` contains zero family-specific seat branches. `slotPositions`, `getObserverSlotFromPosition`, `renderPlayerChip` are deleted from the codebase.
-- **Projection-scoped continuity:** for a given session, a given viewer, a given player identity, and a fixed projection mode, the seat coordinate (`data-seat-position` element bounding box on screen) is **identical**, pixel-for-pixel, across waiting → dealer setup → interstitial → gameplay → next dealer-game. Verified for both an observer and a seated participant.
-- **Projection-mode transitions are allowed to move seats** (e.g. when a viewer joins mid-session and switches from observer to active-player projection). This is not a regression.
-- **Game-family ergonomic differences are allowed within active-player projection** (e.g. Holm vs Cribbage opponent placement). Those differences live in `seatAnchors.ts` / `canonicalSlotPlacement.ts`, not in family branches inside `MobileGameTable`.
-- Bots are labeled `Bot N` from the moment of insertion in waiting, setup, and gameplay (alias resolved at the DB and confirmed by `getDisplayName` at render).
-- All nameplates render in the same fixed-width pill with `…` truncation; no name pushes layout.
-- Chip bubbles use the same size, palette, and `$` formatting everywhere.
-- No dev-mode `useRequiredSeatAnchors` warning in any phase of any registered family.
+### Hooks
 
-## Out of scope (Phase 2 / 3)
-- HUD stack height, active-content reservation, announcement/tab rail height.
-- Timer ownership and numeric vs progress-bar divergence.
-- Any change to gameplay logic, sync, or scoring.
+```ts
+// Game.tsx — fires trigger when backend signals win.
+const { trigger } = useThreeFiveSevenWinTrigger();
+trigger({ winTriggerId, winnerId, potAmount, legPositions });
+```
 
-## Files expected to change
-- `src/components/MobileGameTable.tsx` — delete bespoke seat code; mount `SeatAnchorLayer`; render every seat through `CanonicalSeatCluster`; decorators folded into the cluster `children` slot.
-- `src/components/canonicalShell/CanonicalShellWaitingSurface.tsx` — use `getDisplayName`, add `$` prefix.
-- `src/components/WaitingForPlayersTable.tsx` — replace inline `Bot {hex}` username generation with `makeBotUsername`.
-- `src/lib/canonicalShell/shellRouting.ts` — register `holm`, `three_five_seven`, `horses`, `scc` in both registries.
-- `src/lib/canonicalShell/seatAnchors.ts` / `canonicalSlotPlacement.ts` — only if a Holm/3-5-7/Horses/SCC ergonomic rule needs to be ported out of the bespoke branch into the canonical projection layer.
+MGT does **not** consume a phase hook. The controller renders its own overlay; MGT is unaware.
 
-No DB migrations. Existing bot rows are unaffected; `getBotAlias` continues to override at render. New bot inserts get the canonical name at write time.
+### Refactor scope
 
-## Risk + rollback
+- **`src/pages/Game.tsx`**: keep backend detection logic, replace local `threeFiveSevenWinTriggerId` + dedupe with a single `useEffect` that calls `trigger(...)`. Remove local sequencing state.
+- **`src/components/MobileGameTable.tsx`**: delete `showLegEarned`, `threeFiveSevenWinPhase`, related timers, `is357WinWinner`-driven tabling suppression that was tied to MGT's own win phase. Tabling suppression that genuinely belongs to seat rendering (e.g. `shouldHideForTabling` for the soloist) stays — but it reads from the controller hook only if absolutely required. Strong preference: zero MGT awareness; if a suppression behavior needs the controller phase, expose it as a dedicated selector (`useIs357SeatTabled(playerId)`) so MGT reads a boolean, not the FSM.
+- **Animation components unchanged**. They render where the controller mounts them, advance via `onComplete`.
 
-Because the end-state contract is a single path, the work ships as one PR, not incrementally:
+### Snapshot strategy
 
-- Validated across all four `MobileGameTable` families (Holm, 3-5-7, Horses, SCC) plus the three already-canonical families (Cribbage, Gin, Yahtzee) before merge.
-- Validation covers the four lifecycle transitions (waiting → setup, setup → gameplay, gameplay → next dealer-game, observer-join during each phase) AND captures element bounding boxes before/after each transition to prove projection-scoped continuity.
-- Rollback is a git-level revert of the single PR. No per-family kill switch — intentional, to preserve the one-path invariant.
+`legPositions` and `potAmount` are snapshotted into controller state at `IDLE → LEG_EARNED`. Subsequent backend resets (status flipping to `game_over`, `last_round_result` clearing) cannot strand the sequence because the controller no longer reads DB after the trigger.
 
-Highest residual risk is the leg/buck/dealer-pip decorators currently positioned against `slotPositions`. Mitigation: re-express each as a `children` element of the canonical cluster so it inherits the anchor, with a visual diff against the current production layout before merge.
+### Acceptance
+
+- Final-leg win plays LEG_EARNED → LEGS_TO_PLAYER → POT_TO_PLAYER → DELAY → IDLE end-to-end.
+- No `Loading…` flash. No zombie table.
+- Forced MGT remount mid-sequence: animation completes uninterrupted. **This is the proto-Wave-5 acceptance.**
+- Re-emitted trigger with same `winTriggerId`: ignored.
+- Non-final-leg win path (leg awarded, hand continues) still works.
+- MGT contains zero `phase === …` branches for win sequencing.
+
+---
+
+## Out of scope
+
+- **Ante flicker** (`lockedChipsRef ?? displayedChips ?? player.chips`): inventory only after the controller lands; fix only if trivial.
+- **Horses / SCC seat migration**: later wave.
+- **Wave 5 CanonicalPhaseEngine**: the 357 controller is intentionally a prototype, not the engine.
+
+---
+
+## Order of operations
+
+1. Ship 3C.4a. Verify chip rect drift = 0 px across all phases.
+2. Ship 3C.4b on top of 3C.4a so animation endpoints are already stable.
+3. Smoke: Waiting → Interstitial → R1/R2/R3 → multi-player showdown → final-leg win → next hand.
+4. Force an MGT remount mid-`LEGS_TO_PLAYER`; confirm sequence completes.
+5. Brief ante-flicker inventory note in the closing message.
