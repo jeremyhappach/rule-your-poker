@@ -1,0 +1,1561 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cribbage descriptors — snapshot matrix > mobileLandscape / counting resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 7,
+        "w": 180,
+        "x": 0,
+        "y": 8,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 12,
+        "w": 100,
+        "x": 56,
+        "y": 85,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.countingRow",
+      "rect": {
+        "h": 10,
+        "w": 64.35,
+        "x": 2,
+        "y": 43.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 36.97,
+        "w": 27.73,
+        "x": 150.27,
+        "y": 30.01,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 26.11,
+        "w": 19.58,
+        "x": 130.69,
+        "y": 35.45,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 5,
+        "w": 34.76,
+        "x": 103.59,
+        "y": 2.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 84,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 158.6,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 83,
+        "y": 17.86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 7.4,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 4,
+        "w": 41.66,
+        "x": 138.34,
+        "y": 3,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 10.72,
+        "w": 64.35,
+        "x": 66.35,
+        "y": 43.14,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 81,
+        "y": 69.14,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 6,
+        "w": 103.59,
+        "x": 0,
+        "y": 2,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > mobileLandscape / pegging resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 7,
+        "w": 180,
+        "x": 0,
+        "y": 8,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 12,
+        "w": 100,
+        "x": 56,
+        "y": 85,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 42.7,
+        "w": 32.02,
+        "x": 145.98,
+        "y": 27.15,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 29.69,
+        "w": 22.27,
+        "x": 123.71,
+        "y": 33.66,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 5,
+        "w": 34.76,
+        "x": 103.59,
+        "y": 2.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 84,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 158.6,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 83,
+        "y": 17.86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 7.4,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 4,
+        "w": 41.66,
+        "x": 138.34,
+        "y": 3,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 10.87,
+        "w": 65.2,
+        "x": 2,
+        "y": 43.07,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.peggingRow",
+      "rect": {
+        "h": 9,
+        "w": 56.51,
+        "x": 67.2,
+        "y": 44,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 81,
+        "y": 69.14,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 6,
+        "w": 103.59,
+        "x": 0,
+        "y": 2,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > mobilePortrait / counting resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 8,
+        "w": 100,
+        "x": 0,
+        "y": 9,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.countingRow",
+      "rect": {
+        "h": 20.17,
+        "w": 60,
+        "x": 20,
+        "y": 17,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 58.86,
+        "w": 44.15,
+        "x": 27.93,
+        "y": 92.96,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 39.79,
+        "w": 29.84,
+        "x": 35.08,
+        "y": 53.17,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 161,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 85,
+        "y": 86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 43,
+        "y": 27.62,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 1,
+        "y": 86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 16,
+        "w": 96,
+        "x": 2,
+        "y": 37.17,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 41,
+        "y": 139.38,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 7,
+        "w": 100,
+        "x": 0,
+        "y": 2,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > mobilePortrait / pegging resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 8,
+        "w": 100,
+        "x": 0,
+        "y": 9,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 58.12,
+        "w": 43.59,
+        "x": 28.2,
+        "y": 93.86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 39.33,
+        "w": 29.49,
+        "x": 35.25,
+        "y": 54.53,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 161,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 85,
+        "y": 86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 43,
+        "y": 27.62,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 1,
+        "y": 86,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 16,
+        "w": 96,
+        "x": 2,
+        "y": 17,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.peggingRow",
+      "rect": {
+        "h": 21.53,
+        "w": 50,
+        "x": 25,
+        "y": 33,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 41,
+        "y": 139.38,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 7,
+        "w": 100,
+        "x": 0,
+        "y": 2,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > tabletLandscape / counting resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 7,
+        "w": 140,
+        "x": 0,
+        "y": 9,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.countingRow",
+      "rect": {
+        "h": 10,
+        "w": 60.4,
+        "x": 2,
+        "y": 45,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 10.63,
+        "w": 7.98,
+        "x": 130.02,
+        "y": 44.68,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 9.65,
+        "w": 7.23,
+        "x": 122.79,
+        "y": 45.18,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 5,
+        "w": 18,
+        "x": 100,
+        "y": 3.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 85,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 121.8,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 63,
+        "y": 17.44,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 4.2,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 4,
+        "w": 22,
+        "x": 118,
+        "y": 4,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 10.07,
+        "w": 60.4,
+        "x": 62.4,
+        "y": 44.97,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 61,
+        "y": 69.56,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 6,
+        "w": 100,
+        "x": 0,
+        "y": 3,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > tabletLandscape / pegging resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 7,
+        "w": 140,
+        "x": 0,
+        "y": 9,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 17,
+        "w": 12.75,
+        "x": 125.25,
+        "y": 41.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 13.62,
+        "w": 10.22,
+        "x": 115.04,
+        "y": 43.19,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 5,
+        "w": 18,
+        "x": 100,
+        "y": 3.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 85,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 121.8,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 63,
+        "y": 17.44,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 4.2,
+        "y": 46,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 4,
+        "w": 22,
+        "x": 118,
+        "y": 4,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 10.22,
+        "w": 61.35,
+        "x": 2,
+        "y": 44.89,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.peggingRow",
+      "rect": {
+        "h": 9,
+        "w": 51.69,
+        "x": 63.35,
+        "y": 45.5,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 61,
+        "y": 69.56,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 6,
+        "w": 100,
+        "x": 0,
+        "y": 3,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > tabletPortrait / counting resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 8,
+        "w": 100,
+        "x": 0,
+        "y": 10,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.countingRow",
+      "rect": {
+        "h": 16.52,
+        "w": 60,
+        "x": 20,
+        "y": 18,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 40.59,
+        "w": 30.44,
+        "x": 34.78,
+        "y": 78.89,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 28.37,
+        "w": 21.28,
+        "x": 39.36,
+        "y": 50.52,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 123,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 85,
+        "y": 66,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 43,
+        "y": 23.16,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 1,
+        "y": 66,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 16,
+        "w": 96,
+        "x": 2,
+        "y": 34.52,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 41,
+        "y": 103.84,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 7,
+        "w": 100,
+        "x": 0,
+        "y": 3,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
+
+exports[`cribbage descriptors — snapshot matrix > tabletPortrait / pegging resolves deterministically 1`] = `
+{
+  "faults": [
+    {
+      "code": "safe_area_collision",
+      "ids": [
+        "cribbage.spotlight",
+      ],
+    },
+  ],
+  "placements": [
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.announcement",
+      "rect": {
+        "h": 8,
+        "w": 100,
+        "x": 0,
+        "y": 10,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.bottomHud",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.crib",
+      "rect": {
+        "h": 40.29,
+        "w": 30.22,
+        "x": 34.89,
+        "y": 79.25,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.cutCard",
+      "rect": {
+        "h": 28.18,
+        "w": 21.14,
+        "x": 39.43,
+        "y": 51.07,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.gameTitle",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.myHand",
+      "rect": {
+        "h": 14,
+        "w": 56,
+        "x": 0,
+        "y": 123,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.1",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 85,
+        "y": 66,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.2",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 43,
+        "y": 23.16,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.opponentCardBacks.3",
+      "rect": {
+        "h": 8,
+        "w": 14,
+        "x": 1,
+        "y": 66,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.parameterChips",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": true,
+      "collapsedReason": undefined,
+      "id": "cribbage.pegboard",
+      "rect": {
+        "h": 16,
+        "w": 96,
+        "x": 2,
+        "y": 18,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.peggingRow",
+      "rect": {
+        "h": 17.07,
+        "w": 50,
+        "x": 25,
+        "y": 34,
+      },
+      "visible": true,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "dependencyMissing",
+      "id": "cribbage.spotlight",
+      "rect": {
+        "h": 18,
+        "w": 18,
+        "x": 41,
+        "y": 103.84,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": "pressure",
+      "id": "cribbage.tabs",
+      "rect": {
+        "h": 0,
+        "w": 0,
+        "x": 0,
+        "y": 0,
+      },
+      "visible": false,
+    },
+    {
+      "appliedAspectRatio": false,
+      "collapsedReason": undefined,
+      "id": "cribbage.topHud",
+      "rect": {
+        "h": 7,
+        "w": 100,
+        "x": 0,
+        "y": 3,
+      },
+      "visible": true,
+    },
+  ],
+}
+`;
