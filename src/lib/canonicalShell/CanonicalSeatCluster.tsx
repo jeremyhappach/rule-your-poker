@@ -555,14 +555,15 @@ export function CanonicalSeatCluster({
         const chipCell = (
           <div
             data-canonical-seat-chip-cell=""
-            className="relative flex items-center justify-center w-12 h-12"
+            className="relative flex items-center justify-center w-10 h-10"
           >
             {chipCellContents}
           </div>
         );
 
-        // Wave 3C.3f — exactly two layouts: NameAbove / NameBelow.
-        // No horizontal side-seat variants.
+        // Wave 3C.3g — ONE layout for all seats: Name → Chip → Score.
+        // Artifact (children) lives outside this pill and renders
+        // below per the outer cluster's flex-col.
 
         return (
           <div
@@ -570,8 +571,8 @@ export function CanonicalSeatCluster({
             data-canonical-seat-orientation={seatOrientation}
             className={cn(
               'relative flex flex-col items-center w-fit max-w-[88px]',
-              // ~2px separation between name and chip; the pair must
-              // read as ONE object.
+              // Tangential: name plate sits 2px above the chip so the
+              // pair reads as ONE object, chip is the primary artifact.
               'gap-[2px]',
             )}
           >
@@ -594,7 +595,6 @@ export function CanonicalSeatCluster({
                 {scoreLine}
               </span>
             )}
-            {effectiveNamePlacement === 'below-chip' && nameRow}
           </div>
         );
       })()}
