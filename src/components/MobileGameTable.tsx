@@ -1167,6 +1167,13 @@ export const MobileGameTable = ({
   const lastSweepsResultRef = useRef<string | null>(null);
   
   // 3-5-7 win animation state (phases: leg -> legs-to-player -> pot-to-player)
+  // ⚠ TODO WAVE 5 — ThreeFiveSevenWinController is parked. See
+  // src/lib/357/UNDER_CONSTRUCTION.md for the full inventory and the
+  // selector list (useShould357DeferPot / DeferHandReset /
+  // SuppressAnnouncement / IsSeatTabled) that should migrate into
+  // CanonicalPhaseEngine. Phase ownership remains game-local until then.
+  // Known shipping bug: MGT/Game remount mid-sequence strands the win
+  // animation (Loading… flash → zombie table).
   const [threeFiveSevenWinPhase, setThreeFiveSevenWinPhase] = useState<'idle' | 'waiting' | 'legs-to-player' | 'pot-to-player' | 'delay'>('idle');
   const [legsToPlayerTriggerId, setLegsToPlayerTriggerId] = useState<string | null>(null);
   const [potToPlayerTriggerId357, setPotToPlayerTriggerId357] = useState<string | null>(null);
