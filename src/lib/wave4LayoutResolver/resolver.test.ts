@@ -119,15 +119,16 @@ describe("resolveLayout — preferred fits", () => {
 
 describe("resolveLayout — shrink to minimum", () => {
   it("shrinks lower-priority artifacts first when over capacity", () => {
-    // play band is y-dominant: height 40. Sum preferred = 50 → over by 10.
-    const high = flow("high", "play", 95, "late", { w: 30, h: 30 }, { w: 20, h: 20 });
-    const low = flow("low", "play", 50, "late", { w: 30, h: 20 }, { w: 30, h: 5 });
+    // bottomHud is x-dominant: width 100. Sum preferred = 120 → over by 20.
+    const high = flow("high", "bottomHud", 95, "late", { w: 60, h: 8 }, { w: 50, h: 8 });
+    const low = flow("low", "bottomHud", 50, "late", { w: 60, h: 8 }, { w: 20, h: 8 });
     const out = resolveLayout([high, low], makeGeometry());
     expect(out.faults).toEqual([]);
     expect(byId(out, "high").visible).toBe(true);
     expect(byId(out, "low").visible).toBe(true);
-    // low got shrunk; high retained preferred or close to it.
-    expect(byId(out, "low").rect.height.value).toBeLessThan(20);
+    // low got shrunk; high retained preferred.
+    expect(byId(out, "low").rect.width.value).toBeLessThan(60);
+    expect(byId(out, "high").rect.width.value).toBeGreaterThanOrEqual(59);
   });
 });
 
