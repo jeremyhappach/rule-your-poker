@@ -11,12 +11,16 @@ import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
+import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
   currentPlayerId: string | undefined;
   opponentId: string;
   currentTurnSlot?: CanonicalSlot | null;
+  /** Authoritative seat position (1..7) of the current turn player.
+   *  When provided, drives the spotlight via chip-center geometry. */
+  currentTurnPosition?: number | null;
   getPlayerUsername: (playerId: string) => string;
   cardBackColors: { color: string; darkColor: string };
   onDrawStock?: () => void;
