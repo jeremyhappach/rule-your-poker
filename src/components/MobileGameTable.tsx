@@ -1219,15 +1219,10 @@ export const MobileGameTable = ({
   // This prevents the hand result banner from appearing before card 4 is visually revealed.
   const [holmCommunityFullyRevealed, setHolmCommunityFullyRevealed] = useState(false);
   const holmRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
-  // SPOTLIGHT FIX: Sticky turn position tracking to prevent "snap back" during DB sync delays.
-   // The spotlight should only move forward to the next player, never jump back to a previous position.
-   // We track the last confirmed turn position, the handContextId it belongs to, and visited positions.
-   const stickyTurnPositionRef = useRef<{ position: number | null; handContextId: string | null; visited: Set<number> }>({
-     position: null,
-     handContextId: null,
-     visited: new Set(),
-  });
+  // Spotlight is a pure projection of currentTurnPosition — no sticky cache,
+  // no visited-set, no independent turn ownership. See spotlight render site.
+
+
 
   
   // Flash triggers for winner's chipstack when receiving legs/pot
