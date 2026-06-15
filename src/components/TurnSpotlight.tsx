@@ -115,8 +115,10 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
     return null;
   }
 
-  // Narrower beam (25 degrees on each side = 50 degree cone)
-  const beamHalfAngle = 25;
+  // Wave 3C.3f — widened to align with canonical opponent seat centers,
+  // which sit on the outer rail rather than the historical inner chip
+  // anchor. 32° half-angle covers the seat envelope without bleeding.
+  const beamHalfAngle = 32;
 
   // Clip path. In shell-owned mode the spotlight is portaled INTO the
   // canonical felt SURFACE node, which already enforces the exact
