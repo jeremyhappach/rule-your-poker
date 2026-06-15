@@ -4532,6 +4532,106 @@ export const MobileGameTable = ({
     return slot + 1;
   };
 
+  const [holmTurnTraceRows, setHolmTurnTraceRows] = useState<HolmTurnTraceRow[]>([]);
+
+  const getTracePlayerName = useCallback((player: Player | undefined): string => {
+    if (!player) return '—';
+    return player.is_bot
+      ? getBotAlias(players, player.user_id)
+      : (player.profiles?.username || `P${player.position}`);
+  }, [players]);
+
+  const buildHolmTurnTraceRow = useCallback((action: HolmTurnTraceActionEvent): HolmTurnTraceRow => {
+    const spotlightInputPosition = allDecisionsIn ? null : (currentTurnPosition ?? null);
+    const targetSelector = spotlightInputPosition !== null && spotlightInputPosition !== undefined
+      ? `[data-chip-center="${spotlightInputPosition}"]`
+      : null;
+    const targetElement = targetSelector
+      ? document.querySelector<HTMLElement>(targetSelector)
+      : null;
+    const targetRect = targetElement?.getBoundingClientRect();
+    const targetPositionAttr = targetElement?.getAttribute('data-chip-center');
+    const spotlightDomTargetPosition = targetPositionAttr ? Number(targetPositionAttr) : null;
+    const spotlightDomTargetPlayer = players.find(p => p.position === spotlightDomTargetPosition);
+    const chipRingPlayer = players.find(p => p.position === currentTurnPosition && p.current_decision !== 'stay');
+    const actionControlsEnabledPosition = canDecide ? (currentPlayer?.position ?? null) : null;
+    const seatMapping = players
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map<HolmTurnTraceSeatMapping>((player) => {
+        const chip = document.querySelector<HTMLElement>(`[data-chip-center="${player.position}"]`);
+        const rect = chip?.getBoundingClientRect();
+        return {
+          position: player.position,
+          playerName: getTracePlayerName(player),
+          canonicalSlot: shellAnchors?.byPosition.get(player.position)?.slot ?? null,
+          chipDomRectCenter: rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null,
+        };
+      });
+
+    const row: HolmTurnTraceRow = {
+      id: `${action.timestamp}:${action.actualActingPlayerId}:${action.actionTaken}:${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: action.timestamp,
+      handNumber: action.handNumber ?? holmTraceHandNumber ?? null,
+      roundId: action.roundId ?? holmTraceRoundId ?? null,
+      dealerPosition: dealerPosition ?? null,
+      buckPosition: buckPosition ?? null,
+      dbCurrentTurnPosition: action.dbCurrentTurnPosition ?? holmTraceDbCurrentTurnPosition ?? null,
+      holmViewCurrentTurnPosition: holmTraceHolmViewCurrentTurnPosition ?? null,
+      mobileGameTableCurrentTurnPosition: currentTurnPosition ?? null,
+      actualActingPlayerId: action.actualActingPlayerId,
+      actualActingPlayerPosition: action.actualActingPlayerPosition,
+      actorKind: action.actorKind,
+      actionTaken: action.actionTaken,
+      chipRingPosition: chipRingPlayer?.position ?? null,
+      actionControlsEnabledPosition,
+      spotlightInputPosition,
+      spotlightDomTargetPosition,
+      spotlightDomTargetPlayerName: getTracePlayerName(spotlightDomTargetPlayer),
+      dataChipCenterElementFound: !!targetElement,
+      targetRect: targetRect ? { x: targetRect.left + targetRect.width / 2, y: targetRect.top + targetRect.height / 2 } : null,
+      seatMapping,
+      assertions: {},
+    };
+
+    row.assertions = {
+      'spotlight input === currentTurnPosition': row.spotlightInputPosition === row.mobileGameTableCurrentTurnPosition,
+      'spotlight target position === currentTurnPosition': row.spotlightDomTargetPosition === row.mobileGameTableCurrentTurnPosition,
+      'spotlight target player === actual acting player': row.spotlightDomTargetPosition === row.actualActingPlayerPosition,
+      'chip ring position === currentTurnPosition': row.chipRingPosition === row.mobileGameTableCurrentTurnPosition,
+    };
+    return row;
+  }, [
+    allDecisionsIn,
+    buckPosition,
+    canDecide,
+    currentPlayer?.position,
+    currentTurnPosition,
+    dealerPosition,
+    getTracePlayerName,
+    holmTraceDbCurrentTurnPosition,
+    holmTraceHandNumber,
+    holmTraceHolmViewCurrentTurnPosition,
+    holmTraceRoundId,
+    players,
+    shellAnchors,
+  ]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') {
+      setHolmTurnTraceRows([]);
+      return;
+    }
+    const onAction = (event: Event) => {
+      const detail = (event as CustomEvent<HolmTurnTraceActionEvent>).detail;
+      if (!detail || detail.gameId !== gameId) return;
+      const row = buildHolmTurnTraceRow(detail);
+      setHolmTurnTraceRows(prev => [...prev.slice(-40), row]);
+    };
+    window.addEventListener(HOLM_TURN_TRACE_ACTION_EVENT, onAction);
+    return () => window.removeEventListener(HOLM_TURN_TRACE_ACTION_EVENT, onAction);
+  }, [buildHolmTurnTraceRow, gameId, gameType]);
+
   const getPlayerAtSlot = (slotIndex: number): Player | undefined => {
     const targetDistance = slotIndex + 1; // slot 0 = 1 seat away, slot 1 = 2 seats away, etc.
     return otherPlayersRaw.find(p => getClockwiseDistance(p.position) === targetDistance);
