@@ -423,13 +423,12 @@ export function CanonicalSeatCluster({
       <div
         data-canonical-seat-name-row=""
         className={cn(
-          'grid items-center rounded-[3px] px-1 py-[1px] w-fit max-w-[88px]',
+          'inline-flex items-center gap-1 rounded-[3px] px-1 py-[1px] max-w-[88px]',
           'bg-black/75 backdrop-blur-sm border border-black/40',
         )}
-        style={{ gridTemplateColumns: 'minmax(0,1fr) 8px' }}
       >
         <span
-          className="text-[10px] text-white font-semibold truncate min-w-0 text-center leading-[1.05]"
+          className="text-[10px] text-white font-semibold truncate min-w-0 leading-[1.05]"
           style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
         >
           {name}
@@ -437,7 +436,7 @@ export function CanonicalSeatCluster({
         <div
           aria-hidden={!isDealer}
           className={cn(
-            'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
+            'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0',
             !isDealer && 'invisible',
           )}
         >
