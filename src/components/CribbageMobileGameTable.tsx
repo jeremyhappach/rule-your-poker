@@ -5997,13 +5997,14 @@ export const CribbageMobileGameTable = ({
             or `localStorage.wave4=1`. Faults always emit to telemetry. */}
         <Wave4CribbageChromeHost
           phase="pegging"
-          viewerSeatPosition={typeof currentUserPosition === 'number' ? currentUserPosition : null}
+          viewerSeatPosition={currentPlayer?.position ?? null}
           opponentSeatPositions={[0, 1, 2, 3].filter(
-            (p) => p !== currentUserPosition,
+            (p) => p !== (currentPlayer?.position ?? -1),
           )}
           cutCardRevealed={true}
           cribVisible={true}
         />
+
 
 
         {/* Felt-content frame — shared canonical ellipse envelope. */}
