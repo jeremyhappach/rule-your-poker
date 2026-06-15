@@ -550,8 +550,12 @@ export function CanonicalSeatCluster({
     }
   }
 
-  // Below-chip stack: score line (and children if growth DOWN).
+  // Below-chip stack: name (when projecting down) THEN score line
+  // (and children if growth DOWN). Name is closest to the chip.
   const belowChipNodes: ReactNode[] = [];
+  if (!hideChipBubble && effectiveNamePlacement === 'above-chip' && nameRow && nameSide === 'below') {
+    belowChipNodes.push(<div key="name">{nameRow}</div>);
+  }
   if (!hideChipBubble && scoreLine) {
     belowChipNodes.push(
       <span
