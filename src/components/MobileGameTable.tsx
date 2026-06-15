@@ -116,6 +116,7 @@ import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRa
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { HOLM_TURN_TRACE_ACTION_EVENT, type HolmTurnTraceActionEvent } from "@/lib/holmTurnTrace";
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
@@ -414,6 +415,10 @@ interface MobileGameTableProps {
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
   dealerSelectionWinnerPosition?: number | null; // Position of winner for spotlight effect
+  holmTraceHandNumber?: number | null;
+  holmTraceRoundId?: string | null;
+  holmTraceDbCurrentTurnPosition?: number | null;
+  holmTraceHolmViewCurrentTurnPosition?: number | null;
   /**
    * Legacy `feltOwnership` prop has been retired. Shell-owned felt is the
    * sole canonical mount for every family — no local felt branch exists.
