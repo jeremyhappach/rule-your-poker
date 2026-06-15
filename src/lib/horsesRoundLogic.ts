@@ -362,14 +362,29 @@ export async function startHorsesRound(
   const sortedActive = [...activePlayers].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   const dealerPos = (game as any)?.dealer_position as number | null; // eslint-disable-line @typescript-eslint/no-explicit-any
   const dealerIdx = dealerPos ? sortedActive.findIndex((p) => p.position === dealerPos) : -1;
-  
-  // Check Make It Take It setting - if enabled, dealer goes first (offset 0), otherwise player after dealer (offset 1)
+
+  // Check Make It Take It setting - if enabled, dealer goes first, otherwise player clockwise (left) of dealer
   const makeItTakeIt = await getMakeItTakeItSetting();
-  const turnOffset = makeItTakeIt ? 0 : 1;
-  
-  const turnOrder = dealerIdx >= 0
-    ? Array.from({ length: sortedActive.length }, (_, i) => sortedActive[(dealerIdx + i + turnOffset) % sortedActive.length].id)
-    : sortedActive.map((p) => p.id);
+
+  // Canonical clockwise iteration via seatRing (Wave 3 P1-A): clockwise =
+  // nearest LOWER occupied position (poker convention, action passes left).
+  // Replaces ascending `(dealerIdx + i) % n` math so Horses matches Holm/357.
+  let turnOrder: string[];
+  if (dealerIdx >= 0 && dealerPos != null) {
+    const positions = sortedActive.map((p) => p.position!).filter((p): p is number => p != null);
+    const byPos = new Map(sortedActive.map((p) => [p.position!, p]));
+    const startPos = makeItTakeIt ? dealerPos : nextClockwise(dealerPos, positions);
+    const ordered: string[] = [];
+    let cur = startPos;
+    for (let i = 0; i < sortedActive.length; i++) {
+      const player = byPos.get(cur);
+      if (player) ordered.push(player.id);
+      cur = nextClockwise(cur, positions);
+    }
+    turnOrder = ordered;
+  } else {
+    turnOrder = sortedActive.map((p) => p.id);
+  }
 
   const firstTurnPlayer = sortedActive.find((p) => p.id === turnOrder[0]) ?? null;
   const controllerUserId =
