@@ -84,18 +84,20 @@ describe('CanonicalSeatCluster — byte-for-byte contract for existing consumers
     expect(container.querySelector('[data-chip-center="2"]')).not.toBeNull();
   });
 
-  it('renders children below pill on top/mid slots and above pill on bottom slots', () => {
+  it('renders children below the chip cell on top/mid slots (growth=down)', () => {
     renderInLayer(
       <CanonicalSeatCluster slot={2} position={2} name="A" chipValue="$1">
         <span>child</span>
       </CanonicalSeatCluster>,
     );
     const topCluster = container.querySelector('[data-canonical-seat-cluster]')!;
-    expect(topCluster.className).toContain('flex-col');
-    expect(topCluster.className).not.toContain('flex-col-reverse');
+    expect(topCluster.getAttribute('data-seat-growth')).toBe('down');
+    const below = container.querySelector('[data-canonical-seat-below]')!;
+    expect(below).not.toBeNull();
+    expect(below.querySelector('[data-canonical-seat-cluster-content]')).not.toBeNull();
   });
 
-  it('reverses cluster column for bottom-anchored slots', () => {
+  it('renders children above the chip cell on bottom-anchored slots (growth=up)', () => {
     renderInLayer(
       <CanonicalSeatCluster slot={0} position={3} name="A" chipValue="$1">
         <span>child</span>
@@ -103,7 +105,9 @@ describe('CanonicalSeatCluster — byte-for-byte contract for existing consumers
       { seats: [{ position: 3, occupied: true }] },
     );
     const bottomCluster = container.querySelector('[data-canonical-seat-cluster]')!;
-    expect(bottomCluster.className).toContain('flex-col-reverse');
+    expect(bottomCluster.getAttribute('data-seat-growth')).toBe('up');
+    const above = container.querySelector('[data-canonical-seat-above]')!;
+    expect(above.querySelector('[data-canonical-seat-cluster-content]')).not.toBeNull();
   });
 });
 
