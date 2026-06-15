@@ -279,7 +279,6 @@ interface ChatBubbleData {
 
 function HolmTurnTracePanel({ rows }: { rows: HolmTurnTraceRow[] }) {
   const [copied, setCopied] = useState(false);
-  if (rows.length === 0) return null;
 
   const copyTrace = async () => {
     await navigator.clipboard.writeText(JSON.stringify(rows, null, 2));
@@ -307,6 +306,11 @@ function HolmTurnTracePanel({ rows }: { rows: HolmTurnTraceRow[] }) {
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td className="px-1 py-2 text-muted-foreground" colSpan={21}>Waiting for Holm turn transitions…</td>
+              </tr>
+            )}
             {rows.map(row => {
               const hasMismatch = Object.values(row.assertions).some(v => v === false);
               return (
