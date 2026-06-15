@@ -4503,460 +4503,189 @@ export const MobileGameTable = ({
     return slotPositions[slot] ?? { x: 0, y: 60 };
   }, [horsesController.currentTurnPlayerId, players, shellAnchors]);
 
+  /**
+   * Dice-only legacy seat renderer (Horses / Ship-Captain-Crew).
+   *
+   * Wave 3C.4: 357 was routed off this path to `render357CanonicalSeat`.
+   * Holm has been off this path since 3C.3b (`renderHolmCanonicalSeat`).
+   * What remains here is intentionally narrow: chip stack + dealer pip
+   * + auto-roll indicator + dice result element + name plate, all
+   * preserved 1:1 from the legacy Horses/SCC implementation. This
+   * function will be retired entirely in the dice canonical-seat wave.
+   *
+   * No is357* / winningLeg / threeFiveSeven* / soloVsChucky* /
+   * PlayerHand / card-back / leg-indicator code remains here — those
+   * artifacts were 357-only and now live in `render357CanonicalSeat`.
+   */
   const renderPlayerChip = (player: Player, slotIndex?: number) => {
     const isTheirTurn =
-      (gameType === 'holm-game' && currentTurnPosition === player.position && !awaitingNextRound) ||
-      (diceGameplayUiActive && horsesController.enabled && horsesController.currentTurnPlayerId === player.id && !awaitingNextRound);
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.currentTurnPlayerId === player.id &&
+      !awaitingNextRound;
     const isCurrentUser = player.user_id === currentUserId;
 
-    // Slot is now ALWAYS the canonical anchor slot passed by the seat
-    // mapper below. No observer/seated branch, no bespoke override.
+    // Slot is always the canonical anchor slot passed by the seat mapper.
     const effectiveSlotIndex = slotIndex;
 
-    
-    // CRITICAL: Only show other players' decisions after allDecisionsIn (for 3-5-7)
-    // Holm game shows decisions immediately (turn-based), 3-5-7 hides until all in
-    // Current user always sees their own decision immediately
-    const playerDecision = (isCurrentUser || allDecisionsIn || gameType === 'holm-game') 
-      ? player.current_decision 
-      : null;
-    const playerCardsData = playerCards.find(pc => pc.player_id === player.id);
-    // Use getPlayerCards for showdown caching
+    const playerDecision = player.current_decision;
     const cards = getPlayerCards(player.id);
 
-    // Show card backs for active players even if we don't have their cards data
-    // CRITICAL: For 3-5-7, when hiding decisions from other players, also hide their folded status
-    // Use "apparent" status that only shows fold after allDecisionsIn
-    const rawIsActivePlayer = player.status === 'active' && !player.sitting_out;
-    // In 3-5-7, if we're hiding this player's decision (not current user, not allDecisionsIn),
-    // treat them as still active even if they've folded in the database
-    const apparentIsActivePlayer = (isCurrentUser || allDecisionsIn || gameType === 'holm-game')
-      ? rawIsActivePlayer
-      : (player.status === 'active' || player.status === 'folded') && !player.sitting_out;
-    
-    // For Holm games, hide card backs when player folds
-    const hasFolded = gameType === 'holm-game' && playerDecision === 'fold';
-    const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && !hasFolded;
-    const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
-
-    // Status chip background color - includes "stayed" green background
+    // Status chip background color.
     const chipBgColor = getPlayerChipBgColor(player, playerDecision);
 
-    // Check if this player's chip stack is clickable by host (any player except self)
+    // Host click affordance.
     const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
-    
-    // Bottom positions (slot 0 = bottom-left, slot 5 = bottom-right) need name above chip
+
+    // Slot geometry (used only for name-plate placement + dealer-pip side).
     const isBottomPosition = effectiveSlotIndex === 0 || effectiveSlotIndex === 5 || effectiveSlotIndex === -1;
-    
-    // Determine if we should show this player's actual cards
-    // Either: player has exposed cards in cache, OR we're showing announcement for a stayed player
-    // OR: in 3-5-7, this player won the final leg (keep their cards visible during animation)
-    // OR: 3-5-7 "secret reveal" in rounds 1-2 for players who stayed (only visible to other stayed players)
-    const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
-    const isInAnnouncementShowdown = isShowingAnnouncement && playerDecision === 'stay' && cards.length > 0;
-    const is357WinningLegPlayer = gameType !== 'holm-game' && winningLegPlayerId === player.id && cards.length > 0;
-    const is357Round3Showdown = is357Round3MultiPlayerShowdown && hasExposedCards;
-    // Secret reveal: show cards of OTHER players who stayed (rounds 1-2, revealAtShowdown enabled)
-    const is357SecretRevealShowdown = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
-    const isShowdown = (gameType === 'holm-game' && (hasExposedCards || isInAnnouncementShowdown)) || is357WinningLegPlayer || is357Round3Showdown || is357SecretRevealShowdown;
-    
-    // During showdown/announcement, hide chip stack to make room for bigger cards
-    // EXCEPTION: During Holm win animation, keep winner's chipstack visible (cards are "tabled" below Chucky)
-    // EXCEPTION: During solo vs Chucky, keep solo player's chipstack visible (only their cards are tabled)
-    // CRITICAL: For Holm, hide chips during MULTI-PLAYER showdown (2+ stayed) for ALL positions except home position
-    // This gives room for cards to display without overlap
-    const isHolmWinWinner = holmWinPotTriggerId && winnerPlayerId === player.id;
-    const soloLockedId = soloVsChuckyPlayerIdLocked;
-    const isSoloVsChuckyPlayerForChip = isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
-    // For Holm: hide chips for all players in showdown (gives room for exposed cards)
-    // For 3-5-7: also hide chips during round 2 and 3 multi-player showdowns
-    const hideChipForShowdown = (gameType === 'holm-game' && isHolmMultiPlayerShowdown && isShowdown && !isHolmWinWinner && !isSoloVsChuckyPlayerForChip) ||
-      (is357MultiPlayerShowdown && isShowdown);
-    
-    const isDealer = dealerPosition === player.position;
-    const playerLegs = gameType !== 'holm-game' ? player.legs : 0;
-    
-    // Determine if legs should be on the left (inside for right-side slots 3,4,5)
+    const isUpperCorner = effectiveSlotIndex === 2 || effectiveSlotIndex === 3;
     const isRightSideSlot = effectiveSlotIndex !== undefined && effectiveSlotIndex >= 3;
-    
-    // Leg indicator element - overlapping circles positioned inside toward table center, barely overlapping chipstack edge
-    // During leg animation, show (legs - 1) so only the NEW leg is hidden
-    // During legs-to-player phase AND pot-to-player phase, hide ALL leg indicators since they've already animated to winner
-    // During 3-5-7 win animation (before legs-to-player), use CACHED leg count since backend may have reset them
-    const isLegAnimatingForThisPlayer = showLegEarned && legEarnedPlayerPosition === player.position;
-    // Hide legs during win animation phases AND when legs have been swept (backend resets them to 0 after animation)
-    // IMPORTANT: Keep legs visible during 'waiting' phase - that's when the LegEarnedAnimation is playing
-    // Only hide once legs-to-player actually starts (that's when they visually fly away)
-    const hideLegsForWinAnimation = gameType !== 'holm-game' && (
-      threeFiveSevenWinPhase === 'legs-to-player' || 
-      threeFiveSevenWinPhase === 'pot-to-player' || 
-      threeFiveSevenWinPhase === 'delay'
-    );
-    
-    // During win animation sequence, use cached leg count to display legs
-    // Use cached values when: any animation phase is active (waiting, legs-to-player, pot-to-player, delay)
-    const isIn357WinAnimation = gameType !== 'holm-game' && threeFiveSevenWinPhase !== 'idle';
-    const cachedLegsForThisPlayer = threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
-    // During 'waiting' phase, use cached legs (already includes the just-won leg from parent)
-    // This prevents the leg from flickering away when backend resets
-    const effectivePlayerLegs = isIn357WinAnimation ? cachedLegsForThisPlayer : playerLegs;
-    
-    // During 'waiting' phase (LegEarnedAnimation playing), show full legs minus 1 for the animating player
-    // During legs-to-player/pot-to-player/delay, legs are hidden by hideLegsForWinAnimation
-    // After animation completes (idle with trigger set), show 0 since legs were swept to winner
-    const legsWereSweptThisSession = lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
-    
-    const displayLegs = hideLegsForWinAnimation ? 0 : 
-      (legsWereSweptThisSession ? 0 : // Legs were swept - show 0 until next hand/game
-       (isLegAnimatingForThisPlayer ? Math.max(0, effectivePlayerLegs - 1) : effectivePlayerLegs));
-    const legIndicator = displayLegs > 0 && (
-      <div className="absolute z-30" style={{
-        // Position to barely overlap the chipstack edge (6px inward from edge of 48px circle = 24px radius - 6px = 18px from center)
-        ...(isRightSideSlot 
-          ? { left: '6px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
-          : { right: '6px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
-        )
-      }}>
-        <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
-          {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => {
-            // Always show dollar value on legs if legValue is set
-            const showLegDollarValue = legValue > 0;
-            const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
-            const chipSize = showLegDollarValue ? 'w-6 h-6' : 'w-5 h-5';
-            const textSize = showLegDollarValue ? 'text-[8px]' : 'text-[10px]';
-            
-            return (
-              <div 
-                key={i} 
-                className={`${chipSize} rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg`}
-                style={{
-                  marginLeft: !isRightSideSlot && i > 0 ? '-8px' : '0',
-                  marginRight: isRightSideSlot && i > 0 ? '-8px' : '0',
-                  zIndex: Math.min(displayLegs, legsToWin) - i
-                }}
-              >
-                <span className={`text-slate-800 font-bold ${textSize}`}>{legDisplayText}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-    
-    // Auto-roll indicator for dice games - show when human player has auto_fold enabled
+
+    const isDealer = dealerPosition === player.position;
+
+    // Auto-roll indicator (dice only).
     const showAutoRollIndicator = isDiceGame && player.auto_fold && !player.is_bot;
-    
-    const chipElement = <div className="relative flex items-center gap-1">
-        {/* Leg indicators - positioned inside toward table center (card games only) */}
-        {legIndicator}
-        
-        {/* Auto-roll indicator for dice games - positioned like leg indicators */}
+
+    const chipElement = (
+      <div className="relative flex items-center gap-1">
+        {/* Auto-roll indicator */}
         {showAutoRollIndicator && <AutoRollIndicator isRightSide={isRightSideSlot} />}
-        
-        {/* Dealer button - positioned OUTSIDE (away from table center), barely overlapping chip stack */}
-        {/* Hide during 3-5-7 multi-player showdown (rounds 2-3) to reduce clutter */}
-        {isDealer && !is357MultiPlayerShowdown && (
-          <div className="absolute z-30" style={{
-            ...(isRightSideSlot 
-              ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
-              : { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-75%)' }
-            )
-          }}>
+
+        {/* Dealer pip — positioned OUTSIDE chip stack toward the rim. */}
+        {isDealer && (
+          <div
+            className="absolute z-30"
+            style={
+              isRightSideSlot
+                ? { right: '-2px', top: '50%', transform: 'translateY(-50%) translateX(75%)' }
+                : { left: '-2px', top: '50%', transform: 'translateY(-50%) translateX(-75%)' }
+            }
+          >
             <div className="w-5 h-5 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-[10px]">D</span>
             </div>
           </div>
         )}
-        
-        {/* Main chip stack - clickable for host to control players.
-            Wave 3B: stack-root identity owned by CanonicalChipstack
-            (thin wrapper — visuals unchanged). */}
+
         <CanonicalChipstack
           position={player.position}
           clickable={isClickable}
           onClick={isClickable ? () => onPlayerClick(player) : undefined}
         >
-          {/* Wave 3 / 3A: shell-owned chip disc.
-              The turn ring is suppressed on `stay` (Holm) — was the prior behavior.
-              ValueChangeFlash siblings live INSIDE the disc body (children).
-              Emoticon overlay lives ALONGSIDE the disc body (overlay) so it
-              survives fold dimming and sits on top of the value text. */}
           <CanonicalChipDisc
-            amount={emoticonOverlays[player.id]
-              ? null
-              : (lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips)}
+            amount={
+              emoticonOverlays[player.id]
+                ? null
+                : (lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips)
+            }
             bgClass={chipBgColor}
-            showTurnRing={isTheirTurn && playerDecision !== 'stay'}
-            pulseDisc={isTheirTurn && playerDecision !== 'stay'}
+            showTurnRing={isTheirTurn}
+            pulseDisc={isTheirTurn}
             folded={playerDecision === 'fold'}
             clickable={isClickable}
             positionAnchor={player.position}
             size="gameplay"
-            overlay={emoticonOverlays[player.id] ? (
-              <div className={cn(
-                "absolute inset-0 rounded-full flex items-center justify-center z-10",
-                isTablet ? "w-16 h-16" : "w-12 h-12"
-              )}>
-                <span
+            overlay={
+              emoticonOverlays[player.id] ? (
+                <div
                   className={cn(
-                    "animate-in fade-in zoom-in duration-200",
-                    isTablet ? "text-2xl" : "text-xl"
+                    'absolute inset-0 rounded-full flex items-center justify-center z-10',
+                    isTablet ? 'w-16 h-16' : 'w-12 h-12',
                   )}
-                  style={{
-                    animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500
-                      ? 'fadeOutEmoticon 0.5s ease-out forwards'
-                      : undefined
-                  }}
                 >
-                  {emoticonOverlays[player.id].emoticon}
-                </span>
-              </div>
-            ) : undefined}
+                  <span
+                    className={cn(
+                      'animate-in fade-in zoom-in duration-200',
+                      isTablet ? 'text-2xl' : 'text-xl',
+                    )}
+                    style={{
+                      animation:
+                        emoticonOverlays[player.id].expiresAt - Date.now() < 500
+                          ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                          : undefined,
+                    }}
+                  >
+                    {emoticonOverlays[player.id].emoticon}
+                  </span>
+                </div>
+              ) : undefined
+            }
           >
-            {/* Flash for legs received */}
-            <ValueChangeFlash
-              value={0}
-              prefix="+L"
-              position="top-right"
-              manualTrigger={winnerLegsFlashTrigger?.playerId === player.id ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount } : null}
-            />
-            {/* Flash for pot received */}
             <ValueChangeFlash
               value={0}
               prefix="+$"
               position="top-left"
-              manualTrigger={winnerPotFlashTrigger?.playerId === player.id ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount } : null}
+              manualTrigger={
+                winnerPotFlashTrigger?.playerId === player.id
+                  ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
+                  : null
+              }
             />
           </CanonicalChipDisc>
         </CanonicalChipstack>
+      </div>
+    );
 
-      </div>;
-    
     const nameElement = (
-      <span 
+      <span
         className={cn(
-          "truncate leading-none font-bold",
-          isTablet || isDesktop 
-            ? "text-sm max-w-[90px] bg-white text-black px-1.5 py-0.5 rounded" 
-            : "text-[11px] max-w-[70px] text-white drop-shadow-md font-semibold"
+          'truncate leading-none font-bold',
+          isTablet || isDesktop
+            ? 'text-sm max-w-[90px] bg-white text-black px-1.5 py-0.5 rounded'
+            : 'text-[11px] max-w-[70px] text-white drop-shadow-md font-semibold',
         )}
       >
         {player.is_bot ? getBotAlias(players, player.user_id) : (player.profiles?.username || `P${player.position}`)}
-        {/* Only show aggression level for card games, not dice games */}
-        {!isDiceGame && player.is_bot && player.profiles?.aggression_level && (
-          <span className={isTablet || isDesktop ? "text-purple-600 ml-0.5" : "text-purple-300 ml-0.5"}>
-            ({getAggressionAbbreviation(player.profiles.aggression_level)})
-          </span>
-        )}
         {isCurrentUser && (
-          <span className={cn("ml-1 font-medium", isTablet || isDesktop ? "text-xs text-black/70" : "text-[10px] text-white/70")}>
+          <span
+            className={cn(
+              'ml-1 font-medium',
+              isTablet || isDesktop ? 'text-xs text-black/70' : 'text-[10px] text-white/70',
+            )}
+          >
             R{currentRound}
           </span>
         )}
       </span>
     );
-    
-    // Show actual cards during showdown (BIGGER when chip is hidden), otherwise show mini card backs
-    // Dim cards for losing players during announcement, highlight winner's cards
-    const isLosingPlayer = isShowingAnnouncement && winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
-    const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
-    // Hide cards from original position when winner's cards are "tabled" above pot
-    // Applies to both Holm winners and 3-5-7 winners during win animation
-    // For 3-5-7: table cards IMMEDIATELY when winner is detected (including 'waiting' phase)
-    // This prevents the "jump" where cards move from player slot to tabled position mid-animation
-    // For solo vs Chucky: hide solo player's cards from slot (they're tabled above pot)
-    const is357WinWinner = threeFiveSevenWinnerId === player.id && threeFiveSevenWinPhase !== 'idle';
-    const soloLockedIdForSlot = soloVsChuckyPlayerIdLocked;
-    const isSoloVsChuckyPlayer = isSoloVsChucky && soloLockedIdForSlot === player.id && player.id !== currentPlayer?.id;
-    // FIX 8 (FINAL RENDER BOUNDARY): Use the EXACT same solo-player derivation as the
-    // solo-area render path (line ~5281) to guarantee mutual exclusion from frame 1.
-    // The solo-area renders for: soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id
-    // So the normal-seat must suppress for the same set.  Previous "Raw" guard required
-    // decision_locked===true which the solo-area does NOT require — that was the gap.
-    const soloAreaPlayerId = isSoloVsChucky
-      ? (soloLockedIdForSlot || players.find(p => p.current_decision === 'stay')?.id || null)
-      : null;
-    const isSoloVsChuckyPlayerRaw = soloAreaPlayerId !== null &&
-      soloAreaPlayerId === player.id &&
-      player.id !== currentPlayer?.id;
-    const shouldHideForTabling = isHolmWinWinner || is357WinWinner || isSoloVsChuckyPlayer || isSoloVsChuckyPlayerRaw;
-    
-    // Determine if name should appear below cards (for upper corners and middle positions during showdown)
-    const isUpperCorner = effectiveSlotIndex === 2 || effectiveSlotIndex === 3;
-    const isMiddlePosition = effectiveSlotIndex === 1 || effectiveSlotIndex === 4;
-    const showNameBelowCards = isShowdown && hideChipForShowdown && (isUpperCorner || isMiddlePosition);
-    // In REGULAR mode (not showdown), upper corners should show name below chipstack for readability
-    const showNameBelowChipstack = isUpperCorner && !hideChipForShowdown;
-    
-    // CRITICAL: Only show face-up cards for players who explicitly STAYED.
-    // Using !hasFolded alone isn't enough because current_decision can be null (cleared between hands),
-    // which would pass the !hasFolded check. This prevents sporadic card exposure during hand transitions
-    // (especially after solo-vs-Chucky losses where decisions get cleared before the next hand).
-    const playerExplicitlyStayed = gameType === 'holm-game' ? playerDecision === 'stay' : true;
 
-    // INSTRUMENTATION: Log every frame where normal-seat cards render for a Holm opponent
-    if (gameType === 'holm-game' && player.id !== currentPlayer?.id) {
-      const tracePayload: HolmRenderPayload = {
-        clientId: currentUserId,
-        gameId: gameId ?? '',
-        roundId: handContextId ?? undefined,
-        handNumber: 0,
-        handContextId: handContextId ?? '',
-        renderedPlayerId: player.id,
-        cardIds: cards.length > 0 ? cards.map(c => `${c.rank}${c.suit}`).join(',') : `${cardCountToShow}-backs`,
-        cardSource: isShowdown ? (hasExposedCards ? 'showdownCache' : 'announcementShowdown') : 'expectedCardCount',
-        isShowdown,
-        shouldHideForTabling,
-        isHolmWinWinner,
-        isSoloVsChuckyPlayer,
-        isSoloVsChuckyPlayerRaw,
-        isSoloVsChucky: !!isSoloVsChucky,
-        soloVsChuckyPlayerIdLocked,
-        soloVsChuckyTableLocked,
-        showdownModeLocked,
-        stayedPlayersCount,
-        playerDecision,
-        decisionLocked: player.decision_locked ?? false,
-        playerExplicitlyStayed,
-        apparentIsActivePlayer,
-        isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
-      };
-
-      const willRenderFaceUp = isShowdown && !shouldHideForTabling && playerExplicitlyStayed;
-      const willRenderCardBacks = !isShowdown && !shouldHideForTabling && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0;
-      if (willRenderFaceUp || willRenderCardBacks) {
-        traceNormalSeatRender(tracePayload, willRenderFaceUp ? 'face-up' : 'card-backs');
-      }
-
-      // Trace blocked: would have rendered but shouldHideForTabling suppressed it
-      const wouldRenderFaceUp = isShowdown && playerExplicitlyStayed;
-      const wouldRenderCardBacks = !isShowdown && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0;
-      if (shouldHideForTabling && (wouldRenderFaceUp || wouldRenderCardBacks)) {
-        const blockReason = isHolmWinWinner ? 'holmWinWinner' : isSoloVsChuckyPlayer ? 'soloLocked' : isSoloVsChuckyPlayerRaw ? 'soloRaw' : 'is357WinWinner';
-        traceNormalSeatBlocked(tracePayload, blockReason);
-      }
-      // FIX 8 validation: specific event when solo-player exclusion fires
-      if (isSoloVsChuckyPlayerRaw && !isSoloVsChuckyPlayer && (wouldRenderFaceUp || wouldRenderCardBacks)) {
-        traceNormalSeatBlocked(tracePayload, 'solo-player-raw-exclusion');
-      }
-    }
-
-    const cardsElement = isShowdown && !shouldHideForTabling && playerExplicitlyStayed ? (
-      <div className={`flex scale-100 origin-top relative z-40 ${isLosingPlayer ? 'opacity-40 grayscale-[30%]' : ''} ${showNameBelowCards && isUpperCorner ? '-mb-2' : ''}`}>
-        <PlayerHand 
-          cards={cards} 
-          isHidden={false}
-          highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
-          kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
-          hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
-          gameType={gameType}
-          currentRound={currentRound}
-          showSeparated={gameType !== 'holm-game' && currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown}
-          tightOverlap={isHolmMultiPlayerShowdown}
-          unusedCardsBelow={is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3)}
-          isRightSide={isRightSideSlot}
-          isBottomPosition={isBottomPosition}
-        />
-      </div>
-    ) : (
-      // Also hide card backs when cards are tabled (solo vs Chucky)
-      // ALSO hide card backs during 3-5-7 win animation phases for non-winner players
-      // (avoids showing card backs briefly before legs-to-player animation starts)
-      (() => {
-        // Hide opponent card backs as soon as the FINAL leg is detected, even if the 357
-        // win animation sequence hasn't started yet (there can be a brief gap before we
-        // enter a stable game_over view / phase machine).
-        const winnerIdFor357Hide = threeFiveSevenWinnerId ?? winningLegPlayerId;
-        const is357WinContextActive =
-          gameType !== 'holm-game' && (threeFiveSevenWinPhase !== 'idle' || !!winningLegPlayerId);
-
-        const hideDuring357Win =
-          is357WinContextActive && !!winnerIdFor357Hide && player.id !== winnerIdFor357Hide;
-
-        return !shouldHideForTabling && !hideDuring357Win && apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0 && cardCountToShow > 0 && (
-          <div className={`flex ${hasFolded ? 'animate-[foldCards_1.5s_ease-out_forwards]' : ''}`}>
-            {Array.from({
-              length: Math.min(cardCountToShow, 7)
-            }, (_, i) => <div key={i} className="w-3 h-5 rounded-[2px] border border-amber-600/50" style={{
-              background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-              marginLeft: i > 0 ? '-5px' : '0', // Overlap card backs
-              zIndex: cardCountToShow - i,
-              animationDelay: hasFolded ? `${i * 0.05}s` : '0s'
-            }} />)}
-          </div>
-        );
-      })()
-    );
-    
-    // Emoticon overlay element - shown when chip is hidden during showdown but player has an emoticon
-    const emoticonOverlayElement = emoticonOverlays[player.id] && hideChipForShowdown && (
-      <div className="w-12 h-12 rounded-full bg-slate-700/80 border-2 border-slate-600/50 flex items-center justify-center">
-        <span 
-          className="text-xl animate-in fade-in zoom-in duration-200"
-          style={{
-            animation: emoticonOverlays[player.id].expiresAt - Date.now() < 500 
-              ? 'fadeOutEmoticon 0.5s ease-out forwards' 
-              : undefined
-          }}
-        >
-          {emoticonOverlays[player.id].emoticon}
-        </span>
-      </div>
-    );
-    
-    // Dice games: get player's completed hand result and check if currently winning
+    // Dice result element (Horses / SCC) — replaces the chip stack
+    // once the player has completed their hand for the round.
     const horsesStatePlayerData = diceGameplayUiActive && horsesController.enabled
       ? (horsesState as any)?.playerStates?.[player.id]
       : null;
-    const horsesPlayerResult = diceGameplayUiActive && horsesController.enabled 
-      ? horsesController.getPlayerHandResult(player.id) 
+    const horsesPlayerResult = diceGameplayUiActive && horsesController.enabled
+      ? horsesController.getPlayerHandResult(player.id)
       : null;
-    // Identity-boundary invariant: seat badges must come only from the sync-scoped
-    // controller presentation. Raw `horsesState` can be a parent hydration lagger
-    // during rollover, so falling back to it leaks prior-hand result badges.
     const effectiveHorsesResult = horsesPlayerResult;
-    const isHorsesCurrentlyWinning = diceGameplayUiActive && horsesController.enabled 
-      && horsesController.currentlyWinningPlayerIds.includes(player.id);
-    
-    // Dice game result element - replaces chip stack for completed players
-    // For SCC: show cargo dice with themed background or "NQ"; for Horses: show the result display
+    const isHorsesCurrentlyWinning =
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.currentlyWinningPlayerIds.includes(player.id);
+
     const horsesResultElement = diceGameplayUiActive && effectiveHorsesResult && (() => {
       if (gameType === 'ship-captain-crew') {
-        // GUARD: Only render SCC result UI when this is genuinely an SCC result.
-        // During Horses→SCC dealer-game transitions, stale Horses playerStates may briefly
-        // leak through horsesState before the new SCC round's state hydrates. Horses results
-        // lack the `isQualified` field, which would otherwise be coerced to falsy and render
-        // a phantom "NQ" badge on the felt.
         const hasSccShape = typeof (effectiveHorsesResult as any).isQualified === 'boolean';
         if (!hasSccShape) return null;
         const isQualified = (effectiveHorsesResult as any).isQualified;
-        
         if (!isQualified) {
-          // Show "NQ" for non-qualified players
           return (
-            <div className={cn(
-              "inline-flex items-center justify-center rounded px-2 py-1",
-              "bg-white border border-gray-300"
-            )}>
+            <div className={cn('inline-flex items-center justify-center rounded px-2 py-1', 'bg-white border border-gray-300')}>
               <span className="text-sm font-bold text-red-600">NQ</span>
             </div>
           );
         }
-        
-        
-        // For qualified players, get cargo dice (dice without sccType)
         if (horsesStatePlayerData?.dice) {
           const allDice = horsesStatePlayerData.dice as SCCDieType[];
-          // Cargo dice are those without a sccType (not ship/captain/crew)
           const cargoDice = allDice.filter(d => !d.sccType);
-          
           return (
-            <div className={cn(
-              "inline-flex items-center gap-0.5 rounded px-0.5 py-0.5",
-              isHorsesCurrentlyWinning 
-                ? "bg-poker-gold border border-poker-gold" 
-                : "bg-white border border-gray-300"
-            )}>
+            <div
+              className={cn(
+                'inline-flex items-center gap-0.5 rounded px-0.5 py-0.5',
+                isHorsesCurrentlyWinning ? 'bg-poker-gold border border-poker-gold' : 'bg-white border border-gray-300',
+              )}
+            >
               {cargoDice.slice(0, 2).map((die, idx) => (
                 <HorsesDie
                   key={idx}
@@ -4974,35 +4703,34 @@ export const MobileGameTable = ({
           );
         }
       }
-      // For Horses: show the result display as before (with null safety)
       if (effectiveHorsesResult?.description) {
         return (
           <div className="flex items-center justify-center">
-            <HorsesHandResultDisplay 
-              description={effectiveHorsesResult.description} 
+            <HorsesHandResultDisplay
+              description={effectiveHorsesResult.description}
               isWinning={isHorsesCurrentlyWinning}
               size="sm"
             />
           </div>
         );
       }
-      // Fallback if no description available
       return null;
     })();
-    
-    // Hide chip stack when player has a horses/dice result
+
     const hideChipForHorses = diceGameplayUiActive && effectiveHorsesResult;
-    
-    return <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
-        {/* Name above for bottom positions (always) and non-upper-corner non-showdown positions */}
-        {/* Upper corners in regular mode show name BELOW chipstack for readability */}
-        {(isBottomPosition || (!showNameBelowCards && !isBottomPosition && !showNameBelowChipstack)) && !hideChipForShowdown && nameElement}
-        {/* During showdown with hidden chips, show name above cards for bottom positions only */}
-        {hideChipForShowdown && isBottomPosition && nameElement}
-        {/* Hide chip stack during showdown OR when player has dice result */}
-        {/* Wrap in container with opacity transition for smoother swap */}
+
+    // Reference `cards` to keep getPlayerCards subscription parity with
+    // pre-cutover behavior (no-op render side effect for dice — cards is
+    // always empty here, but keeps useMemo/subscription identical).
+    void cards;
+
+    return (
+      <div key={player.id} className="flex flex-col items-center gap-0.5 relative">
+        {/* Name above for bottom positions and middle positions. Upper
+            corners place the name BELOW the chipstack for readability. */}
+        {(isBottomPosition || (!isBottomPosition && !isUpperCorner)) && nameElement}
         <div className="relative transition-opacity duration-150">
-          {!hideChipForShowdown && !hideChipForHorses && (
+          {!hideChipForHorses && (
             <div data-seat-chip-position={player.position} className="relative">
               <ActivePlayerHUD
                 timeLeft={timeLeft}
@@ -5017,27 +4745,16 @@ export const MobileGameTable = ({
               </ActivePlayerHUD>
             </div>
           )}
-          {/* Show dice result in place of chip stack */}
           {hideChipForHorses && (
-            <div className="animate-in fade-in duration-150">
-              {horsesResultElement}
-            </div>
+            <div className="animate-in fade-in duration-150">{horsesResultElement}</div>
           )}
         </div>
-        {/* Emoticon overlay when chip is hidden during showdown */}
-        {emoticonOverlayElement}
-        {/* Name below chipstack for upper corners in regular mode */}
-        {showNameBelowChipstack && nameElement}
-        {/* Cards - show actual cards during showdown, or mini card backs otherwise */}
-        {cardsElement}
-        {/* Name below cards for upper corners and middle positions during showdown */}
-        {showNameBelowCards && (
-          <div className={isUpperCorner ? 'mt-2' : ''}>
-            {nameElement}
-          </div>
-        )}
-      </div>;
+        {/* Name BELOW chipstack for upper corners. */}
+        {isUpperCorner && nameElement}
+      </div>
+    );
   };
+
   /**
    * Wave 3C.3b — Holm-only canonical gameplay seat.
    *
@@ -5306,6 +5023,296 @@ export const MobileGameTable = ({
       </CanonicalSeatCluster>
     );
   };
+
+  /**
+   * Wave 3C.4 — 357-only canonical gameplay seat.
+   *
+   * Mirrors `renderHolmCanonicalSeat` and projects through the same
+   * CanonicalSeatCluster pill (chipDiscChildren / chipOverlay /
+   * chipPresentation / namePlacement="above-chip"). The cluster owns:
+   * background plate, name, dealer pip, chip counter, status palette,
+   * chip transport endpoint (`data-chip-center`), emoticon overlay.
+   * 357 owns only its genuine gameplay artifacts: leg indicators
+   * (with displayLegs animation cache), per-round showdown reveals,
+   * win-animation tabling suppression, solo-vs-Chucky suppression,
+   * and the dealer-pip suppression during multi-player showdowns.
+   *
+   * Scope: 357 only. Horses/SCC remain on the legacy `renderPlayerChip`
+   * until their own wave.
+   */
+  const render357CanonicalSeat = (player: Player, slot: CanonicalSlot) => {
+    const isCurrentUser = player.user_id === currentUserId;
+
+    // 357 hides opponent decisions until allDecisionsIn flips.
+    const playerDecision = (isCurrentUser || allDecisionsIn)
+      ? player.current_decision
+      : null;
+    const cards = getPlayerCards(player.id);
+
+    const rawIsActivePlayer = player.status === 'active' && !player.sitting_out;
+    // While we're hiding decisions from opponents, treat "folded" as
+    // still active so the visible card-back stack doesn't disappear
+    // before the round resolves.
+    const apparentIsActivePlayer = (isCurrentUser || allDecisionsIn)
+      ? rawIsActivePlayer
+      : (player.status === 'active' || player.status === 'folded') && !player.sitting_out;
+
+    const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
+    const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
+
+    const isDealer = dealerPosition === player.position;
+    const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
+    const isRightSideSlot = slot >= 3;
+    const isBottomPosition = slot === 0 || slot === 5 || slot === -1;
+
+    // 357 showdown derivation — three exclusive reveal modes.
+    const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
+    const isWinningLegReveal = winningLegPlayerId === player.id && cards.length > 0;
+    const isRound3MultiShowdown = is357Round3MultiPlayerShowdown && hasExposedCards;
+    const isSecretReveal = is357SecretRevealActive && playerDecision === 'stay' && hasExposedCards;
+    const isShowdown = isWinningLegReveal || isRound3MultiShowdown || isSecretReveal;
+
+    // Win-animation / solo-vs-Chucky tabling suppression.
+    const isWinAnimationWinner =
+      threeFiveSevenWinnerId === player.id && threeFiveSevenWinPhase !== 'idle';
+    const soloLockedId = soloVsChuckyPlayerIdLocked;
+    const isSoloVsChuckyPlayerForChip =
+      isSoloVsChucky && soloLockedId === player.id && player.id !== currentPlayer?.id;
+    const soloAreaPlayerId = isSoloVsChucky
+      ? (soloLockedId || players.find(p => p.current_decision === 'stay')?.id || null)
+      : null;
+    const isSoloVsChuckyPlayerRaw =
+      soloAreaPlayerId !== null && soloAreaPlayerId === player.id && player.id !== currentPlayer?.id;
+    const shouldHideForTabling =
+      isWinAnimationWinner || isSoloVsChuckyPlayerForChip || isSoloVsChuckyPlayerRaw;
+
+    // Hide chip during multi-player showdowns (R2/R3) to make room for cards.
+    const hideChipForShowdown = is357MultiPlayerShowdown && isShowdown;
+
+    // Status palette (357 honors stayed-decision green).
+    const participantStatus = derivePlayerStatus(player, playerDecision, {
+      hasStayDecision: true,
+    });
+
+    const displayName = player.is_bot
+      ? getBotAlias(players, player.user_id)
+      : (player.profiles?.username || `P${player.position}`);
+
+    const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
+    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+    // 357 has no per-seat turn (decisions are simultaneous within the
+    // round) — no status ring, no ActivePlayerHUD wrapper.
+    const statusRing: CanonicalSeatStatusRing | undefined = undefined;
+
+    // Leg indicators with the displayLegs animation cache, preserved
+    // 1:1 from legacy renderPlayerChip. Rendered as a sibling INSIDE
+    // the CanonicalChipDisc body so the absolute pip cluster anchors
+    // off the same canonical disc that publishes data-chip-center.
+    const playerLegs = player.legs;
+    const isLegAnimatingForThisPlayer =
+      showLegEarned && legEarnedPlayerPosition === player.position;
+    const hideLegsForWinAnimation =
+      threeFiveSevenWinPhase === 'legs-to-player' ||
+      threeFiveSevenWinPhase === 'pot-to-player' ||
+      threeFiveSevenWinPhase === 'delay';
+    const isInWinAnimation = threeFiveSevenWinPhase !== 'idle';
+    const cachedLegsForThisPlayer =
+      threeFiveSevenCachedLegPositions.find(p => p.playerId === player.id)?.legCount || 0;
+    const effectivePlayerLegs = isInWinAnimation ? cachedLegsForThisPlayer : playerLegs;
+    const legsWereSweptThisSession =
+      lastThreeFiveSevenTriggerRef.current !== null && threeFiveSevenWinPhase === 'idle';
+    const displayLegs = hideLegsForWinAnimation
+      ? 0
+      : legsWereSweptThisSession
+        ? 0
+        : isLegAnimatingForThisPlayer
+          ? Math.max(0, effectivePlayerLegs - 1)
+          : effectivePlayerLegs;
+
+    const legIndicator = displayLegs > 0 ? (
+      <div
+        className="absolute z-30"
+        style={
+          isRightSideSlot
+            ? { left: '6px', top: '50%', transform: 'translateY(-50%) translateX(-100%)' }
+            : { right: '6px', top: '50%', transform: 'translateY(-50%) translateX(100%)' }
+        }
+      >
+        <div className="flex" style={{ flexDirection: isRightSideSlot ? 'row-reverse' : 'row' }}>
+          {Array.from({ length: Math.min(displayLegs, legsToWin) }).map((_, i) => {
+            const showLegDollarValue = legValue > 0;
+            const legDisplayText = showLegDollarValue ? `$${legValue}` : 'L';
+            const chipSize = showLegDollarValue ? 'w-6 h-6' : 'w-5 h-5';
+            const textSize = showLegDollarValue ? 'text-[8px]' : 'text-[10px]';
+            return (
+              <div
+                key={i}
+                className={`${chipSize} rounded-full bg-white border-2 border-amber-500 flex items-center justify-center shadow-lg`}
+                style={{
+                  marginLeft: !isRightSideSlot && i > 0 ? '-8px' : '0',
+                  marginRight: isRightSideSlot && i > 0 ? '-8px' : '0',
+                  zIndex: Math.min(displayLegs, legsToWin) - i,
+                }}
+              >
+                <span className={`text-slate-800 font-bold ${textSize}`}>{legDisplayText}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    ) : null;
+
+    const chipDiscChildren = (
+      <>
+        {legIndicator}
+        <ValueChangeFlash
+          value={0}
+          prefix="+L"
+          position="top-right"
+          manualTrigger={
+            winnerLegsFlashTrigger?.playerId === player.id
+              ? { id: winnerLegsFlashTrigger.id, amount: winnerLegsFlashTrigger.amount }
+              : null
+          }
+        />
+        <ValueChangeFlash
+          value={0}
+          prefix="+$"
+          position="top-left"
+          manualTrigger={
+            winnerPotFlashTrigger?.playerId === player.id
+              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
+              : null
+          }
+        />
+      </>
+    );
+
+    // Emoticon overlay (paints over the disc face).
+    const emoticon = emoticonOverlays[player.id];
+    const chipOverlay = emoticon ? (
+      <div className="absolute inset-0 rounded-full flex items-center justify-center z-10">
+        <span
+          className="text-xl animate-in fade-in zoom-in duration-200"
+          style={{
+            animation:
+              emoticon.expiresAt - Date.now() < 500
+                ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                : undefined,
+          }}
+        >
+          {emoticon.emoticon}
+        </span>
+      </div>
+    ) : undefined;
+
+    // Chip presentation. Multi-player showdown hides the chip to free
+    // space for exposed cards; an emoticon paints in its place when
+    // present (matches legacy emoticonOverlayElement).
+    let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
+    if (hideChipForShowdown) {
+      if (emoticon) {
+        chipPresentation = (
+          <div className="w-12 h-12 rounded-full bg-slate-700/80 border-2 border-slate-600/50 flex items-center justify-center">
+            <span
+              className="text-xl animate-in fade-in zoom-in duration-200"
+              style={{
+                animation:
+                  emoticon.expiresAt - Date.now() < 500
+                    ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                    : undefined,
+              }}
+            >
+              {emoticon.emoticon}
+            </span>
+          </div>
+        );
+      } else {
+        chipPresentation = 'hidden';
+      }
+    }
+
+    // Cards (gameplay artifact owned by 357) — rendered as cluster
+    // children below the pill.
+    const isWinningPlayer = isShowingAnnouncement && winnerPlayerId === player.id;
+    const isLosingPlayer =
+      isShowingAnnouncement && !!winnerPlayerId && player.id !== winnerPlayerId && playerDecision === 'stay';
+
+    // Hide opponent card backs as soon as a 357 winner is identified
+    // (covers the brief gap before the win animation phase machine
+    // engages). Preserved verbatim from legacy.
+    const winnerIdForBackHide = threeFiveSevenWinnerId ?? winningLegPlayerId;
+    const isWinContextActive = threeFiveSevenWinPhase !== 'idle' || !!winningLegPlayerId;
+    const hideBacksDuringWin =
+      isWinContextActive && !!winnerIdForBackHide && player.id !== winnerIdForBackHide;
+
+    const cardsNode = isShowdown && !shouldHideForTabling ? (
+      <div
+        className={cn(
+          'flex scale-100 origin-top relative z-40',
+          isLosingPlayer && 'opacity-40 grayscale-[30%]',
+        )}
+      >
+        <PlayerHand
+          cards={cards}
+          isHidden={false}
+          highlightedIndices={isWinningPlayer ? winningCardHighlights.playerIndices : []}
+          kickerIndices={isWinningPlayer ? winningCardHighlights.kickerPlayerIndices : []}
+          hasHighlights={isWinningPlayer && winningCardHighlights.hasHighlights}
+          gameType={gameType}
+          currentRound={currentRound}
+          showSeparated={currentRound === 3 && cards.length === 7 && !is357MultiPlayerShowdown}
+          tightOverlap={false}
+          unusedCardsBelow={is357MultiPlayerShowdown && (currentRound === 2 || currentRound === 3)}
+          isRightSide={isRightSideSlot}
+          isBottomPosition={isBottomPosition}
+        />
+      </div>
+    ) : (
+      !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && cardCountToShow > 0 && (
+        <div className="flex">
+          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
+            <div
+              key={i}
+              className="w-3 h-5 rounded-[2px] border border-amber-600/50"
+              style={{
+                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                marginLeft: i > 0 ? '-5px' : '0',
+                zIndex: cardCountToShow - i,
+              }}
+            />
+          ))}
+        </div>
+      )
+    );
+
+    return (
+      <CanonicalSeatCluster
+        key={player.id}
+        slot={slot}
+        position={player.position}
+        name={displayName}
+        chipValue={chipText}
+        // Dealer pip is suppressed during R2/R3 multi-player showdowns
+        // to reduce clutter (legacy parity).
+        isDealer={isDealer && !is357MultiPlayerShowdown}
+        status={participantStatus}
+        statusRing={statusRing}
+        chipDiscChildren={chipDiscChildren}
+        chipOverlay={chipOverlay}
+        chipPresentation={chipPresentation}
+        namePlacement="above-chip"
+        onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
+        className={playerSlotZIndex}
+        ownerLabel="Slot:MobileGameTable.357CanonicalSeat"
+        playerId={player.id}
+      >
+        {cardsNode}
+      </CanonicalSeatCluster>
+    );
+  };
+
 
   return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       
@@ -7047,14 +7054,18 @@ export const MobileGameTable = ({
               );
             }
 
-            // Wave 3C.3b: Holm gameplay seats route through the
-            // canonical CanonicalSeatCluster pill (via
-            // renderHolmCanonicalSeat) using the 3C.3a additive slots.
-            // 357 / Horses / SCC keep the legacy hideChipBubble +
-            // renderPlayerChip carve-out until their own wave.
+            // Canonical gameplay-seat routing.
+            //  holm-game        → renderHolmCanonicalSeat   (Wave 3C.3b)
+            //  three-five-seven → render357CanonicalSeat    (Wave 3C.4)
+            //  Horses / SCC     → legacy renderPlayerChip wrapped in a
+            //                     hideChipBubble cluster (their wave is next).
             if (gameType === 'holm-game') {
               return renderHolmCanonicalSeat(player, slot);
             }
+            if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') {
+              return render357CanonicalSeat(player, slot);
+            }
+
 
             return (
               <CanonicalSeatCluster
