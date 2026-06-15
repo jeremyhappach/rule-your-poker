@@ -9,6 +9,7 @@ import { recordGameResult } from "./gameLogic";
 import { logRaceConditionGuard, logStateMismatch } from "./gameStateDebugLog";
 import { persistTransition, persistSyncDebugEvent } from "./persistSyncDebugEvent";
 import { logHorsesHandStart } from "./horsesSyncDiagnostics";
+import { nextClockwise } from "./canonicalShell/seatRing";
 
 export interface HorsesRoundCallerContext {
   caller: string;            // e.g. 'Game.tsx:awaiting_next_round-effect' | 'Game.tsx:ante-decision-complete'
