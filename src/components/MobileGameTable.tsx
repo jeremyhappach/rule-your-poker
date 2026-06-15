@@ -7348,13 +7348,20 @@ export const MobileGameTable = ({
             // Canonical gameplay-seat routing.
             //  holm-game        → renderHolmCanonicalSeat   (Wave 3C.3b)
             //  three-five-seven → render357CanonicalSeat    (Wave 3C.4)
-            //  Horses / SCC     → legacy renderPlayerChip wrapped in a
-            //                     hideChipBubble cluster (their wave is next).
+            //  horses           → renderHorsesCanonicalSeat (Wave 3C.5)
+            //  scc              → renderSccCanonicalSeat    (Wave 3C.5)
+            //  else             → legacy fallback (hideChipBubble wrap)
             if (gameType === 'holm-game') {
               return renderHolmCanonicalSeat(player, slot);
             }
             if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') {
               return render357CanonicalSeat(player, slot);
+            }
+            if (gameType === 'horses') {
+              return renderHorsesCanonicalSeat(player, slot);
+            }
+            if (gameType === 'ship-captain-crew') {
+              return renderSccCanonicalSeat(player, slot);
             }
 
 
