@@ -2350,6 +2350,11 @@ export const GinRummyGameTable = ({
                 currentPlayerId={currentPlayerId}
                 opponentId={opponentId}
                 currentTurnSlot={currentTurnSlot}
+                currentTurnPosition={
+                  viewState.currentTurnPlayerId
+                    ? players.find(p => p.id === viewState.currentTurnPlayerId)?.position ?? null
+                    : null
+                }
                 getPlayerUsername={getPlayerUsername}
                 cardBackColors={cardBackColors}
                 onDrawStock={handleDrawStock}
