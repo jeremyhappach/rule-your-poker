@@ -418,8 +418,7 @@ export function CanonicalSeatCluster({
       data-owner-label={ownerLabel ?? ''}
       data-player-id={playerId ?? ''}
       className={cn(
-        'absolute pointer-events-none flex gap-1',
-        isBottomAnchored ? 'flex-col-reverse' : 'flex-col',
+        'absolute pointer-events-none flex flex-col gap-[3px]',
         placement.className,
         raiseClass,
         'transition-all duration-300',
