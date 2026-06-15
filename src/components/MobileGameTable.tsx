@@ -5556,6 +5556,7 @@ export const MobileGameTable = ({
   };
 
   return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+      {gameType === 'holm-game' && <HolmTurnTracePanel rows={holmTurnTraceRows} />}
 
       {/* Status badges moved to bottom section */}
       
