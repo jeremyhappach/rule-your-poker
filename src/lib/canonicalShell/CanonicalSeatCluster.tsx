@@ -391,13 +391,15 @@ export function CanonicalSeatCluster({
   // accepted the default ('above-chip').
   type SeatOrientation =
     | 'vertical-name-top'
-    | 'vertical-name-bottom'
-    | 'horizontal-name-left'
-    | 'horizontal-name-right';
+    | 'vertical-name-bottom';
+  // Wave 3C.3f — two layouts only:
+  //   TOP + SIDE  → NameAbove
+  //   BOTTOM      → NameBelow
+  // Side seats (1, 4) intentionally use the vertical TOP layout so
+  // the chip remains the primary artifact and the name attaches to
+  // it the same way as the top corners.
   let seatOrientation: SeatOrientation;
-  if (slot === 1) seatOrientation = 'horizontal-name-left';
-  else if (slot === 4) seatOrientation = 'horizontal-name-right';
-  else if (isBottomAnchored) seatOrientation = 'vertical-name-bottom';
+  if (isBottomAnchored) seatOrientation = 'vertical-name-bottom';
   else seatOrientation = 'vertical-name-top';
 
   const effectiveNamePlacement: 'above-chip' | 'below-chip' | 'none' =
@@ -471,19 +473,11 @@ export function CanonicalSeatCluster({
           <div
             data-canonical-seat-name-row=""
             className={cn(
-              'grid items-center rounded-[3px] px-1 py-[1px]',
-              // High-contrast backing — name must be instantly readable
-              // even when the seat anchor partially overlaps the felt
-              // edge / rail. Tight padding so the label visually
-              // attaches to the chip rather than floating.
+              'grid items-center rounded-[3px] px-1 py-[1px] w-fit max-w-[88px]',
               'bg-black/75 backdrop-blur-sm border border-black/40',
-              seatOrientation === 'horizontal-name-left' || seatOrientation === 'horizontal-name-right'
-                ? 'w-fit max-w-[72px]'
-                : 'w-full',
             )}
-            style={{ gridTemplateColumns: '10px minmax(0,1fr) 10px' }}
+            style={{ gridTemplateColumns: 'minmax(0,1fr) 8px' }}
           >
-            <span />
             <span
               className="text-[10px] text-white font-semibold truncate min-w-0 text-center leading-[1.05]"
               style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
@@ -586,47 +580,18 @@ export function CanonicalSeatCluster({
           </div>
         );
 
-        // Wave 3C.3e — content-driven pill. Orientation derived from
-        // slot so identity hugs the rail and gameplay points inward:
-        //   top/bottom seats → vertical stack (name + chip)
-        //   side seats       → horizontal row, name on outer side
-        const isHorizontal =
-          seatOrientation === 'horizontal-name-left' ||
-          seatOrientation === 'horizontal-name-right';
-        const nameOnLeft = seatOrientation === 'horizontal-name-left';
-
-        if (isHorizontal) {
-          return (
-            <div
-              data-canonical-seat-pill=""
-              data-canonical-seat-orientation={seatOrientation}
-              className={cn(
-                'relative flex items-center gap-1 w-fit',
-                nameOnLeft ? 'flex-row' : 'flex-row-reverse',
-              )}
-            >
-              {effectiveNamePlacement !== 'none' && nameRow}
-              <div className="flex flex-col items-center gap-0">
-                {chipCell}
-                {scoreLine && (
-                  <span
-                    className="text-[10px] font-semibold text-poker-gold leading-none"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-                  >
-                    {scoreLine}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        }
+        // Wave 3C.3f — exactly two layouts: NameAbove / NameBelow.
+        // No horizontal side-seat variants.
 
         return (
           <div
             data-canonical-seat-pill=""
             data-canonical-seat-orientation={seatOrientation}
             className={cn(
-              'relative flex flex-col items-center gap-0 w-fit min-w-[56px] max-w-[88px]',
+              'relative flex flex-col items-center w-fit max-w-[88px]',
+              // ~2px separation between name and chip; the pair must
+              // read as ONE object.
+              'gap-[2px]',
             )}
           >
             {avatar && (
