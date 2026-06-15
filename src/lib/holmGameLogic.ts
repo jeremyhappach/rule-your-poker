@@ -11,6 +11,7 @@ import { recordGameResult, snapshotPlayerChips } from "./gameLogic";
 import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransition } from "./holmRoundUtils";
 import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
+import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
 
 /**
  * Check if all players have decided in a Holm game round
