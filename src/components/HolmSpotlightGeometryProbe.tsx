@@ -45,11 +45,14 @@ function conicFromCenters(
   const dx = tx - cx;
   const dy = ty - cy;
   if (dx === 0 && dy === 0) return null;
-  let deg = 90 - (Math.atan2(dy, dx) * 180) / Math.PI;
+  // Screen coords (y-down) → conic basis (north=0, CW+).
+  // east axis (atan2=0) is 90° in conic, so add 90.
+  let deg = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
   while (deg > 180) deg -= 360;
   while (deg < -180) deg += 360;
   return deg;
 }
+
 
 function center(r: DOMRect | null): { x: number; y: number } | null {
   if (!r) return null;
