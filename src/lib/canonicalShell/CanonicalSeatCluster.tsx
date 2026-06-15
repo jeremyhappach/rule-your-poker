@@ -564,30 +564,67 @@ export function CanonicalSeatCluster({
 
         let chipCellContents: ReactNode = chipContent;
         if (chipHUD && isValidElement(chipHUD)) {
-          chipCellContents = cloneElement(chipHUD, { children: chipContent } as never);
+          // Inject size=40 so the HUD ring concentric-wraps the 40×40
+          // cluster chip disc instead of painting a 48px ring offset
+          // from the chip center. Children injection keeps the chip
+          // body as the HUD's content.
+          chipCellContents = cloneElement(
+            chipHUD,
+            { size: 40, children: chipContent } as never,
+          );
         }
 
-        // Reserved chip cell — content-driven 44×44 (chip disc is 40×40
-        // with 2px breathing on each side for the HUD frame ring).
-        // Tighter than 56×56 so the name visually attaches to the chip.
+        // Reserved chip cell — sized to fit the HUD ring envelope
+        // (size 40 + 8 padding = 48). The cell stays centered around
+        // the chip disc so the HUD ring and chip share one center.
         const chipCell = (
           <div
             data-canonical-seat-chip-cell=""
-            className="relative flex items-center justify-center w-[44px] h-[44px]"
+            className="relative flex items-center justify-center w-12 h-12"
           >
             {chipCellContents}
           </div>
         );
 
-        // Wave 3C.3d — content-driven pill. No fixed plate width.
-        // Pill hugs its content (name + chip) with a min/max envelope
-        // so long names truncate and short names don't waste felt.
-        // gap-0 makes the name visually tangent to the chip — name
-        // reads as a label attached to the chip, not as a floating
-        // row above it.
+        // Wave 3C.3e — content-driven pill. Orientation derived from
+        // slot so identity hugs the rail and gameplay points inward:
+        //   top/bottom seats → vertical stack (name + chip)
+        //   side seats       → horizontal row, name on outer side
+        const isHorizontal =
+          seatOrientation === 'horizontal-name-left' ||
+          seatOrientation === 'horizontal-name-right';
+        const nameOnLeft = seatOrientation === 'horizontal-name-left';
+
+        if (isHorizontal) {
+          return (
+            <div
+              data-canonical-seat-pill=""
+              data-canonical-seat-orientation={seatOrientation}
+              className={cn(
+                'relative flex items-center gap-1 w-fit',
+                nameOnLeft ? 'flex-row' : 'flex-row-reverse',
+              )}
+            >
+              {effectiveNamePlacement !== 'none' && nameRow}
+              <div className="flex flex-col items-center gap-0">
+                {chipCell}
+                {scoreLine && (
+                  <span
+                    className="text-[10px] font-semibold text-poker-gold leading-none"
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+                  >
+                    {scoreLine}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div
             data-canonical-seat-pill=""
+            data-canonical-seat-orientation={seatOrientation}
             className={cn(
               'relative flex flex-col items-center gap-0 w-fit min-w-[56px] max-w-[88px]',
             )}
@@ -600,7 +637,7 @@ export function CanonicalSeatCluster({
                 {avatar}
               </div>
             )}
-            {namePlacement === 'above-chip' && nameRow}
+            {effectiveNamePlacement === 'above-chip' && nameRow}
             {chipCell}
 
             {scoreLine && (
@@ -611,7 +648,7 @@ export function CanonicalSeatCluster({
                 {scoreLine}
               </span>
             )}
-            {namePlacement === 'below-chip' && nameRow}
+            {effectiveNamePlacement === 'below-chip' && nameRow}
           </div>
         );
       })()}
