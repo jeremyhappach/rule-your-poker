@@ -588,7 +588,10 @@ export function CanonicalSeatCluster({
             data-canonical-seat-pill=""
             data-canonical-seat-orientation={seatOrientation}
             className={cn(
-              'relative flex flex-col items-center gap-0 w-fit min-w-[56px] max-w-[88px]',
+              'relative flex flex-col items-center w-fit max-w-[88px]',
+              // ~2px separation between name and chip; the pair must
+              // read as ONE object.
+              'gap-[2px]',
             )}
           >
             {avatar && (
