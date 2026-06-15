@@ -61,9 +61,20 @@ export function getCanonicalSlotPlacement(
       return variant === 'open-seat'
         ? { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' }
         : { className: 'bottom-[1%] right-[6%] items-end scale-90' };
-    case 0:  return { className: 'bottom-[4%] left-[10%] items-start' };
-    case 1:  return { className: 'top-[50%] left-[4%] -translate-y-1/2 items-start' };
-    // Slot 2 (upper-left perimeter). For inherently-2P face-to-face
+    case 0:  return { className: 'bottom-[2%] left-[2%] items-start' };
+    case 1:  return { className: 'top-[50%] left-[1%] -translate-y-1/2 items-start' };
+    // Slot 2 (upper-left perimeter). Default sits on the outer rail
+    // so the seat clears community cards / top branding. Multi-player
+    // observer projections retain the in-felt default below.
+    case 2:  return variant === 'occupied-2p-face'
+      ? { className: 'top-[2%] left-[1%] items-start scale-90' }
+      : { className: 'top-[6%] left-[4%] items-start' };
+    case 3:  return variant === 'occupied-2p-face'
+      ? { className: 'top-[2%] right-[1%] items-end scale-90' }
+      : { className: 'top-[6%] right-[4%] items-end' };
+    case 4:  return { className: 'top-[50%] right-[1%] -translate-y-1/2 items-end' };
+    case 5:  return { className: 'bottom-[2%] right-[2%] items-end' };
+
     // canonicalization the opponent lives here in BOTH active-canonical
     // (always slot 2 for the single opponent) and observer-absolute
     // (lower-positioned seat projected to HOME, higher to slot 2).
