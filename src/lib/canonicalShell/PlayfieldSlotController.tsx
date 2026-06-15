@@ -363,14 +363,39 @@ export function PlayfieldSlotController({
       return;
     }
 
-    // Active(A) → desired(B), different non-null identity: enter
-    // neutral, run dwell, then (subject to readiness) mount B.
+    // Active(A) → desired(B), different non-null identity.
     if (
       mountedIdentity !== null &&
       desiredIdentity !== null &&
       !slotIdentityEquals(mountedIdentity, desiredIdentity) &&
       phase === 'active'
     ) {
+      // Wave 3 P1-B — identity continuity contract.
+      // Same game family (e.g. ship-captain-crew/<old> →
+      // ship-captain-crew/<new>) is a state transition on the same
+      // table, NOT a table change. Skip the neutral interstitial and
+      // swap mountedIdentity directly so the felt, seat ring,
+      // spotlight, HUD, announcements and projected seat artifacts
+      // remain continuous across dealer-game rollovers.
+      //
+      // Cross-family transitions (holm → gin, observer ↔ game) still
+      // pass through the neutral dwell below.
+      if (mountedIdentity.gameType === desiredIdentity.gameType) {
+        ginTrace('slot.same-family rollover (no neutral)', {
+          from: describeSlotIdentity(mountedIdentity),
+          to: describeSlotIdentity(desiredIdentity),
+        });
+        if (dwellTimerRef.current) {
+          clearTimeout(dwellTimerRef.current);
+          dwellTimerRef.current = null;
+        }
+        dwellElapsedRef.current = false;
+        pendingIdentityRef.current = null;
+        setMountedIdentity(desiredIdentity);
+        // phase stays 'active'; no neutralReason change.
+        return;
+      }
+
       ginTrace('slot.enter neutral (active→active rollover)', {
         from: describeSlotIdentity(mountedIdentity),
         to: describeSlotIdentity(desiredIdentity),
