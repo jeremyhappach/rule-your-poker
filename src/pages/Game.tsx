@@ -10901,10 +10901,6 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               communityCardsRevealed={renderRoundContext ? effectiveCommunityCardsRevealed : undefined}
               buckPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.buckPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.buckPosition : game.buck_position)) : undefined}
               currentTurnPosition={renderRoundContext ? (game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : (is357GameType && threeFiveSevenView ? threeFiveSevenView.currentTurnPosition : null)) : null}
-              holmTraceHandNumber={game.game_type === 'holm-game' ? (currentRound?.hand_number ?? holmView?.handNumber ?? null) : null}
-              holmTraceRoundId={game.game_type === 'holm-game' ? (currentRound?.id ?? holmView?.roundId ?? null) : null}
-              holmTraceDbCurrentTurnPosition={game.game_type === 'holm-game' ? (currentRound?.current_turn_position ?? null) : null}
-              holmTraceHolmViewCurrentTurnPosition={game.game_type === 'holm-game' ? (holmView?.currentTurnPosition ?? null) : null}
               chuckyCards={renderRoundContext ? chuckyCardsForPresentation : undefined}
               chuckyActive={renderRoundContext ? chuckyActiveForPresentation : undefined}
               chuckyCardsRevealed={renderRoundContext ? chuckyCardsRevealedForPresentation : undefined}

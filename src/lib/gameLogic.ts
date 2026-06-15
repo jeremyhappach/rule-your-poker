@@ -3,7 +3,7 @@ import { createDeck, shuffleDeck, type Card, evaluateHand, formatHandRank, forma
 import { getBotAlias } from "./botAlias";
 import { logPlayerDecision, logGameState, logRaceConditionGuard, logStatusChange, logDiceEvent, logAllDecisionsIn } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
-import { emitHolmTurnTraceAction } from "./holmTurnTrace";
+
 
 /**
  * Snapshot all players' chip counts after a hand completes.
@@ -851,21 +851,6 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
 
   console.log(`[MAKE_DECISION] Player BEFORE update: position=${player.position} decision_locked=${player.decision_locked} current_decision=${player.current_decision} status=${player.status}`);
 
-  const emitSuccessfulHolmDecisionTrace = () => {
-    if (!isHolmGame) return;
-    emitHolmTurnTraceAction({
-      gameId,
-      timestamp: decisionTimestamp,
-      handNumber: currentRound.hand_number ?? null,
-      roundId: currentRound.id ?? null,
-      dbCurrentTurnPosition: currentRound.current_turn_position ?? null,
-      actualActingPlayerId: player.id,
-      actualActingPlayerPosition: player.position,
-      actorKind: player.is_bot ? 'bot' : 'human',
-      actionTaken: decision,
-      source: 'gameLogic:makeDecision',
-    });
-  };
 
   // Prevent double-clicking - if player has already locked in a decision, don't allow changes
   if (player.decision_locked) {
@@ -944,7 +929,6 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     }
     
     console.log(`[MAKE_DECISION] ✅ STAY SUCCESS: player=${shortPlayerId} position=${player.position} decision_locked=true`);
-    emitSuccessfulHolmDecisionTrace();
     
     // DEBUG LOG: Player stay decision (fire-and-forget)
     logPlayerDecision(gameId, playerId, 'stay', true, 'gameLogic:makeDecision:staySuccess', {
@@ -1019,7 +1003,7 @@ export async function makeDecision(gameId: string, playerId: string, decision: '
     }
     
     console.log(`[MAKE_DECISION] ✅ FOLD SUCCESS: player=${shortPlayerId} position=${player.position} decision_locked=true status=${isHolmGame ? 'active' : 'folded'}`);
-    emitSuccessfulHolmDecisionTrace();
+    
     
     // DEBUG LOG: Player fold decision (fire-and-forget)
     logPlayerDecision(gameId, playerId, 'fold', true, 'gameLogic:makeDecision:foldSuccess', {

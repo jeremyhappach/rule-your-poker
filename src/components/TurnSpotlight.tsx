@@ -154,9 +154,6 @@ export const TurnSpotlight: React.FC<TurnSpotlightProps> = ({
   const overlay = (
     <>
       <div
-        data-turn-spotlight-overlay="1"
-        data-turn-spotlight-rotation={rotation}
-        data-turn-spotlight-position={currentTurnPosition ?? ''}
         className="absolute inset-0 pointer-events-none z-[100]"
         style={{
           opacity,
