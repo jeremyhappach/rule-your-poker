@@ -5633,6 +5633,10 @@ export const MobileGameTable = ({
           );
         })()}
 
+        {gameType === 'holm-game' && !allDecisionsIn && (
+          <HolmSpotlightGeometryProbe position={currentTurnPosition ?? null} />
+        )}
+
 
         
         {/* Turn Spotlight - Dice games (Horses/SCC) - DISABLED */}
