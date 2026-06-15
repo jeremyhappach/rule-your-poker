@@ -5320,6 +5320,290 @@ export const MobileGameTable = ({
     );
   };
 
+  /**
+   * Wave 3C.5 — Horses canonical gameplay seat.
+   *
+   * Mirrors renderHolmCanonicalSeat. Holm is the spec. Only genuine
+   * Horses gameplay artifacts project from the seat:
+   *   - AutoRollIndicator (chipDiscChildren — absolute sibling inside disc)
+   *   - HorsesHandResultDisplay (chipPresentation override when the
+   *     player has a completed hand result for the round)
+   *
+   * No bespoke chip circle, name plate, dealer pip, or seat geometry.
+   * Chip palette derives from derivePlayerStatus with
+   * hasStayDecision:false (dice games have no stay/fold semantics).
+   */
+  const renderHorsesCanonicalSeat = (player: Player, slot: CanonicalSlot) => {
+    const isTheirTurn =
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.currentTurnPlayerId === player.id &&
+      !awaitingNextRound;
+    const playerDecision = player.current_decision;
+    const isDealer = dealerPosition === player.position;
+    const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
+
+    const participantStatus = derivePlayerStatus(player, playerDecision, {
+      hasStayDecision: false,
+    });
+
+    const displayName = player.is_bot
+      ? getBotAlias(players, player.user_id)
+      : (player.profiles?.username || `P${player.position}`);
+
+    const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
+    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+    const showTurnRing = isTheirTurn;
+    const statusRing: CanonicalSeatStatusRing | undefined = showTurnRing ? 'turn' : undefined;
+
+    const chipHUD = (
+      <ActivePlayerHUD
+        timeLeft={timeLeft}
+        maxTime={maxTime}
+        isActive={isTheirTurn && roundStatus === 'betting'}
+        size={52}
+        seatPosition={player.position}
+        gameId={gameId}
+        gameType={gameType}
+      />
+    );
+
+    const showAutoRollIndicator = player.auto_fold && !player.is_bot;
+    const isRightSideSlot = slot >= 3;
+    const chipDiscChildren = (
+      <>
+        {showAutoRollIndicator && <AutoRollIndicator isRightSide={isRightSideSlot} />}
+        <ValueChangeFlash
+          value={0}
+          prefix="+$"
+          position="top-left"
+          manualTrigger={
+            winnerPotFlashTrigger?.playerId === player.id
+              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
+              : null
+          }
+        />
+      </>
+    );
+
+    const emoticon = emoticonOverlays[player.id];
+    const chipOverlay = emoticon ? (
+      <div className="absolute inset-0 rounded-full flex items-center justify-center z-10">
+        <span
+          className="text-xl animate-in fade-in zoom-in duration-200"
+          style={{
+            animation:
+              emoticon.expiresAt - Date.now() < 500
+                ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                : undefined,
+          }}
+        >
+          {emoticon.emoticon}
+        </span>
+      </div>
+    ) : undefined;
+
+    const horsesPlayerResult = diceGameplayUiActive && horsesController.enabled
+      ? horsesController.getPlayerHandResult(player.id)
+      : null;
+    const isHorsesCurrentlyWinning =
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.currentlyWinningPlayerIds.includes(player.id);
+
+    let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
+    if (diceGameplayUiActive && horsesPlayerResult?.description) {
+      chipPresentation = (
+        <div className="flex items-center justify-center animate-in fade-in duration-150">
+          <HorsesHandResultDisplay
+            description={horsesPlayerResult.description}
+            isWinning={isHorsesCurrentlyWinning}
+            size="sm"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <CanonicalSeatCluster
+        key={player.id}
+        slot={slot}
+        position={player.position}
+        name={displayName}
+        chipValue={chipText}
+        isDealer={isDealer}
+        status={participantStatus}
+        statusRing={statusRing}
+        chipHUD={chipHUD}
+        chipDiscChildren={chipDiscChildren}
+        chipOverlay={chipOverlay}
+        chipPresentation={chipPresentation}
+        namePlacement="above-chip"
+        onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
+        className={playerSlotZIndex}
+        ownerLabel="Slot:MobileGameTable.horsesCanonicalSeat"
+        playerId={player.id}
+      />
+    );
+  };
+
+  /**
+   * Wave 3C.5 — Ship-Captain-Crew canonical gameplay seat.
+   *
+   * Mirrors renderHorsesCanonicalSeat. The only SCC-specific artifact
+   * is the cargo-dice / NQ badge displayed in place of the chip via
+   * the chipPresentation slot once the player has a completed hand
+   * result. Preserved 1:1 from legacy renderPlayerChip.
+   */
+  const renderSccCanonicalSeat = (player: Player, slot: CanonicalSlot) => {
+    const isTheirTurn =
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.currentTurnPlayerId === player.id &&
+      !awaitingNextRound;
+    const playerDecision = player.current_decision;
+    const isDealer = dealerPosition === player.position;
+    const isClickable = isHost && onPlayerClick && player.user_id !== currentUserId;
+
+    const participantStatus = derivePlayerStatus(player, playerDecision, {
+      hasStayDecision: false,
+    });
+
+    const displayName = player.is_bot
+      ? getBotAlias(players, player.user_id)
+      : (player.profiles?.username || `P${player.position}`);
+
+    const chipAmount = lockedChipsRef.current?.[player.id] ?? displayedChips[player.id] ?? player.chips;
+    const chipText = emoticonOverlays[player.id] ? '' : `$${formatChipValue(Math.round(chipAmount ?? 0))}`;
+
+    const showTurnRing = isTheirTurn;
+    const statusRing: CanonicalSeatStatusRing | undefined = showTurnRing ? 'turn' : undefined;
+
+    const chipHUD = (
+      <ActivePlayerHUD
+        timeLeft={timeLeft}
+        maxTime={maxTime}
+        isActive={isTheirTurn && roundStatus === 'betting'}
+        size={52}
+        seatPosition={player.position}
+        gameId={gameId}
+        gameType={gameType}
+      />
+    );
+
+    const showAutoRollIndicator = player.auto_fold && !player.is_bot;
+    const isRightSideSlot = slot >= 3;
+    const chipDiscChildren = (
+      <>
+        {showAutoRollIndicator && <AutoRollIndicator isRightSide={isRightSideSlot} />}
+        <ValueChangeFlash
+          value={0}
+          prefix="+$"
+          position="top-left"
+          manualTrigger={
+            winnerPotFlashTrigger?.playerId === player.id
+              ? { id: winnerPotFlashTrigger.id, amount: winnerPotFlashTrigger.amount }
+              : null
+          }
+        />
+      </>
+    );
+
+    const emoticon = emoticonOverlays[player.id];
+    const chipOverlay = emoticon ? (
+      <div className="absolute inset-0 rounded-full flex items-center justify-center z-10">
+        <span
+          className="text-xl animate-in fade-in zoom-in duration-200"
+          style={{
+            animation:
+              emoticon.expiresAt - Date.now() < 500
+                ? 'fadeOutEmoticon 0.5s ease-out forwards'
+                : undefined,
+          }}
+        >
+          {emoticon.emoticon}
+        </span>
+      </div>
+    ) : undefined;
+
+    const horsesStatePlayerData = diceGameplayUiActive && horsesController.enabled
+      ? (horsesState as any)?.playerStates?.[player.id]
+      : null;
+    const horsesPlayerResult = diceGameplayUiActive && horsesController.enabled
+      ? horsesController.getPlayerHandResult(player.id)
+      : null;
+    const isHorsesCurrentlyWinning =
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.currentlyWinningPlayerIds.includes(player.id);
+
+    let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
+    if (diceGameplayUiActive && horsesPlayerResult) {
+      const hasSccShape = typeof (horsesPlayerResult as any).isQualified === 'boolean';
+      if (hasSccShape) {
+        const isQualified = (horsesPlayerResult as any).isQualified;
+        if (!isQualified) {
+          chipPresentation = (
+            <div className={cn(
+              'inline-flex items-center justify-center rounded px-2 py-1',
+              'bg-white border border-gray-300 animate-in fade-in duration-150',
+            )}>
+              <span className="text-sm font-bold text-red-600">NQ</span>
+            </div>
+          );
+        } else if (horsesStatePlayerData?.dice) {
+          const allDice = horsesStatePlayerData.dice as SCCDieType[];
+          const cargoDice = allDice.filter(d => !d.sccType);
+          chipPresentation = (
+            <div
+              className={cn(
+                'inline-flex items-center gap-0.5 rounded px-0.5 py-0.5 animate-in fade-in duration-150',
+                isHorsesCurrentlyWinning ? 'bg-poker-gold border border-poker-gold' : 'bg-white border border-gray-300',
+              )}
+            >
+              {cargoDice.slice(0, 2).map((die, idx) => (
+                <HorsesDie
+                  key={idx}
+                  value={die.value}
+                  isHeld={false}
+                  isRolling={false}
+                  canToggle={false}
+                  onToggle={() => {}}
+                  size="xs"
+                  showWildHighlight={false}
+                  isSCCDie={false}
+                />
+              ))}
+            </div>
+          );
+        }
+      }
+    }
+
+    return (
+      <CanonicalSeatCluster
+        key={player.id}
+        slot={slot}
+        position={player.position}
+        name={displayName}
+        chipValue={chipText}
+        isDealer={isDealer}
+        status={participantStatus}
+        statusRing={statusRing}
+        chipHUD={chipHUD}
+        chipDiscChildren={chipDiscChildren}
+        chipOverlay={chipOverlay}
+        chipPresentation={chipPresentation}
+        namePlacement="above-chip"
+        onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
+        className={playerSlotZIndex}
+        ownerLabel="Slot:MobileGameTable.sccCanonicalSeat"
+        playerId={player.id}
+      />
+    );
+  };
+
 
   return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       
@@ -7064,13 +7348,20 @@ export const MobileGameTable = ({
             // Canonical gameplay-seat routing.
             //  holm-game        → renderHolmCanonicalSeat   (Wave 3C.3b)
             //  three-five-seven → render357CanonicalSeat    (Wave 3C.4)
-            //  Horses / SCC     → legacy renderPlayerChip wrapped in a
-            //                     hideChipBubble cluster (their wave is next).
+            //  horses           → renderHorsesCanonicalSeat (Wave 3C.5)
+            //  scc              → renderSccCanonicalSeat    (Wave 3C.5)
+            //  else             → legacy fallback (hideChipBubble wrap)
             if (gameType === 'holm-game') {
               return renderHolmCanonicalSeat(player, slot);
             }
             if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') {
               return render357CanonicalSeat(player, slot);
+            }
+            if (gameType === 'horses') {
+              return renderHorsesCanonicalSeat(player, slot);
+            }
+            if (gameType === 'ship-captain-crew') {
+              return renderSccCanonicalSeat(player, slot);
             }
 
 
