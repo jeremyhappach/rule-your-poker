@@ -442,17 +442,27 @@ export function CanonicalSeatCluster({
         //      HUD halo cannot collide with the dealer pip / name.
         const nameRow = namePlacement === 'none' ? null : (
           <div
-            className="grid items-center w-full"
-            style={{ gridTemplateColumns: '14px minmax(0,1fr) 14px' }}
+            data-canonical-seat-name-row=""
+            className={cn(
+              'grid items-center w-full rounded-md px-1.5 py-0.5',
+              // Subtle backdrop ONLY behind the name — exists so the
+              // label remains readable when the seat anchor sits
+              // partially off the felt (rail / chrome). No full pill.
+              'bg-black/35 backdrop-blur-[1px]',
+            )}
+            style={{ gridTemplateColumns: '12px minmax(0,1fr) 12px' }}
           >
-            <span /> {/* reserved left spacer — balances dealer pip slot */}
-            <span className="text-[10px] text-white/95 font-medium truncate min-w-0 text-center">
+            <span />
+            <span
+              className="text-[10px] text-white font-medium truncate min-w-0 text-center leading-tight"
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+            >
               {name}
             </span>
             <div
               aria-hidden={!isDealer}
               className={cn(
-                'w-3 h-3 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
+                'w-2.5 h-2.5 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
                 !isDealer && 'invisible',
               )}
             >
@@ -462,7 +472,6 @@ export function CanonicalSeatCluster({
         );
 
         // Default chip-disc node (chipPresentation === 'auto').
-        // Cluster preset → 40 px mobile / 44 px tablet.
         const defaultChipDisc = (
           <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
             <CanonicalChipDisc
@@ -513,9 +522,6 @@ export function CanonicalSeatCluster({
           </div>
         );
 
-        // chipPresentation: 'auto' → default disc, 'hidden' → invisible
-        // placeholder (preserves cell), ReactNode → replacement inside
-        // the reserved cell.
         let chipContent: ReactNode;
         if (chipPresentation === 'hidden') {
           chipContent = <div className="w-10 h-10 invisible" aria-hidden />;
@@ -525,33 +531,32 @@ export function CanonicalSeatCluster({
           chipContent = chipPresentation;
         }
 
-        // chipHUD wraps the contents in EVERY state (including hidden)
-        // so the HUD frame footprint is stable across active/inactive
-        // and the chip cell never collapses.
         let chipCellContents: ReactNode = chipContent;
         if (chipHUD && isValidElement(chipHUD)) {
           chipCellContents = cloneElement(chipHUD, { children: chipContent } as never);
         }
 
-        // Reserved 60×60 chip cell. Always rendered. HUD/disc/
-        // replacement center inside this box. Eliminates "chip
-        // disappears / hops" between states.
+        // Reserved chip cell — 56×56 (was 60×60). Stable footprint.
         const chipCell = (
           <div
             data-canonical-seat-chip-cell=""
-            className="relative flex items-center justify-center w-[60px] h-[60px]"
+            className="relative flex items-center justify-center w-[56px] h-[56px]"
           >
             {chipCellContents}
           </div>
         );
 
+        // Tightened pill: no full background plate. The name carries
+        // its own readability backdrop; the chip stands on its own
+        // felt. Gap shrunk so name visually attaches to the chip.
+        // Width tightened (96 → 78) to free felt space for community
+        // cards and let the seat sit farther out on the rail.
         return (
           <div
+            data-canonical-seat-pill=""
             className={cn(
-              'relative flex flex-col items-center gap-2 rounded-2xl px-2 py-1',
-              'w-[96px]',
-              'bg-shell-neutral/55 ring-1 ring-black/30 shadow-[0_1px_3px_rgba(0,0,0,0.35)]',
-              'backdrop-blur-[2px]',
+              'relative flex flex-col items-center gap-0.5',
+              'w-[78px]',
             )}
           >
             {avatar && (
@@ -565,7 +570,10 @@ export function CanonicalSeatCluster({
             {namePlacement === 'above-chip' && nameRow}
             {chipCell}
             {scoreLine && (
-              <span className="text-[10px] font-semibold text-poker-gold leading-none mt-0.5">
+              <span
+                className="text-[10px] font-semibold text-poker-gold leading-none"
+                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+              >
                 {scoreLine}
               </span>
             )}
