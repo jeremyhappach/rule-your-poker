@@ -1,20 +1,28 @@
 /**
- * Wave 4 — Phase 5A
- * useLiveGeometryConstraints — read the canonical shell DOM and the viewport
- * once per resize/orientation event, and produce a `GeometryConstraints`
- * object in vmin units.
+ * Wave 4 — Phase 5A / Wave 4.5
+ * useLiveGeometryConstraints — produce a `GeometryConstraints` object in
+ * vmin units, reading authoritative values from the canonical shell DOM
+ * and the SeatAnchorLayer context whenever they are mounted.
+ *
+ * Source-of-truth precedence (Wave 4.5):
+ *   1. Canonical shell DOM landmarks  (CanonicalConstraintReader)
+ *   2. SeatAnchorLayer React context  (viewer seat + seat ring)
+ *   3. Heuristic fallbacks from felt ratios  (ONLY used on first paint,
+ *      before the shell DOM is mounted — they exist to keep the resolver
+ *      producing a layout instead of crashing during bootstrap)
  *
  * Discipline:
  *   - Read-only. NEVER mutates the shell.
- *   - Only fires on resize/orientation (no per-frame measurement).
- *   - Falls back to a sane synthetic geometry if the felt is not yet
- *     mounted, so the resolver can still produce a layout.
+ *   - Only fires on resize / orientation / ResizeObserver (no per-frame
+ *     measurement).
  *   - The resolver remains pure: it never touches the DOM itself.
  */
 
 import { useEffect, useState } from "react";
 import type { GeometryConstraints, SeatRingGeometry } from "./types";
 import { rectVmin, vmin } from "./units";
+import { readCanonicalConstraints } from "./CanonicalConstraintReader";
+import { useSeatAnchorsOptional } from "@/lib/canonicalShell/SeatAnchorLayer";
 
 interface MeasuredFelt {
   feltW: number; // vmin
@@ -40,7 +48,6 @@ function measure(): MeasuredFelt | null {
       vminInPx,
     };
   }
-  // Fallback: use shell column tokens if felt not yet mounted.
   return {
     feltW: vw / vminInPx,
     feltH: vh / vminInPx,
@@ -48,12 +55,14 @@ function measure(): MeasuredFelt | null {
   };
 }
 
-function buildSeatRing(feltW: number, feltH: number): SeatRingGeometry {
-  // Synthetic 4-seat ring matching the Phase 4 fixture profile. Real seat
-  // anchors are produced by the canonical SeatAnchorLayer — this synthetic
-  // ring is here ONLY so the resolver can place chrome correctly; gameplay
-  // artifacts (which we are NOT migrating in Phase 5A) continue to use the
-  // real seat anchors via the existing shell projection.
+// ---------------------------------------------------------------------------
+// Heuristic fallbacks — ONLY used when the canonical shell DOM is not yet
+// mounted. They preserve first-paint behavior so the resolver always has a
+// layout to produce. Once the shell mounts, every value below is overridden
+// by `readCanonicalConstraints`.
+// ---------------------------------------------------------------------------
+
+function fallbackSeatRing(feltW: number, feltH: number): SeatRingGeometry {
   const cx = feltW / 2;
   const cy = feltH / 2;
   const rx = feltW * 0.42;
@@ -88,31 +97,62 @@ function buildSeatRing(feltW: number, feltH: number): SeatRingGeometry {
   };
 }
 
-function buildGeometry(m: MeasuredFelt): GeometryConstraints {
-  const { feltW, feltH } = m;
-  // Band heights mirror the shell CSS tokens. We approximate here; the
-  // resolver only needs CONSISTENT band rects, not pixel-perfect ones, to
-  // place chrome correctly. As long as resize triggers a re-measure, the
-  // resolver output tracks the real layout.
+function buildGeometry(
+  m: MeasuredFelt,
+  viewerSeatPosition: number | null,
+): GeometryConstraints {
+  const { feltW, feltH, vminInPx } = m;
+
+  // Heuristic fallback bands — superseded by canonical reads below.
   const rail = Math.max(2, Math.min(3, feltH * 0.02));
-  const topHud = Math.max(5, Math.min(8, feltH * 0.05));
-  const announce = Math.max(6, Math.min(9, feltH * 0.05));
-  const bottomHud = Math.max(12, Math.min(24, feltH * 0.15));
-  const topHudY = rail;
-  const announceY = topHudY + topHud;
-  const playY = announceY + announce;
-  const bottomHudY = feltH - bottomHud;
-  const playH = Math.max(0, bottomHudY - playY);
+  const fbTopHud = Math.max(5, Math.min(8, feltH * 0.05));
+  const fbAnnounce = Math.max(6, Math.min(9, feltH * 0.05));
+  const fbBottomHud = Math.max(12, Math.min(24, feltH * 0.15));
+  const fbTopHudY = rail;
+  const fbAnnounceY = fbTopHudY + fbTopHud;
+  const fbBottomHudY = feltH - fbBottomHud;
+
+  let topHudReserve = rectVmin(0, fbTopHudY, feltW, fbTopHud);
+  let announcementBand = rectVmin(0, fbAnnounceY, feltW, fbAnnounce);
+  let bottomHudReserve = rectVmin(0, fbBottomHudY, feltW, fbBottomHud);
+  let seatRing = fallbackSeatRing(feltW, feltH);
+  let viewer = viewerSeatPosition;
+
+  // Canonical reads — every successful read replaces the heuristic.
+  const canonical = readCanonicalConstraints({
+    feltW,
+    feltH,
+    vminInPx,
+    viewerSeatPosition,
+  });
+  if (canonical.topHudReserve) topHudReserve = canonical.topHudReserve;
+  if (canonical.announcementBand)
+    announcementBand = canonical.announcementBand;
+  if (canonical.bottomHudReserve)
+    bottomHudReserve = canonical.bottomHudReserve;
+  if (canonical.seatRing) seatRing = canonical.seatRing;
+  if (canonical.viewerSeatPosition !== undefined)
+    viewer = canonical.viewerSeatPosition;
+
+  // playBand = leftover vertical extent inside the felt, between the
+  // bottom of (topHud + announcement) and the top of the bottom HUD,
+  // with the same 2 vmin x-inset the heuristic used. Derived from the
+  // (possibly canonical) bands above so canonical reads cascade.
+  const playTop =
+    announcementBand.y.value + announcementBand.height.value;
+  const playBottom = bottomHudReserve.y.value;
+  const playH = Math.max(0, playBottom - playTop);
+  const playBand = rectVmin(2, playTop, Math.max(1, feltW - 4), playH);
 
   return {
     feltBounds: rectVmin(0, 0, feltW, feltH),
     outerRailReserve: rectVmin(0, 0, feltW, rail),
-    seatRing: buildSeatRing(feltW, feltH),
-    topHudReserve: rectVmin(0, topHudY, feltW, topHud),
-    announcementBand: rectVmin(0, announceY, feltW, announce),
-    playBand: rectVmin(2, playY, Math.max(1, feltW - 4), playH),
-    bottomHudReserve: rectVmin(0, bottomHudY, feltW, bottomHud),
-    viewerSeatPosition: 0,
+    seatRing,
+    topHudReserve,
+    announcementBand,
+    playBand,
+    bottomHudReserve,
+    viewerSeatPosition: viewer,
   };
 }
 
@@ -122,10 +162,18 @@ export interface LiveGeometryState {
 }
 
 export function useLiveGeometryConstraints(): LiveGeometryState {
+  // SeatAnchorLayer is optional here — wave4 host may be mounted outside
+  // a SeatAnchorLayer during bootstrap. When present, its viewerPosition
+  // is the authoritative source; otherwise we fall through to the
+  // hardcoded null (replaced later by the canonical reader if a viewer
+  // chip is published in the DOM).
+  const seatCtx = useSeatAnchorsOptional();
+  const viewerSeatPosition = seatCtx?.viewerPosition ?? null;
+
   const [state, setState] = useState<LiveGeometryState>(() => {
     const m = measure();
     return {
-      geometry: m ? buildGeometry(m) : null,
+      geometry: m ? buildGeometry(m, viewerSeatPosition) : null,
       vminInPx: m?.vminInPx ?? 0,
     };
   });
@@ -138,19 +186,24 @@ export function useLiveGeometryConstraints(): LiveGeometryState {
       raf = requestAnimationFrame(() => {
         const m = measure();
         if (!m) return;
-        setState({ geometry: buildGeometry(m), vminInPx: m.vminInPx });
+        setState({
+          geometry: buildGeometry(m, viewerSeatPosition),
+          vminInPx: m.vminInPx,
+        });
       });
     };
-    // Initial measurement after first paint (so felt exists in DOM).
     remeasure();
     window.addEventListener("resize", remeasure);
     window.addEventListener("orientationchange", remeasure);
-    // Re-measure when the felt mounts or resizes.
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(remeasure);
       const surface = document.querySelector("[data-canonical-felt-surface]");
       if (surface) ro.observe(surface);
+      // Also observe the HUD grid so band changes (announcement open/close,
+      // tab bar height shifts) re-publish constraints immediately.
+      const hud = document.querySelector("[data-canonical-shell-hud-grid]");
+      if (hud) ro.observe(hud);
     }
     return () => {
       if (raf) cancelAnimationFrame(raf);
@@ -158,7 +211,7 @@ export function useLiveGeometryConstraints(): LiveGeometryState {
       window.removeEventListener("orientationchange", remeasure);
       ro?.disconnect();
     };
-  }, []);
+  }, [viewerSeatPosition]);
 
   return state;
 }

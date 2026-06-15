@@ -13,3 +13,4 @@ export {
 } from "./telemetry";
 export { LayoutFaultBadge } from "./LayoutFaultBadge";
 export { useLiveGeometryConstraints, type LiveGeometryState } from "./useLiveGeometryConstraints";
+export { readCanonicalConstraints, type CanonicalReaderInput, type CanonicalReaderOutput } from "./CanonicalConstraintReader";
