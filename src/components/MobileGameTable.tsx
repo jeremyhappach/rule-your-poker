@@ -7337,14 +7337,18 @@ export const MobileGameTable = ({
               );
             }
 
-            // Wave 3C.3b: Holm gameplay seats route through the
-            // canonical CanonicalSeatCluster pill (via
-            // renderHolmCanonicalSeat) using the 3C.3a additive slots.
-            // 357 / Horses / SCC keep the legacy hideChipBubble +
-            // renderPlayerChip carve-out until their own wave.
+            // Canonical gameplay-seat routing.
+            //  holm-game        → renderHolmCanonicalSeat   (Wave 3C.3b)
+            //  three-five-seven → render357CanonicalSeat    (Wave 3C.4)
+            //  Horses / SCC     → legacy renderPlayerChip wrapped in a
+            //                     hideChipBubble cluster (their wave is next).
             if (gameType === 'holm-game') {
               return renderHolmCanonicalSeat(player, slot);
             }
+            if (gameType === '3-5-7' || gameType === '357' || gameType === '3-5-7-game') {
+              return render357CanonicalSeat(player, slot);
+            }
+
 
             return (
               <CanonicalSeatCluster
