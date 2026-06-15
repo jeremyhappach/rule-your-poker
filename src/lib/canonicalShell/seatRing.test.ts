@@ -8,7 +8,15 @@ import {
   previousClockwise,
   relativeSlotToPosition,
 } from './seatRing';
-import { SLOT } from './seatAnchors';
+import { SLOT, type CanonicalSlot } from './seatAnchors';
+
+// Perimeter slot literals (0..5) per seatAnchors handedness contract.
+const BOTTOM_LEFT: CanonicalSlot = 0;
+const MIDDLE_LEFT: CanonicalSlot = 1;
+const TOP_LEFT: CanonicalSlot = 2;
+const TOP_RIGHT: CanonicalSlot = 3;
+const MIDDLE_RIGHT: CanonicalSlot = 4;
+const BOTTOM_RIGHT: CanonicalSlot = 5;
 
 describe('seatRing', () => {
   const sevenHanded = [1, 2, 3, 4, 5, 6, 7];
@@ -39,18 +47,18 @@ describe('seatRing', () => {
     const dealer = 4;
     const buck = getBuckStartPosition(dealer, sevenHanded);
     expect(buck).toBe(3);
-    expect(positionToRelativeSlot(buck, dealer, sevenHanded)).toBe(SLOT.BOTTOM_LEFT);
+    expect(positionToRelativeSlot(buck, dealer, sevenHanded)).toBe(BOTTOM_LEFT);
   });
 
   it('full clockwise iteration from buck back to dealer visits BL,ML,TL,TR,MR,BR,HOME', () => {
     const dealer = 4;
-    const expected = [
-      SLOT.BOTTOM_LEFT,
-      SLOT.MIDDLE_LEFT,
-      SLOT.TOP_LEFT,
-      SLOT.TOP_RIGHT,
-      SLOT.MIDDLE_RIGHT,
-      SLOT.BOTTOM_RIGHT,
+    const expected: CanonicalSlot[] = [
+      BOTTOM_LEFT,
+      MIDDLE_LEFT,
+      TOP_LEFT,
+      TOP_RIGHT,
+      MIDDLE_RIGHT,
+      BOTTOM_RIGHT,
       SLOT.HOME,
     ];
     let cur = getBuckStartPosition(dealer, sevenHanded);
