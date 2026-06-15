@@ -582,40 +582,8 @@ export function CanonicalSeatCluster({
           </div>
         );
 
-        // Wave 3C.3e — content-driven pill. Orientation derived from
-        // slot so identity hugs the rail and gameplay points inward:
-        //   top/bottom seats → vertical stack (name + chip)
-        //   side seats       → horizontal row, name on outer side
-        const isHorizontal =
-          seatOrientation === 'horizontal-name-left' ||
-          seatOrientation === 'horizontal-name-right';
-        const nameOnLeft = seatOrientation === 'horizontal-name-left';
-
-        if (isHorizontal) {
-          return (
-            <div
-              data-canonical-seat-pill=""
-              data-canonical-seat-orientation={seatOrientation}
-              className={cn(
-                'relative flex items-center gap-1 w-fit',
-                nameOnLeft ? 'flex-row' : 'flex-row-reverse',
-              )}
-            >
-              {effectiveNamePlacement !== 'none' && nameRow}
-              <div className="flex flex-col items-center gap-0">
-                {chipCell}
-                {scoreLine && (
-                  <span
-                    className="text-[10px] font-semibold text-poker-gold leading-none"
-                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-                  >
-                    {scoreLine}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        }
+        // Wave 3C.3f — exactly two layouts: NameAbove / NameBelow.
+        // No horizontal side-seat variants.
 
         return (
           <div
