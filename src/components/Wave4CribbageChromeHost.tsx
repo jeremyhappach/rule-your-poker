@@ -51,10 +51,11 @@ import {
   type CribbagePhase,
 } from "@/lib/cribbage/cribbageArtifactDescriptors";
 
-// Artifacts we want to actually project as ghost rects in Phase 5A.
-// Gameplay artifacts (myHand/pegboard/peggingRow/etc.) are emitted by the
-// descriptor factory so the resolver sees the whole picture, but we do NOT
-// paint ghosts over them — legacy renderers are still authoritative there.
+// Artifacts we project as ghost rects.
+// Phase 5A: chrome only.
+// Phase 5C: pegboard joins (first gameplay artifact under host control —
+// the legacy <CribbagePegBoard/> is now positioned by Wave4PegboardSlot,
+// so the ghost should pixel-align with the live pegboard).
 const CHROME_ARTIFACT_IDS = new Set<string>([
   "cribbage.announcement",
   "cribbage.topHud",
@@ -62,6 +63,7 @@ const CHROME_ARTIFACT_IDS = new Set<string>([
   "cribbage.parameterChips",
   "cribbage.bottomHud",
   "cribbage.tabs",
+  "cribbage.pegboard",
 ]);
 
 function flagEnabled(): boolean {

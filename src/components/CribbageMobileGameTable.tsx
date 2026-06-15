@@ -77,6 +77,7 @@ import { buildMetaPayload } from '@/lib/buildMeta';
 import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
+import { Wave4PegboardSlot } from '@/components/Wave4PegboardSlot';
 import {
   checkStaleDealerGameRender,
   checkCribbagePhaseRenderMismatch,
@@ -6192,9 +6193,19 @@ export const CribbageMobileGameTable = ({
               </>
             )}
 
-            {/* STABLE PEGBOARD — mounted across ALL modes when we have data */}
+            {/* STABLE PEGBOARD — Wave 4 Phase 5C
+                Position/size/visibility owned by Wave4PegboardSlot via the
+                layout resolver. Visuals remain in <CribbagePegBoard/>. */}
             {!isHighCardMode && latchedPegboardDataRef.current && (
-              <div className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10">
+              <Wave4PegboardSlot
+                phase="pegging"
+                viewerSeatPosition={currentPlayer?.position ?? null}
+                opponentSeatPositions={[0, 1, 2, 3].filter(
+                  (p) => p !== (currentPlayer?.position ?? -1),
+                )}
+                cutCardRevealed={true}
+                cribVisible={true}
+              >
                 <CribbagePegBoard
                   players={players}
                   playerStates={
@@ -6209,7 +6220,7 @@ export const CribbageMobileGameTable = ({
                   }
                   overrideScores={countingScoreOverrides ?? undefined}
                 />
-              </div>
+              </Wave4PegboardSlot>
             )}
 
             {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount.
