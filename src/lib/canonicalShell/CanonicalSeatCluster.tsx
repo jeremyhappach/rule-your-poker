@@ -380,11 +380,23 @@ export function CanonicalSeatCluster({
   const isBottomAnchored = slot === -1 || slot === -3 || slot === 0 || slot === 5;
   const isBottomPerimeterSeat = slot === 0 || slot === 5;
 
-  // Wave 3C.3g — ONE composition for ALL seats:
-  //   Name → Chip → Artifact (top to bottom).
-  // No bottom-name variant. No side-name variant. No flex-col-reverse.
-  // The table reads with a single visual rhythm; only radial placement
-  // varies per slot.
+  // Wave 3C.4a — CHIP ANCHOR INVARIANT.
+  //
+  // The chip cell (w-10 h-10) is the ONLY element that participates in
+  // slot anchoring. Everything else (name plate, score line, game-owned
+  // children) is absolutely positioned relative to the chip cell so the
+  // chip's `data-chip-center` rect is invariant regardless of which
+  // siblings mount or unmount.
+  //
+  // Growth direction (which side of the chip artifacts grow toward) is
+  // derived from the slot's table position:
+  //   - top-row slots (2, 3, -2)                : grow DOWN
+  //   - middle-row slots (1, 4)                 : grow DOWN
+  //   - bottom-row slots (0, 5, -1, -3)         : grow UP
+  // Name plate sits between chip and growth side (closest to chip);
+  // children sit further out in the growth direction.
+  const growsDown = !isBottomAnchored;
+
   type SeatOrientation = 'vertical-name-top';
   const seatOrientation: SeatOrientation = 'vertical-name-top';
 
@@ -395,9 +407,6 @@ export function CanonicalSeatCluster({
   const chipFgClass = getParticipantChipFgClass(status);
   const chipRingClass = getParticipantChipRingClass(statusRing);
 
-  // Inner/outer side resolution. The cluster knows the slot, so games
-  // pass "innerDecoration" / "outerDecoration" without needing to
-  // recompute which physical side that maps to.
   const isRightSide = isRightSideCanonicalSlot(slot);
   const innerSideClass = isRightSide
     ? 'left-0 -translate-x-full'
@@ -405,6 +414,157 @@ export function CanonicalSeatCluster({
   const outerSideClass = isRightSide
     ? 'right-0 translate-x-full'
     : 'left-0 -translate-x-full';
+
+  // Build chip-cell contents and name row.
+  let chipCellContents: ReactNode = null;
+  let nameRow: ReactNode = null;
+  if (!hideChipBubble) {
+    nameRow = namePlacement === 'none' ? null : (
+      <div
+        data-canonical-seat-name-row=""
+        className={cn(
+          'grid items-center rounded-[3px] px-1 py-[1px] w-fit max-w-[88px]',
+          'bg-black/75 backdrop-blur-sm border border-black/40',
+        )}
+        style={{ gridTemplateColumns: 'minmax(0,1fr) 8px' }}
+      >
+        <span
+          className="text-[10px] text-white font-semibold truncate min-w-0 text-center leading-[1.05]"
+          style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+        >
+          {name}
+        </span>
+        <div
+          aria-hidden={!isDealer}
+          className={cn(
+            'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
+            !isDealer && 'invisible',
+          )}
+        >
+          <span className="text-white font-bold text-[5px] leading-none">D</span>
+        </div>
+      </div>
+    );
+
+    const defaultChipDisc = (
+      <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
+        <CanonicalChipDisc
+          size="cluster"
+          amount={null}
+          bgClass={chipBgClass}
+          ringClass={chipRingClass}
+          folded={dimChip}
+          clickable={!!onChipClick}
+          onClick={onChipClick}
+          positionAnchor={position}
+        >
+          <span className={cn('font-bold leading-none', chipFgClass)}>
+            {chipValue}
+          </span>
+          {chipDiscChildren}
+          {chipOverlay && (
+            <div
+              data-canonical-seat-chip-overlay=""
+              className="absolute inset-0 pointer-events-none"
+            >
+              {chipOverlay}
+            </div>
+          )}
+          {innerDecoration && (
+            <div
+              data-canonical-seat-decoration="inner"
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
+                innerSideClass,
+              )}
+            >
+              {innerDecoration}
+            </div>
+          )}
+          {outerDecoration && (
+            <div
+              data-canonical-seat-decoration="outer"
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
+                outerSideClass,
+              )}
+            >
+              {outerDecoration}
+            </div>
+          )}
+        </CanonicalChipDisc>
+      </div>
+    );
+
+    let chipContent: ReactNode;
+    if (chipPresentation === 'hidden') {
+      chipContent = <div className="w-10 h-10 invisible" aria-hidden />;
+    } else if (chipPresentation === 'auto') {
+      chipContent = defaultChipDisc;
+    } else {
+      chipContent = chipPresentation;
+    }
+
+    if (chipHUD && isValidElement(chipHUD)) {
+      chipCellContents = cloneElement(
+        chipHUD,
+        { size: 40, children: chipContent } as never,
+      );
+    } else {
+      chipCellContents = chipContent;
+    }
+  }
+
+  // Above-chip stack: avatar + name (and children if growth UP).
+  const aboveChipNodes: ReactNode[] = [];
+  if (!hideChipBubble) {
+    if (avatar) {
+      aboveChipNodes.push(
+        <div
+          key="avatar"
+          data-canonical-seat-avatar=""
+          className="flex items-center justify-center"
+        >
+          {avatar}
+        </div>,
+      );
+    }
+    if (effectiveNamePlacement === 'above-chip' && nameRow) {
+      aboveChipNodes.push(<div key="name">{nameRow}</div>);
+    }
+  }
+
+  // Below-chip stack: score line (and children if growth DOWN).
+  const belowChipNodes: ReactNode[] = [];
+  if (!hideChipBubble && scoreLine) {
+    belowChipNodes.push(
+      <span
+        key="score"
+        className="text-[10px] font-semibold text-poker-gold leading-none whitespace-nowrap"
+        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
+      >
+        {scoreLine}
+      </span>,
+    );
+  }
+
+  if (children) {
+    const childrenNode = (
+      <div
+        key="children"
+        data-canonical-seat-cluster-content=""
+        className="flex flex-col items-center"
+      >
+        {children}
+      </div>
+    );
+    if (growsDown) {
+      belowChipNodes.push(childrenNode);
+    } else {
+      // Growth up — children render further from chip than name.
+      aboveChipNodes.unshift(childrenNode);
+    }
+  }
 
   return (
     <div
@@ -417,8 +577,14 @@ export function CanonicalSeatCluster({
       data-seat-status={status}
       data-owner-label={ownerLabel ?? ''}
       data-player-id={playerId ?? ''}
+      data-seat-orientation={seatOrientation}
+      data-seat-growth={growsDown ? 'down' : 'up'}
       className={cn(
-        'absolute pointer-events-none flex flex-col gap-[3px]',
+        // CHIP ANCHOR INVARIANT — the outer wrapper is sized to the chip
+        // cell only. Slot placement anchors this 40x40 box; name/score/
+        // children project from it via absolute positioning and cannot
+        // move the chip's [data-chip-center] rect.
+        'absolute pointer-events-none w-10 h-10',
         placement.className,
         raiseClass,
         'transition-all duration-300',
@@ -426,183 +592,31 @@ export function CanonicalSeatCluster({
       )}
       style={isBottomPerimeterSeat ? { marginBottom: 'var(--shell-seat-safe-bottom)' } : undefined}
     >
-      {/* Felt-toned backdrop pill — wraps identity + chip only.
-          Game-owned children sit OUTSIDE this pill so card geometry
-          stays game-controlled. The pill keeps the cluster legible
-          regardless of whether the slot lands on felt or chrome,
-          replacing per-projection contrast hacks.
+      {aboveChipNodes.length > 0 && (
+        <div
+          data-canonical-seat-above=""
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[2px] flex flex-col items-center gap-[2px] pointer-events-none"
+        >
+          {aboveChipNodes}
+        </div>
+      )}
 
-          Fixed canonical nameplate container. Width is constant so
-          shell seat geometry does NOT shift based on player-name
-          length. Long names truncate with ellipsis instead of
-          stretching the pill. */}
-      {!hideChipBubble && (() => {
-        // Wave 3C.3c — stable footprint contract:
-        //   1. Name row always reserves a fixed dealer-pip slot on the
-        //      right so the name stays centered whether or not the
-        //      player is dealer. No re-centering when the pip appears.
-        //   2. The chip cell is a fixed 60×60 reservation rendered
-        //      unconditionally (HUD-frame sized). chipPresentation
-        //      controls CONTENTS, never the cell. 'hidden' renders an
-        //      invisible placeholder; a ReactNode replacement renders
-        //      INSIDE the reserved cell, centered. chipHUD wraps the
-        //      cell contents in every state so the HUD frame is also
-        //      stable.
-        //   3. Pill `gap-2` separates name row from chip cell so the
-        //      HUD halo cannot collide with the dealer pip / name.
-        const nameRow = namePlacement === 'none' ? null : (
-          <div
-            data-canonical-seat-name-row=""
-            className={cn(
-              'grid items-center rounded-[3px] px-1 py-[1px] w-fit max-w-[88px]',
-              'bg-black/75 backdrop-blur-sm border border-black/40',
-            )}
-            style={{ gridTemplateColumns: 'minmax(0,1fr) 8px' }}
-          >
-            <span
-              className="text-[10px] text-white font-semibold truncate min-w-0 text-center leading-[1.05]"
-              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
-            >
-              {name}
-            </span>
-            <div
-              aria-hidden={!isDealer}
-              className={cn(
-                'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0 justify-self-end',
-                !isDealer && 'invisible',
-              )}
-            >
-              <span className="text-white font-bold text-[5px] leading-none">D</span>
-            </div>
-          </div>
-        );
+      {!hideChipBubble && (
+        <div
+          data-canonical-seat-pill=""
+          data-canonical-seat-chip-cell=""
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          {chipCellContents}
+        </div>
+      )}
 
-        // Default chip-disc node (chipPresentation === 'auto').
-        const defaultChipDisc = (
-          <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
-            <CanonicalChipDisc
-              size="cluster"
-              amount={null}
-              bgClass={chipBgClass}
-              ringClass={chipRingClass}
-              folded={dimChip}
-              clickable={!!onChipClick}
-              onClick={onChipClick}
-              positionAnchor={position}
-            >
-              <span className={cn('font-bold leading-none', chipFgClass)}>
-                {chipValue}
-              </span>
-              {chipDiscChildren}
-              {chipOverlay && (
-                <div
-                  data-canonical-seat-chip-overlay=""
-                  className="absolute inset-0 pointer-events-none"
-                >
-                  {chipOverlay}
-                </div>
-              )}
-              {innerDecoration && (
-                <div
-                  data-canonical-seat-decoration="inner"
-                  className={cn(
-                    'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
-                    innerSideClass,
-                  )}
-                >
-                  {innerDecoration}
-                </div>
-              )}
-              {outerDecoration && (
-                <div
-                  data-canonical-seat-decoration="outer"
-                  className={cn(
-                    'absolute top-1/2 -translate-y-1/2 pointer-events-auto',
-                    outerSideClass,
-                  )}
-                >
-                  {outerDecoration}
-                </div>
-              )}
-            </CanonicalChipDisc>
-          </div>
-        );
-
-        let chipContent: ReactNode;
-        if (chipPresentation === 'hidden') {
-          chipContent = <div className="w-10 h-10 invisible" aria-hidden />;
-        } else if (chipPresentation === 'auto') {
-          chipContent = defaultChipDisc;
-        } else {
-          chipContent = chipPresentation;
-        }
-
-        let chipCellContents: ReactNode = chipContent;
-        if (chipHUD && isValidElement(chipHUD)) {
-          // Inject size=40 so the HUD ring concentric-wraps the 40×40
-          // cluster chip disc instead of painting a 48px ring offset
-          // from the chip center. Children injection keeps the chip
-          // body as the HUD's content.
-          chipCellContents = cloneElement(
-            chipHUD,
-            { size: 40, children: chipContent } as never,
-          );
-        }
-
-        // Reserved chip cell — sized to fit the HUD ring envelope
-        // (size 40 + 8 padding = 48). The cell stays centered around
-        // the chip disc so the HUD ring and chip share one center.
-        const chipCell = (
-          <div
-            data-canonical-seat-chip-cell=""
-            className="relative flex items-center justify-center w-10 h-10"
-          >
-            {chipCellContents}
-          </div>
-        );
-
-        // Wave 3C.3g — ONE layout for all seats: Name → Chip → Score.
-        // Artifact (children) lives outside this pill and renders
-        // below per the outer cluster's flex-col.
-
-        return (
-          <div
-            data-canonical-seat-pill=""
-            data-canonical-seat-orientation={seatOrientation}
-            className={cn(
-              'relative flex flex-col items-center w-fit max-w-[88px]',
-              // Tangential: name plate sits 2px above the chip so the
-              // pair reads as ONE object, chip is the primary artifact.
-              'gap-[2px]',
-            )}
-          >
-            {avatar && (
-              <div
-                data-canonical-seat-avatar=""
-                className="flex items-center justify-center"
-              >
-                {avatar}
-              </div>
-            )}
-            {effectiveNamePlacement === 'above-chip' && nameRow}
-            {chipCell}
-
-            {scoreLine && (
-              <span
-                className="text-[10px] font-semibold text-poker-gold leading-none"
-                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
-              >
-                {scoreLine}
-              </span>
-            )}
-          </div>
-        );
-      })()}
-
-
-      {children && (
-        <div data-canonical-seat-cluster-content="" className="flex flex-col items-center">
-          {children}
+      {belowChipNodes.length > 0 && (
+        <div
+          data-canonical-seat-below=""
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-[2px] flex flex-col items-center gap-[2px] pointer-events-none"
+        >
+          {belowChipNodes}
         </div>
       )}
     </div>
