@@ -380,34 +380,16 @@ export function CanonicalSeatCluster({
   const isBottomAnchored = slot === -1 || slot === -3 || slot === 0 || slot === 5;
   const isBottomPerimeterSeat = slot === 0 || slot === 5;
 
-  // Wave 3C.3e — identity hugs the rail, gameplay points inward.
-  // Derive default name placement from slot geometry:
-  //   top seats     → NAME above CHIP
-  //   bottom seats  → CHIP above NAME
-  //   side seats    → horizontal row, name on OUTER side (slot 1 left,
-  //                   slot 4 right)
-  // Callers may still override via the `namePlacement` prop ('none' is
-  // always respected); the derived value only fires when the caller
-  // accepted the default ('above-chip').
-  type SeatOrientation =
-    | 'vertical-name-top'
-    | 'vertical-name-bottom';
-  // Wave 3C.3f — two layouts only:
-  //   TOP + SIDE  → NameAbove
-  //   BOTTOM      → NameBelow
-  // Side seats (1, 4) intentionally use the vertical TOP layout so
-  // the chip remains the primary artifact and the name attaches to
-  // it the same way as the top corners.
-  let seatOrientation: SeatOrientation;
-  if (isBottomAnchored) seatOrientation = 'vertical-name-bottom';
-  else seatOrientation = 'vertical-name-top';
+  // Wave 3C.3g — ONE composition for ALL seats:
+  //   Name → Chip → Artifact (top to bottom).
+  // No bottom-name variant. No side-name variant. No flex-col-reverse.
+  // The table reads with a single visual rhythm; only radial placement
+  // varies per slot.
+  type SeatOrientation = 'vertical-name-top';
+  const seatOrientation: SeatOrientation = 'vertical-name-top';
 
-  const effectiveNamePlacement: 'above-chip' | 'below-chip' | 'none' =
-    namePlacement === 'none'
-      ? 'none'
-      : seatOrientation === 'vertical-name-bottom'
-        ? 'below-chip'
-        : 'above-chip';
+  const effectiveNamePlacement: 'above-chip' | 'none' =
+    namePlacement === 'none' ? 'none' : 'above-chip';
 
   const chipBgClass = getParticipantChipBgClass(status);
   const chipFgClass = getParticipantChipFgClass(status);
