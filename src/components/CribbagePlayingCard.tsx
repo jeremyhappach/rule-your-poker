@@ -5,6 +5,9 @@ interface CribbagePlayingCardProps {
   size?: 'xs' | 'sm' | 'md' | 'lg';
   faceDown?: boolean;
   cardBackColors?: { color: string; darkColor: string };
+  /** Optional rect-driven width override (px). Height derives from 2:3 aspect.
+   *  When provided, overrides `size` token. Font sizes scale proportionally. */
+  widthPx?: number;
 }
 
 export const CribbagePlayingCard = ({ 
@@ -12,6 +15,7 @@ export const CribbagePlayingCard = ({
   size = 'md',
   faceDown = false,
   cardBackColors,
+  widthPx,
 }: CribbagePlayingCardProps) => {
   // Narrower cards with 2:3 aspect ratio - maximize text size for readability
   const sizeStyles: Record<string, { width: number; height: number; fontSize: string; suitSize: string }> = {
