@@ -181,6 +181,8 @@ import { persistSyncDebugEvent, persistTransition } from "@/lib/persistSyncDebug
 import { checkThreeFiveSevenStaleRound, checkThreeFiveSevenStaleHand, checkThreeFiveSevenStuckOldRound, classify357TransitionType, persist357Investigation } from "@/lib/threeFiveSevenSyncDiagnostics";
 import { beginCribbageHandoffTrace, emitCribbageHandoffTrace } from "@/lib/cribbageHandoffTrace";
 import { DebugLogToggle } from "@/components/DebugLogToggle";
+import { PvrLiftPill } from "@/components/admin/PvrLiftPill";
+
 import { PlayerOptionsMenu } from "@/components/PlayerOptionsMenu";
 import { VisualBugReportButton } from "@/components/VisualBugReportButton";
 import { NotEnoughPlayersCountdown } from "@/components/NotEnoughPlayersCountdown";
