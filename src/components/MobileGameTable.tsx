@@ -5618,8 +5618,8 @@ export const MobileGameTable = ({
         ref={tableContainerRef}
         data-canonical-table-container=""
         data-canonical-table-felt-ownership="shell"
-        className="relative overflow-hidden"
-        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
+        className="relative"
+        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', overflow: 'visible' }}
       >
 
         {/* Phase 3.2 (complete): MobileGameTable no longer owns ANY felt.
