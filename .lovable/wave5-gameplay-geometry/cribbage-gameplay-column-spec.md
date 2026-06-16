@@ -229,10 +229,18 @@ ignore them; they exist for diagnostics and faults only.
 
 ## 7. Consumer Model
 
-### 7.1 `CribbageGameplayGeometryProvider`
+### 7.1 Generalization — one primitive, not many
+
+`composeMode: "group"` + `axis: "x" | "y"` is the **only** nested-layout
+primitive added to the resolver. We do NOT add `"column"`, `"row"`,
+`"stack"`, or any other game-shaped mode. Gin, Yahtzee, Holm, 3-5-7, and
+every future game compose their own layouts from the same `group` primitive.
+
+### 7.2 `CribbageGameplayGeometryProvider`
 
 A new React provider, mounted once near the top of `CribbageMobileGameTable`,
-inside the canonical shell tree and below the live geometry constraints.
+inside the canonical shell tree and below the live geometry constraints. It
+is the **single geometry authority** for the Cribbage play band.
 
 Responsibilities:
 
@@ -246,30 +254,48 @@ Responsibilities:
 ```ts
 interface CribbageGameplayGeometryContext {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
+  lastValidPlacementsById: ReadonlyMap<string, ResolvedPlacement>;
   faults: ReadonlyArray<LayoutFault>;
-  // Convenience getter — returns undefined if not visible/present.
   getPlacement(id: string): ResolvedPlacement | undefined;
+  getLastValidPlacement(id: string): ResolvedPlacement | undefined;
 }
 ```
 
-4. Emit `wave4:layout_fault` telemetry exactly once per unique fault set.
+4. Maintain `lastValidPlacementsById` — the most recent placement per id
+   that resolved without a fault. Updated atomically on every successful
+   resolve. Survives geometry hiccups, cold starts, and brief unmounts of
+   upstream measurements.
+5. Emit `wave4:layout_fault` telemetry exactly once per unique fault set.
 
-### 7.2 Slot consumer rule
+### 7.3 Slot consumer rule (invariant)
+
+> **Gameplay slots may NEVER call `resolveLayout()`.**
 
 `Wave4PegboardSlot`, `Wave4PeggingRowSlot`, and every future Cribbage
-gameplay slot **must** read their placement from
-`useCribbageGameplayGeometry().getPlacement(id)`.
+gameplay slot **must** read their placement from the provider via
+`useCribbageGameplayGeometry().getPlacement(id)` (or
+`getLastValidPlacement(id)`).
 
-Independent calls to `resolveLayout` from inside slots are forbidden. The
-provider is the single resolution authority for the Cribbage play band.
-Violating this rule reintroduces sibling drift exactly like the current
-hardcoded `top-[N%]` rows.
+Independent calls to `resolveLayout` from inside slots are forbidden. This
+prevents descriptor drift, placement drift, and multiple resolves with
+slightly different inputs. Violations reintroduce sibling drift exactly like
+the current hardcoded `top-[N%]` rows.
 
-### 7.3 Fallbacks
+### 7.4 Pre-measurement / unavailable-placement policy
 
-No CSS-percentage fallbacks. If the provider has not produced a placement
-yet (pre-measurement), slots render `null` for one frame. Pre-measurement
-flicker is preferable to ownership drift.
+The provider exposes both `current` and `lastValid` placements; consumers
+choose their own fallback policy. Acceptable choices today include:
+
+- current placement (when present)
+- last-valid placement (avoids cold-start gaps, observer fly-ins, HUD flashes)
+- skeleton
+- `null`
+
+The contract does **not** mandate which to pick. Past pain (observer
+fly-ins, HUD flashes, cold-start gaps, early render races) means the policy
+must remain tunable per slot and per phase, not baked into the contract.
+Slots that previously rendered with hardcoded `top-[N%]` should default to
+`lastValid → current` to avoid regressions.
 
 ## 8. Migration Path
 
@@ -280,42 +306,48 @@ All phases are sequential. Each phase is independently revertable.
    nested groups, preservation/collapse order, bottom-clamp invariant, and
    the three new fault codes. Tests fail until Phase 3 lands the resolver
    change. Resolver source not yet edited.
-3. **Phase 3 — Provider scaffold**. Implement `group` resolver branch,
-   `parentId` on `ResolvedPlacement`, the three new fault codes, and the
-   `CribbageGameplayGeometryProvider`. Provider is mounted but no slot
-   consumes it yet. All Phase 2 tests pass.
+3. **Phase 3 — Group resolver + provider scaffold**. Implement the `group`
+   resolver branch, `parentId` on `ResolvedPlacement`, the three new fault
+   codes, and the `CribbageGameplayGeometryProvider` (including
+   `lastValidPlacementsById`). Provider is mounted but **no slot consumes
+   it yet**. All Phase 2 tests pass.
 4. **Phase 4 — Pegboard + PeggingRow cutover**. `Wave4PegboardSlot` and
-   `Wave4PeggingRowSlot` read placements from the provider. Remove their
-   independent `resolveLayout` calls and the `top-[52%]` / `top-[68%]`
-   fallback paths.
+   `Wave4PeggingRowSlot` read placements from the provider. **Fallbacks
+   retained** during this phase to absorb cold-start and pre-measurement
+   races. No `resolveLayout` calls inside slots.
 5. **Phase 5 — CountingRow**. Migrate `CribbageCountingPhase`'s
    `top-[58%]` row to a new `Wave4CountingRowSlot` that reads from the
-   provider. PeggingRow/CountingRow XOR validated end-to-end.
+   provider. PeggingRow/CountingRow XOR validated end-to-end. Fallbacks
+   still retained.
 6. **Phase 6 — Crib + Cut group**. Migrate `CribbageFeltContent`'s
    `top-[17%]` crib row and `CribbageCutCardReveal` into
    `Wave4CribSlot` + `Wave4CutCardSlot`, both reading from the provider's
    `cribbage.cribCutGroup` children.
-7. **Phase 7 — Fallback removal**. Delete every `top-[N%]` / `mt-1` /
-   `pt-1` / `+Npx` Cribbage gameplay positional class. Delete the
-   per-slot `resolveLayout` call sites confirmed obsolete by Phases 4–6.
-   `getCribbageArtifactDescriptors` becomes provider-only.
+7. **Phase 7 — Cleanup**. Remove remaining `top-[N%]` / `mt-1` / `pt-1` /
+   `+Npx` Cribbage gameplay positional classes confirmed obsolete by
+   Phases 4–6. Retire fallback paths on a per-slot basis only after
+   `lastValidPlacements` has demonstrably eliminated the original race.
 
 After Phase 7, the Cribbage play band has exactly one resolution per
 frame, exactly one source of truth for vertical order, and zero CSS
-percentage anchors for gameplay geometry.
+percentage anchors for gameplay geometry that proved unnecessary.
 
 ## 9. Acceptance
 
 This spec is correct when all of the following hold:
 
-- Cribbage gameplay artifacts are **children of a fixed-order column**, not
+- One nested-layout primitive only: `composeMode: "group"` + `axis`. No
+  `"column"` / `"row"` / `"stack"` modes.
+- Cribbage gameplay artifacts are **children of a fixed-order group**, not
   siblings in the band's priority sort.
 - `priority` controls shrink/collapse only. It never reorders siblings.
 - All vertical placement is expressed via ratios, weights, aspect ratios,
   preferred/minimum sizes, and declared order. No CSS `top-[N%]`, no px.
 - PeggingRow/CountingRow bottom is structurally clamped above `bottomHud`.
 - A single `CribbageGameplayGeometryProvider` owns the resolution. Slots
-  consume; they never resolve.
+  consume; **slots never call `resolveLayout()`**.
+- Provider exposes both current and `lastValid` placements; pre-measurement
+  policy is consumer-chosen, not contract-mandated.
 - Impossible layouts emit explicit `wave4:layout_fault` events. No silent
   clipping, overlap, or band escape is permitted.
 
