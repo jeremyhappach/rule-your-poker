@@ -3,6 +3,7 @@ import type { CribbageState } from '@/lib/cribbageTypes';
 // CribbagePegBoard now rendered by parent for mount stability
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
+import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
@@ -31,6 +32,14 @@ interface CribbageFeltContentProps {
    *  Authoritative source for picking the complete-phase card layout. When null,
    *  legacy heuristic (`!lastHandCount` ⇒ pegging) is used as a safe fallback. */
   terminalPath?: 'pegging' | 'counting' | 'hand-counting' | 'crib-counting' | 'fallback' | null;
+  /** Wave 5B — descriptor inputs forwarded to Wave4PeggingRowSlot.
+   *  Optional with safe defaults so existing call sites continue to
+   *  compile; CribbageMobileGameTable supplies the real values to
+   *  keep resolver inputs consistent with Wave4PegboardSlot. */
+  viewerSeatPosition?: number | null;
+  opponentSeatPositions?: ReadonlyArray<number>;
+  cutCardRevealed?: boolean;
+  cribVisible?: boolean;
 }
 
 export const CribbageFeltContent = ({
@@ -45,6 +54,10 @@ export const CribbageFeltContent = ({
   thirtyOneDelayActive = false,
   handBoundaryKey,
   terminalPath = null,
+  viewerSeatPosition = null,
+  opponentSeatPositions = [],
+  cutCardRevealed = true,
+  cribVisible = true,
 }: CribbageFeltContentProps) => {
   // ── Lifecycle instrumentation ──
   const feltInstanceIdRef = useRef<string>(`felt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
@@ -258,21 +271,29 @@ export const CribbageFeltContent = ({
 
 
 
-      {/* Pegging / Gameplay Area - positioned below peg board but above dealer button */}
-      {/* Show during pegging OR during pegging win (to keep cards visible during win animation) */}
+      {/* Pegging / Gameplay Area — Wave 5B
+          Geometry ownership: cribbage.peggingRow descriptor → resolver
+          → Wave4PeggingRowSlot → rect. The previous
+          `absolute top-[68%] left-1/2 -translate-x-1/2` CSS percentage
+          no longer owns position. The slot's internal flex
+          (alignItems:center, justifyContent:center, gap) reproduces
+          the previous row layout — card sizes, overlap (-space-x-4)
+          and the count column are untouched. */}
       {(phaseForLayout === 'pegging' || isPeggingWin) && (
-        <div className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
+        <Wave4PeggingRowSlot
+          phase="pegging"
+          viewerSeatPosition={viewerSeatPosition}
+          opponentSeatPositions={opponentSeatPositions}
+          cutCardRevealed={cutCardRevealed}
+          cribVisible={cribVisible}
+        >
           {/* Count on the left - keep visible on pegging-win so the win snapshot
               shows the exact pegging state at win determination (count + sequence). */}
           <div className="flex flex-col items-center">
             <span className="text-[10px] text-white/60">Count</span>
             <span className="text-2xl font-bold text-poker-gold">{displayCount}</span>
           </div>
-          {/* Played cards in the CURRENT sequence only.
-              ROOT-CAUSE FIX: on a pegging win we previously rendered ALL played
-              cards (the winner's full pegging history), which read as "winner's
-              hand + crib + cut". The pegging-win felt must show the pegging
-              snapshot at win determination — i.e. the current sequence. */}
+          {/* Played cards in the CURRENT sequence only. */}
           <div className="flex -space-x-4 justify-center">
             {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
               <CribbagePlayingCard key={i} card={pc.card} size="md" />
@@ -281,7 +302,7 @@ export const CribbageFeltContent = ({
               <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
             )}
           </div>
-        </div>
+        </Wave4PeggingRowSlot>
       )}
     </>
   );
