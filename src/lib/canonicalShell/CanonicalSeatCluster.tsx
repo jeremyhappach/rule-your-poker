@@ -385,15 +385,30 @@ export function CanonicalSeatCluster({
       if (shiftX > MAX_BIAS_PX) shiftX = MAX_BIAS_PX;
       else if (shiftX < -MAX_BIAS_PX) shiftX = -MAX_BIAS_PX;
 
-      // Vertical: the name row is allowed to extend ABOVE the felt
-      // ellipse and even into shell-header territory if there is no
-      // room above the chip. Previously we shifted the row DOWN by
-      // clip-recovery, which collided the name with the chip face for
-      // top-anchored seats. The contract is: name row remains above
-      // the chip, never overlapping it. Top-edge clipping by the
-      // shell header is preferred over name/chip collision because
-      // the name row is permitted outside the felt.
+      // Vertical: TOP-anchored seats (slots -2, 2, 3) lift the name row
+      // upward into available header-clearance, up to a preferred
+      // separation from the chip. Without this, top seats keep a fixed
+      // ~2px gap regardless of how much vertical room exists between
+      // the chip and the shell header, which makes the name visually
+      // collide with the chip face. Bottom/mid seats are untouched.
+      //
+      //   availableClearance = nameRect.top - headerBottom - SAFETY_PX
+      //   nameLift           = clamp(preferredLift, 0, availableClearance)
+      //
+      // The chip, seat ring, felt, and spotlight do not move; only the
+      // name row's translateY changes.
       let shiftY = 0;
+      const isTopSlot = slot === -2 || slot === 2 || slot === 3;
+      if (isTopSlot) {
+        const PREFERRED_LIFT_PX = 14;
+        const header = document.querySelector(
+          '[data-canonical-shell-header]',
+        ) as HTMLElement | null;
+        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+        const availableClearance = nameRect.top - headerBottom - SAFETY_PX;
+        const lift = Math.max(0, Math.min(PREFERRED_LIFT_PX, availableClearance));
+        if (lift > 0) shiftY = -lift;
+      }
 
       const parts: string[] = [];
       if (shiftX) parts.push(`translateX(${shiftX}px)`);
