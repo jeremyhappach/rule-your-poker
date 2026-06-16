@@ -371,17 +371,45 @@ export function CanonicalSeatCluster({
       const chipRect = chip.getBoundingClientRect();
       const feltRect = felt.getBoundingClientRect();
       if (nameRect.width === 0 || feltRect.width === 0) return;
+
+      // Horizontal inward clamp — bias toward felt center if the natural
+      // centered position would clip the outer felt rail.
       const chipCx = chipRect.left + chipRect.width / 2;
       const feltCx = feltRect.left + feltRect.width / 2;
       const inwardSign = feltCx >= chipCx ? 1 : -1;
       const leftOverflow = feltRect.left + SAFETY_PX - nameRect.left;
       const rightOverflow = nameRect.right - (feltRect.right - SAFETY_PX);
-      let shift = 0;
-      if (inwardSign > 0 && leftOverflow > 0) shift = leftOverflow;
-      else if (inwardSign < 0 && rightOverflow > 0) shift = -rightOverflow;
-      if (shift > MAX_BIAS_PX) shift = MAX_BIAS_PX;
-      else if (shift < -MAX_BIAS_PX) shift = -MAX_BIAS_PX;
-      el.style.transform = shift ? `translateX(${shift}px)` : '';
+      let shiftX = 0;
+      if (inwardSign > 0 && leftOverflow > 0) shiftX = leftOverflow;
+      else if (inwardSign < 0 && rightOverflow > 0) shiftX = -rightOverflow;
+      if (shiftX > MAX_BIAS_PX) shiftX = MAX_BIAS_PX;
+      else if (shiftX < -MAX_BIAS_PX) shiftX = -MAX_BIAS_PX;
+
+      // Vertical top-safe clamp — the name row may extend OUTSIDE the
+      // felt ellipse (intentional) but must remain fully visible within
+      // the shell viewport. If the row's top is above the shell header
+      // bottom or the browser safe-area-inset-top, translate downward
+      // by the minimum amount required. Vertical position is otherwise
+      // invariant; only top-anchored seats will ever shift here because
+      // bottom seats sit far below any top chrome.
+      const header = document.querySelector(
+        '[data-canonical-shell-header]',
+      ) as HTMLElement | null;
+      const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+      const rootStyle = getComputedStyle(document.documentElement);
+      const safeTopRaw =
+        rootStyle.getPropertyValue('--shell-safe-top') ||
+        rootStyle.getPropertyValue('--safe-area-inset-top') ||
+        '0';
+      const safeTop = parseFloat(safeTopRaw) || 0;
+      const topLimit = Math.max(headerBottom, safeTop) + SAFETY_PX;
+      let shiftY = 0;
+      if (nameRect.top < topLimit) shiftY = topLimit - nameRect.top;
+
+      const parts: string[] = [];
+      if (shiftX) parts.push(`translateX(${shiftX}px)`);
+      if (shiftY) parts.push(`translateY(${shiftY}px)`);
+      el.style.transform = parts.join(' ');
     };
     apply();
     if (typeof window === 'undefined') return;
@@ -394,15 +422,20 @@ export function CanonicalSeatCluster({
         document.querySelector('[data-canonical-felt-surface]') ??
         document.querySelector('[data-canonical-shell-felt-frame]');
       if (felt) ro.observe(felt as Element);
+      const header = document.querySelector('[data-canonical-shell-header]');
+      if (header) ro.observe(header as Element);
     }
     window.addEventListener('resize', apply);
     window.addEventListener('orientationchange', apply);
+    window.addEventListener('scroll', apply, true);
     return () => {
       ro?.disconnect();
       window.removeEventListener('resize', apply);
       window.removeEventListener('orientationchange', apply);
+      window.removeEventListener('scroll', apply, true);
     };
   }, [position, name, slot]);
+
 
   if (slot === null || slot === undefined) return null;
 
