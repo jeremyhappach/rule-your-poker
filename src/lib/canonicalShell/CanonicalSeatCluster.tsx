@@ -480,14 +480,14 @@ export function CanonicalSeatCluster({
   // chip's `data-chip-center` rect is invariant regardless of which
   // siblings mount or unmount.
   //
-  // Growth direction (which side of the chip artifacts grow toward) is
-  // derived from the slot's table position:
-  //   - top-row slots (2, 3, -2)                : grow DOWN
-  //   - middle-row slots (1, 4)                 : grow DOWN
-  //   - bottom-row slots (0, 5, -1, -3)         : grow UP
-  // Name plate sits between chip and growth side (closest to chip);
-  // children sit further out in the growth direction.
-  const growsDown = !isBottomAnchored;
+  // VISUAL CONTRACT (uniform across every slot): the name row sits
+  // ABOVE the chip, the chip is the invariant origin, and game-owned
+  // gameplay artifacts ALWAYS emerge BELOW the chip — including the
+  // bottom-row seats. Previously bottom seats flipped growth upward,
+  // which produced NAME → ARTIFACT → CHIP stacking; the contract is
+  // now NAME / CHIP / ARTIFACTS for every seat.
+  const growsDown = true;
+
 
   type SeatOrientation = 'vertical-name-top';
   const seatOrientation: SeatOrientation = 'vertical-name-top';
