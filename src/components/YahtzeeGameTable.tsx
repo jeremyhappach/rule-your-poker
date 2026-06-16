@@ -1990,7 +1990,7 @@ export function YahtzeeGameTable({
           the canonical pattern used by MobileGameTable / GinRummy /
           NeutralInterstitial — never a bespoke vw/vh formula, which
           drifts from the shell ellipse and pushes HUD off-screen. */}
-      <div ref={tableContainerRef} className="relative overflow-hidden" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
+      <div ref={tableContainerRef} className="relative overflow-visible" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
 
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
