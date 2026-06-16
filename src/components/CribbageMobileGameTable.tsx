@@ -6273,6 +6273,15 @@ export const CribbageMobileGameTable = ({
                   thirtyOneDelayActive={thirtyOneDelayActive}
                   handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
                   terminalPath={terminalPath}
+                  /* Wave 5B — descriptor inputs for Wave4PeggingRowSlot.
+                     Mirror the values passed to Wave4PegboardSlot above
+                     so the resolver sees a consistent descriptor set. */
+                  viewerSeatPosition={currentPlayer?.position ?? null}
+                  opponentSeatPositions={[0, 1, 2, 3].filter(
+                    (p) => p !== (currentPlayer?.position ?? -1),
+                  )}
+                  cutCardRevealed={true}
+                  cribVisible={true}
                 />
 
                 {/* Counting Phase Overlay */}
