@@ -706,6 +706,9 @@ const Index = () => {
                     {/* Wartime Debug (platform instrumentation framework) */}
                     <WartimeDebugSettingRow />
 
+                    {/* Layout Tuning — first-class persistent canonical-shell knobs */}
+                    <LayoutTuningAdminSection />
+
 
                     {/* Allow Bot Dealers Toggle */}
                     <div className="flex items-center justify-between py-2">
