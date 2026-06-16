@@ -28,7 +28,6 @@ import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
-import { LayoutTuningPill } from "@/components/LayoutTuningPill";
 
 
 // Hydrate the Debug Harness cache once at module load so synchronous
