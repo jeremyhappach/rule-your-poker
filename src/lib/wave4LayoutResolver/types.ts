@@ -120,6 +120,45 @@ export interface ResolvedPlacement {
   visible: boolean;
   collapsedReason?: CollapsedReason;
   appliedAspectRatio: boolean;
+  /**
+   * Wave 5C — when this placement is a child of a group descriptor, the
+   * descriptor id of the containing group. Top-level placements omit it.
+   */
+  parentId?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Wave 5C — group primitive
+// ---------------------------------------------------------------------------
+
+export type GroupAxis = "x" | "y";
+
+export interface GroupChildSlot {
+  /** Stable id for this slot. Becomes the emitted placement id. */
+  id: string;
+  kind: "leaf" | "gap" | "group";
+  /** Gap weight in remaining-slack distribution. Default 1. */
+  weight?: number;
+  /** Nested group descriptor (kind === 'group'). */
+  group?: GroupDescriptor;
+  /** Leaf ArtifactDescriptor id (kind === 'leaf'). */
+  leafRef?: string;
+  /** Shrink preservation: lower number = shrinks first. */
+  shrinkOrder?: number;
+  /** Collapse preservation: lower number = collapses first. */
+  collapseOrder?: number | "never";
+}
+
+export interface GroupDescriptor {
+  id: string;
+  owner: string;
+  band: "play" | "topHud" | "bottomHud" | "announcement";
+  composeMode: "group";
+  axis: GroupAxis;
+  /** Children render in declared order. Priority never reorders. */
+  children: ReadonlyArray<GroupChildSlot>;
+  /** Clamp group rect to targeted band rect. */
+  clampToBand?: boolean;
 }
 
 export type LayoutFaultCode =
