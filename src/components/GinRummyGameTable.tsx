@@ -2334,7 +2334,7 @@ export const GinRummyGameTable = ({
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
-        className="relative overflow-hidden"
+        className="relative overflow-visible"
         style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
       >
 
