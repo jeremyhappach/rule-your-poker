@@ -157,20 +157,9 @@ export function LayoutTuningAdminSection() {
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
             Derived
           </div>
+          <DiagRow label="Top clearance" value={`${Math.round(diag.topClear)} px`} />
+          <DiagRow label="Bottom clearance" value={`${Math.round(diag.bottomClear)} px`} />
           <DiagRow label="Row 4 height" value={`${Math.round(diag.pane)} px`} />
-          <DiagRow label="Play height" value={`${Math.round(diag.play)} px`} />
-          <DiagRow label="Felt height" value={`${Math.round(diag.felt)} px`} />
-          <DiagRow label="Felt width" value={`${Math.round(diag.feltW)} px`} />
-          <DiagRow
-            label="Aspect cap"
-            value={diag.capActive ? 'ACTIVE' : 'FREE'}
-            highlight={diag.capActive}
-          />
-          {diag.capActive && (
-            <div className="mt-2 rounded bg-amber-600 px-2 py-1 text-center text-[11px] font-bold text-white tracking-wider">
-              ASPECT CAP ACTIVE
-            </div>
-          )}
         </div>
 
         <p className="text-[10px] text-muted-foreground">
