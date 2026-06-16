@@ -447,14 +447,12 @@ export function CanonicalSeatCluster({
             actualLift: Math.round(lift * 10) / 10,
           };
           const w = window as unknown as Record<string, unknown>;
-          const cacheKey = `__pvrLiftLog_${slot}_${position}`;
-          const prev = w[cacheKey] as string | undefined;
-          const sig = JSON.stringify(payload);
-          if (prev !== sig) {
-            w[cacheKey] = sig;
-            // eslint-disable-next-line no-console
-            console.log('[PVR.lift]', payload);
-          }
+          const store =
+            ((w.__pvrLiftStore as Record<string, unknown>) ??=
+              {}) as Record<string, unknown>;
+          store[`slot${slot}`] = { ...payload, ts: Date.now() };
+          const bump = (w.__pvrLiftBump as (() => void) | undefined);
+          if (bump) bump();
         }
       }
 
