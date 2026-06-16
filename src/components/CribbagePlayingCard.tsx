@@ -5,6 +5,9 @@ interface CribbagePlayingCardProps {
   size?: 'xs' | 'sm' | 'md' | 'lg';
   faceDown?: boolean;
   cardBackColors?: { color: string; darkColor: string };
+  /** Optional rect-driven width override (px). Height derives from 2:3 aspect.
+   *  When provided, overrides `size` token. Font sizes scale proportionally. */
+  widthPx?: number;
 }
 
 export const CribbagePlayingCard = ({ 
@@ -12,6 +15,7 @@ export const CribbagePlayingCard = ({
   size = 'md',
   faceDown = false,
   cardBackColors,
+  widthPx,
 }: CribbagePlayingCardProps) => {
   // Narrower cards with 2:3 aspect ratio - maximize text size for readability
   const sizeStyles: Record<string, { width: number; height: number; fontSize: string; suitSize: string }> = {
@@ -21,7 +25,19 @@ export const CribbagePlayingCard = ({
     lg: { width: 48, height: 72, fontSize: 'text-3xl font-black', suitSize: 'text-4xl' },
   };
 
-  const { width, height, fontSize, suitSize } = sizeStyles[size];
+  const tokenStyles = sizeStyles[size];
+  const useOverride = typeof widthPx === 'number' && Number.isFinite(widthPx) && widthPx > 0;
+  const width = useOverride ? widthPx! : tokenStyles.width;
+  const height = useOverride ? widthPx! * 1.5 : tokenStyles.height;
+  // Rect-driven font sizing: rank ≈ 60% of width, suit ≈ 75% of width.
+  const fontStyle = useOverride
+    ? { fontSize: `${width * 0.6}px`, fontWeight: 900 as const, lineHeight: 1 }
+    : undefined;
+  const suitStyle = useOverride
+    ? { fontSize: `${width * 0.75}px`, lineHeight: 1 }
+    : undefined;
+  const fontSize = useOverride ? '' : tokenStyles.fontSize;
+  const suitSize = useOverride ? '' : tokenStyles.suitSize;
 
   const getSuitSymbol = (suit: CribbageCard['suit']) => {
     switch (suit) {
@@ -63,10 +79,10 @@ export const CribbagePlayingCard = ({
       style={{ width, height }}
       className="rounded-sm bg-white border border-gray-300 shadow-sm flex flex-col items-center justify-between py-0.5 overflow-hidden"
     >
-      <span className={`leading-none ${fontSize} ${getSuitColor(card.suit)}`}>
+      <span className={`leading-none ${fontSize} ${getSuitColor(card.suit)}`} style={fontStyle}>
         {card.rank}
       </span>
-      <span className={`leading-none ${suitSize} ${getSuitColor(card.suit)}`}>
+      <span className={`leading-none ${suitSize} ${getSuitColor(card.suit)}`} style={suitStyle}>
         {getSuitSymbol(card.suit)}
       </span>
     </div>
