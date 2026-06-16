@@ -38,7 +38,7 @@ export interface CanonicalSlotPlacement {
  */
 export function getCanonicalSlotPlacement(
   slot: CanonicalSlot | null | undefined,
-  variant: 'occupied' | 'open-seat' | 'occupied-observer' | 'occupied-2p-face' = 'occupied',
+  variant: 'occupied' | 'open-seat' | 'occupied-observer' = 'occupied',
 ): CanonicalSlotPlacement {
   // Percentage-based anchors that hug the elliptical felt rail.
   switch (slot) {
@@ -63,15 +63,12 @@ export function getCanonicalSlotPlacement(
         : { className: 'bottom-[1%] right-[6%] items-end scale-90' };
     case 0:  return { className: 'bottom-[2%] left-[2%] items-start' };
     case 1:  return { className: 'top-[50%] left-[1%] -translate-y-1/2 items-start' };
-    // Slot 2 (upper-left perimeter). Default sits on the outer rail
-    // so the seat clears community cards / top branding. Multi-player
-    // observer projections retain the in-felt default below.
-    case 2:  return variant === 'occupied-2p-face'
-      ? { className: 'top-[2%] left-[1%] items-start scale-90' }
-      : { className: 'top-[6%] left-[4%] items-start' };
-    case 3:  return variant === 'occupied-2p-face'
-      ? { className: 'top-[2%] right-[1%] items-end scale-90' }
-      : { className: 'top-[6%] right-[4%] items-end' };
+    // Slots 2/3 use a single canonical placement for ALL games — the
+    // legacy `occupied-2p-face` rescue variant was deleted because the
+    // default already lives on the outer rail (Holm-proven). Top safe
+    // area applies uniformly here without any bespoke geometry branch.
+    case 2:  return { className: 'top-[6%] left-[4%] items-start' };
+    case 3:  return { className: 'top-[6%] right-[4%] items-end' };
     case 4:  return { className: 'top-[50%] right-[1%] -translate-y-1/2 items-end' };
     case 5:  return { className: 'bottom-[2%] right-[2%] items-end' };
     default: return { className: 'top-2 left-2 items-start' };
