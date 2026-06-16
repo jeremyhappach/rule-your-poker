@@ -417,6 +417,12 @@ export function NeutralInterstitial({
       aria-hidden={hasParticipants ? undefined : 'true'}
       className="h-full flex flex-col bg-transparent relative"
     >
+      {/* TOP safe-area spacer — see MobileGameTable for contract. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-top-spacer=""
+        style={{ flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none' }}
+      />
       <div
         className="relative"
         style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', overflow: 'visible' }}
@@ -424,11 +430,11 @@ export function NeutralInterstitial({
         {/* Shell owns the felt unconditionally — no local mount. */}
         {seatLayer}
       </div>
-      {/* PVR bottom-clearance spacer — see MobileGameTable for contract. */}
+      {/* BOTTOM safe-area spacer — see MobileGameTable for contract. */}
       <div
         aria-hidden
         data-canonical-shell-play-bottom-spacer=""
-        style={{ flex: '0 0 var(--play-vertical-reserve, 0px)', pointerEvents: 'none' }}
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
       />
       {/* HUD region — shell-owned 5-row proportional grid (Phase 2).
           Interstitial has no timer / pane / identity content; the rows

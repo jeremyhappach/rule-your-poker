@@ -5611,7 +5611,17 @@ export const MobileGameTable = ({
       {/* Status badges moved to bottom section */}
       
       {/* Main table area - USE MORE VERTICAL SPACE */}
-      {/* Felt region — height owned by the shell via --shell-play-h.
+      {/* TOP safe-area spacer — pixels donated from Row 4 (pane) that
+          appear ABOVE the felt region. Provides clearance into which
+          top-seat names + top-seat artifacts (rendered with
+          overflow:visible) can render without colliding with the shell
+          header. Width-only token; never reads game type. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-top-spacer=""
+        style={{ flex: '0 0 var(--play-top-safe-area, 0px)', pointerEvents: 'none' }}
+      />
+      {/* Felt region — height owned by the shell via --shell-felt-h.
           The HUD region below naturally consumes --shell-hud-h, so
           the play/HUD partition is deterministic and proportional. */}
       <div
@@ -7554,16 +7564,16 @@ export const MobileGameTable = ({
         
       </div>
 
-      {/* PVR bottom-clearance spacer — pixels donated from Row 4 (pane)
-          surface as a gap between the felt region and the HUD column.
-          Bottom-seat decorations (card backs, showdown cards) rendered
-          inside the felt region with overflow:visible render INTO this
-          gap rather than being clipped at the felt-region bottom edge.
-          Width-only token; never reads game type. */}
+      {/* BOTTOM safe-area spacer — pixels donated from Row 4 (pane) that
+          appear BELOW the felt region. Bottom-seat decorations (card
+          backs, showdown cards) rendered inside the felt region with
+          overflow:visible render INTO this gap rather than being
+          clipped at the felt-region bottom edge. Width-only token;
+          never reads game type. */}
       <div
         aria-hidden
         data-canonical-shell-play-bottom-spacer=""
-        style={{ flex: '0 0 var(--play-vertical-reserve, 0px)', pointerEvents: 'none' }}
+        style={{ flex: '0 0 var(--play-bottom-safe-area, 0px)', pointerEvents: 'none' }}
       />
 
       {/* Bottom section - Current player's cards and actions (swipeable) */}

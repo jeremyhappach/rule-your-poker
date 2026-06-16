@@ -89,45 +89,52 @@ All colors MUST be HSL.
     --shell-play-sum: calc(var(--shell-r-play) + var(--shell-r-hud));
 
     /* ─────────────────────────────────────────────────────────────
-       Wave 4 — Play-Area Vertical Reserve (experimental token).
+       Split Play-Area Safe Areas (replaces single PVR token).
 
-       Steals vertical pixels EXCLUSIVELY from HUD Row 4 (the active
-       content pane) and transfers them to the play region (felt +
-       seat ring clearance). Rows 1/2/3/5 retain their original
-       heights — only Row 4 (pane) shrinks. The visible felt WIDTH
-       is untouched (it remains capped by --shell-felt-w / aspect).
+       Two INDEPENDENT safe areas surround the felt inside the play
+       region. Both steal vertical pixels EXCLUSIVELY from HUD Row 4
+       (the active content pane). Rows 1/2/3/5 retain their original
+       heights. The felt size, position-relative-to-its-own-frame,
+       aspect ratio, seat ring ellipse, chip anchors, spotlight, and
+       Wave 4 descriptor geometry are all PIXEL-IDENTICAL across
+       every (top, bottom) value pair.
 
-       Range tested: 0px (baseline) → 28px.
-       Default: 20px — clears upper-name/chip overlap and lower
-       card-back/HUD collision on a 390×844 baseline while leaving
-       the pane readable (Cards / Chat / Lobby tabs still fit).
+       --play-top-safe-area    — empty clearance ABOVE the felt
+                                  inside the play region. Benefits
+                                  top seat names and top seat
+                                  artifacts that render with
+                                  overflow:visible.
+       --play-bottom-safe-area — empty clearance BELOW the felt
+                                  inside the play region. Benefits
+                                  bottom seat card backs / showdown
+                                  cards rendered with overflow:visible.
 
-       Override --play-vertical-reserve on :root to A/B test.
+       Defaults: top 24px, bottom 12px. Admin sliders persist to
+       localStorage('admin.playTopSafeArea' / 'admin.playBottomSafeArea').
        ───────────────────────────────────────────────────────────── */
-    --play-vertical-reserve: 20px;
+    --play-top-safe-area:    24px;
+    --play-bottom-safe-area: 12px;
+    --play-safe-area-total:  calc(var(--play-top-safe-area) + var(--play-bottom-safe-area));
 
-    /* Baseline play/hud heights (pre-reserve). */
+    /* Baseline play/hud heights (pre-safe-area). */
     --shell-play-h-base: calc(var(--shell-flex-h) * (var(--shell-r-play) / var(--shell-play-sum)));
     --shell-hud-h-base:  calc(var(--shell-flex-h) - var(--shell-play-h-base));
 
-    /* Effective shell heights — play grows by reserve, HUD shrinks. */
-    --shell-play-h: calc(var(--shell-play-h-base) + var(--play-vertical-reserve));
-    --shell-hud-h:  calc(var(--shell-hud-h-base)  - var(--play-vertical-reserve));
+    /* Effective shell heights — play grows by the safe-area total,
+       HUD shrinks. */
+    --shell-play-h: calc(var(--shell-play-h-base) + var(--play-safe-area-total));
+    --shell-hud-h:  calc(var(--shell-hud-h-base)  - var(--play-safe-area-total));
 
     /* ─────────────────────────────────────────────────────────────
        Canonical FELT geometry — single source of truth.
-       Width-bounded, aspect-capped. The play region now includes
-       --play-vertical-reserve, so the felt naturally consumes the
-       extra clearance up to the aspect cap.
+       Width-bounded, aspect-capped. The felt height is pinned to
+       the BASE play region and the felt frame is positioned inside
+       the play region with `top: var(--play-top-safe-area)`. This
+       keeps the felt bounding rect, aspect ratio, seat ring,
+       chip anchors, spotlight, and descriptor geometry pixel-
+       identical across every safe-area value.
        ───────────────────────────────────────────────────────────── */
     --shell-felt-w:   min(94vw, 720px);
-    /* Felt height is pinned to the BASE play region — the reserve does
-       NOT enlarge the felt. The reserve appears as symmetric breathing
-       room ABOVE and BELOW the play assembly inside the play region
-       (the play region centers the felt vertically). This keeps the
-       felt bounding rect, aspect ratio, seat ring ellipse, chip
-       anchors, spotlight, and Wave 4 descriptor geometry pixel-
-       identical across all PVR values. */
     --shell-felt-h:   min(var(--shell-play-h-base), calc(var(--shell-felt-w) / 1.09));
 
     /* Seat-safe clearance inside the play region. */
@@ -143,15 +150,15 @@ All colors MUST be HSL.
 
 
     /* Computed HUD row heights.
-       Rows 1/2/3/5 are sized from the BASE hud-h (pre-reserve) so
-       their heights are INVARIANT under --play-vertical-reserve.
-       Row 4 (pane) is sized from its base share MINUS the reserve —
-       Row 4 is the sole donor of vertical pixels to the play region.
-       Sum of all five rows = --shell-hud-h. */
+       Rows 1/2/3/5 are sized from the BASE hud-h (pre-safe-area) so
+       their heights are INVARIANT under top/bottom safe area.
+       Row 4 (pane) is sized from its base share MINUS the safe-area
+       total — Row 4 is the sole donor of vertical pixels to the
+       play region. Sum of all five rows = --shell-hud-h. */
     --hud-h-announcement: calc(var(--shell-hud-h-base) * var(--hud-r-announcement));
     --hud-h-timer:        calc(var(--shell-hud-h-base) * var(--hud-r-timer));
     --hud-h-tabs:         calc(var(--shell-hud-h-base) * var(--hud-r-tabs));
-    --hud-h-pane:         calc(var(--shell-hud-h-base) * var(--hud-r-pane) - var(--play-vertical-reserve));
+    --hud-h-pane:         calc(var(--shell-hud-h-base) * var(--hud-r-pane) - var(--play-safe-area-total));
     --hud-h-identity:     calc(var(--shell-hud-h-base) * var(--hud-r-identity));
 
     /* Continuous content scales — clamped so artifacts don't degenerate. */
