@@ -121,7 +121,14 @@ All colors MUST be HSL.
        extra clearance up to the aspect cap.
        ───────────────────────────────────────────────────────────── */
     --shell-felt-w:   min(94vw, 720px);
-    --shell-felt-h:   min(var(--shell-play-h), calc(var(--shell-felt-w) / 1.09));
+    /* Felt height is pinned to the BASE play region — the reserve does
+       NOT enlarge the felt. The reserve appears as symmetric breathing
+       room ABOVE and BELOW the play assembly inside the play region
+       (the play region centers the felt vertically). This keeps the
+       felt bounding rect, aspect ratio, seat ring ellipse, chip
+       anchors, spotlight, and Wave 4 descriptor geometry pixel-
+       identical across all PVR values. */
+    --shell-felt-h:   min(var(--shell-play-h-base), calc(var(--shell-felt-w) / 1.09));
 
     /* Seat-safe clearance inside the play region. */
     --shell-seat-safe-bottom: max(8px, calc(var(--shell-play-h) * 0.04));
