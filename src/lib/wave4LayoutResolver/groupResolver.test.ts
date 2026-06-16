@@ -36,74 +36,30 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { resolveLayout } from "./resolver";
+import { resolveLayoutWithGroups } from "./resolver";
 import type {
   ArtifactDescriptor,
   GeometryConstraints,
+  GroupChildSlot,
+  GroupDescriptor,
   Rect,
   ResolvedPlacement,
   ResolvedLayout,
 } from "./types";
 import { rectVmin, vmin, rectContains, rectsIntersect } from "./units";
 
-// ---------------------------------------------------------------------------
-// Phase-3 shadow types
-//
-// These extend the resolver contract without modifying types.ts. Phase 3
-// folds them into the canonical types and removes this block.
-// ---------------------------------------------------------------------------
-
-type GroupAxis = "x" | "y";
-
-interface GroupChildSlot {
-  /** Stable id for the gap or nested group/leaf. */
-  id: string;
-  /** Either a leaf descriptor id (already published) or a nested group. */
-  kind: "leaf" | "gap" | "group";
-  /** For gaps: relative weight in remaining-slack distribution. Default 1. */
-  weight?: number;
-  /** For nested groups. */
-  group?: GroupDescriptor;
-  /** For leaves: descriptor id reference. */
-  leafRef?: string;
-  /** Shrink preservation: lower number = shrinks first. */
-  shrinkOrder?: number;
-  /** Collapse preservation: lower number = collapses first. `never` = never collapses. */
-  collapseOrder?: number | "never";
-}
-
-interface GroupDescriptor {
-  id: string;
-  owner: string;
-  band: "play" | "topHud" | "bottomHud" | "announcement";
-  composeMode: "group";
-  axis: GroupAxis;
-  /** Children render in this exact declared order. Priority never reorders. */
-  children: ReadonlyArray<GroupChildSlot>;
-  /** Optional clamp: group cannot exceed this band's reserved area. */
-  clampToBand?: boolean;
-}
-
-interface ExtendedPlacement extends ResolvedPlacement {
-  parentId?: string;
-}
-
-interface ExtendedLayout extends ResolvedLayout {
-  placements: ReadonlyArray<ExtendedPlacement>;
-}
-
 // Phase-3-only fault codes (group primitive).
 type GroupFaultCode = "group_min_exceeds_extent";
 
-// Helper: a placeholder resolve call. Phase 3 supplies the real implementation
-// that accepts groups. For Phase 2 we route through the existing signature so
-// fixtures compile; the skipped suite never executes them.
+type ExtendedPlacement = ResolvedPlacement;
+type ExtendedLayout = ResolvedLayout;
+
 function resolveWithGroups(
-  _leaves: ReadonlyArray<ArtifactDescriptor>,
-  _groups: ReadonlyArray<GroupDescriptor>,
+  leaves: ReadonlyArray<ArtifactDescriptor>,
+  groups: ReadonlyArray<GroupDescriptor>,
   geometry: GeometryConstraints,
 ): ExtendedLayout {
-  return resolveLayout(_leaves, geometry) as ExtendedLayout;
+  return resolveLayoutWithGroups(leaves, groups, geometry);
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +215,7 @@ function round(v: number): number {
 // Suite (Phase-3 activated)
 // ---------------------------------------------------------------------------
 
-describe.skip("Wave 5C — group resolver contract (activates in Phase 3)", () => {
+describe("Wave 5C — group resolver contract", () => {
   // -------------------------------------------------------------------------
   describe("fixed child order", () => {
     it("emits children in declared order regardless of priority", () => {

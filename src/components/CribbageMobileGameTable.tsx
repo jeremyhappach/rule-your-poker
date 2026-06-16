@@ -78,6 +78,7 @@ import { emitCribbageHandoffTrace } from '@/lib/cribbageHandoffTrace';
 import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import { Wave4PegboardSlot } from '@/components/Wave4PegboardSlot';
+import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
 import {
   checkStaleDealerGameRender,
   checkCribbagePhaseRenderMismatch,
@@ -6006,6 +6007,17 @@ export const CribbageMobileGameTable = ({
           cutCardRevealed={true}
           cribVisible={true}
         />
+
+        {/* Wave 5C — Phase 3: gameplay geometry provider (mounted, no consumers).
+            Builds the cribbage gameplay-column descriptors once, resolves
+            them once per geometry change, emits telemetry on faults.
+            Pegboard / PeggingRow / Counting / Crib / Cut all remain on
+            their current rendering paths in Phase 3. */}
+        <CribbageGameplayGeometryProvider>
+          <></>
+        </CribbageGameplayGeometryProvider>
+
+
 
 
 

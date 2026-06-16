@@ -22,6 +22,9 @@ import type {
   BandId,
   CollapsePriority,
   GeometryConstraints,
+  GroupAxis,
+  GroupChildSlot,
+  GroupDescriptor,
   LayoutFault,
   Rect,
   ResolvedLayout,
@@ -778,3 +781,324 @@ export function resolveLayout(
 }
 
 export { COLLAPSE_RANK };
+
+// ===========================================================================
+// Wave 5C — group primitive
+// ===========================================================================
+
+function leafPreferred(d: ArtifactDescriptor, axis: GroupAxis): number {
+  return axis === "x" ? d.preferredSize.width.value : d.preferredSize.height.value;
+}
+function leafMin(d: ArtifactDescriptor, axis: GroupAxis): number {
+  return axis === "x" ? d.minimumSize.width.value : d.minimumSize.height.value;
+}
+
+function groupPreferredAlong(
+  g: GroupDescriptor,
+  axis: GroupAxis,
+  leafById: Map<string, ArtifactDescriptor>,
+): number {
+  if (g.axis === axis) {
+    let s = 0;
+    for (const c of g.children) s += childPreferredAlong(c, axis, leafById);
+    return s;
+  }
+  let m = 0;
+  for (const c of g.children) {
+    const v = childPreferredAlong(c, axis, leafById);
+    if (v > m) m = v;
+  }
+  return m;
+}
+
+function groupMinAlong(
+  g: GroupDescriptor,
+  axis: GroupAxis,
+  leafById: Map<string, ArtifactDescriptor>,
+): number {
+  if (g.axis === axis) {
+    let s = 0;
+    for (const c of g.children) s += childMinAlong(c, axis, leafById);
+    return s;
+  }
+  // Cross axis: take the MIN of non-gap children so the group can shrink
+  // when its parent demands it. Individual children may be squeezed below
+  // their preferred cross extent (still bounded by their own min along the
+  // group's primary axis, which is the dimension that actually matters).
+  let m = Infinity;
+  for (const c of g.children) {
+    if (c.kind === "gap") continue;
+    const v = childMinAlong(c, axis, leafById);
+    if (v < m) m = v;
+  }
+  return Number.isFinite(m) ? m : 0;
+}
+
+function childPreferredAlong(
+  c: GroupChildSlot,
+  axis: GroupAxis,
+  leafById: Map<string, ArtifactDescriptor>,
+): number {
+  if (c.kind === "gap") return 0;
+  if (c.kind === "leaf") {
+    const d = c.leafRef ? leafById.get(c.leafRef) : undefined;
+    return d ? leafPreferred(d, axis) : 0;
+  }
+  if (c.kind === "group" && c.group) {
+    return groupPreferredAlong(c.group, axis, leafById);
+  }
+  return 0;
+}
+
+function childMinAlong(
+  c: GroupChildSlot,
+  axis: GroupAxis,
+  leafById: Map<string, ArtifactDescriptor>,
+): number {
+  if (c.kind === "gap") return 0;
+  if (c.kind === "leaf") {
+    const d = c.leafRef ? leafById.get(c.leafRef) : undefined;
+    return d ? leafMin(d, axis) : 0;
+  }
+  if (c.kind === "group" && c.group) {
+    return groupMinAlong(c.group, axis, leafById);
+  }
+  return 0;
+}
+
+function collectLeafIds(c: GroupChildSlot): string[] {
+  if (c.kind === "leaf") return c.leafRef ? [c.leafRef] : [];
+  if (c.kind === "group" && c.group) {
+    const out: string[] = [];
+    for (const inner of c.group.children) out.push(...collectLeafIds(inner));
+    return out;
+  }
+  return [];
+}
+
+interface FlatRectMut {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function resolveGroup(
+  g: GroupDescriptor,
+  rect: FlatRectMut,
+  leafById: Map<string, ArtifactDescriptor>,
+  placements: ResolvedPlacement[],
+  faults: LayoutFault[],
+): void {
+  const primaryAxis = g.axis;
+  const primaryExtent = primaryAxis === "x" ? rect.width : rect.height;
+
+  type Slot = {
+    child: GroupChildSlot;
+    preferred: number;
+    minimum: number;
+    weight: number;
+    shrinkOrder: number;
+    collapseOrder: number | "never";
+    allocated: number;
+    visible: boolean;
+  };
+
+  const slots: Slot[] = g.children.map((c) => {
+    const pref = childPreferredAlong(c, primaryAxis, leafById);
+    const min = childMinAlong(c, primaryAxis, leafById);
+    return {
+      child: c,
+      preferred: pref,
+      minimum: min,
+      weight: c.weight ?? 1,
+      shrinkOrder: c.shrinkOrder ?? Number.POSITIVE_INFINITY,
+      collapseOrder: c.collapseOrder ?? Number.POSITIVE_INFINITY,
+      allocated: pref,
+      visible: true,
+    };
+  });
+
+  const totalPreferred = slots.reduce((s, x) => s + x.preferred, 0);
+
+  if (totalPreferred <= primaryExtent + EPSILON_VMIN) {
+    // Distribute slack to gaps proportional to weight.
+    const slack = primaryExtent - totalPreferred;
+    const gapSlots = slots.filter((s) => s.child.kind === "gap");
+    const totalW = gapSlots.reduce((a, s) => a + Math.max(0, s.weight), 0);
+    if (slack > EPSILON_VMIN && totalW > 0) {
+      for (const s of gapSlots) {
+        s.allocated = s.preferred + (slack * Math.max(0, s.weight)) / totalW;
+      }
+    }
+  } else {
+    // Over: shrink in shrinkOrder asc down to min.
+    let need = totalPreferred - primaryExtent;
+    const shrinkSorted = [...slots].sort((a, b) => {
+      if (a.shrinkOrder !== b.shrinkOrder) return a.shrinkOrder - b.shrinkOrder;
+      return a.child.id < b.child.id ? -1 : 1;
+    });
+    for (const s of shrinkSorted) {
+      if (need <= EPSILON_VMIN) break;
+      const slack = Math.max(0, s.preferred - s.minimum);
+      const take = Math.min(slack, need);
+      s.allocated = s.preferred - take;
+      need -= take;
+    }
+
+    if (need > EPSILON_VMIN) {
+      // Collapse in collapseOrder asc (never = skip).
+      const collapseSorted = [...slots]
+        .filter((s) => s.visible)
+        .sort((a, b) => {
+          const av = a.collapseOrder === "never" ? Infinity : a.collapseOrder;
+          const bv = b.collapseOrder === "never" ? Infinity : b.collapseOrder;
+          if (av !== bv) return av - bv;
+          return a.child.id < b.child.id ? -1 : 1;
+        });
+      for (const s of collapseSorted) {
+        if (need <= EPSILON_VMIN) break;
+        if (s.collapseOrder === "never") break;
+        s.visible = false;
+        need -= s.allocated;
+        s.allocated = 0;
+      }
+    }
+
+    if (need > EPSILON_VMIN) {
+      const offenderLeafIds: string[] = [];
+      for (const s of slots) {
+        if (s.collapseOrder === "never") {
+          offenderLeafIds.push(...collectLeafIds(s.child));
+        }
+        if (!s.visible) offenderLeafIds.push(...collectLeafIds(s.child));
+      }
+      faults.push({
+        code: "never_min_exceeds_band",
+        artifactIds: Array.from(new Set(offenderLeafIds)),
+        band: g.band,
+        message: `Group ${g.id} cannot fit 'never' children within extent (axis=${g.axis}).`,
+      });
+    } else {
+      // Some collapsed but the group fit: still surface as a fault so the
+      // collapsed leaves are visible to telemetry/consumers.
+      const collapsedLeafIds: string[] = [];
+      for (const s of slots) {
+        if (!s.visible) collapsedLeafIds.push(...collectLeafIds(s.child));
+      }
+      if (collapsedLeafIds.length > 0) {
+        faults.push({
+          code: "last_min_exceeds_band",
+          artifactIds: Array.from(new Set(collapsedLeafIds)),
+          band: g.band,
+          message: `Group ${g.id} collapsed children to fit extent.`,
+        });
+      }
+    }
+  }
+
+  // Place children along primary axis in DECLARED order.
+  let cursor = primaryAxis === "x" ? rect.x : rect.y;
+  for (const s of slots) {
+    const childRect: FlatRectMut =
+      primaryAxis === "x"
+        ? { x: cursor, y: rect.y, width: s.allocated, height: rect.height }
+        : { x: rect.x, y: cursor, width: rect.width, height: s.allocated };
+    cursor += s.allocated;
+
+    if (!s.visible) {
+      placements.push({
+        id: s.child.id,
+        rect: { x: vmin(0), y: vmin(0), width: vmin(0), height: vmin(0) },
+        visible: false,
+        collapsedReason: "pressure",
+        appliedAspectRatio: false,
+        parentId: g.id,
+      });
+      continue;
+    }
+
+    placements.push({
+      id: s.child.id,
+      rect: {
+        x: vmin(childRect.x),
+        y: vmin(childRect.y),
+        width: vmin(childRect.width),
+        height: vmin(childRect.height),
+      },
+      visible: true,
+      appliedAspectRatio: false,
+      parentId: g.id,
+    });
+
+    if (s.child.kind === "group" && s.child.group) {
+      resolveGroup(s.child.group, childRect, leafById, placements, faults);
+    }
+  }
+}
+
+/**
+ * Wave 5C — public entry point that resolves grouped descriptors alongside
+ * standalone leaves. Standalone leaves go through `resolveLayout` as before;
+ * groups produce their own placements with `parentId` set on descendants.
+ *
+ * Leaf ids referenced by any group are EXCLUDED from the standalone flow
+ * solve to avoid double-placement.
+ */
+export function resolveLayoutWithGroups(
+  descriptors: ReadonlyArray<ArtifactDescriptor>,
+  groups: ReadonlyArray<GroupDescriptor>,
+  geometry: GeometryConstraints,
+): ResolvedLayout {
+  const leafById = new Map<string, ArtifactDescriptor>();
+  for (const d of descriptors) leafById.set(d.id, d);
+
+  const referenced = new Set<string>();
+  const visitGroup = (g: GroupDescriptor) => {
+    for (const c of g.children) {
+      if (c.kind === "leaf" && c.leafRef) referenced.add(c.leafRef);
+      if (c.kind === "group" && c.group) visitGroup(c.group);
+    }
+  };
+  for (const g of groups) visitGroup(g);
+
+  const standalone = descriptors.filter((d) => !referenced.has(d.id));
+  const base = resolveLayout(standalone, geometry);
+
+  const placements: ResolvedPlacement[] = [...base.placements];
+  const faults: LayoutFault[] = [...base.faults];
+
+  for (const g of groups) {
+    const bandRect = bandRectFor(g.band, geometry);
+    if (!bandRect) {
+      faults.push({
+        code: "missing_safe_area_dependency",
+        artifactIds: [g.id],
+        band: g.band,
+        message: `Group ${g.id} targets missing band '${g.band}'.`,
+      });
+      continue;
+    }
+    const flat: FlatRectMut = {
+      x: bandRect.x.value,
+      y: bandRect.y.value,
+      width: bandRect.width.value,
+      height: bandRect.height.value,
+    };
+    // Emit the group's own placement (top-level: no parentId).
+    placements.push({
+      id: g.id,
+      rect: {
+        x: vmin(flat.x),
+        y: vmin(flat.y),
+        width: vmin(flat.width),
+        height: vmin(flat.height),
+      },
+      visible: true,
+      appliedAspectRatio: false,
+    });
+    resolveGroup(g, flat, leafById, placements, faults);
+  }
+
+  return { placements, faults, geometry };
+}
