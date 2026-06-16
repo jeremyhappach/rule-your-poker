@@ -32,6 +32,14 @@ interface CribbageFeltContentProps {
    *  Authoritative source for picking the complete-phase card layout. When null,
    *  legacy heuristic (`!lastHandCount` ⇒ pegging) is used as a safe fallback. */
   terminalPath?: 'pegging' | 'counting' | 'hand-counting' | 'crib-counting' | 'fallback' | null;
+  /** Wave 5B — descriptor inputs forwarded to Wave4PeggingRowSlot.
+   *  Optional with safe defaults so existing call sites continue to
+   *  compile; CribbageMobileGameTable supplies the real values to
+   *  keep resolver inputs consistent with Wave4PegboardSlot. */
+  viewerSeatPosition?: number | null;
+  opponentSeatPositions?: ReadonlyArray<number>;
+  cutCardRevealed?: boolean;
+  cribVisible?: boolean;
 }
 
 export const CribbageFeltContent = ({
@@ -46,6 +54,10 @@ export const CribbageFeltContent = ({
   thirtyOneDelayActive = false,
   handBoundaryKey,
   terminalPath = null,
+  viewerSeatPosition = null,
+  opponentSeatPositions = [],
+  cutCardRevealed = true,
+  cribVisible = true,
 }: CribbageFeltContentProps) => {
   // ── Lifecycle instrumentation ──
   const feltInstanceIdRef = useRef<string>(`felt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`);
