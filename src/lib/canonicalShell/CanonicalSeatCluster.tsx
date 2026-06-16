@@ -433,18 +433,15 @@ export function CanonicalSeatCluster({
 
   const isObserverProjection =
     anchors?.projectionMode === 'observer-absolute' || anchors?.viewerPosition == null;
-  // 2P face-to-face canonicalization (Cribbage / Gin / Yahtzee): the
-  // opponent slot 2/3 gets pushed to the outer perimeter rail so the
-  // chip cluster clears the top-band branding and score bars. Multi-
-  // player observer projections keep the default in-felt anchor.
-  const canonicalized2p = anchors?.byPosition.get(position)?.canonicalized2p ?? false;
+  // All seats use the canonical placement contract. The legacy
+  // `occupied-2p-face` variant was deleted — its rescue offsets
+  // (top-[2%]/left-[1%]/scale-90) were tuning debt from before the
+  // June 15 default migration that already moved slots 2/3 to the
+  // outer rail (top-[6%]/left-[4%]). Holm proves the default works;
+  // Cribbage / Gin / Yahtzee now use the same geometry uniformly.
   const placement = getCanonicalSlotPlacement(
     slot,
-    canonicalized2p && (slot === 2 || slot === 3)
-      ? 'occupied-2p-face'
-      : isObserverProjection
-        ? 'occupied-observer'
-        : 'occupied',
+    isObserverProjection ? 'occupied-observer' : 'occupied',
   );
   const raiseClass = raisePosition ? getCanonicalSlotRaiseClass(slot) : '';
   // Bottom-anchored slots (HOME bottom-center, bottom corners) must
