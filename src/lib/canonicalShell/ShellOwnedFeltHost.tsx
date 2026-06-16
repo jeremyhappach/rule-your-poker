@@ -324,14 +324,14 @@ export function ShellOwnedFeltHost({
           // felt's bottom edge and the play/HUD boundary — it never
           // leaks into HUD territory (host has overflow:hidden) and
           // never pushes the HUD downward.
-          // PVR contract: BOTTOM CLEARANCE RESERVE. The play assembly
-          // (felt + seat ring + chips/spotlight/gameplay artifacts) is
-          // anchored at the TOP of the play region. PVR appears
-          // entirely BELOW the felt as bottom clearance into which
-          // bottom-seat decorations may render. The assembly's
-          // internal geometry is pixel-identical at every PVR value
-          // and its vertical position is invariant.
-          top: 0,
+          // SAFE-AREA contract: the felt is positioned inside the
+          // play region with `top: var(--play-top-safe-area)`. The
+          // play region itself is sized `--shell-play-h-base + top +
+          // bottom`, so the felt sits ABOVE the bottom safe area and
+          // BELOW the top safe area. The felt's own bounding rect,
+          // aspect ratio, and internal geometry are pixel-identical
+          // at every (top, bottom) value pair.
+          top: 'var(--play-top-safe-area, 0px)',
           height: 'var(--shell-felt-h)',
           width: 'var(--shell-felt-w)',
           minWidth: 300,
