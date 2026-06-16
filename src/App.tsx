@@ -102,6 +102,7 @@ const App = () => {
               <DebugTray>
                 <NetworkSimIndicator />
                 <DebugModeIndicator />
+                <LayoutTuningPill />
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
               </DebugTray>
