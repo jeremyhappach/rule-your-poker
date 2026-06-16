@@ -1,89 +1,116 @@
 /**
  * Admin → Layout Tuning section.
  *
- * First-class, persistent layout tuning knob for the canonical shell.
- * NOT a debug instrument — lives in Admin Settings, not in the Debug Tray.
+ * Two independent first-class layout knobs for the canonical shell:
  *
- * Knob: PLAY VERTICAL RESERVE (0..40px, step 4)
- *   - Binds to CSS variable `--play-vertical-reserve` on :root (live, no reload).
- *   - Persists to localStorage('admin.playVerticalReserve').
- *   - Rehydrates on app boot (see useEffect in this component AND
- *     bootstrapLayoutTuning() called from main).
+ *   TOP SAFE AREA    (0..40px, step 2)  —  empty clearance ABOVE the felt.
+ *                                          Benefits top seat names + top
+ *                                          seat artifacts. Persisted as
+ *                                          localStorage('admin.playTopSafeArea').
+ *                                          Bound to CSS var
+ *                                          `--play-top-safe-area`.
  *
- * Diagnostics derived from computed styles:
- *   Row 4 (pane) height, Play height, Felt height, Felt width, Aspect cap.
+ *   BOTTOM SAFE AREA (0..40px, step 2)  —  empty clearance BELOW the felt.
+ *                                          Benefits bottom seat card backs
+ *                                          + bottom seat artifacts. Persisted
+ *                                          as localStorage('admin.playBottomSafeArea').
+ *                                          Bound to CSS var
+ *                                          `--play-bottom-safe-area`.
+ *
+ * Neither knob changes:
+ *   - felt size / felt position
+ *   - seat ring
+ *   - chip anchors
+ *   - spotlight
+ *   - announcement, timer, tab, or identity rows
+ *
+ * Both donate pixels exclusively from HUD Row 4 (the active content pane).
  */
 import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
-const STORAGE_KEY = 'admin.playVerticalReserve';
-const DEFAULT_PX = 20;
+const TOP_STORAGE_KEY = 'admin.playTopSafeArea';
+const BOTTOM_STORAGE_KEY = 'admin.playBottomSafeArea';
+const TOP_DEFAULT_PX = 24;
+const BOTTOM_DEFAULT_PX = 12;
 const MIN_PX = 0;
 const MAX_PX = 40;
-const STEP_PX = 4;
+const STEP_PX = 2;
 
 function clampStep(n: number): number {
   const c = Math.max(MIN_PX, Math.min(MAX_PX, n));
   return Math.round(c / STEP_PX) * STEP_PX;
 }
 
-export function readStoredPlayVerticalReserve(): number {
+function readStored(key: string, def: number): number {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw == null) return DEFAULT_PX;
+    const raw = localStorage.getItem(key);
+    if (raw == null) return def;
     const n = Number.parseInt(raw, 10);
-    if (!Number.isFinite(n)) return DEFAULT_PX;
+    if (!Number.isFinite(n)) return def;
     return clampStep(n);
   } catch {
-    return DEFAULT_PX;
+    return def;
   }
 }
 
-function applyVar(px: number) {
-  document.documentElement.style.setProperty('--play-vertical-reserve', `${px}px`);
+export function readStoredPlayTopSafeArea(): number {
+  return readStored(TOP_STORAGE_KEY, TOP_DEFAULT_PX);
+}
+export function readStoredPlayBottomSafeArea(): number {
+  return readStored(BOTTOM_STORAGE_KEY, BOTTOM_DEFAULT_PX);
+}
+
+function applyTop(px: number) {
+  document.documentElement.style.setProperty('--play-top-safe-area', `${px}px`);
+}
+function applyBottom(px: number) {
+  document.documentElement.style.setProperty('--play-bottom-safe-area', `${px}px`);
 }
 
 /**
- * Call once from main.tsx to rehydrate the saved value before first render.
+ * Call once from main.tsx to rehydrate the saved values before first render.
  * Safe to call repeatedly.
  */
 export function bootstrapLayoutTuning() {
-  applyVar(readStoredPlayVerticalReserve());
+  applyTop(readStoredPlayTopSafeArea());
+  applyBottom(readStoredPlayBottomSafeArea());
 }
 
 interface Diag {
   pane: number;
-  topClear: number;
-  bottomClear: number;
+  topSafe: number;
+  bottomSafe: number;
 }
 
 function readDiag(): Diag {
   const cs = getComputedStyle(document.documentElement);
   const parse = (name: string) => Number.parseFloat(cs.getPropertyValue(name)) || 0;
-  const pane = parse('--hud-h-pane');
-  const reserve = parse('--play-vertical-reserve');
-  // New PVR semantics (BOTTOM CLEARANCE RESERVE): felt is anchored at
-  // top of the play region. Top clearance is invariant (0). All PVR
-  // pixels appear BELOW the felt as bottom clearance for seat
-  // decorations (card backs, showdown cards).
-  const topClear = 0;
-  const bottomClear = reserve;
-  return { pane, topClear, bottomClear };
+  return {
+    pane: parse('--hud-h-pane'),
+    topSafe: parse('--play-top-safe-area'),
+    bottomSafe: parse('--play-bottom-safe-area'),
+  };
 }
 
 export function LayoutTuningAdminSection() {
-  const [value, setValue] = useState<number>(() => readStoredPlayVerticalReserve());
-  const [diag, setDiag] = useState<Diag>({ pane: 0, topClear: 0, bottomClear: 0 });
+  const [top, setTop] = useState<number>(() => readStoredPlayTopSafeArea());
+  const [bottom, setBottom] = useState<number>(() => readStoredPlayBottomSafeArea());
+  const [diag, setDiag] = useState<Diag>({ pane: 0, topSafe: 0, bottomSafe: 0 });
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    applyVar(value);
-    try { localStorage.setItem(STORAGE_KEY, String(value)); } catch { /* noop */ }
-  }, [value]);
+    applyTop(top);
+    try { localStorage.setItem(TOP_STORAGE_KEY, String(top)); } catch { /* noop */ }
+  }, [top]);
 
-  // Poll diagnostics ~4Hz while section is mounted.
+  useEffect(() => {
+    applyBottom(bottom);
+    try { localStorage.setItem(BOTTOM_STORAGE_KEY, String(bottom)); } catch { /* noop */ }
+  }, [bottom]);
+
   useEffect(() => {
     let alive = true;
     const tick = () => {
@@ -103,69 +130,86 @@ export function LayoutTuningAdminSection() {
       <div className="space-y-0.5">
         <Label className="text-sm font-semibold">Layout Tuning</Label>
         <p className="text-xs text-muted-foreground">
-          First-class canonical shell tuning. Applies live and persists in this browser.
-          Use to balance gameplay (felt + seat ring clearance) vs. the Active Content Pane.
+          Independent top/bottom safe areas around the felt. Both donate pixels
+          exclusively from HUD Row 4 (the active content pane). Neither changes
+          felt, seat ring, chip anchors, spotlight, or any HUD row except Row 4.
+          Applies live and persists in this browser.
         </p>
       </div>
 
+      {/* TOP SAFE AREA */}
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
         <div className="flex items-center justify-between">
-          <Label htmlFor="pvr-slider" className="text-sm">PLAY VERTICAL RESERVE</Label>
-          <span className="font-mono text-base font-semibold">{value} px</span>
+          <Label htmlFor="top-safe-slider" className="text-sm">TOP SAFE AREA</Label>
+          <span className="font-mono text-base font-semibold">{top} px</span>
         </div>
-
         <Slider
-          id="pvr-slider"
+          id="top-safe-slider"
           min={MIN_PX}
           max={MAX_PX}
           step={STEP_PX}
-          value={[value]}
-          onValueChange={([v]) => setValue(clampStep(v))}
+          value={[top]}
+          onValueChange={([v]) => setTop(clampStep(v))}
         />
         <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
           <span>0</span><span>20</span><span>40</span>
         </div>
-
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={value === 0 ? 'default' : 'outline'}
-            className="flex-1"
-            onClick={() => setValue(0)}
-          >
+          <Button size="sm" variant={top === 0 ? 'default' : 'outline'} className="flex-1" onClick={() => setTop(0)}>
             MIN (0)
           </Button>
-          <Button
-            size="sm"
-            variant={value === 20 ? 'default' : 'outline'}
-            className="flex-1"
-            onClick={() => setValue(20)}
-          >
-            RESET (20)
+          <Button size="sm" variant={top === TOP_DEFAULT_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setTop(TOP_DEFAULT_PX)}>
+            RESET ({TOP_DEFAULT_PX})
           </Button>
-          <Button
-            size="sm"
-            variant={value === 40 ? 'default' : 'outline'}
-            className="flex-1"
-            onClick={() => setValue(40)}
-          >
-            MAX (40)
+          <Button size="sm" variant={top === MAX_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setTop(MAX_PX)}>
+            MAX ({MAX_PX})
           </Button>
         </div>
-
-        <div className="border-t border-border pt-3 space-y-1 font-mono text-xs">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-            Derived
-          </div>
-          <DiagRow label="Top clearance" value={`${Math.round(diag.topClear)} px`} />
-          <DiagRow label="Bottom clearance" value={`${Math.round(diag.bottomClear)} px`} />
-          <DiagRow label="Row 4 height" value={`${Math.round(diag.pane)} px`} />
-        </div>
-
         <p className="text-[10px] text-muted-foreground">
-          Stored in this browser as <code>{STORAGE_KEY}</code>. Default 20.
-          Affects every game (Holm, Cribbage, Gin, Yahtzee) uniformly; no per-game branching.
+          Stored as <code>{TOP_STORAGE_KEY}</code>. Benefits top seat names + artifacts.
         </p>
+      </div>
+
+      {/* BOTTOM SAFE AREA */}
+      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="bottom-safe-slider" className="text-sm">BOTTOM SAFE AREA</Label>
+          <span className="font-mono text-base font-semibold">{bottom} px</span>
+        </div>
+        <Slider
+          id="bottom-safe-slider"
+          min={MIN_PX}
+          max={MAX_PX}
+          step={STEP_PX}
+          value={[bottom]}
+          onValueChange={([v]) => setBottom(clampStep(v))}
+        />
+        <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+          <span>0</span><span>20</span><span>40</span>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant={bottom === 0 ? 'default' : 'outline'} className="flex-1" onClick={() => setBottom(0)}>
+            MIN (0)
+          </Button>
+          <Button size="sm" variant={bottom === BOTTOM_DEFAULT_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setBottom(BOTTOM_DEFAULT_PX)}>
+            RESET ({BOTTOM_DEFAULT_PX})
+          </Button>
+          <Button size="sm" variant={bottom === MAX_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setBottom(MAX_PX)}>
+            MAX ({MAX_PX})
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          Stored as <code>{BOTTOM_STORAGE_KEY}</code>. Benefits bottom seat card backs + artifacts.
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+          Derived
+        </div>
+        <DiagRow label="Top safe area" value={`${Math.round(diag.topSafe)} px`} />
+        <DiagRow label="Bottom safe area" value={`${Math.round(diag.bottomSafe)} px`} />
+        <DiagRow label="Row 4 height" value={`${Math.round(diag.pane)} px`} />
       </div>
     </div>
   );
