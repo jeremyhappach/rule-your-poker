@@ -6008,10 +6008,10 @@ export const CribbageMobileGameTable = ({
           cribVisible={true}
         />
 
-        {/* Wave 5C — Phase 4B.0: gameplay geometry provider now consumes
-            canonical descriptors from getCribbageArtifactDescriptors().
-            Pegboard consumes via context; PeggingRow / Counting / Crib /
-            Cut remain on their current rendering paths. */}
+        {/* Wave 5C — Phase 4B: gameplay geometry provider. Wraps the
+            felt-content subtree so Wave4PegboardSlot, Wave4PeggingRowSlot,
+            and (future) Crib/Cut/Counting slots share one solve and one
+            placement hash. */}
         <CribbageGameplayGeometryProvider
           phase="pegging"
           viewerSeatPosition={currentPlayer?.position ?? null}
@@ -6021,8 +6021,6 @@ export const CribbageMobileGameTable = ({
           cutCardRevealed={true}
           cribVisible={true}
         >
-          <></>
-        </CribbageGameplayGeometryProvider>
 
 
 
