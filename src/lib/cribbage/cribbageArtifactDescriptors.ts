@@ -171,7 +171,12 @@ function pegboard(): ArtifactDescriptor {
     id: "cribbage.pegboard",
     owner: OWNER.cribbageTable,
     band: "play",
-    composeMode: "flow",
+    // Centerpiece: felt-anchored, fixed-aspect, reserves space BEFORE flow
+    // descriptors in the play band negotiate. The resolver clips against
+    // structural safe areas (announcement / topHud / bottomHud / outerRail)
+    // and emits `aspect_unhonorable` rather than silently distorting if the
+    // 6:1 strip cannot fit.
+    composeMode: "centerpiece",
     preferredSize: { width: vmin(60), height: vmin(10) },
     minimumSize: { width: vmin(50), height: vmin(8) },
     aspectRatio: 6, // 6:1 horizontal pegboard
