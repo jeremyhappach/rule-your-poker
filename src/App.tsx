@@ -28,7 +28,7 @@ import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
-import { PvrLiftPill } from "@/components/admin/PvrLiftPill";
+
 
 
 
@@ -102,7 +102,7 @@ const App = () => {
               */}
               <DebugTray>
                 <NetworkSimIndicator />
-                <PvrLiftPill />
+                
                 <DebugModeIndicator />
                 
                 <LegacyDebugPanels />
