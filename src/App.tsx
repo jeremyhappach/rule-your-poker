@@ -100,11 +100,13 @@ const App = () => {
               */}
               <DebugTray>
                 <NetworkSimIndicator />
+                <PvrLiftPill />
                 <DebugModeIndicator />
                 
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
               </DebugTray>
+
             </AppNetworkSim>
           </BrowserRouter>
 
