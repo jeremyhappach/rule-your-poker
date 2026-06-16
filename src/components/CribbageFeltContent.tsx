@@ -286,23 +286,12 @@ export const CribbageFeltContent = ({
           opponentSeatPositions={opponentSeatPositions}
           cutCardRevealed={cutCardRevealed}
           cribVisible={cribVisible}
-        >
-          {/* Count on the left - keep visible on pegging-win so the win snapshot
-              shows the exact pegging state at win determination (count + sequence). */}
-          <div className="flex flex-col items-center">
-            <span className="text-[10px] text-white/60">Count</span>
-            <span className="text-2xl font-bold text-poker-gold">{displayCount}</span>
-          </div>
-          {/* Played cards in the CURRENT sequence only. */}
-          <div className="flex -space-x-4 justify-center">
-            {cribbageState.pegging.playedCards.slice(sequenceStartIndex).map((pc, i) => (
-              <CribbagePlayingCard key={i} card={pc.card} size="md" />
-            ))}
-            {cribbageState.pegging.playedCards.slice(sequenceStartIndex).length === 0 && !isPeggingWin && (
-              <div className="w-10 h-[60px] border border-dashed border-white/20 rounded" />
-            )}
-          </div>
-        </Wave4PeggingRowSlot>
+          count={displayCount}
+          playedCards={cribbageState.pegging.playedCards
+            .slice(sequenceStartIndex)
+            .map((pc) => ({ card: pc.card }))}
+          showEmptyPlaceholder={!isPeggingWin}
+        />
       )}
     </>
   );
