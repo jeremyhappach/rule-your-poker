@@ -6008,12 +6008,19 @@ export const CribbageMobileGameTable = ({
           cribVisible={true}
         />
 
-        {/* Wave 5C — Phase 3: gameplay geometry provider (mounted, no consumers).
-            Builds the cribbage gameplay-column descriptors once, resolves
-            them once per geometry change, emits telemetry on faults.
-            Pegboard / PeggingRow / Counting / Crib / Cut all remain on
-            their current rendering paths in Phase 3. */}
-        <CribbageGameplayGeometryProvider>
+        {/* Wave 5C — Phase 4B.0: gameplay geometry provider now consumes
+            canonical descriptors from getCribbageArtifactDescriptors().
+            Pegboard consumes via context; PeggingRow / Counting / Crib /
+            Cut remain on their current rendering paths. */}
+        <CribbageGameplayGeometryProvider
+          phase="pegging"
+          viewerSeatPosition={currentPlayer?.position ?? null}
+          opponentSeatPositions={[0, 1, 2, 3].filter(
+            (p) => p !== (currentPlayer?.position ?? -1),
+          )}
+          cutCardRevealed={true}
+          cribVisible={true}
+        >
           <></>
         </CribbageGameplayGeometryProvider>
 
