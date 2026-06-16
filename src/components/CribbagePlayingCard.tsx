@@ -25,7 +25,19 @@ export const CribbagePlayingCard = ({
     lg: { width: 48, height: 72, fontSize: 'text-3xl font-black', suitSize: 'text-4xl' },
   };
 
-  const { width, height, fontSize, suitSize } = sizeStyles[size];
+  const tokenStyles = sizeStyles[size];
+  const useOverride = typeof widthPx === 'number' && Number.isFinite(widthPx) && widthPx > 0;
+  const width = useOverride ? widthPx! : tokenStyles.width;
+  const height = useOverride ? widthPx! * 1.5 : tokenStyles.height;
+  // Rect-driven font sizing: rank ≈ 60% of width, suit ≈ 75% of width.
+  const fontStyle = useOverride
+    ? { fontSize: `${width * 0.6}px`, fontWeight: 900 as const, lineHeight: 1 }
+    : undefined;
+  const suitStyle = useOverride
+    ? { fontSize: `${width * 0.75}px`, lineHeight: 1 }
+    : undefined;
+  const fontSize = useOverride ? '' : tokenStyles.fontSize;
+  const suitSize = useOverride ? '' : tokenStyles.suitSize;
 
   const getSuitSymbol = (suit: CribbageCard['suit']) => {
     switch (suit) {
