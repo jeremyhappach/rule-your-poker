@@ -55,6 +55,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePlayerBalance } from "@/hooks/usePlayerBalance";
 import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
+import { LayoutTuningAdminSection } from "@/components/admin/LayoutTuningAdminSection";
 import { formatChipValue } from "@/lib/utils";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
@@ -704,6 +705,9 @@ const Index = () => {
 
                     {/* Wartime Debug (platform instrumentation framework) */}
                     <WartimeDebugSettingRow />
+
+                    {/* Layout Tuning — first-class persistent canonical-shell knobs */}
+                    <LayoutTuningAdminSection />
 
 
                     {/* Allow Bot Dealers Toggle */}
