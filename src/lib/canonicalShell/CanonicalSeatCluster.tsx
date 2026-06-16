@@ -385,85 +385,14 @@ export function CanonicalSeatCluster({
       if (shiftX > MAX_BIAS_PX) shiftX = MAX_BIAS_PX;
       else if (shiftX < -MAX_BIAS_PX) shiftX = -MAX_BIAS_PX;
 
-      // Vertical: TOP-anchored seats (slots -2, 2, 3) lift the name row
-      // upward into available header-clearance, up to a preferred
-      // separation from the chip. Without this, top seats keep a fixed
-      // ~2px gap regardless of how much vertical room exists between
-      // the chip and the shell header, which makes the name visually
-      // collide with the chip face. Bottom/mid seats are untouched.
-      //
-      //   availableClearance = nameRect.top - headerBottom - SAFETY_PX
-      //   nameLift           = clamp(preferredLift, 0, availableClearance)
-      //
-      // The chip, seat ring, felt, and spotlight do not move; only the
-      // name row's translateY changes.
-      let shiftY = 0;
-      const isTopSlot = slot === -2 || slot === 2 || slot === 3;
-      if (isTopSlot) {
-        const PREFERRED_LIFT_PX = 14;
-        const header = document.querySelector(
-          '[data-canonical-shell-header]',
-        ) as HTMLElement | null;
-        const headerRect = header?.getBoundingClientRect();
-        const headerBoxBottom = headerRect ? headerRect.bottom : 0;
-
-        // The header container's bounding rect can extend several pixels
-        // past the visible header (padding / invisible spacer / chrome
-        // margin). Use the deepest visible descendant as the true ceiling
-        // so we don't starve the lift of real clearance that exists.
-        let visibleBottom: number | null = null;
-        if (header) {
-          const nodes = header.querySelectorAll('*');
-          for (const node of Array.from(nodes)) {
-            const r = (node as HTMLElement).getBoundingClientRect();
-            if (r.width > 0 && r.height > 0) {
-              if (visibleBottom === null || r.bottom > visibleBottom) {
-                visibleBottom = r.bottom;
-              }
-            }
-          }
-        }
-        const ceiling = visibleBottom != null ? visibleBottom : headerBoxBottom;
-        const availableClearance = nameRect.top - ceiling - SAFETY_PX;
-        const lift = Math.max(0, Math.min(PREFERRED_LIFT_PX, availableClearance));
-        if (lift > 0) shiftY = -lift;
-
-        // PVR DIAGNOSTIC — log slot -2 / 2 measurements once per change
-        if (slot === -2 || slot === 2) {
-          const payload = {
-            slot,
-            position,
-            headerContainerTop: headerRect ? Math.round(headerRect.top * 10) / 10 : null,
-            headerContainerBottom: Math.round(headerBoxBottom * 10) / 10,
-            headerContainerHeight: headerRect ? Math.round(headerRect.height * 10) / 10 : null,
-            headerVisibleBottom:
-              visibleBottom != null ? Math.round(visibleBottom * 10) / 10 : null,
-            headerBoxVsVisibleDelta:
-              visibleBottom != null
-                ? Math.round((headerBoxBottom - visibleBottom) * 10) / 10
-                : null,
-            chipTop: Math.round(chipRect.top * 10) / 10,
-            nameTop: Math.round(nameRect.top * 10) / 10,
-            nameBottom: Math.round(nameRect.bottom * 10) / 10,
-            chipMinusHeaderBox: Math.round((chipRect.top - headerBoxBottom) * 10) / 10,
-            availableLift: Math.round(availableClearance * 10) / 10,
-            actualLift: Math.round(lift * 10) / 10,
-          };
-          const w = window as unknown as Record<string, unknown>;
-          const store =
-            ((w.__pvrLiftStore as Record<string, unknown>) ??=
-              {}) as Record<string, unknown>;
-          store[`slot${slot}`] = { ...payload, ts: Date.now() };
-          const bump = (w.__pvrLiftBump as (() => void) | undefined);
-          if (bump) bump();
-        }
-      }
-
+      // Vertical lift removed — top-seat clearance is now provided
+      // structurally by the admin top safe area. The name row stays at
+      // its natural fixed position above the chip.
 
       const parts: string[] = [];
       if (shiftX) parts.push(`translateX(${shiftX}px)`);
-      if (shiftY) parts.push(`translateY(${shiftY}px)`);
       el.style.transform = parts.join(' ');
+
     };
     apply();
     if (typeof window === 'undefined') return;
