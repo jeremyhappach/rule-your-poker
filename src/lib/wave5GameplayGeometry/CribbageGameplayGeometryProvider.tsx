@@ -1,21 +1,31 @@
 /**
- * Wave 5C — Phase 3
- * CribbageGameplayGeometryProvider
+ * Wave 5C — Phase 4B.0
+ * CribbageGameplayGeometryProvider — descriptor unification.
  *
- * Builds the cribbage gameplay-column descriptors ONCE, resolves them ONCE
- * against the live geometry, and exposes:
- *   - placementsById           current frame placements keyed by slot id
- *   - lastValidPlacementsById  last frame whose group resolve had no faults
- *   - faults                   current frame faults
+ * The provider no longer fabricates synthetic placeholder leaves. Instead it
+ * consumes the canonical Cribbage gameplay descriptors emitted by
+ *   getCribbageArtifactDescriptors(...)
+ * and wraps the gameplay-column subset in:
  *
- * Telemetry is emitted on every fault frame via `emitLayoutFault`.
+ *     cribbage.gameplayColumn (axis=y, clampToBand)
+ *       ├─ cribbage.pegboard
+ *       ├─ gapA
+ *       ├─ cribbage.cribCutGroup (axis=x)
+ *       │   ├─ cribbage.crib
+ *       │   ├─ innerGap
+ *       │   └─ cribbage.cutCard
+ *       ├─ gapB
+ *       └─ cribbage.peggingRow OR cribbage.countingRow
  *
- * IMPORTANT — Phase 3 scope:
- *   - No slot consumes this context yet.
- *   - No UI changes.
- *   - Pegboard / PeggingRow / Counting / Crib / Cut remain on their current paths.
+ * Invariant: leaves referenced by the column are passed to
+ * resolveLayoutWithGroups, which excludes them from any standalone top-level
+ * band solve. There is exactly one descriptor set, one solve, one placement
+ * hash, many consumers.
  *
- * Phase 4–6 wire individual slots through `useCribbageGameplayGeometry()`.
+ * Phase 4B.0 scope:
+ *   - Pegboard already consumes this provider (Phase 4A).
+ *   - PeggingRow / Counting / Crib / Cut remain on their current paths.
+ *   - This change corrects the rects the provider emits to canonical values.
  */
 
 import {
@@ -29,6 +39,7 @@ import {
 import {
   resolveLayoutWithGroups,
   type ArtifactDescriptor,
+  type GroupChildSlot,
   type GroupDescriptor,
   type LayoutFault,
   type ResolvedPlacement,
@@ -40,7 +51,10 @@ import {
   viewportBucketFor,
 } from "@/lib/wave4LayoutResolver/telemetry";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
-import { vmin } from "@/lib/wave4LayoutResolver/units";
+import {
+  getCribbageArtifactDescriptors,
+  type CribbagePhase,
+} from "@/lib/cribbage/cribbageArtifactDescriptors";
 
 export interface CribbageGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -60,77 +74,190 @@ const CribbageGameplayGeometryContext =
   });
 
 // ---------------------------------------------------------------------------
-// Static descriptor set — built ONCE. These are intentional placeholder
-// preferreds derived from the column spec. Phases 4–6 will fold in the live
-// preferred sizes published by each slot.
+// Gameplay-column leaf ids consumed from the canonical descriptor factory.
 // ---------------------------------------------------------------------------
 
-function leaf(
-  id: string,
-  preferred: { w: number; h: number },
-  minimum: { w: number; h: number },
-  priority = 80,
-): ArtifactDescriptor {
-  return {
-    id,
+const PEGBOARD_ID = "cribbage.pegboard";
+const CRIB_ID = "cribbage.crib";
+const CUT_CARD_ID = "cribbage.cutCard";
+const PEGGING_ROW_ID = "cribbage.peggingRow";
+const COUNTING_ROW_ID = "cribbage.countingRow";
+const CRIB_CUT_GROUP_ID = "cribbage.cribCutGroup";
+const GAMEPLAY_COLUMN_ID = "cribbage.gameplayColumn";
+
+const GAMEPLAY_COLUMN_LEAF_IDS = new Set<string>([
+  PEGBOARD_ID,
+  CRIB_ID,
+  CUT_CARD_ID,
+  PEGGING_ROW_ID,
+  COUNTING_ROW_ID,
+]);
+
+function buildColumnGroup(
+  leavesById: ReadonlyMap<string, ArtifactDescriptor>,
+): GroupDescriptor {
+  // Crib + cut inner group.
+  const cribCutChildren: GroupChildSlot[] = [];
+  const hasCrib = leavesById.has(CRIB_ID);
+  const hasCut = leavesById.has(CUT_CARD_ID);
+
+  if (hasCrib) {
+    cribCutChildren.push({
+      id: CRIB_ID,
+      kind: "leaf",
+      leafRef: CRIB_ID,
+      shrinkOrder: 2,
+      collapseOrder: 2,
+    });
+  }
+  if (hasCrib && hasCut) {
+    cribCutChildren.push({
+      id: "innerGap",
+      kind: "gap",
+      weight: 1,
+      shrinkOrder: 1,
+      collapseOrder: 1,
+    });
+  }
+  if (hasCut) {
+    cribCutChildren.push({
+      id: CUT_CARD_ID,
+      kind: "leaf",
+      leafRef: CUT_CARD_ID,
+      shrinkOrder: 3,
+      collapseOrder: 3,
+    });
+  }
+
+  const cribCutGroup: GroupDescriptor = {
+    id: CRIB_CUT_GROUP_ID,
     owner: "cribbage",
     band: "play",
-    composeMode: "flow",
-    preferredSize: { width: vmin(preferred.w), height: vmin(preferred.h) },
-    minimumSize: { width: vmin(minimum.w), height: vmin(minimum.h) },
-    priority,
-    collapsePriority: "mid",
+    composeMode: "group",
+    axis: "x",
+    children: cribCutChildren,
+  };
+
+  // Outer column (axis=y). Children are declared in fixed visual order;
+  // priority NEVER reorders.
+  const columnChildren: GroupChildSlot[] = [];
+
+  if (leavesById.has(PEGBOARD_ID)) {
+    columnChildren.push({
+      id: PEGBOARD_ID,
+      kind: "leaf",
+      leafRef: PEGBOARD_ID,
+      shrinkOrder: 4,
+      collapseOrder: 4,
+    });
+  }
+
+  columnChildren.push({
+    id: "gapA",
+    kind: "gap",
+    weight: 1,
+    shrinkOrder: 1,
+    collapseOrder: 1,
+  });
+
+  if (cribCutChildren.length > 0) {
+    columnChildren.push({
+      id: CRIB_CUT_GROUP_ID,
+      kind: "group",
+      group: cribCutGroup,
+      shrinkOrder: 2,
+      collapseOrder: 2,
+    });
+  }
+
+  columnChildren.push({
+    id: "gapB",
+    kind: "gap",
+    weight: 1,
+    shrinkOrder: 1,
+    collapseOrder: 1,
+  });
+
+  // XOR: peggingRow vs countingRow. The factory emits exactly one.
+  const xorId = leavesById.has(COUNTING_ROW_ID)
+    ? COUNTING_ROW_ID
+    : leavesById.has(PEGGING_ROW_ID)
+      ? PEGGING_ROW_ID
+      : null;
+  if (xorId) {
+    columnChildren.push({
+      id: xorId,
+      kind: "leaf",
+      leafRef: xorId,
+      shrinkOrder: 5,
+      collapseOrder: "never",
+    });
+  }
+
+  return {
+    id: GAMEPLAY_COLUMN_ID,
+    owner: "cribbage",
+    band: "play",
+    composeMode: "group",
+    axis: "y",
+    clampToBand: true,
+    children: columnChildren,
   };
 }
 
-const CRIBBAGE_LEAVES: ReadonlyArray<ArtifactDescriptor> = [
-  leaf("cribbage.pegboard", { w: 60, h: 20 }, { w: 50, h: 15 }, 90),
-  leaf("cribbage.crib", { w: 20, h: 10 }, { w: 15, h: 8 }, 70),
-  leaf("cribbage.cutCard", { w: 10, h: 14 }, { w: 8, h: 10 }, 75),
-  leaf("cribbage.peggingRow", { w: 70, h: 12 }, { w: 50, h: 10 }, 95),
-];
-
-const CRIB_CUT_GROUP: GroupDescriptor = {
-  id: "cribbage.cribCutGroup",
-  owner: "cribbage",
-  band: "play",
-  composeMode: "group",
-  axis: "x",
-  children: [
-    { id: "crib", kind: "leaf", leafRef: "cribbage.crib", shrinkOrder: 2, collapseOrder: 2 },
-    { id: "innerGap", kind: "gap", weight: 1, shrinkOrder: 1, collapseOrder: 1 },
-    { id: "cutCard", kind: "leaf", leafRef: "cribbage.cutCard", shrinkOrder: 3, collapseOrder: 3 },
-  ],
-};
-
-const GAMEPLAY_COLUMN: GroupDescriptor = {
-  id: "cribbage.gameplayColumn",
-  owner: "cribbage",
-  band: "play",
-  composeMode: "group",
-  axis: "y",
-  clampToBand: true,
-  children: [
-    { id: "pegboard", kind: "leaf", leafRef: "cribbage.pegboard", shrinkOrder: 4, collapseOrder: 4 },
-    { id: "gapA", kind: "gap", weight: 1, shrinkOrder: 1, collapseOrder: 1 },
-    { id: "cribCutGroup", kind: "group", group: CRIB_CUT_GROUP, shrinkOrder: 2, collapseOrder: 2 },
-    { id: "gapB", kind: "gap", weight: 1, shrinkOrder: 1, collapseOrder: 1 },
-    { id: "peggingRow", kind: "leaf", leafRef: "cribbage.peggingRow", shrinkOrder: 5, collapseOrder: "never" },
-  ],
-};
-
-const GROUPS: ReadonlyArray<GroupDescriptor> = [GAMEPLAY_COLUMN];
-
 export interface CribbageGameplayGeometryProviderProps {
+  phase: CribbagePhase;
+  viewerSeatPosition: number | null;
+  opponentSeatPositions: ReadonlyArray<number>;
+  cutCardRevealed: boolean;
+  cribVisible: boolean;
   children: ReactNode;
 }
 
 export function CribbageGameplayGeometryProvider({
+  phase,
+  viewerSeatPosition,
+  opponentSeatPositions,
+  cutCardRevealed,
+  cribVisible,
   children,
 }: CribbageGameplayGeometryProviderProps) {
   const { geometry } = useLiveGeometryConstraints();
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
+
+  // Canonical descriptors — single source of truth.
+  const canonicalDescriptors = useMemo(
+    () =>
+      getCribbageArtifactDescriptors({
+        phase,
+        viewerSeatPosition,
+        opponentSeatPositions,
+        cutCardRevealed,
+        cribVisible,
+      }),
+    [phase, viewerSeatPosition, opponentSeatPositions, cutCardRevealed, cribVisible],
+  );
+
+  // Filter to gameplay-column leaves only. Other descriptors (topHud, tabs,
+  // myHand, seat-projected, etc.) are owned by their own pipelines and must
+  // NOT be solved by this provider.
+  const columnLeaves = useMemo(
+    () =>
+      canonicalDescriptors.filter((d) => GAMEPLAY_COLUMN_LEAF_IDS.has(d.id)),
+    [canonicalDescriptors],
+  );
+
+  const leavesById = useMemo(() => {
+    const m = new Map<string, ArtifactDescriptor>();
+    for (const d of columnLeaves) m.set(d.id, d);
+    return m;
+  }, [columnLeaves]);
+
+  const groups = useMemo<GroupDescriptor[]>(
+    () => [buildColumnGroup(leavesById)],
+    [leavesById],
+  );
 
   const value = useMemo<CribbageGameplayGeometryContextValue>(() => {
     if (!geometry) {
@@ -142,7 +269,10 @@ export function CribbageGameplayGeometryProvider({
       };
     }
 
-    const layout = resolveLayoutWithGroups(CRIBBAGE_LEAVES, GROUPS, geometry);
+    // resolveLayoutWithGroups excludes group-referenced leaves from the
+    // standalone solve. Pass the column leaves so the resolver can look them
+    // up — they will NOT be solved as independent top-level flow items.
+    const layout = resolveLayoutWithGroups(columnLeaves, groups, geometry);
     const byId = new Map<string, ResolvedPlacement>();
     for (const p of layout.placements) byId.set(p.id, p);
 
@@ -156,7 +286,7 @@ export function CribbageGameplayGeometryProvider({
       faults: layout.faults,
       ready: true,
     };
-  }, [geometry]);
+  }, [geometry, columnLeaves, groups]);
 
   useEffect(() => {
     if (!value.ready) return;
@@ -168,8 +298,7 @@ export function CribbageGameplayGeometryProvider({
     const layoutHash = hashLayout(placementsArr);
     if (layoutHash === lastHashRef.current) return;
     lastHashRef.current = layoutHash;
-    const w =
-      typeof window !== "undefined" ? window.innerWidth : 0;
+    const w = typeof window !== "undefined" ? window.innerWidth : 0;
     const h = typeof window !== "undefined" ? window.innerHeight : 0;
     emitLayoutFault({
       layoutHash,
