@@ -6008,6 +6008,17 @@ export const CribbageMobileGameTable = ({
           cribVisible={true}
         />
 
+        {/* Wave 5C — Phase 3: gameplay geometry provider (mounted, no consumers).
+            Builds the cribbage gameplay-column descriptors once, resolves
+            them once per geometry change, emits telemetry on faults.
+            Pegboard / PeggingRow / Counting / Crib / Cut all remain on
+            their current rendering paths in Phase 3. */}
+        <CribbageGameplayGeometryProvider>
+          <></>
+        </CribbageGameplayGeometryProvider>
+
+
+
 
 
         {/* Felt-content frame — shared canonical ellipse envelope. */}
