@@ -264,7 +264,7 @@ export function PersistentTableShell({
               data-canonical-shell-pre-session-seat-region=""
               style={{
                 position: 'absolute',
-                top: 0,
+                top: 'var(--play-top-safe-area, 0px)',
                 left: 0,
                 right: 0,
                 height: 'var(--shell-felt-h)',
