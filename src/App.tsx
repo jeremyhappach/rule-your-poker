@@ -102,7 +102,7 @@ const App = () => {
               */}
               <DebugTray>
                 <NetworkSimIndicator />
-                <PvrLiftPill />
+                
                 <DebugModeIndicator />
                 
                 <LegacyDebugPanels />
