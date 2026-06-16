@@ -161,10 +161,12 @@ function solveBand(
   band: BandId,
   bandRect: FlatRect,
   descriptors: ArtifactDescriptor[],
+  extraReservedRects: FlatRect[] = [],
 ): BandSolveResult {
   const placements: ResolvedPlacement[] = [];
   const faults: LayoutFault[] = [];
-  if (descriptors.length === 0) return { placements, faults };
+  if (descriptors.length === 0 && extraReservedRects.length === 0)
+    return { placements, faults };
 
   const xDominant = bandIsXDominant(bandRect);
   const primaryExtent = xDominant ? bandRect.width : bandRect.height;
@@ -173,6 +175,11 @@ function solveBand(
   // Reserve protected areas first: subtract from available extent along primary.
   let reservedPrimary = 0;
   const reservedRects: FlatRect[] = [];
+  // Centerpiece-injected reservations (already in felt-vmin coords).
+  for (const extra of extraReservedRects) {
+    reservedRects.push(extra);
+    reservedPrimary += xDominant ? extra.width : extra.height;
+  }
   for (const d of descriptors) {
     if (!d.protectedArea) continue;
     const prot = rectToFlat(d.protectedArea);
