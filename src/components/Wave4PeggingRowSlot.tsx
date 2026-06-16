@@ -1,45 +1,33 @@
 /**
- * Wave 5B — Pegging Row Contract Migration
+ * Wave 5C — Phase 4B
+ * Wave4PeggingRowSlot is now a pure consumer of
+ *   CribbageGameplayGeometryProvider.
  *
- * First gameplay artifact (after the pegboard) routed through the
- * Wave 4 Artifact Layout Engine. The `cribbage.peggingRow` descriptor
- * is now authoritative for position/size; the previous
- * `absolute top-[68%] left-1/2 -translate-x-1/2` CSS percentage no
- * longer owns geometry.
+ * Per the gameplay-column spec invariant:
+ *   "Gameplay slots may NEVER call resolveLayout()."
  *
- * Discipline (mirrors Wave4PegboardSlot):
- *   - Positions only. Visual content (count + played-card row,
- *     overlap, sizes, animations) is untouched and lives in the
- *     existing CribbageFeltContent JSX passed as `children`.
- *   - Emits `wave4:layout_fault` for peggingRow faults but never
- *     special-cases recovery — the resolver is the source of truth.
- *   - Until live geometry resolves OR the resolver collapses the row,
- *     a transparent legacy fallback preserves the previous absolute
- *     placement so the pegging row never disappears mid-hand.
+ * This slot positions the count badge + played-card row inside the
+ * `cribbage.peggingRow` child placement produced by the provider's
+ * `cribbage.gameplayColumn` group. Resolution + telemetry live in
+ * the provider — this slot reads only.
+ *
+ * Fallback policy:
+ *   1. current placement (provider, this frame)
+ *   2. lastValid placement (provider, last fault-free frame)
+ *   3. legacy CSS percentage wrapper (cold-start / pre-measurement)
+ *      → Phase 7 removes the legacy fallback.
+ *
+ * Props are preserved for caller compatibility but are no longer used
+ * for descriptor construction — the provider owns descriptors.
  */
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import {
-  resolveLayout,
-  toVmin,
-  type ResolvedPlacement,
-} from "@/lib/wave4LayoutResolver";
-import {
-  emitLayoutFault,
-  hashLayout,
-  orientationFor,
-  viewportBucketFor,
-} from "@/lib/wave4LayoutResolver/telemetry";
+import { type ReactNode } from "react";
+import { toVmin, type ResolvedPlacement } from "@/lib/wave4LayoutResolver";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
-import {
-  getCribbageArtifactDescriptors,
-  type CribbagePhase,
-} from "@/lib/cribbage/cribbageArtifactDescriptors";
+import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
+import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 
 export interface Wave4PeggingRowSlotProps {
-  /** Cribbage phase. Pass `'pegging'` whenever the pegging row should
-   *  be present (including pegging-win freeze-frame). The descriptor
-   *  factory only emits `cribbage.peggingRow` when phase === 'pegging'. */
   phase: CribbagePhase;
   viewerSeatPosition: number | null;
   opponentSeatPositions: ReadonlyArray<number>;
@@ -48,80 +36,27 @@ export interface Wave4PeggingRowSlotProps {
   children: ReactNode;
 }
 
-export function Wave4PeggingRowSlot({
-  phase,
-  viewerSeatPosition,
-  opponentSeatPositions,
-  cutCardRevealed,
-  cribVisible,
-  children,
-}: Wave4PeggingRowSlotProps) {
-  const { geometry, vminInPx } = useLiveGeometryConstraints();
+const PEGGING_ROW_ID = "cribbage.peggingRow";
 
-  const descriptors = useMemo(
-    () =>
-      getCribbageArtifactDescriptors({
-        phase,
-        viewerSeatPosition,
-        opponentSeatPositions,
-        cutCardRevealed,
-        cribVisible,
-      }),
-    [
-      phase,
-      viewerSeatPosition,
-      opponentSeatPositions,
-      cutCardRevealed,
-      cribVisible,
-    ],
-  );
+export function Wave4PeggingRowSlot({ children }: Wave4PeggingRowSlotProps) {
+  const { vminInPx } = useLiveGeometryConstraints();
+  const { placementsById, lastValidPlacementsById, faults } =
+    useCribbageGameplayGeometry();
 
-  const layout = useMemo(() => {
-    if (!geometry) return null;
-    return resolveLayout(descriptors, geometry);
-  }, [descriptors, geometry]);
+  const current = placementsById.get(PEGGING_ROW_ID);
+  const lastValid = lastValidPlacementsById.get(PEGGING_ROW_ID);
+  const placement: ResolvedPlacement | undefined =
+    current && current.visible ? current : lastValid;
 
-  const placement: ResolvedPlacement | null = useMemo(() => {
-    if (!layout) return null;
-    return (
-      layout.placements.find((p) => p.id === "cribbage.peggingRow") ?? null
-    );
-  }, [layout]);
+  const usingFallback = !placement || !placement.visible || vminInPx <= 0;
 
-  const lastFaultHashRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!layout) return;
-    const faults = layout.faults.filter((f) =>
-      f.artifactIds.includes("cribbage.peggingRow"),
-    );
-    if (faults.length === 0) return;
-    const hash = hashLayout(layout.placements);
-    if (hash === lastFaultHashRef.current) return;
-    lastFaultHashRef.current = hash;
-    emitLayoutFault({
-      layoutHash: hash,
-      game: "cribbage",
-      orientation:
-        typeof window !== "undefined"
-          ? orientationFor(window.innerWidth, window.innerHeight)
-          : "unknown",
-      viewportBucket:
-        typeof window !== "undefined"
-          ? viewportBucketFor(window.innerWidth, window.innerHeight)
-          : "unknown",
-      faults,
-      timestamp: Date.now(),
-    });
-  }, [layout]);
-
-  // Fallback: until live geometry resolves OR resolver collapses the
-  // pegging row, preserve the legacy positioning so it never
-  // disappears mid-hand. The fallback uses the exact pre-Wave 5B
-  // wrapper classes.
-  if (!placement || !placement.visible || vminInPx <= 0) {
+  if (usingFallback) {
     return (
       <div
         data-wave4-pegging-row-slot="fallback"
+        data-pegging-row-fallback-used="true"
+        data-pegging-row-parent-id={placement?.parentId ?? ""}
+        data-pegging-row-fault-count={String(faults.length)}
         className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3"
       >
         {children}
@@ -138,6 +73,11 @@ export function Wave4PeggingRowSlot({
     <div
       data-wave4-pegging-row-slot="resolved"
       data-artifact-id="cribbage.peggingRow"
+      data-gameplay-column-child="peggingRow"
+      data-placement-source={current && current.visible ? "current" : "lastValid"}
+      data-pegging-row-parent-id={placement.parentId ?? ""}
+      data-pegging-row-rect={`${x.toFixed(2)},${y.toFixed(2)},${w.toFixed(2)},${h.toFixed(2)}`}
+      data-pegging-row-fault-count={String(faults.length)}
       style={{
         position: "absolute",
         left: `${x}vmin`,
