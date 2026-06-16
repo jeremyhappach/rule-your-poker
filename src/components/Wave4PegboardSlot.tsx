@@ -34,7 +34,7 @@ export interface Wave4PegboardSlotProps {
   children: ReactNode;
 }
 
-const PEGBOARD_SLOT_ID = "pegboard";
+const PEGBOARD_SLOT_ID = "cribbage.pegboard";
 
 export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   const { vminInPx } = useLiveGeometryConstraints();
