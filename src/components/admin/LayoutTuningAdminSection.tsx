@@ -119,7 +119,8 @@ export function LayoutTuningAdminSection() {
       if (res.ok) {
         toast.success('Saved as global default');
       } else {
-        toast.error(`Save failed: ${res.error}`);
+        const err = (res as { ok: false; error: string }).error;
+        toast.error(`Save failed: ${err}`);
       }
     } finally {
       setSaving(false);
