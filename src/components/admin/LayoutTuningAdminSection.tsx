@@ -63,13 +63,13 @@ function readDiag(): Diag {
   const cs = getComputedStyle(document.documentElement);
   const parse = (name: string) => Number.parseFloat(cs.getPropertyValue(name)) || 0;
   const pane = parse('--hud-h-pane');
-  const play = parse('--shell-play-h');
-  const felt = parse('--shell-felt-h');
   const reserve = parse('--play-vertical-reserve');
-  // Play assembly shifts down by reserve/2 from top of play region;
-  // remaining space sits below the felt as bottom clearance.
-  const topClear = reserve / 2;
-  const bottomClear = Math.max(0, play - felt - reserve / 2);
+  // New PVR semantics (BOTTOM CLEARANCE RESERVE): felt is anchored at
+  // top of the play region. Top clearance is invariant (0). All PVR
+  // pixels appear BELOW the felt as bottom clearance for seat
+  // decorations (card backs, showdown cards).
+  const topClear = 0;
+  const bottomClear = reserve;
   return { pane, topClear, bottomClear };
 }
 
