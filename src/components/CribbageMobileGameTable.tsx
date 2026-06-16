@@ -6414,6 +6414,7 @@ export const CribbageMobileGameTable = ({
                 crib ownership immediately legible. */}
           </div>
         </div>
+        </CribbageGameplayGeometryProvider>
       </div>
 
       {/* ═══════ UNIFIED BOTTOM SECTION — shell-owned 5-row HUD grid (Phase 2b.1) ═══════
