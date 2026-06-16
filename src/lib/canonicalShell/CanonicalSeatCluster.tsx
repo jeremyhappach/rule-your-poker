@@ -404,10 +404,58 @@ export function CanonicalSeatCluster({
         const header = document.querySelector(
           '[data-canonical-shell-header]',
         ) as HTMLElement | null;
-        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+        const headerRect = header?.getBoundingClientRect();
+        const headerBottom = headerRect ? headerRect.bottom : 0;
         const availableClearance = nameRect.top - headerBottom - SAFETY_PX;
         const lift = Math.max(0, Math.min(PREFERRED_LIFT_PX, availableClearance));
         if (lift > 0) shiftY = -lift;
+
+        // PVR DIAGNOSTIC — log slot -2 / 2 measurements once per change
+        if (slot === -2 || slot === 2) {
+          // Deepest visible descendant of the header container — used to
+          // detect cases where the container box extends below the
+          // visible UI (padding / invisible spacer / chrome margin).
+          let visibleBottom: number | null = null;
+          if (header) {
+            const nodes = header.querySelectorAll('*');
+            for (const node of Array.from(nodes)) {
+              const r = (node as HTMLElement).getBoundingClientRect();
+              if (r.width > 0 && r.height > 0) {
+                if (visibleBottom === null || r.bottom > visibleBottom) {
+                  visibleBottom = r.bottom;
+                }
+              }
+            }
+          }
+          const payload = {
+            slot,
+            position,
+            headerContainerTop: headerRect ? Math.round(headerRect.top * 10) / 10 : null,
+            headerContainerBottom: Math.round(headerBottom * 10) / 10,
+            headerContainerHeight: headerRect ? Math.round(headerRect.height * 10) / 10 : null,
+            headerVisibleBottom:
+              visibleBottom != null ? Math.round(visibleBottom * 10) / 10 : null,
+            headerBoxVsVisibleDelta:
+              visibleBottom != null
+                ? Math.round((headerBottom - visibleBottom) * 10) / 10
+                : null,
+            chipTop: Math.round(chipRect.top * 10) / 10,
+            nameTop: Math.round(nameRect.top * 10) / 10,
+            nameBottom: Math.round(nameRect.bottom * 10) / 10,
+            chipMinusHeaderBox: Math.round((chipRect.top - headerBottom) * 10) / 10,
+            availableLift: Math.round(availableClearance * 10) / 10,
+            actualLift: Math.round(lift * 10) / 10,
+          };
+          const w = window as unknown as Record<string, unknown>;
+          const cacheKey = `__pvrLiftLog_${slot}_${position}`;
+          const prev = w[cacheKey] as string | undefined;
+          const sig = JSON.stringify(payload);
+          if (prev !== sig) {
+            w[cacheKey] = sig;
+            // eslint-disable-next-line no-console
+            console.log('[PVR.lift]', payload);
+          }
+        }
       }
 
       const parts: string[] = [];
