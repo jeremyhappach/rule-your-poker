@@ -1,41 +1,29 @@
 /**
- * Wave 4 — Phase 5C
- * Wave4PegboardSlot — first live gameplay artifact owned by the layout engine.
+ * Wave 5C — Phase 4A
+ * Wave4PegboardSlot now consumes CribbageGameplayGeometryProvider.
  *
- * Responsibilities:
- *   - Build the same Cribbage descriptor set the chrome host uses.
- *   - Resolve layout against live shell geometry.
- *   - Position `children` (the legacy <CribbagePegBoard/>) inside the
- *     resolver-chosen rect for `cribbage.pegboard`.
- *   - Emit `wave4:layout_fault` if the play band cannot accommodate the
- *     descriptor — but never special-case Cribbage to recover.
+ * Per the gameplay-column spec invariant:
+ *   "Gameplay slots may NEVER call resolveLayout()."
  *
- * Discipline:
- *   - This file ONLY positions. Visual rendering of the pegboard stays in
- *     <CribbagePegBoard/>. The slot does not measure, mutate descriptors,
- *     or read other artifacts.
- *   - When geometry is not yet ready (very first paint, before the shell
- *     DOM measures) the slot transparently falls back to legacy
- *     positioning so the pegboard never disappears mid-game.
+ * This slot positions <CribbagePegBoard/> using the `pegboard` child
+ * placement produced by the provider's `cribbage.gameplayColumn` group.
+ * Resolution + telemetry now live in the provider; this slot is a pure
+ * consumer.
+ *
+ * Fallback policy (per spec):
+ *   1. current placement (provider, this frame)
+ *   2. lastValid placement (provider, last fault-free frame)
+ *   3. legacy CSS percentage wrapper (cold-start / pre-measurement)
+ *
+ * Props are preserved for caller compatibility but are no longer used
+ * for descriptor construction — the provider owns descriptors.
  */
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import {
-  resolveLayout,
-  toVmin,
-  type ResolvedPlacement,
-} from "@/lib/wave4LayoutResolver";
-import {
-  emitLayoutFault,
-  hashLayout,
-  orientationFor,
-  viewportBucketFor,
-} from "@/lib/wave4LayoutResolver/telemetry";
+import { type ReactNode } from "react";
+import { toVmin, type ResolvedPlacement } from "@/lib/wave4LayoutResolver";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
-import {
-  getCribbageArtifactDescriptors,
-  type CribbagePhase,
-} from "@/lib/cribbage/cribbageArtifactDescriptors";
+import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
+import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 
 export interface Wave4PegboardSlotProps {
   phase: CribbagePhase;
@@ -46,74 +34,18 @@ export interface Wave4PegboardSlotProps {
   children: ReactNode;
 }
 
-export function Wave4PegboardSlot({
-  phase,
-  viewerSeatPosition,
-  opponentSeatPositions,
-  cutCardRevealed,
-  cribVisible,
-  children,
-}: Wave4PegboardSlotProps) {
-  const { geometry, vminInPx } = useLiveGeometryConstraints();
+const PEGBOARD_SLOT_ID = "pegboard";
 
-  const descriptors = useMemo(
-    () =>
-      getCribbageArtifactDescriptors({
-        phase,
-        viewerSeatPosition,
-        opponentSeatPositions,
-        cutCardRevealed,
-        cribVisible,
-      }),
-    [
-      phase,
-      viewerSeatPosition,
-      opponentSeatPositions,
-      cutCardRevealed,
-      cribVisible,
-    ],
-  );
+export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
+  const { vminInPx } = useLiveGeometryConstraints();
+  const { placementsById, lastValidPlacementsById } =
+    useCribbageGameplayGeometry();
 
-  const layout = useMemo(() => {
-    if (!geometry) return null;
-    return resolveLayout(descriptors, geometry);
-  }, [descriptors, geometry]);
+  const current = placementsById.get(PEGBOARD_SLOT_ID);
+  const lastValid = lastValidPlacementsById.get(PEGBOARD_SLOT_ID);
+  const placement: ResolvedPlacement | undefined =
+    current && current.visible ? current : lastValid;
 
-  const placement: ResolvedPlacement | null = useMemo(() => {
-    if (!layout) return null;
-    return layout.placements.find((p) => p.id === "cribbage.pegboard") ?? null;
-  }, [layout]);
-
-  const lastFaultHashRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!layout) return;
-    const pegFaults = layout.faults.filter((f) =>
-      f.artifactIds.includes("cribbage.pegboard"),
-    );
-    if (pegFaults.length === 0) return;
-    const hash = hashLayout(layout.placements);
-    if (hash === lastFaultHashRef.current) return;
-    lastFaultHashRef.current = hash;
-    emitLayoutFault({
-      layoutHash: hash,
-      game: "cribbage",
-      orientation:
-        typeof window !== "undefined"
-          ? orientationFor(window.innerWidth, window.innerHeight)
-          : "unknown",
-      viewportBucket:
-        typeof window !== "undefined"
-          ? viewportBucketFor(window.innerWidth, window.innerHeight)
-          : "unknown",
-      faults: pegFaults,
-      timestamp: Date.now(),
-    });
-  }, [layout]);
-
-  // Fallback: until live geometry resolves OR resolver collapses the
-  // pegboard (which is illegal — collapsePriority: 'last'), preserve the
-  // legacy positioning so the pegboard remains visible. The fallback uses
-  // the exact pre-Wave4 wrapper classes.
   if (!placement || !placement.visible || vminInPx <= 0) {
     return (
       <div
@@ -134,6 +66,8 @@ export function Wave4PegboardSlot({
     <div
       data-wave4-pegboard-slot="resolved"
       data-artifact-id="cribbage.pegboard"
+      data-gameplay-column-child="pegboard"
+      data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",
         left: `${x}vmin`,
