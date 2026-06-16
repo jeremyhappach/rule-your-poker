@@ -11160,6 +11160,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       </AlertDialog>
 
     <DebugLogToggle />
+    <PvrLiftPill />
+
     </div>
   );
 
