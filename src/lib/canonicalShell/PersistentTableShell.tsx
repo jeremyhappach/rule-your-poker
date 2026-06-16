@@ -268,7 +268,7 @@ export function PersistentTableShell({
                 left: 0,
                 right: 0,
                 height: 'var(--shell-felt-h)',
-                overflow: 'hidden',
+                overflow: 'visible',
                 pointerEvents: 'none',
                 zIndex: 2,
               }}

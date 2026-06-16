@@ -5618,8 +5618,8 @@ export const MobileGameTable = ({
         ref={tableContainerRef}
         data-canonical-table-container=""
         data-canonical-table-felt-ownership="shell"
-        className="relative overflow-hidden"
-        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
+        className="relative"
+        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', overflow: 'visible' }}
       >
 
         {/* Phase 3.2 (complete): MobileGameTable no longer owns ANY felt.
@@ -7553,7 +7553,19 @@ export const MobileGameTable = ({
         })()}
         
       </div>
-      
+
+      {/* PVR bottom-clearance spacer — pixels donated from Row 4 (pane)
+          surface as a gap between the felt region and the HUD column.
+          Bottom-seat decorations (card backs, showdown cards) rendered
+          inside the felt region with overflow:visible render INTO this
+          gap rather than being clipped at the felt-region bottom edge.
+          Width-only token; never reads game type. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-vertical-reserve, 0px)', pointerEvents: 'none' }}
+      />
+
       {/* Bottom section - Current player's cards and actions (swipeable) */}
       <div className="flex-1 min-h-0 bg-gradient-to-t from-background via-background to-background/95 border-t border-border touch-pan-x overflow-hidden" {...swipeHandlers}>
         {isWaitingPhase ? (
