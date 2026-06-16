@@ -70,7 +70,12 @@ export type BandId =
   | "bottomHud"
   | "seatProjected";
 
-export type ComposeMode = "flow" | "overlay" | "seatBound" | "chipBound";
+export type ComposeMode =
+  | "flow"
+  | "overlay"
+  | "seatBound"
+  | "chipBound"
+  | "centerpiece";
 
 export type CollapsePriority =
   | "never"
