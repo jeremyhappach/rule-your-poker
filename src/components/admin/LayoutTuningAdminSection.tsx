@@ -1,82 +1,46 @@
 /**
  * Admin → Layout Tuning section.
  *
- * Two independent first-class layout knobs for the canonical shell:
+ * Edits the GLOBAL Canonical Shell Layout config, not a per-user or
+ * per-device preference. Sliders update the local DOM live for the
+ * admin's session; pressing SAVE writes the values to
+ * `system_settings.canonical_shell_layout` and every other client
+ * (every user, every device, every game) receives them automatically
+ * over realtime — no redeploy, no localStorage.
  *
- *   TOP SAFE AREA    (0..40px, step 2)  —  empty clearance ABOVE the felt.
- *                                          Benefits top seat names + top
- *                                          seat artifacts. Persisted as
- *                                          localStorage('admin.playTopSafeArea').
- *                                          Bound to CSS var
- *                                          `--play-top-safe-area`.
+ * Bound CSS variables:
+ *   --play-top-safe-area
+ *   --play-bottom-safe-area
  *
- *   BOTTOM SAFE AREA (0..40px, step 2)  —  empty clearance BELOW the felt.
- *                                          Benefits bottom seat card backs
- *                                          + bottom seat artifacts. Persisted
- *                                          as localStorage('admin.playBottomSafeArea').
- *                                          Bound to CSS var
- *                                          `--play-bottom-safe-area`.
- *
- * Neither knob changes:
- *   - felt size / felt position
- *   - seat ring
- *   - chip anchors
- *   - spotlight
- *   - announcement, timer, tab, or identity rows
- *
- * Both donate pixels exclusively from HUD Row 4 (the active content pane).
+ * Donates pixels exclusively from HUD Row 4 (the active content pane).
+ * Does not change felt, seat ring, chip anchors, spotlight, or any
+ * other HUD row.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
+import {
+  CANONICAL_SHELL_LAYOUT_BOUNDS,
+  DEFAULT_CANONICAL_SHELL_LAYOUT,
+  getCanonicalShellLayout,
+  saveCanonicalShellLayout,
+  subscribeCanonicalShellLayout,
+} from '@/lib/canonicalShell/canonicalShellLayoutConfig';
 
-const TOP_STORAGE_KEY = 'admin.playTopSafeArea';
-const BOTTOM_STORAGE_KEY = 'admin.playBottomSafeArea';
-const TOP_DEFAULT_PX = 24;
-const BOTTOM_DEFAULT_PX = 12;
-const MIN_PX = 0;
-const MAX_PX = 40;
-const STEP_PX = 2;
+const { min: MIN_PX, max: MAX_PX, step: STEP_PX } = CANONICAL_SHELL_LAYOUT_BOUNDS;
 
 function clampStep(n: number): number {
   const c = Math.max(MIN_PX, Math.min(MAX_PX, n));
   return Math.round(c / STEP_PX) * STEP_PX;
 }
 
-function readStored(key: string, def: number): number {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw == null) return def;
-    const n = Number.parseInt(raw, 10);
-    if (!Number.isFinite(n)) return def;
-    return clampStep(n);
-  } catch {
-    return def;
-  }
-}
-
-export function readStoredPlayTopSafeArea(): number {
-  return readStored(TOP_STORAGE_KEY, TOP_DEFAULT_PX);
-}
-export function readStoredPlayBottomSafeArea(): number {
-  return readStored(BOTTOM_STORAGE_KEY, BOTTOM_DEFAULT_PX);
-}
-
-function applyTop(px: number) {
+function applyTopLive(px: number) {
   document.documentElement.style.setProperty('--play-top-safe-area', `${px}px`);
 }
-function applyBottom(px: number) {
+function applyBottomLive(px: number) {
   document.documentElement.style.setProperty('--play-bottom-safe-area', `${px}px`);
-}
-
-/**
- * Call once from main.tsx to rehydrate the saved values before first render.
- * Safe to call repeatedly.
- */
-export function bootstrapLayoutTuning() {
-  applyTop(readStoredPlayTopSafeArea());
-  applyBottom(readStoredPlayBottomSafeArea());
 }
 
 interface Diag {
@@ -96,21 +60,39 @@ function readDiag(): Diag {
 }
 
 export function LayoutTuningAdminSection() {
-  const [top, setTop] = useState<number>(() => readStoredPlayTopSafeArea());
-  const [bottom, setBottom] = useState<number>(() => readStoredPlayBottomSafeArea());
+  const initial = getCanonicalShellLayout();
+  const [top, setTop] = useState<number>(initial.playSafeTop);
+  const [bottom, setBottom] = useState<number>(initial.playSafeBottom);
+  // Saved baseline = last value written to (or fetched from) the DB.
+  const [savedTop, setSavedTop] = useState<number>(initial.playSafeTop);
+  const [savedBottom, setSavedBottom] = useState<number>(initial.playSafeBottom);
+  const [saving, setSaving] = useState(false);
   const [diag, setDiag] = useState<Diag>({ pane: 0, topSafe: 0, bottomSafe: 0 });
   const timerRef = useRef<number | null>(null);
 
+  // Track the global authoritative value (fetch + realtime updates).
+  // When the global changes and the admin has no unsaved edits, snap
+  // the sliders to it; otherwise just update the saved baseline so
+  // the dirty diff stays meaningful.
   useEffect(() => {
-    applyTop(top);
-    try { localStorage.setItem(TOP_STORAGE_KEY, String(top)); } catch { /* noop */ }
-  }, [top]);
+    const unsub = subscribeCanonicalShellLayout((c) => {
+      setSavedTop((prevSaved) => {
+        setTop((prevTop) => (prevTop === prevSaved ? c.playSafeTop : prevTop));
+        return c.playSafeTop;
+      });
+      setSavedBottom((prevSaved) => {
+        setBottom((prevBot) => (prevBot === prevSaved ? c.playSafeBottom : prevBot));
+        return c.playSafeBottom;
+      });
+    });
+    return unsub;
+  }, []);
 
-  useEffect(() => {
-    applyBottom(bottom);
-    try { localStorage.setItem(BOTTOM_STORAGE_KEY, String(bottom)); } catch { /* noop */ }
-  }, [bottom]);
+  // Live preview for the admin's current session only.
+  useEffect(() => { applyTopLive(top); }, [top]);
+  useEffect(() => { applyBottomLive(bottom); }, [bottom]);
 
+  // Diagnostic polling.
   useEffect(() => {
     let alive = true;
     const tick = () => {
@@ -125,15 +107,41 @@ export function LayoutTuningAdminSection() {
     };
   }, []);
 
+  const dirty = top !== savedTop || bottom !== savedBottom;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await saveCanonicalShellLayout({
+        playSafeTop: top,
+        playSafeBottom: bottom,
+      });
+      if (res.ok) {
+        toast.success('Saved as global default');
+      } else {
+        const err = (res as { ok: false; error: string }).error;
+        toast.error(`Save failed: ${err}`);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRevert = () => {
+    setTop(savedTop);
+    setBottom(savedBottom);
+  };
+
   return (
     <div className="space-y-3 py-2 border-t border-border">
       <div className="space-y-0.5">
-        <Label className="text-sm font-semibold">Layout Tuning</Label>
+        <Label className="text-sm font-semibold">Layout Tuning (Global)</Label>
         <p className="text-xs text-muted-foreground">
-          Independent top/bottom safe areas around the felt. Both donate pixels
-          exclusively from HUD Row 4 (the active content pane). Neither changes
-          felt, seat ring, chip anchors, spotlight, or any HUD row except Row 4.
-          Applies live and persists in this browser.
+          Canonical shell-owned safe areas around the felt. Sliders preview
+          live in this session. Press <strong>Save as global default</strong>{' '}
+          to apply for every user, device, and game — no redeploy. Donates
+          pixels exclusively from HUD Row 4 (active content pane); does not
+          change felt, seat ring, chip anchors, or other HUD rows.
         </p>
       </div>
 
@@ -141,7 +149,12 @@ export function LayoutTuningAdminSection() {
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="top-safe-slider" className="text-sm">TOP SAFE AREA</Label>
-          <span className="font-mono text-base font-semibold">{top} px</span>
+          <span className="font-mono text-base font-semibold">
+            {top} px
+            {top !== savedTop && (
+              <span className="ml-2 text-[10px] text-amber-500">(unsaved · saved {savedTop})</span>
+            )}
+          </span>
         </div>
         <Slider
           id="top-safe-slider"
@@ -158,23 +171,30 @@ export function LayoutTuningAdminSection() {
           <Button size="sm" variant={top === 0 ? 'default' : 'outline'} className="flex-1" onClick={() => setTop(0)}>
             MIN (0)
           </Button>
-          <Button size="sm" variant={top === TOP_DEFAULT_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setTop(TOP_DEFAULT_PX)}>
-            RESET ({TOP_DEFAULT_PX})
+          <Button
+            size="sm"
+            variant={top === DEFAULT_CANONICAL_SHELL_LAYOUT.playSafeTop ? 'default' : 'outline'}
+            className="flex-1"
+            onClick={() => setTop(DEFAULT_CANONICAL_SHELL_LAYOUT.playSafeTop)}
+          >
+            DEFAULT ({DEFAULT_CANONICAL_SHELL_LAYOUT.playSafeTop})
           </Button>
           <Button size="sm" variant={top === MAX_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setTop(MAX_PX)}>
             MAX ({MAX_PX})
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground">
-          Stored as <code>{TOP_STORAGE_KEY}</code>. Benefits top seat names + artifacts.
-        </p>
       </div>
 
       {/* BOTTOM SAFE AREA */}
       <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="bottom-safe-slider" className="text-sm">BOTTOM SAFE AREA</Label>
-          <span className="font-mono text-base font-semibold">{bottom} px</span>
+          <span className="font-mono text-base font-semibold">
+            {bottom} px
+            {bottom !== savedBottom && (
+              <span className="ml-2 text-[10px] text-amber-500">(unsaved · saved {savedBottom})</span>
+            )}
+          </span>
         </div>
         <Slider
           id="bottom-safe-slider"
@@ -191,21 +211,41 @@ export function LayoutTuningAdminSection() {
           <Button size="sm" variant={bottom === 0 ? 'default' : 'outline'} className="flex-1" onClick={() => setBottom(0)}>
             MIN (0)
           </Button>
-          <Button size="sm" variant={bottom === BOTTOM_DEFAULT_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setBottom(BOTTOM_DEFAULT_PX)}>
-            RESET ({BOTTOM_DEFAULT_PX})
+          <Button
+            size="sm"
+            variant={bottom === DEFAULT_CANONICAL_SHELL_LAYOUT.playSafeBottom ? 'default' : 'outline'}
+            className="flex-1"
+            onClick={() => setBottom(DEFAULT_CANONICAL_SHELL_LAYOUT.playSafeBottom)}
+          >
+            DEFAULT ({DEFAULT_CANONICAL_SHELL_LAYOUT.playSafeBottom})
           </Button>
           <Button size="sm" variant={bottom === MAX_PX ? 'default' : 'outline'} className="flex-1" onClick={() => setBottom(MAX_PX)}>
             MAX ({MAX_PX})
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground">
-          Stored as <code>{BOTTOM_STORAGE_KEY}</code>. Benefits bottom seat card backs + artifacts.
-        </p>
+      </div>
+
+      {/* SAVE */}
+      <div className="flex gap-2">
+        <Button
+          className="flex-1"
+          disabled={!dirty || saving}
+          onClick={handleSave}
+        >
+          {saving ? 'Saving…' : 'SAVE AS GLOBAL DEFAULT'}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={!dirty || saving}
+          onClick={handleRevert}
+        >
+          Revert
+        </Button>
       </div>
 
       <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-1 font-mono text-xs">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
-          Derived
+          Derived (live)
         </div>
         <DiagRow label="Top safe area" value={`${Math.round(diag.topSafe)} px`} />
         <DiagRow label="Bottom safe area" value={`${Math.round(diag.bottomSafe)} px`} />
