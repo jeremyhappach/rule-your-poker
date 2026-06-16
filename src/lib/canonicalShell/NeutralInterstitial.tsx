@@ -418,12 +418,18 @@ export function NeutralInterstitial({
       className="h-full flex flex-col bg-transparent relative"
     >
       <div
-        className="relative overflow-hidden"
-        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
+        className="relative"
+        style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)', overflow: 'visible' }}
       >
         {/* Shell owns the felt unconditionally — no local mount. */}
         {seatLayer}
       </div>
+      {/* PVR bottom-clearance spacer — see MobileGameTable for contract. */}
+      <div
+        aria-hidden
+        data-canonical-shell-play-bottom-spacer=""
+        style={{ flex: '0 0 var(--play-vertical-reserve, 0px)', pointerEvents: 'none' }}
+      />
       {/* HUD region — shell-owned 5-row proportional grid (Phase 2).
           Interstitial has no timer / pane / identity content; the rows
           still render at their token heights so composition matches
