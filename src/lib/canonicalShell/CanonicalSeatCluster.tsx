@@ -385,26 +385,15 @@ export function CanonicalSeatCluster({
       if (shiftX > MAX_BIAS_PX) shiftX = MAX_BIAS_PX;
       else if (shiftX < -MAX_BIAS_PX) shiftX = -MAX_BIAS_PX;
 
-      // Vertical top-safe clamp — the name row may extend OUTSIDE the
-      // felt ellipse (intentional) but must remain fully visible within
-      // the shell viewport. If the row's top is above the shell header
-      // bottom or the browser safe-area-inset-top, translate downward
-      // by the minimum amount required. Vertical position is otherwise
-      // invariant; only top-anchored seats will ever shift here because
-      // bottom seats sit far below any top chrome.
-      const header = document.querySelector(
-        '[data-canonical-shell-header]',
-      ) as HTMLElement | null;
-      const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
-      const rootStyle = getComputedStyle(document.documentElement);
-      const safeTopRaw =
-        rootStyle.getPropertyValue('--shell-safe-top') ||
-        rootStyle.getPropertyValue('--safe-area-inset-top') ||
-        '0';
-      const safeTop = parseFloat(safeTopRaw) || 0;
-      const topLimit = Math.max(headerBottom, safeTop) + SAFETY_PX;
+      // Vertical: the name row is allowed to extend ABOVE the felt
+      // ellipse and even into shell-header territory if there is no
+      // room above the chip. Previously we shifted the row DOWN by
+      // clip-recovery, which collided the name with the chip face for
+      // top-anchored seats. The contract is: name row remains above
+      // the chip, never overlapping it. Top-edge clipping by the
+      // shell header is preferred over name/chip collision because
+      // the name row is permitted outside the felt.
       let shiftY = 0;
-      if (nameRect.top < topLimit) shiftY = topLimit - nameRect.top;
 
       const parts: string[] = [];
       if (shiftX) parts.push(`translateX(${shiftX}px)`);
