@@ -87,33 +87,47 @@ All colors MUST be HSL.
     --shell-header-h: max(var(--shell-min-header), calc(var(--shell-r-header) * 100dvh));
     --shell-flex-h:   calc(100dvh - var(--shell-header-h) - var(--shell-bottom-slack));
     --shell-play-sum: calc(var(--shell-r-play) + var(--shell-r-hud));
-    --shell-play-h:   calc(var(--shell-flex-h) * (var(--shell-r-play) / var(--shell-play-sum)));
-    --shell-hud-h:    calc(var(--shell-flex-h) - var(--shell-play-h));
+
+    /* ─────────────────────────────────────────────────────────────
+       Wave 4 — Play-Area Vertical Reserve (experimental token).
+
+       Steals vertical pixels EXCLUSIVELY from HUD Row 4 (the active
+       content pane) and transfers them to the play region (felt +
+       seat ring clearance). Rows 1/2/3/5 retain their original
+       heights — only Row 4 (pane) shrinks. The visible felt WIDTH
+       is untouched (it remains capped by --shell-felt-w / aspect).
+
+       Range tested: 0px (baseline) → 28px.
+       Default: 20px — clears upper-name/chip overlap and lower
+       card-back/HUD collision on a 390×844 baseline while leaving
+       the pane readable (Cards / Chat / Lobby tabs still fit).
+
+       Override --play-vertical-reserve on :root to A/B test.
+       ───────────────────────────────────────────────────────────── */
+    --play-vertical-reserve: 20px;
+
+    /* Baseline play/hud heights (pre-reserve). */
+    --shell-play-h-base: calc(var(--shell-flex-h) * (var(--shell-r-play) / var(--shell-play-sum)));
+    --shell-hud-h-base:  calc(var(--shell-flex-h) - var(--shell-play-h-base));
+
+    /* Effective shell heights — play grows by reserve, HUD shrinks. */
+    --shell-play-h: calc(var(--shell-play-h-base) + var(--play-vertical-reserve));
+    --shell-hud-h:  calc(var(--shell-hud-h-base)  - var(--play-vertical-reserve));
 
     /* ─────────────────────────────────────────────────────────────
        Canonical FELT geometry — single source of truth.
-       The visible felt ellipse is width-bounded and aspect-capped.
-       Game artifact containers MUST consume these vars so Frame A
-       (visible felt) and Frame B (artifact coordinate space) are
-       identical by construction. Aspect ≈ 1.09 W/H matches the
-       pre-shell-migration geometry approved 2026-06-01.
+       Width-bounded, aspect-capped. The play region now includes
+       --play-vertical-reserve, so the felt naturally consumes the
+       extra clearance up to the aspect cap.
        ───────────────────────────────────────────────────────────── */
     --shell-felt-w:   min(94vw, 720px);
     --shell-felt-h:   min(var(--shell-play-h), calc(var(--shell-felt-w) / 1.09));
 
-    /* Seat-safe clearance inside the play region. Bottom seats reserve
-       their full envelope above the play/HUD boundary instead of using
-       the old chip-center point, so announcement/HUD chrome can never
-       cover the canonical opponent seat. */
+    /* Seat-safe clearance inside the play region. */
     --shell-seat-safe-bottom: max(8px, calc(var(--shell-play-h) * 0.04));
 
 
-    /* HUD internal row ratios (sum to 1.0).
-       Retuned 2026-06-01: announcement rail tightened after typography
-       scale-up (0.11 → 0.085) so the gold rail hugs the larger text
-       instead of reading oversized; timer remains bumped (0.05 → 0.07)
-       so per-actor turn chips don't clip into the tab rail on
-       Yahtzee. */
+    /* HUD internal row ratios (sum to 1.0). */
     --hud-r-announcement: 0.085;
     --hud-r-timer:        0.07;
     --hud-r-tabs:         0.10;
@@ -121,12 +135,17 @@ All colors MUST be HSL.
     --hud-r-identity:     0.12;
 
 
-    /* Computed HUD row heights. Each row is fixed-share + clipped. */
-    --hud-h-announcement: calc(var(--shell-hud-h) * var(--hud-r-announcement));
-    --hud-h-timer:        calc(var(--shell-hud-h) * var(--hud-r-timer));
-    --hud-h-tabs:         calc(var(--shell-hud-h) * var(--hud-r-tabs));
-    --hud-h-pane:         calc(var(--shell-hud-h) * var(--hud-r-pane));
-    --hud-h-identity:     calc(var(--shell-hud-h) * var(--hud-r-identity));
+    /* Computed HUD row heights.
+       Rows 1/2/3/5 are sized from the BASE hud-h (pre-reserve) so
+       their heights are INVARIANT under --play-vertical-reserve.
+       Row 4 (pane) is sized from its base share MINUS the reserve —
+       Row 4 is the sole donor of vertical pixels to the play region.
+       Sum of all five rows = --shell-hud-h. */
+    --hud-h-announcement: calc(var(--shell-hud-h-base) * var(--hud-r-announcement));
+    --hud-h-timer:        calc(var(--shell-hud-h-base) * var(--hud-r-timer));
+    --hud-h-tabs:         calc(var(--shell-hud-h-base) * var(--hud-r-tabs));
+    --hud-h-pane:         calc(var(--shell-hud-h-base) * var(--hud-r-pane) - var(--play-vertical-reserve));
+    --hud-h-identity:     calc(var(--shell-hud-h-base) * var(--hud-r-identity));
 
     /* Continuous content scales — clamped so artifacts don't degenerate. */
     --play-scale: clamp(0.70, calc(var(--shell-play-h) / 420px), 1.20);
