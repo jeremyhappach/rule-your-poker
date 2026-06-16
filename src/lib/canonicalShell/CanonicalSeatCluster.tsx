@@ -480,6 +480,7 @@ export function CanonicalSeatCluster({
   if (!hideChipBubble) {
     nameRow = namePlacement === 'none' ? null : (
       <div
+        ref={nameRowRef}
         data-canonical-seat-name-row=""
         className={cn(
           'inline-flex items-center gap-1 rounded-[3px] px-1 py-[1px] max-w-[88px]',
