@@ -55,10 +55,8 @@ export function bootstrapLayoutTuning() {
 
 interface Diag {
   pane: number;
-  play: number;
-  felt: number;
-  feltW: number;
-  capActive: boolean;
+  topClear: number;
+  bottomClear: number;
 }
 
 function readDiag(): Diag {
@@ -67,10 +65,12 @@ function readDiag(): Diag {
   const pane = parse('--hud-h-pane');
   const play = parse('--shell-play-h');
   const felt = parse('--shell-felt-h');
-  const feltW = parse('--shell-felt-w');
-  const aspectCap = feltW / 1.09;
-  const capActive = felt + 0.5 < play && Math.abs(felt - aspectCap) < 1.5;
-  return { pane, play, felt, feltW, capActive };
+  const reserve = parse('--play-vertical-reserve');
+  // Play assembly shifts down by reserve/2 from top of play region;
+  // remaining space sits below the felt as bottom clearance.
+  const topClear = reserve / 2;
+  const bottomClear = Math.max(0, play - felt - reserve / 2);
+  return { pane, topClear, bottomClear };
 }
 
 export function LayoutTuningAdminSection() {
