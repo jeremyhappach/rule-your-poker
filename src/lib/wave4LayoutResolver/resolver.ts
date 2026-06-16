@@ -559,6 +559,137 @@ function solveOverlay(
 }
 
 // ---------------------------------------------------------------------------
+// Centerpiece — felt-anchored, fixed-aspect, reserves space BEFORE flow solve.
+// Zone = feltBounds minus structural reserves (outerRail / topHud /
+// announcement / bottomHud). If a centerpiece cannot honor its aspect within
+// the zone at minimum size, emit `aspect_unhonorable` and skip placement —
+// never silently distort.
+// ---------------------------------------------------------------------------
+
+function solveCenterpiece(
+  descriptors: ArtifactDescriptor[],
+  geometry: GeometryConstraints,
+): {
+  placements: ResolvedPlacement[];
+  faults: LayoutFault[];
+  bandRects: Map<BandId, FlatRect[]>;
+} {
+  const placements: ResolvedPlacement[] = [];
+  const faults: LayoutFault[] = [];
+  const bandRects = new Map<BandId, FlatRect[]>();
+
+  if (descriptors.length === 0) return { placements, faults, bandRects };
+
+  const felt = rectToFlat(geometry.feltBounds);
+  const rail = rectToFlat(geometry.outerRailReserve);
+  const top = rectToFlat(geometry.topHudReserve);
+  const ann = rectToFlat(geometry.announcementBand);
+  const bot = rectToFlat(geometry.bottomHudReserve);
+
+  const zoneTop = Math.max(
+    felt.y + rail.height,
+    top.y + top.height,
+    ann.y + ann.height,
+  );
+  const zoneBottom = bot.y;
+  const zoneX = felt.x + 2;
+  const zoneRight = felt.x + felt.width - 2;
+  const zoneW = Math.max(0, zoneRight - zoneX);
+  const zoneH = Math.max(0, zoneBottom - zoneTop);
+
+  // Highest priority first (stable on id).
+  const sorted = [...descriptors].sort((a, b) =>
+    b.priority !== a.priority ? b.priority - a.priority : tieSortById(a, b),
+  );
+
+  const occupied: FlatRect[] = [];
+
+  for (const d of sorted) {
+    let w = d.preferredSize.width.value;
+    let h = d.preferredSize.height.value;
+    let appliedAspect = false;
+
+    if (d.aspectRatio && d.aspectRatio > 0) {
+      // Aspect = width / height. Try preferred h, then shrink preserving aspect.
+      if (h * d.aspectRatio <= zoneW + EPSILON_VMIN && h <= zoneH + EPSILON_VMIN) {
+        w = h * d.aspectRatio;
+        appliedAspect = true;
+      } else {
+        const candH = Math.min(zoneH, zoneW / d.aspectRatio);
+        const candW = candH * d.aspectRatio;
+        if (
+          candH + EPSILON_VMIN < d.minimumSize.height.value ||
+          candW + EPSILON_VMIN < d.minimumSize.width.value
+        ) {
+          faults.push({
+            code: "aspect_unhonorable",
+            artifactIds: [d.id],
+            band: d.band,
+            message: `Centerpiece ${d.id} cannot honor aspect ratio within structural safe areas.`,
+          });
+          placements.push({
+            id: d.id,
+            rect: { x: vmin(0), y: vmin(0), width: vmin(0), height: vmin(0) },
+            visible: false,
+            collapsedReason: "dependencyMissing",
+            appliedAspectRatio: false,
+          });
+          continue;
+        }
+        w = candW;
+        h = candH;
+        appliedAspect = true;
+      }
+    } else {
+      w = Math.min(w, zoneW);
+      h = Math.min(h, zoneH);
+    }
+
+    // Center horizontally; vertically center, then shift below any occupied
+    // centerpiece rect (deterministic top-down stack on collisions).
+    const x = zoneX + (zoneW - w) / 2;
+    let y = zoneTop + (zoneH - h) / 2;
+    for (const o of occupied) {
+      const candidate: FlatRect = { x, y, width: w, height: h };
+      if (rectsIntersect(o, candidate)) {
+        y = o.y + o.height + 1;
+      }
+    }
+
+    if (y + h > zoneBottom + EPSILON_VMIN) {
+      faults.push({
+        code: "aspect_unhonorable",
+        artifactIds: [d.id],
+        band: d.band,
+        message: `Centerpiece ${d.id} cannot fit within structural safe areas after stacking.`,
+      });
+      placements.push({
+        id: d.id,
+        rect: { x: vmin(0), y: vmin(0), width: vmin(0), height: vmin(0) },
+        visible: false,
+        collapsedReason: "dependencyMissing",
+        appliedAspectRatio: false,
+      });
+      continue;
+    }
+
+    const rect: FlatRect = { x, y, width: w, height: h };
+    occupied.push(rect);
+    placements.push({
+      id: d.id,
+      rect: flatToRect(rect),
+      visible: true,
+      appliedAspectRatio: appliedAspect,
+    });
+    const arr = bandRects.get(d.band) ?? [];
+    arr.push(rect);
+    bandRects.set(d.band, arr);
+  }
+
+  return { placements, faults, bandRects };
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
@@ -583,6 +714,7 @@ export function resolveLayout(
   const flowByBand = new Map<BandId, ArtifactDescriptor[]>();
   const overlays: ArtifactDescriptor[] = [];
   const seatProjected: ArtifactDescriptor[] = [];
+  const centerpieces: ArtifactDescriptor[] = [];
 
   for (const d of valid) {
     if (d.composeMode === "flow") {
@@ -591,12 +723,19 @@ export function resolveLayout(
       flowByBand.set(d.band, arr);
     } else if (d.composeMode === "overlay") {
       overlays.push(d);
+    } else if (d.composeMode === "centerpiece") {
+      centerpieces.push(d);
     } else {
       seatProjected.push(d);
     }
   }
 
-  // Stage C/D — Band solve (includes protected-area reservation).
+  // Stage B.5 — Centerpiece solve. Reserves felt-anchored rects BEFORE flow.
+  const centerpieceResult = solveCenterpiece(centerpieces, geometry);
+  faults.push(...centerpieceResult.faults);
+
+  // Stage C/D — Band solve (includes protected-area reservation and any
+  // centerpiece rects that landed in the same band as a flow descriptor).
   const allFlow: ResolvedPlacement[] = [];
   const flowById = new Map<string, ArtifactDescriptor>();
   for (const [band, ds] of flowByBand) {
@@ -612,7 +751,8 @@ export function resolveLayout(
       }
       continue;
     }
-    const result = solveBand(band, rectToFlat(bandRect), ds);
+    const extra = centerpieceResult.bandRects.get(band) ?? [];
+    const result = solveBand(band, rectToFlat(bandRect), ds, extra);
     allFlow.push(...result.placements);
     faults.push(...result.faults);
     for (const d of ds) flowById.set(d.id, d);
@@ -628,6 +768,7 @@ export function resolveLayout(
 
   // Stage G — Emit. Stable order: by descriptor id.
   const placements: ResolvedPlacement[] = [
+    ...centerpieceResult.placements,
     ...allFlow,
     ...overlayResult.placements,
     ...seatResult.placements,
