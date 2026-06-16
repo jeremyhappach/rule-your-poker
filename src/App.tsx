@@ -28,6 +28,8 @@ import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
+import { PvrLiftPill } from "@/components/admin/PvrLiftPill";
+
 
 
 // Hydrate the Debug Harness cache once at module load so synchronous
@@ -100,11 +102,13 @@ const App = () => {
               */}
               <DebugTray>
                 <NetworkSimIndicator />
+                <PvrLiftPill />
                 <DebugModeIndicator />
                 
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
               </DebugTray>
+
             </AppNetworkSim>
           </BrowserRouter>
 
