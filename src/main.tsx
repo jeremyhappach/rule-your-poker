@@ -3,10 +3,13 @@ import App from "./App.tsx";
 import "./index.css";
 import { supabase } from "@/integrations/supabase/client";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
-import { bootstrapLayoutTuning } from "@/components/admin/LayoutTuningAdminSection";
+import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
 
-// Rehydrate persistent admin layout tuning before first render.
-bootstrapLayoutTuning();
+// Rehydrate the global Canonical Shell Layout config before first render.
+// Applies baked defaults synchronously and then fetches the DB-backed
+// authoritative values + subscribes to realtime updates so every device
+// stays in sync without a reload.
+bootstrapCanonicalShellLayout();
 
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
