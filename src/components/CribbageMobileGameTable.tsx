@@ -5985,7 +5985,7 @@ export const CribbageMobileGameTable = ({
           obey shell tokens. */}
       <div 
         ref={tableContainerRef}
-        className="relative flex items-start justify-center pt-1 overflow-hidden"
+        className="relative flex items-start justify-center overflow-visible"
         style={{ 
           height: tableContainerHeight,
           flex: '0 0 var(--shell-felt-h)',
