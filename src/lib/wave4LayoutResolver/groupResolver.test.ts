@@ -215,7 +215,7 @@ function round(v: number): number {
 // Suite (Phase-3 activated)
 // ---------------------------------------------------------------------------
 
-describe.skip("Wave 5C — group resolver contract (activates in Phase 3)", () => {
+describe("Wave 5C — group resolver contract", () => {
   // -------------------------------------------------------------------------
   describe("fixed child order", () => {
     it("emits children in declared order regardless of priority", () => {
