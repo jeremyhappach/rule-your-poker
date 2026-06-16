@@ -3,6 +3,10 @@ import App from "./App.tsx";
 import "./index.css";
 import { supabase } from "@/integrations/supabase/client";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
+import { bootstrapLayoutTuning } from "@/components/admin/LayoutTuningAdminSection";
+
+// Rehydrate persistent admin layout tuning before first render.
+bootstrapLayoutTuning();
 
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
