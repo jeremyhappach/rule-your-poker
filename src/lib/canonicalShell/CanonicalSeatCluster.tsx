@@ -345,6 +345,65 @@ export function CanonicalSeatCluster({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // NAME PLATE INWARD CLAMP — name plates are always ABOVE the chip
+  // (vertical position invariant) and HORIZONTALLY biased toward felt
+  // center IFF the natural left-1/2 -translate-x-1/2 position would
+  // clip the outer rail. Affects ONLY `data-canonical-seat-name-row`
+  // via inline translateX; chip anchor, spotlight, decorations, card
+  // backs, dealer pip, and overlays are not touched.
+  const nameRowRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const MAX_BIAS_PX = 56;
+    const SAFETY_PX = 4;
+    const apply = () => {
+      const el = nameRowRef.current;
+      if (!el) return;
+      el.style.transform = '';
+      if (typeof document === 'undefined') return;
+      const chip = document.querySelector(
+        `[data-chip-center="${position}"]`,
+      ) as HTMLElement | null;
+      const felt =
+        (document.querySelector('[data-canonical-felt-surface]') as HTMLElement | null) ??
+        (document.querySelector('[data-canonical-shell-felt-frame]') as HTMLElement | null);
+      if (!chip || !felt) return;
+      const nameRect = el.getBoundingClientRect();
+      const chipRect = chip.getBoundingClientRect();
+      const feltRect = felt.getBoundingClientRect();
+      if (nameRect.width === 0 || feltRect.width === 0) return;
+      const chipCx = chipRect.left + chipRect.width / 2;
+      const feltCx = feltRect.left + feltRect.width / 2;
+      const inwardSign = feltCx >= chipCx ? 1 : -1;
+      const leftOverflow = feltRect.left + SAFETY_PX - nameRect.left;
+      const rightOverflow = nameRect.right - (feltRect.right - SAFETY_PX);
+      let shift = 0;
+      if (inwardSign > 0 && leftOverflow > 0) shift = leftOverflow;
+      else if (inwardSign < 0 && rightOverflow > 0) shift = -rightOverflow;
+      if (shift > MAX_BIAS_PX) shift = MAX_BIAS_PX;
+      else if (shift < -MAX_BIAS_PX) shift = -MAX_BIAS_PX;
+      el.style.transform = shift ? `translateX(${shift}px)` : '';
+    };
+    apply();
+    if (typeof window === 'undefined') return;
+    const el = nameRowRef.current;
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(apply);
+      if (el) ro.observe(el);
+      const felt =
+        document.querySelector('[data-canonical-felt-surface]') ??
+        document.querySelector('[data-canonical-shell-felt-frame]');
+      if (felt) ro.observe(felt as Element);
+    }
+    window.addEventListener('resize', apply);
+    window.addEventListener('orientationchange', apply);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', apply);
+      window.removeEventListener('orientationchange', apply);
+    };
+  }, [position, name, slot]);
+
   if (slot === null || slot === undefined) return null;
 
   // Canonical self-suppression: the local viewer is represented by the
