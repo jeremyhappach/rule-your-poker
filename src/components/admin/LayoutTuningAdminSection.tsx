@@ -75,7 +75,7 @@ function readDiag(): Diag {
 
 export function LayoutTuningAdminSection() {
   const [value, setValue] = useState<number>(() => readStoredPlayVerticalReserve());
-  const [diag, setDiag] = useState<Diag>({ pane: 0, play: 0, felt: 0, feltW: 0, capActive: false });
+  const [diag, setDiag] = useState<Diag>({ pane: 0, topClear: 0, bottomClear: 0 });
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
