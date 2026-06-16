@@ -55,10 +55,8 @@ export function bootstrapLayoutTuning() {
 
 interface Diag {
   pane: number;
-  play: number;
-  felt: number;
-  feltW: number;
-  capActive: boolean;
+  topClear: number;
+  bottomClear: number;
 }
 
 function readDiag(): Diag {
@@ -67,15 +65,17 @@ function readDiag(): Diag {
   const pane = parse('--hud-h-pane');
   const play = parse('--shell-play-h');
   const felt = parse('--shell-felt-h');
-  const feltW = parse('--shell-felt-w');
-  const aspectCap = feltW / 1.09;
-  const capActive = felt + 0.5 < play && Math.abs(felt - aspectCap) < 1.5;
-  return { pane, play, felt, feltW, capActive };
+  const reserve = parse('--play-vertical-reserve');
+  // Play assembly shifts down by reserve/2 from top of play region;
+  // remaining space sits below the felt as bottom clearance.
+  const topClear = reserve / 2;
+  const bottomClear = Math.max(0, play - felt - reserve / 2);
+  return { pane, topClear, bottomClear };
 }
 
 export function LayoutTuningAdminSection() {
   const [value, setValue] = useState<number>(() => readStoredPlayVerticalReserve());
-  const [diag, setDiag] = useState<Diag>({ pane: 0, play: 0, felt: 0, feltW: 0, capActive: false });
+  const [diag, setDiag] = useState<Diag>({ pane: 0, topClear: 0, bottomClear: 0 });
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -157,20 +157,9 @@ export function LayoutTuningAdminSection() {
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
             Derived
           </div>
+          <DiagRow label="Top clearance" value={`${Math.round(diag.topClear)} px`} />
+          <DiagRow label="Bottom clearance" value={`${Math.round(diag.bottomClear)} px`} />
           <DiagRow label="Row 4 height" value={`${Math.round(diag.pane)} px`} />
-          <DiagRow label="Play height" value={`${Math.round(diag.play)} px`} />
-          <DiagRow label="Felt height" value={`${Math.round(diag.felt)} px`} />
-          <DiagRow label="Felt width" value={`${Math.round(diag.feltW)} px`} />
-          <DiagRow
-            label="Aspect cap"
-            value={diag.capActive ? 'ACTIVE' : 'FREE'}
-            highlight={diag.capActive}
-          />
-          {diag.capActive && (
-            <div className="mt-2 rounded bg-amber-600 px-2 py-1 text-center text-[11px] font-bold text-white tracking-wider">
-              ASPECT CAP ACTIVE
-            </div>
-          )}
         </div>
 
         <p className="text-[10px] text-muted-foreground">
