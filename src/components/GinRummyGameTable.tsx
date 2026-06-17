@@ -171,6 +171,7 @@ import { recordStartupFlight, recordStartupValue, useStartupMountTrace, useStart
 
 
 import { MessageSquare, User, Clock } from 'lucide-react';
+import { GinRummyGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/GinRummyGameplayGeometryProvider';
 
 const traceGinAnnouncement = (event: string, payload: Record<string, unknown> = {}) => {
   try {
