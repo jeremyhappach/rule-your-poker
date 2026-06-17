@@ -7372,7 +7372,7 @@ export const MobileGameTable = ({
             // current player never double-renders at HOME on top of the
             // bottom HUD.
             const stayed = player.current_decision === 'stay';
-            const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+            const raise = isHolmMultiPlayerShowdown && stayed;
 
             if (isPreSessionPhase) {
               // Wartime FIX #1: when the shell-owned
