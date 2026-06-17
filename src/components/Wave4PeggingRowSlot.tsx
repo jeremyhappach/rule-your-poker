@@ -67,6 +67,63 @@ export function Wave4PeggingRowSlot({
 
   const usingFallback = !placement || !placement.visible || vminInPx <= 0;
 
+  const slotRef = useRef<HTMLDivElement | null>(null);
+  const lastDiagRef = useRef<string>("");
+  useEffect(() => {
+    const el = slotRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const placementSrc = usingFallback
+      ? "fallback"
+      : current && current.visible
+        ? "current"
+        : "lastValid";
+    const rectStr = placement
+      ? `${toVmin(placement.rect.x, vminInPx).toFixed(2)},${toVmin(placement.rect.y, vminInPx).toFixed(2)},${toVmin(placement.rect.width, vminInPx).toFixed(2)},${toVmin(placement.rect.height, vminInPx).toFixed(2)} vmin`
+      : "none";
+    const placementRectPx = placement
+      ? {
+          height:
+            placement.rect.height.unit === "px"
+              ? placement.rect.height.value
+              : placement.rect.height.value * vminInPx,
+          width:
+            placement.rect.width.unit === "px"
+              ? placement.rect.width.value
+              : placement.rect.width.value * vminInPx,
+        }
+      : null;
+    // Find bottom HUD candidate.
+    const hud =
+      document.querySelector("[data-shell-hud-chrome]") ||
+      document.querySelector("[data-bottom-hud]") ||
+      document.querySelector("[data-canonical-bottom-hud]");
+    const hudRect = hud ? (hud as HTMLElement).getBoundingClientRect() : null;
+    const sig = `${placementSrc}|${rectStr}|${r.top.toFixed(1)}|${r.bottom.toFixed(1)}|${r.height.toFixed(1)}|${hudRect?.top.toFixed(1) ?? "?"}`;
+    if (sig === lastDiagRef.current) return;
+    lastDiagRef.current = sig;
+    // eslint-disable-next-line no-console
+    console.log("[wave5:diag:peggingRow]", {
+      placementSource: placementSrc,
+      parentId: placement?.parentId ?? null,
+      placementRectVmin: rectStr,
+      placementRectPx,
+      domBounds: { top: r.top, bottom: r.bottom, height: r.height },
+      bottomHudTop: hudRect?.top ?? null,
+      bottomHudBottom: hudRect?.bottom ?? null,
+      bottomHudSelector: hud
+        ? (hud as HTMLElement).getAttribute("data-shell-hud-chrome")
+          ? "[data-shell-hud-chrome]"
+          : (hud as HTMLElement).getAttribute("data-bottom-hud")
+            ? "[data-bottom-hud]"
+            : "[data-canonical-bottom-hud]"
+        : null,
+      windowInnerHeight: window.innerHeight,
+      faultCount: faults.length,
+    });
+  });
+
+
   if (usingFallback) {
     // Legacy fallback — fixed sizes acceptable here per Phase 4B.1 scope.
     return (
