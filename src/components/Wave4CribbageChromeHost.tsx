@@ -50,6 +50,8 @@ import {
   getCribbageArtifactDescriptors,
   type CribbagePhase,
 } from "@/lib/cribbage/cribbageArtifactDescriptors";
+import { useCribbageAnchoredPegboardFlag } from "@/lib/wave5d/cribbageAnchoredPegboardFlag";
+
 
 // Artifacts we project as ghost rects.
 // Phase 5A: chrome only.
@@ -89,25 +91,38 @@ export interface Wave4CribbageChromeHostProps {
 export function Wave4CribbageChromeHost(props: Wave4CribbageChromeHostProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const visible = flagEnabled();
+  const anchoredPegboardOn = useCribbageAnchoredPegboardFlag();
   const lastHashRef = useRef<string | null>(null);
 
   const descriptors = useMemo(
-    () =>
-      getCribbageArtifactDescriptors({
+    () => {
+      const all = getCribbageArtifactDescriptors({
         phase: props.phase,
         viewerSeatPosition: props.viewerSeatPosition,
         opponentSeatPositions: props.opponentSeatPositions,
         cutCardRevealed: props.cutCardRevealed,
         cribVisible: props.cribVisible,
-      }),
+      });
+      // Wave 5D Phase 4A.1 — Cleanup blocker #1.
+      // When the anchored pegboard flag is ON, the live pegboard is owned
+      // exclusively by CribbageGameplayGeometryProvider. The chrome host
+      // must NOT resolve a second (legacy) `cribbage.pegboard` descriptor —
+      // doing so produced spurious `aspect_unhonorable` faults and split
+      // descriptor ownership.
+      return anchoredPegboardOn
+        ? all.filter((d) => d.id !== "cribbage.pegboard")
+        : all;
+    },
     [
       props.phase,
       props.viewerSeatPosition,
       props.opponentSeatPositions,
       props.cutCardRevealed,
       props.cribVisible,
+      anchoredPegboardOn,
     ],
   );
+
 
   // Resolve once per (descriptors, geometry) change, just for fault emission.
   // ArtifactHost resolves again internally for rendering — but the work is
