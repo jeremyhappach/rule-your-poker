@@ -169,7 +169,8 @@ export type LayoutFaultCode =
   | "protected_area_outside_band"
   | "safe_area_collision"
   | "descriptor_targets_structural_band"
-  | "missing_safe_area_dependency";
+  | "missing_safe_area_dependency"
+  | "wave5:viewport_collapsed";
 
 export interface LayoutFault {
   code: LayoutFaultCode;
@@ -178,8 +179,45 @@ export interface LayoutFault {
   message: string;
 }
 
+// ---------------------------------------------------------------------------
+// Wave 5D — availableGameplayViewport
+//
+// The coordinate space gameplay artifacts live in. Derived once per resolve
+// pass from canonical shell geometry by subtracting structural reserves
+// (HUDs, announcement, outer rail, seat ring, shell safe areas) from
+// feltBounds. Owned by the canonical shell; consumed read-only by gameplay
+// descriptors. See:
+//   .lovable/wave5-gameplay-geometry/wave5D-anchored-composeMode-spec.md §2
+//
+// Phase 1: derived and exposed on every ResolvedLayout. No descriptor
+// consumes it yet — anchored composeMode lands in Phase 2.
+// ---------------------------------------------------------------------------
+
+export interface AvailableGameplayViewport {
+  /** In felt-local vmin. Non-empty in every valid layout. */
+  rect: Rect;
+  /** Echo of inputs used to derive `rect`, for diagnostics and tests. */
+  derivedFrom: {
+    feltBounds: Rect;
+    subtracted: {
+      announcementBand: Rect;
+      topHudReserve: Rect;
+      bottomHudReserve: Rect;
+      outerRailReserve: Rect;
+      seatRingReserve: Rect;
+      shellSafeAreas: ReadonlyArray<Rect>;
+    };
+  };
+}
+
 export interface ResolvedLayout {
   placements: ReadonlyArray<ResolvedPlacement>;
   faults: ReadonlyArray<LayoutFault>;
   geometry: GeometryConstraints;
+  /**
+   * Wave 5D — gameplay canvas. Derived every resolve pass from `geometry`.
+   * If empty, a `wave5:viewport_collapsed` fault is emitted and the rect
+   * is set to zero extents.
+   */
+  availableGameplayViewport: AvailableGameplayViewport;
 }

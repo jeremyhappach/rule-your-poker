@@ -19,6 +19,7 @@
 
 import type {
   ArtifactDescriptor,
+  AvailableGameplayViewport,
   BandId,
   CollapsePriority,
   GeometryConstraints,
@@ -693,8 +694,132 @@ function solveCenterpiece(
 }
 
 // ---------------------------------------------------------------------------
+// Wave 5D — Phase 1: availableGameplayViewport derivation
+//
+// Compute the largest axis-aligned interior rect inside `feltBounds` that
+// contains no structural reserve. Implementation: edge-pushing — for each
+// reserve, push whichever viewport edge it overlaps most cheaply. Reserves
+// that don't touch any edge are ignored (they cannot be excluded from a
+// single rect anyway). This matches every real shell layout we ship today,
+// where reserves are HUD bands / rails / seat ring that hug felt edges.
+//
+// Spec: .lovable/wave5-gameplay-geometry/wave5D-anchored-composeMode-spec.md §2
+// ---------------------------------------------------------------------------
+
+function emptyRect(): FlatRect {
+  return { x: 0, y: 0, width: 0, height: 0 };
+}
+
+function seatRingBoundingRect(geometry: GeometryConstraints): FlatRect {
+  const sr = geometry.seatRing;
+  const cx = sr.center.x.value;
+  const cy = sr.center.y.value;
+  const rx = sr.radiusX.value;
+  const ry = sr.radiusY.value;
+  return {
+    x: cx - rx,
+    y: cy - ry,
+    width: rx * 2,
+    height: ry * 2,
+  };
+}
+
+function pushViewportEdge(viewport: FlatRect, reserve: FlatRect): FlatRect {
+  if (reserve.width <= 0 || reserve.height <= 0) return viewport;
+  if (!rectsIntersect(viewport, reserve)) return viewport;
+
+  const rTop = reserve.y;
+  const rBottom = reserve.y + reserve.height;
+  const rLeft = reserve.x;
+  const rRight = reserve.x + reserve.width;
+  const vTop = viewport.y;
+  const vBottom = viewport.y + viewport.height;
+  const vLeft = viewport.x;
+  const vRight = viewport.x + viewport.width;
+
+  // Push amounts to fully exclude `reserve` from `viewport` by collapsing
+  // one edge inward. Infinity = that edge can't resolve the overlap alone.
+  const pushTop = rBottom > vTop ? rBottom - vTop : Infinity;
+  const pushBottom = rTop < vBottom ? vBottom - rTop : Infinity;
+  const pushLeft = rRight > vLeft ? rRight - vLeft : Infinity;
+  const pushRight = rLeft < vRight ? vRight - rLeft : Infinity;
+
+  const candidates: Array<{ side: "top" | "bottom" | "left" | "right"; cost: number }> = [
+    { side: "top", cost: pushTop },
+    { side: "bottom", cost: pushBottom },
+    { side: "left", cost: pushLeft },
+    { side: "right", cost: pushRight },
+  ];
+  candidates.sort((a, b) => a.cost - b.cost);
+  const pick = candidates[0];
+  if (!isFinite(pick.cost)) return viewport;
+
+  switch (pick.side) {
+    case "top":
+      return { x: viewport.x, y: rBottom, width: viewport.width, height: Math.max(0, vBottom - rBottom) };
+    case "bottom":
+      return { x: viewport.x, y: viewport.y, width: viewport.width, height: Math.max(0, rTop - viewport.y) };
+    case "left":
+      return { x: rRight, y: viewport.y, width: Math.max(0, vRight - rRight), height: viewport.height };
+    case "right":
+      return { x: viewport.x, y: viewport.y, width: Math.max(0, rLeft - viewport.x), height: viewport.height };
+  }
+}
+
+export function deriveAvailableGameplayViewport(
+  geometry: GeometryConstraints,
+): { viewport: AvailableGameplayViewport; fault: LayoutFault | null } {
+  const felt = rectToFlat(geometry.feltBounds);
+  const announcement = rectToFlat(geometry.announcementBand);
+  const topHud = rectToFlat(geometry.topHudReserve);
+  const bottomHud = rectToFlat(geometry.bottomHudReserve);
+  const outerRail = rectToFlat(geometry.outerRailReserve);
+  const seatRingRect = seatRingBoundingRect(geometry);
+
+  // Order: edge-aligned reserves first (HUD/announcement/bottom), then rails,
+  // then seat ring last so it only pulls edges in if nothing else did.
+  const reserves: FlatRect[] = [topHud, announcement, bottomHud, outerRail, seatRingRect];
+
+  let v: FlatRect = { ...felt };
+  for (const r of reserves) {
+    v = pushViewportEdge(v, r);
+    if (v.width <= EPSILON_VMIN || v.height <= EPSILON_VMIN) break;
+  }
+
+  const collapsed = v.width <= EPSILON_VMIN || v.height <= EPSILON_VMIN;
+  const rect = collapsed ? emptyRect() : v;
+
+  const viewport: AvailableGameplayViewport = {
+    rect: flatToRect(rect),
+    derivedFrom: {
+      feltBounds: geometry.feltBounds,
+      subtracted: {
+        announcementBand: geometry.announcementBand,
+        topHudReserve: geometry.topHudReserve,
+        bottomHudReserve: geometry.bottomHudReserve,
+        outerRailReserve: geometry.outerRailReserve,
+        seatRingReserve: flatToRect(seatRingRect),
+        shellSafeAreas: [],
+      },
+    },
+  };
+
+  const fault: LayoutFault | null = collapsed
+    ? {
+        code: "wave5:viewport_collapsed",
+        artifactIds: [],
+        message:
+          "availableGameplayViewport collapsed to empty after subtracting structural reserves from feltBounds.",
+      }
+    : null;
+
+  return { viewport, fault };
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
+
 
 export function resolveLayout(
   descriptors: ReadonlyArray<ArtifactDescriptor>,
@@ -777,7 +902,11 @@ export function resolveLayout(
     ...seatResult.placements,
   ].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  return { placements, faults, geometry };
+  // Wave 5D Phase 1 — derive gameplay viewport (read-only echo, no consumer yet).
+  const { viewport, fault: viewportFault } = deriveAvailableGameplayViewport(geometry);
+  if (viewportFault) faults.push(viewportFault);
+
+  return { placements, faults, geometry, availableGameplayViewport: viewport };
 }
 
 export { COLLAPSE_RANK };
@@ -1100,5 +1229,11 @@ export function resolveLayoutWithGroups(
     resolveGroup(g, flat, leafById, placements, faults);
   }
 
-  return { placements, faults, geometry };
+  // Reuse the base viewport — geometry input is identical for both passes.
+  return {
+    placements,
+    faults,
+    geometry,
+    availableGameplayViewport: base.availableGameplayViewport,
+  };
 }
