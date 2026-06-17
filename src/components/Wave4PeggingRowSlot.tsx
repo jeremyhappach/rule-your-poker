@@ -66,6 +66,8 @@ export function Wave4PeggingRowSlot({
 
   const usingFallback = !placement || !placement.visible || vminInPx <= 0;
 
+
+
   if (usingFallback) {
     // Legacy fallback — fixed sizes acceptable here per Phase 4B.1 scope.
     return (
