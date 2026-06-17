@@ -1,133 +1,146 @@
-## Wave 3C.4a — Chip Anchor Invariant
+# Wave 5D Implementation Plan — Anchored Compose Mode Infrastructure
 
-**Contract — CHIP ANCHOR INVARIANT.** `data-chip-center` is the seat origin. After initial seat mount, across:
+Approved direction: build the infrastructure first, migrate nothing yet. Cribbage descriptors stay on the solver until Phase 4. No retuning in this plan.
 
-```
-Waiting → Interstitial → Gameplay pre-deal → Card backs → Showdown
-        → Win animation → Next hand
-```
+## Guiding constraints (from review)
 
-the chip's `getBoundingClientRect()` drift is **0 px** (not ±0). Spotlight, ante / chopped / sweep, bucks-on-you, pot transport, and all future win animations depend on this.
-
-**Root cause.** `CanonicalSeatCluster` slots 1 and 4 use `top-[50%] -translate-y-1/2`. The cluster currently renders pill + chip in flow with consumer `{children}` (card backs, showdown cards, leg pips) appended below. When children mount, cluster height grows and `-translate-y-1/2` shifts the entire cluster — including the chip and `data-chip-center` — upward.
-
-**Fix — chip-centered coordinate system.** Restructure `src/lib/canonicalShell/CanonicalSeatCluster.tsx` so the chip is the layout origin and every other artifact is anchored to it.
-
-1. **Chip zone**: a fixed-size wrapper sized exactly to the `CanonicalChipDisc`. This is the *only* element that participates in slot anchoring (slot top/bottom/middle rules target it). Its center is therefore invariant regardless of what siblings render.
-2. **Name plate / dealer pip / status overlays**: absolutely positioned siblings of the chip, anchored to chip edges (e.g. `absolute bottom-full mb-1 left-1/2 -translate-x-1/2` for "above-chip"). They do not contribute to the cluster's measured height.
-3. **`children` + decorator slots** (cards, leg pips, showdown artifacts): absolutely positioned overlay anchored to the chip, with growth direction determined by row:
-   - top-row seats (0, 5): grow downward from chip.
-   - bottom-row seats (2, 3): grow upward from chip.
-   - middle-row seats (1, 4): grow downward.
-4. Public surface (`namePlacement`, `chipOverlay`, `innerDecoration`, `outerDecoration`, `chipDiscDecorators`) preserved. Only wrapper positioning changes from in-flow to chip-anchored absolute.
-5. Update `CanonicalSeatCluster.test.tsx` assertions that lock in the old in-flow layout.
-
-**Verification.** In preview, log `[data-chip-center]` rect for slots 1 and 4 at each phase listed in the contract. Drift must read 0 px. Spotlight angle, chip-transport endpoints, and leg-indicator placement all derive from `[data-chip-center]` and are therefore invariant by construction.
-
-**Acceptance:**
-- Chip rect identical across every phase (0 px drift).
-- Spotlight unchanged.
-- Transport endpoints (ante, chopped, sweep, pot, bucks-on-you) unchanged.
-- Showdown spacing unchanged.
-- No chip lift on middle seats.
+- Position and size are independent fields. Moving Pegboard = `anchorY: 0.42 → 0.37`, nothing else.
+- `renderedBounds ⊆ availableGameplayViewport` is a hard runtime contract, not advisory.
+- No silent `overflow: hidden` fixes.
+- Anchored overlap stays advisory in v1; `anchoredCollisionPolicy: warn → fault` is a Phase 5 follow-up, not a blocker.
+- No big-bang. Cribbage first. Other games later, one at a time.
 
 ---
 
-## Wave 3C.4b — `ThreeFiveSevenWinController`
+## Phase 1 — Viewport derivation (resolver-only, no descriptors consume it yet)
 
-**Location** (per pushback): `src/lib/357/ThreeFiveSevenWinController.tsx`. **Not** in `canonicalShell/`. Game-specific controllers do not live in the shell; they are the inputs Wave 5's `CanonicalPhaseEngine` will eventually generalize over.
+Goal: produce `availableGameplayViewport` on every resolve pass, expose it on `ResolvedLayout.geometry`, prove it's stable across phases.
 
-**Ownership — controller owns everything.** Per pushback, MGT stays out of phase orchestration entirely. The controller owns:
+Work:
 
-- phase state machine
-- timers
-- completion refs / trigger dedupe
-- snapshots (winnerId, potAmount, leg positions, chip rects)
-- **animation rendering** (`LegEarnedAnimation`, `LegsToPlayerAnimation`, `PotToPlayerAnimation`)
-- **overlay mount** — the controller renders the overlay tree itself, portalled into the felt surface (`[data-canonical-felt-surface]`), so MGT does not need a single `if phase === …` branch.
+1. Extend `GeometryConstraints` consumer in `wave4LayoutResolver` to compute the viewport rect from `feltBounds` minus:
+   - `announcementBand`
+   - `topHudReserve`
+   - `bottomHudReserve` (tabs + HUD stack)
+   - `outerRailReserve`
+   - `seatRingReserve`
+   - `shellSafeAreas[*]`
+   Using rectangular intersection → largest axis-aligned interior rect.
+2. Emit `availableGameplayViewport` on `ResolvedLayout.geometry` with `derivedFrom` echo for diagnostics.
+3. Fault `wave5:viewport_collapsed` when rect is empty.
+4. Add invariant test: viewport is stable across `idle / discard / cut / pegging / counting` for a fixed `GeometryConstraints` snapshot.
 
-MGT remains gameplay-only: seat rendering, game artifacts, no phase awareness. Game.tsx detects the backend outcome and emits a trigger; that is its only role.
-
-### File layout
-
-```
-src/lib/357/
-  ThreeFiveSevenWinController.tsx     # provider + overlay renderer
-  useThreeFiveSevenWinController.ts   # consumer hooks (trigger)
-  threeFiveSevenWinMachine.ts         # pure reducer + phase enum
-```
-
-### State machine
-
-```
-IDLE → LEG_EARNED → LEGS_TO_PLAYER → POT_TO_PLAYER → DELAY → IDLE
-```
-
-Transitions:
-- `IDLE → LEG_EARNED`: on `trigger({ winTriggerId, winnerId, potAmount, legPositions })`. Dedupe by `winTriggerId`. Snapshot all payload values into controller state — never re-read from DB after this.
-- `LEG_EARNED → LEGS_TO_PLAYER`: on `LegEarnedAnimation.onComplete`.
-- `LEGS_TO_PLAYER → POT_TO_PLAYER`: on `LegsToPlayerAnimation.onComplete`.
-- `POT_TO_PLAYER → DELAY`: on `PotToPlayerAnimation.onComplete`.
-- `DELAY → IDLE`: controller-owned `setTimeout`.
-
-### Survival contract (the real Wave 5 proto-objective)
-
-The controller must survive:
-- MGT remount
-- seat remount
-- showdown remount
-- shell remount
-- lazy-route churn
-
-Only **route exit** kills it.
-
-Implementation: mount `<ThreeFiveSevenWinControllerProvider>` at `App.tsx` (route-level, outside the route's render boundary that hosts `Game.tsx` / MGT), so the provider's React subtree is stable across every remount inside the route. The overlay portal targets `[data-canonical-felt-surface]` and re-attaches when the surface remounts; controller state survives because it lives in the provider above.
-
-Test: force an MGT remount mid-`LEGS_TO_PLAYER`. Sequence must complete through `IDLE`. This single test is the prototype acceptance for Wave 5.
-
-### Hooks
-
-```ts
-// Game.tsx — fires trigger when backend signals win.
-const { trigger } = useThreeFiveSevenWinTrigger();
-trigger({ winTriggerId, winnerId, potAmount, legPositions });
-```
-
-MGT does **not** consume a phase hook. The controller renders its own overlay; MGT is unaware.
-
-### Refactor scope
-
-- **`src/pages/Game.tsx`**: keep backend detection logic, replace local `threeFiveSevenWinTriggerId` + dedupe with a single `useEffect` that calls `trigger(...)`. Remove local sequencing state.
-- **`src/components/MobileGameTable.tsx`**: delete `showLegEarned`, `threeFiveSevenWinPhase`, related timers, `is357WinWinner`-driven tabling suppression that was tied to MGT's own win phase. Tabling suppression that genuinely belongs to seat rendering (e.g. `shouldHideForTabling` for the soloist) stays — but it reads from the controller hook only if absolutely required. Strong preference: zero MGT awareness; if a suppression behavior needs the controller phase, expose it as a dedicated selector (`useIs357SeatTabled(playerId)`) so MGT reads a boolean, not the FSM.
-- **Animation components unchanged**. They render where the controller mounts them, advance via `onComplete`.
-
-### Snapshot strategy
-
-`legPositions` and `potAmount` are snapshotted into controller state at `IDLE → LEG_EARNED`. Subsequent backend resets (status flipping to `game_over`, `last_round_result` clearing) cannot strand the sequence because the controller no longer reads DB after the trigger.
-
-### Acceptance
-
-- Final-leg win plays LEG_EARNED → LEGS_TO_PLAYER → POT_TO_PLAYER → DELAY → IDLE end-to-end.
-- No `Loading…` flash. No zombie table.
-- Forced MGT remount mid-sequence: animation completes uninterrupted. **This is the proto-Wave-5 acceptance.**
-- Re-emitted trigger with same `winTriggerId`: ignored.
-- Non-final-leg win path (leg awarded, hand continues) still works.
-- MGT contains zero `phase === …` branches for win sequencing.
+Acceptance: viewport visible in the active-surface diagnostic HUD; no descriptor consumes it yet; no visual change.
 
 ---
 
-## Out of scope
+## Phase 2 — `composeMode: "anchored"` descriptor + resolver stage
 
-- **Ante flicker** (`lockedChipsRef ?? displayedChips ?? player.chips`): inventory only after the controller lands; fix only if trivial.
-- **Horses / SCC seat migration**: later wave.
-- **Wave 5 CanonicalPhaseEngine**: the 357 controller is intentionally a prototype, not the engine.
+Goal: descriptors can declare anchored placement, resolver places them. Nothing in Cribbage uses it yet.
+
+Work:
+
+1. Extend descriptor types in `wave4LayoutResolver/types`:
+   - `composeMode: 'anchored'`
+   - `anchorX`, `anchorY`, `anchorOrigin` (default `center`)
+   - `widthPct`, `heightPct`, `aspectRatio`
+   - `anchorParent` (synthetic groups, §4.4)
+2. Validation faults:
+   - `anchored_size_underspecified` / `anchored_size_overspecified` per §3.2 truth table
+   - `anchored_descriptor_declared_band`
+   - `anchored_parent_cycle`
+3. New resolver stage **F. Anchored placement**, inserted after overlay demotion, before seat projection:
+   - Resolve viewport (Phase 1).
+   - Resolve `anchorParent` chain first (topo order).
+   - Compute size → origin point → rect.
+   - Fault `anchored_outside_viewport` when rect escapes viewport.
+   - Advisory `anchored_siblings_overlap` on intersection (no movement).
+4. Anchored descriptors emit standard `ResolvedPlacement` so `ArtifactHost` / slot consumers don't need a new render path.
+5. Unit tests for each size combination, each `anchorOrigin`, parent-chain resolution, and every fault code.
+
+Acceptance: a synthetic test descriptor renders at declared anchor with declared size; moving `anchorY` moves only that artifact; no other resolver path changes behavior.
 
 ---
 
-## Order of operations
+## Phase 3 — DOM-bounds invariant (runtime contract)
 
-1. Ship 3C.4a. Verify chip rect drift = 0 px across all phases.
-2. Ship 3C.4b on top of 3C.4a so animation endpoints are already stable.
-3. Smoke: Waiting → Interstitial → R1/R2/R3 → multi-player showdown → final-leg win → next hand.
-4. Force an MGT remount mid-`LEGS_TO_PLAYER`; confirm sequence completes.
-5. Brief ante-flicker inventory note in the closing message.
+Goal: enforce `renderedBounds ⊆ availableGameplayViewport.rect` at the felt host.
+
+Work:
+
+1. In the felt host (where `ArtifactHost` mounts placements), attach a `ResizeObserver` to every anchored placement root. Also re-check on viewport-rect change.
+2. Convert `getBoundingClientRect()` → felt-local vmin using the same projection as `feltBounds`.
+3. On violation, emit `wave5:contract_violation` / `artifact_visual_overflow` with the full payload from spec §5.3 (assignedRect, renderedBounds, viewport, overflow per edge).
+4. Surface in:
+   - active-surface diagnostic HUD
+   - `wave5:contract_violation` telemetry channel (new channel, not folded into `wave4:layout_fault`)
+   - layout fault badge
+5. Explicitly **do not** apply `overflow: hidden` to anchored hosts. The contract is "fit the envelope," not "hide the spill."
+
+Acceptance: a deliberately oversized test artifact fires the violation with correct per-edge overflow numbers.
+
+---
+
+## Phase 4 — Cribbage migration (single game, feature-flagged)
+
+Goal: cut Cribbage's four gameplay artifacts over to anchored. No retuning beyond the §7.2 starting values.
+
+Work:
+
+1. Add anchored descriptor variants behind a flag (`wave5d.cribbageAnchored`), defaulted **off**:
+   - `cribbage.cribCutGroup` (synthetic group)
+   - `cribbage.crib` (`anchorParent: cribCutGroup`)
+   - `cribbage.cutCard` (`anchorParent: cribCutGroup`)
+   - `cribbage.pegboard`
+   - `cribbage.peggingRow` (pegging phase only)
+   - `cribbage.countingRow` (counting phase only)
+   Initial values verbatim from spec §7.2.
+2. Solver-side `cribbage.gameplayColumn` and its play-band children remain in place behind the off flag.
+3. Flag on → anchored emitters active, column children suppressed for the four migrated artifacts.
+4. Smoke matrix: idle / discard / cut / pegging / counting × {seated, observer} × portrait/landscape.
+5. Tune anchors and percentages in a follow-up turn after smoke — not in this phase. The deliverable here is "the architecture works on a live game," not "Cribbage is visually final."
+6. `cribbage.gameplayColumn` retirement is deferred to Phase 4.5 (delete the descriptor + gap children) once the flag flips on by default.
+
+Acceptance: with flag on, "move Pegboard up" is literally `anchorY: 0.42 → 0.37` in the descriptor file, and nothing else in the layout shifts.
+
+---
+
+## Phase 5 — Follow-ups (not in this plan, tracked here)
+
+- `anchoredCollisionPolicy: warn | fault` config; default `warn`, promote intentional pairs to `fault`.
+- Per-viewport-bucket anchor overrides (`responsiveOverrides` keyed by viewport bucket).
+- Animation between anchored states.
+- Sweep Holm → Gin Rummy → Yahtzee → SCC → Horses, one game per cutover, same Phase 4 pattern.
+
+---
+
+## What this plan explicitly does NOT do
+
+- No descriptor edits to existing Cribbage artifacts.
+- No retuning of pegboard/peggingRow/cribCut sizes or positions.
+- No removal of `cribbage.gameplayColumn` (Phase 4.5).
+- No anchored migration of any non-Cribbage game.
+- No solver changes for HUD/chrome bands — they stay on `preferred/minimum/shrinkOrder/collapseOrder`.
+
+---
+
+## Technical surfaces touched
+
+- `src/lib/wave4LayoutResolver/types.ts` — descriptor + ResolvedLayout extensions
+- `src/lib/wave4LayoutResolver/resolver.ts` — viewport derivation + anchored stage
+- `src/lib/wave4LayoutResolver/telemetry.ts` — `wave5:contract_violation` channel
+- `src/lib/wave4LayoutResolver/ArtifactHost.tsx` — DOM-bounds observer for anchored placements
+- `src/lib/wave4LayoutResolver/CanonicalConstraintReader.ts` — feed reserves into viewport derivation
+- Cribbage geometry provider (Phase 4 only) — anchored descriptor emitters behind flag
+
+---
+
+## Sequencing & checkpoints
+
+After each phase, stop and confirm before starting the next:
+
+1. Phase 1 lands → confirm viewport rect on the diagnostic HUD looks right.
+2. Phase 2 lands → confirm test descriptor moves independently.
+3. Phase 3 lands → confirm violation fires on a synthetic overflow.
+4. Phase 4 lands (flag off) → confirm zero visual diff.
+5. Flag flip + tune → separate turn, separate review.
