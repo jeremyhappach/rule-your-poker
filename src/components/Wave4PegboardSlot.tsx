@@ -19,10 +19,16 @@
  * for descriptor construction — the provider owns descriptors.
  */
 
-import { type ReactNode } from "react";
-import { toVmin, type ResolvedPlacement } from "@/lib/wave4LayoutResolver";
+import { useRef, type ReactNode } from "react";
+import {
+  deriveAvailableGameplayViewport,
+  toVmin,
+  type ResolvedPlacement,
+} from "@/lib/wave4LayoutResolver";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
+import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { useCribbageAnchoredPegboardFlag } from "@/lib/wave5d/cribbageAnchoredPegboardFlag";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 
 export interface Wave4PegboardSlotProps {
