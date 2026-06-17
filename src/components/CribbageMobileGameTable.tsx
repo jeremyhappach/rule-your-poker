@@ -79,7 +79,7 @@ import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import { Wave4PegboardSlot } from '@/components/Wave4PegboardSlot';
 import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
-import { useCribbageAnchoredPegboardFlag } from '@/lib/wave5d/cribbageAnchoredPegboardFlag';
+
 
 import {
   checkStaleDealerGameRender,
