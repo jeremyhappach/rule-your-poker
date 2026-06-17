@@ -116,6 +116,7 @@ const App = () => {
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
                 <Wave5ViewportOverlayToggle />
+                <Wave5GridOverlayToggle />
                 <Wave5SeatReserveOverlayToggle />
                 <Wave5AnchoredProbeToggle />
                 <Wave5OversizedProbeToggle />
