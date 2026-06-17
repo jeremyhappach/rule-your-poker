@@ -45,6 +45,10 @@ import type {
   AnchorOrigin,
   ArtifactDescriptor,
 } from "@/lib/wave4LayoutResolver/types";
+import {
+  logGeometryLab,
+  recordGeometryLabContext,
+} from "./GeometryLabCrashBoundary";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
@@ -99,13 +103,27 @@ export function GeometryLab({ userId }: { userId: string }) {
     });
   }, [artifacts]);
 
-  const [artifactId, setArtifactId] = useState<string>(
+  const [artifactId, setArtifactIdRaw] = useState<string>(
     sortedArtifacts[0]?.id ?? "",
   );
+  const setArtifactId = (id: string) => {
+    logGeometryLab("artifact_changed", { from: artifactId, to: id, game });
+    setArtifactIdRaw(id);
+  };
+
+  useEffect(() => {
+    logGeometryLab("game_changed", { game });
+  }, [game]);
 
   useEffect(() => {
     if (!sortedArtifacts.some((a) => a.id === artifactId)) {
-      setArtifactId(sortedArtifacts[0]?.id ?? "");
+      const next = sortedArtifacts[0]?.id ?? "";
+      logGeometryLab("artifact_auto_reset", {
+        previous: artifactId,
+        next,
+        reason: "not in sorted list for current game",
+      });
+      setArtifactIdRaw(next);
     }
   }, [sortedArtifacts, artifactId]);
 
@@ -130,31 +148,48 @@ export function GeometryLab({ userId }: { userId: string }) {
   // Hydrate form from override (if any) layered over the canonical descriptor.
   useEffect(() => {
     if (!descriptor) return;
-    const o = override;
-    const descSizeMode = deriveSizeMode(descriptor);
-    const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+    try {
+      const o = override;
+      const descSizeMode = deriveSizeMode(descriptor);
+      const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
 
-    setForm({
-      anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
-      anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
-      anchorOrigin: (o?.anchor_origin ??
-        descriptor.anchorOrigin ??
-        "center") as AnchorOrigin,
-      sizeMode,
-      widthPct:
-        o?.width_pct != null
-          ? String(o.width_pct)
-          : stringifyOptional(descriptor.widthPct),
-      heightPct:
-        o?.height_pct != null
-          ? String(o.height_pct)
-          : stringifyOptional(descriptor.heightPct),
-      aspectRatio:
-        o?.aspect_ratio != null
-          ? String(o.aspect_ratio)
-          : stringifyOptional(descriptor.aspectRatio),
-    });
+      setForm({
+        anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
+        anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
+        anchorOrigin: (o?.anchor_origin ??
+          descriptor.anchorOrigin ??
+          "center") as AnchorOrigin,
+        sizeMode,
+        widthPct:
+          o?.width_pct != null
+            ? String(o.width_pct)
+            : stringifyOptional(descriptor.widthPct),
+        heightPct:
+          o?.height_pct != null
+            ? String(o.height_pct)
+            : stringifyOptional(descriptor.heightPct),
+        aspectRatio:
+          o?.aspect_ratio != null
+            ? String(o.aspect_ratio)
+            : stringifyOptional(descriptor.aspectRatio),
+      });
+    } catch (err) {
+      logGeometryLab("hydrate_failed", {
+        artifactId,
+        error: (err as Error)?.message ?? String(err),
+      });
+      throw err;
+    }
   }, [artifactId, override, descriptor]);
+
+  // Record snapshot for the crash boundary on every render.
+  recordGeometryLabContext({
+    game,
+    artifactId,
+    routeBeforeCrash:
+      typeof window !== "undefined" ? window.location.pathname : "(ssr)",
+    unsavedForm: { ...form },
+  });
 
   if (!descriptor) {
     return (
@@ -196,13 +231,20 @@ export function GeometryLab({ userId }: { userId: string }) {
       updated_by: userId,
       updated_at: new Date().toISOString(),
     };
+    logGeometryLab("save_attempt", { artifactId, payload });
     const { error } = await supabase
       .from("geometry_overrides" as any)
       .upsert(payload as any, { onConflict: "artifact_id" });
     setSaving(false);
     if (error) {
+      logGeometryLab("save_failed", {
+        artifactId,
+        code: (error as { code?: string }).code,
+        message: error.message,
+      });
       toast.error(`Save failed: ${error.message}`);
     } else {
+      logGeometryLab("save_succeeded", { artifactId });
       toast.success("Geometry saved — all clients updating.");
     }
   }
@@ -213,16 +255,33 @@ export function GeometryLab({ userId }: { userId: string }) {
       return;
     }
     setSaving(true);
+    logGeometryLab("reset_attempt", { artifactId });
     const { error } = await supabase
       .from("geometry_overrides" as any)
       .delete()
       .eq("artifact_id", artifactId);
     setSaving(false);
     if (error) {
+      logGeometryLab("reset_failed", { artifactId, message: error.message });
       toast.error(`Reset failed: ${error.message}`);
     } else {
+      logGeometryLab("reset_succeeded", { artifactId });
       toast.success("Override cleared — descriptor defaults restored.");
     }
+  }
+
+  function handleConvertTo(target: "widthDriven" | "heightDriven") {
+    const w = num(form.widthPct);
+    const h = num(form.heightPct);
+    if (w == null || h == null || h <= 0 || w <= 0) {
+      toast.error("Need both widthPct and heightPct > 0 to compute aspectRatio.");
+      logGeometryLab("convert_blocked", { artifactId, target, w, h });
+      return;
+    }
+    const ar = w / h;
+    logGeometryLab("convert_applied", { artifactId, target, derivedAspectRatio: ar });
+    setForm((f) => ({ ...f, sizeMode: target, aspectRatio: ar.toFixed(4) }));
+    toast.success(`Converted to ${target}. aspectRatio = ${ar.toFixed(4)}. Press Save to persist.`);
   }
 
   return (
@@ -449,6 +508,31 @@ export function GeometryLab({ userId }: { userId: string }) {
                   setForm((f) => ({ ...f, heightPct: e.target.value }))
                 }
               />
+            </div>
+            <div className="col-span-2 space-y-2 pt-2 border-t border-dashed">
+              <p className="text-xs text-muted-foreground">
+                Rect mode keeps width and height independent. To resize while
+                preserving proportions, convert this artifact to a driven mode —
+                the current widthPct/heightPct ratio becomes its aspectRatio.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleConvertTo("widthDriven")}
+                >
+                  Convert To Width Driven
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleConvertTo("heightDriven")}
+                >
+                  Convert To Height Driven
+                </Button>
+              </div>
             </div>
           </div>
         )}

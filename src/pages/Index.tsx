@@ -57,6 +57,7 @@ import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog"
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { LayoutTuningAdminSection } from "@/components/admin/LayoutTuningAdminSection";
 import { GeometryLab } from "@/components/admin/GeometryLab";
+import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
 import { formatChipValue } from "@/lib/utils";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
@@ -907,7 +908,11 @@ const Index = () => {
 
               <TabsContent value="geometry" className="flex-1 min-h-0">
                 <ScrollArea className="h-full pr-4 overscroll-contain">
-                  {user && <GeometryLab userId={user.id} />}
+                  {user && (
+                    <GeometryLabCrashBoundary>
+                      <GeometryLab userId={user.id} />
+                    </GeometryLabCrashBoundary>
+                  )}
                 </ScrollArea>
               </TabsContent>
             </Tabs>
