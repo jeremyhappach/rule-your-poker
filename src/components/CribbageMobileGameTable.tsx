@@ -19,6 +19,7 @@ import { hasPlayableCard } from '@/lib/cribbageScoring';
 import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringDetails';
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
+import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
@@ -6343,6 +6344,20 @@ export const CribbageMobileGameTable = ({
                 overrideScores={countingScoreOverrides ?? undefined}
               />
             </Wave4PegboardSlot>
+          )}
+
+          {/* Wave 5D — CribCutGroup Graduation. Mounts OUTSIDE the
+              translateY(6%) felt-content wrapper so the rendered DOM rect
+              equals the assigned anchored rect. See WAVE 5 INVARIANT in
+              Wave4CribCutGroupSlot. */}
+          {!isHighCardMode && viewState && (
+            <CribbageAnchoredCribCutMount
+              cribbageState={viewState}
+              cardBackColors={cardBackColors}
+              handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
+              terminalPath={terminalPath}
+              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+            />
           )}
 
 

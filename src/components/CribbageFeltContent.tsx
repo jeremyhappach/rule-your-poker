@@ -4,7 +4,6 @@ import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
-import { Wave4CribCutGroupSlot } from './Wave4CribCutGroupSlot';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
@@ -239,36 +238,11 @@ export const CribbageFeltContent = ({
 
       {/* Peg Board now rendered by parent (CribbageMobileGameTable) for mount stability */}
 
-      {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own)
-          and hidden during pegging-win so the felt shows the pegging snapshot at win determination. */}
-      {(showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && !isPeggingWin && (
-        <Wave4CribCutGroupSlot>
-          {/* Crib */}
-          {showCribOnFelt && cribbageState.crib.length > 0 && (
-            <div className="flex flex-col items-center">
-              <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
-              <div className="flex -space-x-1.5">
-                {cribbageState.crib.map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-4 h-6 rounded-sm border border-white/20"
-                    style={{
-                      background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Cut Card with flip animation */}
-          <CribbageCutCardReveal 
-            card={cribbageState.cutCard} 
-            cardBackColors={cardBackColors}
-            handBoundaryKey={handBoundaryKey}
-          />
-        </Wave4CribCutGroupSlot>
-      )}
+      {/* Wave 5D — Crib + Cut row mounts in CribbageMobileGameTable as a
+          sibling of the `translateY(6%)` felt-content wrapper via
+          <CribbageAnchoredCribCutMount/>. Mounting it here would re-introduce
+          the ancestor-transform drift that broke the anchored contract for
+          the pegboard and again for cribCutGroup. Do NOT restore. */}
 
 
 
