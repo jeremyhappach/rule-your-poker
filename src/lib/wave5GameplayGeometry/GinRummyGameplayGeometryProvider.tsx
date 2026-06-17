@@ -32,6 +32,7 @@ import {
   getGinRummyArtifactDescriptors,
   type GinRummyDescriptorOptions,
 } from "@/lib/ginRummy/ginRummyArtifactDescriptors";
+import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 export interface GinRummyGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -65,14 +66,18 @@ export function GinRummyGameplayGeometryProvider({
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
+  const overrides = useGeometryOverrides();
   const descriptors = useMemo(
     () =>
-      getGinRummyArtifactDescriptors({
-        phase,
-        hidePiles,
-        knockDisplayVisible,
-      }),
-    [phase, hidePiles, knockDisplayVisible],
+      applyGeometryOverrides(
+        getGinRummyArtifactDescriptors({
+          phase,
+          hidePiles,
+          knockDisplayVisible,
+        }),
+        overrides,
+      ),
+    [phase, hidePiles, knockDisplayVisible, overrides],
   );
 
   const value = useMemo<GinRummyGameplayGeometryContextValue>(() => {
