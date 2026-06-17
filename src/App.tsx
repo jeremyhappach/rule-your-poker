@@ -118,7 +118,7 @@ const App = () => {
                 <Wave5SeatReserveOverlayToggle />
                 <Wave5AnchoredProbeToggle />
                 <Wave5OversizedProbeToggle />
-                <CribbageAnchoredPegboardToggle />
+                
               </DebugTray>
 
             </AppNetworkSim>
