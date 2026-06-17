@@ -28,6 +28,7 @@ import {
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
 import { Wave5ViewportOverlay } from '@/lib/wave5GameplayGeometry/Wave5ViewportOverlay';
+import { Wave5GridOverlay } from '@/lib/wave5GameplayGeometry/Wave5GridOverlay';
 import { Wave5SeatReserveOverlay } from '@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay';
 import { Wave5AnchoredProbeOverlay } from '@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay';
 import { Wave5OversizedProbeOverlay } from '@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay';
@@ -360,6 +361,7 @@ export function ShellOwnedFeltHost({
           cribbageSkunk={effective?.cribbageSkunk}
         />
         <Wave5ViewportOverlay />
+        <Wave5GridOverlay />
         <Wave5SeatReserveOverlay />
         <Wave5AnchoredProbeOverlay />
         <Wave5OversizedProbeOverlay />
