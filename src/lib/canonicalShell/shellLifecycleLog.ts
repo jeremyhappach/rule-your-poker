@@ -95,7 +95,10 @@ export function recordShellLifecycleEvent(
   summary: string,
   detail?: Record<string, unknown>,
 ): void {
-  if (!isShellLifecycleDebugEnabled()) return;
+  // Always record into the in-memory ring buffer (300 events max).
+  // The on-screen panel decides visibility based on DebugTray presence,
+  // not on a separate enable flag — so we must never drop events here
+  // or the SHELL LC pill would appear empty when the tray opens.
   const now =
     typeof performance !== 'undefined' && performance.now
       ? performance.now()
@@ -214,7 +217,6 @@ export function logIfChanged(
   value: unknown,
   detail?: Record<string, unknown>,
 ): void {
-  if (!isShellLifecycleDebugEnabled()) return;
   const prev = lastSeenByKey.has(key) ? lastSeenByKey.get(key) : UNINIT;
   if (prev === value) return;
   lastSeenByKey.set(key, value);
