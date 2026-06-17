@@ -31,7 +31,7 @@ import type {
   ResolvedLayout,
   ResolvedPlacement,
 } from "./types";
-import { EPSILON_VMIN, rectContains, rectsIntersect, vmin } from "./units";
+import { EPSILON_VMIN, rectContains, rectVmin, rectsIntersect, vmin } from "./units";
 
 const COLLAPSE_ORDER: CollapsePriority[] = [
   "first",
