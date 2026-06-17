@@ -55,6 +55,7 @@ import {
   getCribbageArtifactDescriptors,
   type CribbagePhase,
 } from "@/lib/cribbage/cribbageArtifactDescriptors";
+import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 
 export interface CribbageGameplayGeometryContextValue {
@@ -184,21 +185,26 @@ export function CribbageGameplayGeometryProvider({
   const lastHashRef = useRef<string | null>(null);
 
   // Canonical descriptors — single source of truth.
+  const overrides = useGeometryOverrides();
   const canonicalDescriptors = useMemo(
     () =>
-      getCribbageArtifactDescriptors({
-        phase,
-        viewerSeatPosition,
-        opponentSeatPositions,
-        cutCardRevealed,
-        cribVisible,
-      }),
+      applyGeometryOverrides(
+        getCribbageArtifactDescriptors({
+          phase,
+          viewerSeatPosition,
+          opponentSeatPositions,
+          cutCardRevealed,
+          cribVisible,
+        }),
+        overrides,
+      ),
     [
       phase,
       viewerSeatPosition,
       opponentSeatPositions,
       cutCardRevealed,
       cribVisible,
+      overrides,
     ],
   );
 
