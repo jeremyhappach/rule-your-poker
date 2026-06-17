@@ -231,6 +231,18 @@ export interface CanonicalSeatClusterProps {
    * Default 'above-chip' preserves every existing consumer's layout.
    */
   namePlacement?: 'above-chip' | 'below-chip' | 'none';
+  /**
+   * Wave 5D follow-up — slot-aware growth opt-in.
+   *
+   * When true AND the resolved slot is a bottom-anchored slot (the
+   * bottom-center HOME pair or the bottom-perimeter corner seats),
+   * game-owned children render ABOVE the chip instead of below. This
+   * prevents card backs / exposed showdown cards from projecting
+   * outward into the elliptical felt rail and clipping. Default
+   * `false` preserves the uniform NAME / CHIP / ARTIFACTS stacking
+   * for every other consumer.
+   */
+  growUpwardAtBottom?: boolean;
 }
 
 export function CanonicalSeatCluster({
