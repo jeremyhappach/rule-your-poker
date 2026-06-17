@@ -6562,6 +6562,25 @@ export const MobileGameTable = ({
 
         {/* Dice game felt dice OR result (rolls happen on the felt, not in the bottom section) */}
         {diceGameplayUiActive && horsesController.enabled && (() => {
+          // Wave 5D — compute anchored stage visibility from controller state.
+          const _isInHoldPeriod = !!(horsesController.feltDice as any)?.isCompletedHold;
+          const _isCompleteOrWaiting =
+            (horsesController.gamePhase === 'complete' || horsesController.gamePhase === 'waiting') &&
+            !_isInHoldPeriod;
+          const _diceArray = (horsesController.feltDice as any)?.dice as any[] | undefined;
+          const _hasRolled = _diceArray?.some((d) => d?.value > 0) ?? false;
+          const _showResult = !horsesController.feltDice && !!horsesController.currentTurnPlayerId
+            && !!horsesController.getPlayerHandResult(horsesController.currentTurnPlayerId);
+          const _opponentDiceVisible = !horsesController.isMyTurn && !_showResult && !_isCompleteOrWaiting
+            && (_hasRolled || !!horsesController.feltDice);
+          const _beatBadgeVisible = horsesController.isMyTurn && !_showResult && !_isCompleteOrWaiting;
+          return (
+            <DiceGameplayGeometryProvider
+              gameType={gameType as DiceGameType}
+              opponentDiceVisible={_opponentDiceVisible}
+              beatBadgeVisible={_beatBadgeVisible}
+            >
+              {(() => {
           const logPrefix = `[FELT_BLOCK_DEBUG ${gameType === 'ship-captain-crew' ? 'SCC' : 'HORSES'}]`;
 
           const FELT_STICKY_MS = 1200;
