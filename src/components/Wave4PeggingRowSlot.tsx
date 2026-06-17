@@ -24,6 +24,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
@@ -45,16 +46,12 @@ export interface Wave4PeggingRowSlotProps {
 
 const PEGGING_ROW_ID = "cribbage.peggingRow";
 
-/** Card aspect: width / height = 2 / 3. */
+/** Cribbage playing card aspect (w/h). */
 const CARD_ASPECT_WH = 2 / 3;
-/** Card consumes this fraction of row height. */
-const CARD_HEIGHT_RATIO = 0.85;
-/** Overlap kicks in past this many cards. */
-const OVERLAP_THRESHOLD = 4;
-/** Max overlap fraction of card width (at 7 cards). */
-const MAX_OVERLAP_RATIO = 0.55;
+/** Cards consume at most this fraction of row height (leaves badge breathing room). */
+const CARD_HEIGHT_RATIO = 0.92;
 /** Gap between count badge column and card row, as fraction of row height. */
-const BADGE_GAP_RATIO = 0.2;
+const BADGE_GAP_RATIO = 0.18;
 
 export function Wave4PeggingRowSlot({
   count,
