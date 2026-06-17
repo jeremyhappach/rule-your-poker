@@ -7,6 +7,7 @@
  * the URL OR `localStorage.wave4_debug=1`. Production users see nothing.
  */
 
+import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 import { useEffect, useState } from "react";
 import {
   getRecentLayoutFaults,
