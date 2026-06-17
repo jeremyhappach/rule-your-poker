@@ -26,7 +26,7 @@ import { GinIdentityGateTracer } from "@/lib/canonicalShell/GinIdentityGateTrace
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
-import { logIfChanged as _shellLogIfChanged } from "@/lib/canonicalShell/shellLifecycleLog";
+import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
