@@ -246,28 +246,12 @@ export const CribbageFeltContent = ({
 
 
 
-      {/* Pegging / Gameplay Area — Wave 5B
-          Geometry ownership: cribbage.peggingRow descriptor → resolver
-          → Wave4PeggingRowSlot → rect. The previous
-          `absolute top-[68%] left-1/2 -translate-x-1/2` CSS percentage
-          no longer owns position. The slot's internal flex
-          (alignItems:center, justifyContent:center, gap) reproduces
-          the previous row layout — card sizes, overlap (-space-x-4)
-          and the count column are untouched. */}
-      {(phaseForLayout === 'pegging' || isPeggingWin) && (
-        <Wave4PeggingRowSlot
-          phase="pegging"
-          viewerSeatPosition={viewerSeatPosition}
-          opponentSeatPositions={opponentSeatPositions}
-          cutCardRevealed={cutCardRevealed}
-          cribVisible={cribVisible}
-          count={displayCount}
-          playedCards={cribbageState.pegging.playedCards
-            .slice(sequenceStartIndex)
-            .map((pc) => ({ card: pc.card }))}
-          showEmptyPlaceholder={!isPeggingWin}
-        />
-      )}
+      {/* Wave 5D — PeggingRow Graduation. The pegging row mounts in
+          CribbageMobileGameTable as a sibling of the `translateY(6%)`
+          felt-content wrapper via <CribbageAnchoredPeggingRowMount/>.
+          Mounting it here would re-introduce the ancestor-transform drift
+          that broke the anchored contract for the pegboard and cribCutGroup.
+          Do NOT restore. */}
     </>
   );
 };
