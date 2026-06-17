@@ -4,7 +4,6 @@ import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
-import { Wave4CribCutGroupSlot } from './Wave4CribCutGroupSlot';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
