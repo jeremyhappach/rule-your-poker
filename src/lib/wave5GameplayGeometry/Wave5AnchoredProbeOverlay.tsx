@@ -20,13 +20,15 @@
  *  - DELETE once gameplay descriptors begin migrating to anchored.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  deriveAvailableGameplayViewport,
   resolveLayout,
   useLiveGeometryConstraints,
   vmin,
   type ArtifactDescriptor,
 } from "@/lib/wave4LayoutResolver";
+import { useDomBoundsContract } from "./useDomBoundsContract";
 import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_anchored_probe";
@@ -90,16 +92,51 @@ const PROBE_DESCRIPTOR: ArtifactDescriptor = {
 export function Wave5AnchoredProbeOverlay() {
   const enabled = useEnabled();
   const { geometry, vminInPx } = useLiveGeometryConstraints();
+  const ref = useRef<HTMLDivElement | null>(null);
 
   const layout = useMemo(() => {
     if (!geometry) return null;
     return resolveLayout([PROBE_DESCRIPTOR], geometry);
   }, [geometry]);
 
-  if (!enabled || !layout || vminInPx <= 0) return null;
+  const viewport = useMemo(() => {
+    if (!geometry) return null;
+    return deriveAvailableGameplayViewport(geometry).viewport;
+  }, [geometry]);
 
-  const placement = layout.placements.find((p) => p.id === PROBE_DESCRIPTOR.id);
-  if (!placement || !placement.visible) return null;
+  const placement = layout?.placements.find((p) => p.id === PROBE_DESCRIPTOR.id);
+  const visible = !!placement && placement.visible;
+
+  const assignedRect = useMemo(() => {
+    if (!placement) return { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      x: placement.rect.x.value,
+      y: placement.rect.y.value,
+      width: placement.rect.width.value,
+      height: placement.rect.height.value,
+    };
+  }, [placement]);
+
+  const viewportRect = useMemo(() => {
+    if (!viewport) return { x: 0, y: 0, width: 0, height: 0 };
+    return {
+      x: viewport.rect.x.value,
+      y: viewport.rect.y.value,
+      width: viewport.rect.width.value,
+      height: viewport.rect.height.value,
+    };
+  }, [viewport]);
+
+  useDomBoundsContract(ref, {
+    artifactId: PROBE_DESCRIPTOR.id,
+    assignedRect,
+    availableGameplayViewport: viewportRect,
+    vminInPx,
+    enabled: enabled && visible && vminInPx > 0,
+  });
+
+  if (!enabled || !layout || vminInPx <= 0) return null;
+  if (!placement || !visible) return null;
 
   const r = placement.rect;
   const x = r.x.value * vminInPx;
@@ -114,6 +151,7 @@ export function Wave5AnchoredProbeOverlay() {
 
   return (
     <div
+      ref={ref}
       data-wave5-anchored-probe=""
       aria-hidden="true"
       style={{
