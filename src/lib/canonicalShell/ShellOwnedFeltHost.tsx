@@ -27,6 +27,7 @@ import {
   type CanonicalFeltGameKind,
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
+import { Wave5ViewportOverlay } from '@/lib/wave5GameplayGeometry/Wave5ViewportOverlay';
 
 // Re-export so non-shell call sites can reference the type without
 // importing from the canonical felt module directly (preserves the
