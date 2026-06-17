@@ -2524,7 +2524,9 @@ export const GinRummyGameTable = ({
               })()}
             </div>
 
+        </GinRummyGameplayGeometryProvider>
         </div>
+
 
 
       {/* Bottom Section — shell-owned proportional 5-row HUD grid.
