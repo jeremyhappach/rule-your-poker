@@ -55,6 +55,7 @@ import {
   getCribbageArtifactDescriptors,
   type CribbagePhase,
 } from "@/lib/cribbage/cribbageArtifactDescriptors";
+import { useCribbageAnchoredPegboardFlag } from "@/lib/wave5d/cribbageAnchoredPegboardFlag";
 
 export interface CribbageGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -95,6 +96,7 @@ const GAMEPLAY_COLUMN_LEAF_IDS = new Set<string>([
 
 function buildColumnGroup(
   leavesById: ReadonlyMap<string, ArtifactDescriptor>,
+  opts: { includePegboard: boolean },
 ): GroupDescriptor {
   // Crib + cut inner group.
   const cribCutChildren: GroupChildSlot[] = [];
@@ -142,7 +144,7 @@ function buildColumnGroup(
   // priority NEVER reorders.
   const columnChildren: GroupChildSlot[] = [];
 
-  if (leavesById.has(PEGBOARD_ID)) {
+  if (opts.includePegboard && leavesById.has(PEGBOARD_ID)) {
     columnChildren.push({
       id: PEGBOARD_ID,
       kind: "leaf",
@@ -223,6 +225,7 @@ export function CribbageGameplayGeometryProvider({
   children,
 }: CribbageGameplayGeometryProviderProps) {
   const { geometry } = useLiveGeometryConstraints();
+  const anchoredPegboard = useCribbageAnchoredPegboardFlag();
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
@@ -235,13 +238,26 @@ export function CribbageGameplayGeometryProvider({
         opponentSeatPositions,
         cutCardRevealed,
         cribVisible,
+        anchoredPegboard,
       }),
-    [phase, viewerSeatPosition, opponentSeatPositions, cutCardRevealed, cribVisible],
+    [
+      phase,
+      viewerSeatPosition,
+      opponentSeatPositions,
+      cutCardRevealed,
+      cribVisible,
+      anchoredPegboard,
+    ],
   );
 
   // Filter to gameplay-column leaves only. Other descriptors (topHud, tabs,
   // myHand, seat-projected, etc.) are owned by their own pipelines and must
   // NOT be solved by this provider.
+  //
+  // Wave 5D Phase 4: when `anchoredPegboard` is on, the pegboard is still
+  // included in `columnLeaves` (so resolveLayoutWithGroups solves it as a
+  // standalone anchored descriptor) but is excluded from the column group's
+  // children — the column negotiates without it.
   const columnLeaves = useMemo(
     () =>
       canonicalDescriptors.filter((d) => GAMEPLAY_COLUMN_LEAF_IDS.has(d.id)),
@@ -255,8 +271,8 @@ export function CribbageGameplayGeometryProvider({
   }, [columnLeaves]);
 
   const groups = useMemo<GroupDescriptor[]>(
-    () => [buildColumnGroup(leavesById)],
-    [leavesById],
+    () => [buildColumnGroup(leavesById, { includePegboard: !anchoredPegboard })],
+    [leavesById, anchoredPegboard],
   );
 
   const value = useMemo<CribbageGameplayGeometryContextValue>(() => {

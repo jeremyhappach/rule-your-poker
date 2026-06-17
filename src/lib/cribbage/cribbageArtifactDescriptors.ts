@@ -44,6 +44,13 @@ export interface CribbageDescriptorOptions {
    * True once the crib pile exists (post-discard) and not yet returned to dealer.
    */
   cribVisible: boolean;
+  /**
+   * Wave 5D — Phase 4. When true, `cribbage.pegboard` is emitted as a
+   * `composeMode: 'anchored'` descriptor positioned off
+   * `availableGameplayViewport` instead of as a play-band centerpiece.
+   * Default false (legacy behavior). Other artifacts are unaffected.
+   */
+  anchoredPegboard?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +193,30 @@ function pegboard(): ArtifactDescriptor {
   };
 }
 
+/**
+ * Wave 5D — Phase 4. Anchored pegboard descriptor. Positioned entirely
+ * from `availableGameplayViewport` + anchor + size. No band, no preferred
+ * size, no shrink/collapse, no group participation.
+ */
+function pegboardAnchored(): ArtifactDescriptor {
+  return {
+    id: "cribbage.pegboard",
+    owner: OWNER.cribbageTable,
+    composeMode: "anchored",
+    // Required by the type but ignored by the anchored stage:
+    preferredSize: { width: vmin(0), height: vmin(0) },
+    minimumSize: { width: vmin(0), height: vmin(0) },
+    priority: 92,
+    collapsePriority: "never",
+    // Anchored fields:
+    anchorX: 0.5,
+    anchorY: 0.4,
+    anchorOrigin: "center",
+    widthPct: 0.72,
+    aspectRatio: 6,
+  };
+}
+
 function crib(): ArtifactDescriptor {
   return {
     id: "cribbage.crib",
@@ -296,7 +327,7 @@ export function getCribbageArtifactDescriptors(
   ds.push(myHand());
 
   // Play band — Pegboard is always present.
-  ds.push(pegboard());
+  ds.push(opts.anchoredPegboard ? pegboardAnchored() : pegboard());
 
   // Mutual exclusion: PeggingRow XOR CountingRow. The non-active one is not
   // emitted — no ghost reservation in the play band.
