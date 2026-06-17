@@ -88,6 +88,7 @@ import {
   useHolmGameplayGeometry,
 } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
+import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
 import {
   diceBeatBadgeId,
   diceOpponentDiceStageId,
@@ -1234,6 +1235,19 @@ export const MobileGameTable = ({
   // CRITICAL: Prevents stale re-capture during hand transitions where isSoloVsChuckyRaw
   // is momentarily true from previous hand's lingering current_decision='stay'.
   const soloVsChuckyLockHandRef = useRef<string | null>(null);
+
+  // Wave 5D follow-up — lone-player tabled-cards persistence snapshot.
+  // Captured the first time the stage becomes visible in the current
+  // hand and re-used until the handContextId boundary clears it. Keeps
+  // ONE descriptor / ONE placement / ONE renderer / ONE DOM root alive
+  // through TABLED → CHUCKY_REVEAL → SHOWDOWN → PLAYER_TO_POT →
+  // WIN_SEQUENCE → COMPLETE even when isSoloVsChucky / current_decision
+  // / player_cards momentarily flicker false.
+  const lonePlayerStageSnapshotRef = useRef<{
+    handContextId: string;
+    playerId: string;
+    cards: CardType[];
+  } | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
@@ -2087,6 +2101,9 @@ export const MobileGameTable = ({
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
+    // Wave 5D follow-up — clear the lone-player stage snapshot at the
+    // same hand-boundary that resets every other Holm cache.
+    lonePlayerStageSnapshotRef.current = null;
     
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
@@ -2194,6 +2211,7 @@ export const MobileGameTable = ({
       setSoloVsChuckyTableLocked(false);
       setSoloVsChuckyPlayerIdLocked(null);
       soloVsChuckyAnimatedRef.current = false;
+      lonePlayerStageSnapshotRef.current = null;
     }
   }, [stayedPlayersCount, soloVsChuckyTableLocked, holmWinPotTriggerId]);
 
@@ -2206,6 +2224,7 @@ export const MobileGameTable = ({
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
+    lonePlayerStageSnapshotRef.current = null;
     // Mark this handContextId so the capture effect knows not to re-capture stale data
     soloVsChuckyLockHandRef.current = handContextId ?? null;
     // CRITICAL: Also clear showdownModeLocked here — if it persists from the prior showdown hand,
@@ -4806,7 +4825,12 @@ export const MobileGameTable = ({
     const isRightSideSlot = slot >= 3;
 
     const stayed = playerDecision === 'stay';
-    const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+    // Latch raise through the entire multiplayer showdown lifecycle
+    // (including holmWinPotTriggerId / WIN_SEQUENCE). Dropping it on
+    // pot-trigger caused stayed clusters to snap downward at the start
+    // of the pot-to-player animation. Raise releases only when
+    // isHolmMultiPlayerShowdown itself releases (hand boundary).
+    const raise = isHolmMultiPlayerShowdown && stayed;
 
     // Showdown / chip-replacement derivation.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
@@ -5015,6 +5039,15 @@ export const MobileGameTable = ({
       </div>
     );
 
+    // Wave 5D follow-up — route the local viewer's multiplayer
+    // showdown exposed cards through the SAME CanonicalSeatCluster
+    // path used for opponents (no active-hand-region bypass). Opt
+    // in only when the current user is the seated player AND a
+    // multiplayer showdown is in flight AND they stayed.
+    const isLocalViewer = player.id === currentPlayer?.id;
+    const allowSelfRenderForShowdown =
+      isLocalViewer && isHolmMultiPlayerShowdown && isShowdown && playerExplicitlyStayed;
+
     return (
       <CanonicalSeatCluster
         key={player.id}
@@ -5033,6 +5066,8 @@ export const MobileGameTable = ({
         dimChip={hasFolded}
         onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
         raisePosition={raise}
+        growUpwardAtBottom={isHolmMultiPlayerShowdown}
+        allowSelfRender={allowSelfRenderForShowdown}
         className={playerSlotZIndex}
         ownerLabel="Slot:MobileGameTable.holmCanonicalSeat"
         playerId={player.id}
@@ -6988,17 +7023,68 @@ export const MobileGameTable = ({
             !!showCommunityCards &&
             (isInGameOverStatus || currentRound === approvedRoundForDisplay);
 
-          const loneSoloPlayerId =
+          const liveLoneSoloPlayerId =
             isSoloVsChucky
               ? (soloVsChuckyPlayerIdLocked ||
                   players.find(p => p.current_decision === 'stay')?.id ||
                   null)
               : null;
-          const loneSoloPlayer = loneSoloPlayerId
-            ? players.find(p => p.id === loneSoloPlayerId) || null
+          const liveLoneSoloPlayer = liveLoneSoloPlayerId
+            ? players.find(p => p.id === liveLoneSoloPlayerId) || null
             : null;
-          const loneSoloCards = loneSoloPlayer ? getPlayerCards(loneSoloPlayer.id) : [];
-          const lonePlayerVisible = !!isSoloVsChucky && !!loneSoloPlayer && loneSoloCards.length > 0;
+          const liveLoneSoloCards = liveLoneSoloPlayer
+            ? getPlayerCards(liveLoneSoloPlayer.id)
+            : [];
+          const hasLiveLonePlayer =
+            !!isSoloVsChucky && !!liveLoneSoloPlayer && liveLoneSoloCards.length > 0;
+
+          // Wave 5D follow-up — capture / re-use the persistence snapshot.
+          // The snapshot is keyed on handContextId and survives every
+          // volatile drop of isSoloVsChucky / current_decision /
+          // player_cards through the win sequence. Cleared at the
+          // hand-boundary reset effects.
+          const snap = lonePlayerStageSnapshotRef.current;
+          if (hasLiveLonePlayer && handContextId) {
+            const sameHand = snap?.handContextId === handContextId;
+            const sameId = sameHand && snap?.playerId === liveLoneSoloPlayer!.id;
+            // Update card identities only while live data is fresh, so the
+            // snapshot tracks any late-arriving rabbit-hunt updates within
+            // the same hand. Player id is captured once and not re-bound.
+            if (!sameHand || !sameId) {
+              lonePlayerStageSnapshotRef.current = {
+                handContextId,
+                playerId: liveLoneSoloPlayer!.id,
+                cards: liveLoneSoloCards,
+              };
+            } else if (
+              liveLoneSoloCards.length > 0 &&
+              liveLoneSoloCards.length >= (snap?.cards.length ?? 0)
+            ) {
+              lonePlayerStageSnapshotRef.current = {
+                handContextId,
+                playerId: liveLoneSoloPlayer!.id,
+                cards: liveLoneSoloCards,
+              };
+            }
+          }
+
+          const activeSnap =
+            handContextId &&
+            lonePlayerStageSnapshotRef.current?.handContextId === handContextId
+              ? lonePlayerStageSnapshotRef.current
+              : null;
+
+          const loneSoloPlayer =
+            liveLoneSoloPlayer ??
+            (activeSnap
+              ? players.find(p => p.id === activeSnap.playerId) || null
+              : null);
+          const loneSoloCards =
+            liveLoneSoloCards.length > 0
+              ? liveLoneSoloCards
+              : (activeSnap?.cards ?? []);
+          const lonePlayerVisible =
+            hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 
           const chuckyVisible =
             !!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0;
@@ -7068,54 +7154,16 @@ export const MobileGameTable = ({
                     artifactId="holm.lonePlayerTabledCardsStage"
                     zIndex={20}
                   >
-                    <div
-                      className="flex items-center"
-                      style={{
-                        height: '90%',
-                        ...(shouldAnimate
-                          ? {
-                              animation: 'holmSoloTableSlide 0.6s ease-out forwards',
-                              willChange: 'transform, opacity',
-                            }
-                          : null),
-                      }}
-                    >
-                      {sortedCards.map(({ card, originalIndex }, displayIndex) => {
-                        const isFourColor = deckColorMode === 'four_color';
-                        const fourColorConfig = getFourColorSuit(card.suit);
-                        const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
-                        const twoColorTextStyle = !isFourColor
-                          ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
-                          : {};
-                        const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(originalIndex);
-                        const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(originalIndex);
-                        const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-                        const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
-                        const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
-                        return (
-                          <div
-                            key={displayIndex}
-                            className="rounded-md border-2 border-gray-300 flex flex-col items-center justify-center shadow-lg transition-transform duration-200"
-                            style={{
-                              height: '100%',
-                              aspectRatio: '5 / 7',
-                              backgroundColor: cardBg,
-                              ...twoColorTextStyle,
-                              ...dimStyle,
-                              transform: liftTransform || undefined,
-                              marginLeft: displayIndex > 0 ? '-22%' : '0',
-                            }}
-                          >
-                            <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                              {card.rank}
-                            </span>
-                            {!isFourColor && (
-                              <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <HolmLonePlayerFan
+                      sortedCards={sortedCards}
+                      isSoloPlayerWinner={isSoloPlayerWinner}
+                      winningPlayerIndices={winningCardHighlights.playerIndices}
+                      kickerPlayerIndices={winningCardHighlights.kickerPlayerIndices}
+                      hasHighlights={hasHighlights}
+                      isFourColor={deckColorMode === 'four_color'}
+                      getFourColorSuit={getFourColorSuit}
+                      animate={shouldAnimate}
+                    />
                     <style>{`
                       @keyframes holmSoloTableSlide {
                         0% { opacity: 0; transform: translateY(120px) scale(0.8); }
@@ -7356,7 +7404,7 @@ export const MobileGameTable = ({
             // current player never double-renders at HOME on top of the
             // bottom HUD.
             const stayed = player.current_decision === 'stay';
-            const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+            const raise = isHolmMultiPlayerShowdown && stayed;
 
             if (isPreSessionPhase) {
               // Wartime FIX #1: when the shell-owned
@@ -7889,7 +7937,15 @@ export const MobileGameTable = ({
                               </div>
                             ) : null;
                           })()
-                        ) : isCurrentPlayerSoloVsChucky ? (
+                        ) : isCurrentPlayerSoloVsChucky || (
+                          // Wave 5D follow-up — current viewer's exposed
+                          // cards during multiplayer showdown are owned
+                          // by their CanonicalSeatCluster (allowSelfRender)
+                          // on the felt, not by this active-hand region.
+                          gameType === 'holm-game'
+                          && isHolmMultiPlayerShowdown
+                          && currentPlayer?.current_decision === 'stay'
+                        ) ? (
                           <div className="flex items-center justify-center py-4">
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>

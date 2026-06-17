@@ -231,6 +231,18 @@ export interface CanonicalSeatClusterProps {
    * Default 'above-chip' preserves every existing consumer's layout.
    */
   namePlacement?: 'above-chip' | 'below-chip' | 'none';
+  /**
+   * Wave 5D follow-up — slot-aware growth opt-in.
+   *
+   * When true AND the resolved slot is a bottom-anchored slot (the
+   * bottom-center HOME pair or the bottom-perimeter corner seats),
+   * game-owned children render ABOVE the chip instead of below. This
+   * prevents card backs / exposed showdown cards from projecting
+   * outward into the elliptical felt rail and clipping. Default
+   * `false` preserves the uniform NAME / CHIP / ARTIFACTS stacking
+   * for every other consumer.
+   */
+  growUpwardAtBottom?: boolean;
 }
 
 export function CanonicalSeatCluster({
@@ -259,6 +271,7 @@ export function CanonicalSeatCluster({
   chipDiscChildren,
   chipPresentation = 'auto',
   namePlacement = 'above-chip',
+  growUpwardAtBottom = false,
 }: CanonicalSeatClusterProps) {
   // CHIP_RUNTIME_CONTINUITY hooks — must run unconditionally so the
   // mount/unmount events fire regardless of slot/self-suppression
@@ -466,7 +479,11 @@ export function CanonicalSeatCluster({
   // bottom-row seats. Previously bottom seats flipped growth upward,
   // which produced NAME → ARTIFACT → CHIP stacking; the contract is
   // now NAME / CHIP / ARTIFACTS for every seat.
-  const growsDown = true;
+  // Default is uniform NAME / CHIP / ARTIFACTS stacking. Opt-in via
+  // `growUpwardAtBottom` flips growth for bottom-anchored slots so
+  // game-owned content (e.g. Holm showdown exposed cards) does not
+  // project outward into the elliptical felt rail.
+  const growsDown = !(growUpwardAtBottom && isBottomAnchored);
 
 
   type SeatOrientation = 'vertical-name-top';
