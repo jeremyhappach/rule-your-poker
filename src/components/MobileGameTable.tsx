@@ -7022,17 +7022,68 @@ export const MobileGameTable = ({
             !!showCommunityCards &&
             (isInGameOverStatus || currentRound === approvedRoundForDisplay);
 
-          const loneSoloPlayerId =
+          const liveLoneSoloPlayerId =
             isSoloVsChucky
               ? (soloVsChuckyPlayerIdLocked ||
                   players.find(p => p.current_decision === 'stay')?.id ||
                   null)
               : null;
-          const loneSoloPlayer = loneSoloPlayerId
-            ? players.find(p => p.id === loneSoloPlayerId) || null
+          const liveLoneSoloPlayer = liveLoneSoloPlayerId
+            ? players.find(p => p.id === liveLoneSoloPlayerId) || null
             : null;
-          const loneSoloCards = loneSoloPlayer ? getPlayerCards(loneSoloPlayer.id) : [];
-          const lonePlayerVisible = !!isSoloVsChucky && !!loneSoloPlayer && loneSoloCards.length > 0;
+          const liveLoneSoloCards = liveLoneSoloPlayer
+            ? getPlayerCards(liveLoneSoloPlayer.id)
+            : [];
+          const hasLiveLonePlayer =
+            !!isSoloVsChucky && !!liveLoneSoloPlayer && liveLoneSoloCards.length > 0;
+
+          // Wave 5D follow-up — capture / re-use the persistence snapshot.
+          // The snapshot is keyed on handContextId and survives every
+          // volatile drop of isSoloVsChucky / current_decision /
+          // player_cards through the win sequence. Cleared at the
+          // hand-boundary reset effects.
+          const snap = lonePlayerStageSnapshotRef.current;
+          if (hasLiveLonePlayer && handContextId) {
+            const sameHand = snap?.handContextId === handContextId;
+            const sameId = sameHand && snap?.playerId === liveLoneSoloPlayer!.id;
+            // Update card identities only while live data is fresh, so the
+            // snapshot tracks any late-arriving rabbit-hunt updates within
+            // the same hand. Player id is captured once and not re-bound.
+            if (!sameHand || !sameId) {
+              lonePlayerStageSnapshotRef.current = {
+                handContextId,
+                playerId: liveLoneSoloPlayer!.id,
+                cards: liveLoneSoloCards,
+              };
+            } else if (
+              liveLoneSoloCards.length > 0 &&
+              liveLoneSoloCards.length >= (snap?.cards.length ?? 0)
+            ) {
+              lonePlayerStageSnapshotRef.current = {
+                handContextId,
+                playerId: liveLoneSoloPlayer!.id,
+                cards: liveLoneSoloCards,
+              };
+            }
+          }
+
+          const activeSnap =
+            handContextId &&
+            lonePlayerStageSnapshotRef.current?.handContextId === handContextId
+              ? lonePlayerStageSnapshotRef.current
+              : null;
+
+          const loneSoloPlayer =
+            liveLoneSoloPlayer ??
+            (activeSnap
+              ? players.find(p => p.id === activeSnap.playerId) || null
+              : null);
+          const loneSoloCards =
+            liveLoneSoloCards.length > 0
+              ? liveLoneSoloCards
+              : (activeSnap?.cards ?? []);
+          const lonePlayerVisible =
+            hasLiveLonePlayer || (!!activeSnap && !!loneSoloPlayer && loneSoloCards.length > 0);
 
           const chuckyVisible =
             !!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0;
