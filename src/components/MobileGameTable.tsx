@@ -723,25 +723,20 @@ export const MobileGameTable = ({
   }, [gameStatus, instanceLabel, gameType]);
 
   // ── Holm lifecycle trace (P0 investigation, instrumentation only) ──
-  // Captures every transition in the fields that govern the Holm
-  // WIN_SEQUENCE → blank-table → replay symptom chain. Diff-emits to
-  // debug_events (event_type='lifecycle.holm.lifecycle') and to the
+  // Captures every transition in the prop-level fields that govern the
+  // Holm WIN_SEQUENCE → blank-table → replay symptom chain. Diff-emits
+  // to debug_events (event_type='lifecycle.holm.lifecycle') and to the
   // on-screen shell lifecycle panel. No behavior change.
   useHolmLifecycleTrace(
     {
       gameType: gameType ?? null,
       gameStatus: gameStatus ?? null,
       currentRound: currentRound ?? null,
-      handContextId: typeof handContextId === 'string' ? handContextId : null,
-      viewerIsObserver: !currentPlayer,
       holmWinPotTriggerId: holmWinPotTriggerId ?? null,
       holmWinPotAmount: holmWinPotAmount ?? 0,
       holmWinWinnerPosition: holmWinWinnerPosition ?? null,
       holmShowdownPhase: holmShowdownPhase ?? null,
       holmShowdownTriggerId: holmShowdownTriggerId ?? null,
-      holmWinPotHiddenUntilReset,
-      holmCommunityFullyRevealed,
-      showCommunityCards,
       instanceLabel,
     },
     { scope: instanceLabel, enabled: gameType === 'holm-game' },
