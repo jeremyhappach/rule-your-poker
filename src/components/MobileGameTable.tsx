@@ -5020,6 +5020,15 @@ export const MobileGameTable = ({
       </div>
     );
 
+    // Wave 5D follow-up — route the local viewer's multiplayer
+    // showdown exposed cards through the SAME CanonicalSeatCluster
+    // path used for opponents (no active-hand-region bypass). Opt
+    // in only when the current user is the seated player AND a
+    // multiplayer showdown is in flight AND they stayed.
+    const isLocalViewer = player.id === currentPlayer?.id;
+    const allowSelfRenderForShowdown =
+      isLocalViewer && isHolmMultiPlayerShowdown && isShowdown && playerExplicitlyStayed;
+
     return (
       <CanonicalSeatCluster
         key={player.id}
@@ -5038,6 +5047,8 @@ export const MobileGameTable = ({
         dimChip={hasFolded}
         onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
         raisePosition={raise}
+        growUpwardAtBottom={isHolmMultiPlayerShowdown}
+        allowSelfRender={allowSelfRenderForShowdown}
         className={playerSlotZIndex}
         ownerLabel="Slot:MobileGameTable.holmCanonicalSeat"
         playerId={player.id}
