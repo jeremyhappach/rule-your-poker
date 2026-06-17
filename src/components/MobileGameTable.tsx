@@ -88,6 +88,7 @@ import {
   useHolmGameplayGeometry,
 } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
+import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
 import {
   diceBeatBadgeId,
   diceOpponentDiceStageId,
