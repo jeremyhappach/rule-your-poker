@@ -6350,7 +6350,7 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper so the rendered DOM rect
               equals the assigned anchored rect. See WAVE 5 INVARIANT in
               Wave4CribCutGroupSlot. */}
-          {!isHighCardMode && (
+          {!isHighCardMode && viewState && (
             <CribbageAnchoredCribCutMount
               cribbageState={viewState}
               cardBackColors={cardBackColors}
