@@ -89,8 +89,6 @@ const GAMEPLAY_COLUMN_ID = "cribbage.gameplayColumn";
 const GAMEPLAY_COLUMN_LEAF_IDS = new Set<string>([
   PEGBOARD_ID,
   CRIB_CUT_GROUP_ID,
-  CRIB_ID,
-  CUT_CARD_ID,
   PEGGING_ROW_ID,
   COUNTING_ROW_ID,
 ]);
