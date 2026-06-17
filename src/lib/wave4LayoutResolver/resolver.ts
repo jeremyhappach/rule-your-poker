@@ -18,6 +18,7 @@
  */
 
 import type {
+  AnchorOrigin,
   ArtifactDescriptor,
   AvailableGameplayViewport,
   BandId,
@@ -102,6 +103,61 @@ function validateDescriptor(
       artifactIds: [d.id],
       band: d.band,
       message: `Descriptor ${d.id} targets structural band 'outerRail'.`,
+    };
+  }
+
+  // Wave 5D — anchored composeMode validation.
+  if (d.composeMode === "anchored") {
+    if (d.band !== undefined) {
+      return {
+        code: "anchored_descriptor_declared_band",
+        artifactIds: [d.id],
+        band: d.band,
+        message: `Anchored descriptor ${d.id} illegally declared band '${d.band}'.`,
+      };
+    }
+    if (
+      typeof d.anchorX !== "number" ||
+      typeof d.anchorY !== "number" ||
+      d.anchorX < 0 ||
+      d.anchorX > 1 ||
+      d.anchorY < 0 ||
+      d.anchorY > 1
+    ) {
+      return {
+        code: "anchored_size_underspecified",
+        artifactIds: [d.id],
+        message: `Anchored ${d.id} missing or out-of-range anchorX/anchorY.`,
+      };
+    }
+    const hasW = typeof d.widthPct === "number";
+    const hasH = typeof d.heightPct === "number";
+    const hasA = typeof d.aspectRatio === "number" && (d.aspectRatio ?? 0) > 0;
+    const provided = (hasW ? 1 : 0) + (hasH ? 1 : 0) + (hasA ? 1 : 0);
+    if (hasW && hasH && hasA) {
+      return {
+        code: "anchored_size_overspecified",
+        artifactIds: [d.id],
+        message: `Anchored ${d.id} declared widthPct + heightPct + aspectRatio; pick two.`,
+      };
+    }
+    if (provided < 2) {
+      // Allowed combos: (W,H) (W,A) (H,A). Anything else under-specified.
+      return {
+        code: "anchored_size_underspecified",
+        artifactIds: [d.id],
+        message: `Anchored ${d.id} must declare two of {widthPct, heightPct, aspectRatio}.`,
+      };
+    }
+    return null;
+  }
+
+  // Non-anchored: a band is required (only `outerRail` is forbidden, handled above).
+  if (!d.band) {
+    return {
+      code: "missing_safe_area_dependency",
+      artifactIds: [d.id],
+      message: `Descriptor ${d.id} (composeMode='${d.composeMode}') is missing required 'band'.`,
     };
   }
 
