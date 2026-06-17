@@ -47,7 +47,6 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
-  const anchoredPegboardOn = useCribbageAnchoredPegboardFlag();
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGBOARD_SLOT_ID);
@@ -77,16 +76,14 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
       }
     : { x: 0, y: 0, width: 0, height: 0 };
 
-  // Wave 5D Phase 3 contract enforcement — only active for the anchored
-  // pegboard. The legacy column-resolved pegboard already negotiates inside
-  // the play band and is not subject to the anchored viewport contract.
+  // Wave 5D — Pegboard Graduation. The pegboard is always anchored; the
+  // DOM-bounds contract is enforced whenever a placement is available.
   useDomBoundsContract(ref, {
     artifactId: PEGBOARD_SLOT_ID,
     assignedRect,
     availableGameplayViewport: viewportRect,
     vminInPx,
     enabled:
-      anchoredPegboardOn &&
       !!placement &&
       !!placement.visible &&
       vminInPx > 0,
