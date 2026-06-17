@@ -3,7 +3,7 @@ import type { CribbageState } from '@/lib/cribbageTypes';
 // CribbagePegBoard now rendered by parent for mount stability
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
-import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
+// Wave4PeggingRowSlot moved to CribbageAnchoredPeggingRowMount (sibling of felt wrapper)
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
