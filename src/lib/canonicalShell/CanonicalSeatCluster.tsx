@@ -479,7 +479,11 @@ export function CanonicalSeatCluster({
   // bottom-row seats. Previously bottom seats flipped growth upward,
   // which produced NAME → ARTIFACT → CHIP stacking; the contract is
   // now NAME / CHIP / ARTIFACTS for every seat.
-  const growsDown = true;
+  // Default is uniform NAME / CHIP / ARTIFACTS stacking. Opt-in via
+  // `growUpwardAtBottom` flips growth for bottom-anchored slots so
+  // game-owned content (e.g. Holm showdown exposed cards) does not
+  // project outward into the elliptical felt rail.
+  const growsDown = !(growUpwardAtBottom && isBottomAnchored);
 
 
   type SeatOrientation = 'vertical-name-top';
