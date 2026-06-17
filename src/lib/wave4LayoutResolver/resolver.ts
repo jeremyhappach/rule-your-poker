@@ -902,7 +902,11 @@ export function resolveLayout(
     ...seatResult.placements,
   ].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  return { placements, faults, geometry };
+  // Wave 5D Phase 1 — derive gameplay viewport (read-only echo, no consumer yet).
+  const { viewport, fault: viewportFault } = deriveAvailableGameplayViewport(geometry);
+  if (viewportFault) faults.push(viewportFault);
+
+  return { placements, faults, geometry, availableGameplayViewport: viewport };
 }
 
 export { COLLAPSE_RANK };
