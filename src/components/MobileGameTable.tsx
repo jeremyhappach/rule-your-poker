@@ -6965,6 +6965,9 @@ export const MobileGameTable = ({
               )}
             </div>
           );
+              })()}
+            </DiceGameplayGeometryProvider>
+          );
         })()}
 
         {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
