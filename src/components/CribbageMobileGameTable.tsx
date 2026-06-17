@@ -6318,7 +6318,7 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper but INSIDE the canonical
               felt-frame relative box. This guarantees the rendered DOM rect
               equals the assigned anchored rect (no inherited transforms). */}
-          {!isHighCardMode && latchedPegboardDataRef.current && wave5dAnchoredPegboardOn && (
+          {!isHighCardMode && latchedPegboardDataRef.current && (
             <Wave4PegboardSlot
               phase="pegging"
               viewerSeatPosition={currentPlayer?.position ?? null}
