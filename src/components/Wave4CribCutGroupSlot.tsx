@@ -16,9 +16,47 @@
  *
  * Pure consumer: never calls resolveLayout. Falls back to the previous
  * CSS percentage wrapper before the first measurement.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * WAVE 5 INVARIANT — anchored artifacts MUST NOT mount beneath
+ * transformed ancestors.
+ *
+ * Anchored geometry is contractual: the resolver's assigned rect (in
+ * felt-local vmin) MUST equal the rendered DOM rect (in felt-local vmin).
+ * Any ancestor with a non-identity CSS `transform` silently shifts the
+ * DOM rect out of the coordinate system the resolver computed against,
+ * breaking the contract without producing a `wave4:layout_fault`
+ * (only a `wave5d:center-drift` warning, which is post-hoc).
+ *
+ * Discovered: Pegboard Graduation (Phase 4A.1) — fixed by mounting
+ *   Wave4PegboardSlot as a sibling of the `translateY(6%)` felt-content
+ *   wrapper in CribbageMobileGameTable.
+ * Confirmed: CribCutGroup Graduation — same root cause, same fix.
+ *
+ * Rule for ALL future anchored migrations
+ * (PeggingRow, CountingRow, Holm pot, Gin discard, dice ledgers, etc.):
+ *
+ *   1. The anchored slot DOM root must be a sibling of (or higher than)
+ *      any ancestor that applies a CSS `transform`, `filter`, or
+ *      `perspective`. Use the canonical felt-frame relative box
+ *      (the container that owns `[data-canonical-felt-surface]`).
+ *   2. The slot itself may apply transforms ONLY for cosmetic effects
+ *      that do not displace its bounding rect (rotations of inner
+ *      content, scale on hover, etc. — never translateX/Y on the slot
+ *      root).
+ *   3. Every anchored slot installs the `useDomBoundsContract` hook
+ *      AND a `wave5d:center-drift` assertion (see below) so any
+ *      regression is loud, not silent.
+ *
+ * If you find yourself wanting to mount an anchored slot inside an
+ * existing transformed wrapper because "it's easier" — stop. Lift the
+ * mount. The Pegboard and CribCutGroup migrations both spent a round
+ * trip chasing a phantom resolver bug that was actually one parent div
+ * with `transform: translateY(6%)`.
+ * ─────────────────────────────────────────────────────────────────────────
  */
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -74,6 +112,77 @@ export function Wave4CribCutGroupSlot({ children }: Wave4CribCutGroupSlotProps) 
     vminInPx,
     enabled: !!placement && !!placement.visible && vminInPx > 0,
   });
+
+  // Wave 5D — center-drift assertion (mirrors Wave4PegboardSlot).
+  // Anchored placements MUST equal their rendered DOM rect — no ancestor
+  // transform may shift them. Compares assignedRect.centerY to
+  // renderedBounds.centerY in felt-local vmin and warns once per session
+  // when they diverge by more than 0.5 vmin, dumping the ancestor
+  // transform chain for the offending DOM root. See WAVE 5 INVARIANT.
+  const driftWarnedRef = useRef(false);
+  useEffect(() => {
+    if (!placement || !placement.visible || vminInPx <= 0) return;
+    if (typeof window === "undefined") return;
+    const node = ref.current;
+    if (!node) return;
+    const raf = requestAnimationFrame(() => {
+      const surface = document.querySelector<HTMLElement>(
+        "[data-canonical-felt-surface]",
+      );
+      if (!surface) return;
+      const surfRect = surface.getBoundingClientRect();
+      const r = node.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      const renderedCenterY = (r.top + r.height / 2 - surfRect.top) / vminInPx;
+      const assignedCenterY = assignedRect.y + assignedRect.height / 2;
+      const delta = renderedCenterY - assignedCenterY;
+      if (Math.abs(delta) > 0.5 && !driftWarnedRef.current) {
+        driftWarnedRef.current = true;
+        const chain: Array<{ tag: string; transform: string }> = [];
+        let p: HTMLElement | null = node.parentElement;
+        let hops = 0;
+        while (p && hops < 16 && p !== surface) {
+          const t = getComputedStyle(p).transform;
+          if (t && t !== "none") {
+            chain.push({
+              tag:
+                p.tagName.toLowerCase() +
+                (p.dataset && Object.keys(p.dataset).length
+                  ? "[" + Object.keys(p.dataset).slice(0, 2).join(",") + "]"
+                  : ""),
+              transform: t,
+            });
+          }
+          p = p.parentElement;
+          hops += 1;
+        }
+        // eslint-disable-next-line no-console
+        console.warn("[wave5d:cribCutGroup center-drift]", {
+          assignedRect,
+          renderedBounds: {
+            x: (r.left - surfRect.left) / vminInPx,
+            y: (r.top - surfRect.top) / vminInPx,
+            width: r.width / vminInPx,
+            height: r.height / vminInPx,
+          },
+          assignedCenterY,
+          renderedCenterY,
+          deltaVmin: delta,
+          ancestorTransforms: chain,
+        });
+      } else if (Math.abs(delta) <= 0.5) {
+        driftWarnedRef.current = false;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [
+    placement,
+    vminInPx,
+    assignedRect.x,
+    assignedRect.y,
+    assignedRect.width,
+    assignedRect.height,
+  ]);
 
   if (!placement || !placement.visible || vminInPx <= 0) {
     // Legacy CSS fallback — preserves prior visual position pre-measurement.
