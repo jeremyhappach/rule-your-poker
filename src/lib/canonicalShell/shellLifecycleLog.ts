@@ -217,7 +217,6 @@ export function logIfChanged(
   value: unknown,
   detail?: Record<string, unknown>,
 ): void {
-  if (!isShellLifecycleDebugEnabled()) return;
   const prev = lastSeenByKey.has(key) ? lastSeenByKey.get(key) : UNINIT;
   if (prev === value) return;
   lastSeenByKey.set(key, value);
