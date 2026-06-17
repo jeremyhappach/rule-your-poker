@@ -5,6 +5,7 @@ import { getSCCDisplayOrder, SCCHand, SCCDie as SCCDieType } from "@/lib/sccGame
 import { HorsesDie as HorsesDieType } from "@/lib/horsesGameLogic";
 import { DiceRollAnimation } from "./DiceRollAnimation";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { useIsRectDriven } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 
 import { isDiceSnapEnabled } from "@/lib/diceSnapshots/enabled";
 import { recordDiceSnapFrame, DiceSnapSample } from "@/lib/diceSnapshots/recorder";
@@ -266,8 +267,14 @@ export function DiceTableLayout({
   traceContext,
 }: DiceTableLayoutProps) {
   const isSCC = gameType === 'ship-captain-crew';
-  const { isTablet } = useDeviceSize();
-  
+  const { isTablet: rawIsTablet } = useDeviceSize();
+  // Wave 6A — when this DiceTableLayout is wrapped in an AssignedRectFitter
+  // (i.e. it lives inside an anchored Wave 5D dice stage), the assigned rect
+  // owns absolute size via a uniform `transform: scale(k)`. Internal isTablet
+  // size bumps would double-scale, so suppress them.
+  const isRectDriven = useIsRectDriven();
+  const isTablet = rawIsTablet && !isRectDriven;
+
   // TABLET: Use larger dice size
   const effectiveSize = isTablet ? "lg" : size;
   

@@ -17,6 +17,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useYahtzeeGameplayGeometry } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { AssignedRectPxProvider } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 
 export interface YahtzeeAnchoredSlotProps {
   artifactId: string;
@@ -140,7 +141,11 @@ export function YahtzeeAnchoredSlot({
         ...innerStyle,
       }}
     >
-      {children}
+      <AssignedRectPxProvider
+        value={{ widthPx: w * vminInPx, heightPx: h * vminInPx }}
+      >
+        {children}
+      </AssignedRectPxProvider>
     </div>
   );
 }

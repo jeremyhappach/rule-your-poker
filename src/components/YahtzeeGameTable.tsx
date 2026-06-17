@@ -16,6 +16,7 @@ import {
 import { HorsesDie } from "./HorsesDie";
 import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
+import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
@@ -2045,36 +2046,38 @@ export function YahtzeeGameTable({
 
           return (
             <YahtzeeAnchoredSlot artifactId="yahtzee.opponentDiceStage">
-              <DiceTableLayout
-                key={stableCacheKey}
-                dice={feltDice}
-                isRolling={false}
-                canToggle={false}
-                size="md"
-                gameType="yahtzee"
-                showWildHighlight={false}
-                isObserver={true}
-                hideUnrolledDice={true}
-                animationOrigin={useCached ? undefined : getDiceAnimationOrigin()}
-                rollKey={feltRollKey}
-                heldMaskBeforeComplete={useCached ? undefined : diceState?.heldMaskBeforeComplete}
-                cacheKey={stableCacheKey}
-                traceContext={{
-                  gameId,
-                  dealerGameId: dealerGameId ?? null,
-                  roundId: currentRoundId ?? null,
-                  handNumber: viewState?.currentRound ?? 0,
-                  turnPlayerId: currentTurnPlayerId ?? null,
-                  rollNumber: (() => {
-                    const ps = viewState?.playerStates?.[currentTurnPlayerId ?? ''];
-                    return ps ? 3 - ps.rollsRemaining : 0;
-                  })(),
-                  authoritativeDice: (() => {
-                    const ps = authoritativeYahtzeeState?.playerStates?.[currentTurnPlayerId ?? ''];
-                    return ps?.dice?.map(d => ({ value: d.value, isHeld: d.isHeld }));
-                  })(),
-                }}
-              />
+              <AssignedRectFitter>
+                <DiceTableLayout
+                  key={stableCacheKey}
+                  dice={feltDice}
+                  isRolling={false}
+                  canToggle={false}
+                  size="md"
+                  gameType="yahtzee"
+                  showWildHighlight={false}
+                  isObserver={true}
+                  hideUnrolledDice={true}
+                  animationOrigin={useCached ? undefined : getDiceAnimationOrigin()}
+                  rollKey={feltRollKey}
+                  heldMaskBeforeComplete={useCached ? undefined : diceState?.heldMaskBeforeComplete}
+                  cacheKey={stableCacheKey}
+                  traceContext={{
+                    gameId,
+                    dealerGameId: dealerGameId ?? null,
+                    roundId: currentRoundId ?? null,
+                    handNumber: viewState?.currentRound ?? 0,
+                    turnPlayerId: currentTurnPlayerId ?? null,
+                    rollNumber: (() => {
+                      const ps = viewState?.playerStates?.[currentTurnPlayerId ?? ''];
+                      return ps ? 3 - ps.rollsRemaining : 0;
+                    })(),
+                    authoritativeDice: (() => {
+                      const ps = authoritativeYahtzeeState?.playerStates?.[currentTurnPlayerId ?? ''];
+                      return ps?.dice?.map(d => ({ value: d.value, isHeld: d.isHeld }));
+                    })(),
+                  }}
+                />
+              </AssignedRectFitter>
             </YahtzeeAnchoredSlot>
           );
         })()}
