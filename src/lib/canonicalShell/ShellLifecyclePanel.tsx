@@ -17,6 +17,7 @@ import {
   subscribeShellLifecycle,
   type ShellLifecycleEvent,
 } from './shellLifecycleLog';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import {
   ensureHarnessCacheLoaded,
   subscribeGlobalDebugMode,
