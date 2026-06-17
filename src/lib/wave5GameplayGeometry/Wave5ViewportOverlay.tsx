@@ -71,7 +71,7 @@ export function Wave5ViewportOverlay() {
 
   if (!enabled || !geometry || vminInPx <= 0) return null;
 
-  const viewport = deriveAvailableGameplayViewport(geometry);
+  const { viewport } = deriveAvailableGameplayViewport(geometry);
   const r = viewport.rect;
   // vmin -> px (frame is felt-sized so this maps 1:1 onto the frame).
   const x = r.x.value * vminInPx;
