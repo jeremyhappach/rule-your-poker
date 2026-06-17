@@ -109,7 +109,8 @@ export function Wave4CribbageChromeHost(props: Wave4CribbageChromeHostProps) {
       return all.filter(
         (d) =>
           d.id !== "cribbage.pegboard" &&
-          d.id !== "cribbage.cribCutGroup",
+          d.id !== "cribbage.cribCutGroup" &&
+          d.id !== "cribbage.peggingRow",
       );
     },
     [
