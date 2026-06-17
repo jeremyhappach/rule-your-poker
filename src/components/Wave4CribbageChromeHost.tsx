@@ -91,7 +91,6 @@ export interface Wave4CribbageChromeHostProps {
 export function Wave4CribbageChromeHost(props: Wave4CribbageChromeHostProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const visible = flagEnabled();
-  const anchoredPegboardOn = useCribbageAnchoredPegboardFlag();
   const lastHashRef = useRef<string | null>(null);
 
   const descriptors = useMemo(
@@ -103,15 +102,11 @@ export function Wave4CribbageChromeHost(props: Wave4CribbageChromeHostProps) {
         cutCardRevealed: props.cutCardRevealed,
         cribVisible: props.cribVisible,
       });
-      // Wave 5D Phase 4A.1 — Cleanup blocker #1.
-      // When the anchored pegboard flag is ON, the live pegboard is owned
+      // Wave 5D — Pegboard Graduation. The live pegboard is owned
       // exclusively by CribbageGameplayGeometryProvider. The chrome host
-      // must NOT resolve a second (legacy) `cribbage.pegboard` descriptor —
-      // doing so produced spurious `aspect_unhonorable` faults and split
-      // descriptor ownership.
-      return anchoredPegboardOn
-        ? all.filter((d) => d.id !== "cribbage.pegboard")
-        : all;
+      // must NOT resolve a second `cribbage.pegboard` descriptor — doing
+      // so would split descriptor ownership and produce spurious faults.
+      return all.filter((d) => d.id !== "cribbage.pegboard");
     },
     [
       props.phase,
@@ -119,7 +114,6 @@ export function Wave4CribbageChromeHost(props: Wave4CribbageChromeHostProps) {
       props.opponentSeatPositions,
       props.cutCardRevealed,
       props.cribVisible,
-      anchoredPegboardOn,
     ],
   );
 
