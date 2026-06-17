@@ -186,8 +186,19 @@ export const GinRummyKnockDisplay = ({
     : null;
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col items-center pointer-events-none px-2 gap-2" style={{ paddingTop: '32%' }}>
-      {/* Opponent's cards — the only cards shown on the felt, pushed down */}
+    <GinAnchoredSlot
+      artifactId="gin.knockDisplay"
+      zIndex={40}
+      innerStyle={{
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        gap: '0.5rem',
+        pointerEvents: 'none',
+        padding: '0 0.5rem',
+      }}
+    >
+      {/* Opponent's cards — the only cards shown on the felt */}
       {showOtherMelds && hasOtherCards && (
         <div className="w-full max-w-[280px] flex flex-col items-center gap-1 pointer-events-none">
           <OpponentHandDisplay
@@ -222,6 +233,6 @@ export const GinRummyKnockDisplay = ({
           <span className="text-white/25"> (to {ginState.pointsToWin})</span>
         </p>
       )}
-    </div>
+    </GinAnchoredSlot>
   );
 };
