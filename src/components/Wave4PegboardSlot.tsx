@@ -151,7 +151,6 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
     });
     return () => cancelAnimationFrame(raf);
   }, [
-    anchoredPegboardOn,
     placement,
     vminInPx,
     assignedRect.x,
