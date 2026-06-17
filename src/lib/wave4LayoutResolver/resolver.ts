@@ -1229,5 +1229,11 @@ export function resolveLayoutWithGroups(
     resolveGroup(g, flat, leafById, placements, faults);
   }
 
-  return { placements, faults, geometry };
+  // Reuse the base viewport — geometry input is identical for both passes.
+  return {
+    placements,
+    faults,
+    geometry,
+    availableGameplayViewport: base.availableGameplayViewport,
+  };
 }
