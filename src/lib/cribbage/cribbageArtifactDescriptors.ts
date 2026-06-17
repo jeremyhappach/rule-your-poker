@@ -44,13 +44,6 @@ export interface CribbageDescriptorOptions {
    * True once the crib pile exists (post-discard) and not yet returned to dealer.
    */
   cribVisible: boolean;
-  /**
-   * Wave 5D — Phase 4. When true, `cribbage.pegboard` is emitted as a
-   * `composeMode: 'anchored'` descriptor positioned off
-   * `availableGameplayViewport` instead of as a play-band centerpiece.
-   * Default false (legacy behavior). Other artifacts are unaffected.
-   */
-  anchoredPegboard?: boolean;
 }
 
 // ---------------------------------------------------------------------------
