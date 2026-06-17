@@ -26,7 +26,7 @@ import { GinIdentityGateTracer } from "@/lib/canonicalShell/GinIdentityGateTrace
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
-import { logIfChanged as _shellLogIfChanged } from "@/lib/canonicalShell/shellLifecycleLog";
+import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
@@ -2064,6 +2064,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
     prevGameTypeRef.current = currentType;
   }, [game?.game_type, clearLiftedCardCaches]);
+
+  // Auto-enable SHELL LC panel for game types we are actively debugging
+  // (Holm). Clears on unmount / when leaving the game.
+  useEffect(() => {
+    setShellLifecycleActiveGameType(game?.game_type ?? null);
+    return () => setShellLifecycleActiveGameType(null);
+  }, [game?.game_type]);
+
 
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);

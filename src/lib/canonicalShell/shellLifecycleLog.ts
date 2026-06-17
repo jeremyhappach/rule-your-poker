@@ -54,6 +54,20 @@ const t0 =
     ? performance.now()
     : Date.now();
 
+// Active game-type hint set by the running table surface. When a Holm
+// game is active we auto-enable the SHELL LC panel so lifecycle events
+// stream without query params or localStorage hacks. Cleared on unmount.
+let _activeGameType: string | null = null;
+export function setShellLifecycleActiveGameType(gameType: string | null): void {
+  if (_activeGameType === gameType) return;
+  _activeGameType = gameType;
+  // Notify panel subscribers so visibility re-evaluates immediately.
+  for (const l of listeners) { try { l(); } catch { /* */ } }
+}
+
+
+const AUTO_ENABLED_GAME_TYPES = new Set(['holm-game']);
+
 export function isShellLifecycleDebugEnabled(): boolean {
   try {
     if (typeof window === 'undefined') return false;
@@ -63,9 +77,11 @@ export function isShellLifecycleDebugEnabled(): boolean {
     if (window.localStorage.getItem('ptp_shell_lc') === '1') return true;
     if (window.localStorage.getItem('ptp_shell_lc') === '0') return false;
   } catch { /* */ }
+  if (_activeGameType && AUTO_ENABLED_GAME_TYPES.has(_activeGameType)) return true;
   if (isGlobalDebugModeLoaded() && isGlobalDebugModeCached()) return true;
   try { return Boolean(import.meta.env?.DEV); } catch { return false; }
 }
+
 
 function notify() {
   snapshot = buffer.slice();
