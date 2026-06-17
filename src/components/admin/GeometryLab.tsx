@@ -509,6 +509,31 @@ export function GeometryLab({ userId }: { userId: string }) {
                 }
               />
             </div>
+            <div className="col-span-2 space-y-2 pt-2 border-t border-dashed">
+              <p className="text-xs text-muted-foreground">
+                Rect mode keeps width and height independent. To resize while
+                preserving proportions, convert this artifact to a driven mode —
+                the current widthPct/heightPct ratio becomes its aspectRatio.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleConvertTo("widthDriven")}
+                >
+                  Convert To Width Driven
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleConvertTo("heightDriven")}
+                >
+                  Convert To Height Driven
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
