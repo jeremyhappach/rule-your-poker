@@ -39,7 +39,11 @@ async function refresh() {
     .from("geometry_overrides" as any)
     .select("*");
   if (error) {
-    // Silent — table may not exist in dev; leave overrides empty.
+    // eslint-disable-next-line no-console
+    console.warn("geometrylab:overrides_fetch_failed", {
+      message: error.message,
+      code: (error as { code?: string }).code,
+    });
     return;
   }
   const m = new Map<string, GeometryOverride>();
@@ -49,9 +53,16 @@ async function refresh() {
   }
   const next: GeometryOverridesMap = m;
   setGeometryOverrides(next);
+  // eslint-disable-next-line no-console
+  console.info("geometrylab:overrides_hot_reloaded", { count: next.size });
   try {
     window.dispatchEvent(new Event("geometry_override_changed"));
-  } catch { /* */ }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("geometrylab:overrides_event_dispatch_failed", {
+      message: (err as Error)?.message ?? String(err),
+    });
+  }
 }
 
 export function GeometryOverridesLoader() {
@@ -66,7 +77,10 @@ export function GeometryOverridesLoader() {
           void refresh();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        // eslint-disable-next-line no-console
+        console.info("geometrylab:subscription_status", { status });
+      });
     return () => {
       supabase.removeChannel(channel);
     };
