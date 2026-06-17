@@ -904,6 +904,12 @@ const Index = () => {
                   </div>
                 </ScrollArea>
               </TabsContent>
+
+              <TabsContent value="geometry" className="flex-1 min-h-0">
+                <ScrollArea className="h-full pr-4 overscroll-contain">
+                  {user && <GeometryLab userId={user.id} />}
+                </ScrollArea>
+              </TabsContent>
             </Tabs>
           ) : (
             <ScrollArea className="flex-1 min-h-0 pr-4 overscroll-contain">
