@@ -572,7 +572,7 @@ function solveOverlay(
 
   for (const d of descriptors) {
     // Place at preferred rect anchored to band origin (band-relative preferred).
-    const bandRect = bandRectFor(d.band, geometry);
+    const bandRect = d.band ? bandRectFor(d.band, geometry) : null;
     if (!bandRect) {
       placements.push({
         id: d.id,
