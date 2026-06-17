@@ -21,7 +21,6 @@ import {
   deriveAvailableGameplayViewport,
   useLiveGeometryConstraints,
 } from "@/lib/wave4LayoutResolver";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_grid";
 const EVENT_NAME = "ptp:wave5-grid-changed";
