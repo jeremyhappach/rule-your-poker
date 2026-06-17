@@ -107,6 +107,7 @@ const App = () => {
                 
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
+                <Wave5ViewportOverlayToggle />
               </DebugTray>
 
             </AppNetworkSim>
