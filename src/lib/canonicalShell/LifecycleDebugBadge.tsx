@@ -1,3 +1,4 @@
+import { HIDE_DEBUG_UI } from '@/lib/debugUIVisibility';
 import { useState } from 'react';
 import { useLifecycleSnapshot } from './lifecycleDebug';
 import {
