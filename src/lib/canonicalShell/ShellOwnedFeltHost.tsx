@@ -360,11 +360,10 @@ export function ShellOwnedFeltHost({
           isDesktop={effective?.isDesktop}
           cribbageSkunk={effective?.cribbageSkunk}
         />
-        <Wave5ViewportOverlay />
+        {/* W5 GRID is the ONLY Wave 5 debug surface rendered on felt.
+            Viewport outline, seat-reserve, anchored/oversized probes have
+            been retired — they were causing permanent debug rendering. */}
         <Wave5GridOverlay />
-        <Wave5SeatReserveOverlay />
-        <Wave5AnchoredProbeOverlay />
-        <Wave5OversizedProbeOverlay />
       </div>
     </div>
   );
