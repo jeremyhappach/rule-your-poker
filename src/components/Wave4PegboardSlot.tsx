@@ -28,7 +28,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
-import { useCribbageAnchoredPegboardFlag } from "@/lib/wave5d/cribbageAnchoredPegboardFlag";
+
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 
 
@@ -47,7 +47,6 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
-  const anchoredPegboardOn = useCribbageAnchoredPegboardFlag();
   const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGBOARD_SLOT_ID);
@@ -77,16 +76,14 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
       }
     : { x: 0, y: 0, width: 0, height: 0 };
 
-  // Wave 5D Phase 3 contract enforcement — only active for the anchored
-  // pegboard. The legacy column-resolved pegboard already negotiates inside
-  // the play band and is not subject to the anchored viewport contract.
+  // Wave 5D — Pegboard Graduation. The pegboard is always anchored; the
+  // DOM-bounds contract is enforced whenever a placement is available.
   useDomBoundsContract(ref, {
     artifactId: PEGBOARD_SLOT_ID,
     assignedRect,
     availableGameplayViewport: viewportRect,
     vminInPx,
     enabled:
-      anchoredPegboardOn &&
       !!placement &&
       !!placement.visible &&
       vminInPx > 0,
@@ -100,7 +97,6 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   // chain for the offending DOM root.
   const driftWarnedRef = useRef(false);
   useEffect(() => {
-    if (!anchoredPegboardOn) return;
     if (!placement || !placement.visible || vminInPx <= 0) return;
     if (typeof window === "undefined") return;
     const node = ref.current;
@@ -155,7 +151,6 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
     });
     return () => cancelAnimationFrame(raf);
   }, [
-    anchoredPegboardOn,
     placement,
     vminInPx,
     assignedRect.x,
@@ -188,7 +183,7 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
       data-wave4-pegboard-slot="resolved"
       data-artifact-id="cribbage.pegboard"
       data-gameplay-column-child="pegboard"
-      data-placement-mode={anchoredPegboardOn ? "anchored" : "column"}
+      data-placement-mode="anchored"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",

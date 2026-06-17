@@ -79,7 +79,7 @@ import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import { Wave4PegboardSlot } from '@/components/Wave4PegboardSlot';
 import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
-import { useCribbageAnchoredPegboardFlag } from '@/lib/wave5d/cribbageAnchoredPegboardFlag';
+
 
 import {
   checkStaleDealerGameRender,
@@ -450,7 +450,7 @@ export const CribbageMobileGameTable = ({
   // `translateY(6%)` ancestor transform — assigned anchored rect must
   // equal rendered DOM rect. We render the slot OUTSIDE the translateY
   // wrapper (but still inside the canonical felt frame) when this is on.
-  const wave5dAnchoredPegboardOn = useCribbageAnchoredPegboardFlag();
+  
 
 
 
@@ -6219,38 +6219,14 @@ export const CribbageMobileGameTable = ({
               </>
             )}
 
-            {/* STABLE PEGBOARD — Wave 4 Phase 5C / Wave 5D Phase 4A.1
+            {/* STABLE PEGBOARD — Wave 5D Pegboard Graduation.
                 Position/size/visibility owned by Wave4PegboardSlot via the
-                layout resolver. Visuals remain in <CribbagePegBoard/>.
-                When the anchored flag is ON, rendering moves OUTSIDE the
-                translateY(6%) wrapper (see below) so the rendered DOM
-                rect equals the assigned anchored rect. */}
-            {!isHighCardMode && latchedPegboardDataRef.current && !wave5dAnchoredPegboardOn && (
-              <Wave4PegboardSlot
-                phase="pegging"
-                viewerSeatPosition={currentPlayer?.position ?? null}
-                opponentSeatPositions={[0, 1, 2, 3].filter(
-                  (p) => p !== (currentPlayer?.position ?? -1),
-                )}
-                cutCardRevealed={true}
-                cribVisible={true}
-              >
-                <CribbagePegBoard
-                  players={players}
-                  playerStates={
-                    isGameplayMode && viewState
-                      ? viewState.playerStates
-                      : latchedPegboardDataRef.current.playerStates
-                  }
-                  winningScore={
-                    isGameplayMode && viewState
-                      ? viewState.pointsToWin
-                      : latchedPegboardDataRef.current.winningScore
-                  }
-                  overrideScores={countingScoreOverrides ?? undefined}
-                />
-              </Wave4PegboardSlot>
-            )}
+                anchored layout resolver. The pegboard now mounts OUTSIDE
+                this translateY(6%) wrapper (see below the closing div of
+                the felt-content stack) so the rendered DOM rect equals the
+                assigned anchored rect. Nothing renders here. */}
+
+
 
 
             {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount.
@@ -6342,7 +6318,7 @@ export const CribbageMobileGameTable = ({
               translateY(6%) felt-content wrapper but INSIDE the canonical
               felt-frame relative box. This guarantees the rendered DOM rect
               equals the assigned anchored rect (no inherited transforms). */}
-          {!isHighCardMode && latchedPegboardDataRef.current && wave5dAnchoredPegboardOn && (
+          {!isHighCardMode && latchedPegboardDataRef.current && (
             <Wave4PegboardSlot
               phase="pegging"
               viewerSeatPosition={currentPlayer?.position ?? null}

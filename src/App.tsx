@@ -33,7 +33,7 @@ import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5
 import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay";
 import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay";
 import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
-import { CribbageAnchoredPegboardToggle } from "@/lib/wave5d/CribbageAnchoredPegboardToggle";
+
 
 
 
@@ -118,7 +118,7 @@ const App = () => {
                 <Wave5SeatReserveOverlayToggle />
                 <Wave5AnchoredProbeToggle />
                 <Wave5OversizedProbeToggle />
-                <CribbageAnchoredPegboardToggle />
+                
               </DebugTray>
 
             </AppNetworkSim>
