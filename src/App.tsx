@@ -29,6 +29,8 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
+import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay";
+import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay";
 
 
 
@@ -109,6 +111,8 @@ const App = () => {
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
                 <Wave5ViewportOverlayToggle />
+                <Wave5SeatReserveOverlayToggle />
+                <Wave5AnchoredProbeToggle />
               </DebugTray>
 
             </AppNetworkSim>
