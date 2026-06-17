@@ -30,6 +30,7 @@ import {
 import { Wave5ViewportOverlay } from '@/lib/wave5GameplayGeometry/Wave5ViewportOverlay';
 import { Wave5SeatReserveOverlay } from '@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay';
 import { Wave5AnchoredProbeOverlay } from '@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay';
+import { Wave5OversizedProbeOverlay } from '@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay';
 
 // Re-export so non-shell call sites can reference the type without
 // importing from the canonical felt module directly (preserves the
@@ -361,6 +362,7 @@ export function ShellOwnedFeltHost({
         <Wave5ViewportOverlay />
         <Wave5SeatReserveOverlay />
         <Wave5AnchoredProbeOverlay />
+        <Wave5OversizedProbeOverlay />
       </div>
     </div>
   );
