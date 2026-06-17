@@ -56,6 +56,7 @@ import { usePlayerBalance } from "@/hooks/usePlayerBalance";
 import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { LayoutTuningAdminSection } from "@/components/admin/LayoutTuningAdminSection";
+import { GeometryLab } from "@/components/admin/GeometryLab";
 import { formatChipValue } from "@/lib/utils";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
@@ -548,7 +549,7 @@ const Index = () => {
           
           {isAdmin ? (
             <Tabs defaultValue="profile" className="w-full flex flex-col flex-1 min-h-0">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="profile" className="flex items-center gap-1.5">
                   <UserCircle className="h-4 w-4" />
                   Profile
@@ -556,6 +557,10 @@ const Index = () => {
                 <TabsTrigger value="admin" className="flex items-center gap-1.5">
                   <ShieldAlert className="h-4 w-4" />
                   Admin
+                </TabsTrigger>
+                <TabsTrigger value="geometry" className="flex items-center gap-1.5">
+                  📐
+                  Geometry Lab
                 </TabsTrigger>
               </TabsList>
               
