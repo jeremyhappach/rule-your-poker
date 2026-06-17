@@ -16,6 +16,7 @@ import {
 import { HorsesDie } from "./HorsesDie";
 import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
+import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
