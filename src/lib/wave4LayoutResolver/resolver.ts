@@ -19,6 +19,7 @@
 
 import type {
   ArtifactDescriptor,
+  AvailableGameplayViewport,
   BandId,
   CollapsePriority,
   GeometryConstraints,
