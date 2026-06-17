@@ -6975,141 +6975,36 @@ export const MobileGameTable = ({
           );
         })()}
 
-        {/* Solo player's Tabled Cards - shown above pot during solo-vs-Chucky showdown/win */}
-        {/* NOTE: Also show to the solo player themselves (we hide their bottom-hand view while solo-vs-Chucky is active). */}
-        {gameType === 'holm-game' && isSoloVsChucky && (() => {
-          // Find the solo player (use locked id so tabling persists even if decisions clear)
-          // NOTE: Do NOT fall back to winnerPlayerId here; it can be stale during hand transitions
-          // and can briefly table the wrong player's cards (causing flicker/incorrect tabling).
-          const soloPlayerId = soloVsChuckyPlayerIdLocked || players.find(p => p.current_decision === 'stay')?.id;
-          const soloPlayer = soloPlayerId ? players.find(p => p.id === soloPlayerId) : null;
-          if (!soloPlayer) return null;
-          
-          // Get solo player's cards
-          const soloPlayerCards = getPlayerCards(soloPlayer.id);
-          if (soloPlayerCards.length === 0) return null;
-
-          // INSTRUMENTATION: Log every frame where solo-area renders
-          traceSoloAreaRender({
-            clientId: currentUserId,
-            gameId: gameId ?? '',
-            roundId: handContextId ?? undefined,
-            handNumber: 0,
-            handContextId: handContextId ?? '',
-            renderedPlayerId: soloPlayer.id,
-            cardIds: soloPlayerCards.map(c => `${c.rank}${c.suit}`).join(','),
-            cardSource: soloVsChuckyPlayerIdLocked ? 'lockedId' : 'rawFind',
-            isShowdown: !!showdownModeLocked,
-            shouldHideForTabling: false,
-            isHolmWinWinner: false,
-            isSoloVsChuckyPlayer: true,
-            isSoloVsChuckyPlayerRaw: false,
-            isSoloVsChucky: !!isSoloVsChucky,
-            soloVsChuckyPlayerIdLocked,
-            soloVsChuckyTableLocked,
-            showdownModeLocked: !!showdownModeLocked,
-            stayedPlayersCount,
-            playerDecision: soloPlayer.current_decision,
-            decisionLocked: soloPlayer.decision_locked,
-            playerExplicitlyStayed: soloPlayer.current_decision === 'stay',
-            apparentIsActivePlayer: true,
-            isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
-          });
-          
-          // Sort cards by rank (ascending) like PlayerHand does
-          const RANK_ORDER: Record<string, number> = {
-            '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
-            '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
-          };
-          const sortedCards = [...soloPlayerCards].map((card, index) => ({ card, originalIndex: index }))
-            .sort((a, b) => RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank]);
-          
-          // Determine if solo player is the winner (for highlighting)
-          const isSoloPlayerWinner = winnerPlayerId === soloPlayer.id;
-          const hasHighlights = isSoloPlayerWinner && winningCardHighlights.hasHighlights;
-          
-          // Only animate once - mark as animated after first render
-          const shouldAnimate = !soloVsChuckyAnimatedRef.current;
-          if (shouldAnimate) {
-            soloVsChuckyAnimatedRef.current = true;
-          }
-          
-          return (
-            <div className="absolute top-[4%] left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center gap-1">
-              <div 
-                className="flex"
-                style={shouldAnimate ? {
-                  animation: 'holmSoloTableSlide 0.6s ease-out forwards',
-                  willChange: 'transform, opacity',
-                } : undefined}
-              >
-                {sortedCards.map(({ card, originalIndex }, displayIndex) => {
-                  const isFourColor = deckColorMode === 'four_color';
-                  const fourColorConfig = getFourColorSuit(card.suit);
-                  const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
-                  const twoColorTextStyle = !isFourColor 
-                    ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
-                    : {};
-                  const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(originalIndex);
-                  const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(originalIndex);
-                  // Dim cards not part of winning hand (when we have highlights)
-                  const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-                  
-                  // Apply lift effect for highlighted cards
-                  const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
-                  // Dim style
-                  const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
-                  
-                  return (
-                    <div 
-                      key={displayIndex} 
-                      className="w-10 h-14 sm:w-11 sm:h-15 rounded-md border-2 border-gray-300 flex flex-col items-center justify-center shadow-lg transition-transform duration-200"
-                      style={{ 
-                        backgroundColor: cardBg, 
-                        ...twoColorTextStyle,
-                        ...dimStyle,
-                        transform: liftTransform || undefined,
-                        marginLeft: displayIndex > 0 ? '-12px' : '0'
-                      }}
-                    >
-                      <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                        {card.rank}
-                      </span>
-                      {!isFourColor && (
-                        <span className="text-2xl leading-none -mt-0.5">
-                          {card.suit}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <style>{`
-                @keyframes holmSoloTableSlide {
-                  0% {
-                    opacity: 0;
-                    transform: translateY(120px) scale(0.8);
-                  }
-                  100% {
-                    opacity: 1;
-                    transform: translateY(0) scale(1);
-                  }
-                }
-              `}</style>
-            </div>
-          );
-        })()}
-        
-        {(() => {
-          const shouldShow =
-            gameType === "holm-game" &&
-            approvedCommunityCards &&
+        {/* Wave 5D — Holm anchored gameplay stages.
+              ONE descriptor → ONE placement → ONE renderer → ONE DOM root for:
+                holm.communityCardsStage
+                holm.lonePlayerTabledCardsStage
+                holm.chuckyStage
+              Stages own geometry; cards derive size from assignedRect.height. */}
+        {gameType === 'holm-game' && (() => {
+          const communityShouldShow =
+            !!approvedCommunityCards &&
             approvedCommunityCards.length > 0 &&
-            showCommunityCards &&
+            !!showCommunityCards &&
             (isInGameOverStatus || currentRound === approvedRoundForDisplay);
 
+          const loneSoloPlayerId =
+            isSoloVsChucky
+              ? (soloVsChuckyPlayerIdLocked ||
+                  players.find(p => p.current_decision === 'stay')?.id ||
+                  null)
+              : null;
+          const loneSoloPlayer = loneSoloPlayerId
+            ? players.find(p => p.id === loneSoloPlayerId) || null
+            : null;
+          const loneSoloCards = loneSoloPlayer ? getPlayerCards(loneSoloPlayer.id) : [];
+          const lonePlayerVisible = !!isSoloVsChucky && !!loneSoloPlayer && loneSoloCards.length > 0;
+
+          const chuckyVisible =
+            !!cachedChuckyActive && !!cachedChuckyCards && cachedChuckyCards.length > 0;
+
           console.log("🔥🔥🔥 [MOBILE_COMMUNITY] RENDER DECISION:", {
-            shouldShow,
+            shouldShow: communityShouldShow,
             gameType,
             hasApprovedCards: !!approvedCommunityCards,
             approvedCardsLength: approvedCommunityCards?.length,
@@ -7120,112 +7015,222 @@ export const MobileGameTable = ({
             roundMatch: currentRound === approvedRoundForDisplay,
           });
 
-          if (!shouldShow) return null;
-
-          // Keep rabbit-hunt label visibility in sync with whatever reveal counter
-          // CommunityCards is currently using (staggered vs live).
-          const revealedForUi = isDelayingCommunityCards
-            ? staggeredCardCount
-            : (communityCardsRevealed ?? 0);
-
-          const totalCommunity = approvedCommunityCards?.length ?? 0;
-          const hasWinResult =
-            typeof lastRoundResult === "string" && /(beat|wins|won)/i.test(lastRoundResult);
-
           return (
-            <>
-              <div
-                ref={communityCardsWrapperRef}
-                className={`absolute left-1/2 transform -translate-x-1/2 z-[110] transition-all duration-300 ${
-                  isTablet || isDesktop ? 'scale-[1.5]' : 'scale-[1.8]'
-                } ${
-                  isHolmMultiPlayerShowdown
-                    ? "top-[62%] -translate-y-1/2"
-                    : "top-1/2 -translate-y-1/2"
-                }`}
-              >
-                <CommunityCards
-                  cards={approvedCommunityCards!}
-                  revealed={
-                    isDelayingCommunityCards
-                      ? staggeredCardCount
-                      : (communityCardsRevealed || 2)
-                  }
-                  highlightedIndices={winningCardHighlights.communityIndices}
-                  kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                  hasHighlights={winningCardHighlights.hasHighlights}
-                  tightOverlap={isHolmMultiPlayerShowdown}
-                />
-              </div>
+            <HolmGameplayGeometryProvider
+              communityCardsVisible={communityShouldShow}
+              lonePlayerTabledCardsVisible={lonePlayerVisible}
+              chuckyVisible={chuckyVisible}
+            >
+              {/* holm.lonePlayerTabledCardsStage — persistent solo-vs-Chucky cards */}
+              {lonePlayerVisible && loneSoloPlayer && (() => {
+                traceSoloAreaRender({
+                  clientId: currentUserId,
+                  gameId: gameId ?? '',
+                  roundId: handContextId ?? undefined,
+                  handNumber: 0,
+                  handContextId: handContextId ?? '',
+                  renderedPlayerId: loneSoloPlayer.id,
+                  cardIds: loneSoloCards.map(c => `${c.rank}${c.suit}`).join(','),
+                  cardSource: soloVsChuckyPlayerIdLocked ? 'lockedId' : 'rawFind',
+                  isShowdown: !!showdownModeLocked,
+                  shouldHideForTabling: false,
+                  isHolmWinWinner: false,
+                  isSoloVsChuckyPlayer: true,
+                  isSoloVsChuckyPlayerRaw: false,
+                  isSoloVsChucky: !!isSoloVsChucky,
+                  soloVsChuckyPlayerIdLocked,
+                  soloVsChuckyTableLocked,
+                  showdownModeLocked: !!showdownModeLocked,
+                  stayedPlayersCount,
+                  playerDecision: loneSoloPlayer.current_decision,
+                  decisionLocked: loneSoloPlayer.decision_locked,
+                  playerExplicitlyStayed: loneSoloPlayer.current_decision === 'stay',
+                  apparentIsActivePlayer: true,
+                  isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+                });
 
-              {/* Rabbit Hunt label - pinned directly under CommunityCards bottom edge */}
-              {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
-                <div
-                  className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
-                  style={{ top: rabbitHuntLabelTop }}
-                >
-                  <span className="text-3xl">🐰</span>
-                </div>
+                const RANK_ORDER: Record<string, number> = {
+                  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+                  '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+                };
+                const sortedCards = [...loneSoloCards]
+                  .map((card, index) => ({ card, originalIndex: index }))
+                  .sort((a, b) => RANK_ORDER[a.card.rank] - RANK_ORDER[b.card.rank]);
+
+                const isSoloPlayerWinner = winnerPlayerId === loneSoloPlayer.id;
+                const hasHighlights = isSoloPlayerWinner && winningCardHighlights.hasHighlights;
+
+                const shouldAnimate = !soloVsChuckyAnimatedRef.current;
+                if (shouldAnimate) soloVsChuckyAnimatedRef.current = true;
+
+                return (
+                  <HolmAnchoredSlot
+                    artifactId="holm.lonePlayerTabledCardsStage"
+                    zIndex={20}
+                  >
+                    <div
+                      className="flex items-center"
+                      style={{
+                        height: '90%',
+                        ...(shouldAnimate
+                          ? {
+                              animation: 'holmSoloTableSlide 0.6s ease-out forwards',
+                              willChange: 'transform, opacity',
+                            }
+                          : null),
+                      }}
+                    >
+                      {sortedCards.map(({ card, originalIndex }, displayIndex) => {
+                        const isFourColor = deckColorMode === 'four_color';
+                        const fourColorConfig = getFourColorSuit(card.suit);
+                        const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
+                        const twoColorTextStyle = !isFourColor
+                          ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
+                          : {};
+                        const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(originalIndex);
+                        const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(originalIndex);
+                        const isDimmed = hasHighlights && !isHighlighted && !isKicker;
+                        const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
+                        const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+                        return (
+                          <div
+                            key={displayIndex}
+                            className="rounded-md border-2 border-gray-300 flex flex-col items-center justify-center shadow-lg transition-transform duration-200"
+                            style={{
+                              height: '100%',
+                              aspectRatio: '5 / 7',
+                              backgroundColor: cardBg,
+                              ...twoColorTextStyle,
+                              ...dimStyle,
+                              transform: liftTransform || undefined,
+                              marginLeft: displayIndex > 0 ? '-22%' : '0',
+                            }}
+                          >
+                            <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                              {card.rank}
+                            </span>
+                            {!isFourColor && (
+                              <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <style>{`
+                      @keyframes holmSoloTableSlide {
+                        0% { opacity: 0; transform: translateY(120px) scale(0.8); }
+                        100% { opacity: 1; transform: translateY(0) scale(1); }
+                      }
+                    `}</style>
+                  </HolmAnchoredSlot>
+                );
+              })()}
+
+              {/* holm.communityCardsStage — community cards + rabbit-hunt anchor */}
+              {communityShouldShow && (
+                <>
+                  <HolmAnchoredSlot
+                    artifactId="holm.communityCardsStage"
+                    zIndex={110}
+                    ref={communityCardsWrapperRef}
+                  >
+                    <CommunityCards
+                      cards={approvedCommunityCards!}
+                      revealed={
+                        isDelayingCommunityCards
+                          ? staggeredCardCount
+                          : (communityCardsRevealed || 2)
+                      }
+                      highlightedIndices={winningCardHighlights.communityIndices}
+                      kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                      hasHighlights={winningCardHighlights.hasHighlights}
+                      tightOverlap={isHolmMultiPlayerShowdown}
+                    />
+                  </HolmAnchoredSlot>
+
+                  {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
+                    <div
+                      className="absolute left-1/2 z-20 transform -translate-x-1/2 text-center pointer-events-none"
+                      style={{ top: rabbitHuntLabelTop }}
+                    >
+                      <span className="text-3xl">🐰</span>
+                    </div>
+                  )}
+                </>
               )}
-            </>
+
+              {/* holm.chuckyStage — devil avatar + Chucky cards in ONE stage */}
+              {chuckyVisible && (
+                <HolmAnchoredSlot
+                  artifactId="holm.chuckyStage"
+                  zIndex={10}
+                >
+                  <div
+                    className={cn(
+                      "flex items-center",
+                      isTablet || isDesktop ? '-space-x-1' : '-space-x-[2px]'
+                    )}
+                    style={{ height: '90%' }}
+                  >
+                    <span
+                      className="text-red-400 mr-1"
+                      style={{ fontSize: '60%' }}
+                    >
+                      👿
+                    </span>
+                    {cachedChuckyCards!.map((card, index) => {
+                      const isRevealed = index < cachedChuckyCardsRevealed;
+                      const isFourColor = deckColorMode === 'four_color';
+                      const fourColorConfig = getFourColorSuit(card.suit);
+                      const cardBg = isRevealed
+                        ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white'
+                        : undefined;
+                      const twoColorTextStyle = !isFourColor && isRevealed
+                        ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
+                        : {};
+                      const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
+                      const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
+                      return (
+                        <div
+                          key={index}
+                          style={{ height: '100%', aspectRatio: '5 / 7' }}
+                        >
+                          {isRevealed ? (
+                            <div
+                              className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
+                              style={{
+                                backgroundColor: cardBg,
+                                ...twoColorTextStyle,
+                                ...dimStyle,
+                              }}
+                            >
+                              <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                                {card.rank}
+                              </span>
+                              {!isFourColor && (
+                                <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg"
+                              style={{
+                                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
+                              }}
+                            >
+                              <span className="text-amber-400/50 text-xl">?</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </HolmAnchoredSlot>
+              )}
+            </HolmGameplayGeometryProvider>
           );
         })()}
 
-        {/* Chucky's Hand - use cached values to persist through announcement */}
-        {/* DIM Chucky's cards when player wins (winnerPlayerId is set and it's a player, not Chucky) */}
-        {gameType === 'holm-game' && cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 && (
-          <div 
-            className={cn(
-              "absolute left-1/2 transform -translate-x-1/2 z-10 flex items-center transition-all duration-300",
-              // Tablet needs extra downward offset to avoid community card overlap
-              isHolmMultiPlayerShowdown 
-                ? (isTablet ? 'top-[80%]' : 'top-[76%]') 
-                : (isTablet ? 'top-[70%]' : 'top-[65%]'),
-              isTablet || isDesktop ? '-space-x-1' : '-space-x-[2px]'
-            )}
-            style={{ transform: `translateX(-50%) scale(${isTablet ? 1.8 : isDesktop ? 2.0 : 1})` }}
-          >
-            <span className={cn("text-red-400 mr-1", isTablet || isDesktop ? "text-xl" : "text-sm")}>👿</span>
-            {cachedChuckyCards.map((card, index) => {
-              const isRevealed = index < cachedChuckyCardsRevealed;
-              const isFourColor = deckColorMode === 'four_color';
-              const fourColorConfig = getFourColorSuit(card.suit);
-
-              // Card face styling based on deck mode
-              const cardBg = isRevealed ? isFourColor && fourColorConfig ? fourColorConfig.bg : 'white' : undefined;
-              // Use inline color style for 2-color mode to override dark mode text colors
-              const twoColorTextStyle = !isFourColor && isRevealed 
-                ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' } 
-                : {};
-              
-              // Dim Chucky's cards when a player won (winnerPlayerId is set - meaning player beat Chucky)
-              const shouldDimChucky = !!winnerPlayerId && isShowingAnnouncement;
-              const dimStyle = shouldDimChucky ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
-              
-              return <div key={index} className="w-10 h-14 sm:w-11 sm:h-15">
-                      {isRevealed ? <div 
-                        className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300" 
-                        style={{
-                          backgroundColor: cardBg,
-                          ...twoColorTextStyle,
-                          ...dimStyle
-                        }}
-                      >
-                          <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                            {card.rank}
-                          </span>
-                          {!isFourColor && <span className="text-2xl leading-none -mt-0.5">
-                              {card.suit}
-                            </span>}
-                        </div> : <div className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg" style={{
-                  background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`
-                }}>
-                          <span className="text-amber-400/50 text-xl">?</span>
-                        </div>}
-                    </div>;
-            })}
-          </div>
-        )}
         
         {/* Winner's Tabled Cards - shown above pot (overlaying game name/pot max) when player beats Chucky */}
         {/* This displays during the pot-to-winner animation so cards are visible */}
