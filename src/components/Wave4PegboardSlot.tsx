@@ -183,7 +183,7 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
       data-wave4-pegboard-slot="resolved"
       data-artifact-id="cribbage.pegboard"
       data-gameplay-column-child="pegboard"
-      data-placement-mode={anchoredPegboardOn ? "anchored" : "column"}
+      data-placement-mode="anchored"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",
