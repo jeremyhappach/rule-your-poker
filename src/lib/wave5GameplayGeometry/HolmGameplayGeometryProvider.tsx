@@ -32,6 +32,7 @@ import {
   type HolmDescriptorOptions,
 } from "@/lib/holm/holmArtifactDescriptors";
 import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
+import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 
 export interface HolmGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -64,6 +65,11 @@ export function HolmGameplayGeometryProvider({
   chuckyVisible,
   children,
 }: HolmGameplayGeometryProviderProps) {
+  useLifecycleMount('HolmGameplayGeometryProvider', {
+    communityCardsVisible,
+    lonePlayerTabledCardsVisible,
+    chuckyVisible,
+  });
   const { geometry } = useLiveGeometryConstraints();
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
