@@ -97,7 +97,6 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
   // chain for the offending DOM root.
   const driftWarnedRef = useRef(false);
   useEffect(() => {
-    if (!anchoredPegboardOn) return;
     if (!placement || !placement.visible || vminInPx <= 0) return;
     if (typeof window === "undefined") return;
     const node = ref.current;
