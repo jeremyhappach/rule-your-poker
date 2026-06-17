@@ -50,6 +50,8 @@ import {
   getCribbageArtifactDescriptors,
   type CribbagePhase,
 } from "@/lib/cribbage/cribbageArtifactDescriptors";
+import { useCribbageAnchoredPegboardFlag } from "@/lib/wave5d/cribbageAnchoredPegboardFlag";
+
 
 // Artifacts we project as ghost rects.
 // Phase 5A: chrome only.
