@@ -356,6 +356,7 @@ export function ShellOwnedFeltHost({
           isDesktop={effective?.isDesktop}
           cribbageSkunk={effective?.cribbageSkunk}
         />
+        <Wave5ViewportOverlay />
       </div>
     </div>
   );
