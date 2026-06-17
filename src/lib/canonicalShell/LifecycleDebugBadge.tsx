@@ -42,6 +42,7 @@ function isOverlayEnabled(): boolean {
 }
 
 export function LifecycleDebugBadge() {
+  if (HIDE_DEBUG_UI) return null;
   if (!isOverlayEnabled()) return null;
   const snap = useLifecycleSnapshot();
   const milestones = useGinMilestones();
