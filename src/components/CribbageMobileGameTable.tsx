@@ -6361,6 +6361,26 @@ export const CribbageMobileGameTable = ({
             />
           )}
 
+          {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
+              translateY(6%) felt-content wrapper so the rendered DOM rect
+              equals the assigned anchored rect. See WAVE 5 INVARIANT in
+              Wave4CribCutGroupSlot. */}
+          {!isHighCardMode && viewState && (
+            <CribbageAnchoredPeggingRowMount
+              cribbageState={viewState}
+              sequenceStartIndex={sequenceStartIndex}
+              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+              thirtyOneDelayActive={thirtyOneDelayActive}
+              terminalPath={terminalPath}
+              viewerSeatPosition={currentPlayer?.position ?? null}
+              opponentSeatPositions={[0, 1, 2, 3].filter(
+                (p) => p !== (currentPlayer?.position ?? -1),
+              )}
+              cutCardRevealed={true}
+              cribVisible={true}
+            />
+          )}
+
 
           {/* ═══════ PROJECTED SEAT OVERLAY — shell anchors drive all seat chrome ═══════ */}
           <div className="absolute inset-0 z-50 pointer-events-none">
