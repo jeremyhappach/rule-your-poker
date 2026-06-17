@@ -327,7 +327,7 @@ export function getCribbageArtifactDescriptors(
   ds.push(myHand());
 
   // Play band — Pegboard is always present.
-  ds.push(pegboard());
+  ds.push(opts.anchoredPegboard ? pegboardAnchored() : pegboard());
 
   // Mutual exclusion: PeggingRow XOR CountingRow. The non-active one is not
   // emitted — no ghost reservation in the play band.
