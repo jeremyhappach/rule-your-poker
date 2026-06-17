@@ -113,6 +113,7 @@ const App = () => {
                   <Wave5SeatReserveOverlayToggle />
                   <Wave5AnchoredProbeToggle />
                   <Wave5OversizedProbeToggle />
+                  <ShellLifecyclePanel />
                 </DebugTray>
               )}
               {/* W5 GRID is always available, even when HIDE_DEBUG_UI is true */}
