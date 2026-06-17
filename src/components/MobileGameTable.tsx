@@ -7154,54 +7154,16 @@ export const MobileGameTable = ({
                     artifactId="holm.lonePlayerTabledCardsStage"
                     zIndex={20}
                   >
-                    <div
-                      className="flex items-center"
-                      style={{
-                        height: '90%',
-                        ...(shouldAnimate
-                          ? {
-                              animation: 'holmSoloTableSlide 0.6s ease-out forwards',
-                              willChange: 'transform, opacity',
-                            }
-                          : null),
-                      }}
-                    >
-                      {sortedCards.map(({ card, originalIndex }, displayIndex) => {
-                        const isFourColor = deckColorMode === 'four_color';
-                        const fourColorConfig = getFourColorSuit(card.suit);
-                        const cardBg = isFourColor && fourColorConfig ? fourColorConfig.bg : 'white';
-                        const twoColorTextStyle = !isFourColor
-                          ? { color: (card.suit === '♥' || card.suit === '♦') ? '#dc2626' : '#000000' }
-                          : {};
-                        const isHighlighted = isSoloPlayerWinner && winningCardHighlights.playerIndices.includes(originalIndex);
-                        const isKicker = isSoloPlayerWinner && winningCardHighlights.kickerPlayerIndices.includes(originalIndex);
-                        const isDimmed = hasHighlights && !isHighlighted && !isKicker;
-                        const liftTransform = (isHighlighted || isKicker) ? 'translateY(-25%)' : '';
-                        const dimStyle = isDimmed ? { opacity: 0.4, filter: 'grayscale(30%)' } : {};
-                        return (
-                          <div
-                            key={displayIndex}
-                            className="rounded-md border-2 border-gray-300 flex flex-col items-center justify-center shadow-lg transition-transform duration-200"
-                            style={{
-                              height: '100%',
-                              aspectRatio: '5 / 7',
-                              backgroundColor: cardBg,
-                              ...twoColorTextStyle,
-                              ...dimStyle,
-                              transform: liftTransform || undefined,
-                              marginLeft: displayIndex > 0 ? '-22%' : '0',
-                            }}
-                          >
-                            <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                              {card.rank}
-                            </span>
-                            {!isFourColor && (
-                              <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <HolmLonePlayerFan
+                      sortedCards={sortedCards}
+                      isSoloPlayerWinner={isSoloPlayerWinner}
+                      winningPlayerIndices={winningCardHighlights.playerIndices}
+                      kickerPlayerIndices={winningCardHighlights.kickerPlayerIndices}
+                      hasHighlights={hasHighlights}
+                      isFourColor={deckColorMode === 'four_color'}
+                      getFourColorSuit={getFourColorSuit}
+                      animate={shouldAnimate}
+                    />
                     <style>{`
                       @keyframes holmSoloTableSlide {
                         0% { opacity: 0; transform: translateY(120px) scale(0.8); }
