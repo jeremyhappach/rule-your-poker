@@ -83,6 +83,7 @@ import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { DiceGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
 import { DiceAnchoredSlot } from "./DiceAnchoredSlot";
+import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import {
   HolmGameplayGeometryProvider,
   useHolmGameplayGeometry,
