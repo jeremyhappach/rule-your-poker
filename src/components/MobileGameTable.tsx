@@ -6786,59 +6786,51 @@ export const MobileGameTable = ({
             const node = (
               <DiceAnchoredSlot
                 artifactId={diceBeatBadgeId(gameType as DiceGameType)}
-                innerStyle={{ pointerEvents: 'auto', flexDirection: 'column', gap: '0.5rem' }}
+                innerStyle={{ pointerEvents: 'auto' }}
               >
-                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                  You are rolling
-                </p>
-                {/* Beat badge - show what hand to beat */}
-                {winningResultToBeat && (
-                  <div className={cn(
-                    "flex items-center justify-center gap-2 mt-1",
-                    isTablet && "gap-4 mt-3"
-                  )}>
-                    <Target className={cn(
-                      "text-muted-foreground",
-                      isTablet ? "w-10 h-10" : "w-3 h-3"
-                    )} />
-                    <span className={cn(
-                      "text-muted-foreground",
-                      isTablet ? "text-xl font-medium" : "text-xs"
-                    )}>
-                      Beat:
-                    </span>
-                    {isSCCGame && cargoDice && cargoDice.length === 2 ? (
-                      <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
-                        {cargoDice.map((die, idx) => (
-                          <HorsesDie
-                            key={idx}
-                            value={die.value}
-                            isHeld={false}
-                            isRolling={false}
-                            canToggle={false}
-                            size={isTablet ? "md" : "sm"}
-                            showWildHighlight={false}
-                            forceWhiteBackground={true}
+                <AssignedRectFitter>
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                      You are rolling
+                    </p>
+                    {/* Beat badge - show what hand to beat */}
+                    {winningResultToBeat && (
+                      <div className="flex items-center justify-center gap-2 mt-1">
+                        <Target className="text-muted-foreground w-3 h-3" />
+                        <span className="text-muted-foreground text-xs">
+                          Beat:
+                        </span>
+                        {isSCCGame && cargoDice && cargoDice.length === 2 ? (
+                          <div className="flex items-center gap-1">
+                            {cargoDice.map((die, idx) => (
+                              <HorsesDie
+                                key={idx}
+                                value={die.value}
+                                isHeld={false}
+                                isRolling={false}
+                                canToggle={false}
+                                size="sm"
+                                showWildHighlight={false}
+                                forceWhiteBackground={true}
+                              />
+                            ))}
+                          </div>
+                        ) : gameType === 'horses' ? (
+                          <HorsesHandResultDisplay
+                            description={winningResultToBeat.description}
+                            isWinning={true}
+                            size="sm"
                           />
-                        ))}
+                        ) : null}
+                        {horsesController.isCurrentWinningTied && (
+                          <span className="font-medium text-amber-400 text-xs">
+                            (Tied)
+                          </span>
+                        )}
                       </div>
-                    ) : gameType === 'horses' ? (
-                      <HorsesHandResultDisplay
-                        description={winningResultToBeat.description}
-                        isWinning={true}
-                        size={isTablet ? "md" : "sm"}
-                      />
-                    ) : null}
-                    {horsesController.isCurrentWinningTied && (
-                      <span className={cn(
-                        "font-medium text-amber-400",
-                        isTablet ? "text-base" : "text-xs"
-                      )}>
-                        (Tied)
-                      </span>
                     )}
                   </div>
-                )}
+                </AssignedRectFitter>
               </DiceAnchoredSlot>
             );
 
