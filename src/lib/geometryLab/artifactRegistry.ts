@@ -1,90 +1,75 @@
 /**
- * Wave 6 — Geometry Lab artifact registry (MVP).
+ * Wave 6 — Geometry Lab presentation registry (post single-source refactor).
  *
- * Catalogues every anchored gameplay artifact known to the platform so the
- * Lab can present a Game→Artifact picker without each provider needing to
- * register itself at runtime. Defaults mirror the canonical descriptor
- * source so the Lab UI can show "what would render with no override".
+ * This file used to mirror geometry defaults (widthPct, anchorX, etc.) for
+ * every editable artifact. Those values DRIFTED from the canonical
+ * descriptors (e.g. cribbage.pegboard real widthPct=0.8/aspectRatio=6,
+ * registry said widthPct=0.9/heightPct=0.18). To make that drift
+ * structurally impossible, geometry now lives ONLY in the per-game
+ * descriptor factories. The Lab enumerates artifacts via
+ * `descriptorIndex.ts` and reads geometry straight off the descriptor.
  *
- * When a new anchored descriptor ships, add it here.
+ * What remains here:
+ *   - artifactId       (identity)
+ *   - label            (display name)
+ *   - category         (optional grouping)
+ *   - sortOrder        (optional display ordering)
+ *
+ * No geometry values. Ever.
  */
 
-import type { AnchorOrigin } from "@/lib/wave4LayoutResolver/types";
+export type ArtifactCategory = "central" | "seat-projected" | "overlay";
 
-export interface LabArtifactDefault {
+export interface ArtifactPresentationEntry {
   artifactId: string;
   label: string;
-  anchorX: number;
-  anchorY: number;
-  anchorOrigin: AnchorOrigin;
-  widthPct?: number;
-  heightPct?: number;
-  aspectRatio?: number;
+  category?: ArtifactCategory;
+  sortOrder?: number;
 }
 
-export interface LabGameEntry {
-  game: string;
-  label: string;
-  artifacts: LabArtifactDefault[];
-}
+const ENTRIES: ArtifactPresentationEntry[] = [
+  // Cribbage
+  { artifactId: "cribbage.pegboard", label: "Pegboard", category: "central", sortOrder: 10 },
+  { artifactId: "cribbage.cribCutGroup", label: "Crib + Cut Group", category: "central", sortOrder: 20 },
+  { artifactId: "cribbage.peggingRow", label: "Pegging Row", category: "central", sortOrder: 30 },
+  { artifactId: "cribbage.countingRow", label: "Counting Row", category: "central", sortOrder: 31 },
 
-export const GEOMETRY_LAB_REGISTRY: LabGameEntry[] = [
-  {
-    game: "cribbage",
-    label: "Cribbage",
-    artifacts: [
-      { artifactId: "cribbage.pegboard", label: "Pegboard", anchorX: 0.5, anchorY: 0.5, anchorOrigin: "center", widthPct: 0.9, heightPct: 0.18 },
-      { artifactId: "cribbage.cribCutGroup", label: "Crib + Cut Group", anchorX: 0.5, anchorY: 0.5, anchorOrigin: "center", widthPct: 0.6, heightPct: 0.18 },
-      { artifactId: "cribbage.peggingRow", label: "Pegging Row", anchorX: 0.5, anchorY: 0.5, anchorOrigin: "center", widthPct: 0.8, heightPct: 0.12 },
-    ],
-  },
-  {
-    game: "holm",
-    label: "Holm",
-    artifacts: [
-      { artifactId: "holm.communityCardsStage", label: "Community Cards Stage", anchorX: 0.5, anchorY: 0.48, anchorOrigin: "center", widthPct: 0.8, heightPct: 0.16 },
-      { artifactId: "holm.lonePlayerTabledCardsStage", label: "Lone Player Tabled Cards", anchorX: 0.5, anchorY: 0.18, anchorOrigin: "center", widthPct: 0.75, heightPct: 0.16 },
-      { artifactId: "holm.chuckyStage", label: "Chucky Stage", anchorX: 0.5, anchorY: 0.72, anchorOrigin: "center", widthPct: 0.8, heightPct: 0.18 },
-    ],
-  },
-  {
-    game: "threeFiveSeven",
-    label: "3-5-7",
-    artifacts: [
-      { artifactId: "threeFiveSeven.winnerTabledCardsStage", label: "Winner Tabled Cards", anchorX: 0.5, anchorY: 0.33, anchorOrigin: "center", widthPct: 0.75, heightPct: 0.18 },
-    ],
-  },
-  {
-    game: "gin",
-    label: "Gin Rummy",
-    artifacts: [
-      { artifactId: "gin.pegboard", label: "Pegboard", anchorX: 0.5, anchorY: 0.08, anchorOrigin: "center", widthPct: 0.9, heightPct: 0.1 },
-      { artifactId: "gin.deckDiscard", label: "Deck + Discard", anchorX: 0.5, anchorY: 0.5, anchorOrigin: "center", widthPct: 0.45, heightPct: 0.22 },
-      { artifactId: "gin.turnIndicator", label: "Turn Indicator", anchorX: 0.5, anchorY: 0.3, anchorOrigin: "center", widthPct: 0.4, heightPct: 0.06 },
-    ],
-  },
-  {
-    game: "yahtzee",
-    label: "Yahtzee",
-    artifacts: [
-      { artifactId: "yahtzee.opponentDiceStage", label: "Opponent Dice Stage", anchorX: 0.5, anchorY: 0.3, anchorOrigin: "center", widthPct: 0.8, heightPct: 0.18 },
-      { artifactId: "yahtzee.scorecardStage", label: "Scorecard Stage", anchorX: 0.5, anchorY: 0.55, anchorOrigin: "center", widthPct: 0.9, heightPct: 0.35 },
-    ],
-  },
-  {
-    game: "dice",
-    label: "Horses / SCC",
-    artifacts: [
-      { artifactId: "scc.opponentDiceStage", label: "SCC Opponent Dice", anchorX: 0.5, anchorY: 0.32, anchorOrigin: "center", widthPct: 0.85, heightPct: 0.2 },
-      { artifactId: "horses.opponentDiceStage", label: "Horses Opponent Dice", anchorX: 0.5, anchorY: 0.32, anchorOrigin: "center", widthPct: 0.85, heightPct: 0.2 },
-    ],
-  },
+  // Holm
+  { artifactId: "holm.communityCardsStage", label: "Community Cards Stage", category: "central", sortOrder: 10 },
+  { artifactId: "holm.lonePlayerTabledCardsStage", label: "Lone Player Tabled Cards", category: "central", sortOrder: 20 },
+  { artifactId: "holm.chuckyStage", label: "Chucky Stage", category: "central", sortOrder: 30 },
+
+  // 3-5-7
+  { artifactId: "threeFiveSeven.winnerTabledCardsStage", label: "Winner Tabled Cards", category: "central", sortOrder: 10 },
+
+  // Gin Rummy
+  { artifactId: "gin.pegboard", label: "Pegboard", category: "central", sortOrder: 10 },
+  { artifactId: "gin.stockDiscardGroup", label: "Stock + Discard", category: "central", sortOrder: 20 },
+  { artifactId: "gin.turnIndicator", label: "Turn Indicator", category: "central", sortOrder: 30 },
+  { artifactId: "gin.knockDisplay", label: "Knock Display", category: "overlay", sortOrder: 40 },
+
+  // Yahtzee
+  { artifactId: "yahtzee.opponentDiceStage", label: "Opponent Dice Stage", category: "central", sortOrder: 10 },
+  { artifactId: "yahtzee.scorecardStage", label: "Scorecard Stage", category: "central", sortOrder: 20 },
+
+  // Dice — Horses
+  { artifactId: "horses.opponentDiceStage", label: "Opponent Dice Stage", category: "central", sortOrder: 10 },
+  { artifactId: "horses.beatBadge", label: "Beat Badge", category: "overlay", sortOrder: 20 },
+
+  // Dice — Ship Captain Crew
+  { artifactId: "scc.opponentDiceStage", label: "Opponent Dice Stage", category: "central", sortOrder: 10 },
+  { artifactId: "scc.beatBadge", label: "Beat Badge", category: "overlay", sortOrder: 20 },
 ];
 
-export function findArtifactDefault(artifactId: string): LabArtifactDefault | undefined {
-  for (const g of GEOMETRY_LAB_REGISTRY) {
-    const a = g.artifacts.find((x) => x.artifactId === artifactId);
-    if (a) return a;
-  }
-  return undefined;
+const BY_ID = new Map(ENTRIES.map((e) => [e.artifactId, e] as const));
+
+export function getArtifactPresentation(
+  artifactId: string,
+): ArtifactPresentationEntry {
+  return (
+    BY_ID.get(artifactId) ?? {
+      artifactId,
+      label: artifactId,
+    }
+  );
 }
