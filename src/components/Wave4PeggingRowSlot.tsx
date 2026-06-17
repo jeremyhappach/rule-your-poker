@@ -141,7 +141,6 @@ export function Wave4PeggingRowSlot({
 
   return (
     <div
-      ref={slotRef}
       data-wave4-pegging-row-slot="resolved"
       data-artifact-id="cribbage.peggingRow"
       data-gameplay-column-child="peggingRow"
