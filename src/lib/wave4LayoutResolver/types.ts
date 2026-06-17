@@ -75,7 +75,8 @@ export type ComposeMode =
   | "overlay"
   | "seatBound"
   | "chipBound"
-  | "centerpiece";
+  | "centerpiece"
+  | "anchored";
 
 export type CollapsePriority =
   | "never"
@@ -85,16 +86,43 @@ export type CollapsePriority =
   | "early"
   | "first";
 
+/**
+ * Wave 5D — anchor origin for `composeMode: 'anchored'`. Selects which
+ * point of the artifact lands on the resolved viewport point.
+ * Default 'center'.
+ */
+export type AnchorOrigin =
+  | "center"
+  | "topLeft"
+  | "topCenter"
+  | "bottomCenter"
+  | "leftCenter"
+  | "rightCenter";
+
 export interface ArtifactDescriptor {
   id: string;
   owner: string;
-  band: BandId;
+  /**
+   * Required for every composeMode EXCEPT `anchored`. Anchored descriptors
+   * live in `availableGameplayViewport`, which is not a band; declaring a
+   * band on an anchored descriptor is a validation fault
+   * (`anchored_descriptor_declared_band`).
+   */
+  band?: BandId;
   composeMode: ComposeMode;
 
+  /**
+   * Required for flow / overlay / centerpiece / seatBound / chipBound.
+   * Ignored by `anchored` (size derives from `widthPct/heightPct/aspectRatio`).
+   */
   preferredSize: Size;
   minimumSize: Size;
   aspectRatio?: number;
 
+  /**
+   * Required for non-anchored composeModes. Anchored descriptors do not
+   * participate in band negotiation, so these fields are ignored when set.
+   */
   priority: number;
   collapsePriority: CollapsePriority;
 
@@ -103,6 +131,32 @@ export interface ArtifactDescriptor {
 
   protectedArea?: Rect;
   safeAreaDependencies?: ReadonlyArray<BandId>;
+
+  // -------------------------------------------------------------------------
+  // Wave 5D — anchored composeMode fields.
+  //
+  // Required when composeMode === 'anchored'. Ignored otherwise.
+  // Spec: .lovable/wave5-gameplay-geometry/wave5D-anchored-composeMode-spec.md §3
+  // -------------------------------------------------------------------------
+
+  /** 0..1 fraction of viewport width. Required for anchored. */
+  anchorX?: number;
+  /** 0..1 fraction of viewport height. Required for anchored. */
+  anchorY?: number;
+  /** Defaults to 'center'. */
+  anchorOrigin?: AnchorOrigin;
+
+  /** 0..1 fraction of viewport (or parent) width. */
+  widthPct?: number;
+  /** 0..1 fraction of viewport (or parent) height. */
+  heightPct?: number;
+
+  /**
+   * When set, the anchored descriptor resolves against the parent anchored
+   * descriptor's rect instead of `availableGameplayViewport`. Cycles fault
+   * `anchored_parent_cycle`.
+   */
+  anchorParent?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +224,15 @@ export type LayoutFaultCode =
   | "safe_area_collision"
   | "descriptor_targets_structural_band"
   | "missing_safe_area_dependency"
-  | "wave5:viewport_collapsed";
+  | "wave5:viewport_collapsed"
+  // Wave 5D — anchored composeMode
+  | "anchored_size_underspecified"
+  | "anchored_size_overspecified"
+  | "anchored_descriptor_declared_band"
+  | "anchored_parent_cycle"
+  | "anchored_parent_missing"
+  | "anchored_outside_viewport"
+  | "anchored_siblings_overlap";
 
 export interface LayoutFault {
   code: LayoutFaultCode;
