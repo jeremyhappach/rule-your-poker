@@ -6,4 +6,4 @@
  *
  * To restore: set HIDE_DEBUG_UI = false (or delete this file's flag).
  */
-export const HIDE_DEBUG_UI = true;
+export const HIDE_DEBUG_UI = false;
