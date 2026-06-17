@@ -268,10 +268,10 @@ function peggingRow(): ArtifactDescriptor {
     priority: 90,
     collapsePriority: "never",
     anchorX: 0.5,
-    anchorY: 0.72,
+    anchorY: 0.74,
     anchorOrigin: "center",
-    widthPct: 0.75,
-    heightPct: 0.15,
+    widthPct: 0.85,
+    heightPct: 0.18,
   };
 }
 
