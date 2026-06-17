@@ -18,6 +18,7 @@
  */
 
 import type {
+  AnchorOrigin,
   ArtifactDescriptor,
   AvailableGameplayViewport,
   BandId,
@@ -102,6 +103,61 @@ function validateDescriptor(
       artifactIds: [d.id],
       band: d.band,
       message: `Descriptor ${d.id} targets structural band 'outerRail'.`,
+    };
+  }
+
+  // Wave 5D — anchored composeMode validation.
+  if (d.composeMode === "anchored") {
+    if (d.band !== undefined) {
+      return {
+        code: "anchored_descriptor_declared_band",
+        artifactIds: [d.id],
+        band: d.band,
+        message: `Anchored descriptor ${d.id} illegally declared band '${d.band}'.`,
+      };
+    }
+    if (
+      typeof d.anchorX !== "number" ||
+      typeof d.anchorY !== "number" ||
+      d.anchorX < 0 ||
+      d.anchorX > 1 ||
+      d.anchorY < 0 ||
+      d.anchorY > 1
+    ) {
+      return {
+        code: "anchored_size_underspecified",
+        artifactIds: [d.id],
+        message: `Anchored ${d.id} missing or out-of-range anchorX/anchorY.`,
+      };
+    }
+    const hasW = typeof d.widthPct === "number";
+    const hasH = typeof d.heightPct === "number";
+    const hasA = typeof d.aspectRatio === "number" && (d.aspectRatio ?? 0) > 0;
+    const provided = (hasW ? 1 : 0) + (hasH ? 1 : 0) + (hasA ? 1 : 0);
+    if (hasW && hasH && hasA) {
+      return {
+        code: "anchored_size_overspecified",
+        artifactIds: [d.id],
+        message: `Anchored ${d.id} declared widthPct + heightPct + aspectRatio; pick two.`,
+      };
+    }
+    if (provided < 2) {
+      // Allowed combos: (W,H) (W,A) (H,A). Anything else under-specified.
+      return {
+        code: "anchored_size_underspecified",
+        artifactIds: [d.id],
+        message: `Anchored ${d.id} must declare two of {widthPct, heightPct, aspectRatio}.`,
+      };
+    }
+    return null;
+  }
+
+  // Non-anchored: a band is required (only `outerRail` is forbidden, handled above).
+  if (!d.band) {
+    return {
+      code: "missing_safe_area_dependency",
+      artifactIds: [d.id],
+      message: `Descriptor ${d.id} (composeMode='${d.composeMode}') is missing required 'band'.`,
     };
   }
 
@@ -516,7 +572,7 @@ function solveOverlay(
 
   for (const d of descriptors) {
     // Place at preferred rect anchored to band origin (band-relative preferred).
-    const bandRect = bandRectFor(d.band, geometry);
+    const bandRect = d.band ? bandRectFor(d.band, geometry) : null;
     if (!bandRect) {
       placements.push({
         id: d.id,
@@ -825,6 +881,219 @@ export function deriveAvailableGameplayViewport(
 }
 
 // ---------------------------------------------------------------------------
+// Wave 5D — Phase 2: anchored composeMode solver.
+//
+// Anchored descriptors declare position + size as proportions of the
+// availableGameplayViewport (or of an `anchorParent` anchored rect).
+// They do not negotiate with siblings; they do not shrink; they do not
+// collapse. Overlap is the designer's responsibility and is surfaced as
+// an advisory fault.
+//
+// Spec: .lovable/wave5-gameplay-geometry/wave5D-anchored-composeMode-spec.md §4
+// ---------------------------------------------------------------------------
+
+function originOffset(
+  origin: AnchorOrigin,
+  w: number,
+  h: number,
+): { dx: number; dy: number } {
+  switch (origin) {
+    case "topLeft":      return { dx: 0,     dy: 0 };
+    case "topCenter":    return { dx: w / 2, dy: 0 };
+    case "bottomCenter": return { dx: w / 2, dy: h };
+    case "leftCenter":   return { dx: 0,     dy: h / 2 };
+    case "rightCenter":  return { dx: w,     dy: h / 2 };
+    case "center":
+    default:             return { dx: w / 2, dy: h / 2 };
+  }
+}
+
+function solveAnchored(
+  descriptors: ArtifactDescriptor[],
+  viewport: FlatRect,
+): BandSolveResult {
+  const placements: ResolvedPlacement[] = [];
+  const faults: LayoutFault[] = [];
+  if (descriptors.length === 0) return { placements, faults };
+
+  // Cycle / missing-parent detection. Topological order: process parents
+  // before children. Sort deterministically by id, then resolve in passes.
+  const byId = new Map<string, ArtifactDescriptor>();
+  for (const d of descriptors) byId.set(d.id, d);
+  const resolvedRects = new Map<string, FlatRect>();
+  const failed = new Set<string>();
+
+  // Detect cycles via DFS coloring.
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = new Map<string, number>();
+  const cyclical = new Set<string>();
+  function visit(id: string, path: Set<string>): void {
+    const c = color.get(id) ?? WHITE;
+    if (c === BLACK) return;
+    if (c === GRAY) { cyclical.add(id); return; }
+    color.set(id, GRAY);
+    const d = byId.get(id);
+    if (d?.anchorParent) {
+      if (path.has(d.anchorParent)) {
+        cyclical.add(id);
+      } else if (byId.has(d.anchorParent)) {
+        path.add(id);
+        visit(d.anchorParent, path);
+        path.delete(id);
+      }
+    }
+    color.set(id, BLACK);
+  }
+  for (const d of descriptors) visit(d.id, new Set());
+
+  // Resolve order: deterministic by id, but skip until parent is resolved.
+  const ordered = [...descriptors].sort((a, b) => tieSortById(a, b));
+  const remaining = [...ordered];
+  // Cap passes at N to guarantee termination even if some parents are missing.
+  for (let pass = 0; pass < descriptors.length + 1 && remaining.length > 0; pass++) {
+    const next: ArtifactDescriptor[] = [];
+    for (const d of remaining) {
+      if (cyclical.has(d.id)) {
+        faults.push({
+          code: "anchored_parent_cycle",
+          artifactIds: [d.id],
+          message: `Anchored ${d.id} participates in an anchorParent cycle.`,
+        });
+        failed.add(d.id);
+        placements.push({
+          id: d.id,
+          rect: { x: vmin(0), y: vmin(0), width: vmin(0), height: vmin(0) },
+          visible: false,
+          collapsedReason: "dependencyMissing",
+          appliedAspectRatio: false,
+        });
+        continue;
+      }
+
+      let parentRect: FlatRect = viewport;
+      if (d.anchorParent) {
+        const parent = byId.get(d.anchorParent);
+        if (!parent) {
+          faults.push({
+            code: "anchored_parent_missing",
+            artifactIds: [d.id],
+            message: `Anchored ${d.id} references missing anchorParent '${d.anchorParent}'.`,
+          });
+          failed.add(d.id);
+          placements.push({
+            id: d.id,
+            rect: { x: vmin(0), y: vmin(0), width: vmin(0), height: vmin(0) },
+            visible: false,
+            collapsedReason: "dependencyMissing",
+            appliedAspectRatio: false,
+          });
+          continue;
+        }
+        const parentResolved = resolvedRects.get(d.anchorParent);
+        if (!parentResolved) {
+          // Parent not yet resolved this pass — defer.
+          next.push(d);
+          continue;
+        }
+        parentRect = parentResolved;
+      }
+
+      // Resolve size.
+      const hasW = typeof d.widthPct === "number";
+      const hasH = typeof d.heightPct === "number";
+      const hasA = typeof d.aspectRatio === "number" && (d.aspectRatio ?? 0) > 0;
+      let w = 0, h = 0;
+      let appliedAspect = false;
+      if (hasW && hasH) {
+        w = (d.widthPct ?? 0) * parentRect.width;
+        h = (d.heightPct ?? 0) * parentRect.height;
+      } else if (hasW && hasA) {
+        w = (d.widthPct ?? 0) * parentRect.width;
+        h = w / (d.aspectRatio ?? 1);
+        appliedAspect = true;
+      } else if (hasH && hasA) {
+        h = (d.heightPct ?? 0) * parentRect.height;
+        w = h * (d.aspectRatio ?? 1);
+        appliedAspect = true;
+      }
+
+      // Resolve position.
+      const ax = (d.anchorX ?? 0.5) * parentRect.width + parentRect.x;
+      const ay = (d.anchorY ?? 0.5) * parentRect.height + parentRect.y;
+      const origin = d.anchorOrigin ?? "center";
+      const { dx, dy } = originOffset(origin, w, h);
+      const rect: FlatRect = { x: ax - dx, y: ay - dy, width: w, height: h };
+
+      // Bounds check against the gameplay viewport (NOT parentRect — the
+      // viewport is the absolute clipping contract for anchored artifacts).
+      const outside =
+        rect.x + EPSILON_VMIN < viewport.x ||
+        rect.y + EPSILON_VMIN < viewport.y ||
+        rect.x + rect.width > viewport.x + viewport.width + EPSILON_VMIN ||
+        rect.y + rect.height > viewport.y + viewport.height + EPSILON_VMIN;
+      if (outside) {
+        faults.push({
+          code: "anchored_outside_viewport",
+          artifactIds: [d.id],
+          message: `Anchored ${d.id} resolved rect falls outside availableGameplayViewport.`,
+        });
+      }
+
+      resolvedRects.set(d.id, rect);
+      placements.push({
+        id: d.id,
+        rect: flatToRect(rect),
+        visible: true,
+        appliedAspectRatio: appliedAspect,
+      });
+    }
+    if (next.length === remaining.length) {
+      // Stalled: all remaining have missing parents inside the deferred set.
+      for (const d of next) {
+        faults.push({
+          code: "anchored_parent_missing",
+          artifactIds: [d.id],
+          message: `Anchored ${d.id} could not resolve anchorParent '${d.anchorParent}'.`,
+        });
+        placements.push({
+          id: d.id,
+          rect: { x: vmin(0), y: vmin(0), width: vmin(0), height: vmin(0) },
+          visible: false,
+          collapsedReason: "dependencyMissing",
+          appliedAspectRatio: false,
+        });
+      }
+      break;
+    }
+    remaining.length = 0;
+    remaining.push(...next);
+  }
+
+  // Advisory: pairwise sibling overlap.
+  const rectsList = Array.from(resolvedRects.entries());
+  for (let i = 0; i < rectsList.length; i++) {
+    for (let j = i + 1; j < rectsList.length; j++) {
+      const [idA, rA] = rectsList[i];
+      const [idB, rB] = rectsList[j];
+      // Skip pairs where one is the ancestor of the other (parent/child are
+      // expected to overlap by construction).
+      const a = byId.get(idA);
+      const b = byId.get(idB);
+      if (a?.anchorParent === idB || b?.anchorParent === idA) continue;
+      if (rectsIntersect(rA, rB)) {
+        faults.push({
+          code: "anchored_siblings_overlap",
+          artifactIds: [idA, idB].sort(),
+          message: `Anchored siblings ${idA} and ${idB} overlap (advisory).`,
+        });
+      }
+    }
+  }
+
+  return { placements, faults };
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
@@ -851,16 +1120,20 @@ export function resolveLayout(
   const overlays: ArtifactDescriptor[] = [];
   const seatProjected: ArtifactDescriptor[] = [];
   const centerpieces: ArtifactDescriptor[] = [];
+  const anchored: ArtifactDescriptor[] = [];
 
   for (const d of valid) {
     if (d.composeMode === "flow") {
-      const arr = flowByBand.get(d.band) ?? [];
+      const b = d.band as BandId;
+      const arr = flowByBand.get(b) ?? [];
       arr.push(d);
-      flowByBand.set(d.band, arr);
+      flowByBand.set(b, arr);
     } else if (d.composeMode === "overlay") {
       overlays.push(d);
     } else if (d.composeMode === "centerpiece") {
       centerpieces.push(d);
+    } else if (d.composeMode === "anchored") {
+      anchored.push(d);
     } else {
       seatProjected.push(d);
     }
@@ -870,8 +1143,7 @@ export function resolveLayout(
   const centerpieceResult = solveCenterpiece(centerpieces, geometry);
   faults.push(...centerpieceResult.faults);
 
-  // Stage C/D — Band solve (includes protected-area reservation and any
-  // centerpiece rects that landed in the same band as a flow descriptor).
+  // Stage C/D — Band solve.
   const allFlow: ResolvedPlacement[] = [];
   const flowById = new Map<string, ArtifactDescriptor>();
   for (const [band, ds] of flowByBand) {
@@ -897,25 +1169,30 @@ export function resolveLayout(
   // Stage E — Overlays.
   const overlayResult = solveOverlay(overlays, allFlow, flowById, geometry);
 
-  // Stage F — Seat projection.
+  // Wave 5D Phase 1 — derive gameplay viewport.
+  const { viewport, fault: viewportFault } = deriveAvailableGameplayViewport(geometry);
+  if (viewportFault) faults.push(viewportFault);
+
+  // Stage F (Wave 5D Phase 2) — Anchored placement against the gameplay viewport.
+  const anchoredResult = solveAnchored(anchored, rectToFlat(viewport.rect));
+
+  // Stage G — Seat projection.
   const seatResult = solveSeatBound(seatProjected, geometry);
 
-  faults.push(...overlayResult.faults, ...seatResult.faults);
+  faults.push(...overlayResult.faults, ...anchoredResult.faults, ...seatResult.faults);
 
-  // Stage G — Emit. Stable order: by descriptor id.
+  // Stage H — Emit. Stable order: by descriptor id.
   const placements: ResolvedPlacement[] = [
     ...centerpieceResult.placements,
     ...allFlow,
     ...overlayResult.placements,
+    ...anchoredResult.placements,
     ...seatResult.placements,
   ].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
-  // Wave 5D Phase 1 — derive gameplay viewport (read-only echo, no consumer yet).
-  const { viewport, fault: viewportFault } = deriveAvailableGameplayViewport(geometry);
-  if (viewportFault) faults.push(viewportFault);
-
   return { placements, faults, geometry, availableGameplayViewport: viewport };
 }
+
 
 export { COLLAPSE_RANK };
 
