@@ -14,6 +14,7 @@
  *      → fallback path keeps legacy fixed sizes (size="md").
  */
 
+import { useEffect, useRef } from "react";
 import { toVmin, type ResolvedPlacement } from "@/lib/wave4LayoutResolver";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
