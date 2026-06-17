@@ -102,24 +102,16 @@ const App = () => {
               <LayoutFaultBadge />
               <Wave5ContractViolationBadge />
               {!HIDE_DEBUG_UI && (
-              {/*
-                Single canonical Debug Tray. Pinned to the bottom of the
-                viewport (above the iOS browser toolbar via safe-area inset).
-                All debug pills live here so nothing covers the shell header,
-                admin controls, dealer controls, announcements, or gameplay.
-              */}
-              <DebugTray>
-                <NetworkSimIndicator />
-                
-                <DebugModeIndicator />
-                
-                <LegacyDebugPanels />
-                <WartimeDebugPanel />
-                <Wave5ViewportOverlayToggle />
-                <Wave5SeatReserveOverlayToggle />
-                <Wave5AnchoredProbeToggle />
-                <Wave5OversizedProbeToggle />
-              </DebugTray>
+                <DebugTray>
+                  <NetworkSimIndicator />
+                  <DebugModeIndicator />
+                  <LegacyDebugPanels />
+                  <WartimeDebugPanel />
+                  <Wave5ViewportOverlayToggle />
+                  <Wave5SeatReserveOverlayToggle />
+                  <Wave5AnchoredProbeToggle />
+                  <Wave5OversizedProbeToggle />
+                </DebugTray>
               )}
               {/* W5 GRID is always available, even when HIDE_DEBUG_UI is true */}
               <div
