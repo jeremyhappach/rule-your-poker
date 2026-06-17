@@ -21,7 +21,6 @@ import {
   deriveAvailableGameplayViewport,
   useLiveGeometryConstraints,
 } from "@/lib/wave4LayoutResolver";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_grid";
 const EVENT_NAME = "ptp:wave5-grid-changed";
@@ -232,7 +231,7 @@ export function Wave5GridOverlay() {
 
 export function Wave5GridOverlayToggle() {
   const enabled = useEnabled();
-  if (HIDE_DEBUG_UI) return null;
+  // W5 GRID is the one debug pill we keep visible even when HIDE_DEBUG_UI is true
   return (
     <button
       type="button"

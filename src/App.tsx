@@ -34,8 +34,7 @@ import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5
 import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay";
 import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay";
 import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
-
-
+import { HIDE_DEBUG_UI } from '@/lib/debugUIVisibility';
 
 
 
@@ -102,26 +101,30 @@ const App = () => {
               <LifecycleDebugBadge />
               <LayoutFaultBadge />
               <Wave5ContractViolationBadge />
-              {/*
-                Single canonical Debug Tray. Pinned to the bottom of the
-                viewport (above the iOS browser toolbar via safe-area inset).
-                All debug pills live here so nothing covers the shell header,
-                admin controls, dealer controls, announcements, or gameplay.
-              */}
-              <DebugTray>
-                <NetworkSimIndicator />
-                
-                <DebugModeIndicator />
-                
-                <LegacyDebugPanels />
-                <WartimeDebugPanel />
-                <Wave5ViewportOverlayToggle />
+              {!HIDE_DEBUG_UI && (
+                <DebugTray>
+                  <NetworkSimIndicator />
+                  <DebugModeIndicator />
+                  <LegacyDebugPanels />
+                  <WartimeDebugPanel />
+                  <Wave5ViewportOverlayToggle />
+                  <Wave5SeatReserveOverlayToggle />
+                  <Wave5AnchoredProbeToggle />
+                  <Wave5OversizedProbeToggle />
+                </DebugTray>
+              )}
+              {/* W5 GRID is always available, even when HIDE_DEBUG_UI is true */}
+              <div
+                style={{
+                  position: 'fixed',
+                  right: 8,
+                  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+                  zIndex: 2147483647,
+                  pointerEvents: 'auto',
+                }}
+              >
                 <Wave5GridOverlayToggle />
-                <Wave5SeatReserveOverlayToggle />
-                <Wave5AnchoredProbeToggle />
-                <Wave5OversizedProbeToggle />
-                
-              </DebugTray>
+              </div>
 
             </AppNetworkSim>
           </BrowserRouter>

@@ -7,6 +7,7 @@
  * the URL OR `localStorage.wave4_debug=1`. Production users see nothing.
  */
 
+import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 import { useEffect, useState } from "react";
 import {
   getRecentLayoutFaults,
@@ -44,7 +45,7 @@ export function LayoutFaultBadge() {
     return onLayoutFault((e) => setLatest(e));
   }, [enabled]);
 
-  if (!enabled || !latest) return null;
+  if (HIDE_DEBUG_UI || !enabled || !latest) return null;
 
   return (
     <div
