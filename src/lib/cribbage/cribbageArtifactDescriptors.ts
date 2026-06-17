@@ -166,32 +166,12 @@ function myHand(): ArtifactDescriptor {
   };
 }
 
-function pegboard(): ArtifactDescriptor {
-  return {
-    id: "cribbage.pegboard",
-    owner: OWNER.cribbageTable,
-    band: "play",
-    // Centerpiece: felt-anchored, fixed-aspect, reserves space BEFORE flow
-    // descriptors in the play band negotiate. The resolver clips against
-    // structural safe areas (announcement / topHud / bottomHud / outerRail)
-    // and emits `aspect_unhonorable` rather than silently distorting if the
-    // 6:1 strip cannot fit.
-    composeMode: "centerpiece",
-    preferredSize: { width: vmin(60), height: vmin(10) },
-    minimumSize: { width: vmin(50), height: vmin(8) },
-    aspectRatio: 6, // 6:1 horizontal pegboard
-    priority: 92,
-    collapsePriority: "last",
-    safeAreaDependencies: ["play"],
-  };
-}
-
 /**
- * Wave 5D — Phase 4. Anchored pegboard descriptor. Positioned entirely
+ * Wave 5D — Pegboard Graduation. The pegboard is positioned entirely
  * from `availableGameplayViewport` + anchor + size. No band, no preferred
  * size, no shrink/collapse, no group participation.
  */
-function pegboardAnchored(): ArtifactDescriptor {
+function pegboard(): ArtifactDescriptor {
   return {
     id: "cribbage.pegboard",
     owner: OWNER.cribbageTable,
@@ -203,9 +183,9 @@ function pegboardAnchored(): ArtifactDescriptor {
     collapsePriority: "never",
     // Anchored fields:
     anchorX: 0.5,
-    anchorY: 0.4,
+    anchorY: 0.5,
     anchorOrigin: "center",
-    widthPct: 0.72,
+    widthPct: 0.8,
     aspectRatio: 6,
   };
 }
