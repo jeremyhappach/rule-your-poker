@@ -1,14 +1,20 @@
 /**
- * Wave 6 — Geometry Lab (MVP).
+ * Wave 6 — Geometry Lab (single-source refactor).
  *
- * Admin-only third tab in the Settings modal. Lets the admin pick any
- * registered anchored gameplay artifact and live-tune its geometry. Save
- * upserts a row into `geometry_overrides`; realtime + the override store
- * push the change to every open client immediately. No refresh, no
- * republish, no restart.
+ * Admin-only third tab in the Settings modal. The Lab no longer maintains
+ * a parallel registry of geometry defaults. Instead it enumerates anchored
+ * artifacts straight from the per-game descriptor factories
+ * (`ARTIFACT_DESCRIPTOR_FACTORIES` / `enumerateAnchoredArtifacts`) and
+ * derives the form's default values from each descriptor.
  *
- * v1 scope: global overrides only (no drafts, no per-session). Future
- * waves add drafts and "commit back into descriptor".
+ * Flow:
+ *   ArtifactDescriptor (truth)
+ *     ├── applyGeometryOverrides ─► Resolver ─► Renderer
+ *     └── deriveSizeMode + read anchorX/Y/Origin, widthPct/heightPct/aspectRatio
+ *           ↓
+ *         GeometryLab form  ─►  upsert into geometry_overrides
+ *           ↓
+ *         realtime override store loop closes
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,16 +22,37 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { GEOMETRY_LAB_REGISTRY, findArtifactDefault } from "@/lib/geometryLab/artifactRegistry";
 import { useGeometryOverrides, type SizeMode } from "@/lib/geometryLab/store";
 import { OVERLAY_FLAGS, useOverlayFlag } from "@/lib/geometryLab/overlayFlags";
-import type { AnchorOrigin } from "@/lib/wave4LayoutResolver/types";
+import {
+  GAME_KEYS,
+  GAME_LABELS,
+  enumerateAnchoredArtifacts,
+  deriveSizeMode,
+  type GameKey,
+} from "@/lib/geometryLab/descriptorIndex";
+import { getArtifactPresentation } from "@/lib/geometryLab/artifactRegistry";
+import type {
+  AnchorOrigin,
+  ArtifactDescriptor,
+} from "@/lib/wave4LayoutResolver/types";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
-  "center", "topLeft", "topCenter", "bottomCenter", "leftCenter", "rightCenter",
+  "center",
+  "topLeft",
+  "topCenter",
+  "bottomCenter",
+  "leftCenter",
+  "rightCenter",
 ];
 
 interface FormState {
@@ -44,58 +71,113 @@ function num(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function stringifyOptional(v: number | undefined): string {
+  return v == null ? "" : String(v);
+}
+
 export function GeometryLab({ userId }: { userId: string }) {
   const overrides = useGeometryOverrides();
-  const [game, setGame] = useState<string>(GEOMETRY_LAB_REGISTRY[0].game);
-  const games = GEOMETRY_LAB_REGISTRY;
-  const artifactsForGame = useMemo(
-    () => games.find((g) => g.game === game)?.artifacts ?? [],
-    [games, game],
+
+  const [game, setGame] = useState<GameKey>(GAME_KEYS[0]);
+
+  // Enumerate anchored descriptors for the selected game directly from the
+  // descriptor factories — no parallel defaults table.
+  const artifacts: ArtifactDescriptor[] = useMemo(
+    () => enumerateAnchoredArtifacts(game),
+    [game],
   );
-  const [artifactId, setArtifactId] = useState<string>(artifactsForGame[0]?.artifactId ?? "");
 
-  // Keep artifact selection valid when game changes.
+  // Sort by registry sortOrder (when present), then label, then id.
+  const sortedArtifacts = useMemo(() => {
+    return [...artifacts].sort((a, b) => {
+      const pa = getArtifactPresentation(a.id);
+      const pb = getArtifactPresentation(b.id);
+      const oa = pa.sortOrder ?? 1000;
+      const ob = pb.sortOrder ?? 1000;
+      if (oa !== ob) return oa - ob;
+      return pa.label.localeCompare(pb.label);
+    });
+  }, [artifacts]);
+
+  const [artifactId, setArtifactId] = useState<string>(
+    sortedArtifacts[0]?.id ?? "",
+  );
+
   useEffect(() => {
-    if (!artifactsForGame.some((a) => a.artifactId === artifactId)) {
-      setArtifactId(artifactsForGame[0]?.artifactId ?? "");
+    if (!sortedArtifacts.some((a) => a.id === artifactId)) {
+      setArtifactId(sortedArtifacts[0]?.id ?? "");
     }
-  }, [artifactsForGame, artifactId]);
+  }, [sortedArtifacts, artifactId]);
 
-  const def = findArtifactDefault(artifactId);
+  const descriptor = useMemo<ArtifactDescriptor | null>(
+    () => sortedArtifacts.find((a) => a.id === artifactId) ?? null,
+    [sortedArtifacts, artifactId],
+  );
+
   const override = overrides.get(artifactId);
 
   const [form, setForm] = useState<FormState>({
-    anchorX: "", anchorY: "", anchorOrigin: "center",
-    sizeMode: "widthDriven", widthPct: "", heightPct: "", aspectRatio: "",
+    anchorX: "",
+    anchorY: "",
+    anchorOrigin: "center",
+    sizeMode: "widthDriven",
+    widthPct: "",
+    heightPct: "",
+    aspectRatio: "",
   });
   const [saving, setSaving] = useState(false);
 
-  // When artifact (or override row) changes, hydrate form from override → defaults.
+  // Hydrate form from override (if any) layered over the canonical descriptor.
   useEffect(() => {
-    if (!def) return;
+    if (!descriptor) return;
     const o = override;
-    const sizeMode: SizeMode = o?.size_mode ?? "widthDriven";
+    const descSizeMode = deriveSizeMode(descriptor);
+    const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+
     setForm({
-      anchorX: String(o?.anchor_x ?? def.anchorX),
-      anchorY: String(o?.anchor_y ?? def.anchorY),
-      anchorOrigin: (o?.anchor_origin ?? def.anchorOrigin) as AnchorOrigin,
+      anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
+      anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
+      anchorOrigin: (o?.anchor_origin ??
+        descriptor.anchorOrigin ??
+        "center") as AnchorOrigin,
       sizeMode,
-      widthPct: o?.width_pct != null ? String(o.width_pct) : (def.widthPct != null ? String(def.widthPct) : ""),
-      heightPct: o?.height_pct != null ? String(o.height_pct) : (def.heightPct != null ? String(def.heightPct) : ""),
-      aspectRatio: o?.aspect_ratio != null ? String(o.aspect_ratio) : (def.aspectRatio != null ? String(def.aspectRatio) : ""),
+      widthPct:
+        o?.width_pct != null
+          ? String(o.width_pct)
+          : stringifyOptional(descriptor.widthPct),
+      heightPct:
+        o?.height_pct != null
+          ? String(o.height_pct)
+          : stringifyOptional(descriptor.heightPct),
+      aspectRatio:
+        o?.aspect_ratio != null
+          ? String(o.aspect_ratio)
+          : stringifyOptional(descriptor.aspectRatio),
     });
-  }, [artifactId, override, def]);
+  }, [artifactId, override, descriptor]);
 
-  if (!def) return <div className="text-muted-foreground text-sm">No artifact selected.</div>;
+  if (!descriptor) {
+    return (
+      <div className="text-muted-foreground text-sm">
+        No artifact selected.
+      </div>
+    );
+  }
 
-  // Derived (read-only) value, based on sizeMode.
+  const presentation = getArtifactPresentation(artifactId);
+
+  // Derived (read-only) helper based on current form sizeMode.
   const wNum = num(form.widthPct);
   const hNum = num(form.heightPct);
   const arNum = num(form.aspectRatio);
-  const derivedH = form.sizeMode === "widthDriven" && wNum != null && arNum != null && arNum > 0
-    ? (wNum / arNum).toFixed(4) : "";
-  const derivedW = form.sizeMode === "heightDriven" && hNum != null && arNum != null
-    ? (hNum * arNum).toFixed(4) : "";
+  const derivedH =
+    form.sizeMode === "widthDriven" && wNum != null && arNum != null && arNum > 0
+      ? (wNum / arNum).toFixed(4)
+      : "";
+  const derivedW =
+    form.sizeMode === "heightDriven" && hNum != null && arNum != null
+      ? (hNum * arNum).toFixed(4)
+      : "";
 
   async function handleSave() {
     setSaving(true);
@@ -106,8 +188,10 @@ export function GeometryLab({ userId }: { userId: string }) {
       anchor_y: num(form.anchorY),
       anchor_origin: form.anchorOrigin,
       size_mode: form.sizeMode,
-      width_pct: form.sizeMode === "heightDriven" ? null : num(form.widthPct),
-      height_pct: form.sizeMode === "widthDriven" ? null : num(form.heightPct),
+      width_pct:
+        form.sizeMode === "heightDriven" ? null : num(form.widthPct),
+      height_pct:
+        form.sizeMode === "widthDriven" ? null : num(form.heightPct),
       aspect_ratio: form.sizeMode === "rect" ? null : num(form.aspectRatio),
       updated_by: userId,
       updated_at: new Date().toISOString(),
@@ -125,7 +209,7 @@ export function GeometryLab({ userId }: { userId: string }) {
 
   async function handleResetToDefault() {
     if (!override) {
-      toast.info("Already using canonical default.");
+      toast.info("Already using canonical descriptor.");
       return;
     }
     setSaving(true);
@@ -137,7 +221,7 @@ export function GeometryLab({ userId }: { userId: string }) {
     if (error) {
       toast.error(`Reset failed: ${error.message}`);
     } else {
-      toast.success("Override cleared.");
+      toast.success("Override cleared — descriptor defaults restored.");
     }
   }
 
@@ -147,11 +231,18 @@ export function GeometryLab({ userId }: { userId: string }) {
       <div className="space-y-3">
         <div className="space-y-1">
           <Label>Game</Label>
-          <Select value={game} onValueChange={setGame}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Select
+            value={game}
+            onValueChange={(v) => setGame(v as GameKey)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {games.map((g) => (
-                <SelectItem key={g.game} value={g.game}>{g.label}</SelectItem>
+              {GAME_KEYS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {GAME_LABELS[g]}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -159,49 +250,99 @@ export function GeometryLab({ userId }: { userId: string }) {
         <div className="space-y-1">
           <Label>Artifact</Label>
           <Select value={artifactId} onValueChange={setArtifactId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {artifactsForGame.map((a) => (
-                <SelectItem key={a.artifactId} value={a.artifactId}>
-                  {a.artifactId}{override?.artifact_id === a.artifactId ? " ●" : ""}
-                </SelectItem>
-              ))}
+              {sortedArtifacts.map((a) => {
+                const p = getArtifactPresentation(a.id);
+                const hasOverride = overrides.has(a.id);
+                return (
+                  <SelectItem key={a.id} value={a.id}>
+                    {p.label}
+                    {hasOverride ? " ●" : ""}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
-          {override && <p className="text-xs text-amber-500">● override active</p>}
+          <p className="text-xs text-muted-foreground">
+            <code>{artifactId}</code>
+            {presentation.category ? ` · ${presentation.category}` : ""}
+          </p>
+          {override && (
+            <p className="text-xs text-amber-500">● override active</p>
+          )}
         </div>
       </div>
 
-      {/* Geometry */}
+      {/* Geometry — defaults shown are the live ArtifactDescriptor values */}
       <div className="space-y-3 pt-2 border-t">
         <h3 className="font-semibold">Geometry</h3>
+        <p className="text-xs text-muted-foreground">
+          Defaults read live from the canonical descriptor. Saving writes an
+          override row; the runtime merges it via{" "}
+          <code>applyGeometryOverrides</code>.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <Label>anchorX</Label>
-            <Input type="number" step="0.01" min={0} max={1}
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              max={1}
               value={form.anchorX}
-              onChange={(e) => setForm((f) => ({ ...f, anchorX: e.target.value }))} />
+              onChange={(e) =>
+                setForm((f) => ({ ...f, anchorX: e.target.value }))
+              }
+            />
           </div>
           <div className="space-y-1">
             <Label>anchorY</Label>
-            <Input type="number" step="0.01" min={0} max={1}
+            <Input
+              type="number"
+              step="0.01"
+              min={0}
+              max={1}
               value={form.anchorY}
-              onChange={(e) => setForm((f) => ({ ...f, anchorY: e.target.value }))} />
+              onChange={(e) =>
+                setForm((f) => ({ ...f, anchorY: e.target.value }))
+              }
+            />
           </div>
         </div>
         <div className="space-y-1">
           <Label>anchorOrigin</Label>
-          <Select value={form.anchorOrigin} onValueChange={(v) => setForm((f) => ({ ...f, anchorOrigin: v as AnchorOrigin }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Select
+            value={form.anchorOrigin}
+            onValueChange={(v) =>
+              setForm((f) => ({ ...f, anchorOrigin: v as AnchorOrigin }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {ANCHOR_ORIGINS.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+              {ANCHOR_ORIGINS.map((o) => (
+                <SelectItem key={o} value={o}>
+                  {o}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label>sizeMode</Label>
-          <Select value={form.sizeMode} onValueChange={(v) => setForm((f) => ({ ...f, sizeMode: v as SizeMode }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Select
+            value={form.sizeMode}
+            onValueChange={(v) =>
+              setForm((f) => ({ ...f, sizeMode: v as SizeMode }))
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="widthDriven">widthDriven</SelectItem>
               <SelectItem value="heightDriven">heightDriven</SelectItem>
@@ -209,7 +350,9 @@ export function GeometryLab({ userId }: { userId: string }) {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Three cannot be edited together: rect = width+height; widthDriven = width+aspect; heightDriven = height+aspect.
+            Descriptor sizeMode: <code>{deriveSizeMode(descriptor)}</code>.
+            Three cannot be edited together: rect = width+height; widthDriven
+            = width+aspect; heightDriven = height+aspect.
           </p>
         </div>
 
@@ -217,13 +360,27 @@ export function GeometryLab({ userId }: { userId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>widthPct</Label>
-              <Input type="number" step="0.01" min={0} max={1} value={form.widthPct}
-                onChange={(e) => setForm((f) => ({ ...f, widthPct: e.target.value }))} />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                max={1}
+                value={form.widthPct}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, widthPct: e.target.value }))
+                }
+              />
             </div>
             <div className="space-y-1">
               <Label>aspectRatio</Label>
-              <Input type="number" step="0.05" value={form.aspectRatio}
-                onChange={(e) => setForm((f) => ({ ...f, aspectRatio: e.target.value }))} />
+              <Input
+                type="number"
+                step="0.05"
+                value={form.aspectRatio}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, aspectRatio: e.target.value }))
+                }
+              />
             </div>
             <div className="space-y-1 col-span-2">
               <Label>heightPct (derived)</Label>
@@ -236,13 +393,27 @@ export function GeometryLab({ userId }: { userId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>heightPct</Label>
-              <Input type="number" step="0.01" min={0} max={1} value={form.heightPct}
-                onChange={(e) => setForm((f) => ({ ...f, heightPct: e.target.value }))} />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                max={1}
+                value={form.heightPct}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, heightPct: e.target.value }))
+                }
+              />
             </div>
             <div className="space-y-1">
               <Label>aspectRatio</Label>
-              <Input type="number" step="0.05" value={form.aspectRatio}
-                onChange={(e) => setForm((f) => ({ ...f, aspectRatio: e.target.value }))} />
+              <Input
+                type="number"
+                step="0.05"
+                value={form.aspectRatio}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, aspectRatio: e.target.value }))
+                }
+              />
             </div>
             <div className="space-y-1 col-span-2">
               <Label>widthPct (derived)</Label>
@@ -255,13 +426,29 @@ export function GeometryLab({ userId }: { userId: string }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>widthPct</Label>
-              <Input type="number" step="0.01" min={0} max={1} value={form.widthPct}
-                onChange={(e) => setForm((f) => ({ ...f, widthPct: e.target.value }))} />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                max={1}
+                value={form.widthPct}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, widthPct: e.target.value }))
+                }
+              />
             </div>
             <div className="space-y-1">
               <Label>heightPct</Label>
-              <Input type="number" step="0.01" min={0} max={1} value={form.heightPct}
-                onChange={(e) => setForm((f) => ({ ...f, heightPct: e.target.value }))} />
+              <Input
+                type="number"
+                step="0.01"
+                min={0}
+                max={1}
+                value={form.heightPct}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, heightPct: e.target.value }))
+                }
+              />
             </div>
           </div>
         )}
@@ -279,7 +466,11 @@ export function GeometryLab({ userId }: { userId: string }) {
         <Button onClick={handleSave} disabled={saving} className="flex-1">
           {saving ? "Saving…" : "Save"}
         </Button>
-        <Button variant="outline" onClick={handleResetToDefault} disabled={saving || !override}>
+        <Button
+          variant="outline"
+          onClick={handleResetToDefault}
+          disabled={saving || !override}
+        >
           Reset
         </Button>
       </div>
@@ -291,8 +482,15 @@ function OverlayFlagRow({ flag }: { flag: typeof OVERLAY_FLAGS[number] }) {
   const [on, setOn] = useOverlayFlag(flag);
   return (
     <div className="flex items-center gap-2">
-      <Checkbox id={`flag-${flag.key}`} checked={on} onCheckedChange={(v) => setOn(v === true)} />
-      <Label htmlFor={`flag-${flag.key}`} className="cursor-pointer text-sm font-normal">
+      <Checkbox
+        id={`flag-${flag.key}`}
+        checked={on}
+        onCheckedChange={(v) => setOn(v === true)}
+      />
+      <Label
+        htmlFor={`flag-${flag.key}`}
+        className="cursor-pointer text-sm font-normal"
+      >
         {flag.label}
       </Label>
     </div>
