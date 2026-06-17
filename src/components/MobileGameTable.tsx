@@ -6825,14 +6825,15 @@ export const MobileGameTable = ({
           }
           // rollsRemaining already declared above for tracing
 
-          return (
-            <div
-              className={cn(
-                "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2",
-              )}
-              style={{ pointerEvents: 'auto' }}
-            >
-              {showResult && currentTurnResult ? (
+          if (showResult && currentTurnResult) {
+            // Result badge — NOT migrated to anchored framework this wave.
+            return (
+              <div
+                className={cn(
+                  "absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2",
+                )}
+                style={{ pointerEvents: 'auto' }}
+              >
                 <div className="flex flex-col items-center gap-2">
                   <Badge
                     variant="secondary"
@@ -6842,8 +6843,8 @@ export const MobileGameTable = ({
                     )}
                   >
                     {gameType === 'horses' ? (
-                      <HorsesHandResultDisplay 
-                        description={currentTurnResult.description} 
+                      <HorsesHandResultDisplay
+                        description={currentTurnResult.description}
                         isWinning={isCurrentTurnWinning}
                         size="md"
                       />
@@ -6852,116 +6853,117 @@ export const MobileGameTable = ({
                     )}
                   </Badge>
                 </div>
-              ) : horsesController.isMyTurn ? (
-                // My turn - show "You are rolling" message with Beat badge
-                // CRITICAL: Freeze the Beat badge at turn START - don't update during rolls
-                (() => {
-                  // FREEZE LOGIC: Beat badge was snapshotted in the useEffect at turn start
-                  // We simply use the cached value here - no updates during my turn
-                  // This prevents the badge from updating when my roll takes the lead
-                  const winResult = cachedWinningResultRef.current 
-                    ? { description: cachedWinningResultRef.current.description } 
-                    : null;
-                  const winDice = cachedWinningResultRef.current?.dice ?? null;
-                  
-                  return (
-                    <div className="flex flex-col items-center gap-2">
-                      <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
-                        You are rolling
-                      </p>
-                      {/* Beat badge - show what hand to beat */}
-                      {winResult && (
-                        <div className={cn(
-                          "flex items-center justify-center gap-2",
-                          isTablet && "gap-4"
-                        )}>
-                          <Target className={cn(
-                            "text-muted-foreground",
-                            isTablet ? "w-10 h-10" : "w-3 h-3"
-                          )} />
-                          <span className={cn(
-                            "text-muted-foreground",
-                            isTablet ? "text-xl font-medium" : "text-xs"
-                          )}>
-                            Beat:
-                          </span>
-                          {gameType === 'ship-captain-crew' && (() => {
-                            const cargo = winDice ? (winDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
-                            return cargo.length === 2 ? (
-                              <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
-                                {cargo.map((die, idx) => (
-                                  <HorsesDie
-                                    key={idx}
-                                    value={die.value}
-                                    isHeld={false}
-                                    isRolling={false}
-                                    canToggle={false}
-                                    size={isTablet ? "md" : "sm"}
-                                    showWildHighlight={false}
-                                    forceWhiteBackground={true}
-                                  />
-                                ))}
-                              </div>
-                            ) : null;
-                          })()}
-                          {gameType === 'horses' && (
-                            <HorsesHandResultDisplay
-                              description={winResult.description}
-                              isWinning={true}
+              </div>
+            );
+          }
+
+          if (horsesController.isMyTurn) {
+            // My turn — Beat badge stage (Wave 5D anchored).
+            const winResult = cachedWinningResultRef.current
+              ? { description: cachedWinningResultRef.current.description }
+              : null;
+            const winDice = cachedWinningResultRef.current?.dice ?? null;
+
+            return (
+              <DiceAnchoredSlot
+                artifactId={diceBeatBadgeId(gameType as DiceGameType)}
+                innerStyle={{ pointerEvents: 'auto', flexDirection: 'column', gap: '0.5rem' }}
+              >
+                <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
+                  You are rolling
+                </p>
+                {winResult && (
+                  <div className={cn(
+                    "flex items-center justify-center gap-2",
+                    isTablet && "gap-4"
+                  )}>
+                    <Target className={cn(
+                      "text-muted-foreground",
+                      isTablet ? "w-10 h-10" : "w-3 h-3"
+                    )} />
+                    <span className={cn(
+                      "text-muted-foreground",
+                      isTablet ? "text-xl font-medium" : "text-xs"
+                    )}>
+                      Beat:
+                    </span>
+                    {gameType === 'ship-captain-crew' && (() => {
+                      const cargo = winDice ? (winDice as SCCDieType[]).filter(d => !d.isSCC && d.value > 0) : [];
+                      return cargo.length === 2 ? (
+                        <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
+                          {cargo.map((die, idx) => (
+                            <HorsesDie
+                              key={idx}
+                              value={die.value}
+                              isHeld={false}
+                              isRolling={false}
+                              canToggle={false}
                               size={isTablet ? "md" : "sm"}
+                              showWildHighlight={false}
+                              forceWhiteBackground={true}
                             />
-                          )}
-                          {/* Show "Tied" indicator when multiple players share the best hand */}
-                          {horsesController.isCurrentWinningTied && (
-                            <span className={cn(
-                              "font-medium text-amber-400",
-                              isTablet ? "text-base" : "text-xs"
-                            )}>
-                              (Tied)
-                            </span>
-                          )}
+                          ))}
                         </div>
-                      )}
-                    </div>
-                  );
-                })()
-              ) : (
-                // Observer view - show staggered dice layout
-                <DiceTableLayout
-                  // Force a remount when the dice "owner" changes so no internal refs leak between players.
-                  key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
-                  dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
-                    const showHeldVisual =
-                      typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
-                    return {
-                      ...die,
-                      isHeld: showHeldVisual,
-                    };
-                  }) as (HorsesDieType | SCCDieType)[]}
-                  isRolling={
-                    // CRITICAL: Observers should NEVER see rumbling dice.
-                    // Only the active player's local window (isMyTurn=true) shows rumbling.
-                    showDice && horsesController.isMyTurn
-                      ? horsesController.isRolling
-                      : false
-                  }
-                  canToggle={false}
-                  size="md"
-                  gameType={gameType ?? undefined}
-                  showWildHighlight={gameType !== 'ship-captain-crew'}
-                  useSCCDisplayOrder={gameType === 'ship-captain-crew'}
-                  sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
-                  isObserver={true}
-                  hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
-                  heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
-                  previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
-                  animationOrigin={getDiceAnimationOrigin()}
-                  rollKey={(horsesController.feltDice as any)?.rollKey}
-                  isQualified={(horsesController.feltDice as any)?.isQualified}
-                  cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
-                />
-              )}
-            </div>
+                      ) : null;
+                    })()}
+                    {gameType === 'horses' && (
+                      <HorsesHandResultDisplay
+                        description={winResult.description}
+                        isWinning={true}
+                        size={isTablet ? "md" : "sm"}
+                      />
+                    )}
+                    {horsesController.isCurrentWinningTied && (
+                      <span className={cn(
+                        "font-medium text-amber-400",
+                        isTablet ? "text-base" : "text-xs"
+                      )}>
+                        (Tied)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </DiceAnchoredSlot>
+            );
+          }
+
+          // Observer view — Opponent dice stage (Wave 5D anchored).
+          return (
+            <DiceAnchoredSlot
+              artifactId={diceOpponentDiceStageId(gameType as DiceGameType)}
+              innerStyle={{ pointerEvents: 'auto' }}
+            >
+              <DiceTableLayout
+                key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
+                dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
+                  const showHeldVisual =
+                    typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
+                  return {
+                    ...die,
+                    isHeld: showHeldVisual,
+                  };
+                }) as (HorsesDieType | SCCDieType)[]}
+                isRolling={
+                  showDice && horsesController.isMyTurn
+                    ? horsesController.isRolling
+                    : false
+                }
+                canToggle={false}
+                size="md"
+                gameType={gameType ?? undefined}
+                showWildHighlight={gameType !== 'ship-captain-crew'}
+                useSCCDisplayOrder={gameType === 'ship-captain-crew'}
+                sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
+                isObserver={true}
+                hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
+                heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
+                previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
+                animationOrigin={getDiceAnimationOrigin()}
+                rollKey={(horsesController.feltDice as any)?.rollKey}
+                isQualified={(horsesController.feltDice as any)?.isQualified}
+                cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
+              />
+            </DiceAnchoredSlot>
           );
               })()}
             </DiceGameplayGeometryProvider>
