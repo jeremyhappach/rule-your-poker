@@ -187,19 +187,28 @@ export const GinRummyFeltContent = ({
       />
 
 
-      {/* Match Score Pegboard - Top center */}
-      <div className="absolute top-[20%] left-1/2 -translate-x-1/2 z-20 w-[70%]">
-        <GinRummyPegBoard
-          ginState={ginState}
-          currentPlayerId={currentPlayerId}
-          opponentId={opponentId}
-          getPlayerUsername={getPlayerUsername}
-        />
-      </div>
+      {/* Wave 5D — gin.pegboard (anchored). */}
+      <GinAnchoredSlot artifactId="gin.pegboard">
+        <div className="w-full h-full flex items-center">
+          <div className="w-full">
+            <GinRummyPegBoard
+              ginState={ginState}
+              currentPlayerId={currentPlayerId}
+              opponentId={opponentId}
+              getPlayerUsername={getPlayerUsername}
+            />
+          </div>
+        </div>
+      </GinAnchoredSlot>
 
-      {/* Stock & Discard Piles — hidden after knock/gin */}
+      {/* Wave 5D — gin.stockDiscardGroup (anchored). Stock + discard
+          are siblings inside the group rect; their pixel sizes are
+          preserved (size="lg") and the group rect was sized to fit. */}
       {!hidePiles && (
-        <div className="absolute top-[46%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-4">
+        <GinAnchoredSlot
+          artifactId="gin.stockDiscardGroup"
+          innerStyle={{ gap: '1rem' }}
+        >
           {/* Stock Pile */}
           <div className="flex flex-col items-center gap-0.5">
             <button
@@ -238,41 +247,40 @@ export const GinRummyFeltContent = ({
             )}
             <span className="text-[8px] text-white/50">Discard</span>
           </div>
-        </div>
+        </GinAnchoredSlot>
       )}
 
-      {/* Phase / Turn Indicator — only shown during active play, not end-of-hand phases */}
+      {/* Wave 5D — gin.turnIndicator (anchored). */}
       {!hidePiles && (
-        <div className="absolute top-[72%] left-1/2 -translate-x-1/2 z-20 w-[80%]">
-          {ginState.phase === 'playing' && (
-            <p className="text-[10px] text-white/80 text-center">
-              {isMyTurn ? (
-                <span className="text-poker-gold font-bold animate-pulse">
-                  {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
-                </span>
-              ) : (
-                <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
-              )}
-            </p>
-          )}
+        <GinAnchoredSlot artifactId="gin.turnIndicator">
+          <div className="w-full text-center">
+            {ginState.phase === 'playing' && (
+              <p className="text-[10px] text-white/80">
+                {isMyTurn ? (
+                  <span className="text-poker-gold font-bold animate-pulse">
+                    {ginState.turnPhase === 'draw' ? 'Draw a card!' : 'Select a card to discard'}
+                  </span>
+                ) : (
+                  <span>Waiting for {getPlayerUsername(ginState.currentTurnPlayerId)}</span>
+                )}
+              </p>
+            )}
 
-          {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && (
-            <div className="text-center">
+            {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo === currentPlayerId && (
               <p className="text-[11px] text-poker-gold font-bold animate-pulse">
                 {ginState.firstDrawPassed.length === 0
                   ? 'Take the upcard or pass?'
                   : 'Opponent passed — take or pass?'}
               </p>
-            </div>
-          )}
+            )}
 
-          {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo !== currentPlayerId && (
-            <p className="text-[10px] text-white/60 text-center">
-              {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
-            </p>
-          )}
-
-        </div>
+            {ginState.phase === 'first_draw' && ginState.firstDrawOfferedTo !== currentPlayerId && (
+              <p className="text-[10px] text-white/60">
+                {getPlayerUsername(ginState.currentTurnPlayerId)} deciding on upcard...
+              </p>
+            )}
+          </div>
+        </GinAnchoredSlot>
       )}
     </>
   );
