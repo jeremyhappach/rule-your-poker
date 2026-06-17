@@ -106,3 +106,65 @@ export function getRecentContractViolations(): ReadonlyArray<ContractViolationEv
 export function clearContractViolations(): void {
   ring.length = 0;
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Wave 5D.1 — Internal Content Contract
+//
+// `wave5:children_exceed_stage`
+//
+// For every anchored STAGE artifact, the composite bounding box of its
+// rendered children MUST be contained within the stage's assignedRect.
+//
+//   compositeChildrenBounds  ⊆  assignedRect
+//
+// The framework does NOT clip, hide, reposition, or shrink. A violation
+// means a child is sized in absolute units (px-token, fixed Tailwind
+// width/height, etc.) instead of deriving its size from the stage rect.
+// Fix the child sizing — do not patch around it with overflow:hidden.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface ChildrenExceedStageEvent {
+  artifactId: string;
+  assignedRect: ContractRect;
+  compositeChildrenBounds: ContractRect;
+  childRects: ReadonlyArray<{ id: string; rect: ContractRect }>;
+  overflow: ContractOverflow;
+  timestamp: number;
+}
+
+type ChildrenListener = (e: ChildrenExceedStageEvent) => void;
+
+const childrenListeners = new Set<ChildrenListener>();
+const childrenRing: ChildrenExceedStageEvent[] = [];
+
+export function emitChildrenExceedStage(event: ChildrenExceedStageEvent): void {
+  childrenRing.push(event);
+  if (childrenRing.length > RING_MAX) childrenRing.shift();
+  for (const l of childrenListeners) {
+    try {
+      l(event);
+    } catch {
+      /* listener errors must not break gameplay */
+    }
+  }
+  if (typeof console !== "undefined") {
+    // eslint-disable-next-line no-console
+    console.warn("[wave5:children_exceed_stage]", {
+      artifactId: event.artifactId,
+      assignedRect: event.assignedRect,
+      compositeChildrenBounds: event.compositeChildrenBounds,
+      childRects: event.childRects,
+      overflow: event.overflow,
+    });
+  }
+}
+
+export function onChildrenExceedStage(l: ChildrenListener): () => void {
+  childrenListeners.add(l);
+  return () => childrenListeners.delete(l);
+}
+
+export function getRecentChildrenExceedStage(): ReadonlyArray<ChildrenExceedStageEvent> {
+  return childrenRing.slice();
+}
+

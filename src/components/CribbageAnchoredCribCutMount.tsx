@@ -1,30 +1,58 @@
 /**
- * Wave 5D — CribCutGroup Graduation (mount placement).
+ * Wave 5D — CribCutGroup Graduation (mount placement) +
+ * Wave 5D.1 — Internal Content Contract.
  *
- * This component exists for one reason: to mount the anchored
- * cribCutGroup slot OUTSIDE the `transform: translateY(6%)` felt-content
- * wrapper in CribbageMobileGameTable.
+ * This component exists for two reasons:
  *
- * See WAVE 5 INVARIANT in `src/components/Wave4CribCutGroupSlot.tsx`:
- *   "Anchored artifacts MUST NOT mount beneath transformed ancestors."
+ * 1. To mount the anchored cribCutGroup slot OUTSIDE the
+ *    `transform: translateY(6%)` felt-content wrapper in
+ *    CribbageMobileGameTable (see WAVE 5 INVARIANT in
+ *    `src/components/Wave4CribCutGroupSlot.tsx`).
  *
- * The crib pile + cut card JSX previously lived inside CribbageFeltContent,
- * which itself sits inside the translateY(6%) wrapper. That ancestor
- * transform silently shifted the rendered DOM rect down by ~6% of the
- * felt-frame height, breaking the contract:
+ * 2. To enforce the Wave 5 Internal Content Contract:
  *
- *   renderedBounds.centerY  ≡  assignedRect.centerY
+ *      compositeChildrenBounds  ⊆  assignedRect
  *
- * By mounting the slot as a sibling of the wrapper (mirroring the
- * Pegboard Graduation pattern), the rendered DOM rect equals the assigned
- * anchored rect exactly. The gating logic (showCrib / isCountingPhase /
- * isPeggingWin / etc.) is reproduced here verbatim from CribbageFeltContent
- * so the visual behavior is identical.
+ *    The anchored stage `cribbage.cribCutGroup` owns:
+ *      - anchor / widthPct / aspectRatio / assignedRect
+ *    The crib child owns:
+ *      - pile layout (fan of face-down cards)
+ *    The cut child owns:
+ *      - artwork only (the playing card + label)
+ *    Neither child owns absolute pixel size. Both derive size from
+ *    `assignedRect.heightPx` so the composite fits inside the stage on
+ *    every viewport bucket (SE portrait, mini portrait, regular portrait,
+ *    landscape, observer).
+ *
+ *    `useChildrenBoundsContract` measures both children and emits
+ *    `wave5:children_exceed_stage` if the composite ever exceeds the
+ *    stage. The framework does NOT clip, hide, or auto-shrink — the only
+ *    correct fix for a violation is to tune the ratios below.
+ *
+ * Future anchored stages (PeggingRow, KnockDisplay,
+ * YahtzeeOpponentDiceStage, Holm pot, Gin discard, etc.) MUST inherit
+ * this same pattern: derive child sizes from `assignedRect.heightPx`,
+ * install `useChildrenBoundsContract`, never size children in absolute
+ * pixels.
  */
 
+import { useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { Wave4CribCutGroupSlot } from './Wave4CribCutGroupSlot';
+import { useCribbageGameplayGeometry } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
+import { useLiveGeometryConstraints } from '@/lib/wave4LayoutResolver/useLiveGeometryConstraints';
+import { useChildrenBoundsContract } from '@/lib/wave5GameplayGeometry/useChildrenBoundsContract';
+import { toVmin } from '@/lib/wave4LayoutResolver';
+
+const CRIB_CUT_GROUP_ID = 'cribbage.cribCutGroup';
+
+// ── Wave 5D.1 sizing ratios (all relative to assignedRect.heightPx) ─────
+// Stage height is split between: top label ("Crib"/"Cut") + card artwork.
+// Card aspect is 2:3 (width = height * 2/3) per CribbagePlayingCard.
+const CUT_CARD_HEIGHT_RATIO = 0.78;  // cut card occupies 78% of stage height
+const CRIB_CARD_HEIGHT_RATIO = 0.55; // crib pile cards are 55% of stage height
+const CARD_ASPECT = 2 / 3;            // width / height
 
 export interface CribbageAnchoredCribCutMountProps {
   cribbageState: CribbageState;
@@ -73,36 +101,99 @@ export function CribbageAnchoredCribCutMount({
     !isPeggingWin &&
     phaseForLayout !== 'complete';
 
-  if (!(showCribOnFelt || cribbageState.cutCard) || isCountingPhase || isPeggingWin) {
+  const visible =
+    (showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && !isPeggingWin;
+
+  // ── Wave 5D.1: derive child sizes from stage assignedRect ─────────────
+  const { placementsById, lastValidPlacementsById } = useCribbageGameplayGeometry();
+  const { vminInPx } = useLiveGeometryConstraints();
+
+  const current = placementsById.get(CRIB_CUT_GROUP_ID);
+  const lastValid = lastValidPlacementsById.get(CRIB_CUT_GROUP_ID);
+  const placement = current && current.visible ? current : lastValid;
+
+  const assignedRect = placement
+    ? {
+        x: toVmin(placement.rect.x, vminInPx),
+        y: toVmin(placement.rect.y, vminInPx),
+        width: toVmin(placement.rect.width, vminInPx),
+        height: toVmin(placement.rect.height, vminInPx),
+      }
+    : { x: 0, y: 0, width: 0, height: 0 };
+
+  const stageHeightPx = assignedRect.height * vminInPx;
+
+  // Card sizing — width derives from height via CARD_ASPECT so widthPx
+  // (the prop CribbagePlayingCard understands) produces the correct height.
+  const cutCardHeightPx = Math.max(8, stageHeightPx * CUT_CARD_HEIGHT_RATIO);
+  const cutCardWidthPx = cutCardHeightPx * CARD_ASPECT;
+
+  const cribCardHeightPx = Math.max(6, stageHeightPx * CRIB_CARD_HEIGHT_RATIO);
+  const cribCardWidthPx = cribCardHeightPx * CARD_ASPECT;
+  // Negative spacing fans the pile; ~35% of card width keeps it tight but visible.
+  const cribCardOverlapPx = cribCardWidthPx * 0.35;
+
+  const cribRef = useRef<HTMLDivElement | null>(null);
+  const cutRef = useRef<HTMLDivElement | null>(null);
+
+  useChildrenBoundsContract({
+    artifactId: CRIB_CUT_GROUP_ID,
+    assignedRect,
+    vminInPx,
+    enabled: !!placement && !!placement.visible && vminInPx > 0 && !!visible,
+    children: [
+      { id: 'crib', ref: cribRef },
+      { id: 'cut', ref: cutRef },
+    ],
+  });
+
+  if (!visible) {
     return null;
   }
 
   return (
     <Wave4CribCutGroupSlot>
-      {/* Crib */}
+      {/* Crib pile — sized from stage height. */}
       {showCribOnFelt && cribbageState.crib.length > 0 && (
-        <div className="flex flex-col items-center">
-          <span className="text-[9px] text-white/60 mb-0.5">Crib</span>
-          <div className="flex -space-x-1.5">
+        <div ref={cribRef} className="flex flex-col items-center">
+          <span
+            className="text-white/60 leading-none"
+            style={{
+              fontSize: `${Math.max(7, Math.round(cribCardWidthPx * 0.4))}px`,
+              marginBottom: '2px',
+            }}
+          >
+            Crib
+          </span>
+          <div
+            className="flex"
+            style={{ marginRight: `${cribCardOverlapPx}px` }}
+          >
             {cribbageState.crib.map((_, i) => (
               <div
                 key={i}
-                className="w-4 h-6 rounded-sm border border-white/20"
                 style={{
+                  width: `${cribCardWidthPx}px`,
+                  height: `${cribCardHeightPx}px`,
+                  marginLeft: i === 0 ? 0 : `-${cribCardOverlapPx}px`,
                   background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
                 }}
+                className="rounded-sm border border-white/20"
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* Cut Card with flip animation */}
-      <CribbageCutCardReveal
-        card={cribbageState.cutCard}
-        cardBackColors={cardBackColors}
-        handBoundaryKey={handBoundaryKey}
-      />
+      {/* Cut card — artwork only, sized from stage height. */}
+      <div ref={cutRef}>
+        <CribbageCutCardReveal
+          card={cribbageState.cutCard}
+          cardBackColors={cardBackColors}
+          handBoundaryKey={handBoundaryKey}
+          widthPx={cutCardWidthPx}
+        />
+      </div>
     </Wave4CribCutGroupSlot>
   );
 }
