@@ -45,6 +45,10 @@ import type {
   AnchorOrigin,
   ArtifactDescriptor,
 } from "@/lib/wave4LayoutResolver/types";
+import {
+  logGeometryLab,
+  recordGeometryLabContext,
+} from "./GeometryLabCrashBoundary";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
