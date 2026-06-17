@@ -31,7 +31,7 @@ import type {
   ResolvedLayout,
   ResolvedPlacement,
 } from "./types";
-import { EPSILON_VMIN, rectContains, rectsIntersect, vmin } from "./units";
+import { EPSILON_VMIN, rectContains, rectVmin, rectsIntersect, vmin } from "./units";
 
 const COLLAPSE_ORDER: CollapsePriority[] = [
   "first",
@@ -769,16 +769,20 @@ function pushViewportEdge(viewport: FlatRect, reserve: FlatRect): FlatRect {
 export function deriveAvailableGameplayViewport(
   geometry: GeometryConstraints,
 ): { viewport: AvailableGameplayViewport; fault: LayoutFault | null } {
+  // availableGameplayViewport = feltBounds minus TRUE edge-hugging shell
+  // chrome only. The HUD stack (announcement row, tab rail, timer, content
+  // pane, identity row) is a single bottom-edge reservation published as
+  // `bottomHudReserve` — its inner rows MUST NOT be subtracted again as
+  // interior obstacles. The seat ring is an ellipse, not a solid AABB; we
+  // do not carve it out here (anchored composeMode will project around
+  // seats in Phase 2).
   const felt = rectToFlat(geometry.feltBounds);
-  const announcement = rectToFlat(geometry.announcementBand);
   const topHud = rectToFlat(geometry.topHudReserve);
   const bottomHud = rectToFlat(geometry.bottomHudReserve);
   const outerRail = rectToFlat(geometry.outerRailReserve);
-  const seatRingRect = seatRingBoundingRect(geometry);
 
-  // Order: edge-aligned reserves first (HUD/announcement/bottom), then rails,
-  // then seat ring last so it only pulls edges in if nothing else did.
-  const reserves: FlatRect[] = [topHud, announcement, bottomHud, outerRail, seatRingRect];
+  // Only edge-hugging shell chrome. pushViewportEdge is valid for these.
+  const reserves: FlatRect[] = [topHud, bottomHud, outerRail];
 
   let v: FlatRect = { ...felt };
   for (const r of reserves) {
@@ -789,16 +793,20 @@ export function deriveAvailableGameplayViewport(
   const collapsed = v.width <= EPSILON_VMIN || v.height <= EPSILON_VMIN;
   const rect = collapsed ? emptyRect() : v;
 
+  // Echo only what we actually subtracted; zero-rects mark inputs that
+  // are intentionally NOT carved (announcement is HUD chrome, seat ring
+  // is an ellipse handled by anchored placement).
+  const zero = rectVmin(0, 0, 0, 0);
   const viewport: AvailableGameplayViewport = {
     rect: flatToRect(rect),
     derivedFrom: {
       feltBounds: geometry.feltBounds,
       subtracted: {
-        announcementBand: geometry.announcementBand,
+        announcementBand: zero,
         topHudReserve: geometry.topHudReserve,
         bottomHudReserve: geometry.bottomHudReserve,
         outerRailReserve: geometry.outerRailReserve,
-        seatRingReserve: flatToRect(seatRingRect),
+        seatRingReserve: zero,
         shellSafeAreas: [],
       },
     },
