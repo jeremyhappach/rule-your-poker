@@ -43,18 +43,58 @@ export interface Wave4PegboardSlotProps {
 const PEGBOARD_SLOT_ID = "cribbage.pegboard";
 
 export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
-  const { vminInPx } = useLiveGeometryConstraints();
+  const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById } =
     useCribbageGameplayGeometry();
+  const anchoredPegboardOn = useCribbageAnchoredPegboardFlag();
+  const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGBOARD_SLOT_ID);
   const lastValid = lastValidPlacementsById.get(PEGBOARD_SLOT_ID);
   const placement: ResolvedPlacement | undefined =
     current && current.visible ? current : lastValid;
 
+  const viewport = geometry
+    ? deriveAvailableGameplayViewport(geometry).viewport
+    : null;
+
+  const assignedRect = placement
+    ? {
+        x: placement.rect.x.value,
+        y: placement.rect.y.value,
+        width: placement.rect.width.value,
+        height: placement.rect.height.value,
+      }
+    : { x: 0, y: 0, width: 0, height: 0 };
+
+  const viewportRect = viewport
+    ? {
+        x: viewport.rect.x.value,
+        y: viewport.rect.y.value,
+        width: viewport.rect.width.value,
+        height: viewport.rect.height.value,
+      }
+    : { x: 0, y: 0, width: 0, height: 0 };
+
+  // Wave 5D Phase 3 contract enforcement — only active for the anchored
+  // pegboard. The legacy column-resolved pegboard already negotiates inside
+  // the play band and is not subject to the anchored viewport contract.
+  useDomBoundsContract(ref, {
+    artifactId: PEGBOARD_SLOT_ID,
+    assignedRect,
+    availableGameplayViewport: viewportRect,
+    vminInPx,
+    enabled:
+      anchoredPegboardOn &&
+      !!placement &&
+      !!placement.visible &&
+      vminInPx > 0,
+  });
+
   if (!placement || !placement.visible || vminInPx <= 0) {
     return (
       <div
+        ref={ref}
         data-wave4-pegboard-slot="fallback"
         className="absolute top-[52%] left-6 right-6 -translate-y-1/2 z-10"
       >
@@ -70,9 +110,11 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
 
   return (
     <div
+      ref={ref}
       data-wave4-pegboard-slot="resolved"
       data-artifact-id="cribbage.pegboard"
       data-gameplay-column-child="pegboard"
+      data-placement-mode={anchoredPegboardOn ? "anchored" : "column"}
       data-placement-source={current && current.visible ? "current" : "lastValid"}
       style={{
         position: "absolute",
