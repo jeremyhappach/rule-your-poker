@@ -15,6 +15,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useDiceGameplayGeometry } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { AssignedRectPxProvider } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 
 export interface DiceAnchoredSlotProps {
   artifactId: string;
