@@ -2100,6 +2100,9 @@ export const MobileGameTable = ({
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
+    // Wave 5D follow-up — clear the lone-player stage snapshot at the
+    // same hand-boundary that resets every other Holm cache.
+    lonePlayerStageSnapshotRef.current = null;
     
     // Showdown mode lock (prevents cards from snapping back after announcement clears)
     setShowdownModeLocked(false);
