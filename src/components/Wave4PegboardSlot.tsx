@@ -92,6 +92,79 @@ export function Wave4PegboardSlot({ children }: Wave4PegboardSlotProps) {
       vminInPx > 0,
   });
 
+  // Wave 5D Phase 4A.1 — center-drift diagnostic.
+  // Anchored placements MUST equal their rendered DOM rect — no ancestor
+  // transform may shift them. Compares assignedRect.centerY to
+  // renderedBounds.centerY in felt-local vmin and warns once per session
+  // when they diverge by more than 0.5vmin, dumping the ancestor transform
+  // chain for the offending DOM root.
+  const driftWarnedRef = useRef(false);
+  useEffect(() => {
+    if (!anchoredPegboardOn) return;
+    if (!placement || !placement.visible || vminInPx <= 0) return;
+    if (typeof window === "undefined") return;
+    const node = ref.current;
+    if (!node) return;
+    const raf = requestAnimationFrame(() => {
+      const surface = document.querySelector<HTMLElement>(
+        "[data-canonical-felt-surface]",
+      );
+      if (!surface) return;
+      const surfRect = surface.getBoundingClientRect();
+      const r = node.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      const renderedCenterY = (r.top + r.height / 2 - surfRect.top) / vminInPx;
+      const assignedCenterY = assignedRect.y + assignedRect.height / 2;
+      const delta = renderedCenterY - assignedCenterY;
+      if (Math.abs(delta) > 0.5 && !driftWarnedRef.current) {
+        driftWarnedRef.current = true;
+        const chain: Array<{ tag: string; transform: string }> = [];
+        let p: HTMLElement | null = node.parentElement;
+        let hops = 0;
+        while (p && hops < 16 && p !== surface) {
+          const t = getComputedStyle(p).transform;
+          if (t && t !== "none") {
+            chain.push({
+              tag: p.tagName.toLowerCase() +
+                (p.dataset && Object.keys(p.dataset).length
+                  ? "[" + Object.keys(p.dataset).slice(0, 2).join(",") + "]"
+                  : ""),
+              transform: t,
+            });
+          }
+          p = p.parentElement;
+          hops += 1;
+        }
+        // eslint-disable-next-line no-console
+        console.warn("[wave5d:pegboard center-drift]", {
+          assignedRect,
+          renderedBounds: {
+            x: (r.left - surfRect.left) / vminInPx,
+            y: (r.top - surfRect.top) / vminInPx,
+            width: r.width / vminInPx,
+            height: r.height / vminInPx,
+          },
+          assignedCenterY,
+          renderedCenterY,
+          deltaVmin: delta,
+          ancestorTransforms: chain,
+        });
+      } else if (Math.abs(delta) <= 0.5) {
+        driftWarnedRef.current = false;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [
+    anchoredPegboardOn,
+    placement,
+    vminInPx,
+    assignedRect.x,
+    assignedRect.y,
+    assignedRect.width,
+    assignedRect.height,
+  ]);
+
+
   if (!placement || !placement.visible || vminInPx <= 0) {
     return (
       <div
