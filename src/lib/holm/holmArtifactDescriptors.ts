@@ -37,7 +37,7 @@ function communityCardsStage(): ArtifactDescriptor {
     anchorY: 0.48,
     anchorOrigin: "center",
     widthPct: 0.8,
-    heightPct: 0.16,
+    aspectRatio: 0.8 / 0.16,
   };
 }
 
@@ -54,7 +54,7 @@ function lonePlayerTabledCardsStage(): ArtifactDescriptor {
     anchorY: 0.18,
     anchorOrigin: "center",
     widthPct: 0.75,
-    heightPct: 0.16,
+    aspectRatio: 0.75 / 0.16,
   };
 }
 
@@ -71,7 +71,7 @@ function chuckyStage(): ArtifactDescriptor {
     anchorY: 0.72,
     anchorOrigin: "center",
     widthPct: 0.8,
-    heightPct: 0.18,
+    aspectRatio: 0.8 / 0.18,
   };
 }
 

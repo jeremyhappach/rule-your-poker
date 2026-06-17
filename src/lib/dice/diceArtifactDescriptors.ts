@@ -53,7 +53,7 @@ function opponentDiceStage(gameType: DiceGameType): ArtifactDescriptor {
     anchorY: 0.42,
     anchorOrigin: "center",
     widthPct: 0.75,
-    heightPct: 0.22,
+    aspectRatio: 0.75 / 0.22,
   };
 }
 
@@ -70,7 +70,7 @@ function beatBadge(gameType: DiceGameType): ArtifactDescriptor {
     anchorY: 0.72,
     anchorOrigin: "center",
     widthPct: 0.45,
-    heightPct: 0.1,
+    aspectRatio: 0.45 / 0.1,
   };
 }
 

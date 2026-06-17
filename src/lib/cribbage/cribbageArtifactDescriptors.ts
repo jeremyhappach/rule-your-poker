@@ -271,7 +271,7 @@ function peggingRow(): ArtifactDescriptor {
     anchorY: 0.74,
     anchorOrigin: "center",
     widthPct: 0.85,
-    heightPct: 0.18,
+    aspectRatio: 0.85 / 0.18,
   };
 }
 

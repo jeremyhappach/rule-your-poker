@@ -42,7 +42,7 @@ function opponentDiceStage(): ArtifactDescriptor {
     anchorY: 0.42,
     anchorOrigin: "center",
     widthPct: 0.75,
-    heightPct: 0.22,
+    aspectRatio: 0.75 / 0.22,
   };
 }
 
@@ -59,7 +59,7 @@ function scorecardStage(): ArtifactDescriptor {
     anchorY: 0.58,
     anchorOrigin: "center",
     widthPct: 0.8,
-    heightPct: 0.32,
+    aspectRatio: 0.8 / 0.32,
   };
 }
 
