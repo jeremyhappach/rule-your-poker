@@ -4806,7 +4806,12 @@ export const MobileGameTable = ({
     const isRightSideSlot = slot >= 3;
 
     const stayed = playerDecision === 'stay';
-    const raise = isHolmMultiPlayerShowdown && !holmWinPotTriggerId && stayed;
+    // Latch raise through the entire multiplayer showdown lifecycle
+    // (including holmWinPotTriggerId / WIN_SEQUENCE). Dropping it on
+    // pot-trigger caused stayed clusters to snap downward at the start
+    // of the pot-to-player animation. Raise releases only when
+    // isHolmMultiPlayerShowdown itself releases (hand boundary).
+    const raise = isHolmMultiPlayerShowdown && stayed;
 
     // Showdown / chip-replacement derivation.
     const hasExposedCards = isPlayerCardsExposed(player.id) && cards.length > 0;
