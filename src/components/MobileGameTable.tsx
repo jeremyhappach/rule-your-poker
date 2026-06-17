@@ -2210,6 +2210,7 @@ export const MobileGameTable = ({
       setSoloVsChuckyTableLocked(false);
       setSoloVsChuckyPlayerIdLocked(null);
       soloVsChuckyAnimatedRef.current = false;
+      lonePlayerStageSnapshotRef.current = null;
     }
   }, [stayedPlayersCount, soloVsChuckyTableLocked, holmWinPotTriggerId]);
 
