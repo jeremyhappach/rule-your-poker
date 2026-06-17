@@ -134,11 +134,11 @@ export function ShellLifecyclePanel() {
     <div
       data-shell-lifecycle-panel=""
       style={{
-        position: 'fixed',
-        left: 4,
-        bottom: 4,
-        zIndex: 2147483645,
-        width: expanded ? 'min(94vw, 460px)' : 'min(78vw, 280px)',
+        ...(inTray
+          ? { position: 'relative' as const }
+          : { position: 'fixed' as const, left: 4, bottom: 4, zIndex: 2147483645 }),
+        width: expanded ? 'min(94vw, 460px)' : 'auto',
+        maxWidth: expanded ? undefined : 280,
         background: 'rgba(0,0,0,0.85)',
         color: '#fff',
         border: '1px solid #444',
