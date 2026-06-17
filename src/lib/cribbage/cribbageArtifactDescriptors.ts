@@ -220,6 +220,36 @@ function cutCard(): ArtifactDescriptor {
   };
 }
 
+/**
+ * Wave 5D — CribCutGroup Migration.
+ *
+ * The crib pile + cut-card row is positioned as a single anchored artifact.
+ * The group owns the anchor (anchorY = 0.30, anchorOrigin = center). Its
+ * children (crib pile, cut card) render at intrinsic size, vertically
+ * centered inside the assigned rect, so that their visual centers all lie
+ * on the y = 0.30 gridline of availableGameplayViewport.
+ *
+ * Dimensions: widthPct + aspectRatio approximate the existing rendered
+ * footprint (~16vmin × ~15vmin in portrait). They are NOT tuned beyond
+ * "preserve current footprint".
+ */
+function cribCutGroup(): ArtifactDescriptor {
+  return {
+    id: "cribbage.cribCutGroup",
+    owner: OWNER.cribbageFelt,
+    composeMode: "anchored",
+    preferredSize: { width: vmin(0), height: vmin(0) },
+    minimumSize: { width: vmin(0), height: vmin(0) },
+    priority: 80,
+    collapsePriority: "mid",
+    anchorX: 0.5,
+    anchorY: 0.3,
+    anchorOrigin: "center",
+    widthPct: 0.2,
+    aspectRatio: 1.2,
+  };
+}
+
 function peggingRow(): ArtifactDescriptor {
   return {
     id: "cribbage.peggingRow",
@@ -313,6 +343,10 @@ export function getCribbageArtifactDescriptors(
   // Crib & cut card are gated on game state, not on phase.
   if (opts.cribVisible) ds.push(crib());
   if (opts.cutCardRevealed) ds.push(cutCard());
+
+  // Wave 5D — CribCutGroup anchored artifact (owns positioning of the
+  // crib/cut row). Emitted whenever either child would be visible.
+  if (opts.cribVisible || opts.cutCardRevealed) ds.push(cribCutGroup());
 
   // Seat-projected artifacts. Seat ring itself is structural — never emitted.
   for (const seat of opts.opponentSeatPositions) {

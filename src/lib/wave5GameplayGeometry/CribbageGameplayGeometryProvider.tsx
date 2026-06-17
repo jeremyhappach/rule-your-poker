@@ -88,8 +88,7 @@ const GAMEPLAY_COLUMN_ID = "cribbage.gameplayColumn";
 
 const GAMEPLAY_COLUMN_LEAF_IDS = new Set<string>([
   PEGBOARD_ID,
-  CRIB_ID,
-  CUT_CARD_ID,
+  CRIB_CUT_GROUP_ID,
   PEGGING_ROW_ID,
   COUNTING_ROW_ID,
 ]);
@@ -98,47 +97,8 @@ function buildColumnGroup(
   leavesById: ReadonlyMap<string, ArtifactDescriptor>,
   opts: { includePegboard: boolean },
 ): GroupDescriptor {
-  // Crib + cut inner group.
-  const cribCutChildren: GroupChildSlot[] = [];
-  const hasCrib = leavesById.has(CRIB_ID);
-  const hasCut = leavesById.has(CUT_CARD_ID);
-
-  if (hasCrib) {
-    cribCutChildren.push({
-      id: CRIB_ID,
-      kind: "leaf",
-      leafRef: CRIB_ID,
-      shrinkOrder: 2,
-      collapseOrder: 2,
-    });
-  }
-  if (hasCrib && hasCut) {
-    cribCutChildren.push({
-      id: "innerGap",
-      kind: "gap",
-      weight: 1,
-      shrinkOrder: 1,
-      collapseOrder: 1,
-    });
-  }
-  if (hasCut) {
-    cribCutChildren.push({
-      id: CUT_CARD_ID,
-      kind: "leaf",
-      leafRef: CUT_CARD_ID,
-      shrinkOrder: 3,
-      collapseOrder: 3,
-    });
-  }
-
-  const cribCutGroup: GroupDescriptor = {
-    id: CRIB_CUT_GROUP_ID,
-    owner: "cribbage",
-    band: "play",
-    composeMode: "group",
-    axis: "x",
-    children: cribCutChildren,
-  };
+  // Wave 5D — CribCutGroup graduated to an anchored leaf. The inner
+  // crib/cut group no longer participates in the column negotiation.
 
   // Outer column (axis=y). Children are declared in fixed visual order;
   // priority NEVER reorders.
@@ -161,16 +121,6 @@ function buildColumnGroup(
     shrinkOrder: 1,
     collapseOrder: 1,
   });
-
-  if (cribCutChildren.length > 0) {
-    columnChildren.push({
-      id: CRIB_CUT_GROUP_ID,
-      kind: "group",
-      group: cribCutGroup,
-      shrinkOrder: 2,
-      collapseOrder: 2,
-    });
-  }
 
   columnChildren.push({
     id: "gapB",

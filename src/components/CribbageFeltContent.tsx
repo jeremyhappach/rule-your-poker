@@ -4,6 +4,7 @@ import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
 import { Wave4PeggingRowSlot } from './Wave4PeggingRowSlot';
+import { Wave4CribCutGroupSlot } from './Wave4CribCutGroupSlot';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
@@ -241,7 +242,7 @@ export const CribbageFeltContent = ({
       {/* Crib and Cut Card row - hidden during counting layout (CribbageCountingPhase shows its own)
           and hidden during pegging-win so the felt shows the pegging snapshot at win determination. */}
       {(showCribOnFelt || cribbageState.cutCard) && !isCountingPhase && !isPeggingWin && (
-        <div className="absolute top-[17%] left-1/2 -translate-x-1/2 z-30 flex items-start gap-4">
+        <Wave4CribCutGroupSlot>
           {/* Crib */}
           {showCribOnFelt && cribbageState.crib.length > 0 && (
             <div className="flex flex-col items-center">
@@ -266,7 +267,7 @@ export const CribbageFeltContent = ({
             cardBackColors={cardBackColors}
             handBoundaryKey={handBoundaryKey}
           />
-        </div>
+        </Wave4CribCutGroupSlot>
       )}
 
 

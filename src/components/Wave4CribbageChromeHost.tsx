@@ -102,11 +102,15 @@ export function Wave4CribbageChromeHost(props: Wave4CribbageChromeHostProps) {
         cutCardRevealed: props.cutCardRevealed,
         cribVisible: props.cribVisible,
       });
-      // Wave 5D — Pegboard Graduation. The live pegboard is owned
-      // exclusively by CribbageGameplayGeometryProvider. The chrome host
-      // must NOT resolve a second `cribbage.pegboard` descriptor — doing
-      // so would split descriptor ownership and produce spurious faults.
-      return all.filter((d) => d.id !== "cribbage.pegboard");
+      // Wave 5D — Pegboard + CribCutGroup Graduation. These anchored
+      // artifacts are owned exclusively by CribbageGameplayGeometryProvider.
+      // The chrome host must NOT resolve duplicates — doing so would split
+      // descriptor ownership and produce spurious faults.
+      return all.filter(
+        (d) =>
+          d.id !== "cribbage.pegboard" &&
+          d.id !== "cribbage.cribCutGroup",
+      );
     },
     [
       props.phase,
