@@ -45,7 +45,7 @@ export function LayoutFaultBadge() {
     return onLayoutFault((e) => setLatest(e));
   }, [enabled]);
 
-  if (!enabled || !latest) return null;
+  if (HIDE_DEBUG_UI || !enabled || !latest) return null;
 
   return (
     <div
