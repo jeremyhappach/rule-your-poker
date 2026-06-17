@@ -71,6 +71,8 @@ import {
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
+import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
 
 // Wave 2E: discrete die size ladder (must match HorsesDie sizeClasses).
 // The resolver returns a fluid die edge in px; we snap to the nearest bucket
@@ -1992,6 +1994,15 @@ export function YahtzeeGameTable({
           drifts from the shell ellipse and pushes HUD off-screen. */}
       <div ref={tableContainerRef} className="relative overflow-visible" style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}>
 
+        {/* Wave 5D — Yahtzee anchored gameplay stages.
+            Provider resolves descriptors once; consumer slots render
+            with ONE descriptor → ONE placement → ONE renderer → ONE
+            DOM root. No magic top-[N%] / translate() positioning. */}
+        <YahtzeeGameplayGeometryProvider
+          opponentDiceVisible={gamePhase === 'playing' && !!currentPlayer && !(showInteractiveScorecard && !!myPlayer)}
+          scorecardVisible={gamePhase === 'playing' && !!currentPlayer && showInteractiveScorecard && !!myPlayer}
+        >
+
         {/* Shell owns canonical felt + game-name plate. No local mount. */}
 
 
@@ -2003,14 +2014,16 @@ export function YahtzeeGameTable({
         {gamePhase === 'playing' && currentPlayer && (() => {
           if (showInteractiveScorecard && myPlayer) {
             // My turn (or sticky-latched within the turn-transition window):
-            // show interactive scorecard ON the felt
+            // show interactive scorecard ON the felt (anchored stage).
             return (
-              <>
-                <div className="absolute left-1/2 top-[62%] -translate-x-1/2 -translate-y-1/2 z-[110] w-[78%] max-w-[340px]">
+              <YahtzeeAnchoredSlot
+                artifactId="yahtzee.scorecardStage"
+                innerStyle={{ alignItems: 'center', justifyContent: 'center' }}
+              >
+                <div style={{ width: '100%', maxWidth: 340 }}>
                   {renderScorecard(myPlayer.id, true)}
                 </div>
-                {/* Cached opponent dice removed — single render path at top-50% handles it */}
-              </>
+              </YahtzeeAnchoredSlot>
             );
           }
 
@@ -2031,7 +2044,7 @@ export function YahtzeeGameTable({
           const stableCacheKey = useCached ? cachedOpponentDice!.playerId : (currentTurnPlayerId ?? "no-turn");
 
           return (
-            <div className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110]">
+            <YahtzeeAnchoredSlot artifactId="yahtzee.opponentDiceStage">
               <DiceTableLayout
                 key={stableCacheKey}
                 dice={feltDice}
@@ -2062,9 +2075,12 @@ export function YahtzeeGameTable({
                   })(),
                 }}
               />
-            </div>
+            </YahtzeeAnchoredSlot>
           );
         })()}
+
+        </YahtzeeGameplayGeometryProvider>
+
 
         {/* Game complete — no static overlay here, WinnerOverlay handles it */}
 

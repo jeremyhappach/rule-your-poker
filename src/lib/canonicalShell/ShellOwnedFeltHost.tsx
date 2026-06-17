@@ -27,11 +27,7 @@ import {
   type CanonicalFeltGameKind,
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
-import { Wave5ViewportOverlay } from '@/lib/wave5GameplayGeometry/Wave5ViewportOverlay';
 import { Wave5GridOverlay } from '@/lib/wave5GameplayGeometry/Wave5GridOverlay';
-import { Wave5SeatReserveOverlay } from '@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay';
-import { Wave5AnchoredProbeOverlay } from '@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay';
-import { Wave5OversizedProbeOverlay } from '@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay';
 
 // Re-export so non-shell call sites can reference the type without
 // importing from the canonical felt module directly (preserves the
@@ -360,11 +356,10 @@ export function ShellOwnedFeltHost({
           isDesktop={effective?.isDesktop}
           cribbageSkunk={effective?.cribbageSkunk}
         />
-        <Wave5ViewportOverlay />
+        {/* W5 GRID is the ONLY Wave 5 debug surface rendered on felt.
+            Viewport outline, seat-reserve, anchored/oversized probes have
+            been retired — they were causing permanent debug rendering. */}
         <Wave5GridOverlay />
-        <Wave5SeatReserveOverlay />
-        <Wave5AnchoredProbeOverlay />
-        <Wave5OversizedProbeOverlay />
       </div>
     </div>
   );
