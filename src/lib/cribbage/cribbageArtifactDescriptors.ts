@@ -344,6 +344,10 @@ export function getCribbageArtifactDescriptors(
   if (opts.cribVisible) ds.push(crib());
   if (opts.cutCardRevealed) ds.push(cutCard());
 
+  // Wave 5D — CribCutGroup anchored artifact (owns positioning of the
+  // crib/cut row). Emitted whenever either child would be visible.
+  if (opts.cribVisible || opts.cutCardRevealed) ds.push(cribCutGroup());
+
   // Seat-projected artifacts. Seat ring itself is structural — never emitted.
   for (const seat of opts.opponentSeatPositions) {
     ds.push(opponentCardBacks(seat));
