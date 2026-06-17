@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
+import { GinAnchoredSlot } from './GinAnchoredSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
 import { getDiscardTop, stockRemaining } from '@/lib/ginRummyGameLogic';
 import { STOCK_EXHAUSTION_THRESHOLD } from '@/lib/ginRummyTypes';
