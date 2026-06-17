@@ -81,6 +81,13 @@ import { LegIndicator } from "./LegIndicator";
 import { AutoRollIndicator } from "./AutoRollIndicator";
 import { HorsesDie } from "./HorsesDie";
 import { DiceTableLayout } from "./DiceTableLayout";
+import { DiceGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
+import { DiceAnchoredSlot } from "./DiceAnchoredSlot";
+import {
+  diceBeatBadgeId,
+  diceOpponentDiceStageId,
+  type DiceGameType,
+} from "@/lib/dice/diceArtifactDescriptors";
 import { DiceTraceHUD } from "./DiceTraceHUD";
 import { HorsesHandResultDisplay } from "./HorsesHandResultDisplay";
 import { HorsesMobileCardsTab } from "./HorsesMobileCardsTab";
