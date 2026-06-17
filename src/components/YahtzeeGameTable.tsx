@@ -71,6 +71,8 @@ import {
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
+import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
+import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
 
 // Wave 2E: discrete die size ladder (must match HorsesDie sizeClasses).
 // The resolver returns a fluid die edge in px; we snap to the nearest bucket
