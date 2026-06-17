@@ -2339,10 +2339,19 @@ export const GinRummyGameTable = ({
         style={{ height: 'var(--shell-felt-h)', flex: '0 0 var(--shell-felt-h)' }}
       >
 
+        <GinRummyGameplayGeometryProvider
+          phase={(viewState?.phase ?? 'idle') as any}
+          hidePiles={!!viewState && ['knocking', 'laying_off', 'scoring', 'complete'].includes(viewState.phase)}
+          knockDisplayVisible={
+            !!viewState &&
+            (viewState.phase === 'knocking' ||
+              viewState.phase === 'laying_off' ||
+              viewState.phase === 'scoring' ||
+              (viewState.phase === 'complete' && !!viewState.knockResult))
+          }
+        >
+
             {/* Shell owns canonical felt. */}
-
-
-
 
             {/* Felt Content — requires hydrated viewState */}
             {isPlayable && viewState && (
