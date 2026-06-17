@@ -27,6 +27,7 @@ import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTrac
 import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { logIfChanged as _shellLogIfChanged } from "@/lib/canonicalShell/shellLifecycleLog";
+import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
 
 import type { HorsesStateFromDB } from "@/hooks/useHorsesMobileController";
 
@@ -7692,7 +7693,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           setHolmWinPotAmount(potAmount);
           setHolmWinWinnerPositions(winnerPositions);
           setHolmWinWinnerPosition(winnerPositions[0]); // Keep single position for backwards compat
-          setHolmWinPotTriggerId(`holm-win-multi-${Date.now()}`);
+          const _multiTrigger = `holm-win-multi-${Date.now()}`;
+          recordHolmLifecycle('winpot.trigger.multi', {
+            triggerId: _multiTrigger,
+            potAmount,
+            winnerNames,
+            winnerPositions,
+            gameStatus: game?.status ?? null,
+            lastRoundResult: game?.last_round_result ?? null,
+          });
+          setHolmWinPotTriggerId(_multiTrigger);
         } else {
           // Single player win - existing logic
           const lowerWinner = winnerName.toLowerCase();
@@ -7744,7 +7754,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           setHolmWinPotAmount(potAmount);
           setHolmWinWinnerPosition(winnerPosition);
           setHolmWinWinnerPositions([winnerPosition]);
-          setHolmWinPotTriggerId(`holm-win-${Date.now()}`);
+          const _soloTrigger = `holm-win-${Date.now()}`;
+          recordHolmLifecycle('winpot.trigger.solo', {
+            triggerId: _soloTrigger,
+            potAmount,
+            winnerName: winnerPlayer.profiles?.username ?? winnerName,
+            winnerPosition,
+            gameStatus: game?.status ?? null,
+            lastRoundResult: game?.last_round_result ?? null,
+          });
+          setHolmWinPotTriggerId(_soloTrigger);
         }
       }
     }
@@ -7753,6 +7772,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     if (game?.status !== 'game_over') {
       holmWinProcessedRef.current = null;
       // CRITICAL: Clear the trigger ID so animation doesn't re-fire in new game
+      recordHolmLifecycle('winpot.clear', {
+        reason: 'game.status !== game_over',
+        gameStatus: game?.status ?? null,
+      });
       setHolmWinPotTriggerId(null);
       setHolmWinWinnerPositions([]);
       // Reset the transition guard for future game_over handling
@@ -8142,20 +8165,36 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   const handleHolmWinPotAnimationComplete = useCallback(async () => {
     // Guard: Only proceed if we're actually in game_over with a valid Holm win
     if (game?.status !== 'game_over' || game?.game_type !== 'holm-game') {
+      recordHolmLifecycle('winpot.complete.ignored', {
+        reason: 'not in game_over or not holm-game',
+        gameStatus: game?.status ?? null,
+        gameType: game?.game_type ?? null,
+      });
       console.log('[HOLM WIN POT] Animation callback fired but game not in expected state, ignoring');
       return;
     }
     
     // Also verify there was actually a win (player beat Chucky)
     if (!game?.last_round_result?.includes('beat Chucky') || game?.last_round_result?.includes('Chucky beat')) {
+      recordHolmLifecycle('winpot.complete.ignored', {
+        reason: 'no valid beat-Chucky win in last_round_result',
+        lastRoundResult: game?.last_round_result ?? null,
+      });
       console.log('[HOLM WIN POT] Animation callback but no valid win result, ignoring');
       return;
     }
     
+    recordHolmLifecycle('winpot.complete.start', {
+      delayMs: 3000,
+      lastRoundResult: game?.last_round_result ?? null,
+    });
     console.log('[HOLM WIN POT] Animation complete, waiting 3 seconds before proceeding');
     // Wait 3 seconds after animation to let players see the final state (tabled cards stay visible)
     await new Promise(resolve => setTimeout(resolve, 3000));
     
+    recordHolmLifecycle('winpot.complete.proceed', {
+      lastRoundResult: game?.last_round_result ?? null,
+    });
     console.log('[HOLM WIN POT] Delay complete, proceeding to next game');
     await handleGameOverComplete();
   }, [game?.status, game?.game_type, game?.last_round_result, handleGameOverComplete]);
