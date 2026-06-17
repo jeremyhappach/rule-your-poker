@@ -19,7 +19,7 @@
  * for descriptor construction — the provider owns descriptors.
  */
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   deriveAvailableGameplayViewport,
   toVmin,
@@ -30,6 +30,7 @@ import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/Cribbag
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import { useCribbageAnchoredPegboardFlag } from "@/lib/wave5d/cribbageAnchoredPegboardFlag";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
+
 
 export interface Wave4PegboardSlotProps {
   phase: CribbagePhase;
