@@ -6219,10 +6219,13 @@ export const CribbageMobileGameTable = ({
               </>
             )}
 
-            {/* STABLE PEGBOARD — Wave 4 Phase 5C
+            {/* STABLE PEGBOARD — Wave 4 Phase 5C / Wave 5D Phase 4A.1
                 Position/size/visibility owned by Wave4PegboardSlot via the
-                layout resolver. Visuals remain in <CribbagePegBoard/>. */}
-            {!isHighCardMode && latchedPegboardDataRef.current && (
+                layout resolver. Visuals remain in <CribbagePegBoard/>.
+                When the anchored flag is ON, rendering moves OUTSIDE the
+                translateY(6%) wrapper (see below) so the rendered DOM
+                rect equals the assigned anchored rect. */}
+            {!isHighCardMode && latchedPegboardDataRef.current && !wave5dAnchoredPegboardOn && (
               <Wave4PegboardSlot
                 phase="pegging"
                 viewerSeatPosition={currentPlayer?.position ?? null}
@@ -6248,6 +6251,7 @@ export const CribbageMobileGameTable = ({
                 />
               </Wave4PegboardSlot>
             )}
+
 
             {/* BOOTSTRAP MODE: stable transition shell — no stale cards, no unmount.
                 Canonical felt title provides game identity; lifecycle messaging
