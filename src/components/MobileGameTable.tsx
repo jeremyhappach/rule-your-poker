@@ -89,6 +89,8 @@ import {
 } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
 import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
+import { ThreeFiveSevenGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/ThreeFiveSevenGameplayGeometryProvider";
+import { ThreeFiveSevenAnchoredSlot } from "./ThreeFiveSevenAnchoredSlot";
 import {
   diceBeatBadgeId,
   diceOpponentDiceStageId,
@@ -6308,58 +6310,62 @@ export const MobileGameTable = ({
           />
         )}
         
-        {/* 3-5-7 Winner's Tabled Cards - shown above pot during win animation for ALL players */}
-        {/* Rounds 1-2: Only table cards if winner clicked "Show Cards" (always face-up, with spin animation) */}
-        {/* Round 3: Always table cards (face-down unless "Show Cards" clicked) */}
-        {/* Only show AFTER leg award animation completes (not during 'waiting' phase) */}
-        {/* 3-5-7 Winner Cards - tabled IMMEDIATELY when winner is detected (including 'waiting' phase)
-            This ensures cards stay in tabled position throughout the entire win animation sequence */}
-        {gameType !== 'holm-game' && threeFiveSevenWinnerId && 
-         threeFiveSevenWinPhase !== 'idle' &&
-         threeFiveSevenWinnerCards.length > 0 && 
-         (currentRound === 3 || winner357ShowCards) && (
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1">
-            <div
-              className="flex flex-col items-center"
-              style={{
-                animation:
-                  currentRound !== 3 && winner357ShowCards
-                    ? 'winner357TableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards'
-                    : undefined,
-                willChange: 'transform, opacity',
-              }}
+        {/* threeFiveSeven.winnerTabledCardsStage — Wave 5D anchored.
+            Persistent stage: stays mounted across the entire win
+            lifecycle (waiting → legs-to-player → pot-to-player → delay
+            → teardown). Entry spin-in plays once (rounds 1-2 + Show
+            Cards) and never replays — the DOM root persists. Animation
+            distances are percentage-based (relative to the slot's own
+            height, which derives from assignedRect.height via vmin),
+            so no fixed-px translates and no magic percentages. */}
+        {(() => {
+          const winnerStageVisible =
+            gameType !== 'holm-game' &&
+            !!threeFiveSevenWinnerId &&
+            threeFiveSevenWinPhase !== 'idle' &&
+            threeFiveSevenWinnerCards.length > 0 &&
+            (currentRound === 3 || winner357ShowCards);
+          if (gameType === 'holm-game') return null;
+          return (
+            <ThreeFiveSevenGameplayGeometryProvider
+              winnerTabledCardsVisible={winnerStageVisible}
             >
-              <div className="flex gap-1">
-                <PlayerHand 
-                  cards={threeFiveSevenWinnerCards} 
-                  isHidden={currentRound === 3 ? !winner357ShowCards : false}
-                  gameType={gameType}
-                  currentRound={currentRound}
-                  showSeparated={currentRound === 3}
-                />
-              </div>
-            </div>
-            <style>{`
-              @keyframes winner357TableSpinIn {
-                0% {
-                  opacity: 0;
-                  transform: translateY(240px) scale(0.3) rotate(0deg);
-                }
-                40% {
-                  opacity: 1;
-                  transform: translateY(100px) scale(0.7) rotate(270deg);
-                }
-                70% {
-                  transform: translateY(30px) scale(0.9) rotate(540deg);
-                }
-                100% {
-                  opacity: 1;
-                  transform: translateY(0) scale(1) rotate(720deg);
-                }
-              }
-            `}</style>
-          </div>
-        )}
+              {winnerStageVisible && (
+                <ThreeFiveSevenAnchoredSlot
+                  artifactId="threeFiveSeven.winnerTabledCardsStage"
+                  zIndex={20}
+                >
+                  <div
+                    className="flex flex-col items-center justify-center w-full h-full"
+                    style={{
+                      animation:
+                        currentRound !== 3 && winner357ShowCards
+                          ? 'winner357TableSpinIn 1.4s cubic-bezier(0.25, 0.1, 0.25, 1) forwards'
+                          : undefined,
+                      willChange: 'transform, opacity',
+                    }}
+                  >
+                    <PlayerHand
+                      cards={threeFiveSevenWinnerCards}
+                      isHidden={currentRound === 3 ? !winner357ShowCards : false}
+                      gameType={gameType}
+                      currentRound={currentRound}
+                      showSeparated={currentRound === 3}
+                    />
+                  </div>
+                  <style>{`
+                    @keyframes winner357TableSpinIn {
+                      0%   { opacity: 0; transform: translateY(150%) rotate(0deg); }
+                      40%  { opacity: 1; transform: translateY(60%)  rotate(270deg); }
+                      70%  { opacity: 1; transform: translateY(20%)  rotate(540deg); }
+                      100% { opacity: 1; transform: translateY(0)    rotate(720deg); }
+                    }
+                  `}</style>
+                </ThreeFiveSevenAnchoredSlot>
+              )}
+            </ThreeFiveSevenGameplayGeometryProvider>
+          );
+        })()}
         
         {/* Pot display - centered and larger for 3-5-7, above community cards for Holm */}
         {/* FIX: Use visibility:hidden instead of conditional rendering to prevent ValueChangeFlash remount */}
