@@ -96,6 +96,7 @@ const GAMEPLAY_COLUMN_LEAF_IDS = new Set<string>([
 
 function buildColumnGroup(
   leavesById: ReadonlyMap<string, ArtifactDescriptor>,
+  opts: { includePegboard: boolean },
 ): GroupDescriptor {
   // Crib + cut inner group.
   const cribCutChildren: GroupChildSlot[] = [];
