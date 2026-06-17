@@ -24,6 +24,7 @@ import {
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
 import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
+import { resolveCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
@@ -45,16 +46,12 @@ export interface Wave4PeggingRowSlotProps {
 
 const PEGGING_ROW_ID = "cribbage.peggingRow";
 
-/** Card aspect: width / height = 2 / 3. */
+/** Cribbage playing card aspect (w/h). */
 const CARD_ASPECT_WH = 2 / 3;
-/** Card consumes this fraction of row height. */
-const CARD_HEIGHT_RATIO = 0.85;
-/** Overlap kicks in past this many cards. */
-const OVERLAP_THRESHOLD = 4;
-/** Max overlap fraction of card width (at 7 cards). */
-const MAX_OVERLAP_RATIO = 0.55;
+/** Cards consume at most this fraction of row height (leaves badge breathing room). */
+const CARD_HEIGHT_RATIO = 0.92;
 /** Gap between count badge column and card row, as fraction of row height. */
-const BADGE_GAP_RATIO = 0.2;
+const BADGE_GAP_RATIO = 0.18;
 
 export function Wave4PeggingRowSlot({
   count,
@@ -193,7 +190,7 @@ export function Wave4PeggingRowSlot({
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  // Rect-driven sizing. Row rect is authoritative.
+  // Rect-driven sizing. Row rect is authoritative; cards adapt.
   const rowHeightPx =
     placement.rect.height.unit === "px"
       ? placement.rect.height.value
@@ -203,37 +200,36 @@ export function Wave4PeggingRowSlot({
       ? placement.rect.width.value
       : placement.rect.width.value * vminInPx;
 
-  const cardHeightPx = Math.max(0, rowHeightPx * CARD_HEIGHT_RATIO);
-  const cardWidthPx = cardHeightPx * CARD_ASPECT_WH;
+  const cardCeilingHeightPx = Math.max(0, rowHeightPx * CARD_HEIGHT_RATIO);
+  const cardCeilingWidthPx = cardCeilingHeightPx * CARD_ASPECT_WH;
   const badgeGapPx = rowHeightPx * BADGE_GAP_RATIO;
 
-  // Progressive overlap: 0 below threshold; ramps to MAX_OVERLAP_RATIO at 7.
-  const visibleCardCount =
-    playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
-  const overlapSteps = Math.max(0, visibleCardCount - OVERLAP_THRESHOLD);
-  const overlapRatio = Math.min(
-    MAX_OVERLAP_RATIO,
-    (overlapSteps / 3) * MAX_OVERLAP_RATIO,
-  );
-  let overlapPx = cardWidthPx * overlapRatio;
-
-  // Width safety: if the fan would exceed the available card-row width,
-  // increase overlap to fit. The row rect is authoritative; cards adapt.
+  // Badge typography — derived from row height so it grows with the row.
   const countFontPx = Math.max(12, rowHeightPx * 0.4);
   const labelFontPx = Math.max(8, rowHeightPx * 0.16);
   const badgeWidthPx = Math.max(countFontPx * 1.8, 32);
-  const availableForCardsPx = Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx);
-  if (visibleCardCount > 1) {
-    const naturalWidth =
-      cardWidthPx + (visibleCardCount - 1) * (cardWidthPx - overlapPx);
-    if (naturalWidth > availableForCardsPx) {
-      // Solve for required overlap to fit exactly.
-      const stride =
-        (availableForCardsPx - cardWidthPx) / (visibleCardCount - 1);
-      overlapPx = Math.min(cardWidthPx * 0.85, cardWidthPx - stride);
-    }
-  }
-  const finalOverlap = Math.max(0, overlapPx);
+
+  const visibleCardCount =
+    playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
+
+  // Reuse the canonical card-row fan algorithm shared with ActivePlayerPane /
+  // useCardRowLayout consumers. One platform, one fan language.
+  const fan = visibleCardCount > 0
+    ? resolveCardRowLayout({
+        availableWidth: Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx),
+        availableHeight: cardCeilingHeightPx,
+        count: visibleCardCount,
+        aspect: CARD_ASPECT_WH,
+        minCardWidth: 18,
+        maxCardWidth: cardCeilingWidthPx,
+        preferredOverlapRatio: 0.18,
+        maxOverlapRatio: 0.6,
+      })
+    : null;
+
+  const cardWidthPx = fan?.cardWidth ?? cardCeilingWidthPx;
+  const cardHeightPx = fan?.cardHeight ?? cardCeilingHeightPx;
+  const finalOverlap = fan?.overlapPx ?? 0;
 
   return (
     <div
