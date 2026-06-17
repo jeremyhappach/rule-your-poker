@@ -91,7 +91,7 @@ function turnIndicator(): ArtifactDescriptor {
     anchorY: 0.72,
     anchorOrigin: "center",
     widthPct: 0.8,
-    heightPct: 0.06,
+    aspectRatio: 0.8 / 0.06,
   };
 }
 

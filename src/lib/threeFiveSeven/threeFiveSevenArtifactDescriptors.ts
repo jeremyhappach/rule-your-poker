@@ -41,7 +41,7 @@ function winnerTabledCardsStage(): ArtifactDescriptor {
     anchorY: 0.33,
     anchorOrigin: "center",
     widthPct: 0.75,
-    heightPct: 0.18,
+    aspectRatio: 0.75 / 0.18,
   };
 }
 
