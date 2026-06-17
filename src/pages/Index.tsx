@@ -908,7 +908,11 @@ const Index = () => {
 
               <TabsContent value="geometry" className="flex-1 min-h-0">
                 <ScrollArea className="h-full pr-4 overscroll-contain">
-                  {user && <GeometryLab userId={user.id} />}
+                  {user && (
+                    <GeometryLabCrashBoundary>
+                      <GeometryLab userId={user.id} />
+                    </GeometryLabCrashBoundary>
+                  )}
                 </ScrollArea>
               </TabsContent>
             </Tabs>
