@@ -359,6 +359,8 @@ export function ShellOwnedFeltHost({
           cribbageSkunk={effective?.cribbageSkunk}
         />
         <Wave5ViewportOverlay />
+        <Wave5SeatReserveOverlay />
+        <Wave5AnchoredProbeOverlay />
       </div>
     </div>
   );
