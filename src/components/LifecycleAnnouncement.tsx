@@ -25,6 +25,7 @@
  */
 
 import type { ReactNode } from "react";
+import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 
 interface LifecycleAnnouncementProps {
   title: ReactNode;
@@ -38,6 +39,10 @@ export const LifecycleAnnouncement = ({
   subtitle,
   overlay = false,
 }: LifecycleAnnouncementProps) => {
+  useLifecycleMount('LifecycleAnnouncement', {
+    titlePreview: typeof title === 'string' ? title.slice(0, 64) : '(node)',
+    overlay,
+  });
   const plate = (
     <div className="w-full backdrop-blur-sm rounded-md px-3 py-1 shadow-xl border-2 border-amber-900 animate-scale-in overflow-hidden" style={{ background: 'hsl(var(--baby-blue) / 0.95)' }}>
       <p className="text-slate-900 font-bold text-base sm:text-lg leading-tight text-center truncate">
