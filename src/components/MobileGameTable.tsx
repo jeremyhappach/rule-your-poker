@@ -1234,6 +1234,19 @@ export const MobileGameTable = ({
   // CRITICAL: Prevents stale re-capture during hand transitions where isSoloVsChuckyRaw
   // is momentarily true from previous hand's lingering current_decision='stay'.
   const soloVsChuckyLockHandRef = useRef<string | null>(null);
+
+  // Wave 5D follow-up — lone-player tabled-cards persistence snapshot.
+  // Captured the first time the stage becomes visible in the current
+  // hand and re-used until the handContextId boundary clears it. Keeps
+  // ONE descriptor / ONE placement / ONE renderer / ONE DOM root alive
+  // through TABLED → CHUCKY_REVEAL → SHOWDOWN → PLAYER_TO_POT →
+  // WIN_SEQUENCE → COMPLETE even when isSoloVsChucky / current_decision
+  // / player_cards momentarily flicker false.
+  const lonePlayerStageSnapshotRef = useRef<{
+    handContextId: string;
+    playerId: string;
+    cards: CardType[];
+  } | null>(null);
   
   // HOLM: Lock showdown mode (narrow cards) once it starts to prevent snap-back after announcement clears
   const [showdownModeLocked, setShowdownModeLocked] = useState(false);
