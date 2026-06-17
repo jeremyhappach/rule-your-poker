@@ -6737,9 +6737,9 @@ export const MobileGameTable = ({
               : null;
             
             const node = (
-              <div
-                className="absolute left-1/2 top-[50%] -translate-x-1/2 -translate-y-1/2 z-[110] flex flex-col items-center gap-2"
-                style={{ pointerEvents: 'auto' }}
+              <DiceAnchoredSlot
+                artifactId={diceBeatBadgeId(gameType as DiceGameType)}
+                innerStyle={{ pointerEvents: 'auto', flexDirection: 'column', gap: '0.5rem' }}
               >
                 <p className="text-lg font-semibold text-amber-200/90 animate-pulse">
                   You are rolling
@@ -6761,7 +6761,6 @@ export const MobileGameTable = ({
                       Beat:
                     </span>
                     {isSCCGame && cargoDice && cargoDice.length === 2 ? (
-                      // SCC: Show cargo dice
                       <div className={cn("flex items-center", isTablet ? "gap-2" : "gap-1")}>
                         {cargoDice.map((die, idx) => (
                           <HorsesDie
@@ -6777,14 +6776,12 @@ export const MobileGameTable = ({
                         ))}
                       </div>
                     ) : gameType === 'horses' ? (
-                      // Horses: Show result display
-                      <HorsesHandResultDisplay 
-                        description={winningResultToBeat.description} 
+                      <HorsesHandResultDisplay
+                        description={winningResultToBeat.description}
                         isWinning={true}
                         size={isTablet ? "md" : "sm"}
                       />
                     ) : null}
-                    {/* Show "Tied" indicator when multiple players share the best hand */}
                     {horsesController.isCurrentWinningTied && (
                       <span className={cn(
                         "font-medium text-amber-400",
@@ -6795,8 +6792,9 @@ export const MobileGameTable = ({
                     )}
                   </div>
                 )}
-              </div>
+              </DiceAnchoredSlot>
             );
+
 
             return cacheFeltNode(node);
           }
