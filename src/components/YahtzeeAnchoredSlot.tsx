@@ -141,7 +141,11 @@ export function YahtzeeAnchoredSlot({
         ...innerStyle,
       }}
     >
-      {children}
+      <AssignedRectPxProvider
+        value={{ widthPx: w * vminInPx, heightPx: h * vminInPx }}
+      >
+        {children}
+      </AssignedRectPxProvider>
     </div>
   );
 }
