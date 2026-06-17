@@ -43,7 +43,7 @@ async function refresh() {
     return;
   }
   const m = new Map<string, GeometryOverride>();
-  for (const row of (data ?? []) as Record<string, unknown>[]) {
+  for (const row of ((data ?? []) as unknown) as Record<string, unknown>[]) {
     const o = rowToOverride(row);
     m.set(o.artifact_id, o);
   }
