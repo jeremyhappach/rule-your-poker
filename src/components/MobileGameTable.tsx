@@ -7905,7 +7905,15 @@ export const MobileGameTable = ({
                               </div>
                             ) : null;
                           })()
-                        ) : isCurrentPlayerSoloVsChucky ? (
+                        ) : isCurrentPlayerSoloVsChucky || (
+                          // Wave 5D follow-up — current viewer's exposed
+                          // cards during multiplayer showdown are owned
+                          // by their CanonicalSeatCluster (allowSelfRender)
+                          // on the felt, not by this active-hand region.
+                          gameType === 'holm-game'
+                          && isHolmMultiPlayerShowdown
+                          && currentPlayer?.current_decision === 'stay'
+                        ) ? (
                           <div className="flex items-center justify-center py-4">
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>
