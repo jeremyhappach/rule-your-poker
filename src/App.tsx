@@ -29,6 +29,7 @@ import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
 import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
+import { Wave5GridOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5GridOverlay";
 import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay";
 import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay";
 import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay";
