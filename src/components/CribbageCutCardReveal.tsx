@@ -9,7 +9,12 @@ interface CribbageCutCardRevealProps {
   cardBackColors: { color: string; darkColor: string };
   /** When provided, clearing the revealed-cards cache on change prevents re-flip after remount */
   handBoundaryKey?: string;
+  /** Wave 5D.1 — stage-derived card width (px). Forwarded to CribbagePlayingCard
+   *  and used to size the back-face placeholder so the artwork fits inside the
+   *  cribCutGroup assignedRect. When omitted, falls back to the `sm` token. */
+  widthPx?: number;
 }
+
 
 /**
  * Module-scoped registry of cut-card flipKeys that have already animated.
@@ -53,7 +58,9 @@ export const CribbageCutCardReveal = ({
   card,
   cardBackColors,
   handBoundaryKey,
+  widthPx,
 }: CribbageCutCardRevealProps) => {
+
   const initialCardKey = card ? `${card.rank}-${card.suit}` : null;
   const initialFlipKey = initialCardKey
     ? `${handBoundaryKey ?? 'no-hand-key'}:${initialCardKey}`
@@ -172,9 +179,18 @@ export const CribbageCutCardReveal = ({
 
   if (!card) return null;
 
+  const backWidth = typeof widthPx === 'number' && widthPx > 0 ? widthPx : 32;
+  const backHeight = backWidth * 1.5;
+  const labelFontPx = Math.max(7, Math.round(backWidth * 0.28));
+
   return (
     <div className="flex flex-col items-center">
-      <span className="text-[9px] text-white/60 mb-0.5">Cut</span>
+      <span
+        className="text-white/60 leading-none"
+        style={{ fontSize: `${labelFontPx}px`, marginBottom: '2px' }}
+      >
+        Cut
+      </span>
       <div
         className="transition-transform duration-600 ease-out"
         style={{
@@ -193,11 +209,13 @@ export const CribbageCutCardReveal = ({
           }}
         >
           {showFace || !isFlipping ? (
-            <CribbagePlayingCard card={card} size="sm" />
+            <CribbagePlayingCard card={card} size="sm" widthPx={widthPx} />
           ) : (
             <div
-              className="w-8 h-12 rounded-sm border border-white/20"
+              className="rounded-sm border border-white/20"
               style={{
+                width: `${backWidth}px`,
+                height: `${backHeight}px`,
                 background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
               }}
             />
@@ -207,3 +225,4 @@ export const CribbageCutCardReveal = ({
     </div>
   );
 };
+
