@@ -20,6 +20,7 @@ import { getHandScoringCombos, getTotalFromCombos } from '@/lib/cribbageScoringD
 import { getBotDiscardIndices, getBotPeggingCardIndex, shouldBotCallGo } from '@/lib/cribbageBotLogic';
 import { CribbageFeltContent } from './CribbageFeltContent';
 import { CribbageAnchoredCribCutMount } from './CribbageAnchoredCribCutMount';
+import { CribbageAnchoredPeggingRowMount } from './CribbageAnchoredPeggingRowMount';
 import { CribbagePegBoard } from './CribbagePegBoard';
 import { CribbageMobileCardsTab } from './CribbageMobileCardsTab';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
@@ -6357,6 +6358,26 @@ export const CribbageMobileGameTable = ({
               handBoundaryKey={renderHandKey || `${currentRoundId}-${currentHandNumber}`}
               terminalPath={terminalPath}
               countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+            />
+          )}
+
+          {/* Wave 5D — PeggingRow Graduation. Mounts OUTSIDE the
+              translateY(6%) felt-content wrapper so the rendered DOM rect
+              equals the assigned anchored rect. See WAVE 5 INVARIANT in
+              Wave4CribCutGroupSlot. */}
+          {!isHighCardMode && viewState && (
+            <CribbageAnchoredPeggingRowMount
+              cribbageState={viewState}
+              sequenceStartIndex={sequenceStartIndex}
+              countingOutroActive={countingDelayActive && !!countingStateSnapshot}
+              thirtyOneDelayActive={thirtyOneDelayActive}
+              terminalPath={terminalPath}
+              viewerSeatPosition={currentPlayer?.position ?? null}
+              opponentSeatPositions={[0, 1, 2, 3].filter(
+                (p) => p !== (currentPlayer?.position ?? -1),
+              )}
+              cutCardRevealed={true}
+              cribVisible={true}
             />
           )}
 

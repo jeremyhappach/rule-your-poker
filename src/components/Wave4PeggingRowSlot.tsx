@@ -1,22 +1,29 @@
 /**
- * Wave 5C — Phase 4B.1
- * Wave4PeggingRowSlot is a pure consumer of
- *   CribbageGameplayGeometryProvider
- * AND owns rect-driven sizing of its children. The PeggingRow
- * placement rect is the hard visual envelope: the count badge,
- * played cards, and empty placeholder must all fit inside it
- * vertically. No fixed pixel sizes inside the resolved path.
+ * Wave 5D — PeggingRow Anchored Migration.
  *
- * Fallback policy:
- *   1. current placement (provider, this frame)
- *   2. lastValid placement (provider, last fault-free frame)
- *   3. legacy CSS percentage wrapper (cold-start / pre-measurement)
- *      → fallback path keeps legacy fixed sizes (size="md").
+ * Pure consumer of the anchored `cribbage.peggingRow` placement from
+ * CribbageGameplayGeometryProvider. The row rect is authoritative:
+ * cards and badge adapt to the rect, the rect never shrinks for them.
+ *
+ * Layout philosophy:
+ *   row rect → card size → card overlap → badge size → animations
+ *
+ * The slot mounts OUTSIDE the `translateY(6%)` felt-content wrapper
+ * (see WAVE 5 INVARIANT in Wave4CribCutGroupSlot — anchored artifacts
+ * MUST NOT mount beneath transformed ancestors). It installs both:
+ *   - useDomBoundsContract → wave5:contract_violation on overflow
+ *   - center-drift assertion → wave5d:peggingRow center-drift warn
  */
 
-import { toVmin, type ResolvedPlacement } from "@/lib/wave4LayoutResolver";
+import { useEffect, useRef } from "react";
+import {
+  deriveAvailableGameplayViewport,
+  toVmin,
+  type ResolvedPlacement,
+} from "@/lib/wave4LayoutResolver";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver/useLiveGeometryConstraints";
 import { useCribbageGameplayGeometry } from "@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider";
+import { useDomBoundsContract } from "@/lib/wave5GameplayGeometry/useDomBoundsContract";
 import type { CribbagePhase } from "@/lib/cribbage/cribbageArtifactDescriptors";
 import type { CribbageCard } from "@/lib/cribbageTypes";
 import { CribbagePlayingCard } from "./CribbagePlayingCard";
@@ -31,11 +38,8 @@ export interface Wave4PeggingRowSlotProps {
   opponentSeatPositions: ReadonlyArray<number>;
   cutCardRevealed: boolean;
   cribVisible: boolean;
-  /** Display count (left badge). */
   count: number;
-  /** Played cards in the CURRENT pegging sequence. */
   playedCards: ReadonlyArray<PeggingRowPlayedCard>;
-  /** When true and no cards played, render the dashed placeholder. */
   showEmptyPlaceholder: boolean;
 }
 
@@ -43,38 +47,128 @@ const PEGGING_ROW_ID = "cribbage.peggingRow";
 
 /** Card aspect: width / height = 2 / 3. */
 const CARD_ASPECT_WH = 2 / 3;
-/** Card may consume this fraction of row height (leaves breathing room). */
-const CARD_HEIGHT_RATIO = 0.95;
-/** Overlap as fraction of card width (matches legacy -space-x-4 / w-10). */
-const CARD_OVERLAP_RATIO = 0.4;
-/** Gap between count badge and card row, as fraction of row height. */
-const BADGE_GAP_RATIO = 0.25;
+/** Card consumes this fraction of row height. */
+const CARD_HEIGHT_RATIO = 0.85;
+/** Overlap kicks in past this many cards. */
+const OVERLAP_THRESHOLD = 4;
+/** Max overlap fraction of card width (at 7 cards). */
+const MAX_OVERLAP_RATIO = 0.55;
+/** Gap between count badge column and card row, as fraction of row height. */
+const BADGE_GAP_RATIO = 0.2;
 
 export function Wave4PeggingRowSlot({
   count,
   playedCards,
   showEmptyPlaceholder,
 }: Wave4PeggingRowSlotProps) {
-  const { vminInPx } = useLiveGeometryConstraints();
+  const { geometry, vminInPx } = useLiveGeometryConstraints();
   const { placementsById, lastValidPlacementsById, faults } =
     useCribbageGameplayGeometry();
+  const ref = useRef<HTMLDivElement | null>(null);
 
   const current = placementsById.get(PEGGING_ROW_ID);
   const lastValid = lastValidPlacementsById.get(PEGGING_ROW_ID);
   const placement: ResolvedPlacement | undefined =
     current && current.visible ? current : lastValid;
 
-  const usingFallback = !placement || !placement.visible || vminInPx <= 0;
+  const viewport = geometry
+    ? deriveAvailableGameplayViewport(geometry).viewport
+    : null;
 
+  const assignedRect = placement
+    ? {
+        x: placement.rect.x.value,
+        y: placement.rect.y.value,
+        width: placement.rect.width.value,
+        height: placement.rect.height.value,
+      }
+    : { x: 0, y: 0, width: 0, height: 0 };
 
+  const viewportRect = viewport
+    ? {
+        x: viewport.rect.x.value,
+        y: viewport.rect.y.value,
+        width: viewport.rect.width.value,
+        height: viewport.rect.height.value,
+      }
+    : { x: 0, y: 0, width: 0, height: 0 };
 
-  if (usingFallback) {
-    // Legacy fallback — fixed sizes acceptable here per Phase 4B.1 scope.
+  useDomBoundsContract(ref, {
+    artifactId: PEGGING_ROW_ID,
+    assignedRect,
+    availableGameplayViewport: viewportRect,
+    vminInPx,
+    enabled: !!placement && !!placement.visible && vminInPx > 0,
+  });
+
+  // Wave 5D — center-drift assertion (mirrors Wave4PegboardSlot /
+  // Wave4CribCutGroupSlot). Warns once per session if any ancestor
+  // transform shifts the rendered DOM rect off the assigned anchored rect.
+  const driftWarnedRef = useRef(false);
+  useEffect(() => {
+    if (!placement || !placement.visible || vminInPx <= 0) return;
+    if (typeof window === "undefined") return;
+    const node = ref.current;
+    if (!node) return;
+    const raf = requestAnimationFrame(() => {
+      const surface = document.querySelector<HTMLElement>(
+        "[data-canonical-felt-surface]",
+      );
+      if (!surface) return;
+      const surfRect = surface.getBoundingClientRect();
+      const r = node.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) return;
+      const renderedCenterY = (r.top + r.height / 2 - surfRect.top) / vminInPx;
+      const assignedCenterY = assignedRect.y + assignedRect.height / 2;
+      const delta = renderedCenterY - assignedCenterY;
+      if (Math.abs(delta) > 0.5 && !driftWarnedRef.current) {
+        driftWarnedRef.current = true;
+        const chain: Array<{ tag: string; transform: string }> = [];
+        let p: HTMLElement | null = node.parentElement;
+        let hops = 0;
+        while (p && hops < 16 && p !== surface) {
+          const t = getComputedStyle(p).transform;
+          if (t && t !== "none") {
+            chain.push({
+              tag:
+                p.tagName.toLowerCase() +
+                (p.dataset && Object.keys(p.dataset).length
+                  ? "[" + Object.keys(p.dataset).slice(0, 2).join(",") + "]"
+                  : ""),
+              transform: t,
+            });
+          }
+          p = p.parentElement;
+          hops += 1;
+        }
+        // eslint-disable-next-line no-console
+        console.warn("[wave5d:peggingRow center-drift]", {
+          assignedRect,
+          assignedCenterY,
+          renderedCenterY,
+          deltaVmin: delta,
+          ancestorTransforms: chain,
+        });
+      } else if (Math.abs(delta) <= 0.5) {
+        driftWarnedRef.current = false;
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [
+    placement,
+    vminInPx,
+    assignedRect.x,
+    assignedRect.y,
+    assignedRect.width,
+    assignedRect.height,
+  ]);
+
+  if (!placement || !placement.visible || vminInPx <= 0) {
+    // Legacy fallback — pre-measurement only.
     return (
       <div
+        ref={ref}
         data-wave4-pegging-row-slot="fallback"
-        data-pegging-row-fallback-used="true"
-        data-pegging-row-parent-id={placement?.parentId ?? ""}
         data-pegging-row-fault-count={String(faults.length)}
         className="absolute top-[68%] left-1/2 -translate-x-1/2 z-20 flex items-center gap-3"
       >
@@ -99,53 +193,55 @@ export function Wave4PeggingRowSlot({
   const w = toVmin(placement.rect.width, vminInPx);
   const h = toVmin(placement.rect.height, vminInPx);
 
-  // Rect-driven sizing — all derived from the row height (px) so children
-  // never overflow the PeggingRow rect vertically into the HUD.
-  const rowHeightPx = placement.rect.height.unit === "px"
-    ? placement.rect.height.value
-    : placement.rect.height.value * vminInPx;
-  const rowWidthPx = placement.rect.width.unit === "px"
-    ? placement.rect.width.value
-    : placement.rect.width.value * vminInPx;
+  // Rect-driven sizing. Row rect is authoritative.
+  const rowHeightPx =
+    placement.rect.height.unit === "px"
+      ? placement.rect.height.value
+      : placement.rect.height.value * vminInPx;
+  const rowWidthPx =
+    placement.rect.width.unit === "px"
+      ? placement.rect.width.value
+      : placement.rect.width.value * vminInPx;
 
   const cardHeightPx = Math.max(0, rowHeightPx * CARD_HEIGHT_RATIO);
   const cardWidthPx = cardHeightPx * CARD_ASPECT_WH;
-  const overlapPx = cardWidthPx * CARD_OVERLAP_RATIO;
   const badgeGapPx = rowHeightPx * BADGE_GAP_RATIO;
 
-  // Badge typography scales from rowHeight.
-  const countFontPx = Math.max(10, rowHeightPx * 0.45);
-  const labelFontPx = Math.max(7, rowHeightPx * 0.16);
-
-  // If the rendered fan would exceed the available width, shrink the card
-  // width (and overlap) proportionally so the row never exceeds its rect
-  // horizontally either. Badge width is reserved separately.
-  const visibleCardCount = playedCards.length > 0
-    ? playedCards.length
-    : (showEmptyPlaceholder ? 1 : 0);
-  const naturalRowWidth = visibleCardCount === 0
-    ? 0
-    : cardWidthPx + (visibleCardCount - 1) * (cardWidthPx - overlapPx);
-  // Rough badge column width budget.
-  const badgeWidthPx = Math.max(countFontPx * 1.6, 28);
-  const availableForCardsPx = Math.max(
-    0,
-    rowWidthPx - badgeWidthPx - badgeGapPx,
+  // Progressive overlap: 0 below threshold; ramps to MAX_OVERLAP_RATIO at 7.
+  const visibleCardCount =
+    playedCards.length > 0 ? playedCards.length : showEmptyPlaceholder ? 1 : 0;
+  const overlapSteps = Math.max(0, visibleCardCount - OVERLAP_THRESHOLD);
+  const overlapRatio = Math.min(
+    MAX_OVERLAP_RATIO,
+    (overlapSteps / 3) * MAX_OVERLAP_RATIO,
   );
-  const widthScale = naturalRowWidth > availableForCardsPx && naturalRowWidth > 0
-    ? availableForCardsPx / naturalRowWidth
-    : 1;
-  const finalCardWidth = cardWidthPx * widthScale;
-  const finalCardHeight = cardHeightPx * widthScale;
-  const finalOverlap = overlapPx * widthScale;
+  let overlapPx = cardWidthPx * overlapRatio;
+
+  // Width safety: if the fan would exceed the available card-row width,
+  // increase overlap to fit. The row rect is authoritative; cards adapt.
+  const countFontPx = Math.max(12, rowHeightPx * 0.4);
+  const labelFontPx = Math.max(8, rowHeightPx * 0.16);
+  const badgeWidthPx = Math.max(countFontPx * 1.8, 32);
+  const availableForCardsPx = Math.max(0, rowWidthPx - badgeWidthPx - badgeGapPx);
+  if (visibleCardCount > 1) {
+    const naturalWidth =
+      cardWidthPx + (visibleCardCount - 1) * (cardWidthPx - overlapPx);
+    if (naturalWidth > availableForCardsPx) {
+      // Solve for required overlap to fit exactly.
+      const stride =
+        (availableForCardsPx - cardWidthPx) / (visibleCardCount - 1);
+      overlapPx = Math.min(cardWidthPx * 0.85, cardWidthPx - stride);
+    }
+  }
+  const finalOverlap = Math.max(0, overlapPx);
 
   return (
     <div
+      ref={ref}
       data-wave4-pegging-row-slot="resolved"
       data-artifact-id="cribbage.peggingRow"
-      data-gameplay-column-child="peggingRow"
+      data-placement-mode="anchored"
       data-placement-source={current && current.visible ? "current" : "lastValid"}
-      data-pegging-row-parent-id={placement.parentId ?? ""}
       data-pegging-row-rect={`${x.toFixed(2)},${y.toFixed(2)},${w.toFixed(2)},${h.toFixed(2)}`}
       data-pegging-row-fault-count={String(faults.length)}
       style={{
@@ -198,19 +294,16 @@ export function Wave4PeggingRowSlot({
         }}
       >
         {playedCards.map((pc, i) => (
-          <div
-            key={i}
-            style={{ marginLeft: i === 0 ? 0 : -finalOverlap }}
-          >
-            <CribbagePlayingCard card={pc.card} widthPx={finalCardWidth} />
+          <div key={i} style={{ marginLeft: i === 0 ? 0 : -finalOverlap }}>
+            <CribbagePlayingCard card={pc.card} widthPx={cardWidthPx} />
           </div>
         ))}
         {playedCards.length === 0 && showEmptyPlaceholder && (
           <div
             className="border border-dashed border-white/20 rounded"
             style={{
-              width: `${finalCardWidth}px`,
-              height: `${finalCardHeight}px`,
+              width: `${cardWidthPx}px`,
+              height: `${cardHeightPx}px`,
             }}
           />
         )}

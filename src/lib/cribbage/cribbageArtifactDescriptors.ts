@@ -250,17 +250,28 @@ function cribCutGroup(): ArtifactDescriptor {
   };
 }
 
+/**
+ * Wave 5D — PeggingRow Anchored Migration.
+ *
+ * The pegging row is positioned entirely from
+ *   availableGameplayViewport + anchor + size.
+ * No band, no preferred size, no shrink/collapse, no group participation.
+ * Row rect is authoritative; cards adapt to fit.
+ */
 function peggingRow(): ArtifactDescriptor {
   return {
     id: "cribbage.peggingRow",
     owner: OWNER.cribbageFelt,
-    band: "play",
-    composeMode: "flow",
-    preferredSize: { width: vmin(50), height: vmin(9) },
-    minimumSize: { width: vmin(40), height: vmin(7) },
+    composeMode: "anchored",
+    preferredSize: { width: vmin(0), height: vmin(0) },
+    minimumSize: { width: vmin(0), height: vmin(0) },
     priority: 90,
-    collapsePriority: "late",
-    safeAreaDependencies: ["play", "bottomHud"],
+    collapsePriority: "never",
+    anchorX: 0.5,
+    anchorY: 0.72,
+    anchorOrigin: "center",
+    widthPct: 0.75,
+    heightPct: 0.15,
   };
 }
 
