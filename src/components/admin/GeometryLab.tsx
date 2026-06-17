@@ -231,13 +231,20 @@ export function GeometryLab({ userId }: { userId: string }) {
       updated_by: userId,
       updated_at: new Date().toISOString(),
     };
+    logGeometryLab("save_attempt", { artifactId, payload });
     const { error } = await supabase
       .from("geometry_overrides" as any)
       .upsert(payload as any, { onConflict: "artifact_id" });
     setSaving(false);
     if (error) {
+      logGeometryLab("save_failed", {
+        artifactId,
+        code: (error as { code?: string }).code,
+        message: error.message,
+      });
       toast.error(`Save failed: ${error.message}`);
     } else {
+      logGeometryLab("save_succeeded", { artifactId });
       toast.success("Geometry saved — all clients updating.");
     }
   }
@@ -248,16 +255,33 @@ export function GeometryLab({ userId }: { userId: string }) {
       return;
     }
     setSaving(true);
+    logGeometryLab("reset_attempt", { artifactId });
     const { error } = await supabase
       .from("geometry_overrides" as any)
       .delete()
       .eq("artifact_id", artifactId);
     setSaving(false);
     if (error) {
+      logGeometryLab("reset_failed", { artifactId, message: error.message });
       toast.error(`Reset failed: ${error.message}`);
     } else {
+      logGeometryLab("reset_succeeded", { artifactId });
       toast.success("Override cleared — descriptor defaults restored.");
     }
+  }
+
+  function handleConvertTo(target: "widthDriven" | "heightDriven") {
+    const w = num(form.widthPct);
+    const h = num(form.heightPct);
+    if (w == null || h == null || h <= 0 || w <= 0) {
+      toast.error("Need both widthPct and heightPct > 0 to compute aspectRatio.");
+      logGeometryLab("convert_blocked", { artifactId, target, w, h });
+      return;
+    }
+    const ar = w / h;
+    logGeometryLab("convert_applied", { artifactId, target, derivedAspectRatio: ar });
+    setForm((f) => ({ ...f, sizeMode: target, aspectRatio: ar.toFixed(4) }));
+    toast.success(`Converted to ${target}. aspectRatio = ${ar.toFixed(4)}. Press Save to persist.`);
   }
 
   return (
