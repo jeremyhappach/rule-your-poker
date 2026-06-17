@@ -2222,6 +2222,7 @@ export const MobileGameTable = ({
     setSoloVsChuckyTableLocked(false);
     setSoloVsChuckyPlayerIdLocked(null);
     soloVsChuckyAnimatedRef.current = false;
+    lonePlayerStageSnapshotRef.current = null;
     // Mark this handContextId so the capture effect knows not to re-capture stale data
     soloVsChuckyLockHandRef.current = handContextId ?? null;
     // CRITICAL: Also clear showdownModeLocked here — if it persists from the prior showdown hand,
