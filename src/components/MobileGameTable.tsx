@@ -6980,36 +6980,38 @@ export const MobileGameTable = ({
               artifactId={diceOpponentDiceStageId(gameType as DiceGameType)}
               innerStyle={{ pointerEvents: 'auto' }}
             >
-              <DiceTableLayout
-                key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
-                dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
-                  const showHeldVisual =
-                    typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
-                  return {
-                    ...die,
-                    isHeld: showHeldVisual,
-                  };
-                }) as (HorsesDieType | SCCDieType)[]}
-                isRolling={
-                  showDice && horsesController.isMyTurn
-                    ? horsesController.isRolling
-                    : false
-                }
-                canToggle={false}
-                size="md"
-                gameType={gameType ?? undefined}
-                showWildHighlight={gameType !== 'ship-captain-crew'}
-                useSCCDisplayOrder={gameType === 'ship-captain-crew'}
-                sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
-                isObserver={true}
-                hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
-                heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
-                previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
-                animationOrigin={getDiceAnimationOrigin()}
-                rollKey={(horsesController.feltDice as any)?.rollKey}
-                isQualified={(horsesController.feltDice as any)?.isQualified}
-                cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
-              />
+              <AssignedRectFitter>
+                <DiceTableLayout
+                  key={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
+                  dice={(showDice ? diceArray! : fallbackDice).map((die: any, i: number) => {
+                    const showHeldVisual =
+                      typeof rollsRemaining === "number" && rollsRemaining < 3 && !!die?.isHeld;
+                    return {
+                      ...die,
+                      isHeld: showHeldVisual,
+                    };
+                  }) as (HorsesDieType | SCCDieType)[]}
+                  isRolling={
+                    showDice && horsesController.isMyTurn
+                      ? horsesController.isRolling
+                      : false
+                  }
+                  canToggle={false}
+                  size="md"
+                  gameType={gameType ?? undefined}
+                  showWildHighlight={gameType !== 'ship-captain-crew'}
+                  useSCCDisplayOrder={gameType === 'ship-captain-crew'}
+                  sccHand={gameType === 'ship-captain-crew' ? { dice: (showDice ? diceArray! : fallbackDice) as SCCDieType[] } as SCCHand : undefined}
+                  isObserver={true}
+                  hideUnrolledDice={!((horsesController.feltDice as any)?.rollKey)}
+                  heldMaskBeforeComplete={(horsesController.feltDice as any)?.heldMaskBeforeComplete}
+                  previouslyHeldCount={(horsesController.feltDice as any)?.heldCountBeforeComplete}
+                  animationOrigin={getDiceAnimationOrigin()}
+                  rollKey={(horsesController.feltDice as any)?.rollKey}
+                  isQualified={(horsesController.feltDice as any)?.isQualified}
+                  cacheKey={`${horsesDealerGameId ?? 'no-dealer-game'}:${horsesRoundId ?? 'no-round'}:${(horsesController.feltDice as any)?.playerId ?? horsesController.currentTurnPlayerId ?? "no-turn"}`}
+                />
+              </AssignedRectFitter>
             </DiceAnchoredSlot>
           );
               })()}
