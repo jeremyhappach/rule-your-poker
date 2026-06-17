@@ -72,6 +72,7 @@ function matchesFilter(e: ShellLifecycleEvent, mode: FilterMode, text: string): 
 }
 
 export function ShellLifecyclePanel() {
+  const inTray = useInDebugTray();
   const [, forceVisibilityCheck] = useState(0);
   const events = useSyncExternalStore(
     subscribeShellLifecycle,
@@ -99,7 +100,12 @@ export function ShellLifecyclePanel() {
     [events, filter, text],
   );
 
-  if (!isShellLifecycleDebugEnabled()) return null;
+  // When rendered inside the DebugTray, the tray's presence IS the gate:
+  // the tray itself only mounts when debug UI is enabled. Skip every other
+  // localStorage / query-param / DEV check so the pill is always visible
+  // alongside WS GRID, SHELL LC, etc. Outside the tray, keep legacy gating
+  // so older fixed-position usages don't suddenly appear unexpectedly.
+  if (!inTray && !isShellLifecycleDebugEnabled()) return null;
 
   const handleCopy = async () => {
     const txt = formatShellLifecycleEventsAsText();
