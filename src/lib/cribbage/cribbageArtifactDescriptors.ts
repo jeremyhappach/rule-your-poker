@@ -193,6 +193,30 @@ function pegboard(): ArtifactDescriptor {
   };
 }
 
+/**
+ * Wave 5D — Phase 4. Anchored pegboard descriptor. Positioned entirely
+ * from `availableGameplayViewport` + anchor + size. No band, no preferred
+ * size, no shrink/collapse, no group participation.
+ */
+function pegboardAnchored(): ArtifactDescriptor {
+  return {
+    id: "cribbage.pegboard",
+    owner: OWNER.cribbageTable,
+    composeMode: "anchored",
+    // Required by the type but ignored by the anchored stage:
+    preferredSize: { width: vmin(0), height: vmin(0) },
+    minimumSize: { width: vmin(0), height: vmin(0) },
+    priority: 92,
+    collapsePriority: "never",
+    // Anchored fields:
+    anchorX: 0.5,
+    anchorY: 0.4,
+    anchorOrigin: "center",
+    widthPct: 0.72,
+    aspectRatio: 6,
+  };
+}
+
 function crib(): ArtifactDescriptor {
   return {
     id: "cribbage.crib",
