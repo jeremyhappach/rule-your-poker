@@ -32,6 +32,7 @@ import {
   getThreeFiveSevenArtifactDescriptors,
   type ThreeFiveSevenDescriptorOptions,
 } from "@/lib/threeFiveSeven/threeFiveSevenArtifactDescriptors";
+import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 export interface ThreeFiveSevenGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -66,12 +67,16 @@ export function ThreeFiveSevenGameplayGeometryProvider({
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
+  const overrides = useGeometryOverrides();
   const descriptors = useMemo(
     () =>
-      getThreeFiveSevenArtifactDescriptors({
-        winnerTabledCardsVisible,
-      }),
-    [winnerTabledCardsVisible],
+      applyGeometryOverrides(
+        getThreeFiveSevenArtifactDescriptors({
+          winnerTabledCardsVisible,
+        }),
+        overrides,
+      ),
+    [winnerTabledCardsVisible, overrides],
   );
 
   const value = useMemo<ThreeFiveSevenGameplayGeometryContextValue>(() => {

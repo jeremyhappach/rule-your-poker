@@ -922,6 +922,51 @@ export type Database = {
         }
         Relationships: []
       }
+      geometry_overrides: {
+        Row: {
+          anchor_origin: string | null
+          anchor_x: number | null
+          anchor_y: number | null
+          artifact_id: string
+          aspect_ratio: number | null
+          created_at: string
+          game: string
+          height_pct: number | null
+          size_mode: string
+          updated_at: string
+          updated_by: string | null
+          width_pct: number | null
+        }
+        Insert: {
+          anchor_origin?: string | null
+          anchor_x?: number | null
+          anchor_y?: number | null
+          artifact_id: string
+          aspect_ratio?: number | null
+          created_at?: string
+          game: string
+          height_pct?: number | null
+          size_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+          width_pct?: number | null
+        }
+        Update: {
+          anchor_origin?: string | null
+          anchor_x?: number | null
+          anchor_y?: number | null
+          artifact_id?: string
+          aspect_ratio?: number | null
+          created_at?: string
+          game?: string
+          height_pct?: number | null
+          size_mode?: string
+          updated_at?: string
+          updated_by?: string | null
+          width_pct?: number | null
+        }
+        Relationships: []
+      }
       insert_audit_log: {
         Row: {
           created_at: string

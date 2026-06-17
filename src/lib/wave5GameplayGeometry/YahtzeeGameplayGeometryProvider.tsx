@@ -30,6 +30,7 @@ import {
   getYahtzeeArtifactDescriptors,
   type YahtzeeDescriptorOptions,
 } from "@/lib/yahtzee/yahtzeeArtifactDescriptors";
+import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 export interface YahtzeeGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -62,13 +63,17 @@ export function YahtzeeGameplayGeometryProvider({
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
+  const overrides = useGeometryOverrides();
   const descriptors = useMemo(
     () =>
-      getYahtzeeArtifactDescriptors({
-        opponentDiceVisible,
-        scorecardVisible,
-      }),
-    [opponentDiceVisible, scorecardVisible],
+      applyGeometryOverrides(
+        getYahtzeeArtifactDescriptors({
+          opponentDiceVisible,
+          scorecardVisible,
+        }),
+        overrides,
+      ),
+    [opponentDiceVisible, scorecardVisible, overrides],
   );
 
   const value = useMemo<YahtzeeGameplayGeometryContextValue>(() => {

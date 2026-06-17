@@ -31,6 +31,7 @@ import {
   getHolmArtifactDescriptors,
   type HolmDescriptorOptions,
 } from "@/lib/holm/holmArtifactDescriptors";
+import { useGeometryOverrides, applyGeometryOverrides } from "@/lib/geometryLab/store";
 
 export interface HolmGameplayGeometryContextValue {
   placementsById: ReadonlyMap<string, ResolvedPlacement>;
@@ -67,14 +68,18 @@ export function HolmGameplayGeometryProvider({
   const lastValidRef = useRef<ReadonlyMap<string, ResolvedPlacement>>(EMPTY_MAP);
   const lastHashRef = useRef<string | null>(null);
 
+  const overrides = useGeometryOverrides();
   const descriptors = useMemo(
     () =>
-      getHolmArtifactDescriptors({
-        communityCardsVisible,
-        lonePlayerTabledCardsVisible,
-        chuckyVisible,
-      }),
-    [communityCardsVisible, lonePlayerTabledCardsVisible, chuckyVisible],
+      applyGeometryOverrides(
+        getHolmArtifactDescriptors({
+          communityCardsVisible,
+          lonePlayerTabledCardsVisible,
+          chuckyVisible,
+        }),
+        overrides,
+      ),
+    [communityCardsVisible, lonePlayerTabledCardsVisible, chuckyVisible, overrides],
   );
 
   const value = useMemo<HolmGameplayGeometryContextValue>(() => {

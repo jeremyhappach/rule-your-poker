@@ -35,6 +35,7 @@ import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5Ancho
 import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay";
 import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
 import { HIDE_DEBUG_UI } from '@/lib/debugUIVisibility';
+import { GeometryOverridesLoader } from '@/lib/geometryLab/GeometryOverridesLoader';
 
 
 
@@ -76,6 +77,7 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ResponsiveGeometryProvider>
+          <GeometryOverridesLoader />
           <Toaster />
           <Sonner />
           <BrowserRouter>
