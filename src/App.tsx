@@ -101,6 +101,7 @@ const App = () => {
               <LifecycleDebugBadge />
               <LayoutFaultBadge />
               <Wave5ContractViolationBadge />
+              {/*!HIDE_DEBUG_UI && (*/}
               {/*
                 Single canonical Debug Tray. Pinned to the bottom of the
                 viewport (above the iOS browser toolbar via safe-area inset).
@@ -115,12 +116,23 @@ const App = () => {
                 <LegacyDebugPanels />
                 <WartimeDebugPanel />
                 <Wave5ViewportOverlayToggle />
-                <Wave5GridOverlayToggle />
                 <Wave5SeatReserveOverlayToggle />
                 <Wave5AnchoredProbeToggle />
                 <Wave5OversizedProbeToggle />
-                
               </DebugTray>
+              {/*!HIDE_DEBUG_UI )*/}
+              {/* W5 GRID is always available, even when HIDE_DEBUG_UI is true */}
+              <div
+                style={{
+                  position: 'fixed',
+                  right: 8,
+                  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+                  zIndex: 2147483647,
+                  pointerEvents: 'auto',
+                }}
+              >
+                <Wave5GridOverlayToggle />
+              </div>
 
             </AppNetworkSim>
           </BrowserRouter>
