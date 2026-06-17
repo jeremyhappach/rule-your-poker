@@ -2065,6 +2065,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     prevGameTypeRef.current = currentType;
   }, [game?.game_type, clearLiftedCardCaches]);
 
+  // Auto-enable SHELL LC panel for game types we are actively debugging
+  // (Holm). Clears on unmount / when leaving the game.
+  useEffect(() => {
+    setShellLifecycleActiveGameType(game?.game_type ?? null);
+    return () => setShellLifecycleActiveGameType(null);
+  }, [game?.game_type]);
+
+
   // AGGRESSIVE: Guard against any code path repopulating caches while in dealer config flow
   const dealerConfigGuardFiredRef = useRef(false);
   useEffect(() => {
