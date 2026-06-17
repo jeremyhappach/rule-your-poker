@@ -445,6 +445,13 @@ export const CribbageMobileGameTable = ({
   // SHELL LC: mount marker for comparative branch-swap evidence.
   useLifecycleMount('CribbageMobileGameTable');
   const { getTableColors, getCardBackColors } = useVisualPreferences();
+  // Wave 5D Phase 4A.1 — Cleanup blocker #2.
+  // When anchored, the pegboard must NOT inherit the felt-content
+  // `translateY(6%)` ancestor transform — assigned anchored rect must
+  // equal rendered DOM rect. We render the slot OUTSIDE the translateY
+  // wrapper (but still inside the canonical felt frame) when this is on.
+  const wave5dAnchoredPegboardOn = useCribbageAnchoredPegboardFlag();
+
 
 
   // ── Lifecycle instrumentation ─────────────────────────────────
