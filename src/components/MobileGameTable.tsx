@@ -84,6 +84,11 @@ import { DiceTableLayout } from "./DiceTableLayout";
 import { DiceGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/DiceGameplayGeometryProvider";
 import { DiceAnchoredSlot } from "./DiceAnchoredSlot";
 import {
+  HolmGameplayGeometryProvider,
+  useHolmGameplayGeometry,
+} from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
+import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
+import {
   diceBeatBadgeId,
   diceOpponentDiceStageId,
   type DiceGameType,
