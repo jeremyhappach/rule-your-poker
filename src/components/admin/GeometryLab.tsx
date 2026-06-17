@@ -103,13 +103,27 @@ export function GeometryLab({ userId }: { userId: string }) {
     });
   }, [artifacts]);
 
-  const [artifactId, setArtifactId] = useState<string>(
+  const [artifactId, setArtifactIdRaw] = useState<string>(
     sortedArtifacts[0]?.id ?? "",
   );
+  const setArtifactId = (id: string) => {
+    logGeometryLab("artifact_changed", { from: artifactId, to: id, game });
+    setArtifactIdRaw(id);
+  };
+
+  useEffect(() => {
+    logGeometryLab("game_changed", { game });
+  }, [game]);
 
   useEffect(() => {
     if (!sortedArtifacts.some((a) => a.id === artifactId)) {
-      setArtifactId(sortedArtifacts[0]?.id ?? "");
+      const next = sortedArtifacts[0]?.id ?? "";
+      logGeometryLab("artifact_auto_reset", {
+        previous: artifactId,
+        next,
+        reason: "not in sorted list for current game",
+      });
+      setArtifactIdRaw(next);
     }
   }, [sortedArtifacts, artifactId]);
 
@@ -134,31 +148,48 @@ export function GeometryLab({ userId }: { userId: string }) {
   // Hydrate form from override (if any) layered over the canonical descriptor.
   useEffect(() => {
     if (!descriptor) return;
-    const o = override;
-    const descSizeMode = deriveSizeMode(descriptor);
-    const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
+    try {
+      const o = override;
+      const descSizeMode = deriveSizeMode(descriptor);
+      const sizeMode: SizeMode = o?.size_mode ?? descSizeMode;
 
-    setForm({
-      anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
-      anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
-      anchorOrigin: (o?.anchor_origin ??
-        descriptor.anchorOrigin ??
-        "center") as AnchorOrigin,
-      sizeMode,
-      widthPct:
-        o?.width_pct != null
-          ? String(o.width_pct)
-          : stringifyOptional(descriptor.widthPct),
-      heightPct:
-        o?.height_pct != null
-          ? String(o.height_pct)
-          : stringifyOptional(descriptor.heightPct),
-      aspectRatio:
-        o?.aspect_ratio != null
-          ? String(o.aspect_ratio)
-          : stringifyOptional(descriptor.aspectRatio),
-    });
+      setForm({
+        anchorX: String(o?.anchor_x ?? descriptor.anchorX ?? 0.5),
+        anchorY: String(o?.anchor_y ?? descriptor.anchorY ?? 0.5),
+        anchorOrigin: (o?.anchor_origin ??
+          descriptor.anchorOrigin ??
+          "center") as AnchorOrigin,
+        sizeMode,
+        widthPct:
+          o?.width_pct != null
+            ? String(o.width_pct)
+            : stringifyOptional(descriptor.widthPct),
+        heightPct:
+          o?.height_pct != null
+            ? String(o.height_pct)
+            : stringifyOptional(descriptor.heightPct),
+        aspectRatio:
+          o?.aspect_ratio != null
+            ? String(o.aspect_ratio)
+            : stringifyOptional(descriptor.aspectRatio),
+      });
+    } catch (err) {
+      logGeometryLab("hydrate_failed", {
+        artifactId,
+        error: (err as Error)?.message ?? String(err),
+      });
+      throw err;
+    }
   }, [artifactId, override, descriptor]);
+
+  // Record snapshot for the crash boundary on every render.
+  recordGeometryLabContext({
+    game,
+    artifactId,
+    routeBeforeCrash:
+      typeof window !== "undefined" ? window.location.pathname : "(ssr)",
+    unsavedForm: { ...form },
+  });
 
   if (!descriptor) {
     return (
