@@ -31,6 +31,8 @@ import { DebugTray } from "@/lib/debugTray/DebugTray";
 import { Wave5ViewportOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5ViewportOverlay";
 import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5SeatReserveOverlay";
 import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay";
+import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay";
+import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
 
 
 
@@ -97,6 +99,7 @@ const App = () => {
               </Routes>
               <LifecycleDebugBadge />
               <LayoutFaultBadge />
+              <Wave5ContractViolationBadge />
               {/*
                 Single canonical Debug Tray. Pinned to the bottom of the
                 viewport (above the iOS browser toolbar via safe-area inset).
@@ -113,6 +116,7 @@ const App = () => {
                 <Wave5ViewportOverlayToggle />
                 <Wave5SeatReserveOverlayToggle />
                 <Wave5AnchoredProbeToggle />
+                <Wave5OversizedProbeToggle />
               </DebugTray>
 
             </AppNetworkSim>

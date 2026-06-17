@@ -1,23 +1,23 @@
 /**
- * Wave5AnchoredProbeOverlay — TEMPORARY synthetic test descriptor.
+ * Wave5OversizedProbeOverlay — TEMPORARY synthetic FAILURE descriptor.
  *
- * Mounts a single anchored ArtifactDescriptor through the resolver to
- * visually verify Wave 5D Phase 2's anchored composeMode end-to-end:
+ * Mounts an anchored descriptor that is deliberately too large to fit
+ * inside `availableGameplayViewport` so we can prove the Phase 3
+ * DOM-bounds contract fires `wave5:contract_violation` with correct
+ * overflow values.
  *
  *   anchorX 0.5, anchorY 0.5, anchorOrigin 'center',
- *   widthPct 0.40, aspectRatio 2 (height = width / 2)
+ *   widthPct 0.95, aspectRatio 0.25   →  height = width / 0.25 = 3.8w
  *
- * Renders the resolved rect (felt-vmin) over the canonical felt as a
- * dashed box labelled `ANCHORED PROBE`. If the box visibly tracks the
- * center of the gameplay viewport across orientations and the moment
- * you change anchorX/anchorY in the source it moves with no other
- * artifact affected, anchored mode is correctly wired.
+ * The framework MUST NOT clip, hide, reposition, or shrink. The probe
+ * is rendered at its assigned (overflowing) rect verbatim; the contract
+ * hook detects the overflow and emits the violation.
  *
  * Contract:
  *  - pointer-events: none
- *  - shell-owned toggle only (localStorage `ptp_wave5_anchored_probe`
- *    or URL `?wave5_anchored_probe=1`)
- *  - DELETE once gameplay descriptors begin migrating to anchored.
+ *  - shell-owned toggle only (localStorage `ptp_wave5_oversized_probe`
+ *    or URL `?wave5_oversized_probe=1`)
+ *  - DELETE once anchored gameplay artifacts begin migrating.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -31,14 +31,14 @@ import {
 import { useDomBoundsContract } from "./useDomBoundsContract";
 import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
 
-const STORAGE_KEY = "ptp_wave5_anchored_probe";
-const EVENT_NAME = "ptp:wave5-anchored-probe-changed";
+const STORAGE_KEY = "ptp_wave5_oversized_probe";
+const EVENT_NAME = "ptp:wave5-oversized-probe-changed";
 
 function readFlag(): boolean {
   try {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
-    const q = params.get("wave5_anchored_probe");
+    const q = params.get("wave5_oversized_probe");
     if (q === "1" || q === "true") return true;
     if (q === "0" || q === "false") return false;
     return window.localStorage.getItem(STORAGE_KEY) === "1";
@@ -71,32 +71,29 @@ function useEnabled(): boolean {
   return enabled;
 }
 
-// Synthetic descriptor — the only place an anchored descriptor exists today.
-const PROBE_DESCRIPTOR: ArtifactDescriptor = {
-  id: "wave5.anchoredProbe",
+const OVERSIZED_DESCRIPTOR: ArtifactDescriptor = {
+  id: "wave5.oversizedProbe",
   owner: "wave5.diagnostic",
   composeMode: "anchored",
-  // Required by the type but ignored by the anchored stage:
   preferredSize: { width: vmin(0), height: vmin(0) },
   minimumSize: { width: vmin(0), height: vmin(0) },
   priority: 0,
   collapsePriority: "never",
-  // Anchored fields:
   anchorX: 0.5,
   anchorY: 0.5,
   anchorOrigin: "center",
-  widthPct: 0.4,
-  aspectRatio: 2,
+  widthPct: 0.95,
+  aspectRatio: 0.25, // very tall — guaranteed to overflow
 };
 
-export function Wave5AnchoredProbeOverlay() {
+export function Wave5OversizedProbeOverlay() {
   const enabled = useEnabled();
   const { geometry, vminInPx } = useLiveGeometryConstraints();
   const ref = useRef<HTMLDivElement | null>(null);
 
   const layout = useMemo(() => {
     if (!geometry) return null;
-    return resolveLayout([PROBE_DESCRIPTOR], geometry);
+    return resolveLayout([OVERSIZED_DESCRIPTOR], geometry);
   }, [geometry]);
 
   const viewport = useMemo(() => {
@@ -104,8 +101,9 @@ export function Wave5AnchoredProbeOverlay() {
     return deriveAvailableGameplayViewport(geometry).viewport;
   }, [geometry]);
 
-  const placement = layout?.placements.find((p) => p.id === PROBE_DESCRIPTOR.id);
-  const visible = !!placement && placement.visible;
+  const placement = layout?.placements.find(
+    (p) => p.id === OVERSIZED_DESCRIPTOR.id,
+  );
 
   const assignedRect = useMemo(() => {
     if (!placement) return { x: 0, y: 0, width: 0, height: 0 };
@@ -128,31 +126,27 @@ export function Wave5AnchoredProbeOverlay() {
   }, [viewport]);
 
   useDomBoundsContract(ref, {
-    artifactId: PROBE_DESCRIPTOR.id,
+    artifactId: OVERSIZED_DESCRIPTOR.id,
     assignedRect,
     availableGameplayViewport: viewportRect,
     vminInPx,
-    enabled: enabled && visible && vminInPx > 0,
+    enabled: enabled && !!placement && placement.visible && vminInPx > 0,
   });
 
-  if (!enabled || !layout || vminInPx <= 0) return null;
-  if (!placement || !visible) return null;
+  if (!enabled || !placement || !placement.visible || vminInPx <= 0) {
+    return null;
+  }
 
-  const r = placement.rect;
-  const x = r.x.value * vminInPx;
-  const y = r.y.value * vminInPx;
-  const w = r.width.value * vminInPx;
-  const h = r.height.value * vminInPx;
+  const x = assignedRect.x * vminInPx;
+  const y = assignedRect.y * vminInPx;
+  const w = assignedRect.width * vminInPx;
+  const h = assignedRect.height * vminInPx;
   if (w <= 0 || h <= 0) return null;
-
-  const outside = layout.faults.some(
-    (f) => f.code === "anchored_outside_viewport",
-  );
 
   return (
     <div
       ref={ref}
-      data-wave5-anchored-probe=""
+      data-wave5-oversized-probe=""
       aria-hidden="true"
       style={{
         position: "absolute",
@@ -161,15 +155,13 @@ export function Wave5AnchoredProbeOverlay() {
         width: w,
         height: h,
         pointerEvents: "none",
-        zIndex: 7,
-        background: outside
-          ? "rgba(248, 113, 113, 0.18)"
-          : "rgba(132, 204, 22, 0.14)",
-        border: outside
-          ? "1.5px dashed rgba(248,113,113,0.95)"
-          : "1.5px dashed rgba(132,204,22,0.95)",
+        zIndex: 8,
+        background: "rgba(244, 63, 94, 0.16)", // rose-500
+        border: "1.5px dashed rgba(244,63,94,0.95)",
         boxSizing: "border-box",
         borderRadius: 3,
+        // NO overflow:hidden. NO clip. NO transform. The framework
+        // must NOT save the descriptor from itself.
       }}
     >
       <div
@@ -187,15 +179,15 @@ export function Wave5AnchoredProbeOverlay() {
           whiteSpace: "pre",
         }}
       >
-        {`ANCHORED PROBE${outside ? " · OUTSIDE" : ""}
+        {`OVERSIZED PROBE · contract MUST fail
 anchor 0.50 / 0.50 center
-w% 0.40 · aspect 2`}
+w% 0.95 · aspect 0.25`}
       </div>
     </div>
   );
 }
 
-export function Wave5AnchoredProbeToggle() {
+export function Wave5OversizedProbeToggle() {
   const enabled = useEnabled();
   if (HIDE_DEBUG_UI) return null;
   return (
@@ -204,8 +196,8 @@ export function Wave5AnchoredProbeToggle() {
       onClick={() => setFlag(!enabled)}
       title={
         enabled
-          ? "Hide Wave 5D anchored probe descriptor"
-          : "Show Wave 5D anchored probe descriptor"
+          ? "Hide Wave 5D oversized contract-violation probe"
+          : "Show Wave 5D oversized contract-violation probe"
       }
       style={{
         pointerEvents: "auto",
@@ -215,18 +207,18 @@ export function Wave5AnchoredProbeToggle() {
         lineHeight: 1,
         padding: "5px 7px",
         borderRadius: 6,
-        border: "1px solid rgba(132,204,22,0.65)",
+        border: "1px solid rgba(244,63,94,0.7)",
         background: enabled
-          ? "rgba(132,204,22,0.85)"
+          ? "rgba(244,63,94,0.85)"
           : "rgba(15,23,42,0.75)",
-        color: enabled ? "#0a1500" : "rgba(217,249,157,0.95)",
+        color: enabled ? "#1a0008" : "rgba(254,205,211,0.95)",
         backdropFilter: "blur(4px)",
         fontWeight: 600,
         letterSpacing: 0.4,
         cursor: "pointer",
       }}
     >
-      W5 ANCHORED
+      W5 OVERSIZED
     </button>
   );
 }
