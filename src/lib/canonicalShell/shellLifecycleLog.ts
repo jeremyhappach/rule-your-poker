@@ -59,8 +59,12 @@ const t0 =
 // stream without query params or localStorage hacks. Cleared on unmount.
 let _activeGameType: string | null = null;
 export function setShellLifecycleActiveGameType(gameType: string | null): void {
+  if (_activeGameType === gameType) return;
   _activeGameType = gameType;
+  // Notify panel subscribers so visibility re-evaluates immediately.
+  for (const l of listeners) { try { l(); } catch { /* */ } }
 }
+
 
 const AUTO_ENABLED_GAME_TYPES = new Set(['holm-game']);
 
