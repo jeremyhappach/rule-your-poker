@@ -144,7 +144,7 @@ function buildColumnGroup(
   // priority NEVER reorders.
   const columnChildren: GroupChildSlot[] = [];
 
-  if (leavesById.has(PEGBOARD_ID)) {
+  if (opts.includePegboard && leavesById.has(PEGBOARD_ID)) {
     columnChildren.push({
       id: PEGBOARD_ID,
       kind: "leaf",
