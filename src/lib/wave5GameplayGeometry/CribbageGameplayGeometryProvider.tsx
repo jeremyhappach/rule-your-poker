@@ -139,17 +139,13 @@ function buildColumnGroup(
     collapseOrder: 1,
   });
 
-  // XOR: peggingRow vs countingRow. The factory emits exactly one.
-  const xorId = leavesById.has(COUNTING_ROW_ID)
-    ? COUNTING_ROW_ID
-    : leavesById.has(PEGGING_ROW_ID)
-      ? PEGGING_ROW_ID
-      : null;
-  if (xorId) {
+  // Wave 5D — PeggingRow graduated to anchored. Only countingRow
+  // participates in the column flow now.
+  if (leavesById.has(COUNTING_ROW_ID)) {
     columnChildren.push({
-      id: xorId,
+      id: COUNTING_ROW_ID,
       kind: "leaf",
-      leafRef: xorId,
+      leafRef: COUNTING_ROW_ID,
       shrinkOrder: 5,
       collapseOrder: "never",
     });
