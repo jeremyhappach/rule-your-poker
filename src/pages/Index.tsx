@@ -57,6 +57,7 @@ import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog"
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { LayoutTuningAdminSection } from "@/components/admin/LayoutTuningAdminSection";
 import { GeometryLab } from "@/components/admin/GeometryLab";
+import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
 import { formatChipValue } from "@/lib/utils";
 import { useLastSeenTracker } from "@/hooks/useLastSeenTracker";
 import { invalidateTimerSettingsCache } from "@/hooks/useGlobalTimerSettings";
