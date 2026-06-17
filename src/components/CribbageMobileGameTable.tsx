@@ -450,7 +450,7 @@ export const CribbageMobileGameTable = ({
   // `translateY(6%)` ancestor transform — assigned anchored rect must
   // equal rendered DOM rect. We render the slot OUTSIDE the translateY
   // wrapper (but still inside the canonical felt frame) when this is on.
-  const wave5dAnchoredPegboardOn = useCribbageAnchoredPegboardFlag();
+  
 
 
 
