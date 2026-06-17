@@ -128,6 +128,7 @@ export function Wave4PeggingRowSlot({
     // Legacy fallback — fixed sizes acceptable here per Phase 4B.1 scope.
     return (
       <div
+        ref={slotRef}
         data-wave4-pegging-row-slot="fallback"
         data-pegging-row-fallback-used="true"
         data-pegging-row-parent-id={placement?.parentId ?? ""}
