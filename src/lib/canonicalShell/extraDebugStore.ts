@@ -39,6 +39,13 @@ export interface DealerDbgEntry {
   opponentDealerVisible: Record<string, boolean>;
   identitySource: string;
   seatClusterSource: string;
+  // DOM-scraped per-opponent dealer pip diagnostics:
+  dealerPipMounted: Record<string, boolean>;
+  dealerPipActiveAttr: Record<string, string>;
+  dealerPipVisible: Record<string, boolean>; // computedStyle visibility !== invisible
+  dealerPipRect: Record<string, string>;     // "x,y,w,h" or "0,0,0,0"
+  dealerPipZ: Record<string, string>;        // z-index chain (own / nearest stacking)
+  dealerPipClipped: Record<string, boolean>; // rect outside cluster ancestor bounds
 }
 
 export interface SeatOwnershipEntry {
@@ -49,6 +56,12 @@ export interface SeatOwnershipEntry {
   chipDiscVisible: Record<string, boolean>;
   animationChipVisible: boolean;
   chipDiscCount: number;
+  // Suppression diagnostics per opponent:
+  hideChipBubbleProp: Record<string, boolean>;    // what JSX passed
+  hideChipBubbleSource: Record<string, string>;   // why
+  domChipDiscPresent: Record<string, boolean>;    // [data-chip-center] under cluster
+  domChipFlyCount: number;                        // [data-cribbage-chip-fly] count
+  shouldSuppressChipDisc: Record<string, boolean>;
 }
 
 export interface DealerAffordanceEntry {
