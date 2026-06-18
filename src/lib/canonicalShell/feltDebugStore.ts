@@ -25,7 +25,7 @@ export interface FeltDebugEntry {
 }
 
 const MAX_ENTRIES = 20;
-const entries: FeltDebugEntry[] = [];
+let entries: FeltDebugEntry[] = [];
 const listeners = new Set<() => void>();
 
 function signature(e: Omit<FeltDebugEntry, 'ts'>): string {
@@ -38,18 +38,19 @@ export function recordFeltDebug(entry: Omit<FeltDebugEntry, 'ts'>): void {
   const sig = signature(entry);
   if (sig === lastSig) return;
   lastSig = sig;
-  entries.push({ ...entry, ts: Date.now() });
-  if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES);
+  const next = entries.concat({ ...entry, ts: Date.now() });
+  entries = next.length > MAX_ENTRIES ? next.slice(next.length - MAX_ENTRIES) : next;
   listeners.forEach((l) => {
     try { l(); } catch { /* noop */ }
   });
 }
 
 export function getFeltDebugEntries(): FeltDebugEntry[] {
-  return entries.slice();
+  return entries;
 }
 
 export function subscribeFeltDebug(listener: () => void): () => void {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
+
