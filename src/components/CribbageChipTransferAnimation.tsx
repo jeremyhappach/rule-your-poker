@@ -117,6 +117,8 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
     return (
       <div
         key={anim.id}
+        data-cribbage-chip-fly=""
+        data-cribbage-chip-fly-loser={anim.loserId}
         className="fixed pointer-events-none"
         style={{
           left: anim.fromX,
