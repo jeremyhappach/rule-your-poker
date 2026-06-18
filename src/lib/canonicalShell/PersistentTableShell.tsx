@@ -53,7 +53,42 @@ import {
   CanonicalAnnouncementProvider,
   CanonicalCelebrationLayer,
   CanonicalAnnouncementDebugTrigger,
+  useAnnouncementContext,
 } from './announcements';
+
+/**
+ * Lobby-mode announcement reset. When the shell transitions into
+ * lobby identity (post-game waiting, timeout-with-insufficient-players
+ * abandonment, fresh waiting, etc.), any ambient or transient
+ * announcement that lingers from the prior gameplay phase
+ * ("Hap wins with 3 5s", "$5 ante", etc.) MUST be cleared so the
+ * waiting table is visually indistinguishable from a fresh lobby.
+ *
+ * Lives inside CanonicalAnnouncementProvider so it can dispatch
+ * clearAmbient / dismiss against the same context the rail consumes.
+ */
+function LobbyAnnouncementReset({ lobbyMode }: { lobbyMode: boolean }) {
+  const ctx = useAnnouncementContext();
+  const prevRef = useRef(false);
+  useEffect(() => {
+    const wasLobby = prevRef.current;
+    prevRef.current = lobbyMode;
+    if (!lobbyMode || !ctx) return;
+    // Edge: clear on the transition into lobby. Also clear on the
+    // first paint when we mount already in lobby (wasLobby === false).
+    if (wasLobby) return;
+    ctx.clearAmbient();
+    if (ctx.transient?.id) ctx.dismiss(ctx.transient.id);
+  }, [lobbyMode, ctx]);
+  // Also reactively dismiss any NEW gameplay ambient/transient that
+  // arrives while we're in lobby (late-firing publisher cleanup).
+  useEffect(() => {
+    if (!lobbyMode || !ctx) return;
+    if (ctx.ambient) ctx.clearAmbient();
+    if (ctx.transient?.id) ctx.dismiss(ctx.transient.id);
+  }, [lobbyMode, ctx, ctx?.ambient?.id, ctx?.transient?.id]);
+  return null;
+}
 import { ShellTabBarProvider } from './ShellTabBar';
 import { ShellTimerProvider } from './ShellTimerRail';
 // P9.6: ShellPreHandSurface removed — gameplay surfaces (e.g. Gin Rummy)
