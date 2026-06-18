@@ -5471,6 +5471,52 @@ export const CribbageMobileGameTable = ({
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
+  // DEALER DBG + SEAT OWNERSHIP pill emitters.
+  useEffect(() => {
+    const dealerId = viewState?.dealerPlayerId ?? null;
+    const opponentPlayerIds = projectedSeatPlayers
+      .filter(p => p.id !== currentPlayerId)
+      .map(p => p.id);
+    const opponentDealerVisible: Record<string, boolean> = {};
+    for (const oppId of opponentPlayerIds) {
+      opponentDealerVisible[oppId.slice(0, 6)] = !!dealerId && dealerId === oppId;
+    }
+    dealerDbgStore.record({
+      context: 'cribbage',
+      dealerPlayerId: dealerId ? dealerId.slice(0, 8) : null,
+      localPlayerId: currentPlayerId ? currentPlayerId.slice(0, 8) : null,
+      opponentPlayerIds: opponentPlayerIds.map(id => id.slice(0, 8)),
+      localDealerVisible: !!dealerId && dealerId === currentPlayerId,
+      opponentDealerVisible,
+      identitySource: 'viewState.dealerPlayerId',
+      seatClusterSource: 'viewState.dealerPlayerId',
+    });
+  }, [viewState?.dealerPlayerId, currentPlayerId, projectedSeatPlayers]);
+
+  useEffect(() => {
+    const losers = storedChipPositions?.losers ?? [];
+    const chipDiscVisible: Record<string, boolean> = {};
+    for (const p of projectedSeatPlayers) {
+      if (p.id === currentPlayerId) continue;
+      const isLoser = losers.some(l => l.playerId === p.id);
+      const animActive = winSequencePhase === 'chips';
+      chipDiscVisible[p.id.slice(0, 6)] = !(animActive && isLoser);
+    }
+    const animationChipVisible = winSequencePhase === 'chips' && losers.length > 0;
+    const staticChips = Object.values(chipDiscVisible).filter(Boolean).length;
+    const animChips = animationChipVisible ? losers.length : 0;
+    seatOwnershipStore.record({
+      context: 'cribbage',
+      winSequencePhase,
+      canonicalSeat: 'CanonicalSeatCluster',
+      legacySeat: 'none',
+      chipDiscVisible,
+      animationChipVisible,
+      chipDiscCount: staticChips + animChips,
+    });
+  }, [winSequencePhase, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
+
+
   // Determine current render mode for felt content (not layout — layout is always the same shell)
   // BUG A FIX: Bootstrap depends on renderHandKey (presentation identity), NOT viewState existence.
   // viewState can be non-null while renderHandKey is still empty during state-layer mismatch.
