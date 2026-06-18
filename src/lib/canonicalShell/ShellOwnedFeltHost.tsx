@@ -29,6 +29,7 @@ import {
 } from './CanonicalFeltSurface';
 import type { FeltPlateMode } from './feltPlateMode';
 import { Wave5GridOverlay } from '@/lib/wave5GameplayGeometry/Wave5GridOverlay';
+import { recordFeltDebug } from './feltDebugStore';
 
 // Re-export so non-shell call sites can reference the type without
 // importing from the canonical felt module directly (preserves the
@@ -233,6 +234,7 @@ export function ShellOwnedFeltHost({
   lobbyMode = false,
 }: ShellOwnedFeltHostProps) {
   const published = useShellFeltState();
+  const frameRef = useRef(0);
 
   // Sticky last-non-null snapshot. Surfaces unmount/remount across
   // phase boundaries; each cleanup momentarily publishes `null` before
@@ -301,9 +303,26 @@ export function ShellOwnedFeltHost({
 
   useEffect(() => {
     if (import.meta.env.PROD) return;
+    frameRef.current++;
     // eslint-disable-next-line no-console
     console.info('[ShellOwnedFelt] render context', hostTrace);
-  }, [hostTrace]);
+
+    recordFeltDebug({
+      publisher: publisherLabel,
+      publisherTable: 'ShellOwnedFeltHost',
+      renderedPlate: feltPlateMode,
+      renderedGame: gameKind,
+      renderedStakes: anteAmount,
+      renderSource: lobbyMode ? 'lobby' : (published ? 'published' : (stickyRef.current ? 'sticky' : 'initial')),
+      renderFrame: frameRef.current,
+      publishedGame: published?.gameKind ?? null,
+      publishedStakes: published?.anteAmount ?? null,
+      publishedPlate: published?.feltPlateMode ?? null,
+      stickyGame: stickyRef.current?.gameKind ?? null,
+      stickyStakes: stickyRef.current?.anteAmount ?? null,
+      stickyPlate: stickyRef.current?.feltPlateMode ?? null,
+    });
+  }, [hostTrace, lobbyMode, published]);
 
   useShellFeltInvariant();
 

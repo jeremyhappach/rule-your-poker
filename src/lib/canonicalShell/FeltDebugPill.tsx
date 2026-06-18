@@ -22,35 +22,49 @@ function fmtTime(ts: number): string {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   const ss = String(d.getSeconds()).padStart(2, '0');
-  return `${hh}:${mm}:${ss}`;
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${hh}:${mm}:${ss}.${ms}`;
 }
 
 function entryToText(e: FeltDebugEntry): string {
-  return [
-    fmtTime(e.ts),
-    '',
-    `phase: ${e.phase}`,
-    `status: ${e.status}`,
-    `committedDealerGameReason: ${e.committedDealerGameReason}`,
-    '',
-    `isSessionWaitingTable: ${e.isSessionWaitingTable}`,
-    `hasCommittedDealerGame: ${e.hasCommittedDealerGame}`,
-    `hasRoundContext: ${e.hasRoundContext}`,
-    '',
-    `selectedDealerGame: ${e.selectedDealerGame ?? 'none'}`,
-    `selectedStakes: ${e.selectedStakes ?? 'none'}`,
-    '',
-    `displayPlate: ${e.displayPlate}`,
-    `displayGame: ${e.displayGame}`,
-    `displayStakes: ${e.displayStakes}`,
-    '',
-    `gameSource: ${e.gameSource}`,
-    `stakesSource: ${e.stakesSource}`,
-    '',
-    `legacyIsWaitingPhase: ${e.legacyIsWaitingPhase}`,
-    `legacyCanInfluenceFeltPlate: ${e.legacyCanInfluenceFeltPlate}`,
-    `fallbackReason: ${e.fallbackReason}`,
-  ].join('\n');
+  const lines = [fmtTime(e.ts), ''];
+
+  if (e.renderFrame !== undefined) {
+    lines.push(`--- RENDER (Frame ${e.renderFrame}) ---`);
+    lines.push(`publisher: ${e.publisher ?? 'none'}`);
+    lines.push(`source: ${e.renderSource}`);
+    lines.push(`plate: ${e.renderedPlate}`);
+    lines.push(`game: ${e.renderedGame ?? 'none'}`);
+    lines.push(`stakes: ${e.renderedStakes ?? 'none'}`);
+    lines.push('');
+    lines.push(`[published] ${e.publishedPlate ?? 'null'} ${e.publishedGame ?? 'null'} ${e.publishedStakes ?? 'null'}`);
+    lines.push(`[sticky]    ${e.stickyPlate ?? 'null'} ${e.stickyGame ?? 'null'} ${e.stickyStakes ?? 'null'}`);
+  } else {
+    lines.push(`--- PUBLISH ---`);
+    lines.push(`phase: ${e.phase}`);
+    lines.push(`status: ${e.status}`);
+    lines.push(`committedDealerGameReason: ${e.committedDealerGameReason}`);
+    lines.push('');
+    lines.push(`isSessionWaitingTable: ${e.isSessionWaitingTable}`);
+    lines.push(`hasCommittedDealerGame: ${e.hasCommittedDealerGame}`);
+    lines.push(`hasRoundContext: ${e.hasRoundContext}`);
+    lines.push('');
+    lines.push(`selectedDealerGame: ${e.selectedDealerGame ?? 'none'}`);
+    lines.push(`selectedStakes: ${e.selectedStakes ?? 'none'}`);
+    lines.push('');
+    lines.push(`displayPlate: ${e.displayPlate}`);
+    lines.push(`displayGame: ${e.displayGame}`);
+    lines.push(`displayStakes: ${e.displayStakes}`);
+    lines.push('');
+    lines.push(`gameSource: ${e.gameSource}`);
+    lines.push(`stakesSource: ${e.stakesSource}`);
+    lines.push('');
+    lines.push(`legacyIsWaitingPhase: ${e.legacyIsWaitingPhase}`);
+    lines.push(`legacyCanInfluenceFeltPlate: ${e.legacyCanInfluenceFeltPlate}`);
+    lines.push(`fallbackReason: ${e.fallbackReason}`);
+  }
+
+  return lines.join('\n');
 }
 
 export function FeltDebugPill() {
@@ -120,7 +134,7 @@ export function FeltDebugPill() {
             lineHeight: 1.2,
           }}
         >
-          FELT · {latest ? latest.displayPlate : '—'} · {latest?.status ?? 'idle'}
+          FELT · {latest ? (latest.renderedPlate ?? latest.displayPlate) : '—'} · {latest?.status ?? latest?.renderSource ?? 'idle'}
         </button>
       ) : (
         <div

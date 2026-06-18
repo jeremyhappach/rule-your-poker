@@ -19,24 +19,39 @@ export type CommittedDealerGameReason =
 
 export interface FeltDebugEntry {
   ts: number; // epoch ms
-  phase: string;
-  status: string;
-  committedDealerGameReason: CommittedDealerGameReason;
-  isSessionWaitingTable: boolean;
-  hasCommittedDealerGame: boolean;
-  hasRoundContext: boolean;
-  selectedDealerGame: string | null;
-  selectedStakes: number | string | null;
-  displayPlate: 'BRAND' | 'GAME' | 'AMBIGUOUS';
-  displayGame: string;
-  displayStakes: string;
-  gameSource: string;
-  stakesSource: string;
-  fallbackReason: string;
+  phase?: string;
+  status?: string;
+  committedDealerGameReason?: CommittedDealerGameReason;
+  isSessionWaitingTable?: boolean;
+  hasCommittedDealerGame?: boolean;
+  hasRoundContext?: boolean;
+  selectedDealerGame?: string | null;
+  selectedStakes?: number | string | null;
+  displayPlate?: 'BRAND' | 'GAME' | 'AMBIGUOUS';
+  displayGame?: string;
+  displayStakes?: string;
+  gameSource?: string;
+  stakesSource?: string;
+  fallbackReason?: string;
   /** What the legacy `!renderRoundContext` contract would publish to the shell felt. */
-  legacyIsWaitingPhase: boolean;
+  legacyIsWaitingPhase?: boolean;
   /** True iff legacyIsWaitingPhase would (under current shell wiring) override the GAME plate. */
-  legacyCanInfluenceFeltPlate: boolean;
+  legacyCanInfluenceFeltPlate?: boolean;
+
+  // --- NEW RENDER TRACE FIELDS ---
+  publisher?: string | null;
+  publisherTable?: string | null;
+  renderedPlate?: string | null;
+  renderedGame?: string | null;
+  renderedStakes?: string | number | null;
+  renderSource?: 'published' | 'sticky' | 'lobby' | 'initial' | string;
+  renderFrame?: number;
+  publishedGame?: string | null;
+  publishedStakes?: string | number | null;
+  publishedPlate?: string | null;
+  stickyGame?: string | null;
+  stickyStakes?: string | number | null;
+  stickyPlate?: string | null;
 }
 
 const MAX_ENTRIES = 20;
@@ -68,4 +83,3 @@ export function subscribeFeltDebug(listener: () => void): () => void {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
-
