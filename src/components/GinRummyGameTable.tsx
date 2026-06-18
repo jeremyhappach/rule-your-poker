@@ -2558,6 +2558,7 @@ export const GinRummyGameTable = ({
                 }}
                 disabled={false}
               />
+              {isCribDealer(currentPlayerId) && <DealerIndicator />}
               <p className="font-semibold text-sm text-foreground">
                 {currentPlayer.profiles?.username || 'You'}
               </p>
