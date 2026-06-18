@@ -259,7 +259,14 @@ export function PersistentTableShell({
               the children flex column). Phase surfaces underneath
               consume `usePreSessionSeatOwned()` to skip their local
               cluster JSX while this layer is mounted. */}
-          {preSessionParticipants && preSessionParticipants.length > 0 ? (
+          {/* Ownership is asserted whenever the caller passes a
+              participants array (even empty). Presence/length does
+              NOT determine ownership — that was the root cause of
+              duplicate chipstacks when the roster filtered to zero
+              while a fallback renderer simultaneously mounted.
+              shellMode==='lobby' ⇒ caller passes [] or populated
+              array; gameplay ⇒ caller passes null/undefined. */}
+          {preSessionParticipants != null && preSessionParticipants.length > 0 ? (
             <div
               data-canonical-shell-pre-session-seat-region=""
               style={{
@@ -281,7 +288,7 @@ export function PersistentTableShell({
           ) : null}
 
           <PreSessionSeatOwnershipProvider
-            active={!!(preSessionParticipants && preSessionParticipants.length > 0)}
+            active={preSessionParticipants != null}
           >
             <div
               data-canonical-shell-slot-content=""
