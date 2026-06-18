@@ -12,6 +12,7 @@ interface ChipAnimation {
   fromY: number;
   toX: number;
   toY: number;
+  winnerId: string;
   loserId: string;
   delay: number;
 }
@@ -19,6 +20,7 @@ interface ChipAnimation {
 interface CribbageChipTransferAnimationProps {
   triggerId: string | null;
   amount: number; // Per loser
+  winnerPlayerId: string;
   winnerPosition: { x: number; y: number }; // Already computed coordinates
   loserPositions: { playerId: string; x: number; y: number }[];
   onAnimationStart?: () => void;
@@ -32,6 +34,7 @@ interface CribbageChipTransferAnimationProps {
 export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimationProps> = ({
   triggerId,
   amount,
+  winnerPlayerId,
   winnerPosition,
   loserPositions,
   onAnimationStart,
@@ -64,7 +67,6 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
     
     // Prevent starting a new animation if one is already running
     if (animationInProgressRef.current) {
-      console.log('[CRIBBAGE_CHIP_ANIM] Animation already in progress, ignoring trigger:', triggerId);
       return;
     }
 
@@ -86,6 +88,7 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
       fromY: loser.y,
       toX: winnerPosition.x,
       toY: winnerPosition.y,
+      winnerId: winnerPlayerId,
       loserId: loser.playerId,
       delay: index * 300, // Stagger by 300ms for more dramatic effect
     }));
@@ -105,7 +108,7 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
     setTimeout(() => {
       setAnimations([]);
     }, totalDuration + 400);
-  }, [triggerId, amount, winnerPosition, loserPositions]);
+  }, [triggerId, amount, winnerPlayerId, winnerPosition, loserPositions]);
 
   if (animations.length === 0 || typeof document === 'undefined') return null;
 
@@ -118,7 +121,10 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
       <div
         key={anim.id}
         data-cribbage-chip-fly=""
+        data-cribbage-chip-fly-component="CribbageChipTransferAnimation"
+        data-cribbage-chip-fly-owner-seat-id={anim.loserId}
         data-cribbage-chip-fly-loser={anim.loserId}
+        data-cribbage-chip-fly-winner={anim.winnerId}
         className="fixed pointer-events-none"
         style={{
           left: anim.fromX,
@@ -130,6 +136,7 @@ export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimati
         }}
       >
         <div
+          data-cribbage-chip-fly-disc=""
           className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 border-3 border-white shadow-xl flex items-center justify-center"
           style={{
             animation: `${keyframeName} 3.5s ease-in-out ${anim.delay}ms forwards`,
