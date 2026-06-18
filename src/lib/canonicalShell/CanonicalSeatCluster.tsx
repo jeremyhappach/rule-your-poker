@@ -612,8 +612,8 @@ export function CanonicalSeatCluster({
   //   - Right-side slots (3,4,5) → inner = LEFT of name pill
   //   - Center / HOME / FACE_TO_FACE / BOTTOM_RAIL → default to RIGHT
   const dealerInnerSideClass = isRightSide
-    ? 'right-full mr-1'
-    : 'left-full ml-1';
+    ? 'right-full'
+    : 'left-full';
   const aboveChipNodes: ReactNode[] = [];
   if (!hideChipBubble) {
     if (avatar) {
@@ -642,7 +642,7 @@ export function CanonicalSeatCluster({
                 dealerInnerSideClass,
                 'inline-flex items-center justify-center rounded-full',
                 'bg-red-600 border border-white shadow',
-                'w-4 h-4 text-[9px] font-bold text-white leading-none pointer-events-none',
+                'w-5 h-5 text-[10px] font-bold text-white leading-none pointer-events-none',
               )}
             >
               D
