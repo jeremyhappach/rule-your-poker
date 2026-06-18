@@ -11530,6 +11530,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
   // P1 on-screen debug HUD removed — diagnostic served its purpose.
+
+  return (
+    <VisualPreferencesProvider userId={user?.id}>
       <GameDeckColorModeSync
         playerId={currentPlayer?.id}
         playerDeckColorMode={currentPlayer?.deck_color_mode}
