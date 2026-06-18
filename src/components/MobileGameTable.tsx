@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayerHand } from "./PlayerHand";
 import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
+import { DealerIndicator } from "./canonicalShell/DealerIndicator";
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
@@ -5503,7 +5504,8 @@ export const MobileGameTable = ({
         position={player.position}
         name={displayName}
         chipValue={chipText}
-        isDealer={isDealer}
+        /* Dice families have no dealer concept. */
+        isDealer={false}
         status={participantStatus}
         statusRing={statusRing}
         chipHUD={chipHUD}
@@ -5659,7 +5661,8 @@ export const MobileGameTable = ({
         position={player.position}
         name={displayName}
         chipValue={chipText}
-        isDealer={isDealer}
+        /* Dice families have no dealer concept. */
+        isDealer={false}
         status={participantStatus}
         statusRing={statusRing}
         chipHUD={chipHUD}
@@ -8267,6 +8270,16 @@ export const MobileGameTable = ({
                 onSelect={handleQuickEmoticon}
                 disabled={isEmoticonSending || !currentPlayer}
               />
+              {/* Canonical dealer indicator — only card families (Holm,
+                  3-5-7) render this in the identity row. Dice families
+                  (Horses, SCC) have no dealer concept. */}
+              {(gameType === 'holm-game' ||
+                gameType === '3-5-7' ||
+                gameType === '357' ||
+                gameType === '3-5-7-game') &&
+                dealerPosition === currentPlayer.position && (
+                  <DealerIndicator />
+                )}
               <p className={cn(
                 "font-semibold text-foreground truncate",
                 isTablet ? "text-xl" : "text-sm"

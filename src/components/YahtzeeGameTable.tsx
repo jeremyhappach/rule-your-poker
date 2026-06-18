@@ -2138,7 +2138,9 @@ export function YahtzeeGameTable({
                 slot={slot}
                 position={player.position}
                 name={getPlayerUsername(player)}
-                isDealer={dealerPosition === player.position}
+                /* Dice families have no dealer concept — never render the
+                   canonical dealer pip on opponent seats. */
+                isDealer={false}
                 chipValue={`$${formatChipValue(Math.round(player.chips))}`}
                 scoreLine={`Score: ${total}`}
                 ownerLabel="Gameplay:YahtzeeGameTable.opponentOverlay"
@@ -2353,15 +2355,8 @@ export function YahtzeeGameTable({
           myPlayer ? (
             <div className="w-full h-full flex items-center justify-center gap-2 px-3 overflow-hidden">
               <QuickEmoticonPicker onSelect={() => {}} disabled={true} />
-              {dealerPosition === myPlayer.position && (
-                <span
-                  aria-label="Dealer"
-                  title="Dealer"
-                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 border border-white text-white font-bold text-[10px] shadow"
-                >
-                  D
-                </span>
-              )}
+              {/* Dice families (Yahtzee/Horses/SCC) have no dealer concept;
+                  the identity row never renders a dealer indicator. */}
               <p className="text-sm font-semibold text-foreground truncate">
                 {myPlayer.profiles?.username || 'You'}
                 <span className="ml-1 text-green-500">(active)</span>

@@ -32,6 +32,7 @@ import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { derivePlayerStatus } from '@/lib/canonicalShell/participantStatus';
 import { recordPlayerVisualSnapshot, probeChipDom, probeChipDomAncestry } from '@/lib/wartimeDebug/surfaces';
@@ -6396,15 +6397,19 @@ export const CribbageMobileGameTable = ({
               const slot = playerSlotById.get(seatPlayer.id) ?? null;
               const showSeatCardBacks = isObserver || seatPlayer.id !== currentPlayerId;
 
-              const ownsCrib = isCribDealer(seatPlayer.id);
+              // Crib ownership now derives from the canonical dealerId
+              // and is communicated by the shared dealer pip on the
+              // CanonicalSeatCluster (opponent) and DealerIndicator
+              // (local identity row). The Cribbage-specific "C" badge /
+              // "Your Crib" pill have been retired.
               // Pre-session continuity: while !isGameplayMode (waiting →
               // interstitial → dealer-selection), mirror the canonical
               // waiting-surface cluster inputs exactly so the same player's
               // chip identity (status palette, dealer badge, decorators,
               // children footprint) is invariant across the transition.
-              // Gameplay-only inputs (cribbage dealer D, crib "C" overlay,
-              // card-back stripes) only attach once gameplay takes
-              // ownership (isGameplayMode === true).
+              // Gameplay-only inputs (cribbage dealer D, card-back
+              // stripes) only attach once gameplay takes ownership
+              // (isGameplayMode === true).
               const preSession = !isGameplayMode;
               // Duplicate-owner gate: shell PreSessionSeatLayer owns
               // pre-game chips when active. Skip rendering here to avoid
@@ -6433,16 +6438,6 @@ export const CribbageMobileGameTable = ({
                     ? 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay[preSession]'
                     : 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay[gameplay]'}
                   playerId={seatPlayer.id}
-                  chipOverlay={!preSession && ownsCrib ? (
-                    <div
-                      data-canonical-cribbage-crib-badge=""
-                      aria-label="Holds the crib"
-                      title="Crib"
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 border border-amber-200 flex items-center justify-center shadow-md pointer-events-none"
-                    >
-                      <span className="text-amber-950 font-extrabold text-[9px] leading-none">C</span>
-                    </div>
-                  ) : undefined}
                 >
                   {!preSession && showSeatCardBacks && seatState && seatState.hand.length > 0 && (
                     <div className="flex -space-x-1.5 mt-1 justify-center">
@@ -6510,16 +6505,7 @@ export const CribbageMobileGameTable = ({
               )}>
                 ${formatChipValue(currentPlayer.chips)}
               </span>
-              {isCribDealer(currentPlayerId) && (
-                <span
-                  data-canonical-cribbage-your-crib=""
-                  aria-label="You hold the crib"
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500 border border-amber-200 text-amber-950 font-bold text-[10px] leading-none shadow-sm"
-                >
-                  <span className="w-3 h-3 rounded-full bg-amber-200/80 flex items-center justify-center text-[8px] font-extrabold">C</span>
-                  Your Crib
-                </span>
-              )}
+              {isCribDealer(currentPlayerId) && <DealerIndicator />}
             </div>
           ) : null
         }
