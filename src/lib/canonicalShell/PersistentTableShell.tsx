@@ -110,6 +110,7 @@ import {
 export interface PersistentTableShellProps {
   gameId?: string;
   gameType?: string;
+  anteAmount?: number | string;
   projectionMode?: ProjectionMode;
   viewerPosition?: number | null;
   /**
@@ -157,6 +158,7 @@ export interface PersistentTableShellProps {
 export function PersistentTableShell({
   gameId,
   gameType,
+  anteAmount = 0,
   projectionMode,
   viewerPosition = null,
   viewerUserId = null,
@@ -295,6 +297,7 @@ export function PersistentTableShell({
               registry: local felt ownership has been retired. */}
           <ShellOwnedFeltHost
             initialGameKind={deriveFeltGameKind(gameType)}
+            initialAnteAmount={anteAmount}
             initialIsWaitingPhase={!gameType}
             lobbyMode={lobbyMode}
           />
