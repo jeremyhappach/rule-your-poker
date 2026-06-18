@@ -9516,7 +9516,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }
 
 
-  const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
+  // Lobby/observer/session-ended states release stale gameplay
+  // identity (game.name / instanceLabel / stakes) and render the
+  // canonical lobby brand exactly like the normal lobby does.
+  // shellMode === 'gameplay' ⇒ `game.name`; anything else ⇒ brand.
+  const _shellLobbyStatuses = new Set<string>([
+    'waiting', 'dealer_selection', 'cribbage_dealer_selection',
+    'configuring', 'game_selection', 'ante_decision',
+    'game_over', 'session_ended',
+  ]);
+  const _isShellLobbyMode =
+    game.status != null && _shellLobbyStatuses.has(game.status);
+  const gameName = _isShellLobbyMode
+    ? 'P-Town Poker'
+    : (game.name || `Game #${gameId?.slice(0, 8)}`);
   const sessionStartTime = game.created_at ? new Date(game.created_at).toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
