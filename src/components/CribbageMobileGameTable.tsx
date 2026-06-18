@@ -34,6 +34,7 @@ import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
+import { dealerDbgStore, seatOwnershipStore } from '@/lib/canonicalShell/extraDebugStore';
 import { derivePlayerStatus } from '@/lib/canonicalShell/participantStatus';
 import { recordPlayerVisualSnapshot, probeChipDom, probeChipDomAncestry } from '@/lib/wartimeDebug/surfaces';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
@@ -5471,6 +5472,52 @@ export const CribbageMobileGameTable = ({
   const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
+  // DEALER DBG + SEAT OWNERSHIP pill emitters.
+  useEffect(() => {
+    const dealerId = viewState?.dealerPlayerId ?? null;
+    const opponentPlayerIds = projectedSeatPlayers
+      .filter(p => p.id !== currentPlayerId)
+      .map(p => p.id);
+    const opponentDealerVisible: Record<string, boolean> = {};
+    for (const oppId of opponentPlayerIds) {
+      opponentDealerVisible[oppId.slice(0, 6)] = !!dealerId && dealerId === oppId;
+    }
+    dealerDbgStore.record({
+      context: 'cribbage',
+      dealerPlayerId: dealerId ? dealerId.slice(0, 8) : null,
+      localPlayerId: currentPlayerId ? currentPlayerId.slice(0, 8) : null,
+      opponentPlayerIds: opponentPlayerIds.map(id => id.slice(0, 8)),
+      localDealerVisible: !!dealerId && dealerId === currentPlayerId,
+      opponentDealerVisible,
+      identitySource: 'viewState.dealerPlayerId',
+      seatClusterSource: 'viewState.dealerPlayerId',
+    });
+  }, [viewState?.dealerPlayerId, currentPlayerId, projectedSeatPlayers]);
+
+  useEffect(() => {
+    const losers = storedChipPositions?.losers ?? [];
+    const chipDiscVisible: Record<string, boolean> = {};
+    for (const p of projectedSeatPlayers) {
+      if (p.id === currentPlayerId) continue;
+      const isLoser = losers.some(l => l.playerId === p.id);
+      const animActive = winSequencePhase === 'chips';
+      chipDiscVisible[p.id.slice(0, 6)] = !(animActive && isLoser);
+    }
+    const animationChipVisible = winSequencePhase === 'chips' && losers.length > 0;
+    const staticChips = Object.values(chipDiscVisible).filter(Boolean).length;
+    const animChips = animationChipVisible ? losers.length : 0;
+    seatOwnershipStore.record({
+      context: 'cribbage',
+      winSequencePhase,
+      canonicalSeat: 'CanonicalSeatCluster',
+      legacySeat: 'none',
+      chipDiscVisible,
+      animationChipVisible,
+      chipDiscCount: staticChips + animChips,
+    });
+  }, [winSequencePhase, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
+
+
   // Determine current render mode for felt content (not layout — layout is always the same shell)
   // BUG A FIX: Bootstrap depends on renderHandKey (presentation identity), NOT viewState existence.
   // viewState can be non-null while renderHandKey is still empty during state-layer mismatch.
@@ -6419,20 +6466,28 @@ export const CribbageMobileGameTable = ({
               const preSessionStatus = preSession
                 ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
                 : undefined;
+              // Dealer indicator now derives ONLY from canonical
+              // dealerPlayerId. Position-based and crib-holder-derived
+              // logic removed — symmetric with the local identity-row
+              // DealerIndicator below (isCribDealer).
+              const isOpponentDealer =
+                !preSession && !!viewState?.dealerPlayerId && viewState.dealerPlayerId === seatPlayer.id;
+              // Win-animation chip ownership: while the chip-transfer
+              // animation is running, the losing opponent's chip is
+              // owned by CribbageChipTransferAnimation. Suppress the
+              // CanonicalSeatCluster chip bubble to keep chipDiscCount==1.
+              const isLoserDuringChipAnim =
+                winSequencePhase === 'chips' &&
+                !!storedChipPositions?.losers.some(l => l.playerId === seatPlayer.id);
               return (
                 <CanonicalSeatCluster
                   key={seatPlayer.id}
                   slot={slot}
                   position={seatPlayer.position}
                   name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                  /* Dealer badge:
-                     - Pre-session: suppressed (matches waiting surface,
-                       which no longer paints a host-D pre-session). Keeps
-                       chip identity stable across WaitingTable →
-                       NeutralInterstitial → DealerSelection.
-                     - Gameplay: cribbage dealer position owns the D. */
-                  isDealer={!preSession && seatPlayer.position === dealerPosition}
-                  chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                  isDealer={isOpponentDealer}
+                  chipValue={isLoserDuringChipAnim ? '' : `$${formatChipValue(seatPlayer.chips)}`}
+                  hideChipBubble={isLoserDuringChipAnim}
                   status={preSessionStatus}
                   statusRing={preSessionStatus}
                   ownerLabel={preSession

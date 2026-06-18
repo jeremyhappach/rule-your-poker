@@ -136,6 +136,7 @@ import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRa
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
+import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
 
 // P9.1 — First visible canonical shell visual cutover.
@@ -857,6 +858,21 @@ export const MobileGameTable = ({
   // dealer-game result badges can survive behind the setup modal.
   const isDealerConfigPhase = gameStatus === 'ante_decision' || gameStatus === 'configuring' || gameStatus === 'game_selection' || gameStatus === 'dealer_selection';
   const diceGameplayUiActive = isDiceGame && !isDealerConfigPhase;
+
+  // DEALER AFFORDANCE DBG — dice families MUST render no dealer
+  // affordance of any kind. This emitter proves the contract.
+  useEffect(() => {
+    if (!isDiceGame) return;
+    dealerAffordanceStore.record({
+      game: gameType ?? 'unknown',
+      identityDealerVisible: false, // gated by gameType in identity row
+      seatDealerVisible: false,     // renderHorses/SccCanonicalSeat pass isDealer={false}
+      legacyDealerVisible: false,   // felt D pip now gated on !isDiceGame
+      callerId: currentUserId ? currentUserId.slice(0, 8) : null,
+      dealerId: dealerPosition != null ? `pos:${dealerPosition}` : null,
+    });
+  }, [isDiceGame, gameType, currentUserId, dealerPosition]);
+
   
   // Z-index for player slots - higher in dice games to stay above spotlight
   // For 3-5-7 games, player cards need to be above the pot (z-20) during showdown
@@ -7622,7 +7638,7 @@ export const MobileGameTable = ({
 
         
         {/* Dealer button on felt for current player - hide during 3-5-7 multi-player showdown */}
-        {currentPlayer && dealerPosition === currentPlayer.position && !is357MultiPlayerShowdown && (
+        {currentPlayer && !isDiceGame && dealerPosition === currentPlayer.position && !is357MultiPlayerShowdown && (
           <div 
             className="absolute z-20"
             style={{
