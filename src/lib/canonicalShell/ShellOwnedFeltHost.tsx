@@ -39,8 +39,9 @@ export type { CanonicalFeltGameKind };
 // Felt context — surfaces publish their felt geometry / subtitle data.
 // ---------------------------------------------------------------------------
 
-export type ShellFeltContextValue = Omit<CanonicalFeltSurfaceProps, 'isWaitingPhase'> & {
+export type ShellFeltContextValue = Omit<CanonicalFeltSurfaceProps, 'isWaitingPhase' | 'feltPlateMode'> & {
   isWaitingPhase?: boolean;
+  feltPlateMode?: FeltPlateMode;
   /** Diagnostic label — name of the surface that published this context. */
   publisherLabel?: string;
 };
