@@ -6668,12 +6668,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // active for this fresh relaunch. Waiting-table Start Game owns this
     // hygiene pass; stale sitting_out=true / waiting=false timeout rows
     // must not survive into dealer_selection.
-    await supabase
+    const { error: normalizePlayersError } = await supabase
       .from('players')
       .update({ status: 'active', sitting_out: false, waiting: false })
       .eq('game_id', gameId)
       .neq('status', 'observer')
       .neq('status', 'left');
+
+    if (normalizePlayersError) {
+      console.error('[GAME START] Failed to normalize waiting-table players:', normalizePlayersError);
+      return;
+    }
 
     // Move to dealer_selection AND clear recovery-waiting scaffolding.
     const { error } = await supabase
