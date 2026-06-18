@@ -9529,7 +9529,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // canonical lobby brand exactly like the normal lobby does.
   // shellMode === 'gameplay' ⇒ `game.name`; anything else ⇒ brand.
   const _shellLobbyStatuses = new Set<string>([
-    'waiting', 'dealer_selection', 'cribbage_dealer_selection',
+    'waiting', 'waiting_for_players', 'dealer_selection', 'cribbage_dealer_selection',
     'configuring', 'game_selection', 'ante_decision',
     'game_over', 'session_ended',
   ]);
