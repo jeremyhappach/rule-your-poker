@@ -388,6 +388,7 @@ export function ShellOwnedFeltHost({
           legsToWin={effective?.legsToWin}
           pointsToWin={effective?.pointsToWin}
           isWaitingPhase={isWaitingPhase}
+          feltPlateMode={feltPlateMode}
           isTablet={effective?.isTablet}
           isDesktop={effective?.isDesktop}
           cribbageSkunk={effective?.cribbageSkunk}
