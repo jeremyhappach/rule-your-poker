@@ -37,8 +37,6 @@ export function NetworkSimIndicator() {
   const [expanded, setExpanded] = useState(false);
   const inTray = useInDebugTray();
 
-  if (mode === 'off') return null;
-
   if (!expanded) {
     const pillStyle: React.CSSProperties = inTray
       ? { pointerEvents: 'auto', display: 'inline-block' }
