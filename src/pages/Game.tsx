@@ -10601,7 +10601,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           // which metadata source the felt plate ought to draw from. Diff-
           // gated by a JSON key so the console stays readable.
           {
-            const _status = game.status;
+            const _status = game.status as string;
             const _currentDealerGameId = (game as any)?.current_game_uuid ?? null;
             const _configComplete = !!(game as any)?.config_complete;
             const _selectedGameType = game.game_type ?? null;
