@@ -266,6 +266,13 @@ export function ShellOwnedFeltHost({
   const isWaitingPhase = lobbyMode
     ? true
     : (effective?.isWaitingPhase ?? initialIsWaitingPhase);
+  // lobbyMode is a hard BRAND override (post-game / abandoned / fresh
+  // waiting / dealer selection bootstrap). Otherwise prefer the
+  // publisher's explicit feltPlateMode; only fall back to inferring
+  // from isWaitingPhase for unmigrated callers.
+  const feltPlateMode: FeltPlateMode = lobbyMode
+    ? 'BRAND'
+    : (effective?.feltPlateMode ?? (isWaitingPhase ? 'BRAND' : 'GAME'));
   const hasPublished = !!published;
   const hasSticky = !!stickyRef.current;
   const publisherLabel = effective?.publisherLabel ?? null;
@@ -275,10 +282,11 @@ export function ShellOwnedFeltHost({
       gameKind,
       anteAmount,
       isWaitingPhase,
+      feltPlateMode,
       hasPublished,
       hasSticky,
     }),
-    [publisherLabel, gameKind, anteAmount, isWaitingPhase, hasPublished, hasSticky],
+    [publisherLabel, gameKind, anteAmount, isWaitingPhase, feltPlateMode, hasPublished, hasSticky],
   );
 
   useEffect(() => {
