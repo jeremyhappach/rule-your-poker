@@ -9838,7 +9838,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-amber-600 bg-clip-text text-transparent">Peoria Poker League</h1>
                 <p className="text-muted-foreground">
                   {gameName}
-                  {game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
+                  {!_isShellLobbyMode && game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
                 </p>
                 <p className="text-sm text-muted-foreground">Session started at: {sessionStartTime}</p>
                 <p className="text-sm text-muted-foreground">{handsPlayed} hands played</p>
