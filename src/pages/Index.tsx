@@ -716,6 +716,9 @@ const Index = () => {
                     {/* Layout Tuning — first-class persistent canonical-shell knobs */}
                     <LayoutTuningAdminSection />
 
+                    {/* Debug Tools — per-pill visibility for the Debug Pill Tray */}
+                    <DebugPillsAdminSection />
+
 
                     {/* Allow Bot Dealers Toggle */}
                     <div className="flex items-center justify-between py-2">
