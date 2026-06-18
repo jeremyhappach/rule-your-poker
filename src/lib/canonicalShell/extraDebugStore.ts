@@ -56,6 +56,11 @@ export interface SeatOwnershipEntry {
   chipDiscVisible: Record<string, boolean>;
   animationChipVisible: boolean;
   chipDiscCount: number;
+  // Per-seat chip count — canonical disc + portal fly chip. The
+  // invariant is `perSeatChipCount[seat] == 1` for every seat at
+  // every phase. `invariantHolds` summarises that contract.
+  perSeatChipCount: Record<string, number>;
+  invariantHolds: boolean;
   // Suppression diagnostics per opponent:
   hideChipBubbleProp: Record<string, boolean>;    // what JSX passed
   hideChipBubbleSource: Record<string, string>;   // why
@@ -63,6 +68,7 @@ export interface SeatOwnershipEntry {
   domChipFlyCount: number;                        // [data-cribbage-chip-fly] count
   shouldSuppressChipDisc: Record<string, boolean>;
 }
+
 
 export interface DealerAffordanceEntry {
   game: string;
