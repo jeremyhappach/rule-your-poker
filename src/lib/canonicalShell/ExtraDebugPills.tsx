@@ -236,12 +236,14 @@ export function ExtraDebugPills() {
     <>
       <Pill
         label="DEALER DBG"
+        pillKey="dealerDbg"
         store={dealerDbgStore}
         summarize={(e) => e ? `local:${e.localDealerVisible ? 'Y' : 'N'} opp:${Object.values(e.opponentDealerVisible || {}).some(Boolean) ? 'Y' : 'N'}` : '—'}
         top={40}
       />
       <Pill
         label="SEAT OWNERSHIP"
+        pillKey="seatOwnership"
         store={seatOwnershipStore}
         summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/participant · ${e.context === 'seat-cluster-lifecycle' ? (e.duplicateParticipantIds?.join(',') || 'shell') : e.winSequencePhase}` : '—'}
         top={72}
@@ -249,6 +251,7 @@ export function ExtraDebugPills() {
 
       <Pill
         label="DEALER AFFORDANCE"
+        pillKey="dealerAffordance"
         store={dealerAffordanceStore}
         summarize={(e) => e ? `${e.game} i:${e.identityDealerVisible?'Y':'N'} s:${e.seatDealerVisible?'Y':'N'} l:${e.legacyDealerVisible?'Y':'N'}` : '—'}
         top={104}
