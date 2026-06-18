@@ -13,6 +13,8 @@ import {
   type ContractViolationEvent,
 } from "./contractTelemetry";
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
+import { useDebugPillEnabled } from "@/lib/debugTray/debugPillsStore";
+import { useInDebugTray } from "@/lib/debugTray/DebugTray";
 
 function fmt(n: number): string {
   return n.toFixed(2);
