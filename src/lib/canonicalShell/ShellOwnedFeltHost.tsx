@@ -211,12 +211,23 @@ export interface ShellOwnedFeltHostProps {
   initialGameKind?: CanonicalFeltGameKind | null;
   initialAnteAmount?: number | string;
   initialIsWaitingPhase?: boolean;
+  /**
+   * Shell-authoritative lobby mode. When true (post-game waiting,
+   * timeout-with-insufficient-players abandonment, fresh waiting,
+   * dealer selection, etc.) the felt MUST render the canonical
+   * waiting identity (gameKind=null, isWaitingPhase=true,
+   * anteAmount=0) regardless of any stale value still cached in the
+   * sticky ref from a prior gameplay surface. Prevents stale
+   * "$2 HORSES" / "$5 ante" / game-name leaks on post-game waiting.
+   */
+  lobbyMode?: boolean;
 }
 
 export function ShellOwnedFeltHost({
   initialGameKind = null,
   initialAnteAmount = 0,
   initialIsWaitingPhase = true,
+  lobbyMode = false,
 }: ShellOwnedFeltHostProps) {
   const published = useShellFeltState();
 
@@ -225,19 +236,33 @@ export function ShellOwnedFeltHost({
   // the next surface's mount effect re-publishes. Without stickiness,
   // those one-frame nulls would collapse the felt back to the initial
   // waiting state and visibly blink. The shell felt MUST stay continuous.
+  //
+  // Lobby mode is the one authoritative override: when the shell knows
+  // the table is in lobby identity (any pre-session / post-game /
+  // session-ended status), we drop the sticky snapshot so the next
+  // gameplay phase re-publishes from a clean baseline, and we ignore
+  // any stale `published` value that might still be in-flight from an
+  // unmounting gameplay surface.
   const stickyRef = useRef<ShellFeltContextValue | null>(null);
-  if (published) {
+  if (lobbyMode) {
+    stickyRef.current = null;
+  } else if (published) {
     stickyRef.current = published;
   }
-  const effective = published ?? stickyRef.current;
+  const effective = lobbyMode ? null : (published ?? stickyRef.current);
 
   // No fake fallback: when no surface has published and no initial
   // kind is supplied, render the canonical felt geometry with NO
   // game-name plate (bootstrap dealer-selection neutrality).
-  const gameKind: CanonicalFeltGameKind | null =
-    effective?.gameKind ?? initialGameKind ?? null;
-  const anteAmount = effective?.anteAmount ?? initialAnteAmount;
-  const isWaitingPhase = effective?.isWaitingPhase ?? initialIsWaitingPhase;
+  const gameKind: CanonicalFeltGameKind | null = lobbyMode
+    ? null
+    : (effective?.gameKind ?? initialGameKind ?? null);
+  const anteAmount = lobbyMode
+    ? 0
+    : (effective?.anteAmount ?? initialAnteAmount);
+  const isWaitingPhase = lobbyMode
+    ? true
+    : (effective?.isWaitingPhase ?? initialIsWaitingPhase);
   const hasPublished = !!published;
   const hasSticky = !!stickyRef.current;
   const publisherLabel = effective?.publisherLabel ?? null;

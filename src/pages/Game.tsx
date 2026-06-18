@@ -11629,6 +11629,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             viewerUserId={user?.id ?? null}
             seats={shellEligibleSeats}
             preSessionParticipants={preSessionParticipants}
+            lobbyMode={_isShellLobbyMode}
             header={mobileHeader}
           >
             <WaitingFlightMarker
