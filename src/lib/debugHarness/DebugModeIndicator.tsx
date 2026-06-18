@@ -46,7 +46,7 @@ export function DebugModeIndicator() {
     .filter((x): x is { gameType: string; label: string } => !!x);
 
   const count = armed.length;
-  const summary = count === 0 ? 'HARNESS ON' : count === 1 ? '1 HARNESS' : `${count} HARNESSES`;
+  const summary = count === 0 ? 'HARNESS ON' : `${count}H`;
 
   // Floating fallback when something mounts the indicator outside the tray.
   const outerStyle: React.CSSProperties = inTray
