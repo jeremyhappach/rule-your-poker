@@ -27,6 +27,7 @@ import {
   type CanonicalFeltGameKind,
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
+import type { FeltPlateMode } from './feltPlateMode';
 import { Wave5GridOverlay } from '@/lib/wave5GameplayGeometry/Wave5GridOverlay';
 
 // Re-export so non-shell call sites can reference the type without
