@@ -11,7 +11,9 @@
  * directly so callers don't need to thread theme data.
  */
 
+import { useEffect, useRef } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import { recordFeltRenderDebug, type FeltRenderTraceContext } from "./feltDebugStore";
 import type { FeltPlateMode } from "./feltPlateMode";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 
@@ -57,6 +59,8 @@ export interface CanonicalFeltSurfaceProps {
   geometryVariant?: 'auto' | 'ellipse';
   /** Diagnostic ownership marker stamped onto the actual felt node. */
   feltOwner?: string;
+  /** Diagnostic values from the host path, paired with the literal rendered plate. */
+  renderTraceContext?: FeltRenderTraceContext;
   /** Cribbage-only — appended to the plate subtitle line. */
   cribbageSkunk?: {
     skunkEnabled?: boolean;
@@ -98,6 +102,7 @@ export function CanonicalFeltSurface({
   isDesktop = false,
   geometryVariant = 'auto',
   feltOwner,
+  renderTraceContext,
   cribbageSkunk,
 }: CanonicalFeltSurfaceProps) {
   const { getTableColors } = useVisualPreferences();
@@ -121,6 +126,15 @@ export function CanonicalFeltSurface({
             : 'GAME';
   const showBrandPlate = resolvedPlate === 'BRAND';
   const showGamePlate = resolvedPlate === 'GAME';
+  const plateRef = useRef<HTMLDivElement | null>(null);
+  const renderFrameRef = useRef(0);
+  renderFrameRef.current += 1;
+  const renderedGame = showBrandPlate
+    ? 'P-TOWN POKER'
+    : showGamePlate && gameKind
+      ? GAME_NAME_LABEL[gameKind]
+      : 'none';
+  const renderedStakes = showGamePlate && gameKind ? `$${anteAmount}` : 'none';
 
   // Geometry selection. When geometryVariant === 'ellipse' we force the
   // shared canonical ellipse for every family (Phase 3.1b' shell-owned
@@ -141,6 +155,26 @@ export function CanonicalFeltSurface({
         background: `radial-gradient(ellipse at center, ${tableColors.color} 0%, ${tableColors.darkColor} 100%)`,
         filter: tableColors.showBridge ? undefined : "brightness(0.7)",
       };
+
+  useEffect(() => {
+    const plateNode = plateRef.current;
+    const renderedPlate = plateNode?.getAttribute('data-canonical-felt-plate-mode') ?? resolvedPlate;
+    recordFeltRenderDebug({
+      publisher: renderTraceContext?.publisher ?? 'none',
+      publisherTable: renderTraceContext?.publisherTable ?? 'none',
+      renderedPlate,
+      renderedGame: plateNode?.getAttribute('data-canonical-felt-rendered-game') ?? renderedGame,
+      renderedStakes: plateNode?.getAttribute('data-canonical-felt-rendered-stakes') ?? renderedStakes,
+      renderSource: renderTraceContext?.renderSource ?? 'direct-surface',
+      renderFrame: renderFrameRef.current,
+      publishedGame: renderTraceContext?.publishedGame ?? 'none',
+      publishedStakes: renderTraceContext?.publishedStakes ?? 'none',
+      publishedPlate: renderTraceContext?.publishedPlate ?? 'none',
+      stickyGame: renderTraceContext?.stickyGame ?? 'none',
+      stickyStakes: renderTraceContext?.stickyStakes ?? 'none',
+      stickyPlate: renderTraceContext?.stickyPlate ?? 'none',
+    });
+  }, [resolvedPlate, renderedGame, renderedStakes, renderTraceContext]);
 
   return (
     <>
@@ -178,8 +212,12 @@ export function CanonicalFeltSurface({
           chrome as gameplay so the visual treatment is consistent. */}
       {showBrandPlate && (
         <div
+          ref={plateRef}
           data-canonical-felt-plate=""
+          data-canonical-felt-plate-mode="BRAND"
           data-canonical-felt-plate-variant="waiting"
+          data-canonical-felt-rendered-game="P-TOWN POKER"
+          data-canonical-felt-rendered-stakes="none"
           className="absolute top-3 left-1/2 transform -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none"
         >
           <span className="text-white/30 font-bold text-lg uppercase tracking-wider">
@@ -191,7 +229,11 @@ export function CanonicalFeltSurface({
       {/* Game-name plate — shared chrome */}
       {showGamePlate && gameKind && (
         <div
+          ref={plateRef}
           data-canonical-felt-plate=""
+          data-canonical-felt-plate-mode="GAME"
+          data-canonical-felt-rendered-game={GAME_NAME_LABEL[gameKind]}
+          data-canonical-felt-rendered-stakes={`$${anteAmount}`}
           data-canonical-felt-plate-variant={
             isDicePlate ? "dice" : isCribbage ? "cribbage" : "card"
           }

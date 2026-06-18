@@ -9525,14 +9525,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }
 
 
-  // Lobby/observer/session-ended states release stale gameplay
+  // Non-committed lobby/session-ended states release stale gameplay
   // identity (game.name / instanceLabel / stakes) and render the
-  // canonical lobby brand exactly like the normal lobby does.
-  // shellMode === 'gameplay' ⇒ `game.name`; anything else ⇒ brand.
+  // canonical lobby brand. Committed phases (dealer_selection,
+  // ante_decision, in_progress, game_over) must NOT enter this mode;
+  // they render the committed game plate via the felt contract.
   const _shellLobbyStatuses = new Set<string>([
-    'waiting', 'waiting_for_players', 'dealer_selection', 'cribbage_dealer_selection',
-    'configuring', 'game_selection', 'ante_decision',
-    'game_over', 'session_ended',
+    'waiting', 'waiting_for_players',
+    'configuring', 'game_selection', 'session_ended',
   ]);
   const _isShellLobbyMode =
     game.status != null && _shellLobbyStatuses.has(game.status);
@@ -9586,6 +9586,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // in the setup modal is a canonical-shell family, so this is safe.
   const _routeShellGameType =
     game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+  const _routeShellAnteAmount =
+    game.ante_amount ?? previousGameConfig?.ante_amount ?? 0;
   const _isConfiguringContext =
     game.status === 'game_selection' ||
     game.status === 'configuring' ||
@@ -11747,6 +11749,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                still resolves real families once the dealer commits a
                game type. */
             gameType={_routeShellGameType ?? undefined}
+            anteAmount={_routeShellAnteAmount}
             projectionMode={shellProjectionMode}
             viewerPosition={shellViewerPosition}
             viewerUserId={user?.id ?? null}
