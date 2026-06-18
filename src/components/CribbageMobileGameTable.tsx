@@ -6678,10 +6678,16 @@ export const CribbageMobileGameTable = ({
               // stripes) only attach once gameplay takes ownership
               // (isGameplayMode === true).
               const preSession = !isGameplayMode;
-              // Duplicate-owner gate: shell PreSessionSeatLayer owns
-              // pre-game chips when active. Skip rendering here to avoid
-              // two visible CHIP_RENDER_OWNER for the same seat.
-              if (preSession && preSessionSeatOwnedByShell) return null;
+              // Duplicate-owner gate: when the shell PreSessionSeatLayer
+              // is mounted, IT is the sole authoritative owner of every
+              // seat cluster — regardless of whether this surface thinks
+              // it has entered gameplay. During the observer→gameplay
+              // transition the shell pre-session layer can briefly
+              // co-exist with isGameplayMode flipping true; rendering
+              // here would mount a second CanonicalSeatCluster for the
+              // same participantId (mountedCount=2). Hard-skip whenever
+              // shell ownership is asserted.
+              if (preSessionSeatOwnedByShell) return null;
               const preSessionStatus = preSession
                 ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
                 : undefined;
