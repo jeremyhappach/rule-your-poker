@@ -56,6 +56,7 @@ import { usePlayerBalance } from "@/hooks/usePlayerBalance";
 import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
 import { LayoutTuningAdminSection } from "@/components/admin/LayoutTuningAdminSection";
+import { DebugPillsAdminSection } from "@/components/admin/DebugPillsAdminSection";
 import { GeometryLab } from "@/components/admin/GeometryLab";
 import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
 import { formatChipValue } from "@/lib/utils";
