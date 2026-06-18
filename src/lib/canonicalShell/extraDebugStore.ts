@@ -12,7 +12,7 @@
 
 const MAX_ENTRIES = 20;
 
-function makeStore<T extends Record<string, unknown>>() {
+function makeStore<T>() {
   let entries: Array<{ ts: number } & T> = [];
   const listeners = new Set<() => void>();
   let lastSig: string | null = null;
