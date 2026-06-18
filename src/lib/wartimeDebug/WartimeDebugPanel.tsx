@@ -26,6 +26,7 @@ import {
 } from './core';
 import { attachWartimeBridges } from './bridges';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
 
 const ALL: 'ALL' = 'ALL';
