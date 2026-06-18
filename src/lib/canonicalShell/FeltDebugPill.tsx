@@ -29,40 +29,42 @@ function fmtTime(ts: number): string {
 function entryToText(e: FeltDebugEntry): string {
   const lines = [fmtTime(e.ts), ''];
 
-  if (e.renderFrame !== undefined) {
-    lines.push(`--- RENDER (Frame ${e.renderFrame}) ---`);
-    lines.push(`publisher: ${e.publisher ?? 'none'}`);
-    lines.push(`source: ${e.renderSource}`);
-    lines.push(`plate: ${e.renderedPlate}`);
-    lines.push(`game: ${e.renderedGame ?? 'none'}`);
-    lines.push(`stakes: ${e.renderedStakes ?? 'none'}`);
-    lines.push('');
-    lines.push(`[published] ${e.publishedPlate ?? 'null'} ${e.publishedGame ?? 'null'} ${e.publishedStakes ?? 'null'}`);
-    lines.push(`[sticky]    ${e.stickyPlate ?? 'null'} ${e.stickyGame ?? 'null'} ${e.stickyStakes ?? 'null'}`);
-  } else {
-    lines.push(`--- PUBLISH ---`);
-    lines.push(`phase: ${e.phase}`);
-    lines.push(`status: ${e.status}`);
-    lines.push(`committedDealerGameReason: ${e.committedDealerGameReason}`);
-    lines.push('');
-    lines.push(`isSessionWaitingTable: ${e.isSessionWaitingTable}`);
-    lines.push(`hasCommittedDealerGame: ${e.hasCommittedDealerGame}`);
-    lines.push(`hasRoundContext: ${e.hasRoundContext}`);
-    lines.push('');
-    lines.push(`selectedDealerGame: ${e.selectedDealerGame ?? 'none'}`);
-    lines.push(`selectedStakes: ${e.selectedStakes ?? 'none'}`);
-    lines.push('');
-    lines.push(`displayPlate: ${e.displayPlate}`);
-    lines.push(`displayGame: ${e.displayGame}`);
-    lines.push(`displayStakes: ${e.displayStakes}`);
-    lines.push('');
-    lines.push(`gameSource: ${e.gameSource}`);
-    lines.push(`stakesSource: ${e.stakesSource}`);
-    lines.push('');
-    lines.push(`legacyIsWaitingPhase: ${e.legacyIsWaitingPhase}`);
-    lines.push(`legacyCanInfluenceFeltPlate: ${e.legacyCanInfluenceFeltPlate}`);
-    lines.push(`fallbackReason: ${e.fallbackReason}`);
-  }
+  lines.push(`phase: ${e.phase}`);
+  lines.push(`status: ${e.status}`);
+  lines.push(`committedDealerGameReason: ${e.committedDealerGameReason}`);
+  lines.push('');
+  lines.push(`isSessionWaitingTable: ${e.isSessionWaitingTable}`);
+  lines.push(`hasCommittedDealerGame: ${e.hasCommittedDealerGame}`);
+  lines.push(`hasRoundContext: ${e.hasRoundContext}`);
+  lines.push('');
+  lines.push(`selectedDealerGame: ${e.selectedDealerGame ?? 'none'}`);
+  lines.push(`selectedStakes: ${e.selectedStakes ?? 'none'}`);
+  lines.push('');
+  lines.push(`displayPlate: ${e.displayPlate}`);
+  lines.push(`displayGame: ${e.displayGame}`);
+  lines.push(`displayStakes: ${e.displayStakes}`);
+  lines.push('');
+  lines.push(`gameSource: ${e.gameSource}`);
+  lines.push(`stakesSource: ${e.stakesSource}`);
+  lines.push('');
+  lines.push(`legacyIsWaitingPhase: ${e.legacyIsWaitingPhase}`);
+  lines.push(`legacyCanInfluenceFeltPlate: ${e.legacyCanInfluenceFeltPlate}`);
+  lines.push(`fallbackReason: ${e.fallbackReason}`);
+  lines.push('');
+  lines.push('FELT RENDER TRACE');
+  lines.push(`publisher: ${e.publisher ?? 'none'}`);
+  lines.push(`publisherTable: ${e.publisherTable ?? 'none'}`);
+  lines.push(`renderedPlate: ${e.renderedPlate ?? 'none'}`);
+  lines.push(`renderedGame: ${e.renderedGame ?? 'none'}`);
+  lines.push(`renderedStakes: ${e.renderedStakes ?? 'none'}`);
+  lines.push(`renderSource: ${e.renderSource ?? 'none'}`);
+  lines.push(`renderFrame: ${e.renderFrame ?? 'none'}`);
+  lines.push(`publishedGame: ${e.publishedGame ?? 'none'}`);
+  lines.push(`publishedStakes: ${e.publishedStakes ?? 'none'}`);
+  lines.push(`publishedPlate: ${e.publishedPlate ?? 'none'}`);
+  lines.push(`stickyGame: ${e.stickyGame ?? 'none'}`);
+  lines.push(`stickyStakes: ${e.stickyStakes ?? 'none'}`);
+  lines.push(`stickyPlate: ${e.stickyPlate ?? 'none'}`);
 
   return lines.join('\n');
 }
