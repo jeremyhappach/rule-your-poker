@@ -23,7 +23,9 @@ function fmtTime(ts: number): string {
     .join(':');
 }
 
-function entryToText(e: any): string {
+type DebugEntry = { ts: number } & Record<string, unknown>;
+
+function entryToText(e: DebugEntry): string {
   const { ts, ...rest } = e;
   const lines = [fmtTime(ts), ''];
   for (const [k, v] of Object.entries(rest)) {
@@ -41,10 +43,10 @@ function entryToText(e: any): string {
 interface PillProps {
   label: string;
   store: {
-    get: () => any[];
+    get: () => DebugEntry[];
     subscribe: (l: () => void) => () => void;
   };
-  summarize: (latest: any | undefined) => string;
+  summarize: (latest: DebugEntry | undefined) => string;
   top: number;
 }
 
