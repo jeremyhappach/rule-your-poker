@@ -5660,7 +5660,8 @@ export const MobileGameTable = ({
         position={player.position}
         name={displayName}
         chipValue={chipText}
-        isDealer={isDealer}
+        /* Dice families have no dealer concept. */
+        isDealer={false}
         status={participantStatus}
         statusRing={statusRing}
         chipHUD={chipHUD}
