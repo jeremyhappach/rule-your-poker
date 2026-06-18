@@ -8,6 +8,8 @@
  */
 
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
+import { useDebugPillEnabled } from "@/lib/debugTray/debugPillsStore";
+import { useInDebugTray } from "@/lib/debugTray/DebugTray";
 import { useEffect, useState } from "react";
 import {
   getRecentLayoutFaults,
