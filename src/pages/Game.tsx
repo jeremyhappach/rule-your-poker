@@ -10637,27 +10637,70 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               // round (if present) must scope to the committed dealer game
               (!_roundId || !_roundDealerGameId || _roundDealerGameId === _currentDealerGameId);
 
-            let _feltPlateMode: 'P-TOWN' | 'GAME_NAME' | 'AMBIGUOUS';
-            let _metadataSource: string;
-            let _fallbackReason: string | null = null;
-            if (_hasCommittedDealerGameForCurrentLifecycle && _selectedGameType && _selectedStakes != null) {
-              _feltPlateMode = 'GAME_NAME';
-              _metadataSource = 'games.game_type + games.ante_amount (committed)';
-            } else if (_isSessionWaitingTable || _isDealerGameSetup) {
-              _feltPlateMode = 'P-TOWN';
-              _metadataSource = 'brand (no committed lifecycle)';
+            // ---------- committedDealerGameReason FIRST ----------
+            // Single semantic phase derived from server-authoritative
+            // status (+ teardown hint). This is the source of truth;
+            // every other bucket (sessionPhase, displayPlate,
+            // feltPlateMode) is derived FROM this. No UNRESOLVED bucket.
+            let _committedReason: 'waiting_for_players' | 'game_selection' | 'dealer_selection' | 'ante_decision' | 'in_progress' | 'game_over' | 'teardown' | 'unknown';
+            if (_isSessionWaitingTable) {
+              _committedReason = 'waiting_for_players';
+            } else if (_status === 'configuring' || _status === 'game_selection') {
+              _committedReason = 'game_selection';
+            } else if ((_status === 'waiting' || _status === 'waiting_for_players') && !!(game as any)?.game_over_at) {
+              _committedReason = 'teardown';
+            } else if (_status === 'dealer_selection' || _status === 'cribbage_dealer_selection') {
+              _committedReason = 'dealer_selection';
+            } else if (_status === 'ante_decision') {
+              _committedReason = 'ante_decision';
+            } else if (_status === 'in_progress') {
+              _committedReason = 'in_progress';
+            } else if (_status === 'game_over') {
+              _committedReason = 'game_over';
             } else {
-              _feltPlateMode = 'AMBIGUOUS';
-              _metadataSource = 'unresolved';
-              _fallbackReason = `status=${_status} committed=${_hasCommittedDealerGameForCurrentLifecycle} setup=${_isDealerGameSetup} waiting=${_isSessionWaitingTable} gtype=${_selectedGameType} ante=${_selectedStakes} cfg=${_configComplete}`;
+              _committedReason = 'unknown';
             }
+
+            // Phase bucket — derived from reason. Mirrors what
+            // `deriveFeltPlateMode()` does for the actual felt: any
+            // committed lifecycle status maps to COMMITTED_DEALERGAME
+            // regardless of whether configComplete / round scoping
+            // have caught up yet. Those checks remain meaningful for
+            // gameplay wiring (_hasCommittedDealerGameForCurrentLifecycle
+            // below) but they MUST NOT produce a felt-phase taxonomy
+            // hole.
+            const _COMMITTED_REASONS = new Set([
+              'dealer_selection', 'ante_decision', 'in_progress', 'game_over',
+            ]);
+            const _BRAND_REASONS = new Set([
+              'waiting_for_players', 'game_selection', 'teardown',
+            ]);
+            const _sessionPhase: 'SESSION_WAITING_TABLE' | 'DEALER_GAME_SETUP' | 'COMMITTED_DEALERGAME' | 'UNRESOLVED' =
+              _committedReason === 'waiting_for_players' ? 'SESSION_WAITING_TABLE'
+              : (_committedReason === 'game_selection' || _committedReason === 'teardown') ? 'DEALER_GAME_SETUP'
+              : _COMMITTED_REASONS.has(_committedReason) ? 'COMMITTED_DEALERGAME'
+              : 'UNRESOLVED'; // only reachable via _committedReason === 'unknown'
+
+            const _displayPlate: 'BRAND' | 'GAME' | 'AMBIGUOUS' =
+              _COMMITTED_REASONS.has(_committedReason) ? 'GAME'
+              : _BRAND_REASONS.has(_committedReason) ? 'BRAND'
+              : 'AMBIGUOUS';
+
+            const _feltPlateMode: 'P-TOWN' | 'GAME_NAME' | 'AMBIGUOUS' =
+              _displayPlate === 'GAME' ? 'GAME_NAME'
+              : _displayPlate === 'BRAND' ? 'P-TOWN'
+              : 'AMBIGUOUS';
+            const _metadataSource =
+              _displayPlate === 'GAME' ? 'games.game_type + games.ante_amount (committed)'
+              : _displayPlate === 'BRAND' ? 'brand (no committed lifecycle)'
+              : 'unresolved';
+            const _fallbackReason = _displayPlate === 'AMBIGUOUS'
+              ? `unknown-status=${_status} gtype=${_selectedGameType} ante=${_selectedStakes} cfg=${_configComplete}`
+              : null;
 
             const _trace = {
               status: _status,
-              sessionPhase: _isSessionWaitingTable ? 'SESSION_WAITING_TABLE'
-                : _isDealerGameSetup ? 'DEALER_GAME_SETUP'
-                : _hasCommittedDealerGameForCurrentLifecycle ? 'COMMITTED_DEALERGAME'
-                : 'UNRESOLVED',
+              sessionPhase: _sessionPhase,
               dealerGameState: '(client lacks dealer_games row — see currentDealerGameId)',
               currentDealerGameId: _currentDealerGameId,
               selectedDealerGame: _selectedGameType,
@@ -10690,51 +10733,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               console.info('[FELT COMMITMENT TRACE]', _trace);
               try {
                 const _hasRound = !!_roundId;
-                const _displayPlate: 'BRAND' | 'GAME' | 'AMBIGUOUS' =
-                  _feltPlateMode === 'GAME_NAME' ? 'GAME'
-                  : _feltPlateMode === 'P-TOWN' ? 'BRAND'
-                  : 'AMBIGUOUS';
+                // BRAND plate always shows P-TOWN POKER, ignoring any
+                // stale selectedDealerGame/selectedStakes — those
+                // remain visible in the pill as diagnostic context
+                // only and CANNOT influence display.
                 const _displayGame = _displayPlate === 'GAME'
                   ? String(_selectedGameType ?? '').toUpperCase()
                   : 'P-TOWN POKER';
                 const _displayStakes = _displayPlate === 'GAME' && _selectedStakes != null
                   ? `$${_selectedStakes}`
                   : 'none';
-                // Capture what today's wiring would actually push to the felt
-                // (so the pill exposes the leak when the two diverge).
                 const _legacyIsWaiting = !renderRoundContext;
                 const _legacyFallback = _legacyIsWaiting && _hasCommittedDealerGameForCurrentLifecycle
                   ? 'isWaitingPhase=true (legacy: !renderRoundContext)'
                   : (_legacyIsWaiting ? 'isWaitingPhase=true' : 'none');
-                // committedDealerGameReason — semantic phase of the
-                // committed dealer game (or the pre-commit lifecycle
-                // bucket). Used to retire the UNRESOLVED bucket.
-                let _committedReason: 'waiting_for_players' | 'game_selection' | 'dealer_selection' | 'ante_decision' | 'in_progress' | 'game_over' | 'teardown' | 'unknown';
-                if (_isSessionWaitingTable) {
-                  _committedReason = 'waiting_for_players';
-                } else if (_status === 'configuring' || _status === 'game_selection') {
-                  _committedReason = 'game_selection';
-                } else if ((_status === 'waiting' || _status === 'waiting_for_players') && !!(game as any)?.game_over_at) {
-                  _committedReason = 'teardown';
-                } else if (_status === 'dealer_selection' || _status === 'cribbage_dealer_selection') {
-                  _committedReason = 'dealer_selection';
-                } else if (_status === 'ante_decision') {
-                  _committedReason = 'ante_decision';
-                } else if (_status === 'in_progress') {
-                  _committedReason = 'in_progress';
-                } else if (_status === 'game_over') {
-                  _committedReason = 'game_over';
-                } else {
-                  _committedReason = 'unknown';
-                }
                 // EXPLICIT FELT PLATE CONTRACT (post-fix):
-                // Every publisher now sends `feltPlateMode` and the
-                // shell felt reads ONLY that field. `isWaitingPhase`
-                // can no longer influence plate selection — it remains
-                // a HUD / animation gating concern, not a felt contract.
+                // Every publisher sends `feltPlateMode`; the shell
+                // felt reads ONLY that. `isWaitingPhase` can no longer
+                // influence plate selection.
                 const _legacyCanInfluence = false;
                 feltDebugRecord({
-                  phase: _trace.sessionPhase,
+                  phase: _sessionPhase,
                   status: _status,
                   committedDealerGameReason: _committedReason,
                   isSessionWaitingTable: _isSessionWaitingTable,
