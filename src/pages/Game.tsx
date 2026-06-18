@@ -9338,7 +9338,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           .from('players')
           .update({
             position: position,
-            sitting_out: gameInProgress ? currentPlayer.sitting_out : false
+            sitting_out: gameInProgress ? currentPlayer.sitting_out : false,
+            // When the table is in the waiting/lobby phase, taking a seat
+            // re-activates the viewer — there is no separate "Rejoin"
+            // affordance. Clears waiting/observer status so they're
+            // dealt in normally on the next game.
+            ...(gameInProgress ? {} : { status: 'active', waiting: false }),
           })
           .eq('id', currentPlayer.id);
           
