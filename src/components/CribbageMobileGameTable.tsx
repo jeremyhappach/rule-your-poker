@@ -6419,20 +6419,28 @@ export const CribbageMobileGameTable = ({
               const preSessionStatus = preSession
                 ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
                 : undefined;
+              // Dealer indicator now derives ONLY from canonical
+              // dealerPlayerId. Position-based and crib-holder-derived
+              // logic removed — symmetric with the local identity-row
+              // DealerIndicator below (isCribDealer).
+              const isOpponentDealer =
+                !preSession && !!viewState?.dealerPlayerId && viewState.dealerPlayerId === seatPlayer.id;
+              // Win-animation chip ownership: while the chip-transfer
+              // animation is running, the losing opponent's chip is
+              // owned by CribbageChipTransferAnimation. Suppress the
+              // CanonicalSeatCluster chip bubble to keep chipDiscCount==1.
+              const isLoserDuringChipAnim =
+                winSequencePhase === 'chips' &&
+                !!storedChipPositions?.losers.some(l => l.playerId === seatPlayer.id);
               return (
                 <CanonicalSeatCluster
                   key={seatPlayer.id}
                   slot={slot}
                   position={seatPlayer.position}
                   name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                  /* Dealer badge:
-                     - Pre-session: suppressed (matches waiting surface,
-                       which no longer paints a host-D pre-session). Keeps
-                       chip identity stable across WaitingTable →
-                       NeutralInterstitial → DealerSelection.
-                     - Gameplay: cribbage dealer position owns the D. */
-                  isDealer={!preSession && seatPlayer.position === dealerPosition}
-                  chipValue={`$${formatChipValue(seatPlayer.chips)}`}
+                  isDealer={isOpponentDealer}
+                  chipValue={isLoserDuringChipAnim ? '' : `$${formatChipValue(seatPlayer.chips)}`}
+                  hideChipBubble={isLoserDuringChipAnim}
                   status={preSessionStatus}
                   statusRing={preSessionStatus}
                   ownerLabel={preSession
