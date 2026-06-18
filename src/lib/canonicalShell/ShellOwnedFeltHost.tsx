@@ -97,6 +97,7 @@ function shallowFeltEqual(
     a.legsToWin !== b.legsToWin ||
     a.pointsToWin !== b.pointsToWin ||
     a.isWaitingPhase !== b.isWaitingPhase ||
+    a.feltPlateMode !== b.feltPlateMode ||
     a.isTablet !== b.isTablet ||
     a.isDesktop !== b.isDesktop ||
     a.publisherLabel !== b.publisherLabel
