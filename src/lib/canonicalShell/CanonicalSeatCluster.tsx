@@ -523,20 +523,9 @@ export function CanonicalSeatCluster({
         >
           {name}
         </span>
-        <div
-          data-canonical-dealer-pip=""
-          data-dealer-pip-active={isDealer ? 'true' : 'false'}
-          aria-hidden={!isDealer}
-          aria-label="Dealer"
-          className={cn(
-            'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0',
-            !isDealer && 'invisible',
-          )}
-        >
-          <span className="text-white font-bold text-[5px] leading-none">D</span>
-        </div>
       </div>
     );
+
 
     const defaultChipDisc = (
       <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
