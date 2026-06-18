@@ -127,6 +127,7 @@ export function PersistentTableShell({
   viewerUserId = null,
   seats,
   preSessionParticipants,
+  lobbyMode = false,
   header,
   children,
 }: PersistentTableShellProps) {
