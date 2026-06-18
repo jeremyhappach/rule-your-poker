@@ -596,34 +596,27 @@ export function CanonicalSeatCluster({
     }
   }
 
-  // Above-chip stack: avatar + name (and children if growth UP).
-  // Canonical dealer affordance lives at the TOP of this stack —
-  // outside the nameplate, never overlapping chip / status ring /
-  // leg indicators / buck / emotes / result badges. Single home for
-  // every game (poker, cribbage, gin, holm, 3-5-7). Dice families
-  // never pass isDealer={true}.
+  // Above-chip stack: avatar + name.
+  //
+  // Canonical dealer affordance is rendered TANGENT to the nameplate on
+  // its INNER side (toward the table center horizontally). Single home
+  // for every game (poker, cribbage, gin, holm, 3-5-7); dice families
+  // never pass isDealer={true}. The pip sits beside the name pill —
+  // never above it — so the top-seat vertical clearance is unaffected
+  // and the pip never competes with the chip, status ring, leg pips,
+  // buck, emotes, or result badges (all of which live on/around the
+  // chip cell below).
+  //
+  // Inner side resolution:
+  //   - Left-side slots (0,1,2) → inner = RIGHT of name pill
+  //   - Right-side slots (3,4,5) → inner = LEFT of name pill
+  //   - Center / HOME / FACE_TO_FACE / BOTTOM_RAIL → default to RIGHT
+  const dealerInnerSideClass = isRightSide
+    ? 'right-full mr-1'
+    : 'left-full ml-1';
   const aboveChipNodes: ReactNode[] = [];
   if (!hideChipBubble) {
-    if (isDealer) {
-      aboveChipNodes.push(
-        <div
-          key="dealer"
-          data-canonical-dealer-pip=""
-          data-dealer-pip-active="true"
-          aria-label="Dealer"
-          title="Dealer"
-          className={cn(
-            'inline-flex items-center justify-center rounded-full',
-            'bg-red-600 border border-white shadow',
-            'w-4 h-4 text-[9px] font-bold text-white leading-none pointer-events-none',
-          )}
-        >
-          D
-        </div>,
-      );
-    }
     if (avatar) {
-
       aboveChipNodes.push(
         <div
           key="avatar"
@@ -635,7 +628,28 @@ export function CanonicalSeatCluster({
       );
     }
     if (effectiveNamePlacement === 'above-chip' && nameRow) {
-      aboveChipNodes.push(<div key="name">{nameRow}</div>);
+      aboveChipNodes.push(
+        <div key="name" className="relative inline-flex items-center">
+          {nameRow}
+          {isDealer && (
+            <div
+              data-canonical-dealer-pip=""
+              data-dealer-pip-active="true"
+              aria-label="Dealer"
+              title="Dealer"
+              className={cn(
+                'absolute top-1/2 -translate-y-1/2',
+                dealerInnerSideClass,
+                'inline-flex items-center justify-center rounded-full',
+                'bg-red-600 border border-white shadow',
+                'w-4 h-4 text-[9px] font-bold text-white leading-none pointer-events-none',
+              )}
+            >
+              D
+            </div>
+          )}
+        </div>,
+      );
     }
   }
 
