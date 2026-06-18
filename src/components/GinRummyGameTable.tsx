@@ -69,6 +69,7 @@ import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
