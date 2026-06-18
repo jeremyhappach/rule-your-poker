@@ -11,8 +11,8 @@
  * Contract:
  *   - HOST drives state, pushes to `games.dealer_selection_state`.
  *   - NON-HOST mirrors `syncedState` into the provided callbacks.
- *   - `onComplete` is called HOST-only at the end of the sequence.
- *   - Bypass paths (0 / 1 eligible dealers) are preserved.
+ *   - `onComplete` is called HOST-only at the end of multi-card sequence.
+ *   - Bypass paths (0 / 1 eligible dealers) complete deterministically.
  *   - 'cribbage' variant: no tie announcement, fast redraw cadence.
  *
  * No semantic drift from the original component. Only the packaging changes.
