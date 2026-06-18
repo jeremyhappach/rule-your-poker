@@ -10687,8 +10687,43 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               _w.__feltCommitTraceKey = _key;
               // eslint-disable-next-line no-console
               console.info('[FELT COMMITMENT TRACE]', _trace);
+              try {
+                const _hasRound = !!_roundId;
+                const _displayPlate: 'BRAND' | 'GAME' | 'AMBIGUOUS' =
+                  _feltPlateMode === 'GAME_NAME' ? 'GAME'
+                  : _feltPlateMode === 'P-TOWN' ? 'BRAND'
+                  : 'AMBIGUOUS';
+                const _displayGame = _displayPlate === 'GAME'
+                  ? String(_selectedGameType ?? '').toUpperCase()
+                  : 'P-TOWN POKER';
+                const _displayStakes = _displayPlate === 'GAME' && _selectedStakes != null
+                  ? `$${_selectedStakes}`
+                  : 'none';
+                // Capture what today's wiring would actually push to the felt
+                // (so the pill exposes the leak when the two diverge).
+                const _legacyIsWaiting = !renderRoundContext;
+                const _legacyFallback = _legacyIsWaiting && _hasCommittedDealerGameForCurrentLifecycle
+                  ? 'isWaitingPhase=true (legacy: !renderRoundContext)'
+                  : (_legacyIsWaiting ? 'isWaitingPhase=true' : 'none');
+                feltDebugRecord({
+                  phase: _trace.sessionPhase,
+                  status: _status,
+                  isSessionWaitingTable: _isSessionWaitingTable,
+                  hasCommittedDealerGame: _hasCommittedDealerGameForCurrentLifecycle,
+                  hasRoundContext: _hasRound,
+                  selectedDealerGame: _selectedGameType,
+                  selectedStakes: _selectedStakes,
+                  displayPlate: _displayPlate,
+                  displayGame: _displayGame,
+                  displayStakes: _displayStakes,
+                  gameSource: _displayPlate === 'GAME' ? 'games.game_type' : 'brand',
+                  stakesSource: _displayPlate === 'GAME' && _selectedStakes != null ? 'games.ante_amount' : 'brand',
+                  fallbackReason: _legacyFallback,
+                });
+              } catch { /* noop */ }
             }
           }
+
 
           Promise.resolve().then(() => {
             recordStartupValue('IDENTITY TIMELINE', 'effectiveRenderGameType', effectiveRenderGameType, { file: 'src/pages/Game.tsx' });
