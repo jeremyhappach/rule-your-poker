@@ -11307,6 +11307,14 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // returns null) the moment gameplay takes ownership — gameplay
   // chip/seat ownership remains unchanged for Cribbage/Gin/Yahtzee/
   // Horses/Holm/3-5-7.
+  // Lobby/pre-session statuses. game_over and session_ended are
+  // included so the shell continues to own seat geometry + branding
+  // while the post-game waiting surface is visible. This is what
+  // prevents the post-game "duplicate chipstack + SHIP $0" symptom:
+  // the shell asserts ownership in lobby mode, and fallback seat
+  // renderers (CanonicalShellWaitingSurface, MobileGameTable
+  // pre-session branch, CribbageMobileGameTable pre-session branch)
+  // short-circuit via usePreSessionSeatOwned().
   const _PRE_SESSION_STATUSES = new Set<string>([
     'waiting',
     'dealer_selection',
@@ -11314,11 +11322,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     'configuring',
     'game_selection',
     'ante_decision',
+    'game_over',
+    'session_ended',
   ]);
   const _isPreSessionPhase =
     (game.status != null && _PRE_SESSION_STATUSES.has(game.status)) ||
     _isFreshWaitingNoFamily;
-  const _shellPreSessionRosterKey = (shellAnchorEligible && _isPreSessionPhase)
+  // shellMode === 'lobby' — drives both seat ownership AND
+  // presentation (title, stakes) regardless of stale gameplay state
+  // lingering in game.name / game.game_type / instanceLabel.
+  const _isLobbyMode = _isPreSessionPhase;
+  const _shellPreSessionRosterKey = (shellAnchorEligible && _isLobbyMode)
     ? players
         .filter(p => p.status !== 'observer' && p.status !== 'left' && !p.sitting_out)
         .map(p => `${p.position}:${p.id}:${Math.round(p.chips ?? 0)}:${p.status ?? ''}:${p.waiting ? 1 : 0}`)
@@ -11338,7 +11352,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         profiles?: { username?: string };
       }>
     | null = null;
-  if (shellAnchorEligible && _isPreSessionPhase && gameId) {
+  if (shellAnchorEligible && _isLobbyMode && gameId) {
     const cached = __shellPreSessionRosterCache.get(gameId);
     if (cached && cached.key === _shellPreSessionRosterKey) {
       preSessionParticipants = cached.participants;
@@ -11361,7 +11375,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         participants: preSessionParticipants,
       });
     }
+    // CRITICAL: ensure non-null even when roster is empty so the
+    // shell still claims pre-session seat ownership (and fallback
+    // renderers stay off). Presence must NOT determine ownership.
+    if (preSessionParticipants == null) preSessionParticipants = [];
   }
+
 
 
 
