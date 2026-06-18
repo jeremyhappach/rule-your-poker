@@ -7622,7 +7622,7 @@ export const MobileGameTable = ({
 
         
         {/* Dealer button on felt for current player - hide during 3-5-7 multi-player showdown */}
-        {currentPlayer && dealerPosition === currentPlayer.position && !is357MultiPlayerShowdown && (
+        {currentPlayer && !isDiceGame && dealerPosition === currentPlayer.position && !is357MultiPlayerShowdown && (
           <div 
             className="absolute z-20"
             style={{
