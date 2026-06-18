@@ -18,6 +18,7 @@ import {
 } from './runtimeCache';
 import { DEBUG_HARNESS_REGISTRY, getHarnessProfile } from './profiles';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
 export function DebugModeIndicator() {
   const [enabled, setEnabled] = useState<boolean>(isGlobalDebugModeCached());
