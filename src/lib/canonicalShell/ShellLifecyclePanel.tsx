@@ -18,6 +18,7 @@ import {
   type ShellLifecycleEvent,
 } from './shellLifecycleLog';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 import {
   ensureHarnessCacheLoaded,
   subscribeGlobalDebugMode,
