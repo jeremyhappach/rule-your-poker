@@ -31,6 +31,7 @@ function entryToText(e: FeltDebugEntry): string {
     '',
     `phase: ${e.phase}`,
     `status: ${e.status}`,
+    `committedDealerGameReason: ${e.committedDealerGameReason}`,
     '',
     `isSessionWaitingTable: ${e.isSessionWaitingTable}`,
     `hasCommittedDealerGame: ${e.hasCommittedDealerGame}`,
@@ -46,6 +47,8 @@ function entryToText(e: FeltDebugEntry): string {
     `gameSource: ${e.gameSource}`,
     `stakesSource: ${e.stakesSource}`,
     '',
+    `legacyIsWaitingPhase: ${e.legacyIsWaitingPhase}`,
+    `legacyCanInfluenceFeltPlate: ${e.legacyCanInfluenceFeltPlate}`,
     `fallbackReason: ${e.fallbackReason}`,
   ].join('\n');
 }
