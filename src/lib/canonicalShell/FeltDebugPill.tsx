@@ -11,6 +11,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import {
   getFeltDebugEntries,
   subscribeFeltDebug,
