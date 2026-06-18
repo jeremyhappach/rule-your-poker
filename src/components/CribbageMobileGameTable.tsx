@@ -149,6 +149,7 @@ function CribbageFeltAdapter(props: {
     pointsToWin: props.pointsToWin,
     cribbageSkunk: props.cribbageSkunk,
     isWaitingPhase: props.isWaitingPhase,
+    feltPlateMode: 'GAME',
     publisherLabel: 'CribbageMobileGameTable',
   });
   return (
