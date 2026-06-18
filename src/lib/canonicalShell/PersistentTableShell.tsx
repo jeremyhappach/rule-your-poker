@@ -132,12 +132,12 @@ export interface PersistentTableShellProps {
    */
   preSessionParticipants?: PreSessionParticipant[] | null;
   /**
-   * Shell-authoritative lobby identity. When true, the shell:
+   * Shell-authoritative non-committed lobby identity. When true, the shell:
    *   1. Forces the canonical felt to render the waiting plate
    *      ("P-Town Poker", no stakes, no game name) regardless of any
    *      stale snapshot still cached from a prior gameplay surface.
    *   2. Clears any lingering ambient/transient gameplay
-   *      announcements so post-game waiting matches a fresh lobby.
+   *      announcements so non-committed waiting matches a fresh lobby.
    *
    * Set by the route (Game.tsx) from `_isShellLobbyMode` — the same
    * computation that already retitles the header to "P-Town Poker".
