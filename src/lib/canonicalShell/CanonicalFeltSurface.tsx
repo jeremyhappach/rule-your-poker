@@ -93,6 +93,7 @@ export function CanonicalFeltSurface({
   legsToWin,
   pointsToWin,
   isWaitingPhase = false,
+  feltPlateMode,
   isTablet = false,
   isDesktop = false,
   geometryVariant = 'auto',
@@ -103,9 +104,23 @@ export function CanonicalFeltSurface({
   const tableColors = getTableColors();
   const isDicePlate = gameKind != null && DICE_PLATE_KINDS.has(gameKind);
   const isCribbage = gameKind === "cribbage";
-  // Neutral mode: no committed game kind yet (bootstrap dealer-selection
-  // before a dealer-game exists). Suppress the game-name plate entirely.
+  // Plate selection — EXPLICIT contract.
+  // 1. If `feltPlateMode` is provided, it is the SOLE authority.
+  // 2. Otherwise (legacy callers) fall back to the old `isWaitingPhase`
+  //    + `gameKind == null` heuristic so unmigrated paths render as before.
   const isNeutralKind = gameKind == null;
+  const resolvedPlate: 'BRAND' | 'GAME' | 'NEUTRAL' =
+    feltPlateMode === 'BRAND'
+      ? 'BRAND'
+      : feltPlateMode === 'GAME'
+        ? (isNeutralKind ? 'NEUTRAL' : 'GAME')
+        : isWaitingPhase
+          ? 'BRAND'
+          : isNeutralKind
+            ? 'NEUTRAL'
+            : 'GAME';
+  const showBrandPlate = resolvedPlate === 'BRAND';
+  const showGamePlate = resolvedPlate === 'GAME';
 
   // Geometry selection. When geometryVariant === 'ellipse' we force the
   // shared canonical ellipse for every family (Phase 3.1b' shell-owned
