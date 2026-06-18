@@ -695,7 +695,13 @@ export const MobileGameTable = ({
           potMaxEnabled,
           potMaxValue,
           legsToWin,
+          // isWaitingPhase retained for legacy compatibility — felt no
+          // longer reads it for plate selection (see feltPlateMode).
           isWaitingPhase,
+          // EXPLICIT plate contract: derive from server status, NOT
+          // from `isWaitingPhase` (which means HUD/animation gating
+          // elsewhere). Single source of truth for felt plate.
+          feltPlateMode: deriveFeltPlateMode(gameStatus),
           publisherLabel: `MobileGameTable:${instanceLabel}`,
         }
       : null,
