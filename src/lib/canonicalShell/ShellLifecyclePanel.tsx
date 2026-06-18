@@ -170,7 +170,8 @@ export function ShellLifecyclePanel() {
           {expanded ? '▼' : '▶'} SHELL LC ({filtered.length}/{events.length})
           {!expanded && recent ? (
             <span style={{ fontWeight: 400, opacity: 0.8 }}>
-              {' '}· {recent.kind} {recent.summary.slice(0, 26)}
+              {' '}· {recent.summary.slice(0, 10)}
+              {recent.summary.length > 10 ? '…' : ''}
               {recent.repeat > 1 ? ` ×${recent.repeat}` : ''}
             </span>
           ) : null}
