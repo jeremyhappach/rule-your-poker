@@ -74,6 +74,7 @@ import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
+import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
 
 // Wave 2E: discrete die size ladder (must match HorsesDie sizeClasses).
 // The resolver returns a fluid die edge in px; we snap to the nearest bucket
@@ -231,6 +232,19 @@ export function YahtzeeGameTable({
     feltPlateMode: 'GAME',
     publisherLabel: 'YahtzeeGameTable',
   });
+
+  // DEALER AFFORDANCE DBG — Yahtzee has no dealer concept.
+  useEffect(() => {
+    dealerAffordanceStore.record({
+      game: 'yahtzee',
+      identityDealerVisible: false,
+      seatDealerVisible: false,
+      legacyDealerVisible: false,
+      callerId: currentUserId ? currentUserId.slice(0, 8) : null,
+      dealerId: dealerPosition != null ? `pos:${dealerPosition}` : null,
+    });
+  }, [currentUserId, dealerPosition]);
+
 
   // Canonical shared chat — same shell experience as Cribbage/Gin.
   const { allMessages, sendMessage, isSending: isChatSending } = useGameChat(gameId, players, currentUserId);
