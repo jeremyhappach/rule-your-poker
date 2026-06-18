@@ -11529,62 +11529,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // renders a second felt floor underneath the slot.
 
 
-  // ── P1 ON-SCREEN DEBUG HUD (instrumentation only, no behavior) ──
-  // The fix landed but the user still sees "$2 HORSES" + duplicate
-  // chipstacks. Surface the runtime state directly on the device so we
-  // can see which assumption is wrong. Toggle off by setting
-  // localStorage.P1_WAITING_HUD = 'off' in the browser.
-  const _p1HudEnabled =
-    typeof window !== 'undefined' &&
-    (window.localStorage?.getItem('P1_WAITING_HUD') ?? 'on') !== 'off';
-  const _p1HudValues: Array<[string, string]> = [
-    ['shellMode', _isShellLobbyMode ? 'lobby' : 'gameplay'],
-    ['_isLobbyMode (pre-session)', String(_isLobbyMode)],
-    ['game.status', String(game.status ?? 'null')],
-    ['game.game_type', String(game.game_type ?? 'null')],
-    ['game.name', String(game.name ?? 'null')],
-    ['_routeShellGameType', String(_routeShellGameType ?? 'null')],
-    [
-      'preSessionParticipants',
-      preSessionParticipants == null
-        ? 'null (shell NOT claiming)'
-        : `len=${preSessionParticipants.length}`,
-    ],
-    ['shellAnchorEligible', String(shellAnchorEligible)],
-    ['_isPokerShellPersistent', String(_isPokerShellPersistent)],
-    ['currentPlayer?.status', String(currentPlayer?.status ?? 'null')],
-    ['players.length', String(players.length)],
-    ['game.ante_amount', String(game.ante_amount ?? 'null')],
-    ['game.current_game_uuid', String((game as any).current_game_uuid ?? 'null')],
-    ['currentRound?.status', String(currentRound?.status ?? 'null')],
-  ];
-
-  return (
-    <VisualPreferencesProvider userId={user?.id}>
-      {_p1HudEnabled && (
-        <div
-          data-p1-waiting-hud=""
-          style={{
-            position: 'fixed',
-            top: 4,
-            left: 4,
-            zIndex: 2147483647,
-            background: 'rgba(0,0,0,0.85)',
-            color: '#7CFC00',
-            font: '10px/1.25 ui-monospace, Menlo, monospace',
-            padding: '6px 8px',
-            border: '1px solid #7CFC00',
-            borderRadius: 4,
-            maxWidth: '92vw',
-            pointerEvents: 'none',
-            whiteSpace: 'pre',
-          }}
-        >
-          {`P1 WAITING HUD\n${_p1HudValues
-            .map(([k, v]) => `${k.padEnd(28, ' ')}${v}`)
-            .join('\n')}`}
-        </div>
-      )}
+  // P1 on-screen debug HUD removed — diagnostic served its purpose.
       <GameDeckColorModeSync
         playerId={currentPlayer?.id}
         playerDeckColorMode={currentPlayer?.deck_color_mode}
