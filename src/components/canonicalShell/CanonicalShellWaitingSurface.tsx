@@ -433,7 +433,7 @@ function WaitingSurfaceBody({
                 OR the resolved canonical slot already hosts a seat
                 cluster — single-sourcing the geometry so a `+` can
                 never sit underneath an occupied chipstack. */}
-            {actions.isObserver && (() => {
+            {(actions.isObserver || actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin) && (() => {
               // Resolved-slot occupancy from the SAME anchor map the
               // cluster layer reads. Any slot in this set already has
               // a player cluster painted on it; the `+` MUST be
