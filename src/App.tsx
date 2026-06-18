@@ -19,6 +19,7 @@ import { AppNetworkSim } from "@/components/AppNetworkSim";
 import { NetworkSimIndicator } from "@/components/NetworkSimIndicator";
 import { ResponsiveGeometryProvider } from "@/lib/canonicalShell/ResponsiveGeometryProvider";
 import { LifecycleDebugBadge } from "@/lib/canonicalShell/LifecycleDebugBadge";
+import { FeltDebugPill } from "@/lib/canonicalShell/FeltDebugPill";
 import { LayoutFaultBadge } from "@/lib/wave4LayoutResolver/LayoutFaultBadge";
 import { ensureHarnessCacheLoaded } from "@/lib/debugHarness/runtimeCache";
 import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
@@ -102,6 +103,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <LifecycleDebugBadge />
+              <FeltDebugPill />
               <LayoutFaultBadge />
               <Wave5ContractViolationBadge />
               {!hideDebugUI && (
