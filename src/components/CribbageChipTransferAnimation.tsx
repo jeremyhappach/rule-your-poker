@@ -20,7 +20,7 @@ interface ChipAnimation {
 interface CribbageChipTransferAnimationProps {
   triggerId: string | null;
   amount: number; // Per loser
-  winnerPlayerId: string;
+  winnerPlayerId?: string;
   winnerPosition: { x: number; y: number }; // Already computed coordinates
   loserPositions: { playerId: string; x: number; y: number }[];
   onAnimationStart?: () => void;
@@ -34,7 +34,7 @@ interface CribbageChipTransferAnimationProps {
 export const CribbageChipTransferAnimation: React.FC<CribbageChipTransferAnimationProps> = ({
   triggerId,
   amount,
-  winnerPlayerId,
+  winnerPlayerId = '',
   winnerPosition,
   loserPositions,
   onAnimationStart,
