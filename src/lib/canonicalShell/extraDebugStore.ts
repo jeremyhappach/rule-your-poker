@@ -51,8 +51,24 @@ export interface DealerDbgEntry {
 export interface SeatOwnershipEntry {
   context: 'cribbage';
   winSequencePhase: string;
+  winnerSeatId: string | null;
+  loserSeatId: string | null;
+  loserSeatIds: string[];
+  seatId: string[];
   canonicalSeat: string;
   legacySeat: string;
+  staticDiscOwner: Record<string, string | null>;
+  flyOwnerSeatId: Record<string, string[]>;
+  staticDiscVisible: Record<string, boolean>;
+  flyVisible: Record<string, boolean>;
+  renderOwners: Record<string, Array<{
+    renderedChip: 'static disc' | 'fly chip';
+    ownerSeatId: string | null;
+    component: string;
+    renderedSeatId: string | null;
+    renderOwner?: string;
+    rect?: string;
+  }>>;
   chipDiscVisible: Record<string, boolean>;
   animationChipVisible: boolean;
   chipDiscCount: number;
@@ -67,6 +83,19 @@ export interface SeatOwnershipEntry {
   domChipDiscPresent: Record<string, boolean>;    // [data-chip-center] under cluster
   domChipFlyCount: number;                        // [data-cribbage-chip-fly] count
   shouldSuppressChipDisc: Record<string, boolean>;
+  invariantFailure: {
+    seatId: string;
+    staticDisc: boolean;
+    flyPortal: number;
+    renderOwners: Array<{
+      renderedChip: 'static disc' | 'fly chip';
+      ownerSeatId: string | null;
+      component: string;
+      renderedSeatId: string | null;
+      renderOwner?: string;
+      rect?: string;
+    }>;
+  } | null;
 }
 
 
