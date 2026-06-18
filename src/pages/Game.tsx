@@ -11327,6 +11327,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // short-circuit via usePreSessionSeatOwned().
   const _PRE_SESSION_STATUSES = new Set<string>([
     'waiting',
+    'waiting_for_players',
     'dealer_selection',
     'cribbage_dealer_selection',
     'configuring',
