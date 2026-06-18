@@ -8270,6 +8270,16 @@ export const MobileGameTable = ({
                 onSelect={handleQuickEmoticon}
                 disabled={isEmoticonSending || !currentPlayer}
               />
+              {/* Canonical dealer indicator — only card families (Holm,
+                  3-5-7) render this in the identity row. Dice families
+                  (Horses, SCC) have no dealer concept. */}
+              {(gameType === 'holm-game' ||
+                gameType === '3-5-7' ||
+                gameType === '357' ||
+                gameType === '3-5-7-game') &&
+                dealerPosition === currentPlayer.position && (
+                  <DealerIndicator />
+                )}
               <p className={cn(
                 "font-semibold text-foreground truncate",
                 isTablet ? "text-xl" : "text-sm"
