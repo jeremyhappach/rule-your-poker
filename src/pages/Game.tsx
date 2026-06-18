@@ -24,7 +24,7 @@ import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessPr
 import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { GinIdentityGateTracer } from "@/lib/canonicalShell/GinIdentityGateTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
-import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
+import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
@@ -38,7 +38,6 @@ import { YahtzeeGameTable } from "@/components/YahtzeeGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
-import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/CanonicalShellWaitingSurface";
 // LifecycleAnnouncement no longer rendered from Game.tsx — observer
 // lifecycle messaging is emitted into the canonical shell announcement
@@ -1675,7 +1674,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const transitionalStates = ['dealer_selection', 'game_selection', 'configuring', 'dealer_announcement',
         'cribbage_dealer_selection', 'ante_decision', 'in_progress', 'game_over'];
       
-      if (transitionalStates.includes(gData.status) || gData.status === 'waiting') {
+      if (transitionalStates.includes(gData.status) || gData.status === 'waiting' || gData.status === 'waiting_for_players') {
         console.log('[CLEANUP] Not enough players in state:', gData.status, '- reverting to waiting');
         
         // If real money or has history, just revert to waiting so remaining player sees the lobby
@@ -1739,7 +1738,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Check if host is leaving during waiting phase - delete the entire game
     // CRITICAL: NEVER delete real_money games - archive them instead
-    if (game?.status === 'waiting' && isCreator) {
+    if ((game?.status === 'waiting' || game?.status === 'waiting_for_players') && isCreator) {
       if (game?.real_money) {
         // Real money games: NEVER delete - archive to session_ended
         console.log('[PLAYER OPTIONS] Real money game - archiving instead of deleting');
@@ -3525,20 +3524,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // CRITICAL: Poll during waiting/dealer_selection for non-creators to detect game start
     const waitingForGameStart = 
-      (game?.status === 'waiting' || game?.status === 'dealer_selection') && 
+      (game?.status === 'waiting' || game?.status === 'waiting_for_players' || game?.status === 'dealer_selection') && 
       currentPlayer && 
       !isCreator;
     
     // CRITICAL: Host in waiting status should also poll to see new players joining
     // Realtime INSERT events are unreliable
     const hostWaitingForPlayers = 
-      game?.status === 'waiting' && 
+      (game?.status === 'waiting' || game?.status === 'waiting_for_players') && 
       isCreator;
     
     // CRITICAL: Observers in waiting status should poll to see other players joining (including bots)
     // Observers aren't players yet so they don't trigger the other polling conditions
     const observerWaitingForPlayers = 
-      game?.status === 'waiting' && 
+      (game?.status === 'waiting' || game?.status === 'waiting_for_players') && 
       !currentPlayer;
     
     // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
@@ -6652,7 +6651,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     traceMilestone('game_start_from_waiting');
     
     // Log session event
-    await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
+    await logStatusChanged(gameId, user?.id, game?.status ?? 'waiting', 'dealer_selection', 'Host started game');
     
     // Recovery-waiting hygiene: when starting from a waiting state that
     // followed an in-progress session (rather than a fresh session), the
@@ -6665,17 +6664,21 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // dealer_selection cutover; fresh sessions already have null values
     // so this is a no-op for them.
     //
-    // Active players: promote seated, non-observer/left, non-sitting-out
-    // (OR explicitly waiting-to-rejoin) players to active. NEVER blanket
-    // clear sitting_out across observers/left — that resurrects players
-    // who deliberately left.
-    await supabase
+    // Active players: promote every seated/non-observer/non-left row to
+    // active for this fresh relaunch. Waiting-table Start Game owns this
+    // hygiene pass; stale sitting_out=true / waiting=false timeout rows
+    // must not survive into dealer_selection.
+    const { error: normalizePlayersError } = await supabase
       .from('players')
-      .update({ sitting_out: false, waiting: false })
+      .update({ status: 'active', sitting_out: false, waiting: false })
       .eq('game_id', gameId)
       .neq('status', 'observer')
-      .neq('status', 'left')
-      .or('waiting.eq.true,sitting_out.eq.false');
+      .neq('status', 'left');
+
+    if (normalizePlayersError) {
+      console.error('[GAME START] Failed to normalize waiting-table players:', normalizePlayersError);
+      return;
+    }
 
     // Move to dealer_selection AND clear recovery-waiting scaffolding.
     const { error } = await supabase
@@ -9246,12 +9249,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const currentPlayer = players.find(p => p.user_id === user.id);
     
     // Setup states where new players can join immediately (not sitting out)
-    const setupStates = ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
+    const setupStates = ['waiting', 'waiting_for_players', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
     // If game is actively playing (not in setup/config), new players should sit out until next game
     const gameInProgress = !setupStates.includes(game?.status || '');
     
     // For waiting status (before game starts), players join in "waiting" status (ready to play)
-    const isWaitingForPlayers = game?.status === 'waiting';
+    const isWaitingForPlayers = game?.status === 'waiting' || game?.status === 'waiting_for_players';
     
     try {
       if (!currentPlayer) {
@@ -9526,7 +9529,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // canonical lobby brand exactly like the normal lobby does.
   // shellMode === 'gameplay' ⇒ `game.name`; anything else ⇒ brand.
   const _shellLobbyStatuses = new Set<string>([
-    'waiting', 'dealer_selection', 'cribbage_dealer_selection',
+    'waiting', 'waiting_for_players', 'dealer_selection', 'cribbage_dealer_selection',
     'configuring', 'game_selection', 'ante_decision',
     'game_over', 'session_ended',
   ]);
@@ -9548,7 +9551,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   )[0];
   const currentHost = (game as any).current_host;
   const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
-  const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
+  const isWaitingTableStatus = game.status === 'waiting' || game.status === 'waiting_for_players';
+  const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
@@ -9600,7 +9604,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // bg would render the legacy slate gradient and visually fight the
   // shell-owned ellipse.
   const _isFreshWaitingNoFamily =
-    game.status === 'waiting' &&
+    isWaitingTableStatus &&
     game.game_type == null &&
     lastKnownGameTypeRef.current == null &&
     (previousGameConfig?.game_type ?? null) == null;
@@ -9719,7 +9723,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 toast({ title: "Error", description: error.message, variant: "destructive" });
               }
             }}
-            canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting') && !game.real_money}
+            canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
             onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
             deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
             onDeckColorModeChange={async (mode) => {
@@ -9815,7 +9819,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
-                  canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting') && !game.real_money}
+                  canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -9885,7 +9889,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   )}
                 </div>
               )}
-              {game.status === 'waiting' && (
+              {isWaitingTableStatus && (
                 <Button variant="default" onClick={handleInvite}>
                   <Share2 className="w-4 h-4 mr-2" />
                   Invite Players
@@ -9913,25 +9917,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {/* waiting status — split by family.
-            Canonical-shell families (Cribbage / Gin / Yahtzee) render
-            the new `CanonicalShellWaitingSurface` inside the shell's
-            children slot. The shell-owned ellipse paints behind it
-            from session entry, so no waiting-specific felt mounts and
-            no geometry swap occurs at session start (Phase 3.1c).
-            Poker-variant family keeps the legacy WaitingForPlayersTable. */}
-        {game.status === 'waiting' && (() => {
-          const shellKind = resolveShellKind(game.game_type);
+        {/* waiting status — all waiting-table statuses render the canonical
+            waiting surface. Do not route by stale game.game_type here. */}
+        {isWaitingTableStatus && (() => {
           recordWaitingLifecycleIfChanged(
             `waitBranch:${gameId ?? 'none'}`,
             'waiting branch decision',
             {
               status: game.status,
               gameType: game.game_type ?? null,
-              shellKind,
-              branch: shellKind === 'canonical'
-                ? 'CanonicalShellWaitingSurface'
-                : 'WaitingForPlayersTable',
+              branch: 'CanonicalShellWaitingSurface',
               hasGame: !!game,
               playersCount: players.length,
             },
@@ -9947,7 +9942,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             PreSessionSeatLayer, producing duplicate chip clusters and stale
             "HORSES / $2" identity. The canonical surface is the single
             source of truth for waiting-table presentation. */}
-        {game.status === 'waiting' && (
+        {isWaitingTableStatus && (
           <CanonicalShellWaitingSurface
             gameId={gameId!}
             gameType={null}
@@ -10430,11 +10425,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             preGameOverlay={_isPokerShellPersistent ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
-                    selection for poker-variant family. Excludes cribbage /
-                    gin-rummy which own their own dealer-selection paths
-                    via their canonical-seat-consumer tables. */}
-                {game.status === 'dealer_selection' &&
-                  !isCanonicalSeatConsumer(game.game_type) && (
+                    selection for the persistent poker-variant shell. Do
+                    not gate this on canonical-seat-consumer registration:
+                    horses / holm / 3-5-7 / SCC now consume canonical seats
+                    but still use this session-level dealer-selection
+                    controller. Gin / Cribbage remain on separate paths
+                    because _isPokerShellPersistent is false for them. */}
+                {game.status === 'dealer_selection' && (
                   <HighCardDealerSelection
                     gameId={gameId!}
                     players={players}
@@ -11327,6 +11324,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // short-circuit via usePreSessionSeatOwned().
   const _PRE_SESSION_STATUSES = new Set<string>([
     'waiting',
+    'waiting_for_players',
     'dealer_selection',
     'cribbage_dealer_selection',
     'configuring',
