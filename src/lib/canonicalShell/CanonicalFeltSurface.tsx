@@ -12,6 +12,7 @@
  */
 
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import type { FeltPlateMode } from "./feltPlateMode";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 
 export type CanonicalFeltGameKind =
