@@ -28,6 +28,7 @@ import {
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
 import type { FeltPlateMode } from './feltPlateMode';
+import type { FeltRenderTraceContext } from './feltDebugStore';
 import { Wave5GridOverlay } from '@/lib/wave5GameplayGeometry/Wave5GridOverlay';
 import { recordFeltDebug } from './feltDebugStore';
 
@@ -143,6 +144,35 @@ export function useShellFeltContext(): ShellFeltContextApi {
 
 function useShellFeltState(): ShellFeltContextValue | null {
   return useContext(ShellFeltStateContext);
+}
+
+const TRACE_GAME_LABEL: Record<CanonicalFeltGameKind, string> = {
+  'holm-game': 'Holm',
+  'three-five-seven': '3-5-7',
+  horses: 'HORSES',
+  'ship-captain-crew': 'SHIP',
+  yahtzee: 'YAHTZEE',
+  'gin-rummy': 'GIN RUMMY',
+  cribbage: 'CRIBBAGE',
+};
+
+function tracePublisherTable(value: ShellFeltContextValue | null | undefined): string {
+  return value?.publisherLabel?.split(':')[0] ?? 'none';
+}
+
+function traceGame(value: ShellFeltContextValue | null | undefined): string {
+  return value?.gameKind ? TRACE_GAME_LABEL[value.gameKind] : 'none';
+}
+
+function traceStakes(value: ShellFeltContextValue | null | undefined): string {
+  return value?.gameKind ? `$${value.anteAmount}` : 'none';
+}
+
+function tracePlate(value: ShellFeltContextValue | null | undefined): string {
+  if (!value) return 'none';
+  if (value.feltPlateMode) return value.feltPlateMode;
+  if (value.isWaitingPhase) return 'BRAND_LEGACY';
+  return value.gameKind ? 'GAME_LEGACY' : 'NEUTRAL_LEGACY';
 }
 
 /**
@@ -278,6 +308,15 @@ export function ShellOwnedFeltHost({
   const hasPublished = !!published;
   const hasSticky = !!stickyRef.current;
   const publisherLabel = effective?.publisherLabel ?? null;
+  const renderSource = lobbyMode
+    ? 'lobby'
+    : published
+      ? 'published'
+      : stickyRef.current
+        ? 'sticky'
+        : initialGameKind
+          ? 'initial'
+          : 'neutral-bootstrap';
   const hostTrace = useMemo(
     () => ({
       publisherLabel,
@@ -287,8 +326,23 @@ export function ShellOwnedFeltHost({
       feltPlateMode,
       hasPublished,
       hasSticky,
+      renderSource,
     }),
-    [publisherLabel, gameKind, anteAmount, isWaitingPhase, feltPlateMode, hasPublished, hasSticky],
+    [publisherLabel, gameKind, anteAmount, isWaitingPhase, feltPlateMode, hasPublished, hasSticky, renderSource],
+  );
+  const renderTraceContext = useMemo<FeltRenderTraceContext>(
+    () => ({
+      publisher: publisherLabel ?? 'none',
+      publisherTable: tracePublisherTable(effective),
+      renderSource,
+      publishedGame: traceGame(published),
+      publishedStakes: traceStakes(published),
+      publishedPlate: tracePlate(published),
+      stickyGame: traceGame(stickyRef.current),
+      stickyStakes: traceStakes(stickyRef.current),
+      stickyPlate: tracePlate(stickyRef.current),
+    }),
+    [publisherLabel, effective, renderSource, published, stickyRef.current],
   );
 
   useEffect(() => {
@@ -410,6 +464,7 @@ export function ShellOwnedFeltHost({
           feltPlateMode={feltPlateMode}
           isTablet={effective?.isTablet}
           isDesktop={effective?.isDesktop}
+          renderTraceContext={renderTraceContext}
           cribbageSkunk={effective?.cribbageSkunk}
         />
         {/* W5 GRID is the ONLY Wave 5 debug surface rendered on felt.
