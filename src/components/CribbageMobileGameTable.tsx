@@ -5567,19 +5567,62 @@ export const CribbageMobileGameTable = ({
   }, [viewState?.dealerPlayerId, currentPlayerId, projectedSeatPlayers]);
 
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
+    let cancelled = false;
+    let raf = 0;
+    const shortSeatId = (id: string | null | undefined) => id ? id.slice(0, 6) : null;
+    const rectLabel = (rect: DOMRect) => `${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)},${Math.round(rect.height)}`;
+    const sample = () => {
       const losers = storedChipPositions?.losers ?? [];
       const animActive = winSequencePhase === 'chips';
+      const winnerSeatId = shortSeatId(winSequenceData?.winnerId ?? null);
+      const loserSeatIds = losers.map(l => l.playerId.slice(0, 6));
       const chipDiscVisible: Record<string, boolean> = {};
       const hideChipBubbleProp: Record<string, boolean> = {};
       const hideChipBubbleSource: Record<string, string> = {};
       const domChipDiscPresent: Record<string, boolean> = {};
       const shouldSuppressChipDisc: Record<string, boolean> = {};
       const perSeatChipCount: Record<string, number> = {};
+      const staticDiscOwner: Record<string, string | null> = {};
+      const flyOwnerSeatId: Record<string, string[]> = {};
+      const staticDiscVisible: Record<string, boolean> = {};
+      const flyVisible: Record<string, boolean> = {};
+      const renderOwners: Record<string, Array<{
+        renderedChip: 'static disc' | 'fly chip';
+        ownerSeatId: string | null;
+        component: string;
+        renderedSeatId: string | null;
+        renderOwner?: string;
+        rect?: string;
+      }>> = {};
+      const seatCenters: Record<string, { x: number; y: number }> = {};
+      const seatIds = projectedSeatPlayers.map(p => p.id.slice(0, 6));
+      const ensureSeat = (seatShort: string) => {
+        if (!(seatShort in perSeatChipCount)) perSeatChipCount[seatShort] = 0;
+        if (!(seatShort in staticDiscOwner)) staticDiscOwner[seatShort] = null;
+        if (!(seatShort in flyOwnerSeatId)) flyOwnerSeatId[seatShort] = [];
+        if (!(seatShort in staticDiscVisible)) staticDiscVisible[seatShort] = false;
+        if (!(seatShort in flyVisible)) flyVisible[seatShort] = false;
+        if (!(seatShort in renderOwners)) renderOwners[seatShort] = [];
+      };
+      const nearestSeatId = (x: number, y: number): string | null => {
+        let bestId: string | null = null;
+        let bestDist = Number.POSITIVE_INFINITY;
+        for (const [seatId, center] of Object.entries(seatCenters)) {
+          const dx = center.x - x;
+          const dy = center.y - y;
+          const dist = dx * dx + dy * dy;
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestId = seatId;
+          }
+        }
+        return bestId;
+      };
       // Walk EVERY projected seat (opponents AND local) so the
       // invariant "one chip per seat at all times" is provable.
       for (const p of projectedSeatPlayers) {
         const shortId = p.id.slice(0, 6);
+        ensureSeat(shortId);
         const isLoser = losers.some(l => l.playerId === p.id);
         const isOpponent = p.id !== currentPlayerId;
         const intendedHide = animActive && isLoser && isOpponent;
@@ -5595,21 +5638,74 @@ export const CribbageMobileGameTable = ({
         const chipCenter = cluster?.querySelector('[data-chip-center]') as HTMLElement | null;
         const hasStaticChip = !!chipCenter;
         domChipDiscPresent[shortId] = hasStaticChip;
-        // Per-seat fly chip: portal carries data-cribbage-chip-fly-loser=<playerId>
-        const flyForSeat = document.querySelectorAll(
-          `[data-cribbage-chip-fly-loser="${p.id}"]`,
-        ).length;
-        perSeatChipCount[shortId] = (hasStaticChip ? 1 : 0) + flyForSeat;
+        if (hasStaticChip) {
+          const rect = chipCenter.getBoundingClientRect();
+          seatCenters[p.id] = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          staticDiscOwner[shortId] = shortId;
+          staticDiscVisible[shortId] = true;
+          perSeatChipCount[shortId] += 1;
+          renderOwners[shortId].push({
+            renderedChip: 'static disc',
+            ownerSeatId: shortId,
+            component: 'CanonicalSeatCluster',
+            renderedSeatId: shortId,
+            renderOwner: cluster?.dataset.ownerLabel || 'CanonicalSeatCluster',
+            rect: rectLabel(rect),
+          });
+        }
+        const storedLoser = losers.find(l => l.playerId === p.id);
+        if (!seatCenters[p.id] && storedLoser) {
+          seatCenters[p.id] = { x: storedLoser.x, y: storedLoser.y };
+        }
+        if (!seatCenters[p.id] && winSequenceData?.winnerId === p.id && storedChipPositions?.winner) {
+          seatCenters[p.id] = storedChipPositions.winner;
+        }
+        if (!seatCenters[p.id] && cluster) {
+          const rect = cluster.getBoundingClientRect();
+          seatCenters[p.id] = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+        }
       }
-      const domChipFlyCount = document.querySelectorAll('[data-cribbage-chip-fly]').length;
+      const flyNodes = Array.from(document.querySelectorAll('[data-cribbage-chip-fly]')) as HTMLElement[];
+      for (const flyNode of flyNodes) {
+        const ownerId = flyNode.dataset.cribbageChipFlyOwnerSeatId || flyNode.dataset.cribbageChipFlyLoser || null;
+        const ownerShort = shortSeatId(ownerId);
+        const component = flyNode.dataset.cribbageChipFlyComponent || 'CribbageChipTransferAnimation';
+        const disc = (flyNode.querySelector('[data-cribbage-chip-fly-disc]') as HTMLElement | null) ?? flyNode;
+        const rect = disc.getBoundingClientRect();
+        const renderedSeatFull = nearestSeatId(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        const renderedSeatShort = shortSeatId(renderedSeatFull) ?? 'unknown';
+        ensureSeat(renderedSeatShort);
+        flyOwnerSeatId[renderedSeatShort].push(ownerShort ?? 'unknown');
+        flyVisible[renderedSeatShort] = true;
+        perSeatChipCount[renderedSeatShort] += 1;
+        renderOwners[renderedSeatShort].push({
+          renderedChip: 'fly chip',
+          ownerSeatId: ownerShort,
+          component,
+          renderedSeatId: renderedSeatShort,
+          renderOwner: component,
+          rect: rectLabel(rect),
+        });
+      }
+      const domChipFlyCount = flyNodes.length;
       const animationChipVisible = animActive && domChipFlyCount > 0;
       const staticChips = Object.values(domChipDiscPresent).filter(Boolean).length;
       const invariantHolds = Object.values(perSeatChipCount).every(n => n === 1);
+      const failedSeat = Object.entries(perSeatChipCount).find(([, count]) => count !== 1);
       seatOwnershipStore.record({
         context: 'cribbage',
         winSequencePhase,
+        winnerSeatId,
+        loserSeatId: loserSeatIds[0] ?? null,
+        loserSeatIds,
+        seatId: seatIds,
         canonicalSeat: 'CanonicalSeatCluster',
         legacySeat: 'none',
+        staticDiscOwner,
+        flyOwnerSeatId,
+        staticDiscVisible,
+        flyVisible,
+        renderOwners,
         chipDiscVisible,
         animationChipVisible,
         chipDiscCount: staticChips + domChipFlyCount,
@@ -5620,10 +5716,23 @@ export const CribbageMobileGameTable = ({
         domChipDiscPresent,
         domChipFlyCount,
         shouldSuppressChipDisc,
+        invariantFailure: failedSeat ? {
+          seatId: failedSeat[0],
+          staticDisc: staticDiscVisible[failedSeat[0]] ?? false,
+          flyPortal: flyOwnerSeatId[failedSeat[0]]?.length ?? 0,
+          renderOwners: renderOwners[failedSeat[0]] ?? [],
+        } : null,
       });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [winSequencePhase, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
+      if (!cancelled && animActive) {
+        raf = requestAnimationFrame(sample);
+      }
+    };
+    raf = requestAnimationFrame(sample);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [winSequencePhase, winSequenceData, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
 
 
 
@@ -6141,6 +6250,7 @@ export const CribbageMobileGameTable = ({
         <CribbageChipTransferAnimation
           triggerId={chipAnimationTriggerId}
           amount={winSequenceData.amountPerLoser}
+          winnerPlayerId={winSequenceData.winnerId}
           winnerPosition={storedChipPositions.winner}
           loserPositions={storedChipPositions.losers}
           onAnimationEnd={handleChipAnimationEnd}
