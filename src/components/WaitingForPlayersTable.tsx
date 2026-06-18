@@ -493,11 +493,25 @@ export const WaitingForPlayersTable = ({
 
   // Canonical announcement rail — "Waiting for Players" / "Ready to Start!".
   // Persistent ambient for the entire waiting phase; cleared on unmount.
+  //
+  // CRITICAL: The announcements context value re-identifies whenever ambient/
+  // transient state changes. If we depend on `announcements` directly, then
+  // emit() → ambient state change → context value re-identifies → effect
+  // re-runs → cleanup calls clearAmbient → ambient state change → context
+  // value re-identifies → ... → "Maximum update depth exceeded" → the
+  // RouteErrorBoundary catches → <Game> remounts → bootstrap shell re-enters
+  // mid-route. Stash the context in a ref and depend only on primitives so
+  // the effect runs once per (gameId, hasEnoughPlayers, seatedPlayerCount)
+  // change rather than once per ambient mutation.
   const announcements = useAnnouncements();
+  const announcementsRef = useRef(announcements);
+  useEffect(() => {
+    announcementsRef.current = announcements;
+  }, [announcements]);
   useEffect(() => {
     if (!gameId) return;
     const id = `${gameId}:waiting-table:${hasEnoughPlayers ? 'ready' : 'waiting'}`;
-    announcements.emit({
+    announcementsRef.current.emit({
       id,
       type: 'waiting_for_players',
       scope: { dealerGameId: gameId },
@@ -510,9 +524,9 @@ export const WaitingForPlayersTable = ({
       },
     });
     return () => {
-      announcements.clearAmbient('waiting_for_players');
+      announcementsRef.current.clearAmbient('waiting_for_players');
     };
-  }, [announcements, gameId, hasEnoughPlayers, seatedPlayerCount]);
+  }, [gameId, hasEnoughPlayers, seatedPlayerCount]);
 
   // Empty props for the table (no cards, no game state)
   // Only allow seat selection for observers
