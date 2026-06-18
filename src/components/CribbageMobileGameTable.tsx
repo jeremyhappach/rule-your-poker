@@ -5473,48 +5473,145 @@ export const CribbageMobileGameTable = ({
   const isCribDealer = (playerId: string | undefined) => viewState?.dealerPlayerId === playerId;
 
   // DEALER DBG + SEAT OWNERSHIP pill emitters.
+  // We render the snapshot AFTER paint (rAF) so the DOM has the latest
+  // dealer pip + chip disc + animation chip mounted state. The values
+  // below combine state (what JSX intends) with DOM scraping (what is
+  // actually mounted/visible/clipped) so the pill can prove which
+  // render branch the disconnect is in.
   useEffect(() => {
-    const dealerId = viewState?.dealerPlayerId ?? null;
-    const opponentPlayerIds = projectedSeatPlayers
-      .filter(p => p.id !== currentPlayerId)
-      .map(p => p.id);
-    const opponentDealerVisible: Record<string, boolean> = {};
-    for (const oppId of opponentPlayerIds) {
-      opponentDealerVisible[oppId.slice(0, 6)] = !!dealerId && dealerId === oppId;
-    }
-    dealerDbgStore.record({
-      context: 'cribbage',
-      dealerPlayerId: dealerId ? dealerId.slice(0, 8) : null,
-      localPlayerId: currentPlayerId ? currentPlayerId.slice(0, 8) : null,
-      opponentPlayerIds: opponentPlayerIds.map(id => id.slice(0, 8)),
-      localDealerVisible: !!dealerId && dealerId === currentPlayerId,
-      opponentDealerVisible,
-      identitySource: 'viewState.dealerPlayerId',
-      seatClusterSource: 'viewState.dealerPlayerId',
+    const raf = requestAnimationFrame(() => {
+      const dealerId = viewState?.dealerPlayerId ?? null;
+      const opponentPlayerIds = projectedSeatPlayers
+        .filter(p => p.id !== currentPlayerId)
+        .map(p => p.id);
+      const opponentDealerVisible: Record<string, boolean> = {};
+      const dealerPipMounted: Record<string, boolean> = {};
+      const dealerPipActiveAttr: Record<string, string> = {};
+      const dealerPipVisible: Record<string, boolean> = {};
+      const dealerPipRect: Record<string, string> = {};
+      const dealerPipZ: Record<string, string> = {};
+      const dealerPipClipped: Record<string, boolean> = {};
+      for (const oppId of opponentPlayerIds) {
+        const shortId = oppId.slice(0, 6);
+        opponentDealerVisible[shortId] = !!dealerId && dealerId === oppId;
+        const cluster = document.querySelector(
+          `[data-canonical-seat-cluster][data-player-id="${oppId}"]`,
+        ) as HTMLElement | null;
+        const pip = cluster?.querySelector('[data-canonical-dealer-pip]') as HTMLElement | null;
+        dealerPipMounted[shortId] = !!pip;
+        dealerPipActiveAttr[shortId] = pip?.getAttribute('data-dealer-pip-active') ?? '—';
+        if (pip) {
+          const cs = window.getComputedStyle(pip);
+          const r = pip.getBoundingClientRect();
+          dealerPipVisible[shortId] =
+            cs.visibility !== 'hidden' &&
+            cs.display !== 'none' &&
+            parseFloat(cs.opacity || '1') > 0 &&
+            r.width > 0 && r.height > 0;
+          dealerPipRect[shortId] = `${Math.round(r.left)},${Math.round(r.top)},${Math.round(r.width)},${Math.round(r.height)}`;
+          // Walk ancestors collecting z-index until stacking context root.
+          const zs: string[] = [];
+          let n: HTMLElement | null = pip;
+          while (n && zs.length < 6) {
+            const z = window.getComputedStyle(n).zIndex;
+            if (z && z !== 'auto') zs.push(z);
+            n = n.parentElement;
+          }
+          dealerPipZ[shortId] = zs.join('>') || 'auto';
+          // Clipped if outside cluster's clientRect or nearest overflow-hidden ancestor.
+          let clipped = false;
+          if (cluster) {
+            const cr = cluster.getBoundingClientRect();
+            // pip lives in seat-above which sits above cluster; clipping only matters
+            // if an ancestor with overflow:hidden contains it. Walk up for that.
+            let p: HTMLElement | null = pip.parentElement;
+            while (p) {
+              const ps = window.getComputedStyle(p);
+              if (ps.overflow === 'hidden' || ps.overflowX === 'hidden' || ps.overflowY === 'hidden') {
+                const pr = p.getBoundingClientRect();
+                if (r.right <= pr.left || r.left >= pr.right || r.bottom <= pr.top || r.top >= pr.bottom) {
+                  clipped = true;
+                }
+                break;
+              }
+              p = p.parentElement;
+            }
+            void cr;
+          }
+          dealerPipClipped[shortId] = clipped;
+        } else {
+          dealerPipVisible[shortId] = false;
+          dealerPipRect[shortId] = '0,0,0,0';
+          dealerPipZ[shortId] = '—';
+          dealerPipClipped[shortId] = false;
+        }
+      }
+      dealerDbgStore.record({
+        context: 'cribbage',
+        dealerPlayerId: dealerId ? dealerId.slice(0, 8) : null,
+        localPlayerId: currentPlayerId ? currentPlayerId.slice(0, 8) : null,
+        opponentPlayerIds: opponentPlayerIds.map(id => id.slice(0, 8)),
+        localDealerVisible: !!dealerId && dealerId === currentPlayerId,
+        opponentDealerVisible,
+        identitySource: 'viewState.dealerPlayerId',
+        seatClusterSource: 'viewState.dealerPlayerId',
+        dealerPipMounted,
+        dealerPipActiveAttr,
+        dealerPipVisible,
+        dealerPipRect,
+        dealerPipZ,
+        dealerPipClipped,
+      });
     });
+    return () => cancelAnimationFrame(raf);
   }, [viewState?.dealerPlayerId, currentPlayerId, projectedSeatPlayers]);
 
   useEffect(() => {
-    const losers = storedChipPositions?.losers ?? [];
-    const chipDiscVisible: Record<string, boolean> = {};
-    for (const p of projectedSeatPlayers) {
-      if (p.id === currentPlayerId) continue;
-      const isLoser = losers.some(l => l.playerId === p.id);
+    const raf = requestAnimationFrame(() => {
+      const losers = storedChipPositions?.losers ?? [];
       const animActive = winSequencePhase === 'chips';
-      chipDiscVisible[p.id.slice(0, 6)] = !(animActive && isLoser);
-    }
-    const animationChipVisible = winSequencePhase === 'chips' && losers.length > 0;
-    const staticChips = Object.values(chipDiscVisible).filter(Boolean).length;
-    const animChips = animationChipVisible ? losers.length : 0;
-    seatOwnershipStore.record({
-      context: 'cribbage',
-      winSequencePhase,
-      canonicalSeat: 'CanonicalSeatCluster',
-      legacySeat: 'none',
-      chipDiscVisible,
-      animationChipVisible,
-      chipDiscCount: staticChips + animChips,
+      const chipDiscVisible: Record<string, boolean> = {};
+      const hideChipBubbleProp: Record<string, boolean> = {};
+      const hideChipBubbleSource: Record<string, string> = {};
+      const domChipDiscPresent: Record<string, boolean> = {};
+      const shouldSuppressChipDisc: Record<string, boolean> = {};
+      for (const p of projectedSeatPlayers) {
+        if (p.id === currentPlayerId) continue;
+        const shortId = p.id.slice(0, 6);
+        const isLoser = losers.some(l => l.playerId === p.id);
+        const intendedHide = animActive && isLoser;
+        hideChipBubbleProp[shortId] = intendedHide;
+        hideChipBubbleSource[shortId] = intendedHide
+          ? `winSequencePhase==chips && storedChipPositions.losers.includes(${shortId})`
+          : `winSequencePhase=${winSequencePhase} isLoser=${isLoser}`;
+        shouldSuppressChipDisc[shortId] = intendedHide;
+        chipDiscVisible[shortId] = !intendedHide;
+        // DOM scrape: did the cluster actually drop its chip cell?
+        const cluster = document.querySelector(
+          `[data-canonical-seat-cluster][data-player-id="${p.id}"]`,
+        ) as HTMLElement | null;
+        const chipCenter = cluster?.querySelector('[data-chip-center]') as HTMLElement | null;
+        domChipDiscPresent[shortId] = !!chipCenter;
+      }
+      const domChipFlyCount = document.querySelectorAll('[data-cribbage-chip-fly]').length;
+      const animationChipVisible = animActive && domChipFlyCount > 0;
+      const staticChips = Object.values(domChipDiscPresent).filter(Boolean).length;
+      seatOwnershipStore.record({
+        context: 'cribbage',
+        winSequencePhase,
+        canonicalSeat: 'CanonicalSeatCluster',
+        legacySeat: 'none',
+        chipDiscVisible,
+        animationChipVisible,
+        chipDiscCount: staticChips + domChipFlyCount,
+        hideChipBubbleProp,
+        hideChipBubbleSource,
+        domChipDiscPresent,
+        domChipFlyCount,
+        shouldSuppressChipDisc,
+      });
     });
+    return () => cancelAnimationFrame(raf);
   }, [winSequencePhase, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
 
 
