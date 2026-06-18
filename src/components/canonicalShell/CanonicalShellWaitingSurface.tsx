@@ -433,7 +433,7 @@ function WaitingSurfaceBody({
                 OR the resolved canonical slot already hosts a seat
                 cluster — single-sourcing the geometry so a `+` can
                 never sit underneath an occupied chipstack. */}
-            {actions.isObserver && (() => {
+            {(actions.isObserver || actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin) && (() => {
               // Resolved-slot occupancy from the SAME anchor map the
               // cluster layer reads. Any slot in this set already has
               // a player cluster painted on it; the `+` MUST be
@@ -539,24 +539,7 @@ function WaitingSurfaceBody({
             <div className="h-full px-4 pt-3 pb-5 flex flex-col items-center justify-start gap-4">
               {/* Buttons sit immediately under the tab rail */}
               <div className="w-full flex flex-col items-center justify-start gap-3">
-                {actions.viewerNeedsRejoin ? (
-                  <>
-                    <p className="text-sm text-muted-foreground text-center max-w-xs">
-                      You're sitting out. Rejoin to be dealt in next game.
-                    </p>
-                    <Button
-                      onClick={actions.handleRejoin}
-                      disabled={actions.isRejoining}
-                      className="bg-[hsl(220_45%_14%)] hover:bg-[hsl(220_45%_20%)] text-amber-200 border-2 border-amber-500 font-bold shadow-lg shadow-black/40"
-                    >
-                      {actions.isRejoining ? "Rejoining…" : "Rejoin Game"}
-                    </Button>
-                  </>
-                ) : actions.viewerIsWaitingToRejoin ? (
-                  <p className="text-sm text-green-300 text-center">
-                    Queued to rejoin — you'll be dealt in next game.
-                  </p>
-                ) : actions.isObserver ? (
+                {actions.isObserver || actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin ? (
                   <>
                     <p className="text-sm text-muted-foreground text-center max-w-xs">
                       {openPositions.length > 0
