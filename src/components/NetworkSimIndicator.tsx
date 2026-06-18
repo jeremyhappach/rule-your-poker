@@ -37,6 +37,8 @@ export function NetworkSimIndicator() {
   const { mode, loggingEnabled } = useNetworkSim();
   const [expanded, setExpanded] = useState(false);
   const inTray = useInDebugTray();
+  const pillEnabled = useDebugPillEnabled('networkSim');
+  if (!pillEnabled) return null;
 
   if (!expanded) {
     const pillStyle: React.CSSProperties = inTray
