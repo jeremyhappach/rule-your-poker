@@ -9933,11 +9933,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           );
           return null;
         })()}
-        {game.status === 'waiting' && resolveShellKind(game.game_type) === 'canonical' && (
+        {/* P1 Waiting Table Identity Fix:
+            Any `game.status === 'waiting'` state — whether fresh pre-session
+            or post-timeout/insufficient-players — must render the canonical
+            waiting surface. Routing by stale `game.game_type` (which is not
+            nulled post-hand) caused mixed ownership: legacy
+            WaitingForPlayersTable + MGT gameplay seat renderer leaked beneath
+            PreSessionSeatLayer, producing duplicate chip clusters and stale
+            "HORSES / $2" identity. The canonical surface is the single
+            source of truth for waiting-table presentation. */}
+        {game.status === 'waiting' && (
           <CanonicalShellWaitingSurface
             gameId={gameId!}
-            gameType={game.game_type ?? null}
-            anteAmount={game.ante_amount ?? 0}
+            gameType={null}
+            anteAmount={0}
             players={players as any}
             currentUserId={user?.id}
             onSelectSeat={handleSelectSeat}
@@ -9949,24 +9958,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             isChatSending={isChatSending}
           />
         )}
-        {game.status === 'waiting' && resolveShellKind(game.game_type) === 'poker-variant' && (
-          <WaitingForPlayersTable
-            gameId={gameId!}
-            players={players}
-            currentUserId={user?.id}
-            onSelectSeat={handleSelectSeat}
-            onGameStart={startGameFromWaiting}
-            
-            chatBubbles={chatBubbles}
-            allMessages={allMessages}
-            onSendChat={sendChatMessage}
-            isChatSending={isChatSending}
-            getPositionForUserId={getPositionForUserId}
-            onLeaveGameNow={handleLeaveGameNow}
-            realMoney={game.real_money}
-            onBotAdded={fetchGameData}
-          />
-        )}
+
 
 
         {(game.status === 'dealer_selection' || game.status === 'game_selection' || game.status === 'configuring' || game.status === 'game_over' || game.status === 'session_ended' || is357WinAnimationActive || horsesWinPotTriggerId) && (
