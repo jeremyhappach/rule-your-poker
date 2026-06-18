@@ -4,13 +4,17 @@
  * collapsible/copyable pill that proves the corresponding regression
  * via screenshots, no console.
  */
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
 import {
   dealerDbgStore,
   seatOwnershipStore,
   dealerAffordanceStore,
 } from './extraDebugStore';
+
+function shortId(id: string | null | undefined): string {
+  return id ? id.slice(0, 6) : 'unknown';
+}
 
 function fmtTime(ts: number): string {
   const d = new Date(ts);
@@ -128,6 +132,85 @@ function Pill({ label, store, summarize, top }: PillProps) {
 
 export function ExtraDebugPills() {
   const hidden = useHideDebugUI();
+  const previousParticipantsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (hidden || typeof document === 'undefined') return;
+    let cancelled = false;
+    let raf = 0;
+    const sampleSeatClusterLifecycle = () => {
+      const clusters = Array.from(
+        document.querySelectorAll('[data-canonical-seat-cluster]'),
+      ) as HTMLElement[];
+      const participantIds = new Set<string>();
+      const seatId: Record<string, string[]> = {};
+      const status: Record<string, string[]> = {};
+      const mountedCount: Record<string, number> = {};
+      const mountedBy: Record<string, string[]> = {};
+      const renderPath: Record<string, string[]> = {};
+      const canonicalSeatClusterMounted: Record<string, boolean> = {};
+      const chipDiscMounted: Record<string, boolean> = {};
+      const seatProjectionSource: Record<string, string[]> = {};
+      const teardownReason: Record<string, string> = {};
+
+      for (const cluster of clusters) {
+        const participant = shortId(cluster.dataset.playerId || `position:${cluster.dataset.seatPosition ?? 'unknown'}`);
+        participantIds.add(participant);
+        if (!seatId[participant]) seatId[participant] = [];
+        if (!status[participant]) status[participant] = [];
+        if (!mountedBy[participant]) mountedBy[participant] = [];
+        if (!renderPath[participant]) renderPath[participant] = [];
+        if (!seatProjectionSource[participant]) seatProjectionSource[participant] = [];
+        mountedCount[participant] = (mountedCount[participant] ?? 0) + 1;
+        canonicalSeatClusterMounted[participant] = true;
+        chipDiscMounted[participant] = Boolean(chipDiscMounted[participant] || cluster.querySelector('[data-chip-center]'));
+        seatId[participant].push(`pos:${cluster.dataset.seatPosition ?? '—'} slot:${cluster.dataset.seatSlot ?? '—'}`);
+        status[participant].push(cluster.dataset.seatStatus ?? '—');
+        mountedBy[participant].push(cluster.dataset.ownerLabel || 'unknown');
+        renderPath[participant].push(cluster.dataset.ownerLabel || 'unknown');
+        seatProjectionSource[participant].push(
+          `provider:${cluster.dataset.providerInstance || '—'} orientation:${cluster.dataset.seatOrientation || '—'} growth:${cluster.dataset.seatGrowth || '—'}`,
+        );
+      }
+
+      for (const previous of previousParticipantsRef.current) {
+        if (!participantIds.has(previous)) teardownReason[previous] = 'not present in current DOM snapshot';
+      }
+      for (const [participant, count] of Object.entries(mountedCount)) {
+        teardownReason[participant] = count > 1 ? 'duplicate mounted clusters in current DOM snapshot' : 'mounted';
+      }
+      previousParticipantsRef.current = participantIds;
+
+      const duplicateParticipantIds = Object.entries(mountedCount)
+        .filter(([, count]) => count > 1)
+        .map(([participant]) => participant);
+      const bodyText = document.body?.innerText ?? '';
+      seatOwnershipStore.record({
+        context: 'seat-cluster-lifecycle',
+        participantId: Array.from(participantIds),
+        seatId,
+        status,
+        mountedCount,
+        mountedBy,
+        renderPath,
+        canonicalSeatClusterMounted,
+        chipDiscMounted,
+        seatProjectionSource,
+        teardownReason,
+        observerTransition: mountedBy && Object.values(mountedBy).some(paths => paths.some(path => path.includes('WaitingSurface') || path.includes('PreSessionSeatLayer'))),
+        timeoutTransition: bodyText.includes('Waiting for Players') || bodyText.includes('Timed out') || bodyText.includes('timeout'),
+        duplicateParticipantIds,
+        invariantHolds: duplicateParticipantIds.length === 0,
+      });
+      if (!cancelled) raf = requestAnimationFrame(sampleSeatClusterLifecycle);
+    };
+    raf = requestAnimationFrame(sampleSeatClusterLifecycle);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [hidden]);
+
   if (hidden) return null;
   return (
     <>
@@ -140,7 +223,7 @@ export function ExtraDebugPills() {
       <Pill
         label="SEAT OWNERSHIP"
         store={seatOwnershipStore}
-        summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/seat · ${e.winSequencePhase}` : '—'}
+        summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/participant · ${e.context === 'seat-cluster-lifecycle' ? (e.duplicateParticipantIds?.join(',') || 'shell') : e.winSequencePhase}` : '—'}
         top={72}
       />
 
