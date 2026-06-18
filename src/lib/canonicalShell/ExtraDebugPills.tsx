@@ -10,6 +10,9 @@ import {
   dealerDbgStore,
   seatOwnershipStore,
   dealerAffordanceStore,
+  type DealerAffordanceEntry,
+  type DealerDbgEntry,
+  type SeatOwnershipEntry,
 } from './extraDebugStore';
 
 function shortId(id: string | null | undefined): string {
@@ -23,12 +26,12 @@ function fmtTime(ts: number): string {
     .join(':');
 }
 
-type DebugEntry = { ts: number } & Record<string, unknown>;
+type DebugEntry<T extends object = object> = { ts: number } & T;
 
-function entryToText(e: DebugEntry): string {
+function entryToText<T extends object>(e: DebugEntry<T>): string {
   const { ts, ...rest } = e;
   const lines = [fmtTime(ts), ''];
-  for (const [k, v] of Object.entries(rest)) {
+  for (const [k, v] of Object.entries(rest as Record<string, unknown>)) {
     let out: string;
     if (v && typeof v === 'object') {
       out = JSON.stringify(v);
@@ -40,17 +43,17 @@ function entryToText(e: DebugEntry): string {
   return lines.join('\n');
 }
 
-interface PillProps {
+interface PillProps<T extends object> {
   label: string;
   store: {
-    get: () => DebugEntry[];
+    get: () => DebugEntry<T>[];
     subscribe: (l: () => void) => () => void;
   };
-  summarize: (latest: DebugEntry | undefined) => string;
+  summarize: (latest: DebugEntry<T> | undefined) => string;
   top: number;
 }
 
-function Pill({ label, store, summarize, top }: PillProps) {
+function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) {
   const entries = useSyncExternalStore(store.subscribe, store.get, store.get);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
