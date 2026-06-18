@@ -109,10 +109,6 @@ const App = () => {
                   <DebugModeIndicator />
                   <LegacyDebugPanels />
                   <WartimeDebugPanel />
-                  <Wave5ViewportOverlayToggle />
-                  <Wave5SeatReserveOverlayToggle />
-                  <Wave5AnchoredProbeToggle />
-                  <Wave5OversizedProbeToggle />
                   <ShellLifecyclePanel />
                 </DebugTray>
               )}
@@ -151,7 +147,6 @@ function LegacyDebugPanels() {
   if (wartimeEnabled) return null;
   return (
     <>
-      <AnnouncementDebugPanel />
       <StartupFlightRecorderOverlay />
     </>
   );

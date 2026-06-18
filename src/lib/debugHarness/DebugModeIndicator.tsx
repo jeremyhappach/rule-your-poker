@@ -6,6 +6,8 @@
  * UI-only consolidation — no harness behavior changes.
  */
 
+// Removed from DebugTray to free space; component kept in case re-enabled later.
+
 import { useEffect, useState } from 'react';
 import {
   ensureHarnessCacheLoaded,
