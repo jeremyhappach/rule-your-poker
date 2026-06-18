@@ -47,6 +47,7 @@ function entryToText<T extends object>(e: DebugEntry<T>): string {
 
 interface PillProps<T extends object> {
   label: string;
+  pillKey: DebugPillKey;
   store: {
     get: () => DebugEntry<T>[];
     subscribe: (l: () => void) => () => void;
@@ -55,8 +56,10 @@ interface PillProps<T extends object> {
   top: number;
 }
 
-function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) {
+function Pill<T extends object>({ label, pillKey, store, summarize, top }: PillProps<T>) {
   const entries = useSyncExternalStore(store.subscribe, store.get, store.get);
+  const enabled = useDebugPillEnabled(pillKey);
+  const inTray = useInDebugTray();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const latest = entries[entries.length - 1];
@@ -70,10 +73,18 @@ function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) 
     } catch { /* noop */ }
   };
 
-  return (
-    <div
-      data-extra-debug-pill={label}
-      style={{
+  if (!enabled) return null;
+
+  const wrapperStyle: React.CSSProperties = inTray
+    ? {
+        position: 'relative',
+        display: 'inline-block',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: 10,
+        color: '#fff',
+        pointerEvents: 'auto',
+      }
+    : {
         position: 'fixed',
         right: 8,
         top,
@@ -82,8 +93,10 @@ function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) 
         fontSize: 10,
         color: '#fff',
         pointerEvents: 'auto',
-      }}
-    >
+      };
+
+  return (
+    <div data-extra-debug-pill={label} style={wrapperStyle}>
       {!open ? (
         <button
           type="button"
