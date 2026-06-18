@@ -32,7 +32,18 @@ export interface CanonicalFeltSurfaceProps {
   legsToWin?: number;
   /** Additive: points-to-win subtitle for points-based games (Gin Rummy, Cribbage). */
   pointsToWin?: number;
+  /**
+   * Legacy hint. Retained for callers that have not yet adopted
+   * `feltPlateMode`. When `feltPlateMode` is provided it OVERRIDES
+   * this — `isWaitingPhase` has NO influence on plate selection.
+   */
   isWaitingPhase?: boolean;
+  /**
+   * Explicit, single-source plate contract. Publishers declare which
+   * plate to paint via this field; the felt no longer interprets
+   * gameplay/HUD booleans like `isWaitingPhase`. See feltPlateMode.ts.
+   */
+  feltPlateMode?: FeltPlateMode;
   isTablet?: boolean;
   isDesktop?: boolean;
   /**
