@@ -105,6 +105,8 @@ export function ShellLifecyclePanel() {
   // localStorage / query-param / DEV check so the pill is always visible
   // alongside WS GRID, SHELL LC, etc. Outside the tray, keep legacy gating
   // so older fixed-position usages don't suddenly appear unexpectedly.
+  const pillEnabled = useDebugPillEnabledForShellLifecycle();
+  if (!pillEnabled) return null;
   if (!inTray && !isShellLifecycleDebugEnabled()) return null;
 
   const handleCopy = async () => {
