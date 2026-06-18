@@ -48,53 +48,60 @@ export interface DealerDbgEntry {
   dealerPipClipped: Record<string, boolean>; // rect outside cluster ancestor bounds
 }
 
-export interface SeatOwnershipEntry {
-  context: 'cribbage';
-  winSequencePhase: string;
-  winnerSeatId: string | null;
-  loserSeatId: string | null;
-  loserSeatIds: string[];
-  seatId: string[];
-  canonicalSeat: string;
-  legacySeat: string;
-  staticDiscOwner: Record<string, string | null>;
-  flyOwnerSeatId: Record<string, string[]>;
-  staticDiscVisible: Record<string, boolean>;
-  flyVisible: Record<string, boolean>;
-  renderOwners: Record<string, Array<{
+export type SeatChipRenderOwner = {
     renderedChip: 'static disc' | 'fly chip';
     ownerSeatId: string | null;
     component: string;
     renderedSeatId: string | null;
     renderOwner?: string;
     rect?: string;
-  }>>;
-  chipDiscVisible: Record<string, boolean>;
-  animationChipVisible: boolean;
-  chipDiscCount: number;
+  };
+
+export interface SeatOwnershipEntry {
+  context: 'cribbage' | 'seat-cluster-lifecycle';
+  winSequencePhase?: string;
+  participantId?: string[];
+  winnerSeatId?: string | null;
+  loserSeatId?: string | null;
+  loserSeatIds?: string[];
+  seatId?: string[] | Record<string, string[]>;
+  status?: Record<string, string[]>;
+  mountedCount?: Record<string, number>;
+  mountedBy?: Record<string, string[]>;
+  renderPath?: Record<string, string[]>;
+  canonicalSeatClusterMounted?: Record<string, boolean>;
+  chipDiscMounted?: Record<string, boolean>;
+  seatProjectionSource?: Record<string, string[]>;
+  teardownReason?: Record<string, string>;
+  observerTransition?: boolean;
+  timeoutTransition?: boolean;
+  duplicateParticipantIds?: string[];
+  canonicalSeat?: string;
+  legacySeat?: string;
+  staticDiscOwner?: Record<string, string | null>;
+  flyOwnerSeatId?: Record<string, string[]>;
+  staticDiscVisible?: Record<string, boolean>;
+  flyVisible?: Record<string, boolean>;
+  renderOwners?: Record<string, SeatChipRenderOwner[]>;
+  chipDiscVisible?: Record<string, boolean>;
+  animationChipVisible?: boolean;
+  chipDiscCount?: number;
   // Per-seat chip count — canonical disc + portal fly chip. The
   // invariant is `perSeatChipCount[seat] == 1` for every seat at
   // every phase. `invariantHolds` summarises that contract.
-  perSeatChipCount: Record<string, number>;
-  invariantHolds: boolean;
+  perSeatChipCount?: Record<string, number>;
+  invariantHolds?: boolean;
   // Suppression diagnostics per opponent:
-  hideChipBubbleProp: Record<string, boolean>;    // what JSX passed
-  hideChipBubbleSource: Record<string, string>;   // why
-  domChipDiscPresent: Record<string, boolean>;    // [data-chip-center] under cluster
-  domChipFlyCount: number;                        // [data-cribbage-chip-fly] count
-  shouldSuppressChipDisc: Record<string, boolean>;
-  invariantFailure: {
+  hideChipBubbleProp?: Record<string, boolean>;    // what JSX passed
+  hideChipBubbleSource?: Record<string, string>;   // why
+  domChipDiscPresent?: Record<string, boolean>;    // [data-chip-center] under cluster
+  domChipFlyCount?: number;                        // [data-cribbage-chip-fly] count
+  shouldSuppressChipDisc?: Record<string, boolean>;
+  invariantFailure?: {
     seatId: string;
     staticDisc: boolean;
     flyPortal: number;
-    renderOwners: Array<{
-      renderedChip: 'static disc' | 'fly chip';
-      ownerSeatId: string | null;
-      component: string;
-      renderedSeatId: string | null;
-      renderOwner?: string;
-      rect?: string;
-    }>;
+    renderOwners: SeatChipRenderOwner[];
   } | null;
 }
 
