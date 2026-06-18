@@ -190,6 +190,7 @@ import { RejoinNextHandButton } from "@/components/RejoinNextHandButton";
 import { PlayerClickDialog } from "@/components/PlayerClickDialog";
 import { GameDeckColorModeSync, handleDeckColorModeChange } from "@/components/GameDeckColorModeSync";
 import { DeadlineDebugPanel } from "@/components/DeadlineDebugPanel";
+import { recordFeltDebug as feltDebugRecord } from "@/lib/canonicalShell/feltDebugStore";
 import {
   AlertDialog,
   AlertDialogAction,
