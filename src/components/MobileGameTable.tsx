@@ -129,6 +129,7 @@ import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
+import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
 import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRail";
@@ -694,7 +695,13 @@ export const MobileGameTable = ({
           potMaxEnabled,
           potMaxValue,
           legsToWin,
+          // isWaitingPhase retained for legacy compatibility — felt no
+          // longer reads it for plate selection (see feltPlateMode).
           isWaitingPhase,
+          // EXPLICIT plate contract: derive from server status, NOT
+          // from `isWaitingPhase` (which means HUD/animation gating
+          // elsewhere). Single source of truth for felt plate.
+          feltPlateMode: deriveFeltPlateMode(gameStatus),
           publisherLabel: `MobileGameTable:${instanceLabel}`,
         }
       : null,

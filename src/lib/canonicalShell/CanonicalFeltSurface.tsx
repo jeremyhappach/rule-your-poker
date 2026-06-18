@@ -12,6 +12,7 @@
  */
 
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
+import type { FeltPlateMode } from "./feltPlateMode";
 import peoriaBridgeMobile from "@/assets/peoria-bridge-mobile.jpg";
 
 export type CanonicalFeltGameKind =
@@ -31,7 +32,18 @@ export interface CanonicalFeltSurfaceProps {
   legsToWin?: number;
   /** Additive: points-to-win subtitle for points-based games (Gin Rummy, Cribbage). */
   pointsToWin?: number;
+  /**
+   * Legacy hint. Retained for callers that have not yet adopted
+   * `feltPlateMode`. When `feltPlateMode` is provided it OVERRIDES
+   * this — `isWaitingPhase` has NO influence on plate selection.
+   */
   isWaitingPhase?: boolean;
+  /**
+   * Explicit, single-source plate contract. Publishers declare which
+   * plate to paint via this field; the felt no longer interprets
+   * gameplay/HUD booleans like `isWaitingPhase`. See feltPlateMode.ts.
+   */
+  feltPlateMode?: FeltPlateMode;
   isTablet?: boolean;
   isDesktop?: boolean;
   /**
@@ -81,6 +93,7 @@ export function CanonicalFeltSurface({
   legsToWin,
   pointsToWin,
   isWaitingPhase = false,
+  feltPlateMode,
   isTablet = false,
   isDesktop = false,
   geometryVariant = 'auto',
@@ -91,9 +104,23 @@ export function CanonicalFeltSurface({
   const tableColors = getTableColors();
   const isDicePlate = gameKind != null && DICE_PLATE_KINDS.has(gameKind);
   const isCribbage = gameKind === "cribbage";
-  // Neutral mode: no committed game kind yet (bootstrap dealer-selection
-  // before a dealer-game exists). Suppress the game-name plate entirely.
+  // Plate selection — EXPLICIT contract.
+  // 1. If `feltPlateMode` is provided, it is the SOLE authority.
+  // 2. Otherwise (legacy callers) fall back to the old `isWaitingPhase`
+  //    + `gameKind == null` heuristic so unmigrated paths render as before.
   const isNeutralKind = gameKind == null;
+  const resolvedPlate: 'BRAND' | 'GAME' | 'NEUTRAL' =
+    feltPlateMode === 'BRAND'
+      ? 'BRAND'
+      : feltPlateMode === 'GAME'
+        ? (isNeutralKind ? 'NEUTRAL' : 'GAME')
+        : isWaitingPhase
+          ? 'BRAND'
+          : isNeutralKind
+            ? 'NEUTRAL'
+            : 'GAME';
+  const showBrandPlate = resolvedPlate === 'BRAND';
+  const showGamePlate = resolvedPlate === 'GAME';
 
   // Geometry selection. When geometryVariant === 'ellipse' we force the
   // shared canonical ellipse for every family (Phase 3.1b' shell-owned
@@ -149,7 +176,7 @@ export function CanonicalFeltSurface({
       {/* Waiting-phase plate — permanent "P-Town Poker" branding on
           the felt while no game is in progress. Uses the same plate
           chrome as gameplay so the visual treatment is consistent. */}
-      {isWaitingPhase && (
+      {showBrandPlate && (
         <div
           data-canonical-felt-plate=""
           data-canonical-felt-plate-variant="waiting"
@@ -162,7 +189,7 @@ export function CanonicalFeltSurface({
       )}
 
       {/* Game-name plate — shared chrome */}
-      {!isWaitingPhase && !isNeutralKind && gameKind && (
+      {showGamePlate && gameKind && (
         <div
           data-canonical-felt-plate=""
           data-canonical-felt-plate-variant={

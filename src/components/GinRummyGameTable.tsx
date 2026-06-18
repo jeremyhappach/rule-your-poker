@@ -299,6 +299,7 @@ export const GinRummyGameTable = ({
     gameKind: 'gin-rummy',
     anteAmount,
     isWaitingPhase: false,
+    feltPlateMode: 'GAME',
     publisherLabel: 'GinRummyGameTable',
   });
   const firstRenderRef = useRef(false);

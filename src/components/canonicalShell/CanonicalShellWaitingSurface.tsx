@@ -137,6 +137,7 @@ function WaitingSurfaceBody({
     gameKind: deriveFeltGameKind(gameType),
     anteAmount,
     isWaitingPhase: true,
+    feltPlateMode: "BRAND",
     publisherLabel: "CanonicalShellWaitingSurface",
   });
 

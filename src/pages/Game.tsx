@@ -10727,12 +10727,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 } else {
                   _committedReason = 'unknown';
                 }
-                // Under current shell wiring (MobileGameTable publishes
-                // `isWaitingPhase` straight through to the shell-owned
-                // felt), the legacy contract CAN influence the plate iff
-                // the surface is mounted and would push waiting=true
-                // while we are in a COMMITTED_DEALERGAME bucket.
-                const _legacyCanInfluence = _legacyIsWaiting && _hasCommittedDealerGameForCurrentLifecycle;
+                // EXPLICIT FELT PLATE CONTRACT (post-fix):
+                // Every publisher now sends `feltPlateMode` and the
+                // shell felt reads ONLY that field. `isWaitingPhase`
+                // can no longer influence plate selection — it remains
+                // a HUD / animation gating concern, not a felt contract.
+                const _legacyCanInfluence = false;
                 feltDebugRecord({
                   phase: _trace.sessionPhase,
                   status: _status,

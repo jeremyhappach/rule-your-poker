@@ -27,6 +27,7 @@ import {
   type CanonicalFeltGameKind,
   type CanonicalFeltSurfaceProps,
 } from './CanonicalFeltSurface';
+import type { FeltPlateMode } from './feltPlateMode';
 import { Wave5GridOverlay } from '@/lib/wave5GameplayGeometry/Wave5GridOverlay';
 
 // Re-export so non-shell call sites can reference the type without
@@ -38,8 +39,9 @@ export type { CanonicalFeltGameKind };
 // Felt context — surfaces publish their felt geometry / subtitle data.
 // ---------------------------------------------------------------------------
 
-export type ShellFeltContextValue = Omit<CanonicalFeltSurfaceProps, 'isWaitingPhase'> & {
+export type ShellFeltContextValue = Omit<CanonicalFeltSurfaceProps, 'isWaitingPhase' | 'feltPlateMode'> & {
   isWaitingPhase?: boolean;
+  feltPlateMode?: FeltPlateMode;
   /** Diagnostic label — name of the surface that published this context. */
   publisherLabel?: string;
 };
@@ -95,6 +97,7 @@ function shallowFeltEqual(
     a.legsToWin !== b.legsToWin ||
     a.pointsToWin !== b.pointsToWin ||
     a.isWaitingPhase !== b.isWaitingPhase ||
+    a.feltPlateMode !== b.feltPlateMode ||
     a.isTablet !== b.isTablet ||
     a.isDesktop !== b.isDesktop ||
     a.publisherLabel !== b.publisherLabel
@@ -263,6 +266,13 @@ export function ShellOwnedFeltHost({
   const isWaitingPhase = lobbyMode
     ? true
     : (effective?.isWaitingPhase ?? initialIsWaitingPhase);
+  // lobbyMode is a hard BRAND override (post-game / abandoned / fresh
+  // waiting / dealer selection bootstrap). Otherwise prefer the
+  // publisher's explicit feltPlateMode; only fall back to inferring
+  // from isWaitingPhase for unmigrated callers.
+  const feltPlateMode: FeltPlateMode = lobbyMode
+    ? 'BRAND'
+    : (effective?.feltPlateMode ?? (isWaitingPhase ? 'BRAND' : 'GAME'));
   const hasPublished = !!published;
   const hasSticky = !!stickyRef.current;
   const publisherLabel = effective?.publisherLabel ?? null;
@@ -272,10 +282,11 @@ export function ShellOwnedFeltHost({
       gameKind,
       anteAmount,
       isWaitingPhase,
+      feltPlateMode,
       hasPublished,
       hasSticky,
     }),
-    [publisherLabel, gameKind, anteAmount, isWaitingPhase, hasPublished, hasSticky],
+    [publisherLabel, gameKind, anteAmount, isWaitingPhase, feltPlateMode, hasPublished, hasSticky],
   );
 
   useEffect(() => {
@@ -377,6 +388,7 @@ export function ShellOwnedFeltHost({
           legsToWin={effective?.legsToWin}
           pointsToWin={effective?.pointsToWin}
           isWaitingPhase={isWaitingPhase}
+          feltPlateMode={feltPlateMode}
           isTablet={effective?.isTablet}
           isDesktop={effective?.isDesktop}
           cribbageSkunk={effective?.cribbageSkunk}
