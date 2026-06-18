@@ -1675,7 +1675,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       const transitionalStates = ['dealer_selection', 'game_selection', 'configuring', 'dealer_announcement',
         'cribbage_dealer_selection', 'ante_decision', 'in_progress', 'game_over'];
       
-      if (transitionalStates.includes(gData.status) || gData.status === 'waiting') {
+      if (transitionalStates.includes(gData.status) || gData.status === 'waiting' || gData.status === 'waiting_for_players') {
         console.log('[CLEANUP] Not enough players in state:', gData.status, '- reverting to waiting');
         
         // If real money or has history, just revert to waiting so remaining player sees the lobby
@@ -1739,7 +1739,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // Check if host is leaving during waiting phase - delete the entire game
     // CRITICAL: NEVER delete real_money games - archive them instead
-    if (game?.status === 'waiting' && isCreator) {
+    if ((game?.status === 'waiting' || game?.status === 'waiting_for_players') && isCreator) {
       if (game?.real_money) {
         // Real money games: NEVER delete - archive to session_ended
         console.log('[PLAYER OPTIONS] Real money game - archiving instead of deleting');
