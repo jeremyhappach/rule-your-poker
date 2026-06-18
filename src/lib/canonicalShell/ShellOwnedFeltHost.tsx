@@ -245,9 +245,8 @@ export interface ShellOwnedFeltHostProps {
   initialAnteAmount?: number | string;
   initialIsWaitingPhase?: boolean;
   /**
-   * Shell-authoritative lobby mode. When true (post-game waiting,
-   * timeout-with-insufficient-players abandonment, fresh waiting,
-   * dealer selection, etc.) the felt MUST render the canonical
+   * Shell-authoritative lobby mode. When true (fresh waiting,
+   * game_selection/configuring, session-ended, etc.) the felt MUST render the canonical
    * waiting identity (gameKind=null, isWaitingPhase=true,
    * anteAmount=0) regardless of any stale value still cached in the
    * sticky ref from a prior gameplay surface. Prevents stale
@@ -271,8 +270,8 @@ export function ShellOwnedFeltHost({
   // waiting state and visibly blink. The shell felt MUST stay continuous.
   //
   // Lobby mode is the one authoritative override: when the shell knows
-  // the table is in lobby identity (any pre-session / post-game /
-  // session-ended status), we drop the sticky snapshot so the next
+  // the table is in non-committed lobby identity (fresh waiting /
+  // game_selection / configuring / session-ended), we drop the sticky snapshot so the next
   // gameplay phase re-publishes from a clean baseline, and we ignore
   // any stale `published` value that might still be in-flight from an
   // unmounting gameplay surface.
@@ -296,8 +295,8 @@ export function ShellOwnedFeltHost({
   const isWaitingPhase = lobbyMode
     ? true
     : (effective?.isWaitingPhase ?? initialIsWaitingPhase);
-  // lobbyMode is a hard BRAND override (post-game / abandoned / fresh
-  // waiting / dealer selection bootstrap). Otherwise prefer the
+  // lobbyMode is a hard BRAND override for non-committed lobby phases.
+  // Otherwise prefer the
   // publisher's explicit feltPlateMode; only fall back to inferring
   // from isWaitingPhase for unmigrated callers.
   const feltPlateMode: FeltPlateMode = lobbyMode
