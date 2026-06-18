@@ -2138,7 +2138,9 @@ export function YahtzeeGameTable({
                 slot={slot}
                 position={player.position}
                 name={getPlayerUsername(player)}
-                isDealer={dealerPosition === player.position}
+                /* Dice families have no dealer concept — never render the
+                   canonical dealer pip on opponent seats. */
+                isDealer={false}
                 chipValue={`$${formatChipValue(Math.round(player.chips))}`}
                 scoreLine={`Score: ${total}`}
                 ownerLabel="Gameplay:YahtzeeGameTable.opponentOverlay"
