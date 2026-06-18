@@ -6651,7 +6651,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     traceMilestone('game_start_from_waiting');
     
     // Log session event
-    await logStatusChanged(gameId, user?.id, 'waiting', 'dealer_selection', 'Host started game');
+    await logStatusChanged(gameId, user?.id, game?.status ?? 'waiting', 'dealer_selection', 'Host started game');
     
     // Recovery-waiting hygiene: when starting from a waiting state that
     // followed an in-progress session (rather than a fresh session), the
