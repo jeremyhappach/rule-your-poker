@@ -9525,10 +9525,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   }
 
 
-  // Lobby/observer/session-ended states release stale gameplay
+  // Non-committed lobby/session-ended states release stale gameplay
   // identity (game.name / instanceLabel / stakes) and render the
-  // canonical lobby brand exactly like the normal lobby does.
-  // shellMode === 'gameplay' ⇒ `game.name`; anything else ⇒ brand.
+  // canonical lobby brand. Committed phases (dealer_selection,
+  // ante_decision, in_progress, game_over) must NOT enter this mode;
+  // they render the committed game plate via the felt contract.
   const _shellLobbyStatuses = new Set<string>([
     'waiting', 'waiting_for_players',
     'configuring', 'game_selection', 'session_ended',
