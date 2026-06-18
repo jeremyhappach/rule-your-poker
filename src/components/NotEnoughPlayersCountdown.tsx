@@ -109,17 +109,17 @@ export const NotEnoughPlayersCountdown = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Handle revert to waiting_for_players when countdown reaches 0
+  // Handle revert to canonical waiting-table status when countdown reaches 0
   useEffect(() => {
     if (countdown <= 0 && !hasEndedRef.current) {
       hasEndedRef.current = true;
       
       const revertToWaiting = async () => {
-        // Revert to waiting_for_players status - preserve all chip stacks
+        // Revert to waiting status - preserve all chip stacks
         await supabase
           .from('games')
           .update({
-            status: 'waiting_for_players',
+            status: 'waiting',
             config_complete: false,
             game_over_at: null,
             last_round_result: null

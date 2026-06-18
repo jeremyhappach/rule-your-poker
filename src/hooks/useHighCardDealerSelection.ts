@@ -865,9 +865,7 @@ export function useHighCardDealerSelection({
     if (eligibleDealers.length === 1) {
       hasInitializedRef.current = true;
       console.log('[HIGH CARD] Only one eligible dealer, bypassing selection');
-      if (isHost) {
-        onComplete(eligibleDealers[0].position);
-      }
+      onComplete(eligibleDealers[0].position);
       return;
     }
 

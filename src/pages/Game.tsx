@@ -6665,17 +6665,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // dealer_selection cutover; fresh sessions already have null values
     // so this is a no-op for them.
     //
-    // Active players: promote seated, non-observer/left, non-sitting-out
-    // (OR explicitly waiting-to-rejoin) players to active. NEVER blanket
-    // clear sitting_out across observers/left — that resurrects players
-    // who deliberately left.
+    // Active players: promote every seated/non-observer/non-left row to
+    // active for this fresh relaunch. Waiting-table Start Game owns this
+    // hygiene pass; stale sitting_out=true / waiting=false timeout rows
+    // must not survive into dealer_selection.
     await supabase
       .from('players')
-      .update({ sitting_out: false, waiting: false })
+      .update({ status: 'active', sitting_out: false, waiting: false })
       .eq('game_id', gameId)
       .neq('status', 'observer')
-      .neq('status', 'left')
-      .or('waiting.eq.true,sitting_out.eq.false');
+      .neq('status', 'left');
 
     // Move to dealer_selection AND clear recovery-waiting scaffolding.
     const { error } = await supabase
@@ -9246,12 +9245,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     const currentPlayer = players.find(p => p.user_id === user.id);
     
     // Setup states where new players can join immediately (not sitting out)
-    const setupStates = ['waiting', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
+    const setupStates = ['waiting', 'waiting_for_players', 'dealer_selection', 'game_selection', 'configuring', 'ante_decision'];
     // If game is actively playing (not in setup/config), new players should sit out until next game
     const gameInProgress = !setupStates.includes(game?.status || '');
     
     // For waiting status (before game starts), players join in "waiting" status (ready to play)
-    const isWaitingForPlayers = game?.status === 'waiting';
+    const isWaitingForPlayers = game?.status === 'waiting' || game?.status === 'waiting_for_players';
     
     try {
       if (!currentPlayer) {
