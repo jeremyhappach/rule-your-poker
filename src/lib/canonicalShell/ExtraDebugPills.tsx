@@ -6,6 +6,8 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
+import { useDebugPillEnabled, type DebugPillKey } from '@/lib/debugTray/debugPillsStore';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import {
   dealerDbgStore,
   seatOwnershipStore,
