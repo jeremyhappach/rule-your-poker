@@ -7,10 +7,21 @@
  * field changes.
  */
 
+export type CommittedDealerGameReason =
+  | 'waiting_for_players'
+  | 'game_selection'
+  | 'dealer_selection'
+  | 'ante_decision'
+  | 'in_progress'
+  | 'game_over'
+  | 'teardown'
+  | 'unknown';
+
 export interface FeltDebugEntry {
   ts: number; // epoch ms
   phase: string;
   status: string;
+  committedDealerGameReason: CommittedDealerGameReason;
   isSessionWaitingTable: boolean;
   hasCommittedDealerGame: boolean;
   hasRoundContext: boolean;
@@ -22,6 +33,10 @@ export interface FeltDebugEntry {
   gameSource: string;
   stakesSource: string;
   fallbackReason: string;
+  /** What the legacy `!renderRoundContext` contract would publish to the shell felt. */
+  legacyIsWaitingPhase: boolean;
+  /** True iff legacyIsWaitingPhase would (under current shell wiring) override the GAME plate. */
+  legacyCanInfluenceFeltPlate: boolean;
 }
 
 const MAX_ENTRIES = 20;

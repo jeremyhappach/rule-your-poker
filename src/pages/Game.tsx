@@ -10706,9 +10706,37 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 const _legacyFallback = _legacyIsWaiting && _hasCommittedDealerGameForCurrentLifecycle
                   ? 'isWaitingPhase=true (legacy: !renderRoundContext)'
                   : (_legacyIsWaiting ? 'isWaitingPhase=true' : 'none');
+                // committedDealerGameReason — semantic phase of the
+                // committed dealer game (or the pre-commit lifecycle
+                // bucket). Used to retire the UNRESOLVED bucket.
+                let _committedReason: 'waiting_for_players' | 'game_selection' | 'dealer_selection' | 'ante_decision' | 'in_progress' | 'game_over' | 'teardown' | 'unknown';
+                if (_isSessionWaitingTable) {
+                  _committedReason = 'waiting_for_players';
+                } else if (_status === 'configuring' || _status === 'game_selection') {
+                  _committedReason = 'game_selection';
+                } else if ((_status === 'waiting' || _status === 'waiting_for_players') && !!(game as any)?.game_over_at) {
+                  _committedReason = 'teardown';
+                } else if (_status === 'dealer_selection' || _status === 'cribbage_dealer_selection') {
+                  _committedReason = 'dealer_selection';
+                } else if (_status === 'ante_decision') {
+                  _committedReason = 'ante_decision';
+                } else if (_status === 'in_progress') {
+                  _committedReason = 'in_progress';
+                } else if (_status === 'game_over') {
+                  _committedReason = 'game_over';
+                } else {
+                  _committedReason = 'unknown';
+                }
+                // Under current shell wiring (MobileGameTable publishes
+                // `isWaitingPhase` straight through to the shell-owned
+                // felt), the legacy contract CAN influence the plate iff
+                // the surface is mounted and would push waiting=true
+                // while we are in a COMMITTED_DEALERGAME bucket.
+                const _legacyCanInfluence = _legacyIsWaiting && _hasCommittedDealerGameForCurrentLifecycle;
                 feltDebugRecord({
                   phase: _trace.sessionPhase,
                   status: _status,
+                  committedDealerGameReason: _committedReason,
                   isSessionWaitingTable: _isSessionWaitingTable,
                   hasCommittedDealerGame: _hasCommittedDealerGameForCurrentLifecycle,
                   hasRoundContext: _hasRound,
@@ -10720,6 +10748,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   gameSource: _displayPlate === 'GAME' ? 'games.game_type' : 'brand',
                   stakesSource: _displayPlate === 'GAME' && _selectedStakes != null ? 'games.ante_amount' : 'brand',
                   fallbackReason: _legacyFallback,
+                  legacyIsWaitingPhase: _legacyIsWaiting,
+                  legacyCanInfluenceFeltPlate: _legacyCanInfluence,
                 });
               } catch { /* noop */ }
             }
