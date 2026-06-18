@@ -10595,6 +10595,101 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           const renderRoundContext = isInProgress || isTerminalSlotPresentation;
           const hasActiveRound = renderRoundContext && Boolean(currentRound?.id);
           const effectiveRenderGameType = game.game_type ?? lastKnownGameTypeRef.current ?? previousGameConfig?.game_type ?? null;
+
+          // ── FELT COMMITMENT TRACE (diagnostic-only) ────────────────────
+          // Proves which lifecycle bucket the current frame falls into and
+          // which metadata source the felt plate ought to draw from. Diff-
+          // gated by a JSON key so the console stays readable.
+          {
+            const _status = game.status as string;
+            const _currentDealerGameId = (game as any)?.current_game_uuid ?? null;
+            const _configComplete = !!(game as any)?.config_complete;
+            const _selectedGameType = game.game_type ?? null;
+            const _selectedStakes = game.ante_amount ?? null;
+            const _roundId = currentRound?.id ?? null;
+            const _roundStatus = currentRound?.status ?? null;
+            const _roundDealerGameId = (currentRound as any)?.dealer_game_id ?? null;
+
+            // Lifecycle buckets:
+            //  - SESSION_WAITING_TABLE: fresh waiting, no committed dealer game ever / not yet
+            //  - DEALER_GAME_SETUP: enough players, picking next game (no committed lifecycle)
+            //  - COMMITTED_DEALERGAME: dealer_selection → win presentation
+            const _committedLifecycleStatuses = new Set([
+              'ante_decision', 'in_progress', 'game_over',
+              'dealer_selection', 'cribbage_dealer_selection',
+            ]);
+            const _setupLifecycleStatuses = new Set([
+              'configuring', 'game_selection',
+            ]);
+            const _isSessionWaitingTable =
+              (_status === 'waiting' || _status === 'waiting_for_players') &&
+              !_currentDealerGameId;
+            const _isDealerGameSetup =
+              _setupLifecycleStatuses.has(_status as any) ||
+              ((_status === 'waiting' || _status === 'waiting_for_players') && !!_currentDealerGameId === false && false) ||
+              // post-game return-to-brand: status reverted but stale id may linger
+              ((_status === 'waiting' || _status === 'waiting_for_players') && !!(game as any)?.game_over_at);
+            const _hasCommittedDealerGameForCurrentLifecycle =
+              _committedLifecycleStatuses.has(_status as any) &&
+              !!_currentDealerGameId &&
+              _configComplete &&
+              // round (if present) must scope to the committed dealer game
+              (!_roundId || !_roundDealerGameId || _roundDealerGameId === _currentDealerGameId);
+
+            let _feltPlateMode: 'P-TOWN' | 'GAME_NAME' | 'AMBIGUOUS';
+            let _metadataSource: string;
+            let _fallbackReason: string | null = null;
+            if (_hasCommittedDealerGameForCurrentLifecycle && _selectedGameType && _selectedStakes != null) {
+              _feltPlateMode = 'GAME_NAME';
+              _metadataSource = 'games.game_type + games.ante_amount (committed)';
+            } else if (_isSessionWaitingTable || _isDealerGameSetup) {
+              _feltPlateMode = 'P-TOWN';
+              _metadataSource = 'brand (no committed lifecycle)';
+            } else {
+              _feltPlateMode = 'AMBIGUOUS';
+              _metadataSource = 'unresolved';
+              _fallbackReason = `status=${_status} committed=${_hasCommittedDealerGameForCurrentLifecycle} setup=${_isDealerGameSetup} waiting=${_isSessionWaitingTable} gtype=${_selectedGameType} ante=${_selectedStakes} cfg=${_configComplete}`;
+            }
+
+            const _trace = {
+              status: _status,
+              sessionPhase: _isSessionWaitingTable ? 'SESSION_WAITING_TABLE'
+                : _isDealerGameSetup ? 'DEALER_GAME_SETUP'
+                : _hasCommittedDealerGameForCurrentLifecycle ? 'COMMITTED_DEALERGAME'
+                : 'UNRESOLVED',
+              dealerGameState: '(client lacks dealer_games row — see currentDealerGameId)',
+              currentDealerGameId: _currentDealerGameId,
+              selectedDealerGame: _selectedGameType,
+              selectedStakes: _selectedStakes,
+              lastCompletedDealerGame: (game as any)?.game_over_at ?? null,
+              roundId: _roundId,
+              roundStatus: _roundStatus,
+              roundDealerGameId: _roundDealerGameId,
+              configComplete: _configComplete,
+              isSessionWaitingTable: _isSessionWaitingTable,
+              isDealerGameSetup: _isDealerGameSetup,
+              hasCommittedDealerGameForCurrentLifecycle: _hasCommittedDealerGameForCurrentLifecycle,
+              feltPlateMode: _feltPlateMode,
+              feltGameName: _feltPlateMode === 'GAME_NAME' ? _selectedGameType : 'P-Town Poker',
+              feltStakes: _feltPlateMode === 'GAME_NAME' ? _selectedStakes : null,
+              // What the CURRENT code actually does (legacy contract):
+              currentCodeWouldPublish: {
+                isWaitingPhase: !renderRoundContext,
+                gameKind: effectiveRenderGameType,
+                anteAmount: game.ante_amount ?? 0,
+              },
+              metadataSource: _metadataSource,
+              fallbackReason: _fallbackReason,
+            };
+            const _key = JSON.stringify(_trace);
+            const _w: any = typeof window !== 'undefined' ? window : {};
+            if (_w.__feltCommitTraceKey !== _key) {
+              _w.__feltCommitTraceKey = _key;
+              // eslint-disable-next-line no-console
+              console.info('[FELT COMMITMENT TRACE]', _trace);
+            }
+          }
+
           Promise.resolve().then(() => {
             recordStartupValue('IDENTITY TIMELINE', 'effectiveRenderGameType', effectiveRenderGameType, { file: 'src/pages/Game.tsx' });
             recordStartupValue('IDENTITY TIMELINE', 'render propRoundId precursor', currentRound?.id ?? null, { file: 'src/pages/Game.tsx', renderRoundContext, hasActiveRound });
