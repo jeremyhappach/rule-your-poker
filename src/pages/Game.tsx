@@ -10425,11 +10425,13 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             preGameOverlay={_isPokerShellPersistent ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
-                    selection for poker-variant family. Excludes cribbage /
-                    gin-rummy which own their own dealer-selection paths
-                    via their canonical-seat-consumer tables. */}
-                {game.status === 'dealer_selection' &&
-                  !isCanonicalSeatConsumer(game.game_type) && (
+                    selection for the persistent poker-variant shell. Do
+                    not gate this on canonical-seat-consumer registration:
+                    horses / holm / 3-5-7 / SCC now consume canonical seats
+                    but still use this session-level dealer-selection
+                    controller. Gin / Cribbage remain on separate paths
+                    because _isPokerShellPersistent is false for them. */}
+                {game.status === 'dealer_selection' && (
                   <HighCardDealerSelection
                     gameId={gameId!}
                     players={players}
