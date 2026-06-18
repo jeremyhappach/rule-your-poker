@@ -523,20 +523,9 @@ export function CanonicalSeatCluster({
         >
           {name}
         </span>
-        <div
-          data-canonical-dealer-pip=""
-          data-dealer-pip-active={isDealer ? 'true' : 'false'}
-          aria-hidden={!isDealer}
-          aria-label="Dealer"
-          className={cn(
-            'w-2 h-2 rounded-full bg-red-600 border border-white flex items-center justify-center shrink-0',
-            !isDealer && 'invisible',
-          )}
-        >
-          <span className="text-white font-bold text-[5px] leading-none">D</span>
-        </div>
       </div>
     );
+
 
     const defaultChipDisc = (
       <div data-canonical-seat-status-ring={statusRing ?? ''} className="contents">
@@ -608,9 +597,33 @@ export function CanonicalSeatCluster({
   }
 
   // Above-chip stack: avatar + name (and children if growth UP).
+  // Canonical dealer affordance lives at the TOP of this stack —
+  // outside the nameplate, never overlapping chip / status ring /
+  // leg indicators / buck / emotes / result badges. Single home for
+  // every game (poker, cribbage, gin, holm, 3-5-7). Dice families
+  // never pass isDealer={true}.
   const aboveChipNodes: ReactNode[] = [];
   if (!hideChipBubble) {
+    if (isDealer) {
+      aboveChipNodes.push(
+        <div
+          key="dealer"
+          data-canonical-dealer-pip=""
+          data-dealer-pip-active="true"
+          aria-label="Dealer"
+          title="Dealer"
+          className={cn(
+            'inline-flex items-center justify-center rounded-full',
+            'bg-red-600 border border-white shadow',
+            'w-4 h-4 text-[9px] font-bold text-white leading-none pointer-events-none',
+          )}
+        >
+          D
+        </div>,
+      );
+    }
     if (avatar) {
+
       aboveChipNodes.push(
         <div
           key="avatar"

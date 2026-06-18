@@ -140,9 +140,10 @@ export function ExtraDebugPills() {
       <Pill
         label="SEAT OWNERSHIP"
         store={seatOwnershipStore}
-        summarize={(e) => e ? `chips:${e.chipDiscCount} ${e.winSequencePhase}` : '—'}
+        summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/seat · ${e.winSequencePhase}` : '—'}
         top={72}
       />
+
       <Pill
         label="DEALER AFFORDANCE"
         store={dealerAffordanceStore}

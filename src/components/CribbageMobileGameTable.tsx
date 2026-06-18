@@ -5575,27 +5575,36 @@ export const CribbageMobileGameTable = ({
       const hideChipBubbleSource: Record<string, string> = {};
       const domChipDiscPresent: Record<string, boolean> = {};
       const shouldSuppressChipDisc: Record<string, boolean> = {};
+      const perSeatChipCount: Record<string, number> = {};
+      // Walk EVERY projected seat (opponents AND local) so the
+      // invariant "one chip per seat at all times" is provable.
       for (const p of projectedSeatPlayers) {
-        if (p.id === currentPlayerId) continue;
         const shortId = p.id.slice(0, 6);
         const isLoser = losers.some(l => l.playerId === p.id);
-        const intendedHide = animActive && isLoser;
+        const isOpponent = p.id !== currentPlayerId;
+        const intendedHide = animActive && isLoser && isOpponent;
         hideChipBubbleProp[shortId] = intendedHide;
         hideChipBubbleSource[shortId] = intendedHide
           ? `winSequencePhase==chips && storedChipPositions.losers.includes(${shortId})`
-          : `winSequencePhase=${winSequencePhase} isLoser=${isLoser}`;
+          : `winSequencePhase=${winSequencePhase} isLoser=${isLoser} isOpponent=${isOpponent}`;
         shouldSuppressChipDisc[shortId] = intendedHide;
         chipDiscVisible[shortId] = !intendedHide;
-        // DOM scrape: did the cluster actually drop its chip cell?
         const cluster = document.querySelector(
           `[data-canonical-seat-cluster][data-player-id="${p.id}"]`,
         ) as HTMLElement | null;
         const chipCenter = cluster?.querySelector('[data-chip-center]') as HTMLElement | null;
-        domChipDiscPresent[shortId] = !!chipCenter;
+        const hasStaticChip = !!chipCenter;
+        domChipDiscPresent[shortId] = hasStaticChip;
+        // Per-seat fly chip: portal carries data-cribbage-chip-fly-loser=<playerId>
+        const flyForSeat = document.querySelectorAll(
+          `[data-cribbage-chip-fly-loser="${p.id}"]`,
+        ).length;
+        perSeatChipCount[shortId] = (hasStaticChip ? 1 : 0) + flyForSeat;
       }
       const domChipFlyCount = document.querySelectorAll('[data-cribbage-chip-fly]').length;
       const animationChipVisible = animActive && domChipFlyCount > 0;
       const staticChips = Object.values(domChipDiscPresent).filter(Boolean).length;
+      const invariantHolds = Object.values(perSeatChipCount).every(n => n === 1);
       seatOwnershipStore.record({
         context: 'cribbage',
         winSequencePhase,
@@ -5604,6 +5613,8 @@ export const CribbageMobileGameTable = ({
         chipDiscVisible,
         animationChipVisible,
         chipDiscCount: staticChips + domChipFlyCount,
+        perSeatChipCount,
+        invariantHolds,
         hideChipBubbleProp,
         hideChipBubbleSource,
         domChipDiscPresent,
@@ -5613,6 +5624,7 @@ export const CribbageMobileGameTable = ({
     });
     return () => cancelAnimationFrame(raf);
   }, [winSequencePhase, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
+
 
 
   // Determine current render mode for felt content (not layout — layout is always the same shell)
