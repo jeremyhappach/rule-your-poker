@@ -85,7 +85,8 @@ export function WartimeDebugPanel() {
   );
 
 
-  if (!enabled) return null;
+  const pillEnabled = useDebugPillEnabled('wartime');
+  if (!enabled || !pillEnabled) return null;
 
   const durationMs = stats.startedAtMs
     ? (stats.stoppedAtMs ?? Date.now()) - stats.startedAtMs
