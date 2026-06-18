@@ -34,7 +34,7 @@ import { Wave5SeatReserveOverlayToggle } from "@/lib/wave5GameplayGeometry/Wave5
 import { Wave5AnchoredProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5AnchoredProbeOverlay";
 import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5OversizedProbeOverlay";
 import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
-import { HIDE_DEBUG_UI } from '@/lib/debugUIVisibility';
+import { useHideDebugUI } from '@/lib/debugUIVisibility';
 import { GeometryOverridesLoader } from '@/lib/geometryLab/GeometryOverridesLoader';
 
 
@@ -47,6 +47,7 @@ void ensureHarnessCacheLoaded();
 const queryClient = new QueryClient();
 
 const App = () => {
+  const hideDebugUI = useHideDebugUI();
   // Global unhandled rejection handler to catch async errors that slip through
   // This prevents the app from crashing to a blank screen on "run it back" and similar flows
   useEffect(() => {
@@ -103,7 +104,7 @@ const App = () => {
               <LifecycleDebugBadge />
               <LayoutFaultBadge />
               <Wave5ContractViolationBadge />
-              {!HIDE_DEBUG_UI && (
+              {!hideDebugUI && (
                 <DebugTray>
                   <NetworkSimIndicator />
                   <DebugModeIndicator />
@@ -112,7 +113,7 @@ const App = () => {
                   <ShellLifecyclePanel />
                 </DebugTray>
               )}
-              {/* W5 GRID is always available, even when HIDE_DEBUG_UI is true */}
+              {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
                 style={{
                   position: 'fixed',

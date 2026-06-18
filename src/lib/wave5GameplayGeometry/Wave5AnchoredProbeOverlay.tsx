@@ -29,7 +29,7 @@ import {
   type ArtifactDescriptor,
 } from "@/lib/wave4LayoutResolver";
 import { useDomBoundsContract } from "./useDomBoundsContract";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_anchored_probe";
 const EVENT_NAME = "ptp:wave5-anchored-probe-changed";
@@ -197,7 +197,7 @@ w% 0.40 · aspect 2`}
 
 export function Wave5AnchoredProbeToggle() {
   const enabled = useEnabled();
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
   return (
     <button
       type="button"

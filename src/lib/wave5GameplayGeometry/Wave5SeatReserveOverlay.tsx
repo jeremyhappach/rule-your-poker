@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from "react";
 import { useLiveGeometryConstraints } from "@/lib/wave4LayoutResolver";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_seat_reserve_overlay";
 const EVENT_NAME = "ptp:wave5-seat-reserve-overlay-changed";
@@ -127,7 +127,7 @@ export function Wave5SeatReserveOverlay() {
 
 export function Wave5SeatReserveOverlayToggle() {
   const enabled = useEnabled();
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
   return (
     <button
       type="button"

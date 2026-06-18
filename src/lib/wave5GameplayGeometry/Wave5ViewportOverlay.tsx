@@ -21,7 +21,7 @@ import {
   deriveAvailableGameplayViewport,
   useLiveGeometryConstraints,
 } from "@/lib/wave4LayoutResolver";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_viewport_overlay";
 const EVENT_NAME = "ptp:wave5-viewport-overlay-changed";
@@ -130,7 +130,7 @@ w ${r.width.value.toFixed(1)} h ${r.height.value.toFixed(1)}`}
  */
 export function Wave5ViewportOverlayToggle() {
   const enabled = useEnabled();
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
   return (
     <button
       type="button"

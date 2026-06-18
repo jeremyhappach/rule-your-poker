@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Bug } from "lucide-react";
 import { refreshDebugEventFlag } from "@/lib/debugEventLogger";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_debug_events";
 
@@ -36,8 +36,7 @@ export function DebugLogToggle() {
     return () => window.removeEventListener("storage", handler);
   }, []);
 
-  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
 
   return (
     <button

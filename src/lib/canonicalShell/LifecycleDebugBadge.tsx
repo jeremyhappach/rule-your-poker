@@ -1,4 +1,4 @@
-import { HIDE_DEBUG_UI } from '@/lib/debugUIVisibility';
+import { useHideDebugUI } from '@/lib/debugUIVisibility';
 import { useState } from 'react';
 import { useLifecycleSnapshot } from './lifecycleDebug';
 import {
@@ -42,7 +42,7 @@ function isOverlayEnabled(): boolean {
 }
 
 export function LifecycleDebugBadge() {
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
   if (!isOverlayEnabled()) return null;
   const snap = useLifecycleSnapshot();
   const milestones = useGinMilestones();
