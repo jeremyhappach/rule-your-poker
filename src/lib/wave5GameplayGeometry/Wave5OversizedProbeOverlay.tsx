@@ -29,7 +29,7 @@ import {
   type ArtifactDescriptor,
 } from "@/lib/wave4LayoutResolver";
 import { useDomBoundsContract } from "./useDomBoundsContract";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const STORAGE_KEY = "ptp_wave5_oversized_probe";
 const EVENT_NAME = "ptp:wave5-oversized-probe-changed";
@@ -189,7 +189,7 @@ w% 0.95 · aspect 0.25`}
 
 export function Wave5OversizedProbeToggle() {
   const enabled = useEnabled();
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
   return (
     <button
       type="button"

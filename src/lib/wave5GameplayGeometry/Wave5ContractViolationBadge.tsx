@@ -12,7 +12,7 @@ import {
   onContractViolation,
   type ContractViolationEvent,
 } from "./contractTelemetry";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 function fmt(n: number): string {
   return n.toFixed(2);
@@ -37,7 +37,7 @@ export function Wave5ContractViolationBadge() {
     });
   }, []);
 
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
   if (!latest) return null;
 
   return (

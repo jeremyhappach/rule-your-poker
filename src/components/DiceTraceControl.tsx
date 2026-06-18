@@ -9,7 +9,7 @@ import {
   getDicePresentationTraceBuffer,
   getSwapEvents,
 } from "@/lib/dicePresentationTrace";
-import { HIDE_DEBUG_UI } from "@/lib/debugUIVisibility";
+import { useHideDebugUI } from "@/lib/debugUIVisibility";
 
 const DEBUG_BUILD_STAMP = "2026-04-06T-trace-ui";
 const LS_KEY = "ptp_debug_yahtzee_straight";
@@ -70,8 +70,7 @@ export function DiceTraceControl() {
     }
   }, []);
 
-  // TEMP: HIDE DEBUG UI FOR LIVE GAMEPLAY SESSION (restore after)
-  if (HIDE_DEBUG_UI) return null;
+  if (useHideDebugUI()) return null;
 
   return (
     <div className="absolute top-1 left-1 z-[9999] flex items-center gap-1 flex-wrap">
