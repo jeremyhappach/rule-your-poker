@@ -24,7 +24,7 @@ import { GinRummyReadinessProbe } from "@/lib/canonicalShell/GinRummyReadinessPr
 import { GinStartupIdentityTracer } from "@/lib/canonicalShell/GinStartupIdentityTracer";
 import { GinIdentityGateTracer } from "@/lib/canonicalShell/GinIdentityGateTracer";
 import { useSlotIdentityTracker } from "@/lib/canonicalShell/useSlotIdentityTracker";
-import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer, resolveShellKind } from "@/lib/canonicalShell/shellRouting";
+import { isPokerVariantFamily, isCanonicalShellFamily, isCanonicalSeatConsumer } from "@/lib/canonicalShell/shellRouting";
 import { setLifecycleFact, useLifecycleMount, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { logIfChanged as _shellLogIfChanged, setShellLifecycleActiveGameType } from "@/lib/canonicalShell/shellLifecycleLog";
 import { recordHolmLifecycle } from "@/lib/holm/holmLifecycleTrace";
@@ -38,7 +38,6 @@ import { YahtzeeGameTable } from "@/components/YahtzeeGameTable";
 import { DealerConfig } from "@/components/DealerConfig";
 import { DealerGameSetup } from "@/components/DealerGameSetup";
 import { AnteUpDialog } from "@/components/AnteUpDialog";
-import { WaitingForPlayersTable } from "@/components/WaitingForPlayersTable";
 import { CanonicalShellWaitingSurface } from "@/components/canonicalShell/CanonicalShellWaitingSurface";
 // LifecycleAnnouncement no longer rendered from Game.tsx — observer
 // lifecycle messaging is emitted into the canonical shell announcement
@@ -9913,25 +9912,16 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
 
 
 
-        {/* waiting status — split by family.
-            Canonical-shell families (Cribbage / Gin / Yahtzee) render
-            the new `CanonicalShellWaitingSurface` inside the shell's
-            children slot. The shell-owned ellipse paints behind it
-            from session entry, so no waiting-specific felt mounts and
-            no geometry swap occurs at session start (Phase 3.1c).
-            Poker-variant family keeps the legacy WaitingForPlayersTable. */}
+        {/* waiting status — all waiting-table statuses render the canonical
+            waiting surface. Do not route by stale game.game_type here. */}
         {isWaitingTableStatus && (() => {
-          const shellKind = resolveShellKind(game.game_type);
           recordWaitingLifecycleIfChanged(
             `waitBranch:${gameId ?? 'none'}`,
             'waiting branch decision',
             {
               status: game.status,
               gameType: game.game_type ?? null,
-              shellKind,
-              branch: shellKind === 'canonical'
-                ? 'CanonicalShellWaitingSurface'
-                : 'WaitingForPlayersTable',
+              branch: 'CanonicalShellWaitingSurface',
               hasGame: !!game,
               playersCount: players.length,
             },
