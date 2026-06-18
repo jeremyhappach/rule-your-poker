@@ -36,7 +36,8 @@ export function DebugModeIndicator() {
     };
   }, []);
 
-  if (!enabled) return null;
+  const pillEnabled = useDebugPillEnabled('debugMode');
+  if (!enabled || !pillEnabled) return null;
 
   const armed = Object.keys(DEBUG_HARNESS_REGISTRY)
     .map((gt) => {
