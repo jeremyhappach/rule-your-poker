@@ -3525,20 +3525,20 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     
     // CRITICAL: Poll during waiting/dealer_selection for non-creators to detect game start
     const waitingForGameStart = 
-      (game?.status === 'waiting' || game?.status === 'dealer_selection') && 
+      (game?.status === 'waiting' || game?.status === 'waiting_for_players' || game?.status === 'dealer_selection') && 
       currentPlayer && 
       !isCreator;
     
     // CRITICAL: Host in waiting status should also poll to see new players joining
     // Realtime INSERT events are unreliable
     const hostWaitingForPlayers = 
-      game?.status === 'waiting' && 
+      (game?.status === 'waiting' || game?.status === 'waiting_for_players') && 
       isCreator;
     
     // CRITICAL: Observers in waiting status should poll to see other players joining (including bots)
     // Observers aren't players yet so they don't trigger the other polling conditions
     const observerWaitingForPlayers = 
-      game?.status === 'waiting' && 
+      (game?.status === 'waiting' || game?.status === 'waiting_for_players') && 
       !currentPlayer;
     
     // CRITICAL: Detect stuck Holm game state where all_decisions_in=true but round is still betting
