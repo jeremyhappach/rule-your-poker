@@ -261,6 +261,7 @@ export function PersistentTableShell({
           <ShellOwnedFeltHost
             initialGameKind={deriveFeltGameKind(gameType)}
             initialIsWaitingPhase={!gameType}
+            lobbyMode={lobbyMode}
           />
 
           {/* Pre-session seat layer (Wartime FIX #1). Mounted at a
