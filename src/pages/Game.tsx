@@ -9815,7 +9815,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       toast({ title: "Error", description: error.message, variant: "destructive" });
                     }
                   }}
-                  canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting') && !game.real_money}
+                  canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
                   deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
                   onDeckColorModeChange={async (mode) => {
                     await handleDeckColorModeChange(currentPlayer.id, mode, fetchGameData);
@@ -9885,7 +9885,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                   )}
                 </div>
               )}
-              {game.status === 'waiting' && (
+              {isWaitingTableStatus && (
                 <Button variant="default" onClick={handleInvite}>
                   <Share2 className="w-4 h-4 mr-2" />
                   Invite Players
@@ -9920,7 +9920,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             from session entry, so no waiting-specific felt mounts and
             no geometry swap occurs at session start (Phase 3.1c).
             Poker-variant family keeps the legacy WaitingForPlayersTable. */}
-        {game.status === 'waiting' && (() => {
+        {isWaitingTableStatus && (() => {
           const shellKind = resolveShellKind(game.game_type);
           recordWaitingLifecycleIfChanged(
             `waitBranch:${gameId ?? 'none'}`,
@@ -9947,7 +9947,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             PreSessionSeatLayer, producing duplicate chip clusters and stale
             "HORSES / $2" identity. The canonical surface is the single
             source of truth for waiting-table presentation. */}
-        {game.status === 'waiting' && (
+        {isWaitingTableStatus && (
           <CanonicalShellWaitingSurface
             gameId={gameId!}
             gameType={null}
