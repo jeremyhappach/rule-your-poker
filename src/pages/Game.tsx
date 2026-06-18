@@ -9745,7 +9745,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       </div>
       <span className="text-xs text-muted-foreground">
         {gameName}
-        {game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
+        {!_isShellLobbyMode && game.real_money && <span className="text-green-500 font-semibold ml-1">$</span>}
       </span>
     </div>
   ) : null;
