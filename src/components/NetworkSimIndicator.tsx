@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useNetworkSim } from '@/hooks/useNetworkSim';
 import { NETWORK_SIM_MODE_LABELS } from '@/lib/networkSim';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
 const MODE_ORDER: Array<{ key: string; label: string }> = [
   { key: 'off', label: 'OFF' },
