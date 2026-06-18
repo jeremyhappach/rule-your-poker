@@ -104,14 +104,14 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <LifecycleDebugBadge />
-              <FeltDebugPill />
-              <ExtraDebugPills />
-              <LayoutFaultBadge />
-              <Wave5ContractViolationBadge />
               {!hideDebugUI && (
                 <DebugTray>
                   <NetworkSimIndicator />
                   <DebugModeIndicator />
+                  <FeltDebugPill />
+                  <ExtraDebugPills />
+                  <LayoutFaultBadge />
+                  <Wave5ContractViolationBadge />
                   <LegacyDebugPanels />
                   <WartimeDebugPanel />
                   <ShellLifecyclePanel />

@@ -8,6 +8,8 @@
  */
 
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
+import { useDebugPillEnabled } from "@/lib/debugTray/debugPillsStore";
+import { useInDebugTray } from "@/lib/debugTray/DebugTray";
 import { useEffect, useState } from "react";
 import {
   getRecentLayoutFaults,
@@ -34,6 +36,8 @@ function debugEnabled(): boolean {
 
 export function LayoutFaultBadge() {
   const [enabled] = useState<boolean>(debugEnabled);
+  const pillEnabled = useDebugPillEnabled('layoutFault');
+  const inTray = useInDebugTray();
   const [latest, setLatest] = useState<LayoutFaultEvent | null>(() => {
     const r = getRecentLayoutFaults();
     return r.length ? r[r.length - 1] : null;
@@ -46,13 +50,25 @@ export function LayoutFaultBadge() {
   }, [enabled]);
 
   const hideDebug = useHideDebugUI();
-  if (hideDebug || !enabled || !latest) return null;
+  if (hideDebug || !enabled || !pillEnabled || !latest) return null;
 
-  return (
-    <div
-      data-wave4-fault-badge=""
-      onClick={() => setExpanded((v) => !v)}
-      style={{
+  const wrapperStyle: React.CSSProperties = inTray
+    ? {
+        position: "relative",
+        display: "inline-block",
+        background: "rgba(120, 0, 0, 0.92)",
+        color: "white",
+        fontFamily: "ui-monospace, monospace",
+        fontSize: 11,
+        lineHeight: 1.3,
+        padding: "6px 10px",
+        borderRadius: 4,
+        maxWidth: expanded ? 360 : 200,
+        cursor: "pointer",
+        pointerEvents: "auto",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+      }
+    : {
         position: "fixed",
         bottom: 8,
         left: 8,
@@ -68,7 +84,13 @@ export function LayoutFaultBadge() {
         cursor: "pointer",
         pointerEvents: "auto",
         boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
-      }}
+      };
+
+  return (
+    <div
+      data-wave4-fault-badge=""
+      onClick={() => setExpanded((v) => !v)}
+      style={wrapperStyle}
       title="Click to expand / collapse"
     >
       <div style={{ fontWeight: 700 }}>⚠ wave4:layout_fault</div>

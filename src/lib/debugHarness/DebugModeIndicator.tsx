@@ -18,6 +18,7 @@ import {
 } from './runtimeCache';
 import { DEBUG_HARNESS_REGISTRY, getHarnessProfile } from './profiles';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 
 export function DebugModeIndicator() {
   const [enabled, setEnabled] = useState<boolean>(isGlobalDebugModeCached());
@@ -35,7 +36,8 @@ export function DebugModeIndicator() {
     };
   }, []);
 
-  if (!enabled) return null;
+  const pillEnabled = useDebugPillEnabled('debugMode');
+  if (!enabled || !pillEnabled) return null;
 
   const armed = Object.keys(DEBUG_HARNESS_REGISTRY)
     .map((gt) => {

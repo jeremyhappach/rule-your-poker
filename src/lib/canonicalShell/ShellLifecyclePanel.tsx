@@ -18,6 +18,7 @@ import {
   type ShellLifecycleEvent,
 } from './shellLifecycleLog';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 import {
   ensureHarnessCacheLoaded,
   subscribeGlobalDebugMode,
@@ -105,7 +106,8 @@ export function ShellLifecyclePanel() {
   // localStorage / query-param / DEV check so the pill is always visible
   // alongside WS GRID, SHELL LC, etc. Outside the tray, keep legacy gating
   // so older fixed-position usages don't suddenly appear unexpectedly.
-  if (!inTray && !isShellLifecycleDebugEnabled()) return null;
+  const pillEnabled = useDebugPillEnabled('shellLifecycle');
+  if (!pillEnabled) return null;
 
   const handleCopy = async () => {
     const txt = formatShellLifecycleEventsAsText();

@@ -13,6 +13,8 @@ import {
   type ContractViolationEvent,
 } from "./contractTelemetry";
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
+import { useDebugPillEnabled } from "@/lib/debugTray/debugPillsStore";
+import { useInDebugTray } from "@/lib/debugTray/DebugTray";
 
 function fmt(n: number): string {
   return n.toFixed(2);
@@ -29,6 +31,8 @@ export function Wave5ContractViolationBadge() {
   });
   const [expanded, setExpanded] = useState(false);
   const [count, setCount] = useState(() => getRecentContractViolations().length);
+  const pillEnabled = useDebugPillEnabled('wave5Violation');
+  const inTray = useInDebugTray();
 
   useEffect(() => {
     return onContractViolation((e) => {
@@ -38,18 +42,14 @@ export function Wave5ContractViolationBadge() {
   }, []);
 
   if (useHideDebugUI()) return null;
+  if (!pillEnabled) return null;
   if (!latest) return null;
 
-  return (
-    <div
-      data-wave5-contract-badge=""
-      onClick={() => setExpanded((v) => !v)}
-      style={{
-        position: "fixed",
-        bottom: 8,
-        left: 220,
-        zIndex: 99999,
-        background: "rgba(146, 64, 14, 0.94)", // amber-800
+  const wrapperStyle: React.CSSProperties = inTray
+    ? {
+        position: "relative",
+        display: "inline-block",
+        background: "rgba(146, 64, 14, 0.94)",
         color: "white",
         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
         fontSize: 11,
@@ -61,7 +61,31 @@ export function Wave5ContractViolationBadge() {
         pointerEvents: "auto",
         boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
         border: "1px solid rgba(252,211,77,0.6)",
-      }}
+      }
+    : {
+        position: "fixed",
+        bottom: 8,
+        left: 220,
+        zIndex: 99999,
+        background: "rgba(146, 64, 14, 0.94)",
+        color: "white",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fontSize: 11,
+        lineHeight: 1.3,
+        padding: "6px 10px",
+        borderRadius: 4,
+        maxWidth: expanded ? 380 : 220,
+        cursor: "pointer",
+        pointerEvents: "auto",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+        border: "1px solid rgba(252,211,77,0.6)",
+      };
+
+  return (
+    <div
+      data-wave5-contract-badge=""
+      onClick={() => setExpanded((v) => !v)}
+      style={wrapperStyle}
       title="Click to expand / collapse"
     >
       <div style={{ fontWeight: 700 }}>⚠ wave5:contract_violation</div>

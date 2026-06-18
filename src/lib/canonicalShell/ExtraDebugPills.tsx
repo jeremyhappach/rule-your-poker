@@ -6,6 +6,8 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
+import { useDebugPillEnabled, type DebugPillKey } from '@/lib/debugTray/debugPillsStore';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import {
   dealerDbgStore,
   seatOwnershipStore,
@@ -45,6 +47,7 @@ function entryToText<T extends object>(e: DebugEntry<T>): string {
 
 interface PillProps<T extends object> {
   label: string;
+  pillKey: DebugPillKey;
   store: {
     get: () => DebugEntry<T>[];
     subscribe: (l: () => void) => () => void;
@@ -53,8 +56,10 @@ interface PillProps<T extends object> {
   top: number;
 }
 
-function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) {
+function Pill<T extends object>({ label, pillKey, store, summarize, top }: PillProps<T>) {
   const entries = useSyncExternalStore(store.subscribe, store.get, store.get);
+  const enabled = useDebugPillEnabled(pillKey);
+  const inTray = useInDebugTray();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const latest = entries[entries.length - 1];
@@ -68,10 +73,18 @@ function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) 
     } catch { /* noop */ }
   };
 
-  return (
-    <div
-      data-extra-debug-pill={label}
-      style={{
+  if (!enabled) return null;
+
+  const wrapperStyle: React.CSSProperties = inTray
+    ? {
+        position: 'relative',
+        display: 'inline-block',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: 10,
+        color: '#fff',
+        pointerEvents: 'auto',
+      }
+    : {
         position: 'fixed',
         right: 8,
         top,
@@ -80,8 +93,10 @@ function Pill<T extends object>({ label, store, summarize, top }: PillProps<T>) 
         fontSize: 10,
         color: '#fff',
         pointerEvents: 'auto',
-      }}
-    >
+      };
+
+  return (
+    <div data-extra-debug-pill={label} style={wrapperStyle}>
       {!open ? (
         <button
           type="button"
@@ -221,12 +236,14 @@ export function ExtraDebugPills() {
     <>
       <Pill
         label="DEALER DBG"
+        pillKey="dealerDbg"
         store={dealerDbgStore}
         summarize={(e) => e ? `local:${e.localDealerVisible ? 'Y' : 'N'} opp:${Object.values(e.opponentDealerVisible || {}).some(Boolean) ? 'Y' : 'N'}` : '—'}
         top={40}
       />
       <Pill
         label="SEAT OWNERSHIP"
+        pillKey="seatOwnership"
         store={seatOwnershipStore}
         summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/participant · ${e.context === 'seat-cluster-lifecycle' ? (e.duplicateParticipantIds?.join(',') || 'shell') : e.winSequencePhase}` : '—'}
         top={72}
@@ -234,6 +251,7 @@ export function ExtraDebugPills() {
 
       <Pill
         label="DEALER AFFORDANCE"
+        pillKey="dealerAffordance"
         store={dealerAffordanceStore}
         summarize={(e) => e ? `${e.game} i:${e.identityDealerVisible?'Y':'N'} s:${e.seatDealerVisible?'Y':'N'} l:${e.legacyDealerVisible?'Y':'N'}` : '—'}
         top={104}

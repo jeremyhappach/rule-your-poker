@@ -11,6 +11,8 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
+import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
+import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import {
   getFeltDebugEntries,
   subscribeFeltDebug,
@@ -71,6 +73,8 @@ function entryToText(e: FeltDebugEntry): string {
 
 export function FeltDebugPill() {
   const hidden = useHideDebugUI();
+  const pillEnabled = useDebugPillEnabled('felt');
+  const inTray = useInDebugTray();
   const entries = useSyncExternalStore(
     subscribeFeltDebug,
     getFeltDebugEntries,
@@ -85,7 +89,7 @@ export function FeltDebugPill() {
     return () => clearTimeout(t);
   }, [copied]);
 
-  if (hidden) return null;
+  if (hidden || !pillEnabled) return null;
 
   const latest = entries[entries.length - 1];
 
@@ -108,10 +112,16 @@ export function FeltDebugPill() {
     }
   };
 
-  return (
-    <div
-      data-felt-debug-pill=""
-      style={{
+  const wrapperStyle: React.CSSProperties = inTray
+    ? {
+        position: 'relative',
+        display: 'inline-block',
+        pointerEvents: 'auto',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontSize: 10,
+        color: '#fff',
+      }
+    : {
         position: 'fixed',
         right: 8,
         top: 8,
@@ -120,8 +130,10 @@ export function FeltDebugPill() {
         fontSize: 10,
         color: '#fff',
         pointerEvents: 'auto',
-      }}
-    >
+      };
+
+  return (
+    <div data-felt-debug-pill="" style={wrapperStyle}>
       {!open ? (
         <button
           type="button"
