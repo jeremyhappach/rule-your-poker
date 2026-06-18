@@ -9547,7 +9547,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   )[0];
   const currentHost = (game as any).current_host;
   const isCreator = currentHost ? currentHost === user?.id : hostPlayer?.user_id === user?.id;
-  const canStart = game.status === 'waiting' && players.length >= 2 && isCreator;
+  const isWaitingTableStatus = game.status === 'waiting' || game.status === 'waiting_for_players';
+  const canStart = isWaitingTableStatus && players.length >= 2 && isCreator;
   const isDealer = dealerPlayer?.user_id === user?.id;
   const currentPlayer = players.find(p => p.user_id === user?.id);
 
@@ -9599,7 +9600,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // bg would render the legacy slate gradient and visually fight the
   // shell-owned ellipse.
   const _isFreshWaitingNoFamily =
-    game.status === 'waiting' &&
+    isWaitingTableStatus &&
     game.game_type == null &&
     lastKnownGameTypeRef.current == null &&
     (previousGameConfig?.game_type ?? null) == null;
@@ -9718,7 +9719,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                 toast({ title: "Error", description: error.message, variant: "destructive" });
               }
             }}
-            canAddBot={players.length < 7 && (game.status === 'in_progress' || game.status === 'waiting') && !game.real_money}
+            canAddBot={players.length < 7 && (game.status === 'in_progress' || isWaitingTableStatus) && !game.real_money}
             onEndSession={isCreator && ['in_progress', 'ante_decision', 'dealer_selection', 'game_selection', 'configuring'].includes(game.status) ? () => setShowEndSessionDialog(true) : undefined}
             deckColorMode={(currentPlayer.deck_color_mode as 'two_color' | 'four_color') || 'four_color'}
             onDeckColorModeChange={async (mode) => {
