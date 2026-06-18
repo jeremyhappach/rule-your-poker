@@ -228,6 +228,7 @@ export function YahtzeeGameTable({
     gameKind: 'yahtzee',
     anteAmount,
     isWaitingPhase: false,
+    feltPlateMode: 'GAME',
     publisherLabel: 'YahtzeeGameTable',
   });
 
