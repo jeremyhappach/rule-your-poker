@@ -337,6 +337,16 @@ export function ExtraDebugPills() {
           : '—'}
         top={136}
       />
+
+      <Pill
+        label="TIMER DBG"
+        pillKey="timerDbg"
+        store={timerDbgStore}
+        summarize={(e) => e
+          ? `${e.gameType ?? '—'} pub:${e.timerPublished?'Y':'N'} mnt:${e.timerMounted?'Y':'N'} vis:${e.timerVisible?'Y':'N'} · ${e.blockedReason}`
+          : '—'}
+        top={168}
+      />
     </>
   );
 }
