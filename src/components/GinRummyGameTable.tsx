@@ -74,7 +74,7 @@ import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
-import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+
 
 // (Opponent card-back strip moved to shell-owned
 // GameplayOpponentSeatLayer → ShellOpponentCardBacks. Games emit
