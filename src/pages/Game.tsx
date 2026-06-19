@@ -4188,6 +4188,47 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     return () => clearInterval(pollInterval);
   }, [game?.status, game?.is_paused, gameId]);
 
+  // FAST-PATH: Reactive ante-completion detector.
+  // The polling effect above only re-runs on status/paused/gameId changes,
+  // so realtime player updates (the second human submitting their ante) had
+  // to wait up to 3s for the next poll tick. Watch local `players` state
+  // directly — when every active, non-observer participant has an
+  // ante_decision, immediately invoke handleAllAnteDecisionsIn.
+  const anteSignature = useMemo(() => {
+    if (game?.status !== 'ante_decision') return '';
+    return players
+      .filter(
+        (p) =>
+          !p.sitting_out &&
+          (p as any).status !== 'observer' &&
+          (p as any).status !== 'left',
+      )
+      .map((p) => `${p.id}:${p.ante_decision ?? ''}`)
+      .sort()
+      .join('|');
+  }, [game?.status, players]);
+
+  useEffect(() => {
+    if (game?.status !== 'ante_decision') return;
+    if (game?.is_paused) return;
+    if (anteProcessingRef.current) return;
+    if (!anteSignature) return;
+    const activePlayers = players.filter(
+      (p) =>
+        !p.sitting_out &&
+        (p as any).status !== 'observer' &&
+        (p as any).status !== 'left',
+    );
+    if (activePlayers.length === 0) return;
+    const allDecided = activePlayers.every((p) => !!p.ante_decision);
+    if (!allDecided) return;
+    console.log('[ANTE FAST-PATH] All active players decided (reactive) — advancing immediately');
+    anteProcessingRef.current = true;
+    handleAllAnteDecisionsIn();
+  }, [anteSignature, game?.status, game?.is_paused]);
+
+
+
   // Extract current round info.
   // IMPORTANT: For dice games (Horses + Ship Captain Crew), DO NOT fall back to the previous round while a new round row
   // is still being created. That gap is what causes the "instant winner" + stale badge problem.
@@ -8628,8 +8669,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })
         .eq('id', gameId);
       
-      // Wait 3 seconds then trigger game over flow
+      // Immediately trigger game over flow — outcome is already known, no
+      // need for an artificial UX pause (was 3s, caused "Awaiting ante
+      // decisions" to linger after the only remaining decision resolved).
       setTimeout(async () => {
+
         // Re-fetch fresh players to evaluate states
         const { data: latestPlayers } = await supabase
           .from('players')
