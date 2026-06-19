@@ -5516,40 +5516,67 @@ export const MobileGameTable = ({
       horsesController.enabled &&
       horsesController.currentlyWinningPlayerIds.includes(player.id);
 
+    // OWNERSHIP: the Horses win-score badge is owned by the shell
+    // transient overlay (z=85). The seat keeps an INVISIBLE shim of the
+    // same badge in the chip-presentation slot so chip-cell geometry
+    // (cell size, name placement, chip-text suppression) is
+    // byte-identical to pre-migration; the visible copy is portaled
+    // into ShellOverlay:transient via OverSeatBadgePortal anchored to
+    // [data-chip-center]. No bespoke offsets, no z-hacks.
+    const horsesResultBadge =
+      diceGameplayUiActive && horsesPlayerResult?.description ? (
+        <HorsesHandResultDisplay
+          description={horsesPlayerResult.description}
+          isWinning={isHorsesCurrentlyWinning}
+          size="sm"
+        />
+      ) : null;
+
     let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
-    if (diceGameplayUiActive && horsesPlayerResult?.description) {
+    if (horsesResultBadge) {
       chipPresentation = (
-        <div className="flex items-center justify-center animate-in fade-in duration-150">
-          <HorsesHandResultDisplay
-            description={horsesPlayerResult.description}
-            isWinning={isHorsesCurrentlyWinning}
-            size="sm"
-          />
+        <div
+          aria-hidden
+          className="flex items-center justify-center animate-in fade-in duration-150"
+          style={{ opacity: 0, pointerEvents: 'none' }}
+        >
+          {horsesResultBadge}
         </div>
       );
     }
 
     return (
-      <CanonicalSeatCluster
-        key={player.id}
-        slot={slot}
-        position={player.position}
-        name={displayName}
-        chipValue={chipText}
-        /* Dice families have no dealer concept. */
-        isDealer={false}
-        status={participantStatus}
-        statusRing={statusRing}
-        chipHUD={chipHUD}
-        chipDiscChildren={chipDiscChildren}
-        chipOverlay={chipOverlay}
-        chipPresentation={chipPresentation}
-        namePlacement="above-chip"
-        onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
-        className={playerSlotZIndex}
-        ownerLabel="Slot:MobileGameTable.horsesCanonicalSeat"
-        playerId={player.id}
-      />
+      <>
+        <CanonicalSeatCluster
+          key={player.id}
+          slot={slot}
+          position={player.position}
+          name={displayName}
+          chipValue={chipText}
+          /* Dice families have no dealer concept. */
+          isDealer={false}
+          status={participantStatus}
+          statusRing={statusRing}
+          chipHUD={chipHUD}
+          chipDiscChildren={chipDiscChildren}
+          chipOverlay={chipOverlay}
+          chipPresentation={chipPresentation}
+          namePlacement="above-chip"
+          onChipClick={isClickable ? () => onPlayerClick!(player) : undefined}
+          className={playerSlotZIndex}
+          ownerLabel="Slot:MobileGameTable.horsesCanonicalSeat"
+          playerId={player.id}
+        />
+        {horsesResultBadge ? (
+          <OverSeatBadgePortal
+            key={`horses-badge-${player.id}`}
+            position={player.position}
+            ownerLabel="ShellOverlay:HorsesWinScoreBadge"
+          >
+            {horsesResultBadge}
+          </OverSeatBadgePortal>
+        ) : null}
+      </>
     );
   };
 
