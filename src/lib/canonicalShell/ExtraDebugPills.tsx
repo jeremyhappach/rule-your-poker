@@ -13,10 +13,12 @@ import {
   seatOwnershipStore,
   dealerAffordanceStore,
   overlayOwnershipStore,
+  timerDbgStore,
   type DealerAffordanceEntry,
   type DealerDbgEntry,
   type SeatOwnershipEntry,
   type OverlayOwnershipEntry,
+  type TimerDbgEntry,
 } from './extraDebugStore';
 
 function shortId(id: string | null | undefined): string {
