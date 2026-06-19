@@ -33,6 +33,7 @@ import { recordShellEvent } from './diagnostics';
 import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import { ShellOverlayLayers, ShellOverlayMountsProvider } from './ShellOverlayMounts';
 import {
   useWartimeSurface,
   useWartimeGeometry,
@@ -390,6 +391,14 @@ export function PersistentTableShell({
         containerRef={shellRootRef}
         overlayRootRef={overlayRootRef}
       />
+      {/* Shell-owned transient overlay layers — slot (z78), settlement
+          (z83), transient (z85). Sit between ChipTransportRuntime
+          (z80) and CanonicalCelebrationLayer (z90). Gameplay surfaces
+          portal into these via `useShellOverlayPortal(name)` so
+          over-seat artifacts (HighCard reveal, win score badges, etc.)
+          stop fighting CanonicalSeatCluster's internal stacking
+          contexts. Pointer-events disabled; per-node opt-in. */}
+      <ShellOverlayLayers gameId={gameId ?? null} />
       {/* Shell-owned celebration overlay — distinct from the 36px
           lifecycle rail. Activates for CELEBRATION_TYPES (match_win
           today). Driven by the same CanonicalAnnouncementProvider
@@ -405,14 +414,16 @@ export function PersistentTableShell({
         roundId={null}
         viewerUserId={viewerUserId}
       >
-        <ShellTabBarProvider>
-          <ShellTimerProvider>
-            <ShellFeltContextProvider>
-              <LobbyAnnouncementReset lobbyMode={lobbyMode} />
-              {body}
-            </ShellFeltContextProvider>
-          </ShellTimerProvider>
-        </ShellTabBarProvider>
+        <ShellOverlayMountsProvider>
+          <ShellTabBarProvider>
+            <ShellTimerProvider>
+              <ShellFeltContextProvider>
+                <LobbyAnnouncementReset lobbyMode={lobbyMode} />
+                {body}
+              </ShellFeltContextProvider>
+            </ShellTimerProvider>
+          </ShellTabBarProvider>
+        </ShellOverlayMountsProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
