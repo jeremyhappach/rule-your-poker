@@ -7637,22 +7637,13 @@ export const MobileGameTable = ({
         })()}
 
         
-        {/* Dealer button on felt for current player - hide during 3-5-7 multi-player showdown */}
-        {currentPlayer && !isDiceGame && dealerPosition === currentPlayer.position && !is357MultiPlayerShowdown && (
-          <div 
-            className="absolute z-20"
-            style={{
-              bottom: '8px',
-              left: '45%',
-              transform: 'translateX(-50%)',
-              transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            <div className="w-7 h-7 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xs">D</span>
-            </div>
-          </div>
-        )}
+        {/* Legacy felt dealer chip REMOVED — canonical ownership lives in
+            DealerIndicator (shell HUD identity row) + CanonicalSeatCluster
+            (opponent name-row pip). The free-standing felt "D" leaked
+            across dealer_selection → game_selection → ante_decision
+            transitions because it tracked dealer_position only. Do NOT
+            revive — if a lifecycle gap needs a local dealer affordance,
+            render <DealerIndicator/> in the canonical HUD row instead. */}
         
         {/* Open seats for seat selection — observers only.
             Geometry is single-sourced from the canonical seat map
