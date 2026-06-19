@@ -69,8 +69,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
-// eslint-disable-next-line no-restricted-imports -- P0 migration: opponent overlay still mounts CanonicalSeatCluster; pre-session window is now guarded via usePreSessionSeatOwned (plan step 3a)
-import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
@@ -2465,76 +2464,49 @@ export const GinRummyGameTable = ({
             )}
 
 
-            {/* Opponent overlay — single CanonicalSeatCluster per opponent.
-                Shell owns identity + dealer pip + chip bubble + cluster
-                anchoring; this game body contributes only the seat-specific
-                card-back row as cluster children.
-
-                CRIBBAGE-ALIGNED GATING: the cluster itself is gated on
-                the projected seat list (derived from `players`), NOT on
-                `viewState`. This preserves chip-stack continuity through
-                the ante_decision placeholder window where viewState is
-                briefly null. Only the inner card-back row gates on
-                `seatState` (viewState) — when viewState is absent the
-                cluster collapses to identity + chip, exactly like
-                Cribbage between dealer selection and gameplay. */}
-            <div className="absolute inset-0 z-50 pointer-events-none">
-              {(() => {
-                // Seat projection independent of viewState.
-                // - Observers: all active seated players except self (handled
-                //   by CanonicalSeatCluster self-suppression anyway).
-                // - Seated viewer: every other active seat.
-                // When viewState is present we honor its dealer/nonDealer
-                // identities for the dealer pip + card-back source; when
-                // absent we still render the chip cluster for everyone but
-                // the local viewer so chrome stays continuous.
-                const projectedSeatPlayers = isObserver
-                  ? activeSeatPlayers
-                  : activeSeatPlayers.filter(p => p.id !== currentPlayerId);
-                return projectedSeatPlayers.map((seatPlayer) => {
-                  const seatId = seatPlayer.id;
-                  // Duplicate-owner gate (mirrors Cribbage): when the shell
-                  // PreSessionSeatLayer is mounted, IT is the sole authoritative
-                  // owner of every seat cluster. Skip the local overlay to keep
-                  // mountedCount==1 per participantId (one-cluster-per-participant
-                  // invariant).
-                  if (preSessionSeatOwnedByShell) return null;
-                  const seatState = viewState?.playerStates[seatId] ?? null;
-                  const slot = playerSlotById.get(seatId) ?? null;
-                  const isOpponentSeat = !isObserver && seatId === opponentId;
-                  const showCardBacks =
-                    !!viewState &&
-                    !!seatState &&
+            {/* Opponent overlay — shell-owned via GameplayOpponentSeatLayer.
+                Games emit typed presentation accessors; the shell mounts
+                CanonicalSeatCluster per opponent and renders the
+                card-back strip from typed `cardBacks` data. */}
+            <GameplayOpponentSeatLayer
+              family="gin-rummy"
+              participants={(isObserver
+                ? activeSeatPlayers
+                : activeSeatPlayers.filter(p => p.id !== currentPlayerId)
+              ).map(seatPlayer => ({
+                id: seatPlayer.id,
+                position: seatPlayer.position,
+                name: getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player'),
+                chips: seatPlayer.chips,
+              }))}
+              presentation={{
+                dealerPip: (p) => isCribDealer(p.id),
+                statusRing: (p) => {
+                  const seatPlayer = activeSeatPlayers.find(sp => sp.id === p.id);
+                  return seatPlayer && (seatPlayer.sitting_out || (seatPlayer as any).auto_fold)
+                    ? 'sitting_out'
+                    : 'active';
+                },
+                cardBacks: (p) => {
+                  if (!viewState) return null;
+                  const seatState = viewState.playerStates?.[p.id];
+                  if (!seatState || seatState.hand.length === 0) return null;
+                  const isOpponentSeat = !isObserver && p.id === opponentId;
+                  const visible =
                     isOpponentSeat &&
-                    seatState.hand.length > 0 &&
                     viewState.phase !== 'knocking' &&
                     viewState.phase !== 'laying_off' &&
                     viewState.phase !== 'scoring' &&
                     !(viewState.phase === 'complete' && viewState.knockResult);
-                  return (
-                    <CanonicalSeatCluster
-                      key={seatId}
-                      slot={slot}
-                      position={seatPlayer.position}
-                      name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                      isDealer={isCribDealer(seatId)}
-                      chipValue={`$${formatChipValue(seatPlayer.chips)}`}
-                      statusRing={seatPlayer.sitting_out || (seatPlayer as any).auto_fold ? 'sitting_out' : 'active'}
-                      ownerLabel="Gameplay:GinRummyGameTable.opponentOverlay"
-                      playerId={seatId}
-                    >
-                      {showCardBacks && seatState && (
-                        <OpponentCardBackStrip
-                          count={seatState.hand.length}
-                          color={cardBackColors.color}
-                          darkColor={cardBackColors.darkColor}
-                        />
-                      )}
-                    </CanonicalSeatCluster>
-                  );
-                });
-              })()}
-            </div>
+                  return {
+                    count: seatState.hand.length,
+                    visible,
+                    variant: 'gin',
+                  };
+                },
+              }}
+            />
+
 
         </GinRummyGameplayGeometryProvider>
         </div>
