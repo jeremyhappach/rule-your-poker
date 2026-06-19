@@ -138,7 +138,7 @@ import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRa
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
-import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
+import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
 
 
 // P9.1 — First visible canonical shell visual cutover.
