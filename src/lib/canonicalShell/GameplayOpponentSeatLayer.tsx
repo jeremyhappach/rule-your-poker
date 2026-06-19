@@ -43,6 +43,7 @@ import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useCardRowLayout } from './useCardRowLayout';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
+import { formatChipValue } from '@/lib/utils';
 import type { CanonicalSeatStatusRing } from './participantStatus';
 
 // Width budget for the gin variant card-back strip. Sourced from
@@ -90,10 +91,7 @@ export interface GameplayOpponentSeatLayerProps {
 }
 
 function formatChipValueLocal(n: number): string {
-  // Mirror the format used by the three game tables today: integer chips
-  // with thousands separator, no decimals.
-  const safe = Number.isFinite(n) ? Math.round(n) : 0;
-  return safe.toLocaleString();
+  return formatChipValue(Number.isFinite(n) ? Math.round(n) : 0);
 }
 
 interface ShellOpponentCardBacksProps {
