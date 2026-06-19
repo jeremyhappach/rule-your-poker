@@ -25,7 +25,8 @@ export type DebugPillKey =
   | 'wave5Violation'
   | 'wartime'
   | 'networkSim'
-  | 'debugMode';
+  | 'debugMode'
+  | 'diceTrace';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -45,6 +46,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'wartime',          abbreviation: 'WARTIME',   fullName: 'Wartime Debug',     description: 'Wartime debug event recorder and exporter' },
   { key: 'networkSim',       abbreviation: 'NETSIM',    fullName: 'Network Sim',       description: 'Network simulation indicator and controls' },
   { key: 'debugMode',        abbreviation: 'DBG MODE',  fullName: 'Debug Mode',        description: 'Global debug-harness mode indicator' },
+  { key: 'diceTrace',        abbreviation: 'DICE TRACE',fullName: 'Dice Trace',        description: 'Dice presentation trace controls (REC/STOP, straight-bot, build stamp) and dice trace HUD' },
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';
