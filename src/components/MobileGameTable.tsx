@@ -6524,14 +6524,16 @@ export const MobileGameTable = ({
             including the current player's. Dealer-selection is not normal gameplay
             hand rendering; the bottom card area is suppressed during this phase, so
             the overlay must own complete presentation. */}
-        {dealerSelectionCards && dealerSelectionCards.length > 0 && (
+        {dealerSelectionCards && dealerSelectionCards.length > 0 && highCardOverlayPortal(
           <div
             data-wartime-high-card-container={gameId}
             data-wartime-renderer-instance={`MobileGameTable:${instanceLabel}:${gameId ?? 'no-game'}`}
             data-wartime-component="MobileGameTable"
             data-wartime-render-branch="session-dealer-selection-overlay"
             data-wartime-surface="HighCardRender"
-            className="absolute inset-0 z-50 pointer-events-none"
+            data-shell-overlay-owner="HighCardReveal"
+            data-shell-overlay-consumer="HighCardReveal"
+            className="absolute inset-0 pointer-events-none"
           >
 
 
