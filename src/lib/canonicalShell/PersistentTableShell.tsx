@@ -414,14 +414,16 @@ export function PersistentTableShell({
         roundId={null}
         viewerUserId={viewerUserId}
       >
-        <ShellTabBarProvider>
-          <ShellTimerProvider>
-            <ShellFeltContextProvider>
-              <LobbyAnnouncementReset lobbyMode={lobbyMode} />
-              {body}
-            </ShellFeltContextProvider>
-          </ShellTimerProvider>
-        </ShellTabBarProvider>
+        <ShellOverlayMountsProvider>
+          <ShellTabBarProvider>
+            <ShellTimerProvider>
+              <ShellFeltContextProvider>
+                <LobbyAnnouncementReset lobbyMode={lobbyMode} />
+                {body}
+              </ShellFeltContextProvider>
+            </ShellTimerProvider>
+          </ShellTabBarProvider>
+        </ShellOverlayMountsProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
