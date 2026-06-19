@@ -106,19 +106,18 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <LifecycleDebugBadge />
-              {!hideDebugUI && (
-                <DebugTray>
-                  <NetworkSimIndicator />
-                  <DebugModeIndicator />
-                  <FeltDebugPill />
-                  <ExtraDebugPills />
-                  <LayoutFaultBadge />
-                  <Wave5ContractViolationBadge />
-                  <LegacyDebugPanels />
-                  <WartimeDebugPanel />
-                  <ShellLifecyclePanel />
-                </DebugTray>
-              )}
+              {/* Tray always mounts; each pill self-gates via its admin toggle. */}
+              <DebugTray>
+                <NetworkSimIndicator />
+                <DebugModeIndicator />
+                <FeltDebugPill />
+                <ExtraDebugPills />
+                <LayoutFaultBadge />
+                <Wave5ContractViolationBadge />
+                {!hideDebugUI && <LegacyDebugPanels />}
+                {!hideDebugUI && <WartimeDebugPanel />}
+                {!hideDebugUI && <ShellLifecyclePanel />}
+              </DebugTray>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
                 style={{
