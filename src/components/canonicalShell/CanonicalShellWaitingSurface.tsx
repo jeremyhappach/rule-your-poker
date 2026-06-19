@@ -394,93 +394,105 @@ function WaitingSurfaceBody({
                 phase swap. Fallback path (shell layer absent) keeps
                 the previous local cluster JSX so missing-shell
                 wiring is recoverable rather than blank. */}
-            {!preSessionSeatOwned && (
-              <div
-                data-canonical-shell-waiting-seats=""
-                className="absolute inset-0 z-20 pointer-events-none"
-              >
-                {players.map((player) => {
-                  const anchor = byPosition.get(player.position);
-                  if (!anchor) return null;
-                  const actualUsername =
-                    player.profiles?.username ?? (player.is_bot ? "Bot" : "Player");
-                  const label = getDisplayName(players, player, actualUsername);
-                  const status = derivePlayerStatus(player, null, {
-                    hasStayDecision: false,
-                  });
+            {/* Viewer needing rejoin still has a `players` row at their
+                old position (sitting_out=true), but they are NOT counted
+                as a seated participant for the next hand. Treat their
+                row as vacant for both the seat-cluster layer and the
+                join affordance layer so the waiting table presents the
+                same absolute seat availability as initial join. */}
+            {(() => {
+              const viewerRejoining =
+                actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin;
+              const viewerPlayerLocal = viewerRejoining
+                ? players.find((p) => p.user_id === currentUserId) ?? null
+                : null;
+              const isHiddenForRejoin = (p: Player) =>
+                viewerPlayerLocal != null && p.id === viewerPlayerLocal.id;
 
-                  return (
-                    <CanonicalSeatCluster
-                      key={player.id}
-                      slot={anchor.slot}
-                      position={player.position}
-                      name={label}
-                      isDealer={false}
-                      chipValue={`$${formatChipValue(player.chips ?? 0)}`}
-                      status={status}
-                      ownerLabel="Shell:CanonicalShellWaitingSurface"
-                      playerId={player.id}
-                    />
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Open-seat join affordance layer — observers only.
-                Placement is sourced from the SAME canonical slot
-                placement map the cluster uses, AND filtered against
-                the SAME resolved-slot occupancy the cluster reads.
-                A `+` is suppressed when EITHER the position is taken
-                OR the resolved canonical slot already hosts a seat
-                cluster — single-sourcing the geometry so a `+` can
-                never sit underneath an occupied chipstack. */}
-            {(actions.isObserver || actions.viewerNeedsRejoin || actions.viewerIsWaitingToRejoin) && (() => {
-              // Resolved-slot occupancy from the SAME anchor map the
-              // cluster layer reads. Any slot in this set already has
-              // a player cluster painted on it; the `+` MUST be
-              // suppressed there regardless of which raw position
-              // mapped to it.
-              const occupiedSlots = new Set<number>();
-              for (const player of players) {
-                const slot = byPosition.get(player.position)?.slot;
-                if (slot != null) occupiedSlots.add(slot);
-              }
               return (
-                <div
-                  data-canonical-shell-waiting-open-seats=""
-                  className="absolute inset-0 z-25"
-                >
-                  {ALL_POSITIONS.map((pos) => {
-                    const occupiedByPosition = players.some((p) => p.position === pos);
-                    if (occupiedByPosition) return null;
-                    const slot = observerSlotForPosition(pos);
-                    if (slot == null) return null;
-                    if (occupiedSlots.has(slot)) return null;
-                    const placement = getCanonicalSlotPlacement(slot, 'open-seat');
+                <>
+                  {!preSessionSeatOwned && (
+                    <div
+                      data-canonical-shell-waiting-seats=""
+                      className="absolute inset-0 z-20 pointer-events-none"
+                    >
+                      {players.map((player) => {
+                        if (isHiddenForRejoin(player)) return null;
+                        const anchor = byPosition.get(player.position);
+                        if (!anchor) return null;
+                        const actualUsername =
+                          player.profiles?.username ?? (player.is_bot ? "Bot" : "Player");
+                        const label = getDisplayName(players, player, actualUsername);
+                        const status = derivePlayerStatus(player, null, {
+                          hasStayDecision: false,
+                        });
+
+                        return (
+                          <CanonicalSeatCluster
+                            key={player.id}
+                            slot={anchor.slot}
+                            position={player.position}
+                            name={label}
+                            isDealer={false}
+                            chipValue={`$${formatChipValue(player.chips ?? 0)}`}
+                            status={status}
+                            ownerLabel="Shell:CanonicalShellWaitingSurface"
+                            playerId={player.id}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Open-seat join affordance layer — observers + rejoining viewer. */}
+                  {(actions.isObserver || viewerRejoining) && (() => {
+                    const occupiedSlots = new Set<number>();
+                    for (const player of players) {
+                      if (isHiddenForRejoin(player)) continue;
+                      const slot = byPosition.get(player.position)?.slot;
+                      if (slot != null) occupiedSlots.add(slot);
+                    }
                     return (
                       <div
-                        key={pos}
-                        className={cn(
-                          "absolute pointer-events-auto",
-                          placement.className,
-                        )}
-                        data-waiting-seat-open={pos}
-                        data-waiting-seat-slot={slot}
+                        data-canonical-shell-waiting-open-seats=""
+                        className="absolute inset-0 z-25"
                       >
-                        <button
-                          type="button"
-                          onClick={() => onSelectSeat(pos)}
-                          aria-label={`Take seat ${pos}`}
-                          className="w-12 h-12 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-600/70 flex items-center justify-center hover:bg-amber-800/60 hover:border-amber-500 transition-all active:scale-95"
-                        >
-                          <span className="text-amber-300 text-xl leading-none">
-                            +
-                          </span>
-                        </button>
+                        {ALL_POSITIONS.map((pos) => {
+                          const occupiedByPosition = players.some(
+                            (p) => p.position === pos && !isHiddenForRejoin(p),
+                          );
+                          if (occupiedByPosition) return null;
+                          const slot = observerSlotForPosition(pos);
+                          if (slot == null) return null;
+                          if (occupiedSlots.has(slot)) return null;
+                          const placement = getCanonicalSlotPlacement(slot, 'open-seat');
+                          return (
+                            <div
+                              key={pos}
+                              className={cn(
+                                "absolute pointer-events-auto",
+                                placement.className,
+                              )}
+                              data-waiting-seat-open={pos}
+                              data-waiting-seat-slot={slot}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => onSelectSeat(pos)}
+                                aria-label={`Take seat ${pos}`}
+                                className="w-12 h-12 rounded-full bg-amber-900/40 border-2 border-dashed border-amber-600/70 flex items-center justify-center hover:bg-amber-800/60 hover:border-amber-500 transition-all active:scale-95"
+                              >
+                                <span className="text-amber-300 text-xl leading-none">
+                                  +
+                                </span>
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
-                  })}
-                </div>
+                  })()}
+                </>
               );
             })()}
 
