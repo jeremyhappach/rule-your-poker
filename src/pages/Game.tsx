@@ -10425,15 +10425,15 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             neutralParticipants={players as any}
             neutralCurrentUserId={user?.id ?? null}
             neutralParticipantGameType={game.game_type ?? null}
-            preGameOverlay={_isPokerShellPersistent ? (
+            preGameOverlay={(_isPokerShellPersistent || _isCanonicalShellPersistent) ? (
               <>
                 {/* HighCardDealerSelection overlay — bootstrap dealer
-                    selection for the persistent poker-variant shell. Do
-                    not gate this on canonical-seat-consumer registration:
-                    horses / holm / 3-5-7 / SCC now consume canonical seats
-                    but still use this session-level dealer-selection
-                    controller. Gin / Cribbage remain on separate paths
-                    because _isPokerShellPersistent is false for them. */}
+                    selection for any persistent shell (poker-variant
+                    family AND canonical-shell family: cribbage / gin /
+                    yahtzee). Single phase machine: games.status ===
+                    'dealer_selection' ALWAYS mounts this controller, so
+                    dealer_selection_state gets written and selectDealer()
+                    advances the lifecycle to game_selection → ante. */}
                 {game.status === 'dealer_selection' && (
                   <HighCardDealerSelection
                     gameId={gameId!}
@@ -10446,11 +10446,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                     onWinnerPositionUpdate={setDealerSelectionWinnerPosition}
                   />
                 )}
-                {/* DealerGameSetup overlay — dealer config modal during
-                    game_selection / configuring / game_over-pre-config.
-                    Mounts on top of the persistent MobileGameTable
-                    without unmounting it. */}
-                {(game.status === 'game_selection' ||
+                {/* DealerGameSetup overlay — gated on poker-shell only;
+                    canonical-shell games (cribbage/gin/yahtzee) reach
+                    DealerGameSetup through their dedicated waiting/setup
+                    branch above, so do not duplicate the mount here. */}
+                {_isPokerShellPersistent &&
+                  (game.status === 'game_selection' ||
                   game.status === 'configuring' ||
                   ((game.status === 'game_over' || (game.status as string) === 'session_ended') && !(game as any).config_complete)) &&
                   !is357WinAnimationActive && !horsesWinPotTriggerId &&
