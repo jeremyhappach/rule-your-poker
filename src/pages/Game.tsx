@@ -10400,7 +10400,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // and the shell loses NeutralInterstitial's bottom-panel
             // ShellHudChrome (rail + tab bar) — observed as the
             // dark/no-style transient between waiting and DealerGameSetup.
-            (game.status === 'dealer_selection' && (isPokerVariantFamily(game.game_type) || _isPokerShellPersistent))
+            (game.status === 'dealer_selection' && (supportsDealerSelectionOverlay(game.game_type) || _isPokerShellPersistent || _isCanonicalShellPersistent))
           ))
         ) && (
           // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
