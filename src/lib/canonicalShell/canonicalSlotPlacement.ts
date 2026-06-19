@@ -57,10 +57,17 @@ export function getCanonicalSlotPlacement(
         ? { className: 'bottom-[1%] left-[6%] items-start scale-90' }
         : { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
     // BOTTOM_RAIL — observer-only anchor for absolute "south" (pos 4).
+    // Single placement for ALL variants (occupied / open-seat /
+    // occupied-observer): bottom-center on the rail. The legacy
+    // lower-right offset for the `occupied` / `occupied-observer`
+    // variants collided with slot 5's open-seat at `bottom-[2%]
+    // right-[2%]` on the waiting table — same slot must render at
+    // the same place regardless of occupancy. If a gameplay observer
+    // surface later needs to avoid central play artifacts (pegging
+    // count / dice tray), introduce a gameplay-specific carveout
+    // there rather than reintroducing the asymmetry here.
     case -3:
-      return variant === 'open-seat'
-        ? { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' }
-        : { className: 'bottom-[1%] right-[6%] items-end scale-90' };
+      return { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
     case 0:  return { className: 'bottom-[2%] left-[2%] items-start' };
     case 1:  return { className: 'top-[50%] left-[1%] -translate-y-1/2 items-start' };
     // Slots 2/3 use a single canonical placement for ALL games — the
