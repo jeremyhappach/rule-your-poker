@@ -74,7 +74,7 @@ import {
 } from "@/components/canonicalShell/actionStrip";
 import { GameplayOpponentSeatLayer } from "@/lib/canonicalShell/GameplayOpponentSeatLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
-import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
+
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
 import { YahtzeeGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/YahtzeeGameplayGeometryProvider";
 import { YahtzeeAnchoredSlot } from "@/components/YahtzeeAnchoredSlot";
