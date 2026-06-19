@@ -5734,12 +5734,21 @@ export const MobileGameTable = ({
 
     let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
     if (sccResultBadge) {
+      // Anchor-publishing shim — see Horses comment above. Carries
+      // `data-chip-center` so OverSeatBadgePortal can resolve the
+      // anchor while the default chip disc is unmounted.
       chipPresentation = (
         <div
           aria-hidden
-          style={{ opacity: 0, pointerEvents: 'none' }}
+          data-chip-center={player.position}
+          data-shim-owner="SccWinScoreBadge"
+          className={cn(
+            'relative flex items-center justify-center',
+            isTablet ? 'w-16 h-16' : 'w-12 h-12',
+          )}
+          style={{ pointerEvents: 'none' }}
         >
-          {sccResultBadge}
+          <div style={{ opacity: 0 }}>{sccResultBadge}</div>
         </div>
       );
     }
