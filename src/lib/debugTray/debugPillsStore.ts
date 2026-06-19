@@ -26,7 +26,8 @@ export type DebugPillKey =
   | 'wartime'
   | 'networkSim'
   | 'debugMode'
-  | 'diceTrace';
+  | 'diceTrace'
+  | 'w5Grid';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
