@@ -202,7 +202,7 @@ export function GameplayOpponentSeatLayer({
         const chipValue =
           chipValueOverride !== undefined
             ? chipValueOverride
-            : `$${formatChipValueLocal(p.chips)}`;
+            : defaultChipValue(p.chips);
         const hideChipBubble = presentation?.hideChipBubble?.(p) ?? false;
         const scoreLine = presentation?.scoreLine?.(p);
         const cardBacks = presentation?.cardBacks?.(p) ?? null;
