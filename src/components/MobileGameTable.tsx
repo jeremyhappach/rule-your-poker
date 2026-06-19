@@ -5534,13 +5534,26 @@ export const MobileGameTable = ({
 
     let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
     if (horsesResultBadge) {
+      // Anchor-publishing shim. Mirrors CanonicalChipDisc's outer box
+      // geometry (w-12/w-16) AND carries `data-chip-center` so the
+      // OverSeatBadgePortal anchor remains resolvable for the ENTIRE
+      // win sequence — even though the default chip disc is no longer
+      // mounted under this presentation. Without this, the disc's
+      // `[data-chip-center]` disappears the instant a winner is
+      // declared and the portal cannot resolve a position, so the
+      // badge never appears. Centered, opacity:0, non-interactive.
       chipPresentation = (
         <div
           aria-hidden
-          className="flex items-center justify-center animate-in fade-in duration-150"
-          style={{ opacity: 0, pointerEvents: 'none' }}
+          data-chip-center={player.position}
+          data-shim-owner="HorsesWinScoreBadge"
+          className={cn(
+            'relative flex items-center justify-center',
+            isTablet ? 'w-16 h-16' : 'w-12 h-12',
+          )}
+          style={{ pointerEvents: 'none' }}
         >
-          {horsesResultBadge}
+          <div style={{ opacity: 0 }}>{horsesResultBadge}</div>
         </div>
       );
     }
@@ -5721,12 +5734,21 @@ export const MobileGameTable = ({
 
     let chipPresentation: 'auto' | 'hidden' | ReactNode = 'auto';
     if (sccResultBadge) {
+      // Anchor-publishing shim — see Horses comment above. Carries
+      // `data-chip-center` so OverSeatBadgePortal can resolve the
+      // anchor while the default chip disc is unmounted.
       chipPresentation = (
         <div
           aria-hidden
-          style={{ opacity: 0, pointerEvents: 'none' }}
+          data-chip-center={player.position}
+          data-shim-owner="SccWinScoreBadge"
+          className={cn(
+            'relative flex items-center justify-center',
+            isTablet ? 'w-16 h-16' : 'w-12 h-12',
+          )}
+          style={{ pointerEvents: 'none' }}
         >
-          {sccResultBadge}
+          <div style={{ opacity: 0 }}>{sccResultBadge}</div>
         </div>
       );
     }
