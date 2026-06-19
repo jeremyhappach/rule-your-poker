@@ -69,8 +69,9 @@ import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
-// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned projectedSeatOverlay (plan step 3a)
+// eslint-disable-next-line no-restricted-imports -- P0 migration: opponent overlay still mounts CanonicalSeatCluster; pre-session window is now guarded via usePreSessionSeatOwned (plan step 3a)
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
@@ -319,6 +320,7 @@ export const GinRummyGameTable = ({
 
   const { allMessages, sendMessage, isSending: isChatSending, latestRealtimeMessage } = useGameChat(gameId, players, currentUserId);
   const announcements = useAnnouncements();
+  const preSessionSeatOwnedByShell = usePreSessionSeatOwned();
   // (debug instrumentation moved to AnnouncementDebugPanel)
 
   const [ginState, setGinState] = useState<GinRummyState | null>(null);
@@ -2491,6 +2493,12 @@ export const GinRummyGameTable = ({
                   : activeSeatPlayers.filter(p => p.id !== currentPlayerId);
                 return projectedSeatPlayers.map((seatPlayer) => {
                   const seatId = seatPlayer.id;
+                  // Duplicate-owner gate (mirrors Cribbage): when the shell
+                  // PreSessionSeatLayer is mounted, IT is the sole authoritative
+                  // owner of every seat cluster. Skip the local overlay to keep
+                  // mountedCount==1 per participantId (one-cluster-per-participant
+                  // invariant).
+                  if (preSessionSeatOwnedByShell) return null;
                   const seatState = viewState?.playerStates[seatId] ?? null;
                   const slot = playerSlotById.get(seatId) ?? null;
                   const isOpponentSeat = !isObserver && seatId === opponentId;
