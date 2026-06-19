@@ -10,6 +10,7 @@ import {
   getSwapEvents,
 } from "@/lib/dicePresentationTrace";
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
+import { useDebugPillEnabled } from "@/lib/debugTray/debugPillsStore";
 
 const DEBUG_BUILD_STAMP = "2026-04-06T-trace-ui";
 const LS_KEY = "ptp_debug_yahtzee_straight";
@@ -70,7 +71,9 @@ export function DiceTraceControl() {
     }
   }, []);
 
-  if (useHideDebugUI()) return null;
+  const hidden = useHideDebugUI();
+  const pillEnabled = useDebugPillEnabled('diceTrace');
+  if (hidden || !pillEnabled) return null;
 
   return (
     <div className="absolute top-1 left-1 z-[9999] flex items-center gap-1 flex-wrap">
