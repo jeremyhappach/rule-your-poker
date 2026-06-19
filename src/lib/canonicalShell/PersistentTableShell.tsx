@@ -33,6 +33,7 @@ import { recordShellEvent } from './diagnostics';
 import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import { ShellOverlayLayers, ShellOverlayMountsProvider } from './ShellOverlayMounts';
 import {
   useWartimeSurface,
   useWartimeGeometry,
