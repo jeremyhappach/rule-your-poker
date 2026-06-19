@@ -20,6 +20,7 @@ export type DebugPillKey =
   | 'dealerDbg'
   | 'seatOwnership'
   | 'dealerAffordance'
+  | 'overlayOwnership'
   | 'shellLifecycle'
   | 'layoutFault'
   | 'wave5Violation'
