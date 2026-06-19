@@ -76,93 +76,9 @@ import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useGeometryTokensOptional } from '@/lib/canonicalShell/ResponsiveGeometryProvider';
 import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
 
-/**
- * Wave 2B: opponent card-back strip width budget.
- *
- * Sourced from canonical `screenWidth` (ResponsiveGeometryProvider →
- * useDeviceSize → window.innerWidth) — NOT from any DOM measurement.
- * The opponent strip is absolutely positioned inside a CanonicalSeatCluster
- * at a fixed seat anchor; its rendered width can never feed back into
- * screenWidth, so no measurement loop is possible.
- *
- * Fraction is tuned to stay clear of the score pegboard rail above and
- * the cluster's identity/chip stack below at every device class. Hard
- * floor/ceiling clamps keep the row legible on extreme widths.
- */
-const OPPONENT_STRIP_WIDTH_FRACTION = 0.22;
-const OPPONENT_STRIP_MIN_WIDTH_PX = 56;
-const OPPONENT_STRIP_MAX_WIDTH_PX = 180;
-
-/**
- * Opponent card-back strip — Wave 2B localized geometry consumer.
- *
- * Reads `screenWidth` from the canonical ResponsiveGeometryProvider
- * (existing token, no DOM measurement) and resolves card width/overlap
- * via the Wave 1 `useCardRowLayout` primitive so the row scales with
- * available space, clamps to readable bounds, and cannot collide with
- * the score pegboard rail above.
- *
- * No refs, no ResizeObserver, no measurement of any ancestor. The
- * width budget is derived strictly from viewport-class tokens, so the
- * rendered row cannot feed back into its own budget.
- */
-function OpponentCardBackStrip({
-  count,
-  color,
-  darkColor,
-}: {
-  count: number;
-  color: string;
-  darkColor: string;
-}) {
-  const geo = useGeometryTokensOptional();
-  const screenWidth = geo?.screenWidth ?? 0;
-  const rawBudget = screenWidth * OPPONENT_STRIP_WIDTH_FRACTION;
-  const availableWidth = screenWidth > 0
-    ? Math.max(OPPONENT_STRIP_MIN_WIDTH_PX, Math.min(OPPONENT_STRIP_MAX_WIDTH_PX, rawBudget))
-    : 0;
-  const layout = useCardRowLayout({
-    availableWidth,
-    count,
-    minCardWidth: 10,
-    maxCardWidth: 18,
-    preferredOverlapRatio: 0.45,
-    maxOverlapRatio: 0.7,
-  });
-
-  // Pre-geometry / unmeasurable fallback — preserve prior static layout
-  // so there's zero visual change before tokens are ready.
-  if (!layout) {
-    return (
-      <div className="flex -space-x-3 mt-1">
-        {Array.from({ length: count }).map((_, i) => (
-          <div
-            key={i}
-            className="w-3.5 h-5 rounded-sm border border-white/20"
-            style={{ background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)` }}
-          />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex mt-1" style={{ width: layout.totalWidth }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-sm border border-white/20 shrink-0"
-          style={{
-            width: layout.cardWidth,
-            height: layout.cardHeight,
-            marginLeft: i === 0 ? 0 : -layout.overlapPx,
-            background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+// (Opponent card-back strip moved to shell-owned
+// GameplayOpponentSeatLayer → ShellOpponentCardBacks. Games emit
+// typed `cardBacks` data; the shell renders the artifact.)
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 // Phase 2: ShellHudGrid imposes the deterministic 5-row HUD grid.
 // Gin's Phase 5 diagnostic local gold plate is preserved inside the
