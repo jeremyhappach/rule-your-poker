@@ -35,6 +35,7 @@ const SHELL_OWNERSHIP_ALLOW_LIST = [
   "src/lib/canonicalShell/CanonicalOpponentSeat.tsx",
   "src/lib/canonicalShell/ExtraDebugPills.tsx",
   "src/lib/canonicalShell/seatClusterInvariant.ts",
+  "src/lib/canonicalShell/GameplayOpponentSeatLayer.tsx",
   "**/*.test.tsx",
   "**/*.test.ts",
 ];
