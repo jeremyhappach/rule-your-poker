@@ -8669,8 +8669,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         })
         .eq('id', gameId);
       
-      // Wait 3 seconds then trigger game over flow
+      // Immediately trigger game over flow — outcome is already known, no
+      // need for an artificial UX pause (was 3s, caused "Awaiting ante
+      // decisions" to linger after the only remaining decision resolved).
       setTimeout(async () => {
+
         // Re-fetch fresh players to evaluate states
         const { data: latestPlayers } = await supabase
           .from('players')
