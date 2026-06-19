@@ -156,10 +156,11 @@ function Pill<T extends object>({ label, pillKey, store, summarize, top }: PillP
 
 export function ExtraDebugPills() {
   const hidden = useHideDebugUI();
+  const timerDbgEnabled = useDebugPillEnabled('timerDbg');
   const previousParticipantsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (hidden || typeof document === 'undefined') return;
+    if (!timerDbgEnabled || typeof document === 'undefined') return;
     let cancelled = false;
     let raf = 0;
     const sampleSeatClusterLifecycle = () => {
@@ -299,44 +300,48 @@ export function ExtraDebugPills() {
       cancelled = true;
       cancelAnimationFrame(raf);
     };
-  }, [hidden]);
+  }, [timerDbgEnabled]);
 
 
-  if (hidden) return null;
+  if (hidden && !timerDbgEnabled) return null;
   return (
     <>
-      <Pill
-        label="DEALER DBG"
-        pillKey="dealerDbg"
-        store={dealerDbgStore}
-        summarize={(e) => e ? `local:${e.localDealerVisible ? 'Y' : 'N'} opp:${Object.values(e.opponentDealerVisible || {}).some(Boolean) ? 'Y' : 'N'}` : '—'}
-        top={40}
-      />
-      <Pill
-        label="SEAT OWNERSHIP"
-        pillKey="seatOwnership"
-        store={seatOwnershipStore}
-        summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/participant · ${e.context === 'seat-cluster-lifecycle' ? (e.duplicateParticipantIds?.join(',') || 'shell') : e.winSequencePhase}` : '—'}
-        top={72}
-      />
+      {!hidden && (
+        <>
+          <Pill
+            label="DEALER DBG"
+            pillKey="dealerDbg"
+            store={dealerDbgStore}
+            summarize={(e) => e ? `local:${e.localDealerVisible ? 'Y' : 'N'} opp:${Object.values(e.opponentDealerVisible || {}).some(Boolean) ? 'Y' : 'N'}` : '—'}
+            top={40}
+          />
+          <Pill
+            label="SEAT OWNERSHIP"
+            pillKey="seatOwnership"
+            store={seatOwnershipStore}
+            summarize={(e) => e ? `${e.invariantHolds ? '✓' : '✗'} 1/participant · ${e.context === 'seat-cluster-lifecycle' ? (e.duplicateParticipantIds?.join(',') || 'shell') : e.winSequencePhase}` : '—'}
+            top={72}
+          />
 
-      <Pill
-        label="DEALER AFFORDANCE"
-        pillKey="dealerAffordance"
-        store={dealerAffordanceStore}
-        summarize={(e) => e ? `${e.game} i:${e.identityDealerVisible?'Y':'N'} s:${e.seatDealerVisible?'Y':'N'} l:${e.legacyDealerVisible?'Y':'N'}` : '—'}
-        top={104}
-      />
+          <Pill
+            label="DEALER AFFORDANCE"
+            pillKey="dealerAffordance"
+            store={dealerAffordanceStore}
+            summarize={(e) => e ? `${e.game} i:${e.identityDealerVisible?'Y':'N'} s:${e.seatDealerVisible?'Y':'N'} l:${e.legacyDealerVisible?'Y':'N'}` : '—'}
+            top={104}
+          />
 
-      <Pill
-        label="OVERLAY OWNERSHIP"
-        pillKey="overlayOwnership"
-        store={overlayOwnershipStore}
-        summarize={(e) => e
-          ? `slot:${e.slot.mountedChildren}[${e.slot.ownerLabels.join(',') || '—'}] set:${e.settlement.mountedChildren} tr:${e.transient.mountedChildren}`
-          : '—'}
-        top={136}
-      />
+          <Pill
+            label="OVERLAY OWNERSHIP"
+            pillKey="overlayOwnership"
+            store={overlayOwnershipStore}
+            summarize={(e) => e
+              ? `slot:${e.slot.mountedChildren}[${e.slot.ownerLabels.join(',') || '—'}] set:${e.settlement.mountedChildren} tr:${e.transient.mountedChildren}`
+              : '—'}
+            top={136}
+          />
+        </>
+      )}
 
       <Pill
         label="TIMER DBG"
