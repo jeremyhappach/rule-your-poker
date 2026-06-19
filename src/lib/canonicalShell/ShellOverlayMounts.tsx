@@ -127,12 +127,31 @@ export interface ShellOverlayLayersProps {
  */
 export function ShellOverlayLayers({ gameId }: ShellOverlayLayersProps) {
   const ctx = useContext(ShellOverlayContext);
+  // Stable per-slot ref callbacks. Inline `ref={el => …}` callbacks
+  // are recreated every render, which causes React to invoke them
+  // twice (with null then the element) on every render. Combined with
+  // `registerTarget` bumping a context version, that would trigger an
+  // infinite render loop in any subtree that consumes the portal hook.
+  const refs = useMemo(() => {
+    const out: Record<ShellOverlaySlotName, (el: HTMLDivElement | null) => void> = {
+      slot: () => {},
+      settlement: () => {},
+      transient: () => {},
+    };
+    for (const name of SHELL_OVERLAY_SLOTS) {
+      out[name] = (el: HTMLDivElement | null) => {
+        ctx?.registerTarget(name, el);
+      };
+    }
+    return out;
+  }, [ctx]);
+
   return (
     <>
       {SHELL_OVERLAY_SLOTS.map((name) => (
         <div
           key={name}
-          ref={(el) => ctx?.registerTarget(name, el)}
+          ref={refs[name]}
           data-shell-overlay={name}
           data-shell-overlay-z={SHELL_OVERLAY_Z[name]}
           data-shell-overlay-game-id={gameId ?? undefined}
