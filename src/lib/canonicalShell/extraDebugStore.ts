@@ -115,6 +115,16 @@ export interface DealerAffordanceEntry {
   dealerId: string | null;
 }
 
+export interface OverlayOwnershipEntry {
+  // Per-slot child counts and owner labels scraped from
+  // [data-shell-overlay="<slot>"] descendants. ownerLabels arrays may
+  // contain duplicates if the same consumer mounts multiple subtrees.
+  slot: { mountedChildren: number; ownerLabels: string[] };
+  settlement: { mountedChildren: number; ownerLabels: string[] };
+  transient: { mountedChildren: number; ownerLabels: string[] };
+}
+
 export const dealerDbgStore = makeStore<DealerDbgEntry>();
 export const seatOwnershipStore = makeStore<SeatOwnershipEntry>();
 export const dealerAffordanceStore = makeStore<DealerAffordanceEntry>();
+export const overlayOwnershipStore = makeStore<OverlayOwnershipEntry>();

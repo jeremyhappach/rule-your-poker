@@ -129,6 +129,7 @@ import { HandHistory } from "./HandHistory";
 import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, resetHolmRenderTrace } from "@/lib/holmRenderTrace";
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
+import { useShellOverlayPortal } from "@/lib/canonicalShell/ShellOverlayMounts";
 import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
@@ -669,6 +670,13 @@ export const MobileGameTable = ({
   } = useVisualPreferences();
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
+
+  // Shell-owned transient overlay portal — HighCard reveal escapes the
+  // gameplay subtree (where CanonicalSeatCluster's always-on stacking
+  // contexts would trap it under chip discs/nameplates) and renders in
+  // the shell's `slot` overlay layer (z=78, above seat clusters, below
+  // ChipTransportRuntime z=80). See ShellOverlayMounts.
+  const highCardOverlayPortal = useShellOverlayPortal('slot');
 
   // ── dealer_selection_diag: cards_visible / cleared ──
   // NOTE: this checkpoint is intentionally NOT fired from a prop-keyed
@@ -6516,14 +6524,16 @@ export const MobileGameTable = ({
             including the current player's. Dealer-selection is not normal gameplay
             hand rendering; the bottom card area is suppressed during this phase, so
             the overlay must own complete presentation. */}
-        {dealerSelectionCards && dealerSelectionCards.length > 0 && (
+        {dealerSelectionCards && dealerSelectionCards.length > 0 && highCardOverlayPortal(
           <div
             data-wartime-high-card-container={gameId}
             data-wartime-renderer-instance={`MobileGameTable:${instanceLabel}:${gameId ?? 'no-game'}`}
             data-wartime-component="MobileGameTable"
             data-wartime-render-branch="session-dealer-selection-overlay"
             data-wartime-surface="HighCardRender"
-            className="absolute inset-0 z-50 pointer-events-none"
+            data-shell-overlay-owner="HighCardReveal"
+            data-shell-overlay-consumer="HighCardReveal"
+            className="absolute inset-0 pointer-events-none"
           >
 
 

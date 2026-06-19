@@ -20,6 +20,7 @@ export type DebugPillKey =
   | 'dealerDbg'
   | 'seatOwnership'
   | 'dealerAffordance'
+  | 'overlayOwnership'
   | 'shellLifecycle'
   | 'layoutFault'
   | 'wave5Violation'
@@ -41,6 +42,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'dealerDbg',        abbreviation: 'DEALER',    fullName: 'Dealer',            description: 'Dealer ownership and visibility' },
   { key: 'seatOwnership',    abbreviation: 'SEAT',      fullName: 'Seat Ownership',    description: 'Seat lifecycle and duplicate cluster detection' },
   { key: 'dealerAffordance', abbreviation: 'DEAL AFF',  fullName: 'Dealer Affordance', description: 'Identity vs seat vs legacy dealer indicator visibility' },
+  { key: 'overlayOwnership', abbreviation: 'OVL OWN',   fullName: 'Overlay Ownership', description: 'Shell-owned transient overlay layer mounts (slot/settlement/transient)' },
   { key: 'shellLifecycle',   abbreviation: 'SHELL LC',  fullName: 'Shell Lifecycle',   description: 'Shell/game lifecycle phases, mounts, readiness' },
   { key: 'layoutFault',      abbreviation: 'LAYOUT',    fullName: 'Layout Fault',      description: 'Wave 4 layout-fault telemetry badge' },
   { key: 'wave5Violation',   abbreviation: 'W5 VIOL',   fullName: 'Wave 5 Violation',  description: 'Wave 5 gameplay-geometry contract violations' },

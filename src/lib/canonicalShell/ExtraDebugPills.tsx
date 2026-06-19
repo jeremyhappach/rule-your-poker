@@ -12,9 +12,11 @@ import {
   dealerDbgStore,
   seatOwnershipStore,
   dealerAffordanceStore,
+  overlayOwnershipStore,
   type DealerAffordanceEntry,
   type DealerDbgEntry,
   type SeatOwnershipEntry,
+  type OverlayOwnershipEntry,
 } from './extraDebugStore';
 
 function shortId(id: string | null | undefined): string {
@@ -231,6 +233,39 @@ export function ExtraDebugPills() {
     };
   }, [hidden]);
 
+  // Sample shell-owned overlay layer ownership (slot/settlement/transient).
+  // Each layer is the DOM node tagged [data-shell-overlay="<slot>"]; its
+  // direct/descendant nodes that carry data-shell-overlay-owner=… are the
+  // consumers currently portaling into the shell overlay band.
+  useEffect(() => {
+    if (hidden || typeof document === 'undefined') return;
+    let cancelled = false;
+    let raf = 0;
+    const sample = () => {
+      const sampleSlot = (name: 'slot' | 'settlement' | 'transient') => {
+        const layer = document.querySelector(`[data-shell-overlay="${name}"]`) as HTMLElement | null;
+        const owners = layer
+          ? Array.from(layer.querySelectorAll('[data-shell-overlay-owner]')) as HTMLElement[]
+          : [];
+        return {
+          mountedChildren: layer ? layer.childElementCount : 0,
+          ownerLabels: owners.map((el) => el.dataset.shellOverlayOwner || 'unknown'),
+        };
+      };
+      overlayOwnershipStore.record({
+        slot: sampleSlot('slot'),
+        settlement: sampleSlot('settlement'),
+        transient: sampleSlot('transient'),
+      });
+      if (!cancelled) raf = requestAnimationFrame(sample);
+    };
+    raf = requestAnimationFrame(sample);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [hidden]);
+
   if (hidden) return null;
   return (
     <>
@@ -255,6 +290,16 @@ export function ExtraDebugPills() {
         store={dealerAffordanceStore}
         summarize={(e) => e ? `${e.game} i:${e.identityDealerVisible?'Y':'N'} s:${e.seatDealerVisible?'Y':'N'} l:${e.legacyDealerVisible?'Y':'N'}` : '—'}
         top={104}
+      />
+
+      <Pill
+        label="OVERLAY OWNERSHIP"
+        pillKey="overlayOwnership"
+        store={overlayOwnershipStore}
+        summarize={(e) => e
+          ? `slot:${e.slot.mountedChildren}[${e.slot.ownerLabels.join(',') || '—'}] set:${e.settlement.mountedChildren} tr:${e.transient.mountedChildren}`
+          : '—'}
+        top={136}
       />
     </>
   );
