@@ -231,7 +231,8 @@ export function Wave5GridOverlay() {
 
 export function Wave5GridOverlayToggle() {
   const enabled = useEnabled();
-  // W5 GRID is the one debug pill we keep visible even when HIDE_DEBUG_UI is true
+  const pillEnabled = useDebugPillEnabled('w5Grid');
+  if (!pillEnabled) return null;
   return (
     <button
       type="button"
