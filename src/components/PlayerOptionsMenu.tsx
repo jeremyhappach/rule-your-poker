@@ -76,7 +76,7 @@ export const PlayerOptionsMenu = ({
   // Check if we're in the waiting phase (before game starts)
   const isWaitingPhase = gameStatus === 'waiting';
   
-  // Observers only see Leave Game Now option
+  // Observers see 4-color deck toggle + Leave Game Now
   if (isObserver) {
     return (
       <DropdownMenu>
@@ -96,6 +96,17 @@ export const PlayerOptionsMenu = ({
           align="start" 
           className="w-56 bg-popover border border-border z-[9999]"
         >
+          {deckColorMode && onDeckColorModeChange && (
+            <>
+              <DropdownMenuCheckboxItem
+                checked={deckColorMode === 'four_color'}
+                onCheckedChange={(checked) => onDeckColorModeChange(checked ? 'four_color' : 'two_color')}
+              >
+                4-Color Deck
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem 
             onClick={onLeaveGameNow}
             className="text-destructive focus:text-destructive"
