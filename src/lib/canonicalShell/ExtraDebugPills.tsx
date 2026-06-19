@@ -268,6 +268,40 @@ export function ExtraDebugPills() {
     };
   }, [hidden]);
 
+  // Sample shell-timer DOM presence/visibility so the TIMER DBG pill can
+  // distinguish "not mounted" vs "mounted hidden" vs "mounted with state".
+  // The semantic state (gates / blockedReason) is recorded by the producer
+  // (MobileGameTable publish site); here we merge DOM observations into the
+  // latest semantic snapshot.
+  useEffect(() => {
+    if (hidden || typeof document === 'undefined') return;
+    let cancelled = false;
+    let raf = 0;
+    const sample = () => {
+      const el = document.querySelector('[data-canonical-shell-timer-rail]') as HTMLElement | null;
+      const mounted = !!el;
+      let visible = false;
+      if (el) {
+        const cs = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        visible = cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '1') > 0 && rect.width > 0 && rect.height > 0;
+      }
+      const entries = timerDbgStore.get();
+      const latest = entries[entries.length - 1];
+      if (latest && (latest.timerMounted !== mounted || latest.timerVisible !== visible)) {
+        const { ts: _ts, ...rest } = latest;
+        timerDbgStore.record({ ...(rest as TimerDbgEntry), timerMounted: mounted, timerVisible: visible });
+      }
+      if (!cancelled) raf = requestAnimationFrame(sample);
+    };
+    raf = requestAnimationFrame(sample);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [hidden]);
+
+
   if (hidden) return null;
   return (
     <>
