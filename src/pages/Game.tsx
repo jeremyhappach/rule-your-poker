@@ -9543,9 +9543,11 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ]);
   const _isShellLobbyMode =
     game.status != null && _shellLobbyStatuses.has(game.status);
-  const gameName = _isShellLobbyMode
-    ? 'P-Town Poker'
-    : (game.name || `Game #${gameId?.slice(0, 8)}`);
+  // Header chrome title contract: ALWAYS show session name, across every
+  // lifecycle phase. The "P-Town Poker" lobby override applies only to
+  // the felt plate (see feltGameName). Header chrome and felt plate are
+  // separate display contracts — do not couple them.
+  const gameName = game.name || `Game #${gameId?.slice(0, 8)}`;
   const sessionStartTime = game.created_at ? new Date(game.created_at).toLocaleTimeString('en-US', { 
     hour: 'numeric', 
     minute: '2-digit',
