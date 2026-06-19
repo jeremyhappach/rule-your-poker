@@ -162,14 +162,22 @@ export function ShellOverlayLayers({ gameId }: ShellOverlayLayersProps) {
           data-shell-overlay-game-id={gameId ?? undefined}
           aria-hidden="true"
           style={{
-            // Anchored to the gameplay region (below the shell header
-            // chrome), so consumers can use percent coords that match
-            // the gameplay table / felt subtree they migrated from.
+            // GEOMETRY CONTRACT: anchored to the canonical felt region
+            // box, matching `data-canonical-table-container`:
+            //   top    = shell-header-h + play-top-safe-area
+            //   height = --shell-felt-h
+            //   full width
+            // This is the exact box pre-migration consumers (HighCard
+            // reveal, etc.) used as their percent-coord origin. Without
+            // this, portaling into a viewport-sized layer stretched
+            // top:82% well past the felt floor (local HighCard landed
+            // in the active-player rail). Migrations are ownership
+            // changes only — geometry must be byte-identical.
             position: 'absolute',
-            top: 'var(--shell-header-h, 0px)',
+            top: 'calc(var(--shell-header-h, 0px) + var(--play-top-safe-area, 0px))',
             left: 0,
             right: 0,
-            bottom: 0,
+            height: 'var(--shell-felt-h, auto)',
             pointerEvents: 'none',
             zIndex: SHELL_OVERLAY_Z[name],
           }}
