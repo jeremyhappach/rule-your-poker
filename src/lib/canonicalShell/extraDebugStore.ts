@@ -124,7 +124,41 @@ export interface OverlayOwnershipEntry {
   transient: { mountedChildren: number; ownerLabels: string[] };
 }
 
+export type TimerBlockedReason =
+  | 'no_round'
+  | 'horses_state_missing'
+  | 'game_phase_not_playing'
+  | 'no_current_turn_player'
+  | 'bot_turn'
+  | 'turn_deadline_null'
+  | 'time_left_null'
+  | 'timer_not_published'
+  | 'deadline_expired'
+  | 'ok';
+
+export interface TimerDbgEntry {
+  gameType: string | null;
+  roundId: string | null;
+  roundStatus: string | null;
+  gamePhase: string | null;
+  diceGameplayUiActive: boolean;
+  horsesControllerEnabled: boolean;
+  horsesStateExists: boolean;
+  currentTurnPlayerId: string | null;
+  currentTurnPlayerIsBot: boolean | null;
+  turnDeadline: string | null;
+  roundDecisionDeadline: string | null;
+  timeLeft: number | null;
+  maxTime: number | null;
+  diceTimerActive: boolean;
+  timerPublished: boolean;
+  timerMounted: boolean;
+  timerVisible: boolean;
+  blockedReason: TimerBlockedReason;
+}
+
 export const dealerDbgStore = makeStore<DealerDbgEntry>();
 export const seatOwnershipStore = makeStore<SeatOwnershipEntry>();
 export const dealerAffordanceStore = makeStore<DealerAffordanceEntry>();
 export const overlayOwnershipStore = makeStore<OverlayOwnershipEntry>();
+export const timerDbgStore = makeStore<TimerDbgEntry>();

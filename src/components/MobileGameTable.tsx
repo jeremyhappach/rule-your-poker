@@ -138,7 +138,7 @@ import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRa
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
-import { dealerAffordanceStore } from "@/lib/canonicalShell/extraDebugStore";
+import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
 
 
 // P9.1 — First visible canonical shell visual cutover.
@@ -3353,7 +3353,55 @@ export const MobileGameTable = ({
       };
     }
     useShellTimer(shellTimerState);
+
+    // ── TIMER DBG snapshot ──────────────────────────────────────────
+    // Records the exact gate state behind diceTimerActive so we can
+    // distinguish "not mounted" / "mounted hidden" / "null deadline" /
+    // "expired deadline" without console scraping. DOM mount/visibility
+    // is merged in by ExtraDebugPills' rAF sampler.
+    {
+      const isDice = !!diceGameplayUiActive;
+      const turnDeadline = (horsesState as any)?.turnDeadline ?? null;
+      const deadlineExpired = !!(turnDeadline && new Date(turnDeadline).getTime() <= Date.now());
+      let blockedReason: TimerBlockedReason = 'ok';
+      if (isDice) {
+        if (!horsesRoundId) blockedReason = 'no_round';
+        else if (!horsesState) blockedReason = 'horses_state_missing';
+        else if (horsesController.gamePhase !== 'playing') blockedReason = 'game_phase_not_playing';
+        else if (!horsesController.currentTurnPlayerId) blockedReason = 'no_current_turn_player';
+        else if (horsesController.currentTurnPlayer?.is_bot) blockedReason = 'bot_turn';
+        else if (!turnDeadline) blockedReason = 'turn_deadline_null';
+        else if (deadlineExpired && horsesController.timeLeft === null) blockedReason = 'deadline_expired';
+        else if (horsesController.timeLeft === null) blockedReason = 'time_left_null';
+        else if (!diceTimerActive) blockedReason = 'timer_not_published';
+      } else if (!shellTimerState) {
+        blockedReason = 'timer_not_published';
+      }
+      timerDbgStore.record({
+        gameType: gameType ?? null,
+        roundId: (horsesRoundId ?? null) as string | null,
+        roundStatus: roundStatus ?? null,
+        gamePhase: horsesController.gamePhase ?? null,
+        diceGameplayUiActive: isDice,
+        horsesControllerEnabled: !!horsesController.enabled,
+        horsesStateExists: !!horsesState,
+        currentTurnPlayerId: horsesController.currentTurnPlayerId ?? null,
+        currentTurnPlayerIsBot: horsesController.currentTurnPlayer
+          ? !!horsesController.currentTurnPlayer.is_bot
+          : null,
+        turnDeadline,
+        roundDecisionDeadline: null, // not in scope here; parent computes timeLeft/maxTime from it
+        timeLeft: isDice ? (horsesController.timeLeft ?? null) : (timeLeft ?? null),
+        maxTime: isDice ? (horsesController.maxTime ?? null) : (maxTime ?? null),
+        diceTimerActive: !!diceTimerActive,
+        timerPublished: !!shellTimerState,
+        timerMounted: false, // filled by ExtraDebugPills DOM sampler
+        timerVisible: false, // filled by ExtraDebugPills DOM sampler
+        blockedReason,
+      });
+    }
   }
+
 
 
   // Check if we should be in showdown display mode (hide chipstacks, buck, show larger cards)

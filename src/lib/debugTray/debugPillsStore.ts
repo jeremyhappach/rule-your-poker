@@ -28,7 +28,8 @@ export type DebugPillKey =
   | 'networkSim'
   | 'debugMode'
   | 'diceTrace'
-  | 'w5Grid';
+  | 'w5Grid'
+  | 'timerDbg';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -51,6 +52,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'debugMode',        abbreviation: 'DBG MODE',  fullName: 'Debug Mode',        description: 'Global debug-harness mode indicator' },
   { key: 'diceTrace',        abbreviation: 'DICE TRACE',fullName: 'Dice Trace',        description: 'Dice presentation trace controls (REC/STOP, straight-bot, build stamp) and dice trace HUD' },
   { key: 'w5Grid',           abbreviation: 'W5 GRID',   fullName: 'Wave 5 Grid',       description: 'Wave 5 gameplay coordinate grid overlay toggle pill' },
+  { key: 'timerDbg',         abbreviation: 'TIMER',     fullName: 'Timer Dbg',         description: 'Shell timer publish/mount/visibility + blocked-gate diagnostic (Horses/SCC/Holm/357)' },
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';
