@@ -141,6 +141,13 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
   }, []);
   return null;
 };
+
+function supportsDealerSelectionOverlay(gameType: string | null | undefined): boolean {
+  if (gameType === 'cribbage' || gameType === 'gin-rummy') return true;
+  if (gameType === 'horses' || gameType === 'ship-captain-crew' || gameType === 'yahtzee') return false;
+  return isPokerVariantFamily(gameType);
+}
+
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
@@ -10393,7 +10400,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             // and the shell loses NeutralInterstitial's bottom-panel
             // ShellHudChrome (rail + tab bar) — observed as the
             // dark/no-style transient between waiting and DealerGameSetup.
-            (game.status === 'dealer_selection' && (isPokerVariantFamily(game.game_type) || _isPokerShellPersistent))
+            (game.status === 'dealer_selection' && (supportsDealerSelectionOverlay(game.game_type) || _isPokerShellPersistent || _isCanonicalShellPersistent))
           ))
         ) && (
           // Phase 7: PlayfieldSlotController owns ONLY the active gameplay
