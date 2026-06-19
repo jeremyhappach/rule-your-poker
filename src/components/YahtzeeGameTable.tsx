@@ -72,8 +72,7 @@ import {
   ActionStripBadge,
   ActionStripStatusPill,
 } from "@/components/canonicalShell/actionStrip";
-// eslint-disable-next-line no-restricted-imports -- P0 migration: opponent overlay still mounts CanonicalSeatCluster; pre-session window is now guarded via usePreSessionSeatOwned (plan step 3b)
-import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
+import { GameplayOpponentSeatLayer } from "@/lib/canonicalShell/GameplayOpponentSeatLayer";
 import { usePreSessionSeatOwned } from "@/lib/canonicalShell/PreSessionSeatLayer";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";
@@ -2130,52 +2129,36 @@ export function YahtzeeGameTable({
           // not ready. Rendering as an observer for one frame can show the
           // seated viewer's own chip before self-suppression can resolve.
           if (!currentUserId) return null;
-          const slotByPosition = new Map<number, CanonicalSlot | null>();
-          shellAnchors?.anchors.forEach(a => slotByPosition.set(a.position, a.slot));
-          // Resolve whether the viewer is themselves a seated active
-          // player. Observers (no matching seat) should see ALL clusters
-          // and must not be gated on `viewerPosition` (which never
-          // resolves for them).
-          const viewerIsSeated = !!currentUserId && activePlayers.some(p => p.user_id === currentUserId);
-          // For seated viewers only: if shell anchors haven't yet
-          // resolved a viewerPosition, defer rendering. The cluster's
-          // internal self-suppression keys off anchors.viewerPosition;
-          // when it is transiently null at mount, the local viewer's
-          // own bubble can flash on the felt before suppression kicks in.
+          const viewerIsSeated = activePlayers.some(p => p.user_id === currentUserId);
+          // For seated viewers only: defer rendering until anchors resolve
+          // viewerPosition (avoids one-frame self-bubble flash).
           if (viewerIsSeated && shellAnchors?.viewerPosition == null) return null;
-          return activePlayers.map(player => {
-            // Active player should not see their own table chipstack
-            // (identity/bankroll is already in the HUD). Observers see all.
-            // Compare by user_id (stable from props) rather than myPlayer.id —
-            // during initial mount `myPlayer` may briefly be undefined,
-            // letting the viewer's own bubble flash on the felt.
-            if (currentUserId && player.user_id === currentUserId) return null;
-            // Duplicate-owner gate (mirrors Cribbage): when the shell
-            // PreSessionSeatLayer is mounted, IT is the sole authoritative
-            // owner of every seat cluster. Skip the local overlay to keep
-            // mountedCount==1 per participantId (one-cluster-per-participant
-            // invariant).
-            if (preSessionSeatOwnedByShell) return null;
-            const slot = slotByPosition.get(player.position) ?? null;
-            const ps = viewState?.playerStates?.[player.id];
-            const total = ps ? getTotalScore(ps.scorecard) : 0;
-            return (
-              <CanonicalSeatCluster
-                key={player.id}
-                slot={slot}
-                position={player.position}
-                name={getPlayerUsername(player)}
-                /* Dice families have no dealer concept — never render the
-                   canonical dealer pip on opponent seats. */
-                isDealer={false}
-                chipValue={`$${formatChipValue(Math.round(player.chips))}`}
-                scoreLine={`Score: ${total}`}
-                ownerLabel="Gameplay:YahtzeeGameTable.opponentOverlay"
-                playerId={player.id}
-              />
-            );
-          });
+          const opponents = activePlayers.filter(
+            p => !currentUserId || p.user_id !== currentUserId,
+          );
+          return (
+            <GameplayOpponentSeatLayer
+              family="yahtzee"
+              participants={opponents.map(p => ({
+                id: p.id,
+                position: p.position,
+                name: getPlayerUsername(p),
+                chips: p.chips,
+              }))}
+              presentation={{
+                // Dice families have no dealer concept.
+                dealerPip: () => false,
+                chipValue: (p) => `$${formatChipValue(Math.round(p.chips))}`,
+                scoreLine: (p) => {
+                  const ps = viewState?.playerStates?.[p.id];
+                  const total = ps ? getTotalScore(ps.scorecard) : 0;
+                  return `Score: ${total}`;
+                },
+              }}
+            />
+          );
         })()}
+
 
         {/* Dealer affordance for the local player is inlined into the
             active-player identity row below — no global vertical
