@@ -12,9 +12,11 @@ import {
   dealerDbgStore,
   seatOwnershipStore,
   dealerAffordanceStore,
+  overlayOwnershipStore,
   type DealerAffordanceEntry,
   type DealerDbgEntry,
   type SeatOwnershipEntry,
+  type OverlayOwnershipEntry,
 } from './extraDebugStore';
 
 function shortId(id: string | null | undefined): string {
