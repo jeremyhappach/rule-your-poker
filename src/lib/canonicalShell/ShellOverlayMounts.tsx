@@ -138,8 +138,14 @@ export function ShellOverlayLayers({ gameId }: ShellOverlayLayersProps) {
           data-shell-overlay-game-id={gameId ?? undefined}
           aria-hidden="true"
           style={{
+            // Anchored to the gameplay region (below the shell header
+            // chrome), so consumers can use percent coords that match
+            // the gameplay table / felt subtree they migrated from.
             position: 'absolute',
-            inset: 0,
+            top: 'var(--shell-header-h, 0px)',
+            left: 0,
+            right: 0,
+            bottom: 0,
             pointerEvents: 'none',
             zIndex: SHELL_OVERLAY_Z[name],
           }}
