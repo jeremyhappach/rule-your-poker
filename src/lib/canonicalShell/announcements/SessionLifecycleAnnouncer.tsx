@@ -48,8 +48,12 @@ interface Player {
   user_id: string;
   position: number;
   is_bot?: boolean;
+  sitting_out?: boolean | null;
+  ante_decision?: string | null;
+  status?: string | null;
   profiles?: { username?: string | null } | null;
 }
+
 
 interface DealerSelectionCardLite {
   position: number;
