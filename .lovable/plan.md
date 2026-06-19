@@ -1,104 +1,117 @@
-# P0 — Close Shell Ownership Escape Hatches
+# Seat Ownership Cutover — Cribbage / Gin / Yahtzee
 
-Three deliverables. Boundary lands first, runtime invariant catches what the allow-list misses, then the five known violations move to a grouped `presentation` prop on the shell — no new subsystems, no growing list of top-level props.
+Goal: `CanonicalSeatCluster` is **shell-owned during gameplay** for all three families. Game tables emit per-seat presentation data only — **never JSX**. Three ESLint suppressions deleted. Runtime invariant `participantId → mountedCount == 1` holds across every lifecycle phase. **Chip transfers are out of scope** — done after this lands.
 
-## 1. ESLint compile-time boundary
+## Rule (non-negotiable)
 
-Add `no-restricted-imports` to `eslint.config.js` with a second override block that re-permits the imports for an allow-list of files.
+Games emit presentation state. Shell renders artifacts. No `ReactNode` / no `children` / no decorator function on the new prop. Every game-contributed input is a typed value the shell knows how to render.
 
-Forbidden modules:
-- `@/lib/canonicalShell/CanonicalSeatCluster` (+ relative variants)
-- `@/components/canonicalShell/CanonicalChipDisc`
-- `@/components/canonicalShell/CanonicalChipstack`
-- `@/components/ChipTransferAnimation`
-- `@/components/CribbageChipTransferAnimation`
+## New shell prop (typed, no JSX escape hatch)
 
-Allow-listed files:
-- `src/components/MobileGameTable.tsx`
-- `src/components/canonicalShell/CanonicalShellWaitingSurface.tsx`
-- `src/lib/canonicalShell/NeutralInterstitial.tsx`
-- `src/lib/canonicalShell/CanonicalSeatCluster.tsx` (self)
-- `src/lib/canonicalShell/PreSessionSeatLayer.tsx`
-- `src/lib/canonicalShell/CanonicalOpponentSeat.tsx`
-- `src/lib/canonicalShell/ExtraDebugPills.tsx`
-- `**/*.test.tsx`
-
-Violation message: `Shell-owned primitive. Games emit state; the shell mounts artifacts.`
-Severity: `error`.
-
-## 2. Runtime invariant — duplicate-seat check
-
-Promote the existing DOM scanner in `ExtraDebugPills.tsx` from pill-only to an always-on dev invariant.
-
-- New module `src/lib/canonicalShell/seatClusterInvariant.ts` runs in `import.meta.env.DEV` regardless of debug pill visibility.
-- Mounted from `App.tsx` as `<SeatClusterInvariantMonitor />`.
-- When `mountedCount > 1` for any participantId, calls existing `checkInvariant('shell', 'one-cluster-per-participant', false, { participantId, mountedCount, mountedBy, duplicateParticipantIds })`. Emits the standard `[sync-invariant] ❌` console.error and persists via the existing pipeline.
-- Signature-deduped so it only re-fires when the duplicate set actually changes.
-- The pill in `ExtraDebugPills.tsx` keeps its own scanner unchanged.
-
-## 3. Fix the 5 known violations — grouped declarative `presentation` prop
-
-The rule everywhere: games emit state; shell mounts artifacts. Same shape as announcements, dealer indicator, waiting table.
-
-### 3a. Gin Rummy opponentOverlay
-
-`GinRummyGameTable.tsx:2505–2523` mounts `<CanonicalSeatCluster>` directly. The shell (`MobileGameTable.tsx`) already owns `projectedSeatOverlay` for Cribbage post-fix. Extend the same shell projection branch to `gameFamily === 'gin-rummy'`. Remove the direct `CanonicalSeatCluster` import from `GinRummyGameTable.tsx`.
-
-### 3b. Yahtzee opponentOverlay
-
-Same as 3a for `YahtzeeGameTable.tsx:2151–2163`. Extend the shell's projected seat overlay to cover Yahtzee opponents. Remove the import.
-
-### 3c. Yahtzee chip primitives (`CanonicalChipstack` / `CanonicalChipDisc`)
-
-`YahtzeeGameTable.tsx` composes its own per-seat `<CanonicalChipstack><CanonicalChipDisc/></CanonicalChipstack>`. The shell's `CanonicalSeatCluster` already renders the chip disc internally. Once 3b lands, this becomes a duplicate. Delete the Yahtzee-side composition and both imports.
-
-### 3d + 3e. Chip transfer animations → grouped `presentation` prop
-
-Introduce one new prop on `MobileGameTable.tsx`:
+`MobileGameTable` already takes `presentation?: {...}`. Extend it with one field:
 
 ```text
 presentation?: {
-  chipTransfer?: {
-    fromSeatId: string;
-    toSeatId: string;
-    amount: number;
-    variant: 'default' | 'cribbage';
-    key: string;
+  chipTransfer?: ...;                        // (later, not now)
+  opponentSeat?: {
+    dealerPip?:     (player) => boolean;
+    statusRing?:    (player) => SeatStatusRing | undefined;
+    chipValue?:     (player) => string | undefined;
+    hideChipBubble?:(player) => boolean;
+    scoreLine?:     (player) => string | undefined;
+
+    cardBacks?: (player) => {
+      count: number;
+      visible: boolean;
+      variant: 'cribbage' | 'gin';
+    } | null;
   };
 }
 ```
 
-Single grouping object designed to absorb future shell-owned render requests (`potTransfer`, `legsTransfer`, `sweep`, `ante`, `dealerButton`, …) without adding new top-level props or a separate subsystem. Initially only `chipTransfer` lives inside it.
+Properties:
+- Pure functions of `player` only. No subscriptions, no queues, no hooks, no JSX.
+- All fields optional; shell provides defaults (no dealer pip, `statusRing='active'`, `chipValue=$<chips>`, no card-backs, no score line).
+- Game tables memoize the `opponentSeat` object; identity is stable.
 
-Shape rules:
-- One declarative field per shell-owned artifact.
-- Identity / lifecycle is caller-owned via `key` — same pattern as announcements (`announcement?: { kind, key }`). No queue, no hook, no subscriber.
-- Shell mounts the matching component based on field presence and `variant`:
-  - `chipTransfer.variant === 'default'` → `<ChipTransferAnimation>`
-  - `chipTransfer.variant === 'cribbage'` → `<CribbageChipTransferAnimation>`
+## Shell changes (`MobileGameTable.tsx`)
 
-Migration:
-- `YahtzeeGameTable.tsx`: replace direct `<ChipTransferAnimation>` JSX with `presentation={{ chipTransfer: { ..., variant: 'default', key } }}`. Drop the import.
-- `CribbageMobileGameTable.tsx` + `GinRummyGameTable.tsx`: replace direct `<CribbageChipTransferAnimation>` JSX with `presentation={{ chipTransfer: { ..., variant: 'cribbage', key } }}`. Drop the imports.
+1. Extend `MobileGameTablePresentation` type with `opponentSeat` (above) and define `SeatStatusRing` reusing the existing `derivePlayerStatus` return.
+2. Add a shell-internal `<ShellOpponentCardBacks count variant color darkColor />` component. It owns the card-back strip JSX for both `'cribbage'` and `'gin'` variants (today the markup is identical — a horizontal row of N face-down rectangles colored by `cardBackColors`). Lives next to other shell-owned seat chrome.
+3. In the gameplay dispatcher (`MobileGameTable.tsx` ~L7493), add a generic `renderGenericOpponentCanonicalSeat(player, slot)` used when `gameType ∈ {cribbage, gin-rummy, yahtzee}`. Holm / 3-5-7 / Horses / SCC keep their existing bespoke renderers.
+4. The generic renderer:
+   - Skips the local viewer (cluster self-suppression already handles this).
+   - Reads accessors from `presentation?.opponentSeat`; falls back to defaults.
+   - Mounts a single `<CanonicalSeatCluster>` with `ownerLabel="Shell:MobileGameTable.opponentSeat[<gameFamily>]"` and `playerId={player.id}`.
+   - If `cardBacks(player)?.visible && count > 0`, renders `<ShellOpponentCardBacks />` inside the cluster — owned by the shell, parameterized by the typed `variant` (no game-supplied JSX).
+5. Pre-session path (L7457–7491) unchanged — `PreSessionSeatLayer` continues to own pre-session.
 
-Type lives in `src/components/MobileGameTable.tsx` (or a sibling `types.ts` if MGT is too large) as `MobileGameTablePresentation`. Adding future fields (`potTransfer`, `legsTransfer`, etc.) is a one-line addition to that type — no new prop, no new subsystem.
+## Game-table changes
 
-## Sequencing
+For each of `CribbageMobileGameTable.tsx`, `GinRummyGameTable.tsx`, `YahtzeeGameTable.tsx`:
 
-1. Land ESLint rule + runtime invariant. Add `eslint-disable-next-line` on the 5 known violations so build stays green during the migration.
-2. 3a + 3b together (both extend the same shell projection branch).
-3. 3c (drops out once 3b is in).
-4. 3d/3e (add `presentation.chipTransfer` field + shell mount; migrate Yahtzee, then Cribbage, then Gin).
-5. Remove all `eslint-disable` comments. Boundary enforced at compile time and at runtime.
+1. Delete the local opponent-overlay JSX (the `<CanonicalSeatCluster>` map block).
+2. Delete the `CanonicalSeatCluster` import and the `eslint-disable-next-line` above it.
+3. Delete the local card-back JSX/components (`OpponentCardBackStrip` in Gin, the inline `<div className="flex -space-x-1.5...">` in Cribbage) — the shell owns these now.
+4. Build a memoized `opponentSeat` object and pass via `<MobileGameTable presentation={{ opponentSeat }} />` (already the persistent shell host for each table).
+
+Per-game accessor mapping (all data, no JSX):
+
+- **Cribbage** (`CribbageMobileGameTable.tsx:6710–6738`)
+  - `dealerPip(p)` = `!!viewState?.dealerPlayerId && viewState.dealerPlayerId === p.id`
+  - `chipValue(p)` = `isLoserDuringChipAnim(p) ? '' : $<chips>`
+  - `hideChipBubble(p)` = `isLoserDuringChipAnim(p)`
+  - `cardBacks(p)` = `{ count: seatState.hand.length, visible: isGameplayMode && showSeatCardBacks && seatState.hand.length > 0, variant: 'cribbage' }`
+
+- **Gin Rummy** (`GinRummyGameTable.tsx:2515–2533`)
+  - `dealerPip(p)` = `isCribDealer(p.id)`
+  - `statusRing(p)` = `p.sitting_out || p.auto_fold ? 'sitting_out' : 'active'`
+  - `cardBacks(p)` = `{ count: seatState.hand.length, visible: isOpponentSeat && phase ∉ {knocking,laying_off,scoring} && !(complete && knockResult) && seatState.hand.length > 0, variant: 'gin' }`
+
+- **Yahtzee** (`YahtzeeGameTable.tsx:2163–2175`)
+  - `scoreLine(p)` = `'Score: ' + getTotalScore(playerStates[p.id].scorecard)`
+  - `dealerPip` omitted (dice families have no dealer).
+  - No card backs.
+
+## Card-back colors
+
+`cardBackColors` is currently game-table-local. The shell already has access to the viewer's deck color preference via the same hook (`useVisualPreferences` / equivalent) — `ShellOpponentCardBacks` reads it directly. No need to thread color values through the accessor (would re-introduce a styling pass-through; the shell already owns deck styling).
+
+## Invariant coverage (acceptance gate)
+
+`SeatClusterInvariantMonitor` stays at `mountedCount == 1 per participantId` across:
+
+- waiting table / pre-session
+- dealer selection
+- ante decision
+- gameplay (every turn, every phase)
+- win sequence (Cribbage chip-anim window in particular)
+- observer ↔ seated transitions
+- timeout / sit-out
+- back to waiting after match end
+
+Smoke matrix: full Cribbage hand including chip-transfer animation; full Gin hand including knock + laying-off + scoring; full Yahtzee turn cycle.
+
+## ESLint cleanup
+
+After migration, remove `eslint-disable-next-line no-restricted-imports` and the `CanonicalSeatCluster` import from all three game files. No allow-list change required.
+
+## Out of scope (explicitly deferred)
+
+- `presentation.chipTransfer` — only after the seat boundary is genuinely closed.
+- Yahtzee's `CanonicalChipDisc` / `CanonicalChipstack` composition — separate edit in a follow-up wave (now unblocked because Yahtzee no longer mounts its own cluster).
+- Holm / 3-5-7 / Horses / SCC — already shell-owned via their bespoke renderers; untouched.
 
 ## Risk
 
-- 3d / 3e touch timing-sensitive chip animation paths. Identity is preserved via the caller-supplied `key`; verify with the seat-ownership pill and the new runtime invariant before moving on.
-- Shell projection path in `MobileGameTable.tsx` is already proven for Cribbage; extending to Gin and Yahtzee is mechanical.
+- Cribbage chip-transfer window depends on `hideChipBubble`. Accessor preserves the exact predicate — behavior should be byte-equivalent.
+- Gin laying-off / scoring hide card backs. Predicate moved verbatim into `cardBacks.visible`.
+- Card-back rendering moves from per-game JSX into one shell component. Both variants currently render the same markup with different `cardBackColors` source — the `variant` field is a forward hook only; if future variants diverge, the shell adds the branch (still no game JSX).
 
-## Out of scope
+## Sequencing
 
-- DealerIndicator typing, TurnSpotlight consolidation, PlayerChatBubbles cleanup — follow-ups, not P0.
-- Barrel-re-export lint coverage — none of the listed primitives are re-exported.
-- Any chip-transport hook / queue / subscription system — explicitly excluded.
-- Migrating `PotToPlayer`, `LegsToPlayer`, `Sweeps`, `Ante`, `DealerButton` animations to `presentation` — those are convention-only today, follow-ups not P0. The `presentation` shape is designed to accept them later without a redesign.
+1. Add `opponentSeat` typed prop + `ShellOpponentCardBacks` + generic renderer in `MobileGameTable.tsx`. Shell dormant for cribbage/gin/yahtzee until they opt in.
+2. Migrate Cribbage. Verify invariant + visuals through a full hand including chip-transfer. Delete import + suppression + local card-back JSX.
+3. Migrate Gin. Verify through knock + laying-off + scoring. Delete import + suppression + `OpponentCardBackStrip`.
+4. Migrate Yahtzee. Verify through full turn + win. Delete import + suppression.
+5. `bunx vitest run src/lib/canonicalShell` clean; manual smoke shows no `[sync-invariant] ❌ shell::one-cluster-per-participant` firings.

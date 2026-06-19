@@ -31,8 +31,7 @@ import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
-// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned projectedSeatOverlay (plan step 3a)
-import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
+import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
 import { dealerDbgStore, seatOwnershipStore } from '@/lib/canonicalShell/extraDebugStore';
@@ -6652,103 +6651,64 @@ export const CribbageMobileGameTable = ({
           )}
 
 
-          {/* ═══════ PROJECTED SEAT OVERLAY — shell anchors drive all seat chrome ═══════ */}
-          <div className="absolute inset-0 z-50 pointer-events-none">
-            {projectedSeatPlayers.map((seatPlayer) => {
-              // Active viewer's own seat: identity + bankroll already live
-              // in the HUD; rendering a duplicate chip bubble on the felt
-              // is redundant and visually disruptive. Observers and
-              // opponents continue to render normally.
-              if (!isObserver && seatPlayer.id === currentPlayerId) return null;
-
-              // During gameplay, read card data from viewState; otherwise no cards shown
-              const seatState = isGameplayMode && viewState ? viewState.playerStates[seatPlayer.id] : null;
-              const slot = playerSlotById.get(seatPlayer.id) ?? null;
-              const showSeatCardBacks = isObserver || seatPlayer.id !== currentPlayerId;
-
-              // Crib ownership now derives from the canonical dealerId
-              // and is communicated by the shared dealer pip on the
-              // CanonicalSeatCluster (opponent) and DealerIndicator
-              // (local identity row). The Cribbage-specific "C" badge /
-              // "Your Crib" pill have been retired.
-              // Pre-session continuity: while !isGameplayMode (waiting →
-              // interstitial → dealer-selection), mirror the canonical
-              // waiting-surface cluster inputs exactly so the same player's
-              // chip identity (status palette, dealer badge, decorators,
-              // children footprint) is invariant across the transition.
-              // Gameplay-only inputs (cribbage dealer D, card-back
-              // stripes) only attach once gameplay takes ownership
-              // (isGameplayMode === true).
-              const preSession = !isGameplayMode;
-              // Duplicate-owner gate: when the shell PreSessionSeatLayer
-              // is mounted, IT is the sole authoritative owner of every
-              // seat cluster — regardless of whether this surface thinks
-              // it has entered gameplay. During the observer→gameplay
-              // transition the shell pre-session layer can briefly
-              // co-exist with isGameplayMode flipping true; rendering
-              // here would mount a second CanonicalSeatCluster for the
-              // same participantId (mountedCount=2). Hard-skip whenever
-              // shell ownership is asserted.
-              if (preSessionSeatOwnedByShell) return null;
-              const preSessionStatus = preSession
-                ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
-                : undefined;
-              // Dealer indicator now derives ONLY from canonical
-              // dealerPlayerId. Position-based and crib-holder-derived
-              // logic removed — symmetric with the local identity-row
-              // DealerIndicator below (isCribDealer).
-              const isOpponentDealer =
-                !preSession && !!viewState?.dealerPlayerId && viewState.dealerPlayerId === seatPlayer.id;
-              // Win-animation chip ownership: while the chip-transfer
-              // animation is running, the losing opponent's chip is
-              // owned by CribbageChipTransferAnimation. Suppress the
-              // CanonicalSeatCluster chip bubble to keep chipDiscCount==1.
-              const isLoserDuringChipAnim =
+          {/* ═══════ PROJECTED SEAT OVERLAY — shell-owned via GameplayOpponentSeatLayer ═══════
+              Games emit presentation state (typed accessors); the
+              shell mounts CanonicalSeatCluster per opponent. */}
+          <GameplayOpponentSeatLayer
+            family="cribbage"
+            participants={projectedSeatPlayers
+              .filter(seatPlayer => isObserver || seatPlayer.id !== currentPlayerId)
+              .map(seatPlayer => ({
+                id: seatPlayer.id,
+                position: seatPlayer.position,
+                name: getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player'),
+                chips: seatPlayer.chips,
+              }))}
+            presentation={{
+              dealerPip: (p) => isGameplayMode && !!viewState?.dealerPlayerId && viewState.dealerPlayerId === p.id,
+              statusRing: (p) => {
+                if (!isGameplayMode) {
+                  const seatPlayer = projectedSeatPlayers.find(sp => sp.id === p.id);
+                  return seatPlayer
+                    ? derivePlayerStatus(seatPlayer, null, { hasStayDecision: false })
+                    : undefined;
+                }
+                return undefined;
+              },
+              hideChipBubble: (p) =>
                 winSequencePhase === 'chips' &&
-                !!storedChipPositions?.losers.some(l => l.playerId === seatPlayer.id);
-              return (
-                <CanonicalSeatCluster
-                  key={seatPlayer.id}
-                  slot={slot}
-                  position={seatPlayer.position}
-                  name={getDisplayName(players, seatPlayer, seatPlayer.profiles?.username || 'Player')}
-                  isDealer={isOpponentDealer}
-                  chipValue={isLoserDuringChipAnim ? '' : `$${formatChipValue(seatPlayer.chips)}`}
-                  hideChipBubble={isLoserDuringChipAnim}
-                  status={preSessionStatus}
-                  statusRing={preSessionStatus}
-                  ownerLabel={preSession
-                    ? 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay[preSession]'
-                    : 'Gameplay:CribbageMobileGameTable.projectedSeatOverlay[gameplay]'}
-                  playerId={seatPlayer.id}
-                >
-                  {!preSession && showSeatCardBacks && seatState && seatState.hand.length > 0 && (
-                    <div className="flex -space-x-1.5 mt-1 justify-center">
-                      {seatState.hand.map((_, i) => (
-                        <div 
-                          key={i} 
-                          className="w-4 h-6 rounded-sm border border-white/20"
-                          style={{
-                            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </CanonicalSeatCluster>
-              );
-            })}
+                !!storedChipPositions?.losers.some(l => l.playerId === p.id),
+              chipValue: (p) => {
+                const isLoserDuringChipAnim =
+                  winSequencePhase === 'chips' &&
+                  !!storedChipPositions?.losers.some(l => l.playerId === p.id);
+                return isLoserDuringChipAnim ? '' : undefined;
+              },
+              cardBacks: (p) => {
+                if (!isGameplayMode || !viewState) return null;
+                const seatState = viewState.playerStates[p.id];
+                if (!seatState || seatState.hand.length === 0) return null;
+                const showSeatCardBacks = isObserver || p.id !== currentPlayerId;
+                return {
+                  count: seatState.hand.length,
+                  visible: showSeatCardBacks,
+                  variant: 'cribbage',
+                };
+              },
+            }}
+          />
 
-            {/* Floating felt-level C-pip retired. Crib ownership is now
-                indicated by:
-                  - opponent owns crib → small "C" badge on the opponent's
-                    canonical chip bubble (chipOverlay above).
-                  - local player owns crib → "Your Crib" pill in the
-                    active-player identity row (CribbageMobileCardsTab).
-                This removes a floating gameplay artifact while keeping
-                crib ownership immediately legible. */}
-          </div>
+
+          {/* Floating felt-level C-pip retired. Crib ownership is now
+              indicated by:
+                - opponent owns crib → small "C" badge on the opponent's
+                  canonical chip bubble (chipOverlay above).
+                - local player owns crib → "Your Crib" pill in the
+                  active-player identity row (CribbageMobileCardsTab).
+              This removes a floating gameplay artifact while keeping
+              crib ownership immediately legible. */}
         </div>
+
         </CribbageGameplayGeometryProvider>
       </div>
 
