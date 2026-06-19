@@ -233,6 +233,39 @@ export function ExtraDebugPills() {
     };
   }, [hidden]);
 
+  // Sample shell-owned overlay layer ownership (slot/settlement/transient).
+  // Each layer is the DOM node tagged [data-shell-overlay="<slot>"]; its
+  // direct/descendant nodes that carry data-shell-overlay-owner=… are the
+  // consumers currently portaling into the shell overlay band.
+  useEffect(() => {
+    if (hidden || typeof document === 'undefined') return;
+    let cancelled = false;
+    let raf = 0;
+    const sample = () => {
+      const sampleSlot = (name: 'slot' | 'settlement' | 'transient') => {
+        const layer = document.querySelector(`[data-shell-overlay="${name}"]`) as HTMLElement | null;
+        const owners = layer
+          ? Array.from(layer.querySelectorAll('[data-shell-overlay-owner]')) as HTMLElement[]
+          : [];
+        return {
+          mountedChildren: layer ? layer.childElementCount : 0,
+          ownerLabels: owners.map((el) => el.dataset.shellOverlayOwner || 'unknown'),
+        };
+      };
+      overlayOwnershipStore.record({
+        slot: sampleSlot('slot'),
+        settlement: sampleSlot('settlement'),
+        transient: sampleSlot('transient'),
+      });
+      if (!cancelled) raf = requestAnimationFrame(sample);
+    };
+    raf = requestAnimationFrame(sample);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [hidden]);
+
   if (hidden) return null;
   return (
     <>
