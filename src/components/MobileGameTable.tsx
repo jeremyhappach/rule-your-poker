@@ -130,6 +130,7 @@ import { traceNormalSeatRender, traceSoloAreaRender, traceNormalSeatBlocked, res
 import type { HolmRenderPayload } from "@/lib/holmRenderTrace";
 import { usePublishShellFelt, deriveFeltGameKind, type CanonicalFeltGameKind } from "@/lib/canonicalShell/ShellOwnedFeltHost";
 import { useShellOverlayPortal } from "@/lib/canonicalShell/ShellOverlayMounts";
+import { OverSeatBadgePortal } from "@/lib/canonicalShell/OverSeatBadgePortal";
 import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
