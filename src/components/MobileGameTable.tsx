@@ -671,6 +671,13 @@ export const MobileGameTable = ({
   const cardBackColors = getCardBackColors();
   const deckColorMode = getEffectiveDeckColorMode();
 
+  // Shell-owned transient overlay portal — HighCard reveal escapes the
+  // gameplay subtree (where CanonicalSeatCluster's always-on stacking
+  // contexts would trap it under chip discs/nameplates) and renders in
+  // the shell's `slot` overlay layer (z=78, above seat clusters, below
+  // ChipTransportRuntime z=80). See ShellOverlayMounts.
+  const highCardOverlayPortal = useShellOverlayPortal('slot');
+
   // ── dealer_selection_diag: cards_visible / cleared ──
   // NOTE: this checkpoint is intentionally NOT fired from a prop-keyed
   // effect here. Receiving props does not prove the cards reached the
