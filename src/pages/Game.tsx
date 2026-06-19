@@ -141,6 +141,13 @@ const HighCardDealerSelection = (props: HighCardDealerSelectionShimProps) => {
   }, []);
   return null;
 };
+
+function supportsDealerSelectionOverlay(gameType: string | null | undefined): boolean {
+  if (gameType === 'cribbage' || gameType === 'gin-rummy') return true;
+  if (gameType === 'horses' || gameType === 'ship-captain-crew' || gameType === 'yahtzee') return false;
+  return isPokerVariantFamily(gameType);
+}
+
 import { VisualPreferencesProvider, useVisualPreferences, DeckColorMode } from "@/hooks/useVisualPreferences";
 import { useGameChat } from "@/hooks/useGameChat";
 import { useDeadlineEnforcer } from "@/hooks/useDeadlineEnforcer";
