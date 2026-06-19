@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Circle, Square, Copy, Check } from "lucide-react";
 import { useHideDebugUI } from "@/lib/debugUIVisibility";
+import { useDebugPillEnabled } from "@/lib/debugTray/debugPillsStore";
 
 export interface DiceTraceEvent {
   ts: number;
@@ -102,7 +103,9 @@ export const DiceTraceHUD: React.FC<DiceTraceHUDProps> = ({ enabled = true }) =>
     }
   }, []);
 
-  if (useHideDebugUI()) return null;
+  const hidden = useHideDebugUI();
+  const pillEnabled = useDebugPillEnabled('diceTrace');
+  if (hidden || !pillEnabled) return null;
   if (!enabled) return null;
 
   return (
