@@ -291,6 +291,16 @@ export function ExtraDebugPills() {
         summarize={(e) => e ? `${e.game} i:${e.identityDealerVisible?'Y':'N'} s:${e.seatDealerVisible?'Y':'N'} l:${e.legacyDealerVisible?'Y':'N'}` : '—'}
         top={104}
       />
+
+      <Pill
+        label="OVERLAY OWNERSHIP"
+        pillKey="overlayOwnership"
+        store={overlayOwnershipStore}
+        summarize={(e) => e
+          ? `slot:${e.slot.mountedChildren}[${e.slot.ownerLabels.join(',') || '—'}] set:${e.settlement.mountedChildren} tr:${e.transient.mountedChildren}`
+          : '—'}
+        top={136}
+      />
     </>
   );
 }
