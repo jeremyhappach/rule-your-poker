@@ -27,15 +27,25 @@
  *                                              over-seat presentations)
  *   - CanonicalCelebrationLayer              : z = 90
  *
- * This module is a real DOM + context provider. With no consumers it is
- * runtime-inert (empty layers, pointer-events: none). Migrating an
- * offender is a one-file change at the offender's render site.
+ * Architecture:
+ *   - `ShellOverlayMountsProvider` owns the React context. Wrap it
+ *     around any subtree that needs access to portal targets.
+ *   - `<ShellOverlayLayers />` renders the actual DOM layers and
+ *     registers them with the provider. Mount this once inside the
+ *     shell-root at the desired stacking order.
+ *   - `useShellOverlayPortal(name)` returns a `portal(node)` helper
+ *     for gameplay surfaces to render through.
+ *
+ * With no consumers, the layers are runtime-inert (empty divs,
+ * pointer-events: none). Migrating an offender is a one-file change
+ * at the offender's render site.
  */
 
 import {
   createContext,
+  useCallback,
   useContext,
-  useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -50,62 +60,79 @@ export const SHELL_OVERLAY_SLOTS: readonly ShellOverlaySlotName[] = [
   'transient',
 ] as const;
 
-const SHELL_OVERLAY_Z: Record<ShellOverlaySlotName, number> = {
+export const SHELL_OVERLAY_Z: Record<ShellOverlaySlotName, number> = {
   slot: 78,
   settlement: 83,
   transient: 85,
 };
 
 interface ShellOverlayContextValue {
-  /** Returns the DOM node for `name`, or null until the layer has mounted. */
+  registerTarget: (name: ShellOverlaySlotName, el: HTMLElement | null) => void;
   getTarget: (name: ShellOverlaySlotName) => HTMLElement | null;
-  /** Reactive subscription — increments when any target mounts. */
+  /** Bumps when any target mounts/unmounts so consumers re-render. */
   version: number;
 }
 
 const ShellOverlayContext = createContext<ShellOverlayContextValue | null>(null);
 
-export interface ShellOverlayMountsProps {
-  /** Optional gameId stamped onto mount nodes for diagnostics. */
+export interface ShellOverlayMountsProviderProps {
+  children: ReactNode;
+}
+
+/**
+ * Owns the shell overlay portal context. Wrap any subtree that needs
+ * either to register layer DOM (`<ShellOverlayLayers />`) or to portal
+ * into a layer (`useShellOverlayPortal`).
+ */
+export function ShellOverlayMountsProvider({ children }: ShellOverlayMountsProviderProps) {
+  const targetsRef = useRef<Partial<Record<ShellOverlaySlotName, HTMLElement | null>>>({});
+  const [version, setVersion] = useState(0);
+
+  const registerTarget = useCallback(
+    (name: ShellOverlaySlotName, el: HTMLElement | null) => {
+      if (targetsRef.current[name] === el) return;
+      targetsRef.current[name] = el;
+      setVersion((v) => v + 1);
+    },
+    [],
+  );
+
+  const getTarget = useCallback(
+    (name: ShellOverlaySlotName) => targetsRef.current[name] ?? null,
+    [],
+  );
+
+  const value = useMemo<ShellOverlayContextValue>(
+    () => ({ registerTarget, getTarget, version }),
+    [registerTarget, getTarget, version],
+  );
+
+  return (
+    <ShellOverlayContext.Provider value={value}>
+      {children}
+    </ShellOverlayContext.Provider>
+  );
+}
+
+export interface ShellOverlayLayersProps {
+  /** Optional gameId stamped onto layer nodes for diagnostics. */
   gameId?: string | null;
 }
 
 /**
- * Mounts the canonical shell overlay layers. Must be rendered inside
- * `PersistentTableShell`'s shell-root, AFTER ChipTransportRuntime so
- * the layer ordering matches the z-band documented above.
- *
- * Wraps `children` with the portal context so descendants can call
- * `useShellOverlayPortal('transient' | ...)`.
+ * Renders the canonical overlay layer DOM and registers each layer
+ * with the surrounding `ShellOverlayMountsProvider`. Mount this once
+ * inside `PersistentTableShell`'s shell-root, AFTER ChipTransportRuntime
+ * (so z-band ordering reads naturally in DOM source order).
  */
-export function ShellOverlayMountsProvider({
-  gameId,
-  children,
-}: ShellOverlayMountsProps & { children: ReactNode }) {
-  const targetsRef = useRef<Partial<Record<ShellOverlaySlotName, HTMLElement | null>>>({});
-  const [version, setVersion] = useState(0);
-
-  const setRef = (name: ShellOverlaySlotName) => (el: HTMLElement | null) => {
-    if (targetsRef.current[name] === el) return;
-    targetsRef.current[name] = el;
-    // bump version so subscribers re-render once the DOM target exists
-    setVersion((v) => v + 1);
-  };
-
-  const value: ShellOverlayContextValue = {
-    getTarget: (name) => targetsRef.current[name] ?? null,
-    version,
-  };
-
+export function ShellOverlayLayers({ gameId }: ShellOverlayLayersProps) {
+  const ctx = useContext(ShellOverlayContext);
   return (
-    <ShellOverlayContext.Provider value={value}>
-      {/* Render layers FIRST so they exist in the DOM at the shell-root
-          level; children that portal into them resolve on the next render
-          after `version` increments. */}
+    <>
       {SHELL_OVERLAY_SLOTS.map((name) => (
         <div
           key={name}
-          ref={setRef(name)}
+          ref={(el) => ctx?.registerTarget(name, el)}
           data-shell-overlay={name}
           data-shell-overlay-z={SHELL_OVERLAY_Z[name]}
           data-shell-overlay-game-id={gameId ?? undefined}
@@ -118,28 +145,26 @@ export function ShellOverlayMountsProvider({
           }}
         />
       ))}
-      {children}
-    </ShellOverlayContext.Provider>
+    </>
   );
 }
 
 /**
  * Returns a `portal(node)` helper for the named shell overlay layer.
- * Until the shell layer DOM is available (first render), `portal(node)`
- * returns null so callers can render unconditionally without flashing.
+ * Returns null until the layer DOM is available (first render after
+ * mount), or when used outside `ShellOverlayMountsProvider`.
  *
  * Usage:
  *   const portal = useShellOverlayPortal('transient');
  *   return portal(<MyOverSeatBadge ... />);
- *
- * If used outside a `ShellOverlayMountsProvider`, returns a no-op
- * portal that yields null — callers degrade safely (the artifact
- * simply doesn't render) rather than crashing.
  */
 export function useShellOverlayPortal(name: ShellOverlaySlotName) {
   const ctx = useContext(ShellOverlayContext);
+  // Touching version keeps callers reactive when the target mounts.
+  const _version = ctx?.version ?? 0;
   return (node: ReactNode): ReactNode => {
     if (!ctx) return null;
+    void _version;
     const target = ctx.getTarget(name);
     if (!target) return null;
     return createPortal(node, target);
@@ -147,24 +172,25 @@ export function useShellOverlayPortal(name: ShellOverlaySlotName) {
 }
 
 /**
- * Optional: returns the raw DOM node for direct (non-React) consumers
- * (geometry probes, debug pills). Prefer `useShellOverlayPortal` for
- * rendering.
+ * Raw DOM accessor for non-React consumers (geometry probes, debug
+ * pills). Prefer `useShellOverlayPortal` for rendering.
  */
 export function useShellOverlayTarget(name: ShellOverlaySlotName): HTMLElement | null {
   const ctx = useContext(ShellOverlayContext);
-  // Touch version so React re-renders when target mounts.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _v = ctx?.version ?? 0;
+  void _v;
   return ctx?.getTarget(name) ?? null;
 }
 
 /**
- * Back-compat shim: prior callers (none in production tree today) used
- * `<ShellOverlayMounts gameId={...} />` as a skeleton marker. The real
- * implementation is `ShellOverlayMountsProvider`. This shim renders the
- * provider with no children so the symbol keeps working if imported.
+ * Back-compat shim. Older callers (none in production tree today) used
+ * `<ShellOverlayMounts />` as a skeleton marker. New code should mount
+ * `<ShellOverlayMountsProvider>` + `<ShellOverlayLayers />` directly.
  */
-export function ShellOverlayMounts(props: ShellOverlayMountsProps) {
-  return <ShellOverlayMountsProvider {...props}>{null}</ShellOverlayMountsProvider>;
+export function ShellOverlayMounts({ gameId }: { gameId?: string | null }) {
+  return (
+    <ShellOverlayMountsProvider>
+      <ShellOverlayLayers gameId={gameId} />
+    </ShellOverlayMountsProvider>
+  );
 }
