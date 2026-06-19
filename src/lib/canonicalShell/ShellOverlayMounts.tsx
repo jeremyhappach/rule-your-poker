@@ -127,11 +127,15 @@ export interface ShellOverlayLayersProps {
  */
 export function ShellOverlayLayers({ gameId }: ShellOverlayLayersProps) {
   const ctx = useContext(ShellOverlayContext);
-  // Stable per-slot ref callbacks. Inline `ref={el => …}` callbacks
-  // are recreated every render, which causes React to invoke them
-  // twice (with null then the element) on every render. Combined with
-  // `registerTarget` bumping a context version, that would trigger an
-  // infinite render loop in any subtree that consumes the portal hook.
+  // Stable per-slot ref callbacks. Must NOT depend on `ctx` — its
+  // identity changes on every version bump (registerTarget bumps
+  // version, useMemo for `value` lists `version` as a dep). If `refs`
+  // were rebuilt on ctx changes, React would invoke each new ref
+  // callback with null then the element, which re-registers, which
+  // bumps version → infinite render loop (React error #185). Pin
+  // registerTarget via a ref so callbacks remain identity-stable.
+  const registerRef = useRef(ctx?.registerTarget);
+  registerRef.current = ctx?.registerTarget;
   const refs = useMemo(() => {
     const out: Record<ShellOverlaySlotName, (el: HTMLDivElement | null) => void> = {
       slot: () => {},
@@ -140,11 +144,12 @@ export function ShellOverlayLayers({ gameId }: ShellOverlayLayersProps) {
     };
     for (const name of SHELL_OVERLAY_SLOTS) {
       out[name] = (el: HTMLDivElement | null) => {
-        ctx?.registerTarget(name, el);
+        registerRef.current?.(name, el);
       };
     }
     return out;
-  }, [ctx]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
