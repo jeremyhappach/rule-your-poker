@@ -169,11 +169,25 @@ export function SessionLifecycleAnnouncer({
         tie: !!dsTie,
       };
     } else if (!isCribbage && gameStatus === 'ante_decision') {
-      plan = {
-        kind: 'awaiting_ante',
-        id: `${gameId}:session-ante`,
-      };
+      // Fast-path suppression: only render "Awaiting ante decisions" if at
+      // least one HUMAN active participant still owes a decision. Pure-bot
+      // cohorts auto-ante synchronously, so the ambient would otherwise
+      // briefly flash on screen for no reason.
+      const hasPendingHuman = players.some(
+        (p) =>
+          !p.is_bot &&
+          !p.sitting_out &&
+          (p.status === 'active' || p.status == null) &&
+          !p.ante_decision,
+      );
+      if (hasPendingHuman) {
+        plan = {
+          kind: 'awaiting_ante',
+          id: `${gameId}:session-ante`,
+        };
+      }
     }
+
 
     if (plan) {
       // Refresh / emit the planned ambient.
