@@ -18,8 +18,11 @@ import { useDieRowLayout } from "@/lib/canonicalShell/useDieRowLayout";
 import { DiceTableLayout } from "./DiceTableLayout";
 import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
+// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3d)
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
+// eslint-disable-next-line no-restricted-imports -- P0 migration: chip primitives drop out once shell owns Yahtzee seat overlay (plan step 3c)
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
+// eslint-disable-next-line no-restricted-imports -- P0 migration: chip primitives drop out once shell owns Yahtzee seat overlay (plan step 3c)
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
@@ -69,6 +72,7 @@ import {
   ActionStripBadge,
   ActionStripStatusPill,
 } from "@/components/canonicalShell/actionStrip";
+// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned projectedSeatOverlay (plan step 3b)
 import { CanonicalSeatCluster } from "@/lib/canonicalShell/CanonicalSeatCluster";
 import type { CanonicalSlot } from "@/lib/canonicalShell/seatAnchors";
 import { useLifecycleMount } from "@/lib/canonicalShell/lifecycleDebug";

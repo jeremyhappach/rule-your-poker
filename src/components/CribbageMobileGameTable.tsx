@@ -31,6 +31,7 @@ import { useAnnouncements } from '@/lib/canonicalShell/announcements';
 import { recordAnnouncementDebugEvent } from '@/lib/canonicalShell/announcements/announcementDebugLog';
 import { useShellTabBar } from '@/lib/canonicalShell/ShellTabBar';
 import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
+// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned projectedSeatOverlay (plan step 3a)
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
@@ -49,6 +50,7 @@ import {
 // Phase E: bespoke match-end UI retired in favor of canonical
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
+// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3e)
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';

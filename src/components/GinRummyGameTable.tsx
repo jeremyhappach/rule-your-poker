@@ -54,6 +54,7 @@ import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
 import { GinRummyKnockOverlay } from './GinRummyKnockOverlay';
 import { GinRummyGinOverlay } from './GinRummyGinOverlay';
+// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3e)
 import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
 import { resolveChipEndpoint } from '@/lib/canonicalShell/chipEndpoints';
 import { useAnnouncements } from '@/lib/canonicalShell/announcements';
@@ -68,6 +69,7 @@ import { getDisplayName } from '@/lib/botAlias';
 import { usePublishShellFelt } from '@/lib/canonicalShell/ShellOwnedFeltHost';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
+// eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned projectedSeatOverlay (plan step 3a)
 import { CanonicalSeatCluster } from '@/lib/canonicalShell/CanonicalSeatCluster';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
