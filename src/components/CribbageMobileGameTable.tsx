@@ -6699,16 +6699,16 @@ export const CribbageMobileGameTable = ({
           />
 
 
-            {/* Floating felt-level C-pip retired. Crib ownership is now
-                indicated by:
-                  - opponent owns crib → small "C" badge on the opponent's
-                    canonical chip bubble (chipOverlay above).
-                  - local player owns crib → "Your Crib" pill in the
-                    active-player identity row (CribbageMobileCardsTab).
-                This removes a floating gameplay artifact while keeping
-                crib ownership immediately legible. */}
-          </div>
+          {/* Floating felt-level C-pip retired. Crib ownership is now
+              indicated by:
+                - opponent owns crib → small "C" badge on the opponent's
+                  canonical chip bubble (chipOverlay above).
+                - local player owns crib → "Your Crib" pill in the
+                  active-player identity row (CribbageMobileCardsTab).
+              This removes a floating gameplay artifact while keeping
+              crib ownership immediately legible. */}
         </div>
+
         </CribbageGameplayGeometryProvider>
       </div>
 
