@@ -38,6 +38,7 @@ import { Wave5OversizedProbeToggle } from "@/lib/wave5GameplayGeometry/Wave5Over
 import { Wave5ContractViolationBadge } from "@/lib/wave5GameplayGeometry/Wave5ContractViolationBadge";
 import { useHideDebugUI } from '@/lib/debugUIVisibility';
 import { GeometryOverridesLoader } from '@/lib/geometryLab/GeometryOverridesLoader';
+import { SeatClusterInvariantMonitor } from '@/lib/canonicalShell/seatClusterInvariant';
 
 
 
@@ -81,6 +82,7 @@ const App = () => {
       <TooltipProvider>
         <ResponsiveGeometryProvider>
           <GeometryOverridesLoader />
+          <SeatClusterInvariantMonitor />
           <Toaster />
           <Sonner />
           <BrowserRouter>
