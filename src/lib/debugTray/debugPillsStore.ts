@@ -48,6 +48,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'networkSim',       abbreviation: 'NETSIM',    fullName: 'Network Sim',       description: 'Network simulation indicator and controls' },
   { key: 'debugMode',        abbreviation: 'DBG MODE',  fullName: 'Debug Mode',        description: 'Global debug-harness mode indicator' },
   { key: 'diceTrace',        abbreviation: 'DICE TRACE',fullName: 'Dice Trace',        description: 'Dice presentation trace controls (REC/STOP, straight-bot, build stamp) and dice trace HUD' },
+  { key: 'w5Grid',           abbreviation: 'W5 GRID',   fullName: 'Wave 5 Grid',       description: 'Wave 5 gameplay coordinate grid overlay toggle pill' },
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';
