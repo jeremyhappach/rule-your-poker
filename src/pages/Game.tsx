@@ -1732,6 +1732,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     } else {
       // After removing ourselves, check if session needs cleanup
       await checkAndCleanupAfterPlayerLeave(gameId!);
+      // If cleanup deleted the game (e.g. last human stood up with no bots),
+      // navigate back to lobby so we don't leave the viewer on a stale page
+      // whose Join button would FK-violate against a now-missing games.id.
+      const { data: stillThere } = await supabase
+        .from('games')
+        .select('id')
+        .eq('id', gameId!)
+        .maybeSingle();
+      if (!stillThere) {
+        navigate('/');
+      }
     }
   };
   
