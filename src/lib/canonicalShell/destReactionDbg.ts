@@ -26,7 +26,12 @@ export interface DestReactionDbgRecord {
   to: string;
   destinationReaction: ChipDestinationReaction | null;
   targetSelector?: string;
+  endpointSelector?: string;
   destinationReactionTargetFound?: boolean;
+  endpointFound?: boolean;
+  reactionTargetFound?: boolean;
+  endpointRect?: { x: number; y: number; w: number; h: number } | null;
+  reactionTargetRect?: { x: number; y: number; w: number; h: number } | null;
   targetElement?: {
     tagName: string;
     className: string;
