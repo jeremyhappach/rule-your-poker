@@ -3590,7 +3590,7 @@ export function useHorsesMobileController({
     clearDebugEvents,
     // Timer state
     timeLeft,
-    maxTime: HORSES_TURN_TIMER_SECONDS,
+    maxTime: effectiveMaxTime,
     // Turn announcement
     turnAnnouncement,
     // No Qualify animation state (SCC only)
