@@ -26,6 +26,7 @@ import { resolveChipEndpoint, type EndpointCache, type ResolvedEndpoint } from '
 import { formatChipValue } from '@/lib/utils';
 import type { ChipTransportVariant, ChipEndpointRef } from './GameplaySlotContract';
 import { chipTransportDbgUpsert } from './chipTransportDbg';
+import { captureWinnerChipEndpoint } from './winnerChipEndpointDbg';
 
 interface MotionPreset {
   durationMs: number;
