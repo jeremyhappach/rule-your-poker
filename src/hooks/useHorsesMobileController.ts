@@ -727,6 +727,13 @@ export function useHorsesMobileController({
   const localRollKeyRef = useRef<number>(Date.now());
   // Timer state for turn countdown
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  // Per-turn max time captured from the actual server-granted window
+  // (turnDeadline − now at first frame of a new deadline identity).
+  // Fixes the visual mismatch where timeLeft (server-driven) > maxTime
+  // (stale configured default) on game start when game_defaults.decision_timer_seconds
+  // is larger than the client-cached HORSES_TURN_TIMER_SECONDS.
+  const [effectiveMaxTime, setEffectiveMaxTime] = useState<number>(HORSES_TURN_TIMER_SECONDS);
+  const lastTurnDeadlineRef = useRef<string | null>(null);
   const [turnAnnouncement, setTurnAnnouncement] = useState<string | null>(null);
   const clearAnnouncementTimerRef = useRef<number | null>(null);
   const timeoutProcessedRef = useRef<string | null>(null);
@@ -1686,6 +1693,14 @@ export function useHorsesMobileController({
     const deadlineTime = new Date(deadline).getTime();
     const now = Date.now();
     const initialRemaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
+
+    // Capture maxTime from the actual deadline window on first frame of a new
+    // turnDeadline identity. Guarantees timeLeft ≤ maxTime so the visual bar
+    // doesn't render 59/30. Mirrors the card-game path in Game.tsx (~line 3227).
+    if (lastTurnDeadlineRef.current !== deadline && initialRemaining > 0) {
+      lastTurnDeadlineRef.current = deadline;
+      setEffectiveMaxTime(Math.max(initialRemaining, HORSES_TURN_TIMER_SECONDS));
+    }
 
     // CRITICAL FIX: If the deadline is already in the past when we mount, DON'T immediately
     // set timeLeft=0 as that would trigger a false timeout. Instead, set to null and let
@@ -3575,7 +3590,7 @@ export function useHorsesMobileController({
     clearDebugEvents,
     // Timer state
     timeLeft,
-    maxTime: HORSES_TURN_TIMER_SECONDS,
+    maxTime: effectiveMaxTime,
     // Turn announcement
     turnAnnouncement,
     // No Qualify animation state (SCC only)
