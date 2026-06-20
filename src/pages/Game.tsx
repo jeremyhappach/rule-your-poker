@@ -6829,13 +6829,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Two-Player Seat Normalization (Cribbage / Gin / Yahtzee).
     // Second orchestration entry point — runs in the waiting →
     // dealer_selection pre-game window so the dealer-selection bootstrap
-    // reads already-opposed seats. Safe no-op for non-2P game types and
-    // for non-2-human seatings (gated internally).
+    // reads already-opposed seats. Safe no-op when the Start Game seating
+    // invariant is not exactly two active seated players (bots included).
+    let startGameNormalizeResult: Awaited<ReturnType<typeof normalizeTwoPlayerSeatsIfNeeded>> | null = null;
     try {
       recordNormalizationDbg({ kind: 'call-site', caller: 'StartGameFromWaiting', didInvokeNormalizer: true, statusTransition: 'waiting→dealer_selection' });
-      await normalizeTwoPlayerSeatsIfNeeded(gameId, 'StartGameFromWaiting');
+      await recordStartGameNormalizationDbg('before-normalize');
+      startGameNormalizeResult = await normalizeTwoPlayerSeatsIfNeeded(gameId, 'StartGameFromWaiting');
+      await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
     } catch (e) {
       console.error('[GAME START] normalizeTwoPlayerSeatsIfNeeded threw:', e);
+      await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
     }
 
 
@@ -6857,6 +6861,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.error('Start game error:', error);
       return;
     }
+
+    await recordStartGameNormalizationDbg('after-status-flip', startGameNormalizeResult);
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);
