@@ -6251,17 +6251,11 @@ export const CribbageMobileGameTable = ({
           The 'skunk' win-sequence phase is retired — skunk semantics
           ride inside the canonical announcement payload. */}
 
+      {/* Wave 3B: chip transfer fly chip is now owned by the shell
+          ChipTransport runtime (PersistentTableShell). The legacy
+          CribbageChipTransferAnimation JSX is retired. */}
 
-      {isGameplayMode && winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
-        <CribbageChipTransferAnimation
-          triggerId={chipAnimationTriggerId}
-          amount={winSequenceData.amountPerLoser}
-          winnerPlayerId={winSequenceData.winnerId}
-          winnerPosition={storedChipPositions.winner}
-          loserPositions={storedChipPositions.losers}
-          onAnimationEnd={handleChipAnimationEnd}
-        />
-      )}
+
 
       {/* ═══════ UNIFIED FELT AREA — same shell for ALL modes ═══════ */}
       {/* Canonical felt geometry: fixed height + flex:0 0 — matches Gin/Yahtzee.
