@@ -152,6 +152,16 @@ export interface TimerDbgEntry {
   maxTime: number | null;
   diceTimerActive: boolean;
   timerPublished: boolean;
+  /** Provider state read AFTER publish (proves provider received state). */
+  providerHasState: boolean;
+  /** Local gameplay-branch hasTimer gate (controls whether <ShellTimerRail/> mounts). */
+  hasTimerGate: boolean;
+  /** DOM: `[data-canonical-shell-hud-grid]` present. */
+  shellHudGridMounted: boolean;
+  /** DOM: `[data-hud-row="timer"]` present. */
+  timerRowMounted: boolean;
+  /** DOM: child count of the timer row (0 means slot rendered null). */
+  timerRowChildCount: number;
   timerMounted: boolean;
   timerVisible: boolean;
   blockedReason: TimerBlockedReason;
