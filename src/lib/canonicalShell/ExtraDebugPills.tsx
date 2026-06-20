@@ -378,7 +378,7 @@ export function ExtraDebugPills() {
         pillKey="timerDbg"
         store={timerDbgStore}
         summarize={(e) => e
-          ? `${e.gameType ?? '—'} pub:${e.timerPublished?'Y':'N'} prov:${e.providerHasState?'Y':'N'} gate:${e.hasTimerGate?'Y':'N'} grid:${e.shellHudGridMounted?'Y':'N'} row:${e.timerRowMounted?'Y':'N'}(${e.timerRowChildCount}) rail:${e.timerMounted?'Y':'N'} vis:${e.timerVisible?'Y':'N'} · ${e.blockedReason}`
+          ? `${e.gameType ?? '—'} pub:${e.timerPublished?'Y':'N'} prov:${e.providerHasState?'Y':'N'} rail:${e.timerMounted?'Y':'N'} vis:${e.timerVisible?'Y':'N'} · lat p→pr:${e.latencyPublishToProvider ?? '—'}ms pr→m:${e.latencyProviderToMount ?? '—'}ms tot:${e.latencyTotal ?? '—'}ms · ${e.blockedReason}`
           : '—'}
         top={168}
       />
