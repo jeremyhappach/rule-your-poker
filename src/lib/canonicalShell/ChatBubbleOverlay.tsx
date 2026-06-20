@@ -4,7 +4,7 @@
  * Owns per-seat chat bubble rendering anchored to the canonical seat
  * contract. Bubbles are routed to seats by authoritative position
  * (1..7) and visually anchored using the resolved canonical slot
- * (HOME, FACE_TO_FACE, perimeter 0..5).
+ * (HOME, BOTTOM_RAIL, perimeter 0..5).
  *
  * Phase 2 scope:
  *   - Module exists with stable API.
