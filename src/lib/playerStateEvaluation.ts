@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
+import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 
 interface Player {
   id: string;
