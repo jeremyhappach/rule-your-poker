@@ -58,6 +58,8 @@ interface PlayerRow {
 export interface NormalizeResult {
   ran: boolean;
   reason?: string;
+  result?: NormalizationResultCode;
+  dbRowsUpdated?: number;
   hostPosition?: number;
   otherOldPosition?: number;
   otherNewPosition?: number;
@@ -85,7 +87,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
 
   if (!gameId) {
     emit('skipped_no_game');
-    return { ran: false, reason: 'no-game-id' };
+    return { ran: false, reason: 'no-game-id', result: 'skipped_no_game', dbRowsUpdated: 0 };
   }
 
   // 1. Load game + players (+ status for audit).
@@ -106,7 +108,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     | null;
   if (!game) {
     emit('skipped_no_game', { errorMessage: 'game-not-found' });
-    return { ran: false, reason: 'game-not-found' };
+    return { ran: false, reason: 'game-not-found', result: 'skipped_no_game', dbRowsUpdated: 0 };
   }
 
   const statusBefore = game.status ?? null;
@@ -134,7 +136,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
       statusBefore, gameType, activeSeatedPlayers: 0, activeHumanPlayers: 0, activeHumanCount: 0, players: playerSnapshots,
       dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
     });
-    return { ran: false, reason: 'no-players' };
+    return { ran: false, reason: 'no-players', result: 'skipped_not_two_active_seated', dbRowsUpdated: 0 };
   }
 
   if (activeSeated.length !== 2) {
@@ -142,7 +144,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
       statusBefore, gameType, activeSeatedPlayers: activeSeated.length, activeHumanPlayers: activeHumans.length, activeHumanCount: activeHumans.length, players: playerSnapshots,
       dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
     });
-    return { ran: false, reason: `active-seated=${activeSeated.length}` };
+    return { ran: false, reason: `active-seated=${activeSeated.length}`, result: 'skipped_not_two_active_seated', dbRowsUpdated: 0 };
   }
 
   const hostId = resolveSessionHostPlayerId(
@@ -163,7 +165,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
       otherPlayerId: other?.id ?? null, otherSeat: other?.position ?? null,
       dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
     });
-    return { ran: false, reason: 'host-or-other-missing-position' };
+    return { ran: false, reason: 'host-or-other-missing-position', result: 'skipped_host_or_other_missing_position', dbRowsUpdated: 0 };
   }
 
   const raw = Math.abs(host.position - other.position);
