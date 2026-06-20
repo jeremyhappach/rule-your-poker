@@ -5333,6 +5333,7 @@ export const CribbageMobileGameTable = ({
           to: { kind: 'seat' as const, position: winnerPosition },
           reason: 'transfer' as const,
           variant: 'cribbageBounce' as const,
+          destinationReaction: { bounce: true },
         };
       })
       .filter((i): i is NonNullable<typeof i> => i !== null);

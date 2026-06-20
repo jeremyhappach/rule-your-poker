@@ -1,21 +1,15 @@
 /**
  * ChipTransportRuntime — shell-owned chip animation runtime.
  *
- * Reads queued intents from `ChipTransportProvider` and renders flying
- * chips into a shell-owned overlay root (provided as `overlayRoot` ref).
- *
- * Motion presets (Wave 3B):
- *   - 'default'        : smooth flat arc with light scale pop (P8.1).
- *   - 'cribbageBounce' : exact port of legacy CribbageChipTransferAnimation
- *                        — 3.5s flight, bounce-on-landing, terminal fade.
- *                        Staggered 300ms per intent within an active batch
- *                        to match the legacy multi-loser flight pattern.
- *
- * On mount of each intent the runtime resolves endpoints via
- * `resolveChipEndpoint`. If either endpoint is unresolved the intent is
- * dropped through `__markDropped` (loud diagnostic). Otherwise the chip
- * is rendered with a CSS keyframe and `onAnimationEnd` calls
- * `__markSettled`.
+ * Economy Wave 1:
+ *   - Flight `variant` and destination reaction are ORTHOGONAL.
+ *   - `cribbageBounce` now owns flight motion only (lift, arc, arrival,
+ *     fade). The legacy landing bounce moved to `destinationReaction:
+ *     { bounce: true }` and is applied to the resolved `to` endpoint
+ *     DOM node by this runtime.
+ *   - Every intent is mirrored to CHIP TRANSPORT DBG with full
+ *     lifecycle: endpoint resolution, mount, settle/drop, destination
+ *     reaction outcome.
  */
 
 import {
@@ -30,18 +24,14 @@ import { createPortal } from 'react-dom';
 import { useChipTransportInternal, type ActiveChipIntent } from './ChipTransportProvider';
 import { resolveChipEndpoint, type EndpointCache, type ResolvedEndpoint } from './chipEndpoints';
 import { formatChipValue } from '@/lib/utils';
-import type { ChipTransportVariant } from './GameplaySlotContract';
+import type { ChipTransportVariant, ChipEndpointRef } from './GameplaySlotContract';
+import { chipTransportDbgUpsert } from './chipTransportDbg';
 
 interface MotionPreset {
-  /** Flight time exclusive of stagger. */
   durationMs: number;
-  /** Stagger between sibling intents in the same batch. */
   staggerMs: number;
-  /** Builds the @keyframes body for given dx/dy. */
   keyframes: (dx: number, dy: number) => string;
-  /** Inline style for the chip body (size, gradient, shadow, font). */
   discStyle: React.CSSProperties;
-  /** Optional currency prefix. */
   prefix?: string;
 }
 
@@ -71,22 +61,21 @@ const PRESETS: Record<ChipTransportVariant, MotionPreset> = {
     },
     prefix: '$',
   },
-  // Exact port of legacy CribbageChipTransferAnimation — 40x40 amber disc,
-  // 3500ms ease-in-out, bounce on landing, terminal scale(0)+opacity 0.
+  /**
+   * Cribbage flight: lift, arc, arrive at destination, hold briefly,
+   * fade out. NO landing bounce — destination reaction owns that.
+   */
   cribbageBounce: {
-    durationMs: 3500,
+    durationMs: 2200,
     staggerMs: 300,
     keyframes: (dx, dy) => `
       0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
-      5%   { transform: translate(0, -25px) scale(1.3) rotate(-5deg); opacity: 1; filter: brightness(1.2); }
-      15%  { transform: translate(${dx * 0.15}px, ${dy * 0.1 - 40}px) scale(1.2) rotate(5deg); opacity: 1; filter: brightness(1.3); }
-      50%  { transform: translate(${dx * 0.7}px, ${dy * 0.5 - 30}px) scale(1.1) rotate(-3deg); opacity: 1; filter: brightness(1.1); }
-      70%  { transform: translate(${dx}px, ${dy}px) scale(1.05) rotate(2deg); opacity: 1; filter: brightness(1); }
-      78%  { transform: translate(${dx}px, ${dy - 25}px) scale(1.15) rotate(-2deg); opacity: 1; filter: brightness(1.2); }
-      86%  { transform: translate(${dx}px, ${dy}px) scale(1) rotate(0deg); opacity: 1; }
-      91%  { transform: translate(${dx}px, ${dy - 10}px) scale(1.05); opacity: 1; }
-      96%  { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
-      100% { transform: translate(${dx}px, ${dy}px) scale(0); opacity: 0; }
+      6%   { transform: translate(0, -25px) scale(1.3) rotate(-5deg); opacity: 1; filter: brightness(1.2); }
+      20%  { transform: translate(${dx * 0.2}px, ${dy * 0.1 - 40}px) scale(1.2) rotate(5deg); opacity: 1; filter: brightness(1.3); }
+      55%  { transform: translate(${dx * 0.7}px, ${dy * 0.5 - 30}px) scale(1.1) rotate(-3deg); opacity: 1; filter: brightness(1.1); }
+      80%  { transform: translate(${dx}px, ${dy}px) scale(1.05) rotate(2deg); opacity: 1; filter: brightness(1); }
+      90%  { transform: translate(${dx}px, ${dy}px) scale(1) rotate(0deg); opacity: 1; }
+      100% { transform: translate(${dx}px, ${dy}px) scale(0.4); opacity: 0; }
     `,
     discStyle: {
       width: 40,
@@ -116,6 +105,73 @@ interface RuntimeChip {
   startedAt: number;
 }
 
+/** DOM selector for the destination reaction target. Mirrors chipEndpoints. */
+function destinationTargetSelector(ref: ChipEndpointRef): string {
+  if (ref.kind === 'pot') return '[data-pot-anchor], [data-canonical-shell-pot-anchor]';
+  return `[data-chip-center="${ref.position}"]`;
+}
+
+const DEST_REACTION_STYLE_ID = '__chip-dest-reaction-keyframes';
+const DEST_REACTION_DURATION_MS = 650;
+
+function ensureDestReactionStylesheet() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(DEST_REACTION_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = DEST_REACTION_STYLE_ID;
+  style.textContent = `
+    @keyframes __chipDestBounce {
+      0%   { transform: scale(1); }
+      25%  { transform: scale(1.35); }
+      55%  { transform: scale(0.92); }
+      80%  { transform: scale(1.08); }
+      100% { transform: scale(1); }
+    }
+    @keyframes __chipDestPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(255, 215, 100, 0.7); }
+      70%  { box-shadow: 0 0 0 18px rgba(255, 215, 100, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 215, 100, 0); }
+    }
+    @keyframes __chipDestScale {
+      0%, 100% { transform: scale(1); }
+      50%      { transform: scale(var(--chip-dest-scale, 1.25)); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function applyDestinationReaction(
+  intentId: string,
+  el: HTMLElement,
+  reaction: NonNullable<ActiveChipIntent['destinationReaction']>,
+): void {
+  ensureDestReactionStylesheet();
+  const animations: string[] = [];
+  if (reaction.bounce) animations.push(`__chipDestBounce ${DEST_REACTION_DURATION_MS}ms cubic-bezier(.34,1.56,.64,1)`);
+  if (reaction.pulse)  animations.push(`__chipDestPulse ${DEST_REACTION_DURATION_MS}ms ease-out`);
+  if (!reaction.bounce && reaction.scale != null) {
+    el.style.setProperty('--chip-dest-scale', String(reaction.scale));
+    animations.push(`__chipDestScale ${DEST_REACTION_DURATION_MS}ms ease-out`);
+  }
+  if (animations.length === 0) return;
+
+  // Stash & restore prior animation so we don't clobber static styles.
+  const prevAnimation = el.style.animation;
+  const prevTransformOrigin = el.style.transformOrigin;
+  el.style.transformOrigin = '50% 50%';
+  el.style.animation = animations.join(', ');
+  el.setAttribute('data-chip-dest-reaction', Object.entries(reaction).filter(([, v]) => v).map(([k]) => k).join('+'));
+  const clear = () => {
+    el.style.animation = prevAnimation;
+    el.style.transformOrigin = prevTransformOrigin;
+    el.removeAttribute('data-chip-dest-reaction');
+  };
+  window.setTimeout(clear, DEST_REACTION_DURATION_MS + 80);
+  chipTransportDbgUpsert(intentId, {
+    destinationReactionApplied: true,
+  });
+}
+
 export interface ChipTransportRuntimeProps {
   containerRef: RefObject<HTMLElement>;
   overlayRootRef: RefObject<HTMLElement>;
@@ -139,6 +195,16 @@ export function ChipTransportRuntime({
     const container = containerRef.current;
     if (!container) {
       for (const intent of active) {
+        chipTransportDbgUpsert(intent.id, {
+          variant: intent.variant ?? 'default',
+          reason: intent.reason,
+          from: intent.from,
+          to: intent.to,
+          amount: intent.amount,
+          destinationReaction: intent.destinationReaction ?? null,
+          droppedReason: 'no-runtime',
+          transportMounted: false,
+        });
         ctx.__markDropped(intent, 'no-runtime');
       }
       return;
@@ -146,9 +212,6 @@ export function ChipTransportRuntime({
 
     let mutated = false;
     const seenThisPass = new Set<string>();
-
-    // Group intents by variant to derive a stable per-batch stagger
-    // index. Intents that are already resolved keep their delay.
     const variantCounters = new Map<ChipTransportVariant, number>();
 
     for (const intent of active) {
@@ -163,7 +226,7 @@ export function ChipTransportRuntime({
         ref: intent.from,
         container,
         cache: cacheRef.current,
-        debugLabel: `cribbage-bounce:${intent.id}`,
+        debugLabel: `chip-transport:${intent.id}`,
       });
       const to = resolveChipEndpoint({
         ref: intent.to,
@@ -171,7 +234,22 @@ export function ChipTransportRuntime({
         cache: cacheRef.current,
       });
 
+      chipTransportDbgUpsert(intent.id, {
+        variant: intent.variant ?? 'default',
+        reason: intent.reason,
+        from: intent.from,
+        to: intent.to,
+        amount: intent.amount,
+        destinationReaction: intent.destinationReaction ?? null,
+        fromEndpointFound: !!from,
+        toEndpointFound: !!to,
+      });
+
       if (!from || !to) {
+        chipTransportDbgUpsert(intent.id, {
+          droppedReason: 'missing-endpoint',
+          transportMounted: false,
+        });
         ctx.__markDropped(intent, 'missing-endpoint');
         continue;
       }
@@ -192,6 +270,10 @@ export function ChipTransportRuntime({
         totalMs,
         startedAt: performance.now(),
       });
+      chipTransportDbgUpsert(intent.id, {
+        transportMounted: true,
+        transportVisible: true,
+      });
       mutated = true;
     }
 
@@ -207,19 +289,52 @@ export function ChipTransportRuntime({
 
   useEffect(() => {
     if (!ctx) return;
+    const container = containerRef.current;
     const timers: number[] = [];
     for (const [id, chip] of resolvedRef.current.entries()) {
       const elapsed = performance.now() - chip.startedAt;
-      const remaining = Math.max(0, chip.totalMs - elapsed);
-      const t = window.setTimeout(() => {
+      // Schedule destination reaction at arrival (~90% of flight), so
+      // the winner bounces as the chip lands rather than after fade.
+      const arrivalRatio = 0.9;
+      const flightMs = chip.intent.durationMs ?? chip.preset.durationMs;
+      const arrivalMs = chip.delayMs + flightMs * arrivalRatio;
+      const remainingToArrival = Math.max(0, arrivalMs - elapsed);
+      const remainingToSettle = Math.max(0, chip.totalMs - elapsed);
+
+      if (chip.intent.destinationReaction) {
+        const reaction = chip.intent.destinationReaction;
+        const t1 = window.setTimeout(() => {
+          if (!container) {
+            chipTransportDbgUpsert(id, {
+              destinationReactionTargetFound: false,
+              destinationReactionApplied: false,
+            });
+            return;
+          }
+          const sel = destinationTargetSelector(chip.intent.to);
+          const el = container.querySelector(sel) as HTMLElement | null;
+          chipTransportDbgUpsert(id, {
+            destinationReactionTargetFound: !!el,
+          });
+          if (el) {
+            applyDestinationReaction(id, el, reaction);
+          } else {
+            chipTransportDbgUpsert(id, { destinationReactionApplied: false });
+          }
+        }, remainingToArrival);
+        timers.push(t1);
+      }
+
+      const t2 = window.setTimeout(() => {
+        chipTransportDbgUpsert(id, { settled: true, transportVisible: false });
         ctx.__markSettled(id, chip.totalMs);
-      }, remaining + 16);
-      timers.push(t);
+      }, remainingToSettle + 16);
+      timers.push(t2);
     }
     return () => {
       for (const t of timers) window.clearTimeout(t);
     };
-  }, [ctx, activeIds]);
+  }, [ctx, activeIds, containerRef]);
 
   const overlay = overlayRootRef.current;
   if (!ctx || !overlay) return null;

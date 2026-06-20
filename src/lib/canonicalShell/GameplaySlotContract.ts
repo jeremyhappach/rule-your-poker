@@ -34,6 +34,20 @@ export type CenterSize = 'compact' | 'standard' | 'dense';
  */
 export type ChipTransportVariant = 'default' | 'cribbageBounce';
 
+/**
+ * Destination reaction descriptor — Economy Wave 1.
+ *
+ * Decouples destination behavior (winner bounce/pulse) from flight
+ * motion (variant). Applied by ChipTransportRuntime to the resolved
+ * `to` endpoint DOM node when the intent settles.
+ */
+export interface ChipDestinationReaction {
+  bounce?: boolean;
+  pulse?: boolean;
+  /** Peak scale during a generic scale pop. Default 1.25. */
+  scale?: number;
+}
+
 /** Game-dispatched chip transport intent. Animation runtime is shell-owned (P8.1). */
 export interface ChipTransportIntent {
   /** Dedupe key — stable per intent across re-renders. */
@@ -50,8 +64,13 @@ export interface ChipTransportIntent {
     | 'transfer';
   /** Optional override; shell picks a default per reason/variant otherwise. */
   durationMs?: number;
-  /** Motion preset — defaults to 'default'. */
+  /** Motion preset — defaults to 'default'. Flight motion ONLY. */
   variant?: ChipTransportVariant;
+  /**
+   * Optional destination reaction applied to the resolved `to` endpoint
+   * DOM node when the chip arrives. Orthogonal to flight `variant`.
+   */
+  destinationReaction?: ChipDestinationReaction;
 }
 
 export type ChipEndpointRef =
