@@ -1,117 +1,91 @@
-# Seat Ownership Cutover — Cribbage / Gin / Yahtzee
+# Canonical Settlement Phase — Wave 1 (approved + tweaks)
 
-Goal: `CanonicalSeatCluster` is **shell-owned during gameplay** for all three families. Game tables emit per-seat presentation data only — **never JSX**. Three ESLint suppressions deleted. Runtime invariant `participantId → mountedCount == 1` holds across every lifecycle phase. **Chip transfers are out of scope** — done after this lands.
-
-## Rule (non-negotiable)
-
-Games emit presentation state. Shell renders artifacts. No `ReactNode` / no `children` / no decorator function on the new prop. Every game-contributed input is a typed value the shell knows how to render.
-
-## New shell prop (typed, no JSX escape hatch)
-
-`MobileGameTable` already takes `presentation?: {...}`. Extend it with one field:
+## Architecture
 
 ```text
-presentation?: {
-  chipTransfer?: ...;                        // (later, not now)
-  opponentSeat?: {
-    dealerPip?:     (player) => boolean;
-    statusRing?:    (player) => SeatStatusRing | undefined;
-    chipValue?:     (player) => string | undefined;
-    hideChipBubble?:(player) => boolean;
-    scoreLine?:     (player) => string | undefined;
-
-    cardBacks?: (player) => {
-      count: number;
-      visible: boolean;
-      variant: 'cribbage' | 'gin';
-    } | null;
-  };
-}
+PRELUDE (optional, game-typed)
+        ↓
+SETTLEMENT
+   ECONOMY  ∥  CELEBRATION
+        ↓
+SETTLEMENT_COMPLETE  (barrier: economySettled AND celebrationComplete)
+        ↓
+NEXT_GAME
 ```
 
-Properties:
-- Pure functions of `player` only. No subscriptions, no queues, no hooks, no JSX.
-- All fields optional; shell provides defaults (no dealer pip, `statusRing='active'`, `chipValue=$<chips>`, no card-backs, no score line).
-- Game tables memoize the `opponentSeat` object; identity is stable.
+## Ownership rules (per user tweaks)
 
-## Shell changes (`MobileGameTable.tsx`)
+1. **State, not events.** `SettlementProvider` owns `phase`, `activeIntent`, `economySettled`, `celebrationComplete`. No `onComplete(cb)`. Consumers (e.g. `PlayfieldSlotController` in W2+) observe `phase === SETTLEMENT_COMPLETE`.
+2. **Destination reaction belongs to Economy.** `TransferIntent.destinationReaction = { bounce?, pulse?, scale? }`. Celebration owns announcement / confetti / spotlight / minDuration only.
 
-1. Extend `MobileGameTablePresentation` type with `opponentSeat` (above) and define `SeatStatusRing` reusing the existing `derivePlayerStatus` return.
-2. Add a shell-internal `<ShellOpponentCardBacks count variant color darkColor />` component. It owns the card-back strip JSX for both `'cribbage'` and `'gin'` variants (today the markup is identical — a horizontal row of N face-down rectangles colored by `cardBackColors`). Lives next to other shell-owned seat chrome.
-3. In the gameplay dispatcher (`MobileGameTable.tsx` ~L7493), add a generic `renderGenericOpponentCanonicalSeat(player, slot)` used when `gameType ∈ {cribbage, gin-rummy, yahtzee}`. Holm / 3-5-7 / Horses / SCC keep their existing bespoke renderers.
-4. The generic renderer:
-   - Skips the local viewer (cluster self-suppression already handles this).
-   - Reads accessors from `presentation?.opponentSeat`; falls back to defaults.
-   - Mounts a single `<CanonicalSeatCluster>` with `ownerLabel="Shell:MobileGameTable.opponentSeat[<gameFamily>]"` and `playerId={player.id}`.
-   - If `cardBacks(player)?.visible && count > 0`, renders `<ShellOpponentCardBacks />` inside the cluster — owned by the shell, parameterized by the typed `variant` (no game-supplied JSX).
-5. Pre-session path (L7457–7491) unchanged — `PreSessionSeatLayer` continues to own pre-session.
+## API
 
-## Game-table changes
+```ts
+type Endpoint =
+  | { kind: 'seat'; position: number }
+  | { kind: 'pot' };
 
-For each of `CribbageMobileGameTable.tsx`, `GinRummyGameTable.tsx`, `YahtzeeGameTable.tsx`:
+type TransferIntent = {
+  id: string;
+  from: Endpoint;
+  to: Endpoint;
+  amount: number;
+  variant?: 'default' | 'sweep' | 'skunk';
+  destinationReaction?: { bounce?: boolean; pulse?: boolean; scale?: number };
+  reason: string;
+};
 
-1. Delete the local opponent-overlay JSX (the `<CanonicalSeatCluster>` map block).
-2. Delete the `CanonicalSeatCluster` import and the `eslint-disable-next-line` above it.
-3. Delete the local card-back JSX/components (`OpponentCardBackStrip` in Gin, the inline `<div className="flex -space-x-1.5...">` in Cribbage) — the shell owns these now.
-4. Build a memoized `opponentSeat` object and pass via `<MobileGameTable presentation={{ opponentSeat }} />` (already the persistent shell host for each table).
+type PreludeIntent = { type: 'sweep_legs' | 'skunk' | 'double_skunk' };
 
-Per-game accessor mapping (all data, no JSX):
+type CelebrationIntent = {
+  winners: string[];
+  announcement: string;
+  confetti?: boolean;
+  spotlight?: boolean;
+  minDurationMs?: number;
+};
 
-- **Cribbage** (`CribbageMobileGameTable.tsx:6710–6738`)
-  - `dealerPip(p)` = `!!viewState?.dealerPlayerId && viewState.dealerPlayerId === p.id`
-  - `chipValue(p)` = `isLoserDuringChipAnim(p) ? '' : $<chips>`
-  - `hideChipBubble(p)` = `isLoserDuringChipAnim(p)`
-  - `cardBacks(p)` = `{ count: seatState.hand.length, visible: isGameplayMode && showSeatCardBacks && seatState.hand.length > 0, variant: 'cribbage' }`
+type SettlementIntent = {
+  gameId: string;
+  handNumber: number;
+  prelude?: PreludeIntent;
+  transfers: TransferIntent[];
+  celebration: CelebrationIntent;
+};
 
-- **Gin Rummy** (`GinRummyGameTable.tsx:2515–2533`)
-  - `dealerPip(p)` = `isCribDealer(p.id)`
-  - `statusRing(p)` = `p.sitting_out || p.auto_fold ? 'sitting_out' : 'active'`
-  - `cardBacks(p)` = `{ count: seatState.hand.length, visible: isOpponentSeat && phase ∉ {knocking,laying_off,scoring} && !(complete && knockResult) && seatState.hand.length > 0, variant: 'gin' }`
+type SettlementPhase =
+  | 'IDLE'
+  | 'PRELUDE'
+  | 'SETTLEMENT'
+  | 'SETTLEMENT_COMPLETE';
+```
 
-- **Yahtzee** (`YahtzeeGameTable.tsx:2163–2175`)
-  - `scoreLine(p)` = `'Score: ' + getTotalScore(playerStates[p.id].scorecard)`
-  - `dealerPip` omitted (dice families have no dealer).
-  - No card backs.
+## Wave 1 scope (this commit)
 
-## Card-back colors
+- **Scaffold (live):** types, `SettlementProvider`, `SettlementRuntime`, `settlementDbg`, `SettlementDbgPanel`, pill registration.
+- **Mounted in `PersistentTableShell`** inside the existing `ChipTransportProvider` / `CanonicalAnnouncementProvider` shell column. Runtime is dormant until an intent is submitted.
+- **Cribbage emits its intent in shadow mode** via `recordSettlementIntent({ caller, intent })` from `triggerWinSequence`. The existing chip-transfer + announcement code paths continue unchanged. SETTLEMENT DBG pill shows the would-submit intent shape and runtime state. No risk to current visuals.
+- **PlayfieldSlotController is NOT gated** in W1 (would block every other game that doesn't submit intents yet). The barrier exists in state and is observable.
 
-`cardBackColors` is currently game-table-local. The shell already has access to the viewer's deck color preference via the same hook (`useVisualPreferences` / equivalent) — `ShellOpponentCardBacks` reads it directly. No need to thread color values through the accessor (would re-introduce a styling pass-through; the shell already owns deck styling).
+## Wave 2+ (not in this commit)
 
-## Invariant coverage (acceptance gate)
+- W2: Cribbage flips from `recordSettlementIntent` to real `submit()`. Runtime drives the canonical announcement + dispatches `ChipTransport` for `loser→winner`. Cribbage's bespoke chip-transfer + match_win emission deleted. `PlayfieldSlotController` consumes settlement phase as readiness AND-term.
+- W3: 357 (`sweep_legs` prelude, `pot→seat`) + Holm (`pot→seat`).
+- W4: Gin, Yahtzee.
+- W5: Horses / SCC.
+- W6: Delete all per-game settlement scaffolding.
 
-`SeatClusterInvariantMonitor` stays at `mountedCount == 1 per participantId` across:
+## Files
 
-- waiting table / pre-session
-- dealer selection
-- ante decision
-- gameplay (every turn, every phase)
-- win sequence (Cribbage chip-anim window in particular)
-- observer ↔ seated transitions
-- timeout / sit-out
-- back to waiting after match end
+**New**
+- `src/lib/canonicalShell/settlement/types.ts`
+- `src/lib/canonicalShell/settlement/SettlementProvider.tsx`
+- `src/lib/canonicalShell/settlement/SettlementRuntime.tsx`
+- `src/lib/canonicalShell/settlement/settlementDbg.ts`
+- `src/lib/canonicalShell/settlement/SettlementDbgPanel.tsx`
 
-Smoke matrix: full Cribbage hand including chip-transfer animation; full Gin hand including knock + laying-off + scoring; full Yahtzee turn cycle.
-
-## ESLint cleanup
-
-After migration, remove `eslint-disable-next-line no-restricted-imports` and the `CanonicalSeatCluster` import from all three game files. No allow-list change required.
-
-## Out of scope (explicitly deferred)
-
-- `presentation.chipTransfer` — only after the seat boundary is genuinely closed.
-- Yahtzee's `CanonicalChipDisc` / `CanonicalChipstack` composition — separate edit in a follow-up wave (now unblocked because Yahtzee no longer mounts its own cluster).
-- Holm / 3-5-7 / Horses / SCC — already shell-owned via their bespoke renderers; untouched.
-
-## Risk
-
-- Cribbage chip-transfer window depends on `hideChipBubble`. Accessor preserves the exact predicate — behavior should be byte-equivalent.
-- Gin laying-off / scoring hide card backs. Predicate moved verbatim into `cardBacks.visible`.
-- Card-back rendering moves from per-game JSX into one shell component. Both variants currently render the same markup with different `cardBackColors` source — the `variant` field is a forward hook only; if future variants diverge, the shell adds the branch (still no game JSX).
-
-## Sequencing
-
-1. Add `opponentSeat` typed prop + `ShellOpponentCardBacks` + generic renderer in `MobileGameTable.tsx`. Shell dormant for cribbage/gin/yahtzee until they opt in.
-2. Migrate Cribbage. Verify invariant + visuals through a full hand including chip-transfer. Delete import + suppression + local card-back JSX.
-3. Migrate Gin. Verify through knock + laying-off + scoring. Delete import + suppression + `OpponentCardBackStrip`.
-4. Migrate Yahtzee. Verify through full turn + win. Delete import + suppression.
-5. `bunx vitest run src/lib/canonicalShell` clean; manual smoke shows no `[sync-invariant] ❌ shell::one-cluster-per-participant` firings.
+**Edited**
+- `src/lib/canonicalShell/PersistentTableShell.tsx` (mount provider + runtime)
+- `src/lib/debugTray/debugPillsStore.ts` (register `settlementDbg`)
+- `src/App.tsx` (mount panel)
+- `src/components/CribbageMobileGameTable.tsx` (shadow-record intent in `triggerWinSequence`)

@@ -27,6 +27,7 @@ import { DebugModeIndicator } from "@/lib/debugHarness/DebugModeIndicator";
 import { AnnouncementDebugPanel } from "@/lib/canonicalShell/announcements/AnnouncementDebugPanel";
 import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
 import { NormalizationDbgPanel } from "@/lib/NormalizationDbgPanel";
+import { SettlementDbgPanel } from "@/lib/canonicalShell/settlement/SettlementDbgPanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
@@ -119,6 +120,7 @@ const App = () => {
                 {!hideDebugUI && <WartimeDebugPanel />}
                 {!hideDebugUI && <ShellLifecyclePanel />}
                 <NormalizationDbgPanel />
+                <SettlementDbgPanel />
               </DebugTray>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
