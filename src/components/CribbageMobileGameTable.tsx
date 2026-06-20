@@ -85,6 +85,7 @@ import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import { Wave4PegboardSlot } from '@/components/Wave4PegboardSlot';
 import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
 import { recordSettlementIntent } from '@/lib/canonicalShell/settlement/settlementDbg';
+import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpointDbg';
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 
 
