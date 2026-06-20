@@ -83,9 +83,9 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     | null;
   if (!game) return { ran: false, reason: 'game-not-found' };
 
-  if (!isInherentlyTwoPlayer(game.game_type)) {
-    return { ran: false, reason: 'not-inherently-2p-game-type' };
-  }
+  // No game-type gate: the "two active humans must sit opposite" invariant
+  // is universal. Normalization may run before any dealer game exists.
+
 
   const players = (playersRes.data ?? []) as PlayerRow[];
   if (players.length === 0) return { ran: false, reason: 'no-players' };
