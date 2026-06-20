@@ -5256,46 +5256,45 @@ export const CribbageMobileGameTable = ({
     }
     chipAnimationFiredRef.current = chipAnimKey;
 
-    const container = tableContainerRef.current;
-    const rect = container.getBoundingClientRect();
-
-    // Resolve a player's chip endpoint via the canonical seat marker
-    // ([data-chip-center="<position>"]) so observer and active viewers
-    // both target the same DOM truth (projection placement is already
-    // baked into the marker by SeatAnchorLayer / CanonicalSeatCluster).
-    // Falls back to the prior heuristic only if the marker is missing.
-    const resolveSeatPoint = (playerId: string, fallbackIndex = 0) => {
-      const player = players.find(p => p.id === playerId);
-      const pos = player?.position;
-      if (pos != null) {
-        const el = container.querySelector(
-          `[data-chip-center="${pos}"]`,
-        ) as HTMLElement | null;
-        if (el) {
-          const r = el.getBoundingClientRect();
-          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        }
-      }
-      const isCurrent = player?.user_id === currentUserId;
-      if (isCurrent) {
-        return { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 };
-      }
-      return {
-        x: rect.left + rect.width * 0.15,
-        y: rect.top + rect.height * (0.2 + fallbackIndex * 0.15),
-      };
-    };
-
-    const winnerPos = resolveSeatPoint(winSequenceData.winnerId);
-    const loserPositions = winSequenceData.loserIds.map((loserId, index) => ({
-      playerId: loserId,
-      ...resolveSeatPoint(loserId, index),
-    }));
-
-    // Store positions in state so chip animation has them on first render
+    // Wave 3B: dispatch chip transport intents — shell owns geometry,
+    // suppression, motion, and settle lifecycle. The
+    // 'cribbageBounce' variant ports the legacy keyframe + timing
+    // exactly; per-loser 300ms stagger is applied by the runtime.
     const nextChipTriggerId = `crib-win-${roundId}-${Date.now()}`;
-    setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(nextChipTriggerId);
+
+    const winnerPlayer = players.find(p => p.id === winSequenceData.winnerId);
+    const winnerPosition = winnerPlayer?.position;
+    const intents = winSequenceData.loserIds
+      .map((loserId) => {
+        const loserPlayer = players.find(p => p.id === loserId);
+        const loserPosition = loserPlayer?.position;
+        if (loserPosition == null || winnerPosition == null) return null;
+        return {
+          id: `${nextChipTriggerId}:${loserId}`,
+          amount: winSequenceData.amountPerLoser,
+          from: { kind: 'seat' as const, position: loserPosition },
+          to: { kind: 'seat' as const, position: winnerPosition },
+          reason: 'transfer' as const,
+          variant: 'cribbageBounce' as const,
+        };
+      })
+      .filter((i): i is NonNullable<typeof i> => i !== null);
+
+    // Bridge to the existing lifecycle path: the last settled intent
+    // triggers the same handler that used to fire from
+    // CribbageChipTransferAnimation.onAnimationEnd.
+    if (intents.length > 0) {
+      dispatchChipTransport(intents, {
+        onAllSettled: () => {
+          handleChipAnimationEndRef.current?.();
+        },
+      });
+    } else {
+      // No resolvable losers — skip straight to the post-chips lifecycle.
+      handleChipAnimationEndRef.current?.();
+    }
+
 
     // Fire the deferred winner chat message NOW so it lands together with the
     // chip transfer (previously fired at overlay start, which left the chip
