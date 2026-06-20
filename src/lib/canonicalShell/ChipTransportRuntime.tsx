@@ -1,30 +1,21 @@
 /**
- * ChipTransportRuntime — P8.1 shell-owned chip animation runtime.
+ * ChipTransportRuntime — shell-owned chip animation runtime.
  *
  * Reads queued intents from `ChipTransportProvider` and renders flying
  * chips into a shell-owned overlay root (provided as `overlayRoot` ref).
- * NOT portaled to document.body — see plan adjustment 1 ("shell-owned
- * overlay root inside PersistentTableShell").
  *
- * P8.1 keeps the runtime intentionally minimal (plan adjustment 3):
- *   - Single motion preset: smooth flat arc with light scale pop.
- *   - Reasons (ante/bet/win/leg/sweep/transfer) all use the same preset
- *     in P8.1. Per-reason curves will be added during actual consumer
- *     migration (Wave B onward), when we have concrete UX requirements.
+ * Motion presets (Wave 3B):
+ *   - 'default'        : smooth flat arc with light scale pop (P8.1).
+ *   - 'cribbageBounce' : exact port of legacy CribbageChipTransferAnimation
+ *                        — 3.5s flight, bounce-on-landing, terminal fade.
+ *                        Staggered 300ms per intent within an active batch
+ *                        to match the legacy multi-loser flight pattern.
  *
  * On mount of each intent the runtime resolves endpoints via
  * `resolveChipEndpoint`. If either endpoint is unresolved the intent is
  * dropped through `__markDropped` (loud diagnostic). Otherwise the chip
  * is rendered with a CSS keyframe and `onAnimationEnd` calls
  * `__markSettled`.
- *
- * The runtime never inverts coordinates. Projection invariant is
- * preserved because endpoints come from DOM markers placed by the seat
- * components / shell pot anchor, both of which already honor
- * active=relative / observer=absolute.
- *
- * No existing animator is migrated in P8.1 — the runtime simply waits
- * for intents that won't arrive until Wave B.
  */
 
 import {
@@ -39,21 +30,94 @@ import { createPortal } from 'react-dom';
 import { useChipTransportInternal, type ActiveChipIntent } from './ChipTransportProvider';
 import { resolveChipEndpoint, type EndpointCache, type ResolvedEndpoint } from './chipEndpoints';
 import { formatChipValue } from '@/lib/utils';
+import type { ChipTransportVariant } from './GameplaySlotContract';
 
-const DEFAULT_DURATION_MS = 1800;
+interface MotionPreset {
+  /** Flight time exclusive of stagger. */
+  durationMs: number;
+  /** Stagger between sibling intents in the same batch. */
+  staggerMs: number;
+  /** Builds the @keyframes body for given dx/dy. */
+  keyframes: (dx: number, dy: number) => string;
+  /** Inline style for the chip body (size, gradient, shadow, font). */
+  discStyle: React.CSSProperties;
+  /** Optional currency prefix. */
+  prefix?: string;
+}
+
+const PRESETS: Record<ChipTransportVariant, MotionPreset> = {
+  default: {
+    durationMs: 1800,
+    staggerMs: 0,
+    keyframes: (dx, dy) => `
+      0%   { transform: translate(0px, 0px) scale(1); opacity: 1; }
+      12%  { transform: translate(0px, -10px) scale(1.12); opacity: 1; }
+      85%  { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
+      100% { transform: translate(${dx}px, ${dy}px) scale(0.4); opacity: 0; }
+    `,
+    discStyle: {
+      width: 28,
+      height: 28,
+      borderRadius: 9999,
+      background: 'linear-gradient(135deg, hsl(45 95% 60%), hsl(38 90% 45%))',
+      border: '2px solid hsl(0 0% 100%)',
+      boxShadow: '0 4px 12px hsla(0,0%,0%,0.35)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'hsl(30 50% 12%)',
+      fontSize: 10,
+      fontWeight: 700,
+    },
+    prefix: '$',
+  },
+  // Exact port of legacy CribbageChipTransferAnimation — 40x40 amber disc,
+  // 3500ms ease-in-out, bounce on landing, terminal scale(0)+opacity 0.
+  cribbageBounce: {
+    durationMs: 3500,
+    staggerMs: 300,
+    keyframes: (dx, dy) => `
+      0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+      5%   { transform: translate(0, -25px) scale(1.3) rotate(-5deg); opacity: 1; filter: brightness(1.2); }
+      15%  { transform: translate(${dx * 0.15}px, ${dy * 0.1 - 40}px) scale(1.2) rotate(5deg); opacity: 1; filter: brightness(1.3); }
+      50%  { transform: translate(${dx * 0.7}px, ${dy * 0.5 - 30}px) scale(1.1) rotate(-3deg); opacity: 1; filter: brightness(1.1); }
+      70%  { transform: translate(${dx}px, ${dy}px) scale(1.05) rotate(2deg); opacity: 1; filter: brightness(1); }
+      78%  { transform: translate(${dx}px, ${dy - 25}px) scale(1.15) rotate(-2deg); opacity: 1; filter: brightness(1.2); }
+      86%  { transform: translate(${dx}px, ${dy}px) scale(1) rotate(0deg); opacity: 1; }
+      91%  { transform: translate(${dx}px, ${dy - 10}px) scale(1.05); opacity: 1; }
+      96%  { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
+      100% { transform: translate(${dx}px, ${dy}px) scale(0); opacity: 0; }
+    `,
+    discStyle: {
+      width: 40,
+      height: 40,
+      borderRadius: 9999,
+      background: 'linear-gradient(135deg, hsl(45 90% 65%), hsl(45 90% 55%) 50%, hsl(38 80% 42%))',
+      border: '3px solid hsl(0 0% 100%)',
+      boxShadow: '0 0 20px rgba(245, 158, 11, 0.6), 0 4px 15px rgba(0,0,0,0.4)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'hsl(40 70% 12%)',
+      fontSize: 11,
+      fontWeight: 900,
+    },
+    prefix: '$',
+  },
+};
 
 interface RuntimeChip {
   intent: ActiveChipIntent;
   from: ResolvedEndpoint;
   to: ResolvedEndpoint;
-  durationMs: number;
+  preset: MotionPreset;
+  delayMs: number;
+  totalMs: number;
   startedAt: number;
 }
 
 export interface ChipTransportRuntimeProps {
-  /** Container relative to which endpoint coordinates are computed. */
   containerRef: RefObject<HTMLElement>;
-  /** Shell-owned overlay root that hosts the rendered chips. */
   overlayRootRef: RefObject<HTMLElement>;
 }
 
@@ -70,7 +134,6 @@ export function ChipTransportRuntime({
   const active = ctx?.__activeIntents ?? [];
   const activeIds = useMemo(() => active.map((i) => i.id).join('|'), [active]);
 
-  // Resolve new intents on layout commit so we measure after reflow.
   useLayoutEffect(() => {
     if (!ctx) return;
     const container = containerRef.current;
@@ -83,14 +146,24 @@ export function ChipTransportRuntime({
 
     let mutated = false;
     const seenThisPass = new Set<string>();
+
+    // Group intents by variant to derive a stable per-batch stagger
+    // index. Intents that are already resolved keep their delay.
+    const variantCounters = new Map<ChipTransportVariant, number>();
+
     for (const intent of active) {
       seenThisPass.add(intent.id);
-      if (resolvedRef.current.has(intent.id)) continue;
+      if (resolvedRef.current.has(intent.id)) {
+        const v = intent.variant ?? 'default';
+        variantCounters.set(v, (variantCounters.get(v) ?? 0) + 1);
+        continue;
+      }
 
       const from = resolveChipEndpoint({
         ref: intent.from,
         container,
         cache: cacheRef.current,
+        debugLabel: `cribbage-bounce:${intent.id}`,
       });
       const to = resolveChipEndpoint({
         ref: intent.to,
@@ -103,17 +176,25 @@ export function ChipTransportRuntime({
         continue;
       }
 
+      const variant = intent.variant ?? 'default';
+      const preset = PRESETS[variant] ?? PRESETS.default;
+      const idx = variantCounters.get(variant) ?? 0;
+      variantCounters.set(variant, idx + 1);
+      const delayMs = preset.staggerMs * idx;
+      const totalMs = (intent.durationMs ?? preset.durationMs) + delayMs;
+
       resolvedRef.current.set(intent.id, {
         intent,
         from,
         to,
-        durationMs: intent.durationMs ?? DEFAULT_DURATION_MS,
+        preset,
+        delayMs,
+        totalMs,
         startedAt: performance.now(),
       });
       mutated = true;
     }
 
-    // Drop resolved entries whose intent left the active queue.
     for (const id of Array.from(resolvedRef.current.keys())) {
       if (!seenThisPass.has(id)) {
         resolvedRef.current.delete(id);
@@ -124,15 +205,14 @@ export function ChipTransportRuntime({
     if (mutated) rerender();
   }, [ctx, containerRef, activeIds, active]);
 
-  // Settlement timers — fire __markSettled when each chip's animation completes.
   useEffect(() => {
     if (!ctx) return;
     const timers: number[] = [];
     for (const [id, chip] of resolvedRef.current.entries()) {
       const elapsed = performance.now() - chip.startedAt;
-      const remaining = Math.max(0, chip.durationMs - elapsed);
+      const remaining = Math.max(0, chip.totalMs - elapsed);
       const t = window.setTimeout(() => {
-        ctx.__markSettled(id, chip.durationMs);
+        ctx.__markSettled(id, chip.totalMs);
       }, remaining + 16);
       timers.push(t);
     }
@@ -150,11 +230,13 @@ export function ChipTransportRuntime({
     const dx = chip.to.x - chip.from.x;
     const dy = chip.to.y - chip.from.y;
     const keyframeName = `__chipTransport_${chip.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const flightMs = chip.intent.durationMs ?? chip.preset.durationMs;
     chips.push(
       <div
         key={chip.intent.id}
         data-chip-transport-intent={chip.intent.id}
         data-chip-transport-reason={chip.intent.reason}
+        data-chip-transport-variant={chip.intent.variant ?? 'default'}
         style={{
           position: 'absolute',
           left: chip.from.x,
@@ -166,31 +248,13 @@ export function ChipTransportRuntime({
       >
         <div
           style={{
-            width: 28,
-            height: 28,
-            borderRadius: 9999,
-            background: 'linear-gradient(135deg, hsl(45 95% 60%), hsl(38 90% 45%))',
-            border: '2px solid hsl(0 0% 100%)',
-            boxShadow: '0 4px 12px hsla(0,0%,0%,0.35)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'hsl(30 50% 12%)',
-            fontSize: 10,
-            fontWeight: 700,
-            animation: `${keyframeName} ${chip.durationMs}ms ease-in-out forwards`,
+            ...chip.preset.discStyle,
+            animation: `${keyframeName} ${flightMs}ms ease-in-out ${chip.delayMs}ms forwards`,
           }}
         >
-          ${formatChipValue(chip.intent.amount)}
+          {(chip.preset.prefix ?? '')}{formatChipValue(chip.intent.amount)}
         </div>
-        <style>{`
-          @keyframes ${keyframeName} {
-            0%   { transform: translate(0px, 0px) scale(1); opacity: 1; }
-            12%  { transform: translate(0px, -10px) scale(1.12); opacity: 1; }
-            85%  { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
-            100% { transform: translate(${dx}px, ${dy}px) scale(0.4); opacity: 0; }
-          }
-        `}</style>
+        <style>{`@keyframes ${keyframeName} {${chip.preset.keyframes(dx, dy)}}`}</style>
       </div>,
     );
   }
