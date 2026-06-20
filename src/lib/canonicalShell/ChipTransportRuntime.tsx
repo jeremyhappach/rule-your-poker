@@ -107,8 +107,20 @@ interface RuntimeChip {
   startedAt: number;
 }
 
-/** DOM selector for the destination reaction target. Mirrors chipEndpoints. */
-function destinationTargetSelector(ref: ChipEndpointRef): string {
+/**
+ * DOM selector for the destination reaction target — the VISIBLE chip
+ * disc/stack body. Distinct from the endpoint marker (`[data-chip-center]`)
+ * which is a 0x0 geometry anchor and must NOT be animated.
+ */
+function destinationReactionSelector(ref: ChipEndpointRef): string {
+  if (ref.kind === 'pot') {
+    return '[data-pot-reaction-target], [data-pot-anchor], [data-canonical-shell-pot-anchor]';
+  }
+  return `[data-chip-reaction-target="${ref.position}"]`;
+}
+
+/** Endpoint geometry selector (mirrors chipEndpoints — may be 0x0). */
+function endpointSelector(ref: ChipEndpointRef): string {
   if (ref.kind === 'pot') return '[data-pot-anchor], [data-canonical-shell-pot-anchor]';
   return `[data-chip-center="${ref.position}"]`;
 }
