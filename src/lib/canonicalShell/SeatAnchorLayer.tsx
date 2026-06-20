@@ -22,6 +22,7 @@ import { isCanonicalSeatConsumer } from './shellRouting';
 import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { ShellViewerChipEndpoint } from './ShellViewerChipEndpoint';
 
 interface SeatAnchorContextValue {
   projectionMode: ProjectionMode;
