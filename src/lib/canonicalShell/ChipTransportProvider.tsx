@@ -1,27 +1,18 @@
 /**
  * ChipTransportProvider — P8.1 shell-owned chip transport dispatch surface.
  *
- * Scope (infrastructure only — NO existing animator is migrated in P8.1):
- *   - Exposes a single `useChipTransport()` hook returning `dispatch()` /
- *     `dispatchMany()`.
- *   - Provides a queue of active intents to the shell-mounted
- *     `ChipTransportRuntime`, which renders flying chips inside the
- *     shell-owned overlay root (NOT document.body — see plan adjustment 1).
- *   - Dedupes on `intent.id`. Repeat dispatches of the same id while an
- *     intent is in-flight or already settled are dropped silently — this
- *     mirrors existing `triggerId` guards in legacy animators.
+ * Wave 3B additions:
+ *   - dispatch() / dispatchMany() accept an optional `onSettled` /
+ *     `onAllSettled` callback so games can advance lifecycle off
+ *     transport completion without re-implementing geometry.
+ *   - useChipTransportSuppressedSeats() exposes the set of seat
+ *     positions currently referenced as an intent `from`-endpoint, so
+ *     CanonicalSeatCluster can hide the static chip while a fly is in
+ *     flight. Shell-owned suppression replaces the legacy game-side
+ *     `hideChipBubble` pattern.
  *
- * Diagnostics (plan adjustment 2 — surface loudly):
- *   - `chip-transport-dispatched` on accepted intents.
- *   - `chip-transport-dropped` with reason='missing-endpoint' or
- *     reason='no-runtime' when an intent cannot be resolved. A missing
- *     endpoint during gameplay likely indicates a lifecycle bug; we do
- *     NOT silently swallow.
- *   - `chip-transport-settled` when the runtime marks an intent complete.
- *
- * Explicitly NOT in scope:
- *   lifecycle/sync changes, visual redesign, migration of any legacy
- *   animator, overlay consolidation.
+ * Diagnostics: `chip-transport-dispatched`, `chip-transport-dropped`,
+ * `chip-transport-settled` events are emitted via `recordShellEvent`.
  */
 
 import {
@@ -42,9 +33,21 @@ export interface ActiveChipIntent extends ChipTransportIntent {
   enqueueSeq: number;
 }
 
+export interface DispatchOptions {
+  /** Fires when this specific intent settles (or is dropped). */
+  onSettled?: () => void;
+}
+
+export interface DispatchManyOptions {
+  /** Fires after every dispatched intent has settled or been dropped. */
+  onAllSettled?: () => void;
+  /** Fires per-intent. */
+  onSettled?: (intentId: string) => void;
+}
+
 interface ChipTransportContextValue {
-  dispatch: (intent: ChipTransportIntent) => boolean;
-  dispatchMany: (intents: ChipTransportIntent[]) => number;
+  dispatch: (intent: ChipTransportIntent, opts?: DispatchOptions) => boolean;
+  dispatchMany: (intents: ChipTransportIntent[], opts?: DispatchManyOptions) => number;
   /** Runtime-internal: consumed by ChipTransportRuntime. */
   __activeIntents: ActiveChipIntent[];
   /** Runtime-internal: signal that an intent has finished animating. */
@@ -76,13 +79,18 @@ export function ChipTransportProvider({
   // Track every id we've ever accepted (active + settled) for dedupe.
   const seenIdsRef = useRef<Set<string>>(new Set());
   const seqRef = useRef(0);
+  // Per-intent settlement callbacks.
+  const onSettledMapRef = useRef<Map<string, () => void>>(new Map());
 
   const acceptOne = useCallback(
-    (intent: ChipTransportIntent): boolean => {
+    (intent: ChipTransportIntent, opts?: DispatchOptions): boolean => {
       if (!intent || !intent.id) return false;
       if (seenIdsRef.current.has(intent.id)) return false;
       seenIdsRef.current.add(intent.id);
       const enqueueSeq = ++seqRef.current;
+      if (opts?.onSettled) {
+        onSettledMapRef.current.set(intent.id, opts.onSettled);
+      }
       setActiveIntents((prev) => [...prev, { ...intent, enqueueSeq }]);
       recordShellEvent('chip-transport-dispatched', {
         gameId,
@@ -90,6 +98,7 @@ export function ChipTransportProvider({
         detail: {
           intentId: intent.id,
           reason: intent.reason,
+          variant: intent.variant ?? 'default',
           amount: intent.amount,
           from: describeEndpoint(intent.from),
           to: describeEndpoint(intent.to),
@@ -101,20 +110,48 @@ export function ChipTransportProvider({
   );
 
   const dispatch = useCallback(
-    (intent: ChipTransportIntent) => acceptOne(intent),
+    (intent: ChipTransportIntent, opts?: DispatchOptions) => acceptOne(intent, opts),
     [acceptOne],
   );
 
   const dispatchMany = useCallback(
-    (intents: ChipTransportIntent[]) => {
+    (intents: ChipTransportIntent[], opts?: DispatchManyOptions) => {
       let accepted = 0;
+      const expected = intents.length;
+      let settledCount = 0;
+      const perIntentSettled = (id: string) => {
+        opts?.onSettled?.(id);
+        settledCount += 1;
+        if (settledCount >= expected) {
+          opts?.onAllSettled?.();
+        }
+      };
       for (const i of intents) {
-        if (acceptOne(i)) accepted += 1;
+        if (acceptOne(i, { onSettled: () => perIntentSettled(i.id) })) {
+          accepted += 1;
+        } else {
+          // Already-seen dedupe still counts toward completion so
+          // onAllSettled fires deterministically.
+          perIntentSettled(i.id);
+        }
       }
       return accepted;
     },
     [acceptOne],
   );
+
+  const fireOnSettled = useCallback((intentId: string) => {
+    const cb = onSettledMapRef.current.get(intentId);
+    if (cb) {
+      onSettledMapRef.current.delete(intentId);
+      try {
+        cb();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[canonical-shell] chip-transport onSettled threw', e);
+      }
+    }
+  }, []);
 
   const markSettled = useCallback(
     (intentId: string, durationMs: number) => {
@@ -124,14 +161,14 @@ export function ChipTransportProvider({
         gameType,
         detail: { intentId, durationMs },
       });
+      fireOnSettled(intentId);
     },
-    [gameId, gameType],
+    [gameId, gameType, fireOnSettled],
   );
 
   const markDropped = useCallback(
     (intent: ChipTransportIntent, reason: 'missing-endpoint' | 'no-runtime') => {
       setActiveIntents((prev) => prev.filter((i) => i.id !== intent.id));
-      // Loud diagnostic — a drop during gameplay is suspicious.
       // eslint-disable-next-line no-console
       console.warn(
         `[canonical-shell] chip-transport-dropped reason=${reason} ` +
@@ -149,8 +186,10 @@ export function ChipTransportProvider({
           to: describeEndpoint(intent.to),
         },
       });
+      // Honor onSettled for dropped intents so lifecycle waiters don't hang.
+      fireOnSettled(intent.id);
     },
-    [gameId, gameType],
+    [gameId, gameType, fireOnSettled],
   );
 
   const value = useMemo<ChipTransportContextValue>(
@@ -175,8 +214,7 @@ export function ChipTransportProvider({
 
 /**
  * Public hook: gameplay surfaces dispatch chip transport intents through
- * this hook. Returns no-op functions when called outside the provider so
- * that pre-migration consumers don't crash if accidentally wired.
+ * this hook.
  */
 export function useChipTransport(): Pick<
   ChipTransportContextValue,
@@ -190,6 +228,29 @@ export function useChipTransport(): Pick<
     };
   }
   return { dispatch: ctx.dispatch, dispatchMany: ctx.dispatchMany };
+}
+
+/**
+ * Shell-owned chip suppression hook (Wave 3B).
+ *
+ * Returns the set of seat positions currently referenced as a `from`
+ * endpoint of an active intent. Consumers (CanonicalSeatCluster) hide
+ * the static chip disc while the position is in the set so the fly
+ * chip is the sole visible disc at that seat.
+ *
+ * `to` endpoints are intentionally NOT suppressed — the winner's
+ * static disc stays visible throughout the transfer.
+ */
+export function useChipTransportSuppressedSeats(): Set<number> {
+  const ctx = useContext(ChipTransportContext);
+  return useMemo(() => {
+    const set = new Set<number>();
+    if (!ctx) return set;
+    for (const intent of ctx.__activeIntents) {
+      if (intent.from.kind === 'seat') set.add(intent.from.position);
+    }
+    return set;
+  }, [ctx?.__activeIntents]);
 }
 
 /** Internal hook used only by ChipTransportRuntime. */

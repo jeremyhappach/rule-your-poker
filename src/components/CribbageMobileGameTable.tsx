@@ -34,7 +34,7 @@ import { ShellHudGrid } from '@/lib/canonicalShell/ShellHudGrid';
 import { GameplayOpponentSeatLayer } from '@/lib/canonicalShell/GameplayOpponentSeatLayer';
 import { DealerIndicator } from './canonicalShell/DealerIndicator';
 import { usePreSessionSeatOwned } from '@/lib/canonicalShell/PreSessionSeatLayer';
-import { dealerDbgStore, seatOwnershipStore } from '@/lib/canonicalShell/extraDebugStore';
+import { dealerDbgStore } from '@/lib/canonicalShell/extraDebugStore';
 import { derivePlayerStatus } from '@/lib/canonicalShell/participantStatus';
 import { recordPlayerVisualSnapshot, probeChipDom, probeChipDomAncestry } from '@/lib/wartimeDebug/surfaces';
 import { useRequiredSeatAnchors } from '@/lib/canonicalShell/SeatAnchorLayer';
@@ -50,7 +50,7 @@ import {
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
 // eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3e)
-import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+import { useChipTransport } from '@/lib/canonicalShell/ChipTransportProvider';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
@@ -1734,12 +1734,13 @@ export const CribbageMobileGameTable = ({
 
 
 
+  // Wave 3B: chipAnimationTriggerId retained only as a trace-id source;
+  // no longer drives JSX. Could be deleted once trace consumers update.
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
-  // Stored positions for chip animation - computed when transitioning to 'chips' phase
-  const [storedChipPositions, setStoredChipPositions] = useState<{
-    winner: { x: number; y: number };
-    losers: { playerId: string; x: number; y: number }[];
-  } | null>(null);
+  void chipAnimationTriggerId;
+  // Wave 3B: chip transfer geometry / suppression / lifecycle owned by
+  // the shell ChipTransport runtime. Game dispatches intents only.
+  const { dispatchMany: dispatchChipTransport } = useChipTransport();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winSequenceFiredRef = useRef<string | null>(null);
   // Prevent double scheduling of the win sequence before the 2s delay fires.
@@ -5258,46 +5259,45 @@ export const CribbageMobileGameTable = ({
     }
     chipAnimationFiredRef.current = chipAnimKey;
 
-    const container = tableContainerRef.current;
-    const rect = container.getBoundingClientRect();
-
-    // Resolve a player's chip endpoint via the canonical seat marker
-    // ([data-chip-center="<position>"]) so observer and active viewers
-    // both target the same DOM truth (projection placement is already
-    // baked into the marker by SeatAnchorLayer / CanonicalSeatCluster).
-    // Falls back to the prior heuristic only if the marker is missing.
-    const resolveSeatPoint = (playerId: string, fallbackIndex = 0) => {
-      const player = players.find(p => p.id === playerId);
-      const pos = player?.position;
-      if (pos != null) {
-        const el = container.querySelector(
-          `[data-chip-center="${pos}"]`,
-        ) as HTMLElement | null;
-        if (el) {
-          const r = el.getBoundingClientRect();
-          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-        }
-      }
-      const isCurrent = player?.user_id === currentUserId;
-      if (isCurrent) {
-        return { x: rect.left + rect.width / 2, y: rect.top + rect.height * 0.85 };
-      }
-      return {
-        x: rect.left + rect.width * 0.15,
-        y: rect.top + rect.height * (0.2 + fallbackIndex * 0.15),
-      };
-    };
-
-    const winnerPos = resolveSeatPoint(winSequenceData.winnerId);
-    const loserPositions = winSequenceData.loserIds.map((loserId, index) => ({
-      playerId: loserId,
-      ...resolveSeatPoint(loserId, index),
-    }));
-
-    // Store positions in state so chip animation has them on first render
+    // Wave 3B: dispatch chip transport intents — shell owns geometry,
+    // suppression, motion, and settle lifecycle. The
+    // 'cribbageBounce' variant ports the legacy keyframe + timing
+    // exactly; per-loser 300ms stagger is applied by the runtime.
     const nextChipTriggerId = `crib-win-${roundId}-${Date.now()}`;
-    setStoredChipPositions({ winner: winnerPos, losers: loserPositions });
     setChipAnimationTriggerId(nextChipTriggerId);
+
+    const winnerPlayer = players.find(p => p.id === winSequenceData.winnerId);
+    const winnerPosition = winnerPlayer?.position;
+    const intents = winSequenceData.loserIds
+      .map((loserId) => {
+        const loserPlayer = players.find(p => p.id === loserId);
+        const loserPosition = loserPlayer?.position;
+        if (loserPosition == null || winnerPosition == null) return null;
+        return {
+          id: `${nextChipTriggerId}:${loserId}`,
+          amount: winSequenceData.amountPerLoser,
+          from: { kind: 'seat' as const, position: loserPosition },
+          to: { kind: 'seat' as const, position: winnerPosition },
+          reason: 'transfer' as const,
+          variant: 'cribbageBounce' as const,
+        };
+      })
+      .filter((i): i is NonNullable<typeof i> => i !== null);
+
+    // Bridge to the existing lifecycle path: the last settled intent
+    // triggers the same handler that used to fire from
+    // CribbageChipTransferAnimation.onAnimationEnd.
+    if (intents.length > 0) {
+      dispatchChipTransport(intents, {
+        onAllSettled: () => {
+          handleChipAnimationEndRef.current?.();
+        },
+      });
+    } else {
+      // No resolvable losers — skip straight to the post-chips lifecycle.
+      handleChipAnimationEndRef.current?.();
+    }
+
 
     // Fire the deferred winner chat message NOW so it lands together with the
     // chip transfer (previously fired at overlay start, which left the chip
@@ -5357,6 +5357,14 @@ export const CribbageMobileGameTable = ({
       })();
     }, 500);
   }, [ensureBackendGameOverAck, onGameComplete, gameId, recordCribDoubleSkunkTrace, terminalEventIdFor, winSequenceData?.winnerId]);
+
+  // Wave 3B: stable ref so chip-transport onAllSettled callback always
+  // sees the latest handler regardless of when the intent was dispatched.
+  const handleChipAnimationEndRef = useRef(handleChipAnimationEnd);
+  useEffect(() => {
+    handleChipAnimationEndRef.current = handleChipAnimationEnd;
+  }, [handleChipAnimationEnd]);
+
 
   // Gate chip animation on the shell-owned terminal announcement duration.
   // Skunk overlay occupies the first ~4100ms, then the same match_win event
@@ -5567,173 +5575,12 @@ export const CribbageMobileGameTable = ({
     return () => cancelAnimationFrame(raf);
   }, [viewState?.dealerPlayerId, currentPlayerId, projectedSeatPlayers]);
 
-  useEffect(() => {
-    let cancelled = false;
-    let raf = 0;
-    const shortSeatId = (id: string | null | undefined) => id ? id.slice(0, 6) : null;
-    const rectLabel = (rect: DOMRect) => `${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)},${Math.round(rect.height)}`;
-    const sample = () => {
-      const losers = storedChipPositions?.losers ?? [];
-      const animActive = winSequencePhase === 'chips';
-      const winnerSeatId = shortSeatId(winSequenceData?.winnerId ?? null);
-      const loserSeatIds = losers.map(l => l.playerId.slice(0, 6));
-      const chipDiscVisible: Record<string, boolean> = {};
-      const hideChipBubbleProp: Record<string, boolean> = {};
-      const hideChipBubbleSource: Record<string, string> = {};
-      const domChipDiscPresent: Record<string, boolean> = {};
-      const shouldSuppressChipDisc: Record<string, boolean> = {};
-      const perSeatChipCount: Record<string, number> = {};
-      const staticDiscOwner: Record<string, string | null> = {};
-      const flyOwnerSeatId: Record<string, string[]> = {};
-      const staticDiscVisible: Record<string, boolean> = {};
-      const flyVisible: Record<string, boolean> = {};
-      const renderOwners: Record<string, Array<{
-        renderedChip: 'static disc' | 'fly chip';
-        ownerSeatId: string | null;
-        component: string;
-        renderedSeatId: string | null;
-        renderOwner?: string;
-        rect?: string;
-      }>> = {};
-      const seatCenters: Record<string, { x: number; y: number }> = {};
-      const seatIds = projectedSeatPlayers.map(p => p.id.slice(0, 6));
-      const ensureSeat = (seatShort: string) => {
-        if (!(seatShort in perSeatChipCount)) perSeatChipCount[seatShort] = 0;
-        if (!(seatShort in staticDiscOwner)) staticDiscOwner[seatShort] = null;
-        if (!(seatShort in flyOwnerSeatId)) flyOwnerSeatId[seatShort] = [];
-        if (!(seatShort in staticDiscVisible)) staticDiscVisible[seatShort] = false;
-        if (!(seatShort in flyVisible)) flyVisible[seatShort] = false;
-        if (!(seatShort in renderOwners)) renderOwners[seatShort] = [];
-      };
-      const nearestSeatId = (x: number, y: number): string | null => {
-        let bestId: string | null = null;
-        let bestDist = Number.POSITIVE_INFINITY;
-        for (const [seatId, center] of Object.entries(seatCenters)) {
-          const dx = center.x - x;
-          const dy = center.y - y;
-          const dist = dx * dx + dy * dy;
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestId = seatId;
-          }
-        }
-        return bestId;
-      };
-      // Walk EVERY projected seat (opponents AND local) so the
-      // invariant "one chip per seat at all times" is provable.
-      for (const p of projectedSeatPlayers) {
-        const shortId = p.id.slice(0, 6);
-        ensureSeat(shortId);
-        const isLoser = losers.some(l => l.playerId === p.id);
-        const isOpponent = p.id !== currentPlayerId;
-        const intendedHide = animActive && isLoser && isOpponent;
-        hideChipBubbleProp[shortId] = intendedHide;
-        hideChipBubbleSource[shortId] = intendedHide
-          ? `winSequencePhase==chips && storedChipPositions.losers.includes(${shortId})`
-          : `winSequencePhase=${winSequencePhase} isLoser=${isLoser} isOpponent=${isOpponent}`;
-        shouldSuppressChipDisc[shortId] = intendedHide;
-        chipDiscVisible[shortId] = !intendedHide;
-        const cluster = document.querySelector(
-          `[data-canonical-seat-cluster][data-player-id="${p.id}"]`,
-        ) as HTMLElement | null;
-        const chipCenter = cluster?.querySelector('[data-chip-center]') as HTMLElement | null;
-        const hasStaticChip = !!chipCenter;
-        domChipDiscPresent[shortId] = hasStaticChip;
-        if (hasStaticChip) {
-          const rect = chipCenter.getBoundingClientRect();
-          seatCenters[p.id] = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-          staticDiscOwner[shortId] = shortId;
-          staticDiscVisible[shortId] = true;
-          perSeatChipCount[shortId] += 1;
-          renderOwners[shortId].push({
-            renderedChip: 'static disc',
-            ownerSeatId: shortId,
-            component: 'CanonicalSeatCluster',
-            renderedSeatId: shortId,
-            renderOwner: cluster?.dataset.ownerLabel || 'CanonicalSeatCluster',
-            rect: rectLabel(rect),
-          });
-        }
-        const storedLoser = losers.find(l => l.playerId === p.id);
-        if (!seatCenters[p.id] && storedLoser) {
-          seatCenters[p.id] = { x: storedLoser.x, y: storedLoser.y };
-        }
-        if (!seatCenters[p.id] && winSequenceData?.winnerId === p.id && storedChipPositions?.winner) {
-          seatCenters[p.id] = storedChipPositions.winner;
-        }
-        if (!seatCenters[p.id] && cluster) {
-          const rect = cluster.getBoundingClientRect();
-          seatCenters[p.id] = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-        }
-      }
-      const flyNodes = Array.from(document.querySelectorAll('[data-cribbage-chip-fly]')) as HTMLElement[];
-      for (const flyNode of flyNodes) {
-        const ownerId = flyNode.dataset.cribbageChipFlyOwnerSeatId || flyNode.dataset.cribbageChipFlyLoser || null;
-        const ownerShort = shortSeatId(ownerId);
-        const component = flyNode.dataset.cribbageChipFlyComponent || 'CribbageChipTransferAnimation';
-        const disc = (flyNode.querySelector('[data-cribbage-chip-fly-disc]') as HTMLElement | null) ?? flyNode;
-        const rect = disc.getBoundingClientRect();
-        const renderedSeatFull = nearestSeatId(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        const renderedSeatShort = shortSeatId(renderedSeatFull) ?? 'unknown';
-        ensureSeat(renderedSeatShort);
-        flyOwnerSeatId[renderedSeatShort].push(ownerShort ?? 'unknown');
-        flyVisible[renderedSeatShort] = true;
-        perSeatChipCount[renderedSeatShort] += 1;
-        renderOwners[renderedSeatShort].push({
-          renderedChip: 'fly chip',
-          ownerSeatId: ownerShort,
-          component,
-          renderedSeatId: renderedSeatShort,
-          renderOwner: component,
-          rect: rectLabel(rect),
-        });
-      }
-      const domChipFlyCount = flyNodes.length;
-      const animationChipVisible = animActive && domChipFlyCount > 0;
-      const staticChips = Object.values(domChipDiscPresent).filter(Boolean).length;
-      const invariantHolds = Object.values(perSeatChipCount).every(n => n === 1);
-      const failedSeat = Object.entries(perSeatChipCount).find(([, count]) => count !== 1);
-      seatOwnershipStore.record({
-        context: 'cribbage',
-        winSequencePhase,
-        winnerSeatId,
-        loserSeatId: loserSeatIds[0] ?? null,
-        loserSeatIds,
-        seatId: seatIds,
-        canonicalSeat: 'CanonicalSeatCluster',
-        legacySeat: 'none',
-        staticDiscOwner,
-        flyOwnerSeatId,
-        staticDiscVisible,
-        flyVisible,
-        renderOwners,
-        chipDiscVisible,
-        animationChipVisible,
-        chipDiscCount: staticChips + domChipFlyCount,
-        perSeatChipCount,
-        invariantHolds,
-        hideChipBubbleProp,
-        hideChipBubbleSource,
-        domChipDiscPresent,
-        domChipFlyCount,
-        shouldSuppressChipDisc,
-        invariantFailure: failedSeat ? {
-          seatId: failedSeat[0],
-          staticDisc: staticDiscVisible[failedSeat[0]] ?? false,
-          flyPortal: flyOwnerSeatId[failedSeat[0]]?.length ?? 0,
-          renderOwners: renderOwners[failedSeat[0]] ?? [],
-        } : null,
-      });
-      if (!cancelled && animActive) {
-        raf = requestAnimationFrame(sample);
-      }
-    };
-    raf = requestAnimationFrame(sample);
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-    };
-  }, [winSequencePhase, winSequenceData, storedChipPositions, projectedSeatPlayers, currentPlayerId]);
+  // Wave 3B: stale SEAT_OWNERSHIP instrumentation effect deleted. It
+  // tracked the legacy CribbageChipTransferAnimation portal +
+  // game-side hideChipBubble suppression, both of which are now
+  // shell-owned. Shell emits chip-transport-dispatched/settled
+  // diagnostics in their place.
+
 
 
 
@@ -6246,17 +6093,11 @@ export const CribbageMobileGameTable = ({
           The 'skunk' win-sequence phase is retired — skunk semantics
           ride inside the canonical announcement payload. */}
 
+      {/* Wave 3B: chip transfer fly chip is now owned by the shell
+          ChipTransport runtime (PersistentTableShell). The legacy
+          CribbageChipTransferAnimation JSX is retired. */}
 
-      {isGameplayMode && winSequencePhase === 'chips' && winSequenceData && storedChipPositions && (
-        <CribbageChipTransferAnimation
-          triggerId={chipAnimationTriggerId}
-          amount={winSequenceData.amountPerLoser}
-          winnerPlayerId={winSequenceData.winnerId}
-          winnerPosition={storedChipPositions.winner}
-          loserPositions={storedChipPositions.losers}
-          onAnimationEnd={handleChipAnimationEnd}
-        />
-      )}
+
 
       {/* ═══════ UNIFIED FELT AREA — same shell for ALL modes ═══════ */}
       {/* Canonical felt geometry: fixed height + flex:0 0 — matches Gin/Yahtzee.
@@ -6675,15 +6516,10 @@ export const CribbageMobileGameTable = ({
                 }
                 return undefined;
               },
-              hideChipBubble: (p) =>
-                winSequencePhase === 'chips' &&
-                !!storedChipPositions?.losers.some(l => l.playerId === p.id),
-              chipValue: (p) => {
-                const isLoserDuringChipAnim =
-                  winSequencePhase === 'chips' &&
-                  !!storedChipPositions?.losers.some(l => l.playerId === p.id);
-                return isLoserDuringChipAnim ? '' : undefined;
-              },
+              // Wave 3B: hideChipBubble / chipValue='' retired. Shell
+              // ChipTransport runtime owns from-seat suppression while a
+              // fly is in flight (see useChipTransportSuppressedSeats).
+
               cardBacks: (p) => {
                 if (!isGameplayMode || !viewState) return null;
                 const seatState = viewState.playerStates[p.id];
