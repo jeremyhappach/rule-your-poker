@@ -20,10 +20,6 @@ import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
 // eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3d)
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
-// eslint-disable-next-line no-restricted-imports -- P0 migration: chip primitives drop out once shell owns Yahtzee seat overlay (plan step 3c)
-import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
-// eslint-disable-next-line no-restricted-imports -- P0 migration: chip primitives drop out once shell owns Yahtzee seat overlay (plan step 3c)
-import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
