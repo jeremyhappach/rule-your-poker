@@ -279,6 +279,8 @@ export function CanonicalSeatCluster({
   // outcomes. The conditional returns below early-out the render but
   // leave hook order stable.
   const anchors = useSeatAnchorsOptional();
+  const suppressedSeats = useChipTransportSuppressedSeats();
+  const transportSuppressed = suppressedSeats.has(position);
   const clusterInstanceIdRef = useRef<string>('');
   if (!clusterInstanceIdRef.current) {
     clusterInstanceIdRef.current = `csc-p${position}-${++_csc_seq}`;
