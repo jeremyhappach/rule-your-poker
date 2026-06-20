@@ -94,7 +94,7 @@ const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
 
 // WARTIME: temporary seat-number overlay. Renders a tiny gray pill on
 // every join affordance and occupied seat showing
-// seat=<position> slot=<canonicalSlot> projection=<mode> viewerSeat=<n>.
+// seat=<position> slot=<canonicalSlot>.
 // Flip to false to remove from the waiting surface.
 const SHOW_SEAT_NUMBERS = true;
 const SHELL_FELT_FRAME_HEIGHT = "var(--shell-felt-h)";
