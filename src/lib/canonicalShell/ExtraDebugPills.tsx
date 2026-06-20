@@ -287,11 +287,29 @@ export function ExtraDebugPills() {
         const rect = el.getBoundingClientRect();
         visible = cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity || '1') > 0 && rect.width > 0 && rect.height > 0;
       }
+      const grid = document.querySelector('[data-canonical-shell-hud-grid]') as HTMLElement | null;
+      const timerRow = grid?.querySelector('[data-hud-row="timer"]') as HTMLElement | null;
+      const shellHudGridMounted = !!grid;
+      const timerRowMounted = !!timerRow;
+      const timerRowChildCount = timerRow ? timerRow.childElementCount : 0;
       const entries = timerDbgStore.get();
       const latest = entries[entries.length - 1];
-      if (latest && (latest.timerMounted !== mounted || latest.timerVisible !== visible)) {
+      if (latest && (
+        latest.timerMounted !== mounted ||
+        latest.timerVisible !== visible ||
+        latest.shellHudGridMounted !== shellHudGridMounted ||
+        latest.timerRowMounted !== timerRowMounted ||
+        latest.timerRowChildCount !== timerRowChildCount
+      )) {
         const { ts: _ts, ...rest } = latest;
-        timerDbgStore.record({ ...(rest as TimerDbgEntry), timerMounted: mounted, timerVisible: visible });
+        timerDbgStore.record({
+          ...(rest as TimerDbgEntry),
+          timerMounted: mounted,
+          timerVisible: visible,
+          shellHudGridMounted,
+          timerRowMounted,
+          timerRowChildCount,
+        });
       }
       if (!cancelled) raf = requestAnimationFrame(sample);
     };
