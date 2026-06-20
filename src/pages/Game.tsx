@@ -6758,7 +6758,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         : null;
       const circDist = rawDist != null ? Math.min(rawDist, 7 - rawDist) : null;
       const targetSeat = normalizeResult?.otherNewPosition ?? (decisionHostSeat != null ? ((decisionHostSeat - 1 + 3) % 7) + 1 : null);
-      const result = checkpoint === 'before-normalize'
+      const result: NormalizationResultCode = checkpoint === 'before-normalize'
         ? 'preflight'
         : normalizeResult?.result ?? (checkpoint === 'after-status-flip' ? 'status_flip_complete' : 'failed_unknown');
       const dbWriteAttempted = result === 'normalized' || String(result).startsWith('failed_');
