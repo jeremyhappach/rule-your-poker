@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logSittingOutSet } from "@/lib/sittingOutDebugLog";
+import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 
 interface Player {
   id: string;
@@ -238,6 +239,19 @@ export async function evaluatePlayerStatesEndOfGame(gameId: string): Promise<{
   
   // Count active human players (not sitting_out, not observer, not left, not bot)
   const activeHumanCount = remainingPlayers.filter(p => !p.sitting_out && p.status !== 'observer' && p.status !== 'left' && !p.is_bot).length;
+
+  // Two-Player Seat Normalization (Cribbage / Gin / Yahtzee).
+  // Single entry point — no other call site is permitted. Runs in the
+  // pre-game window so no in-flight round JSONB is invalidated. See
+  // src/lib/normalizeTwoPlayerSeats.ts for the contract.
+  if (activeHumanCount === 2) {
+    try {
+      await normalizeTwoPlayerSeatsIfNeeded(gameId);
+    } catch (e) {
+      console.error('[PLAYER EVAL] normalizeTwoPlayerSeatsIfNeeded threw:', e);
+    }
+  }
+
   
   // Fetch allow_bot_dealers setting
   const { data: gameDefaults } = await supabase
