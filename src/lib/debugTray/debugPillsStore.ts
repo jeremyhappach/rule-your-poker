@@ -31,7 +31,8 @@ export type DebugPillKey =
   | 'w5Grid'
   | 'timerDbg'
   | 'normalizationDbg'
-  | 'settlementDbg';
+  | 'settlementDbg'
+  | 'chipTransportDbg';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
