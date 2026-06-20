@@ -8560,8 +8560,10 @@ export const MobileGameTable = ({
                   </span>
                 ) : (
                   <span
+                    data-chip-reaction-target={currentPlayer.position}
+                    data-canonical-viewer-hud-chip=""
                     className={cn(
-                      "font-bold tabular-nums",
+                      "font-bold tabular-nums inline-block",
                       isTablet ? "text-2xl" : "text-lg",
                       (lockedChipsRef.current?.[currentPlayer.id] ?? displayedChips[currentPlayer.id] ?? currentPlayer.chips) < 0
                         ? 'text-destructive'
