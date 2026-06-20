@@ -5355,6 +5355,14 @@ export const CribbageMobileGameTable = ({
     }, 500);
   }, [ensureBackendGameOverAck, onGameComplete, gameId, recordCribDoubleSkunkTrace, terminalEventIdFor, winSequenceData?.winnerId]);
 
+  // Wave 3B: stable ref so chip-transport onAllSettled callback always
+  // sees the latest handler regardless of when the intent was dispatched.
+  const handleChipAnimationEndRef = useRef(handleChipAnimationEnd);
+  useEffect(() => {
+    handleChipAnimationEndRef.current = handleChipAnimationEnd;
+  }, [handleChipAnimationEnd]);
+
+
   // Gate chip animation on the shell-owned terminal announcement duration.
   // Skunk overlay occupies the first ~4100ms, then the same match_win event
   // remains in the lifecycle rail briefly so the winner plate is actually
