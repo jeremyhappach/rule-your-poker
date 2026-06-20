@@ -26,7 +26,12 @@ export interface DestReactionDbgRecord {
   to: string;
   destinationReaction: ChipDestinationReaction | null;
   targetSelector?: string;
+  endpointSelector?: string;
   destinationReactionTargetFound?: boolean;
+  endpointFound?: boolean;
+  reactionTargetFound?: boolean;
+  endpointRect?: { x: number; y: number; w: number; h: number } | null;
+  reactionTargetRect?: { x: number; y: number; w: number; h: number } | null;
   targetElement?: {
     tagName: string;
     className: string;
@@ -145,7 +150,8 @@ export function formatDestReactionDbgAsText(): string {
     lines.push(
       `${new Date(r.ts).toISOString()} ${r.intentId}`,
       `  to=${r.to} reaction=${r.destinationReaction ? JSON.stringify(r.destinationReaction) : '∅'}`,
-      `  selector=${r.targetSelector ?? '?'} targetFound=${r.destinationReactionTargetFound ?? '?'}`,
+      `  endpointSelector=${r.endpointSelector ?? '?'} endpointFound=${r.endpointFound ?? '?'} endpointRect=${r.endpointRect ? `${r.endpointRect.x},${r.endpointRect.y} ${r.endpointRect.w}x${r.endpointRect.h}` : '∅'}`,
+      `  reactionSelector=${r.targetSelector ?? '?'} reactionTargetFound=${r.reactionTargetFound ?? r.destinationReactionTargetFound ?? '?'} reactionRect=${r.reactionTargetRect ? `${r.reactionTargetRect.x},${r.reactionTargetRect.y} ${r.reactionTargetRect.w}x${r.reactionTargetRect.h}` : '∅'}`,
       `  mounted=${r.reactionMounted ?? '?'} started=${r.reactionStarted ?? '?'} finished=${r.reactionFinished ?? '?'}`,
       `  animName=${r.computedAnimationName ?? '?'} dur=${r.computedAnimationDuration ?? '?'}`,
       `  transformBefore=${r.computedTransformBefore ?? '?'}`,

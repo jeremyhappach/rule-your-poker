@@ -107,8 +107,20 @@ interface RuntimeChip {
   startedAt: number;
 }
 
-/** DOM selector for the destination reaction target. Mirrors chipEndpoints. */
-function destinationTargetSelector(ref: ChipEndpointRef): string {
+/**
+ * DOM selector for the destination reaction target — the VISIBLE chip
+ * disc/stack body. Distinct from the endpoint marker (`[data-chip-center]`)
+ * which is a 0x0 geometry anchor and must NOT be animated.
+ */
+function destinationReactionSelector(ref: ChipEndpointRef): string {
+  if (ref.kind === 'pot') {
+    return '[data-pot-reaction-target], [data-pot-anchor], [data-canonical-shell-pot-anchor]';
+  }
+  return `[data-chip-reaction-target="${ref.position}"]`;
+}
+
+/** Endpoint geometry selector (mirrors chipEndpoints — may be 0x0). */
+function endpointSelector(ref: ChipEndpointRef): string {
   if (ref.kind === 'pot') return '[data-pot-anchor], [data-canonical-shell-pot-anchor]';
   return `[data-chip-center="${ref.position}"]`;
 }
@@ -385,11 +397,13 @@ export function ChipTransportRuntime({
 
       if (chip.intent.destinationReaction) {
         const reaction = chip.intent.destinationReaction;
-        const sel = destinationTargetSelector(chip.intent.to);
+        const reactionSel = destinationReactionSelector(chip.intent.to);
+        const endpointSel = endpointSelector(chip.intent.to);
         destReactionDbgUpsert(id, {
           to: chip.intent.to,
           destinationReaction: reaction,
-          targetSelector: sel,
+          targetSelector: reactionSel,
+          endpointSelector: endpointSel,
         });
         const t1 = window.setTimeout(() => {
           if (!container) {
@@ -399,23 +413,43 @@ export function ChipTransportRuntime({
             });
             destReactionDbgUpsert(id, {
               destinationReactionTargetFound: false,
+              reactionTargetFound: false,
+              endpointFound: false,
               note: 'no-container-at-arrival',
             });
             return;
           }
-          const el = container.querySelector(sel) as HTMLElement | null;
+          const endpointEl = container.querySelector(endpointSel) as HTMLElement | null;
+          const reactionEl = container.querySelector(reactionSel) as HTMLElement | null;
+          const rectOf = (el: HTMLElement | null) => {
+            if (!el) return null;
+            try {
+              const r = el.getBoundingClientRect();
+              return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+            } catch { return null; }
+          };
           chipTransportDbgUpsert(id, {
-            destinationReactionTargetFound: !!el,
+            destinationReactionTargetFound: !!reactionEl,
           });
           destReactionDbgUpsert(id, {
-            destinationReactionTargetFound: !!el,
-            ...(el ? { targetElement: snapshotTargetElement(el) } : {}),
+            destinationReactionTargetFound: !!reactionEl,
+            endpointFound: !!endpointEl,
+            reactionTargetFound: !!reactionEl,
+            endpointRect: rectOf(endpointEl),
+            reactionTargetRect: rectOf(reactionEl),
+            ...(reactionEl ? { targetElement: snapshotTargetElement(reactionEl) } : {}),
           });
-          if (el) {
-            applyDestinationReaction(id, el, reaction);
+          if (reactionEl) {
+            applyDestinationReaction(id, reactionEl, reaction);
           } else {
-            chipTransportDbgUpsert(id, { destinationReactionApplied: false });
-            destReactionDbgUpsert(id, { reactionMounted: false, note: 'target-not-found' });
+            chipTransportDbgUpsert(id, {
+              destinationReactionApplied: false,
+              droppedReason: 'no-visible-reaction-target',
+            });
+            destReactionDbgUpsert(id, {
+              reactionMounted: false,
+              note: 'no-visible-reaction-target',
+            });
           }
         }, remainingToArrival);
         timers.push(t1);

@@ -103,6 +103,7 @@ export const CanonicalChipDisc = ({
         <div className="absolute inset-0 rounded-full ring-3 ring-yellow-400" />
       )}
       <div
+        data-chip-reaction-target={positionAnchor}
         onClick={onClick}
         className={cn(
           'absolute inset-0 rounded-full flex flex-col items-center justify-center border-2 border-slate-600/50',
