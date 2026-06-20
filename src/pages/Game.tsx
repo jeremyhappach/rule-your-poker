@@ -6712,20 +6712,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   ) => {
     if (!gameId) return;
     try {
-      const { data, error } = await supabase
-        .from('players')
-        .select('id, user_id, position, sitting_out, is_bot, status, created_at')
-        .eq('game_id', gameId);
+      const [playersAuditRes, gameAuditRes] = await Promise.all([
+        supabase
+          .from('players')
+          .select('id, user_id, position, sitting_out, is_bot, status, created_at')
+          .eq('game_id', gameId),
+        supabase
+          .from('games')
+          .select('current_host, status, game_type')
+          .eq('id', gameId)
+          .maybeSingle(),
+      ]);
 
-      if (error) {
+      if (playersAuditRes.error) {
         recordNormalizationDbg({
           kind: 'start-game', caller: 'startGameFromWaiting', checkpoint, gameId,
-          result: 'failed_unknown', errorMessage: error.message,
+          result: 'failed_unknown', errorMessage: playersAuditRes.error.message,
         });
         return;
       }
 
-      const rows = (data ?? []) as Array<{
+      const auditGame = gameAuditRes.data as { current_host?: string | null; status?: string | null; game_type?: string | null } | null;
+      const rows = (playersAuditRes.data ?? []) as Array<{
         id: string; user_id: string | null; position: number | null;
         sitting_out: boolean | null; is_bot: boolean | null; status: string | null;
         created_at: string | null;
@@ -6738,7 +6746,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
       const activeHumans = activeSeated.filter((p) => !p.is_bot);
       const hostId = resolveSessionHostPlayerId(
-        { current_host: (game as any)?.current_host ?? null },
+        { current_host: auditGame?.current_host ?? null },
         activeSeated.map((p) => ({ id: p.id, user_id: p.user_id, is_bot: p.is_bot, created_at: p.created_at })),
       );
       const host = activeSeated.find((p) => p.id === hostId) ?? activeSeated[0] ?? null;
@@ -6758,7 +6766,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         caller: 'startGameFromWaiting',
         checkpoint,
         gameId,
-        statusBefore: game?.status ?? null,
+        statusBefore: auditGame?.status ?? game?.status ?? null,
+        gameType: auditGame?.game_type ?? game?.game_type ?? null,
         activeSeatedPlayers: activeSeated.length,
         activeHumanPlayers: activeHumans.length,
         activeHumanCount: activeHumans.length,
