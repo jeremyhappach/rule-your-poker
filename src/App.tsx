@@ -29,6 +29,7 @@ import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
 import { NormalizationDbgPanel } from "@/lib/NormalizationDbgPanel";
 import { SettlementDbgPanel } from "@/lib/canonicalShell/settlement/SettlementDbgPanel";
 import { ChipTransportDbgPanel } from "@/lib/canonicalShell/ChipTransportDbgPanel";
+import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
