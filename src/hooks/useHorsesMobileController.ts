@@ -1694,6 +1694,14 @@ export function useHorsesMobileController({
     const now = Date.now();
     const initialRemaining = Math.max(0, Math.ceil((deadlineTime - now) / 1000));
 
+    // Capture maxTime from the actual deadline window on first frame of a new
+    // turnDeadline identity. Guarantees timeLeft ≤ maxTime so the visual bar
+    // doesn't render 59/30. Mirrors the card-game path in Game.tsx (~line 3227).
+    if (lastTurnDeadlineRef.current !== deadline && initialRemaining > 0) {
+      lastTurnDeadlineRef.current = deadline;
+      setEffectiveMaxTime(Math.max(initialRemaining, HORSES_TURN_TIMER_SECONDS));
+    }
+
     // CRITICAL FIX: If the deadline is already in the past when we mount, DON'T immediately
     // set timeLeft=0 as that would trigger a false timeout. Instead, set to null and let
     // the timeout handler's own guards (checking if player already completed, etc.) decide.
