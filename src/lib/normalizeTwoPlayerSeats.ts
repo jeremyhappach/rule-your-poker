@@ -226,7 +226,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
         dealerPositionAfter: dealerPositionBefore,
         errorMessage: move.error.message,
       });
-      return { ran: false, reason: 'direct-move-failed' };
+      return { ran: false, reason: 'direct-move-failed', result: 'failed_pass2_other', dbRowsUpdated: 0 };
     }
     rowsUpdated += move.data?.length ?? 0;
   } else {
@@ -248,7 +248,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
         dealerPositionAfter: dealerPositionBefore,
         errorMessage: parkOccupant.error.message,
       });
-      return { ran: false, reason: 'park-occupant-failed' };
+      return { ran: false, reason: 'park-occupant-failed', result: 'failed_pass1_occupant', dbRowsUpdated: 0 };
     }
     rowsUpdated += parkOccupant.data?.length ?? 0;
 
@@ -267,7 +267,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
         dealerPositionAfter: dealerPositionBefore,
         errorMessage: placeOther.error.message,
       });
-      return { ran: false, reason: 'place-other-failed' };
+      return { ran: false, reason: 'place-other-failed', result: 'failed_pass2_other', dbRowsUpdated: rowsUpdated };
     }
     rowsUpdated += placeOther.data?.length ?? 0;
 
