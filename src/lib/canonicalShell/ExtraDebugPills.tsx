@@ -275,7 +275,7 @@ export function ExtraDebugPills() {
   // (MobileGameTable publish site); here we merge DOM observations into the
   // latest semantic snapshot.
   useEffect(() => {
-    if (hidden || typeof document === 'undefined') return;
+    if (!timerDbgEnabled || typeof document === 'undefined') return;
     let cancelled = false;
     let raf = 0;
     const sample = () => {
