@@ -160,6 +160,7 @@ export function NormalizationDbgPanel() {
                       <span style={{ opacity: 0.7 }}>{time} </span>
                       <span style={{ color: KIND_COLOR['start-game'], fontWeight: 700 }}>START GAME NORMALIZATION DBG </span>
                       <span>{e.checkpoint}</span>
+                      <span style={{ opacity: 0.75 }}> caller={e.caller}</span>
                       <span style={{ color: RESULT_COLOR[e.result ?? ''] ?? '#fff', fontWeight: 700 }}>
                         {' '}{e.result}
                       </span>
