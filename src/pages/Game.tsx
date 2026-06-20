@@ -173,6 +173,7 @@ import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDeci
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
 import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 import { recordNormalizationDbg } from "@/lib/normalizationDbg";
+import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
