@@ -30,6 +30,7 @@ import { NormalizationDbgPanel } from "@/lib/NormalizationDbgPanel";
 import { SettlementDbgPanel } from "@/lib/canonicalShell/settlement/SettlementDbgPanel";
 import { ChipTransportDbgPanel } from "@/lib/canonicalShell/ChipTransportDbgPanel";
 import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
+import { DestReactionDbgPanel } from "@/lib/canonicalShell/DestReactionDbgPanel";
 import { StartupFlightRecorderOverlay } from "@/lib/startupFlightRecorder";
 import { WartimeDebugPanel } from "@/lib/wartimeDebug/WartimeDebugPanel";
 import { useWartimeEnabled } from "@/lib/wartimeDebug/core";
@@ -125,6 +126,7 @@ const App = () => {
                 <SettlementDbgPanel />
                 <ChipTransportDbgPanel />
                 <WinnerChipEndpointDbgPanel />
+                <DestReactionDbgPanel />
               </DebugTray>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
