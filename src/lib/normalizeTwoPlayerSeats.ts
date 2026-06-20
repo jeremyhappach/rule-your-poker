@@ -64,16 +64,35 @@ export interface NormalizeResult {
   swappedWithPlayerId?: string | null;
 }
 
+import { recordNormalizationDbg, type NormalizationResultCode } from '@/lib/normalizationDbg';
+
 export async function normalizeTwoPlayerSeatsIfNeeded(
   gameId: string,
+  caller: string = 'unknown',
 ): Promise<NormalizeResult> {
-  if (!gameId) return { ran: false, reason: 'no-game-id' };
+  const emit = (
+    result: NormalizationResultCode,
+    extra: Partial<Parameters<typeof recordNormalizationDbg>[0]> = {},
+  ) => {
+    recordNormalizationDbg({
+      kind: 'normalize',
+      caller,
+      gameId,
+      result,
+      ...extra,
+    });
+  };
 
-  // 1. Load game + players.
+  if (!gameId) {
+    emit('skipped_no_game');
+    return { ran: false, reason: 'no-game-id' };
+  }
+
+  // 1. Load game + players (+ status for audit).
   const [gameRes, playersRes] = await Promise.all([
     supabase
       .from('games')
-      .select('game_type, current_host, dealer_position')
+      .select('game_type, current_host, dealer_position, status')
       .eq('id', gameId)
       .maybeSingle(),
     supabase
@@ -83,18 +102,26 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   ]);
 
   const game = gameRes.data as
-    | { game_type?: string | null; current_host?: string | null; dealer_position?: number | null }
+    | { game_type?: string | null; current_host?: string | null; dealer_position?: number | null; status?: string | null }
     | null;
-  if (!game) return { ran: false, reason: 'game-not-found' };
+  if (!game) {
+    emit('skipped_no_game', { errorMessage: 'game-not-found' });
+    return { ran: false, reason: 'game-not-found' };
+  }
 
-  // No game-type gate: the "two active humans must sit opposite" invariant
-  // is universal. Normalization may run before any dealer game exists.
-
+  const statusBefore = game.status ?? null;
+  const gameType = game.game_type ?? null;
+  const dealerPositionBefore = game.dealer_position ?? null;
 
   const players = (playersRes.data ?? []) as PlayerRow[];
-  if (players.length === 0) return { ran: false, reason: 'no-players' };
+  if (players.length === 0) {
+    emit('skipped_not_two_humans', {
+      statusBefore, gameType, activeHumanCount: 0,
+      dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
+    });
+    return { ran: false, reason: 'no-players' };
+  }
 
-  // 2. Compute active humans (mirrors evaluatePlayerStatesEndOfGame post-eval state).
   const activeHumans = players.filter(
     (p) =>
       !p.is_bot &&
@@ -103,11 +130,15 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
       p.status !== 'left' &&
       typeof p.position === 'number',
   );
+
   if (activeHumans.length !== 2) {
+    emit('skipped_not_two_humans', {
+      statusBefore, gameType, activeHumanCount: activeHumans.length,
+      dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
+    });
     return { ran: false, reason: `active-humans=${activeHumans.length}` };
   }
 
-  // 3. Identify host vs other.
   const hostId = resolveSessionHostPlayerId(
     { current_host: game.current_host ?? null },
     activeHumans.map((p) => ({
@@ -120,13 +151,31 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   const host = activeHumans.find((p) => p.id === hostId) ?? activeHumans[0];
   const other = activeHumans.find((p) => p.id !== host.id);
   if (!host || !other || host.position == null || other.position == null) {
+    emit('skipped_host_or_other_missing_position', {
+      statusBefore, gameType, activeHumanCount: 2,
+      hostPlayerId: host?.id ?? null, hostSeat: host?.position ?? null,
+      otherPlayerId: other?.id ?? null, otherSeat: other?.position ?? null,
+      dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
+    });
     return { ran: false, reason: 'host-or-other-missing-position' };
   }
 
-  // 4. Already opposite? circularDistance == 3 on 1..7 ring.
   const raw = Math.abs(host.position - other.position);
   const circularDistance = Math.min(raw, RING - raw);
-  if (circularDistance === 3) {
+  const shouldNormalize = circularDistance !== 3;
+  const targetPos = seatThreeClockwiseFrom(host.position);
+  const otherOldPos = other.position;
+
+  if (!shouldNormalize) {
+    emit('skipped_already_opposite', {
+      statusBefore, gameType, activeHumanCount: 2,
+      hostPlayerId: host.id, hostSeat: host.position,
+      otherPlayerId: other.id, otherSeat: other.position,
+      rawDistance: raw, circularDistance, shouldNormalize: false,
+      targetSeat: targetPos,
+      dbWriteAttempted: false, dbRowsUpdated: 0,
+      dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
+    });
     return {
       ran: false,
       reason: 'already-opposite',
@@ -135,27 +184,37 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     };
   }
 
-  const targetPos = seatThreeClockwiseFrom(host.position);
-  const otherOldPos = other.position;
-
-  // 5. Find any occupant currently sitting at the target seat (could be
-  //    bot / observer / left player still holding the seat).
   const occupant = players.find(
     (p) => p.id !== other.id && p.position === targetPos,
   );
 
-  // 6. Two-pass UPDATE around UNIQUE(game_id, position).
-  //    Use out-of-range placeholders (>= 1000) for the transient pass.
   const otherTempPos = 1000 + otherOldPos;
   const occupantTempPos = occupant ? 1001 + (occupant.position ?? 0) : null;
+
+  const baseSnapshot = {
+    statusBefore, gameType, activeHumanCount: 2,
+    hostPlayerId: host.id, hostSeat: host.position,
+    otherPlayerId: other.id, otherSeat: otherOldPos,
+    rawDistance: raw, circularDistance, shouldNormalize: true,
+    targetSeat: targetPos,
+    occupantPlayerId: occupant?.id ?? null,
+    dealerPositionBefore,
+  };
 
   // Pass 1: move conflicting rows out to placeholders.
   const moveOtherToTemp = await supabase
     .from('players')
     .update({ position: otherTempPos })
-    .eq('id', other.id);
+    .eq('id', other.id)
+    .select('id');
   if (moveOtherToTemp.error) {
     console.error('[SEAT NORMALIZE] pass1 other→temp failed:', moveOtherToTemp.error);
+    emit('failed_pass1_other', {
+      ...baseSnapshot,
+      dbWriteAttempted: true, dbRowsUpdated: 0,
+      dealerPositionAfter: dealerPositionBefore,
+      errorMessage: moveOtherToTemp.error.message,
+    });
     return { ran: false, reason: 'pass1-other-failed' };
   }
 
@@ -163,48 +222,66 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     const moveOccupantToTemp = await supabase
       .from('players')
       .update({ position: occupantTempPos })
-      .eq('id', occupant.id);
+      .eq('id', occupant.id)
+      .select('id');
     if (moveOccupantToTemp.error) {
       console.error('[SEAT NORMALIZE] pass1 occupant→temp failed:', moveOccupantToTemp.error);
-      // Try to revert other.
       await supabase.from('players').update({ position: otherOldPos }).eq('id', other.id);
+      emit('failed_pass1_occupant', {
+        ...baseSnapshot,
+        dbWriteAttempted: true, dbRowsUpdated: 1,
+        dealerPositionAfter: dealerPositionBefore,
+        errorMessage: moveOccupantToTemp.error.message,
+      });
       return { ran: false, reason: 'pass1-occupant-failed' };
     }
   }
 
-  // Pass 2: place rows at their final positions.
-  //   - other     → targetPos
-  //   - occupant  → otherOldPos (swap into the vacated seat)
+  let rowsUpdated = (moveOtherToTemp.data?.length ?? 0);
+
   const placeOther = await supabase
     .from('players')
     .update({ position: targetPos })
-    .eq('id', other.id);
+    .eq('id', other.id)
+    .select('id');
   if (placeOther.error) {
     console.error('[SEAT NORMALIZE] pass2 other→target failed:', placeOther.error);
-    // Best-effort revert.
     await supabase.from('players').update({ position: otherOldPos }).eq('id', other.id);
     if (occupant) {
       await supabase.from('players').update({ position: targetPos }).eq('id', occupant.id);
     }
+    emit('failed_pass2_other', {
+      ...baseSnapshot,
+      dbWriteAttempted: true, dbRowsUpdated: rowsUpdated,
+      dealerPositionAfter: dealerPositionBefore,
+      errorMessage: placeOther.error.message,
+    });
     return { ran: false, reason: 'pass2-other-failed' };
   }
+  rowsUpdated += placeOther.data?.length ?? 0;
 
   if (occupant) {
     const placeOccupant = await supabase
       .from('players')
       .update({ position: otherOldPos })
-      .eq('id', occupant.id);
+      .eq('id', occupant.id)
+      .select('id');
     if (placeOccupant.error) {
       console.error('[SEAT NORMALIZE] pass2 occupant→other-old failed:', placeOccupant.error);
-      // We are in a partially-applied state; surface but do not throw.
+      emit('failed_pass2_occupant', {
+        ...baseSnapshot,
+        dbWriteAttempted: true, dbRowsUpdated: rowsUpdated,
+        dealerPositionAfter: dealerPositionBefore,
+        errorMessage: placeOccupant.error.message,
+      });
+      // partially applied; do not throw
+    } else {
+      rowsUpdated += placeOccupant.data?.length ?? 0;
     }
   }
 
-  // 7. Keep games.dealer_position consistent with the moved seats so
-  //    the subsequent rotateDealerPosition() call lands on the correct
-  //    next dealer. (Host did not move, so dealer_position==host.position
-  //    needs no update.)
-  const oldDealerPos = game.dealer_position ?? null;
+  // 7. Keep games.dealer_position consistent.
+  const oldDealerPos = dealerPositionBefore;
   let newDealerPos = oldDealerPos;
   if (oldDealerPos != null) {
     if (oldDealerPos === otherOldPos) newDealerPos = targetPos;
@@ -221,14 +298,17 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   }
 
   console.log('[SEAT NORMALIZE] normalized 2P seats', {
-    gameId,
-    gameType: game.game_type,
-    hostPosition: host.position,
-    otherOldPosition: otherOldPos,
-    otherNewPosition: targetPos,
+    gameId, caller, gameType, hostPosition: host.position,
+    otherOldPosition: otherOldPos, otherNewPosition: targetPos,
     swappedWithPlayerId: occupant?.id ?? null,
-    dealerPositionFrom: oldDealerPos,
-    dealerPositionTo: newDealerPos,
+    dealerPositionFrom: oldDealerPos, dealerPositionTo: newDealerPos,
+  });
+
+  emit('normalized', {
+    ...baseSnapshot,
+    dbWriteAttempted: true,
+    dbRowsUpdated: rowsUpdated,
+    dealerPositionAfter: newDealerPos,
   });
 
   return {
@@ -239,3 +319,4 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     swappedWithPlayerId: occupant?.id ?? null,
   };
 }
+
