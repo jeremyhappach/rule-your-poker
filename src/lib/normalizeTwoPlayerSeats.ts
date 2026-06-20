@@ -158,7 +158,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   const other = activeSeated.find((p) => p.id !== host.id);
   if (!host || !other || host.position == null || other.position == null) {
     emit('skipped_host_or_other_missing_position', {
-      statusBefore, gameType, activeHumanCount: 2,
+      statusBefore, gameType, activeSeatedPlayers: activeSeated.length, activeHumanPlayers: activeHumans.length, activeHumanCount: activeHumans.length, players: playerSnapshots,
       hostPlayerId: host?.id ?? null, hostSeat: host?.position ?? null,
       otherPlayerId: other?.id ?? null, otherSeat: other?.position ?? null,
       dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
@@ -174,7 +174,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
 
   if (!shouldNormalize) {
     emit('skipped_already_opposite', {
-      statusBefore, gameType, activeHumanCount: 2,
+      statusBefore, gameType, activeSeatedPlayers: activeSeated.length, activeHumanPlayers: activeHumans.length, activeHumanCount: activeHumans.length, players: playerSnapshots,
       hostPlayerId: host.id, hostSeat: host.position,
       otherPlayerId: other.id, otherSeat: other.position,
       rawDistance: raw, circularDistance, shouldNormalize: false,
@@ -195,7 +195,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   );
 
   const baseSnapshot = {
-    statusBefore, gameType, activeHumanCount: 2,
+    statusBefore, gameType, activeSeatedPlayers: activeSeated.length, activeHumanPlayers: activeHumans.length, activeHumanCount: activeHumans.length, players: playerSnapshots,
     hostPlayerId: host.id, hostSeat: host.position,
     otherPlayerId: other.id, otherSeat: otherOldPos,
     rawDistance: raw, circularDistance, shouldNormalize: true,
