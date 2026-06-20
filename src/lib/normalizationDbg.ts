@@ -107,9 +107,20 @@ export function formatNormalizationDbgAsText(): string {
       lines.push(
         `${iso} [CALL-SITE] caller=${e.caller} didInvokeNormalizer=${e.didInvokeNormalizer} statusTransition=${e.statusTransition ?? ''}`,
       );
+    } else if (e.kind === 'start-game') {
+      lines.push(
+        `${iso} [START GAME NORMALIZATION DBG] checkpoint=${e.checkpoint ?? ''} caller=${e.caller} result=${e.result ?? ''}`,
+        `  activeSeatedPlayers=${e.activeSeatedPlayers ?? ''} activeHumanPlayers=${e.activeHumanPlayers ?? ''}`,
+        `  players=${(e.players ?? []).map((p) => `{playerId=${p.playerId}, isBot=${p.isBot}, status=${p.status ?? ''}, sittingOut=${p.sittingOut}, position=${p.position ?? ''}}`).join(' ')}`,
+        `  hostSeat=${e.hostSeat ?? ''} otherSeat=${e.otherSeat ?? ''} rawDist=${e.rawDistance ?? ''} circDist=${e.circularDistance ?? ''}`,
+        `  shouldNormalize=${e.shouldNormalize} targetSeat=${e.targetSeat ?? ''}`,
+        `  dbWriteAttempted=${e.dbWriteAttempted} dbRowsUpdated=${e.dbRowsUpdated ?? ''}`,
+        `  ${e.errorMessage ? `error=${e.errorMessage}` : ''}`,
+      );
     } else {
       lines.push(
-        `${iso} [NORMALIZE] caller=${e.caller} statusBefore=${e.statusBefore ?? ''} gameType=${e.gameType ?? ''} activeHumans=${e.activeHumanCount ?? ''}`,
+        `${iso} [NORMALIZE] caller=${e.caller} statusBefore=${e.statusBefore ?? ''} gameType=${e.gameType ?? ''} activeSeated=${e.activeSeatedPlayers ?? ''} activeHumans=${e.activeHumanPlayers ?? e.activeHumanCount ?? ''}`,
+        `  players=${(e.players ?? []).map((p) => `{playerId=${p.playerId}, isBot=${p.isBot}, status=${p.status ?? ''}, sittingOut=${p.sittingOut}, position=${p.position ?? ''}}`).join(' ')}`,
         `  host=${e.hostPlayerId ?? ''}@${e.hostSeat ?? ''} other=${e.otherPlayerId ?? ''}@${e.otherSeat ?? ''} rawDist=${e.rawDistance ?? ''} circDist=${e.circularDistance ?? ''}`,
         `  shouldNormalize=${e.shouldNormalize} targetSeat=${e.targetSeat ?? ''} occupant=${e.occupantPlayerId ?? ''}`,
         `  dbWriteAttempted=${e.dbWriteAttempted} dbRowsUpdated=${e.dbRowsUpdated ?? ''} dealerPos ${e.dealerPositionBefore ?? ''}→${e.dealerPositionAfter ?? ''}`,
