@@ -62,7 +62,7 @@ describe('ChatBubbleOverlay — routeChatBubbles', () => {
     expect(groups[0].bubbles.map(b => b.id)).toEqual(['b']);
   });
 
-  it('uses canonical 2P face-to-face anchor for inherently-2P games', () => {
+  it('uses ordinary clockwise projection for inherently-2P games (FACE_TO_FACE retired)', () => {
     const groups = routeChatBubbles({
       bubbles: [bubble('a', 'u5')],
       getPositionForUserId,
@@ -75,11 +75,11 @@ describe('ChatBubbleOverlay — routeChatBubbles', () => {
       ],
     });
     expect(groups).toHaveLength(1);
-    expect(groups[0].anchor.slot).toBe(-2);
-    expect(groups[0].anchor.canonicalized2p).toBe(true);
+    // distance(1,5)=4 → slot 2 (top-left), same as multiplayer projection.
+    expect(groups[0].anchor.slot).toBe(2);
   });
 
-  it('does NOT canonicalize for multiplayer-capable games', () => {
+  it('uses ordinary projection for multiplayer-capable games', () => {
     const groups = routeChatBubbles({
       bubbles: [bubble('a', 'u5')],
       getPositionForUserId,
@@ -91,7 +91,7 @@ describe('ChatBubbleOverlay — routeChatBubbles', () => {
         { position: 5, occupied: true },
       ],
     });
-    expect(groups[0].anchor.canonicalized2p).toBe(false);
-    expect(groups[0].anchor.slot).not.toBe(-2);
+    expect(groups[0].anchor.slot).toBe(2);
   });
 });
+

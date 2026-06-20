@@ -248,7 +248,7 @@ function WaitingSurfaceBody({
   useEffect(() => {
     const anchorSnapshot: Record<string, unknown> = {};
     for (const [pos, a] of byPosition) {
-      anchorSnapshot[String(pos)] = { slot: a.slot, canonicalized2p: a.canonicalized2p };
+      anchorSnapshot[String(pos)] = { slot: a.slot };
     }
     recordSurfaceGeometry('WaitingTable', {
       geometryProviderId: 'ResponsiveGeometryProvider',

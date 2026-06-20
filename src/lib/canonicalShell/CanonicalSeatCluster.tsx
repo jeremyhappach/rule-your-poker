@@ -449,16 +449,15 @@ export function CanonicalSeatCluster({
 
   const isObserverProjection =
     anchors?.projectionMode === 'observer-absolute' || anchors?.viewerPosition == null;
-  // All seats use the canonical placement contract. The legacy
-  // `occupied-2p-face` variant was deleted — its rescue offsets
-  // (top-[2%]/left-[1%]/scale-90) were tuning debt from before the
-  // June 15 default migration that already moved slots 2/3 to the
-  // outer rail (top-[6%]/left-[4%]). Holm proves the default works;
-  // Cribbage / Gin / Yahtzee now use the same geometry uniformly.
-  const placement = getCanonicalSlotPlacement(
-    slot,
-    isObserverProjection ? 'occupied-observer' : 'occupied',
-  );
+  void isObserverProjection;
+  // All seats use a single canonical placement contract. Both the
+  // legacy `occupied-2p-face` rescue variant and the
+  // `occupied-observer` HOME variant were retired alongside the
+  // FACE_TO_FACE projection — seat topology is now normalized at the
+  // dealer-game boundary, so every projection produces the correct
+  // geometry without bespoke per-game offsets.
+  const placement = getCanonicalSlotPlacement(slot, 'occupied');
+
   const raiseClass = raisePosition ? getCanonicalSlotRaiseClass(slot) : '';
   // Bottom-anchored slots (HOME bottom-center, bottom corners) must
   // render game-owned content ABOVE the identity+chip pill so the chip
@@ -613,7 +612,7 @@ export function CanonicalSeatCluster({
   // Inner side resolution:
   //   - Left-side slots (0,1,2) → inner = RIGHT of name pill
   //   - Right-side slots (3,4,5) → inner = LEFT of name pill
-  //   - Center / HOME / FACE_TO_FACE / BOTTOM_RAIL → default to RIGHT
+  //   - Center / HOME / BOTTOM_RAIL → default to RIGHT
   const dealerInnerSideClass = isRightSide
     ? 'right-full'
     : 'left-full';

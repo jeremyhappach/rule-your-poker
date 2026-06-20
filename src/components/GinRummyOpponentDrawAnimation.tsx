@@ -56,7 +56,6 @@ export const GinRummyOpponentDrawAnimation = ({
   // shell's SeatAnchorLayer. No parallel coordinate registry.
   const slotEndpoints: Record<CanonicalSlot, { x: string; y: string }> = {
     [-3]: { x: '50%', y: '92%' }, // BOTTOM_RAIL (observer-only)
-    [-2]: { x: '50%', y: '18%' },
     [-1]: { x: '50%', y: '82%' },
     0: { x: '22%', y: '78%' },
     1: { x: '16%', y: '50%' },
@@ -65,6 +64,7 @@ export const GinRummyOpponentDrawAnimation = ({
     4: { x: '84%', y: '50%' },
     5: { x: '78%', y: '78%' },
   };
+
   if (targetSlot === null || targetSlot === undefined) return null;
   const endpoint = slotEndpoints[targetSlot];
   if (!endpoint) return null;
