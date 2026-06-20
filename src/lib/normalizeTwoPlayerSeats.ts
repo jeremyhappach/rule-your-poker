@@ -187,6 +187,8 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     return {
       ran: false,
       reason: 'already-opposite',
+      result: 'skipped_already_opposite',
+      dbRowsUpdated: 0,
       hostPosition: host.position,
       otherOldPosition: other.position,
     };
@@ -322,6 +324,8 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
 
   return {
     ran: true,
+    result: 'normalized',
+    dbRowsUpdated: rowsUpdated,
     hostPosition: host.position,
     otherOldPosition: otherOldPos,
     otherNewPosition: targetPos,
