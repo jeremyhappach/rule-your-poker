@@ -62,9 +62,15 @@ function describe(ref: ChipEndpointRef): string {
   return ref.kind === 'pot' ? 'pot' : `seat#${ref.position}`;
 }
 
+export type ChipTransportDbgPatch =
+  Omit<Partial<ChipTransportDbgRecord>, 'from' | 'to'> & {
+    from?: ChipEndpointRef | string;
+    to?: ChipEndpointRef | string;
+  };
+
 export function chipTransportDbgUpsert(
   intentId: string,
-  patch: Partial<ChipTransportDbgRecord> & { from?: ChipEndpointRef | string; to?: ChipEndpointRef | string },
+  patch: ChipTransportDbgPatch,
 ): void {
   const idx = records.findIndex((r) => r.intentId === intentId);
   const fromStr = typeof patch.from === 'object' && patch.from && 'kind' in patch.from
@@ -74,7 +80,7 @@ export function chipTransportDbgUpsert(
     ? describe(patch.to as ChipEndpointRef)
     : (patch.to as string | undefined);
   const normalized: Partial<ChipTransportDbgRecord> = {
-    ...patch,
+    ...(patch as Omit<ChipTransportDbgPatch, 'from' | 'to'>),
     ...(fromStr !== undefined ? { from: fromStr } : {}),
     ...(toStr !== undefined ? { to: toStr } : {}),
   };
@@ -85,8 +91,8 @@ export function chipTransportDbgUpsert(
       ts: Date.now(),
       variant: normalized.variant ?? 'default',
       reason: normalized.reason ?? '?',
-      from: (normalized.from as string) ?? '?',
-      to: (normalized.to as string) ?? '?',
+      from: normalized.from ?? '?',
+      to: normalized.to ?? '?',
       amount: normalized.amount ?? 0,
       ...normalized,
     };
