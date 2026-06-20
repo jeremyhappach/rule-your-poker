@@ -6709,7 +6709,47 @@ export const MobileGameTable = ({
             including the current player's. Dealer-selection is not normal gameplay
             hand rendering; the bottom card area is suppressed during this phase, so
             the overlay must own complete presentation. */}
-        {dealerSelectionCards && dealerSelectionCards.length > 0 && highCardOverlayPortal(
+        {(() => {
+          // ── HIGH CARD LEAK DBG ──
+          // The session-level high-card overlay must render ONLY when the game
+          // is actually in the SESSION dealer-selection status. Cribbage's
+          // dealer-selection cards live in the SAME `dealerSelectionCards`
+          // state (Game.tsx shares one store between session-DS and cribbage-DS),
+          // so without this guard, any frame where MobileGameTable is mounted
+          // while `dealerSelectionCards` still holds the just-finished cribbage
+          // draw will flash those cards in session-high-card visual layout
+          // (opponent slots / over chip stacks / felt-front for self).
+          //
+          // Acceptance: at "Dealer configuring next game", drawCards=null,
+          // spotlight=null, transient overlays empty.
+          const hasCards = !!(dealerSelectionCards && dealerSelectionCards.length > 0);
+          const isSessionDealerSelection = gameStatus === 'dealer_selection';
+          if (hasCards && !isSessionDealerSelection) {
+            recordWaitingLifecycleIfChanged(
+              `highcard:leak-suppressed:${gameId}:${gameStatus}:${dealerSelectionCards.length}`,
+              'HIGH_CARD_LEAK_DBG suppressed session-high-card render (cards present but gameStatus is not dealer_selection)',
+              {
+                surface: 'MobileGameTable',
+                gameId,
+                gameStatus: gameStatus ?? null,
+                drawCardsCount: dealerSelectionCards.length,
+                drawCardsIds: dealerSelectionCards.map(
+                  (c) => `p${c.position}:${c.card?.rank ?? '?'}${c.card?.suit?.[0] ?? '?'}:r${c.roundNumber}:w${c.isWinner ? 1 : 0}`,
+                ),
+                drawSource: 'shared Game.tsx dealerSelectionCards state (session + cribbage)',
+                rendererUsed: 'MobileGameTable session-dealer-selection-overlay (SUPPRESSED)',
+                drawRound: dealerSelectionCards[0]?.roundNumber ?? null,
+                isRedraw: dealerSelectionCards.length > (new Set(dealerSelectionCards.map(c => c.position))).size,
+                sessionHighCardMounted: false,
+                cribbageDealerSelectionMounted: 'unknown (cribbage table-owned)',
+                hint: 'cards belong to the just-finished cribbage dealer-selection; clear dealerSelectionCards on cribbage_dealer_selection→game_over transition or before remounting MGT',
+              },
+            );
+            return null;
+          }
+          return null;
+        })()}
+        {dealerSelectionCards && dealerSelectionCards.length > 0 && gameStatus === 'dealer_selection' && highCardOverlayPortal(
           <div
             data-wartime-high-card-container={gameId}
             data-wartime-renderer-instance={`MobileGameTable:${instanceLabel}:${gameId ?? 'no-game'}`}
