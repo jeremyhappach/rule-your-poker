@@ -91,6 +91,12 @@ export interface CanonicalShellWaitingSurfaceProps {
 }
 
 const ALL_POSITIONS = [1, 2, 3, 4, 5, 6, 7];
+
+// WARTIME: temporary seat-number overlay. Renders a tiny gray pill on
+// every join affordance and occupied seat showing
+// seat=<position> slot=<canonicalSlot> projection=<mode> viewerSeat=<n>.
+// Flip to false to remove from the waiting surface.
+const SHOW_SEAT_NUMBERS = true;
 const SHELL_FELT_FRAME_HEIGHT = "var(--shell-felt-h)";
 // Canonical play/HUD partition: table region is the shell play region
 // (--shell-play-h), HUD region is --shell-hud-h. They sum to the shell
@@ -493,6 +499,42 @@ function WaitingSurfaceBody({
                     );
                   })()}
                 </>
+              );
+            })()}
+
+            {/* WARTIME seat-number overlay. See SHOW_SEAT_NUMBERS. */}
+            {SHOW_SEAT_NUMBERS && (() => {
+              const viewerSeat =
+                players.find((p) => p.user_id === currentUserId)?.position ?? null;
+              return (
+                <div
+                  data-wartime-seat-number-overlay=""
+                  className="absolute inset-0 z-[60] pointer-events-none"
+                >
+                  {ALL_POSITIONS.map((pos) => {
+                    const occupiedAnchor = byPosition.get(pos);
+                    const slot =
+                      occupiedAnchor?.slot ?? observerSlotForPosition(pos) ?? null;
+                    if (slot == null) return null;
+                    const placement = getCanonicalSlotPlacement(slot, 'open-seat');
+                    return (
+                      <div
+                        key={`dbg-${pos}`}
+                        className={cn("absolute", placement.className)}
+                      >
+                        <div
+                          className="translate-y-[110%] -translate-x-1/2 left-1/2 absolute whitespace-nowrap rounded bg-black/80 px-1.5 py-0.5 text-[9px] leading-tight font-mono text-gray-200 border border-gray-500/60"
+                          style={{ minWidth: 'max-content' }}
+                        >
+                          <div>seat={pos}</div>
+                          <div>slot={slot}</div>
+                          <div>proj={projectionMode}</div>
+                          <div>viewerSeat={viewerSeat ?? 'null'}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               );
             })()}
 
