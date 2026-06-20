@@ -122,6 +122,7 @@ const App = () => {
                 {!hideDebugUI && <ShellLifecyclePanel />}
                 <NormalizationDbgPanel />
                 <SettlementDbgPanel />
+                <ChipTransportDbgPanel />
               </DebugTray>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
