@@ -1735,11 +1735,9 @@ export const CribbageMobileGameTable = ({
 
 
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
-  // Stored positions for chip animation - computed when transitioning to 'chips' phase
-  const [storedChipPositions, setStoredChipPositions] = useState<{
-    winner: { x: number; y: number };
-    losers: { playerId: string; x: number; y: number }[];
-  } | null>(null);
+  // Wave 3B: chip transfer geometry / suppression / lifecycle owned by
+  // the shell ChipTransport runtime. Game dispatches intents only.
+  const { dispatchMany: dispatchChipTransport } = useChipTransport();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const winSequenceFiredRef = useRef<string | null>(null);
   // Prevent double scheduling of the win sequence before the 2s delay fires.
