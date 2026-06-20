@@ -125,7 +125,7 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   }));
   const activeSeated = players.filter(
     (p) =>
-      p.sitting_out !== true &&
+      p.sitting_out === false &&
       p.status !== 'observer' &&
       p.status !== 'left' &&
       typeof p.position === 'number',
