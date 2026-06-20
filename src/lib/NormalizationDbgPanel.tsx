@@ -193,7 +193,7 @@ export function NormalizationDbgPanel() {
                     </span>
                   </div>
                   <div style={{ opacity: 0.85 }}>
-                    status={e.statusBefore ?? '?'} type={e.gameType ?? '?'} humans={e.activeHumanCount ?? '?'}
+                    status={e.statusBefore ?? '?'} type={e.gameType ?? '?'} seated={e.activeSeatedPlayers ?? '?'} humans={e.activeHumanPlayers ?? e.activeHumanCount ?? '?'}
                   </div>
                   <div style={{ opacity: 0.85 }}>
                     host={e.hostPlayerId?.slice(0, 8) ?? '?'}@{e.hostSeat ?? '?'}
