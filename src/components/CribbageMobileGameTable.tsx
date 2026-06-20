@@ -1734,7 +1734,10 @@ export const CribbageMobileGameTable = ({
 
 
 
+  // Wave 3B: chipAnimationTriggerId retained only as a trace-id source;
+  // no longer drives JSX. Could be deleted once trace consumers update.
   const [chipAnimationTriggerId, setChipAnimationTriggerId] = useState<string | null>(null);
+  void chipAnimationTriggerId;
   // Wave 3B: chip transfer geometry / suppression / lifecycle owned by
   // the shell ChipTransport runtime. Game dispatches intents only.
   const { dispatchMany: dispatchChipTransport } = useChipTransport();
