@@ -32,7 +32,8 @@ export type DebugPillKey =
   | 'timerDbg'
   | 'normalizationDbg'
   | 'settlementDbg'
-  | 'chipTransportDbg';
+  | 'chipTransportDbg'
+  | 'winnerChipEndpointDbg';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -59,6 +60,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'normalizationDbg', abbreviation: 'NORM DBG',  fullName: 'Seat Normalization Audit', description: 'Every normalizeTwoPlayerSeatsIfNeeded() invocation + call-site decision (inputs, distances, DB writes, rows updated)' },
   { key: 'settlementDbg',    abbreviation: 'SETTLE DBG',fullName: 'Canonical Settlement',  description: 'Canonical settlement phase machine: submit/shadow intents, phase transitions, economy/celebration barrier flags' },
   { key: 'chipTransportDbg', abbreviation: 'CHIP DBG',  fullName: 'Chip Transport Audit',  description: 'Per-intent canonical chip transport: endpoint resolution, mount/visibility, settle, drop, destination reaction application' },
+  { key: 'winnerChipEndpointDbg', abbreviation: 'WIN ENDPT', fullName: 'Winner Chip Endpoint Audit', description: 'DOM snapshot of [data-chip-center] at announcementComplete + dispatch + drop. Diagnoses asymmetric winner-endpoint-missing failures.' },
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';

@@ -26,6 +26,7 @@ import { resolveChipEndpoint, type EndpointCache, type ResolvedEndpoint } from '
 import { formatChipValue } from '@/lib/utils';
 import type { ChipTransportVariant, ChipEndpointRef } from './GameplaySlotContract';
 import { chipTransportDbgUpsert } from './chipTransportDbg';
+import { captureWinnerChipEndpoint } from './winnerChipEndpointDbg';
 
 interface MotionPreset {
   durationMs: number;
@@ -249,6 +250,13 @@ export function ChipTransportRuntime({
         chipTransportDbgUpsert(intent.id, {
           droppedReason: 'missing-endpoint',
           transportMounted: false,
+        });
+        // WINNER CHIP ENDPOINT DBG — exact moment of asymmetric drop.
+        captureWinnerChipEndpoint({
+          site: 'runtime:missing-endpoint',
+          winnerSeat: intent.to.kind === 'seat' ? intent.to.position : null,
+          loserSeats: intent.from.kind === 'seat' ? [intent.from.position] : [],
+          note: `intent=${intent.id} fromFound=${!!from} toFound=${!!to}`,
         });
         ctx.__markDropped(intent, 'missing-endpoint');
         continue;
