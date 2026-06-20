@@ -20,11 +20,13 @@ import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
 const KIND_COLOR: Record<string, string> = {
   'call-site': '#87CEFA',
   normalize: '#FFD580',
+  'start-game': '#DA70D6',
 };
 
 const RESULT_COLOR: Record<string, string> = {
   normalized: '#7CFC00',
   skipped_already_opposite: '#9FE2BF',
+  skipped_not_two_active_seated: '#bbbbbb',
   skipped_not_two_humans: '#bbbbbb',
   skipped_no_game: '#bbbbbb',
   skipped_host_or_other_missing_position: '#FFA07A',
@@ -33,11 +35,16 @@ const RESULT_COLOR: Record<string, string> = {
   failed_pass2_other: '#FF6B6B',
   failed_pass2_occupant: '#FF6B6B',
   failed_unknown: '#FF6B6B',
+  preflight: '#DA70D6',
+  status_flip_complete: '#DA70D6',
 };
 
 function summarize(e: NormalizationDbgEntry): string {
   if (e.kind === 'call-site') {
     return `${e.caller} did=${e.didInvokeNormalizer} ${e.statusTransition ?? ''}`;
+  }
+  if (e.kind === 'start-game') {
+    return `START ${e.checkpoint ?? '?'} seated=${e.activeSeatedPlayers ?? '?'} circ=${e.circularDistance ?? '?'}`;
   }
   return `${e.caller} ${e.result} host=${e.hostSeat ?? '?'} other=${e.otherSeat ?? '?'}→${e.targetSeat ?? '?'} circ=${e.circularDistance ?? '?'} rows=${e.dbRowsUpdated ?? '-'}`;
 }
