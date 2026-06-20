@@ -27,6 +27,7 @@ import { formatChipValue } from '@/lib/utils';
 import type { ChipTransportVariant, ChipEndpointRef } from './GameplaySlotContract';
 import { chipTransportDbgUpsert } from './chipTransportDbg';
 import { captureWinnerChipEndpoint } from './winnerChipEndpointDbg';
+import { destReactionDbgUpsert, snapshotTargetElement } from './destReactionDbg';
 
 interface MotionPreset {
   durationMs: number;
