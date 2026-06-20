@@ -123,11 +123,13 @@ function buildParentChain(el: Element, depth = 6): string[] {
 function findOwnerHint(el: Element): string | null {
   let cur: Element | null = el;
   const hintAttrs = [
+    'data-canonical-viewer-hud-chip',
     'data-canonical-seat-cluster',
     'data-canonical-chip-disc',
     'data-canonical-chipstack',
     'data-chip-stack-owner',
     'data-active-player-hud',
+    'data-canonical-shell-viewer-chip-endpoint',
     'data-shell-viewer-chip-endpoint',
     'data-seat-position',
     'data-felt-content',
