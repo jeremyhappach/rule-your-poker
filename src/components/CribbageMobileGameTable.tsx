@@ -247,11 +247,11 @@ function cribPipPlacementForSlot(slot: number | null): string | null {
   //     the chip) so the marker reads as associated with that seat's
   //     section of rail rather than horizontally detached.
   // Cluster anchor reference (see canonicalSlotPlacement.ts):
-  //   -2 top-[4%] center | 2 top-[14%] left-[12%] | 3 top-[14%] right-[12%]
-  //   1  top-[50%] left-[4%] | 4 top-[50%] right-[4%]
-  //   0  top-[78%] left-[10%] | 5 top-[78%] right-[10%]
+  //   2 top-[14%] left-[12%] | 3 top-[14%] right-[12%]
+  //   1 top-[50%] left-[4%]  | 4 top-[50%] right-[4%]
+  //   0 top-[78%] left-[10%] | 5 top-[78%] right-[10%]
+  // Slot -2 (FACE_TO_FACE) retired — see seatAnchors.ts header.
   switch (slot) {
-    case -2: return 'top-[14%] left-[54%]';                                // FACE_TO_FACE: bottom-right of top-center cluster
     case -1: return 'bottom-[1%] left-1/2 -translate-x-1/2';               // HOME: tight to bottom rail
     case -3: return 'bottom-[1%] right-[14%]';                             // BOTTOM_RAIL: observer south rail, tight
     case 0:  return 'top-[90%] left-[20%]';                                // bottom-left: bottom-right of cluster
@@ -263,6 +263,7 @@ function cribPipPlacementForSlot(slot: number | null): string | null {
     default: return null;
   }
 }
+
 
 function getHandKey(state: CribbageState | null): string {
   if (!state) return '';
