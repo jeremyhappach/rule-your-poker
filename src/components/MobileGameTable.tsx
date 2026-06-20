@@ -3399,6 +3399,8 @@ export const MobileGameTable = ({
       } else if (!shellTimerState) {
         blockedReason = 'timer_not_published';
       }
+      const timerDbgEntries = timerDbgStore.get();
+      const latestTimerDbg = timerDbgEntries[timerDbgEntries.length - 1];
       timerDbgStore.record({
         gameType: gameType ?? null,
         roundId: (horsesRoundId ?? null) as string | null,
@@ -3419,11 +3421,11 @@ export const MobileGameTable = ({
         timerPublished: !!shellTimerState,
         providerHasState: !!providerStateAfterPublish,
         hasTimerGate: !!hasTimerGateMirror,
-        shellHudGridMounted: false, // filled by ExtraDebugPills DOM sampler
-        timerRowMounted: false,     // filled by ExtraDebugPills DOM sampler
-        timerRowChildCount: 0,      // filled by ExtraDebugPills DOM sampler
-        timerMounted: false,        // filled by ExtraDebugPills DOM sampler
-        timerVisible: false,        // filled by ExtraDebugPills DOM sampler
+        shellHudGridMounted: latestTimerDbg?.shellHudGridMounted ?? false, // DOM-owned; filled by ExtraDebugPills sampler
+        timerRowMounted: latestTimerDbg?.timerRowMounted ?? false,         // DOM-owned; filled by ExtraDebugPills sampler
+        timerRowChildCount: latestTimerDbg?.timerRowChildCount ?? 0,       // DOM-owned; filled by ExtraDebugPills sampler
+        timerMounted: latestTimerDbg?.timerMounted ?? false,               // DOM-owned; filled by ExtraDebugPills sampler
+        timerVisible: latestTimerDbg?.timerVisible ?? false,               // DOM-owned; filled by ExtraDebugPills sampler
         blockedReason,
       });
     }
