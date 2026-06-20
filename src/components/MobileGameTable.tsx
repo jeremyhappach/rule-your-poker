@@ -134,7 +134,7 @@ import { OverSeatBadgePortal } from "@/lib/canonicalShell/OverSeatBadgePortal";
 import { deriveFeltPlateMode } from "@/lib/canonicalShell/feltPlateMode";
 import { CanonicalPotZone } from "@/lib/canonicalShell/CanonicalPotZone";
 import { useShellTabBar, ShellTabBar } from "@/lib/canonicalShell/ShellTabBar";
-import { useShellTimer, ShellTimerRail } from "@/lib/canonicalShell/ShellTimerRail";
+import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/lib/canonicalShell/ShellTimerRail";
 
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
