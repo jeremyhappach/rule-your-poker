@@ -28,6 +28,7 @@ import type { ChipTransportVariant, ChipEndpointRef } from './GameplaySlotContra
 import { chipTransportDbgUpsert } from './chipTransportDbg';
 import { captureWinnerChipEndpoint } from './winnerChipEndpointDbg';
 import { destReactionDbgUpsert, snapshotTargetElement } from './destReactionDbg';
+import { recordVisibleChipScan } from './visibleChipDbg';
 
 interface MotionPreset {
   durationMs: number;
@@ -368,6 +369,14 @@ export function ChipTransportRuntime({
         transportMounted: true,
         transportVisible: true,
       });
+      // VISIBLE CHIP DBG — dispatch-time inventory.
+      recordVisibleChipScan({
+        intentId: intent.id,
+        site: 'dispatch',
+        winnerSeat: intent.to.kind === 'seat' ? intent.to.position : null,
+        container,
+        note: `from=${intent.from.kind === 'seat' ? `seat#${intent.from.position}` : 'pot'} to=${intent.to.kind === 'seat' ? `seat#${intent.to.position}` : 'pot'}`,
+      });
       mutated = true;
     }
 
@@ -438,6 +447,16 @@ export function ChipTransportRuntime({
             endpointRect: rectOf(endpointEl),
             reactionTargetRect: rectOf(reactionEl),
             ...(reactionEl ? { targetElement: snapshotTargetElement(reactionEl) } : {}),
+          });
+          // VISIBLE CHIP DBG — arrival-time inventory (proves which
+          // DOM node the reaction is about to animate vs which node is
+          // actually visible to the user).
+          recordVisibleChipScan({
+            intentId: id,
+            site: 'arrival',
+            winnerSeat: chip.intent.to.kind === 'seat' ? chip.intent.to.position : null,
+            container,
+            note: `endpointFound=${!!endpointEl} reactionFound=${!!reactionEl}`,
           });
           if (reactionEl) {
             applyDestinationReaction(id, reactionEl, reaction);
