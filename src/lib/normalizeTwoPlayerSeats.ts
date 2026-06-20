@@ -3,10 +3,10 @@
  * =============================
  *
  * Contract:
- *   When exactly 2 active humans are seated at an inherently-2P game
+ *   When exactly 2 active players are seated at an inherently-2P game
  *   (Cribbage / Gin Rummy / Yahtzee) we PHYSICALLY move the non-host
  *   player to the seat three clockwise from the host so that the two
- *   active humans always occupy mathematically opposite seats on the
+ *   active players always occupy mathematically opposite seats on the
  *   1..7 ring. This eliminates the need for FACE_TO_FACE projection
  *   logic in the seat-anchor layer — once seats are normalized,
  *   canonical observer-absolute / active-canonical geometry suffices.
@@ -23,7 +23,7 @@
  *   It MUST NOT run on:
  *     - game_over → waiting       (humans own seats at the waiting table)
  *     - any waiting-table event   (sit down / sit out / rejoin / render)
- *     - activeHumanCount changes  (player-state, not topology, signal)
+ *     - active-player count changes (player-state, not topology, signal)
  *     - selectors / visibility    (read paths)
  *
  * Safety:
@@ -114,42 +114,48 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
   const dealerPositionBefore = game.dealer_position ?? null;
 
   const players = (playersRes.data ?? []) as PlayerRow[];
-  if (players.length === 0) {
-    emit('skipped_not_two_humans', {
-      statusBefore, gameType, activeHumanCount: 0,
-      dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
-    });
-    return { ran: false, reason: 'no-players' };
-  }
-
-  const activeHumans = players.filter(
+  const playerSnapshots = players.map((p) => ({
+    playerId: p.id,
+    isBot: p.is_bot === true,
+    status: p.status ?? null,
+    sittingOut: p.sitting_out === true,
+    position: p.position ?? null,
+  }));
+  const activeSeated = players.filter(
     (p) =>
-      !p.is_bot &&
       p.sitting_out !== true &&
       p.status !== 'observer' &&
       p.status !== 'left' &&
       typeof p.position === 'number',
   );
-
-  if (activeHumans.length !== 2) {
-    emit('skipped_not_two_humans', {
-      statusBefore, gameType, activeHumanCount: activeHumans.length,
+  const activeHumans = activeSeated.filter((p) => !p.is_bot);
+  if (players.length === 0) {
+    emit('skipped_not_two_active_seated', {
+      statusBefore, gameType, activeSeatedPlayers: 0, activeHumanPlayers: 0, activeHumanCount: 0, players: playerSnapshots,
       dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
     });
-    return { ran: false, reason: `active-humans=${activeHumans.length}` };
+    return { ran: false, reason: 'no-players' };
+  }
+
+  if (activeSeated.length !== 2) {
+    emit('skipped_not_two_active_seated', {
+      statusBefore, gameType, activeSeatedPlayers: activeSeated.length, activeHumanPlayers: activeHumans.length, activeHumanCount: activeHumans.length, players: playerSnapshots,
+      dealerPositionBefore, dealerPositionAfter: dealerPositionBefore,
+    });
+    return { ran: false, reason: `active-seated=${activeSeated.length}` };
   }
 
   const hostId = resolveSessionHostPlayerId(
     { current_host: game.current_host ?? null },
-    activeHumans.map((p) => ({
+    activeSeated.map((p) => ({
       id: p.id,
       user_id: p.user_id ?? null,
       is_bot: p.is_bot ?? false,
       created_at: p.created_at ?? null,
     })),
   );
-  const host = activeHumans.find((p) => p.id === hostId) ?? activeHumans[0];
-  const other = activeHumans.find((p) => p.id !== host.id);
+  const host = activeSeated.find((p) => p.id === hostId) ?? activeSeated[0];
+  const other = activeSeated.find((p) => p.id !== host.id);
   if (!host || !other || host.position == null || other.position == null) {
     emit('skipped_host_or_other_missing_position', {
       statusBefore, gameType, activeHumanCount: 2,
