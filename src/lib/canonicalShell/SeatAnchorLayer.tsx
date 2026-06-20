@@ -22,6 +22,7 @@ import { isCanonicalSeatConsumer } from './shellRouting';
 import { useLifecycleMount } from './lifecycleDebug';
 import { useUnmountSnapshot } from './shellLifecycleLog';
 import { useStartupMountTrace, useStartupRenderTrace } from '@/lib/startupFlightRecorder';
+import { ShellViewerChipEndpoint } from './ShellViewerChipEndpoint';
 
 interface SeatAnchorContextValue {
   projectionMode: ProjectionMode;
@@ -126,6 +127,12 @@ export function SeatAnchorLayer({
   return (
     <SeatAnchorContext.Provider value={value}>
       {children}
+      {/* Shell-owned viewer chip endpoint — guarantees a canonical
+          `[data-chip-center]` exists for the local viewer even when
+          CanonicalSeatCluster suppresses self-render. Required so
+          ChipTransportRuntime can resolve the destination when the
+          viewer is the winner of an Economy transfer. */}
+      <ShellViewerChipEndpoint />
     </SeatAnchorContext.Provider>
   );
 }
