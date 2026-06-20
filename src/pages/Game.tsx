@@ -6706,6 +6706,89 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     fetchSpan.end({ status: gameData?.status, round: gameData?.current_round });
   };
 
+  const recordStartGameNormalizationDbg = async (
+    checkpoint: 'before-normalize' | 'after-normalize' | 'after-status-flip',
+    normalizeResult?: Awaited<ReturnType<typeof normalizeTwoPlayerSeatsIfNeeded>> | null,
+  ) => {
+    if (!gameId) return;
+    try {
+      const { data, error } = await supabase
+        .from('players')
+        .select('id, user_id, position, sitting_out, is_bot, status, created_at')
+        .eq('game_id', gameId);
+
+      if (error) {
+        recordNormalizationDbg({
+          kind: 'start-game', caller: 'startGameFromWaiting', checkpoint, gameId,
+          result: 'failed_unknown', errorMessage: error.message,
+        });
+        return;
+      }
+
+      const rows = (data ?? []) as Array<{
+        id: string; user_id: string | null; position: number | null;
+        sitting_out: boolean | null; is_bot: boolean | null; status: string | null;
+        created_at: string | null;
+      }>;
+      const activeSeated = rows.filter((p) =>
+        p.position != null &&
+        p.status !== 'observer' &&
+        p.status !== 'left' &&
+        p.sitting_out === false
+      );
+      const activeHumans = activeSeated.filter((p) => !p.is_bot);
+      const hostId = resolveSessionHostPlayerId(
+        { current_host: game?.current_host ?? null },
+        activeSeated.map((p) => ({ id: p.id, user_id: p.user_id, is_bot: p.is_bot, created_at: p.created_at })),
+      );
+      const host = activeSeated.find((p) => p.id === hostId) ?? activeSeated[0] ?? null;
+      const other = host ? activeSeated.find((p) => p.id !== host.id) ?? null : null;
+      const rawDist = host?.position != null && other?.position != null
+        ? Math.abs(host.position - other.position)
+        : null;
+      const circDist = rawDist != null ? Math.min(rawDist, 7 - rawDist) : null;
+      const targetSeat = host?.position != null ? ((host.position - 1 + 3) % 7) + 1 : null;
+      const result = checkpoint === 'before-normalize'
+        ? 'preflight'
+        : normalizeResult?.result ?? (checkpoint === 'after-status-flip' ? 'status_flip_complete' : 'failed_unknown');
+      const dbWriteAttempted = result === 'normalized' || String(result).startsWith('failed_');
+
+      recordNormalizationDbg({
+        kind: 'start-game',
+        caller: 'startGameFromWaiting',
+        checkpoint,
+        gameId,
+        statusBefore: game?.status ?? null,
+        activeSeatedPlayers: activeSeated.length,
+        activeHumanPlayers: activeHumans.length,
+        activeHumanCount: activeHumans.length,
+        players: rows.map((p) => ({
+          playerId: p.id,
+          isBot: p.is_bot === true,
+          status: p.status ?? null,
+          sittingOut: p.sitting_out === true,
+          position: p.position ?? null,
+        })),
+        hostPlayerId: host?.id ?? null,
+        hostSeat: host?.position ?? null,
+        otherPlayerId: other?.id ?? null,
+        otherSeat: other?.position ?? null,
+        rawDistance: rawDist,
+        circularDistance: circDist,
+        shouldNormalize: activeSeated.length === 2 && circDist != null ? circDist !== 3 : false,
+        targetSeat,
+        dbWriteAttempted,
+        dbRowsUpdated: checkpoint === 'before-normalize' ? 0 : normalizeResult?.dbRowsUpdated ?? null,
+        result,
+      });
+    } catch (e: any) {
+      recordNormalizationDbg({
+        kind: 'start-game', caller: 'startGameFromWaiting', checkpoint, gameId,
+        result: 'failed_unknown', errorMessage: e?.message ?? String(e),
+      });
+    }
+  };
+
   // This function is called when 2+ players are seated in waiting status
   const startGameFromWaiting = async () => {
     if (!gameId) return;
