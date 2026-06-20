@@ -612,7 +612,7 @@ export function CanonicalSeatCluster({
   // Inner side resolution:
   //   - Left-side slots (0,1,2) → inner = RIGHT of name pill
   //   - Right-side slots (3,4,5) → inner = LEFT of name pill
-  //   - Center / HOME / FACE_TO_FACE / BOTTOM_RAIL → default to RIGHT
+  //   - Center / HOME / BOTTOM_RAIL → default to RIGHT
   const dealerInnerSideClass = isRightSide
     ? 'right-full'
     : 'left-full';
