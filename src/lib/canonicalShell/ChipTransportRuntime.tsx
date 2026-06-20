@@ -385,23 +385,37 @@ export function ChipTransportRuntime({
 
       if (chip.intent.destinationReaction) {
         const reaction = chip.intent.destinationReaction;
+        const sel = destinationTargetSelector(chip.intent.to);
+        destReactionDbgUpsert(id, {
+          to: chip.intent.to,
+          destinationReaction: reaction,
+          targetSelector: sel,
+        });
         const t1 = window.setTimeout(() => {
           if (!container) {
             chipTransportDbgUpsert(id, {
               destinationReactionTargetFound: false,
               destinationReactionApplied: false,
             });
+            destReactionDbgUpsert(id, {
+              destinationReactionTargetFound: false,
+              note: 'no-container-at-arrival',
+            });
             return;
           }
-          const sel = destinationTargetSelector(chip.intent.to);
           const el = container.querySelector(sel) as HTMLElement | null;
           chipTransportDbgUpsert(id, {
             destinationReactionTargetFound: !!el,
+          });
+          destReactionDbgUpsert(id, {
+            destinationReactionTargetFound: !!el,
+            ...(el ? { targetElement: snapshotTargetElement(el) } : {}),
           });
           if (el) {
             applyDestinationReaction(id, el, reaction);
           } else {
             chipTransportDbgUpsert(id, { destinationReactionApplied: false });
+            destReactionDbgUpsert(id, { reactionMounted: false, note: 'target-not-found' });
           }
         }, remainingToArrival);
         timers.push(t1);
