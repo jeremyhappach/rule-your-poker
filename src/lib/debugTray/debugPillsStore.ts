@@ -29,7 +29,8 @@ export type DebugPillKey =
   | 'debugMode'
   | 'diceTrace'
   | 'w5Grid'
-  | 'timerDbg';
+  | 'timerDbg'
+  | 'normalizationDbg';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -53,6 +54,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'diceTrace',        abbreviation: 'DICE TRACE',fullName: 'Dice Trace',        description: 'Dice presentation trace controls (REC/STOP, straight-bot, build stamp) and dice trace HUD' },
   { key: 'w5Grid',           abbreviation: 'W5 GRID',   fullName: 'Wave 5 Grid',       description: 'Wave 5 gameplay coordinate grid overlay toggle pill' },
   { key: 'timerDbg',         abbreviation: 'TIMER',     fullName: 'Timer Dbg',         description: 'Shell timer publish/mount/visibility + blocked-gate diagnostic (Horses/SCC/Holm/357)' },
+  { key: 'normalizationDbg', abbreviation: 'NORM DBG',  fullName: 'Seat Normalization Audit', description: 'Every normalizeTwoPlayerSeatsIfNeeded() invocation + call-site decision (inputs, distances, DB writes, rows updated)' },
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';
