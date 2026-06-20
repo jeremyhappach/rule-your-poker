@@ -3353,6 +3353,28 @@ export const MobileGameTable = ({
       };
     }
     useShellTimer(shellTimerState);
+    const providerStateAfterPublish = useShellTimerStateForRender();
+
+    // Mirror the gameplay-branch `hasTimer` gate (defined far below at the
+    // ShellHudGrid render site). When this is false even though
+    // `shellTimerState` is non-null, the rail is never mounted — the
+    // provider has state, but no <ShellTimerRail/> exists to consume it.
+    const hasTimerGateMirror = !!isPaused || (
+      diceGameplayUiActive &&
+      horsesController.enabled &&
+      horsesController.gamePhase === 'playing' &&
+      !!horsesController.currentTurnPlayerId &&
+      !horsesController.currentTurnPlayer?.is_bot &&
+      horsesController.timeLeft !== null
+    ) || (
+      !!currentPlayer &&
+      isPlayerTurn &&
+      roundStatus === 'betting' &&
+      !hasDecided &&
+      timeLeft !== null &&
+      timeLeft > 0 &&
+      !!maxTime
+    );
 
     // ── TIMER DBG snapshot ──────────────────────────────────────────
     // Records the exact gate state behind diceTimerActive so we can
@@ -3390,13 +3412,18 @@ export const MobileGameTable = ({
           ? !!horsesController.currentTurnPlayer.is_bot
           : null,
         turnDeadline,
-        roundDecisionDeadline: null, // not in scope here; parent computes timeLeft/maxTime from it
+        roundDecisionDeadline: null,
         timeLeft: isDice ? (horsesController.timeLeft ?? null) : (timeLeft ?? null),
         maxTime: isDice ? (horsesController.maxTime ?? null) : (maxTime ?? null),
         diceTimerActive: !!diceTimerActive,
         timerPublished: !!shellTimerState,
-        timerMounted: false, // filled by ExtraDebugPills DOM sampler
-        timerVisible: false, // filled by ExtraDebugPills DOM sampler
+        providerHasState: !!providerStateAfterPublish,
+        hasTimerGate: !!hasTimerGateMirror,
+        shellHudGridMounted: false, // filled by ExtraDebugPills DOM sampler
+        timerRowMounted: false,     // filled by ExtraDebugPills DOM sampler
+        timerRowChildCount: 0,      // filled by ExtraDebugPills DOM sampler
+        timerMounted: false,        // filled by ExtraDebugPills DOM sampler
+        timerVisible: false,        // filled by ExtraDebugPills DOM sampler
         blockedReason,
       });
     }
