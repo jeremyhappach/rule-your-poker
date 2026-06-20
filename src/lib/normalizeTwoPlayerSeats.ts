@@ -11,23 +11,27 @@
  *   logic in the seat-anchor layer — once seats are normalized,
  *   canonical observer-absolute / active-canonical geometry suffices.
  *
- * Entry point (single):
- *   evaluatePlayerStatesEndOfGame() calls
- *   normalizeTwoPlayerSeatsIfNeeded() when activeHumanCount === 2.
- *   No other call site is permitted — leaves / sit-outs / timeouts
- *   already funnel into the end-of-game evaluator and must remain
- *   unaware that seat normalization exists.
+ * Topology mutation boundary (ONE rule):
+ *   normalizeTwoPlayerSeatsIfNeeded() MAY ONLY run immediately before a
+ *   status flip that hands control to the next dealer-game bootstrap:
+ *     - waiting        → dealer_selection           (Start Game)
+ *     - game_over      → dealer_selection           (make-it-take-it bot won)
+ *     - game_over/ante → game_selection             (rotate next dealer)
+ *     - ante_decision  → cribbage_dealer_selection  (cribbage handoff)
+ *     - DealerConfig sit-out rotations (→ game_selection)
+ *
+ *   It MUST NOT run on:
+ *     - game_over → waiting       (humans own seats at the waiting table)
+ *     - any waiting-table event   (sit down / sit out / rejoin / render)
+ *     - activeHumanCount changes  (player-state, not topology, signal)
+ *     - selectors / visibility    (read paths)
  *
  * Safety:
- *   - Gated on inherently-2P game types only. Multiplayer games
- *     (Holm / 3-5-7 / Horses / SCC) MUST NOT mutate seats here even
- *     if only two humans happen to be present.
  *   - Two-pass UPDATE around UNIQUE(game_id, position).
  *   - games.dealer_position is rewritten in the same transaction if it
  *     pointed at a moved seat.
- *   - Only runs while no in-flight round exists (pre-game window),
- *     which is the invariant evaluatePlayerStatesEndOfGame already
- *     operates under.
+ *   - Only runs in the pre-bootstrap window so no in-flight round JSONB
+ *     is invalidated.
  */
 
 import { supabase } from '@/integrations/supabase/client';
