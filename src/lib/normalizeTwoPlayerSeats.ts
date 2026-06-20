@@ -35,23 +35,11 @@ import { resolveSessionHostPlayerId } from '@/lib/debugHarness/resolveHarnessHos
 
 const RING = 7;
 
-const INHERENTLY_TWO_PLAYER_GAME_TYPES = new Set([
-  'cribbage',
-  'gin_rummy',
-  'gin-rummy',
-  'ginrummy',
-  'yahtzee',
-]);
-
-function isInherentlyTwoPlayer(gameType: string | null | undefined): boolean {
-  if (!gameType) return false;
-  return INHERENTLY_TWO_PLAYER_GAME_TYPES.has(gameType.toLowerCase());
-}
-
 /** Position three seats clockwise from `h` on the 1..7 ring. */
 function seatThreeClockwiseFrom(h: number): number {
   return ((h - 1 + 3) % RING) + 1;
 }
+
 
 interface PlayerRow {
   id: string;
