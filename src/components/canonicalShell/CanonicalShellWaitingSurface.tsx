@@ -504,8 +504,6 @@ function WaitingSurfaceBody({
 
             {/* WARTIME seat-number overlay. See SHOW_SEAT_NUMBERS. */}
             {SHOW_SEAT_NUMBERS && (() => {
-              const viewerSeat =
-                players.find((p) => p.user_id === currentUserId)?.position ?? null;
               return (
                 <div
                   data-wartime-seat-number-overlay=""
