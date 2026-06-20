@@ -302,6 +302,15 @@ export function ExtraDebugPills() {
         latest.timerRowChildCount !== timerRowChildCount
       )) {
         const { ts: _ts, ...rest } = latest;
+        // Latency: capture timerMountedAt on false→true transition (only after publish).
+        let timerMountedAt = latest.timerMountedAt;
+        if (mounted && !latest.timerMounted && latest.publishedAt !== null && timerMountedAt === null) {
+          timerMountedAt = Date.now();
+        } else if (!mounted) {
+          timerMountedAt = null;
+        }
+        const latencyProviderToMount = latest.providerReceivedAt !== null && timerMountedAt !== null ? timerMountedAt - latest.providerReceivedAt : null;
+        const latencyTotal = latest.publishedAt !== null && timerMountedAt !== null ? timerMountedAt - latest.publishedAt : null;
         timerDbgStore.record({
           ...(rest as TimerDbgEntry),
           timerMounted: mounted,
@@ -309,6 +318,9 @@ export function ExtraDebugPills() {
           shellHudGridMounted,
           timerRowMounted,
           timerRowChildCount,
+          timerMountedAt,
+          latencyProviderToMount,
+          latencyTotal,
         });
       }
       if (!cancelled) raf = requestAnimationFrame(sample);
