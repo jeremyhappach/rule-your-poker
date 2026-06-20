@@ -50,7 +50,7 @@ import {
 // `match_win` announcement. CribbageSkunkOverlay +
 // CribbageWinnerAnnouncement deleted.
 // eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3e)
-import { CribbageChipTransferAnimation } from './CribbageChipTransferAnimation';
+import { useChipTransport } from '@/lib/canonicalShell/ChipTransportProvider';
 import { MobileChatPanel } from './MobileChatPanel';
 import { HandHistory } from './HandHistory';
 import { QuickEmoticonPicker } from './QuickEmoticonPicker';
