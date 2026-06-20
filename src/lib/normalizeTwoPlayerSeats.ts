@@ -188,9 +188,6 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     (p) => p.id !== other.id && p.position === targetPos,
   );
 
-  const otherTempPos = 1000 + otherOldPos;
-  const occupantTempPos = occupant ? 1001 + (occupant.position ?? 0) : null;
-
   const baseSnapshot = {
     statusBefore, gameType, activeHumanCount: 2,
     hostPlayerId: host.id, hostSeat: host.position,
@@ -201,84 +198,88 @@ export async function normalizeTwoPlayerSeatsIfNeeded(
     dealerPositionBefore,
   };
 
-  // Pass 1: move conflicting rows out to placeholders.
-  const moveOtherToTemp = await supabase
-    .from('players')
-    .update({ position: otherTempPos })
-    .eq('id', other.id)
-    .select('id');
-  if (moveOtherToTemp.error) {
-    console.error('[SEAT NORMALIZE] pass1 other→temp failed:', moveOtherToTemp.error);
-    emit('failed_pass1_other', {
-      ...baseSnapshot,
-      dbWriteAttempted: true, dbRowsUpdated: 0,
-      dealerPositionAfter: dealerPositionBefore,
-      errorMessage: moveOtherToTemp.error.message,
-    });
-    return { ran: false, reason: 'pass1-other-failed' };
-  }
+  let rowsUpdated = 0;
 
-  if (occupant && occupantTempPos != null) {
-    const moveOccupantToTemp = await supabase
+  if (!occupant) {
+    // Simple, direct move — target seat is empty. No placeholder pass,
+    // no UNIQUE collision, no position_check violation.
+    const move = await supabase
       .from('players')
-      .update({ position: occupantTempPos })
+      .update({ position: targetPos })
+      .eq('id', other.id)
+      .select('id');
+    if (move.error) {
+      console.error('[SEAT NORMALIZE] direct move failed:', move.error);
+      emit('failed_pass2_other', {
+        ...baseSnapshot,
+        dbWriteAttempted: true, dbRowsUpdated: 0,
+        dealerPositionAfter: dealerPositionBefore,
+        errorMessage: move.error.message,
+      });
+      return { ran: false, reason: 'direct-move-failed' };
+    }
+    rowsUpdated += move.data?.length ?? 0;
+  } else {
+    // Swap with occupant using NULL as the only placeholder (position
+    // is nullable and not constrained by players_position_check).
+    //   1) occupant   → NULL
+    //   2) other      → targetPos      (occupant's old seat)
+    //   3) occupant   → otherOldPos    (other's old seat)
+    const parkOccupant = await supabase
+      .from('players')
+      .update({ position: null })
       .eq('id', occupant.id)
       .select('id');
-    if (moveOccupantToTemp.error) {
-      console.error('[SEAT NORMALIZE] pass1 occupant→temp failed:', moveOccupantToTemp.error);
-      await supabase.from('players').update({ position: otherOldPos }).eq('id', other.id);
+    if (parkOccupant.error) {
+      console.error('[SEAT NORMALIZE] park occupant→NULL failed:', parkOccupant.error);
       emit('failed_pass1_occupant', {
         ...baseSnapshot,
-        dbWriteAttempted: true, dbRowsUpdated: 1,
+        dbWriteAttempted: true, dbRowsUpdated: 0,
         dealerPositionAfter: dealerPositionBefore,
-        errorMessage: moveOccupantToTemp.error.message,
+        errorMessage: parkOccupant.error.message,
       });
-      return { ran: false, reason: 'pass1-occupant-failed' };
+      return { ran: false, reason: 'park-occupant-failed' };
     }
-  }
+    rowsUpdated += parkOccupant.data?.length ?? 0;
 
-  let rowsUpdated = (moveOtherToTemp.data?.length ?? 0);
-
-  const placeOther = await supabase
-    .from('players')
-    .update({ position: targetPos })
-    .eq('id', other.id)
-    .select('id');
-  if (placeOther.error) {
-    console.error('[SEAT NORMALIZE] pass2 other→target failed:', placeOther.error);
-    await supabase.from('players').update({ position: otherOldPos }).eq('id', other.id);
-    if (occupant) {
+    const placeOther = await supabase
+      .from('players')
+      .update({ position: targetPos })
+      .eq('id', other.id)
+      .select('id');
+    if (placeOther.error) {
+      console.error('[SEAT NORMALIZE] place other→target failed:', placeOther.error);
+      // Best-effort revert occupant.
       await supabase.from('players').update({ position: targetPos }).eq('id', occupant.id);
+      emit('failed_pass2_other', {
+        ...baseSnapshot,
+        dbWriteAttempted: true, dbRowsUpdated: rowsUpdated,
+        dealerPositionAfter: dealerPositionBefore,
+        errorMessage: placeOther.error.message,
+      });
+      return { ran: false, reason: 'place-other-failed' };
     }
-    emit('failed_pass2_other', {
-      ...baseSnapshot,
-      dbWriteAttempted: true, dbRowsUpdated: rowsUpdated,
-      dealerPositionAfter: dealerPositionBefore,
-      errorMessage: placeOther.error.message,
-    });
-    return { ran: false, reason: 'pass2-other-failed' };
-  }
-  rowsUpdated += placeOther.data?.length ?? 0;
+    rowsUpdated += placeOther.data?.length ?? 0;
 
-  if (occupant) {
     const placeOccupant = await supabase
       .from('players')
       .update({ position: otherOldPos })
       .eq('id', occupant.id)
       .select('id');
     if (placeOccupant.error) {
-      console.error('[SEAT NORMALIZE] pass2 occupant→other-old failed:', placeOccupant.error);
+      console.error('[SEAT NORMALIZE] place occupant→other-old failed:', placeOccupant.error);
       emit('failed_pass2_occupant', {
         ...baseSnapshot,
         dbWriteAttempted: true, dbRowsUpdated: rowsUpdated,
         dealerPositionAfter: dealerPositionBefore,
         errorMessage: placeOccupant.error.message,
       });
-      // partially applied; do not throw
+      // Partially applied; other is at targetPos, occupant is parked at NULL.
     } else {
       rowsUpdated += placeOccupant.data?.length ?? 0;
     }
   }
+
 
   // 7. Keep games.dealer_position consistent.
   const oldDealerPos = dealerPositionBefore;
