@@ -6738,7 +6738,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
       const activeHumans = activeSeated.filter((p) => !p.is_bot);
       const hostId = resolveSessionHostPlayerId(
-        { current_host: game?.current_host ?? null },
+        { current_host: (game as any)?.current_host ?? null },
         activeSeated.map((p) => ({ id: p.id, user_id: p.user_id, is_bot: p.is_bot, created_at: p.created_at })),
       );
       const host = activeSeated.find((p) => p.id === hostId) ?? activeSeated[0] ?? null;
