@@ -10,9 +10,9 @@
  *   - future per-seat overlays (chat bubbles, status pips, etc.)
  *
  * Design contract:
- *   - Bubbles for HOME / FACE_TO_FACE (center-bottom / center-top) sit on
- *     the table RAIL, NOT inside the active felt play zone. They must not
- *     intrude on stock/discard, pegboards, or center-stack overlays.
+ *   - HOME bubble (center-bottom) sits on the table RAIL, NOT inside
+ *     the active felt play zone. It must not intrude on stock/discard,
+ *     pegboards, or center-stack overlays.
  *   - Perimeter slots (corners + mid-sides) sit at the felt edge, far
  *     enough out to align with the rail rather than the inner play area.
  *   - Bottom perimeter slots anchor by their FULL seat envelope bottom,
@@ -22,6 +22,8 @@
  *   - Identical for active-canonical and observer-absolute projections —
  *     the projection layer (seatAnchors.ts) decides which seat maps to
  *     which slot; this module decides where each slot paints.
+ *
+ * Tombstone — FACE_TO_FACE (-2) retired. See seatAnchors.ts header.
  */
 
 import type { CanonicalSlot } from './seatAnchors';
@@ -38,42 +40,20 @@ export interface CanonicalSlotPlacement {
  */
 export function getCanonicalSlotPlacement(
   slot: CanonicalSlot | null | undefined,
-  variant: 'occupied' | 'open-seat' | 'occupied-observer' = 'occupied',
+  _variant: 'occupied' | 'open-seat' = 'occupied',
 ): CanonicalSlotPlacement {
+  void _variant;
   // Percentage-based anchors that hug the elliptical felt rail.
   switch (slot) {
-    case -2: return { className: 'top-[4%] left-1/2 -translate-x-1/2 items-center' };
     case -1:
-      // HOME (-1) is normally the local viewer's seat and is
-      // self-suppressed in active-canonical projection. In observer-2P
-      // canonicalization (Cribbage / Gin / Yahtzee with two seated
-      // players viewed by an unjoined observer), the lower-positioned
-      // opponent is intentionally projected to HOME to mirror the
-      // active-canonical layout. In that case the cluster must NOT sit
-      // at the central bottom rail — it overlaps the pegging count,
-      // played-card row, and other gameplay artifacts. Shift it to the
-      // bottom-left perimeter rail instead.
-      return variant === 'occupied-observer'
-        ? { className: 'bottom-[1%] left-[6%] items-start scale-90' }
-        : { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
+      return { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
     // BOTTOM_RAIL — observer-only anchor for absolute "south" (pos 4).
-    // Single placement for ALL variants (occupied / open-seat /
-    // occupied-observer): bottom-center on the rail. The legacy
-    // lower-right offset for the `occupied` / `occupied-observer`
-    // variants collided with slot 5's open-seat at `bottom-[2%]
-    // right-[2%]` on the waiting table — same slot must render at
-    // the same place regardless of occupancy. If a gameplay observer
-    // surface later needs to avoid central play artifacts (pegging
-    // count / dice tray), introduce a gameplay-specific carveout
-    // there rather than reintroducing the asymmetry here.
+    // Bottom-center on the rail. Same placement regardless of occupancy
+    // so the slot renders at the same spot whether seated or open.
     case -3:
       return { className: 'bottom-[4%] left-1/2 -translate-x-1/2 items-center' };
     case 0:  return { className: 'bottom-[2%] left-[2%] items-start' };
     case 1:  return { className: 'top-[50%] left-[1%] -translate-y-1/2 items-start' };
-    // Slots 2/3 use a single canonical placement for ALL games — the
-    // legacy `occupied-2p-face` rescue variant was deleted because the
-    // default already lives on the outer rail (Holm-proven). Top safe
-    // area applies uniformly here without any bespoke geometry branch.
     case 2:  return { className: 'top-[6%] left-[4%] items-start' };
     case 3:  return { className: 'top-[6%] right-[4%] items-end' };
     case 4:  return { className: 'top-[50%] right-[1%] -translate-y-1/2 items-end' };
@@ -81,6 +61,7 @@ export function getCanonicalSlotPlacement(
     default: return { className: 'top-2 left-2 items-start' };
   }
 }
+
 
 /**
  * Returns true if the slot lives on the visual right half of the felt
