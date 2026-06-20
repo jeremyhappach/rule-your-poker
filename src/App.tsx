@@ -124,6 +124,7 @@ const App = () => {
                 <NormalizationDbgPanel />
                 <SettlementDbgPanel />
                 <ChipTransportDbgPanel />
+                <WinnerChipEndpointDbgPanel />
               </DebugTray>
               {/* W5 GRID is always available, even when debug UI is hidden */}
               <div
