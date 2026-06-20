@@ -5265,6 +5265,21 @@ export const CribbageMobileGameTable = ({
       hasTableContainer: !!tableContainerRef.current,
       chipAnimationFiredRef: chipAnimationFiredRef.current,
     });
+    // WINNER CHIP ENDPOINT DBG — snapshot at announcementComplete.
+    {
+      const wPlayer = winSequenceData ? players.find(p => p.id === winSequenceData.winnerId) : null;
+      const lSeats = winSequenceData
+        ? winSequenceData.loserIds
+            .map(id => players.find(p => p.id === id)?.position)
+            .filter((p): p is number => p != null)
+        : [];
+      captureWinnerChipEndpoint({
+        site: 'announcementComplete',
+        winnerPlayerId: winSequenceData?.winnerId ?? null,
+        winnerSeat: wPlayer?.position ?? null,
+        loserSeats: lSeats,
+      });
+    }
     // [DOUBLE-SKUNK REPLAY INSTRUMENTATION] Gap 6
     logDebugEvent({
       gameId,
@@ -5342,10 +5357,34 @@ export const CribbageMobileGameTable = ({
     // triggers the same handler that used to fire from
     // CribbageChipTransferAnimation.onAnimationEnd.
     if (intents.length > 0) {
+      // WINNER CHIP ENDPOINT DBG — snapshot at dispatch time (just
+      // before dispatchMany). This is the exact moment the runtime will
+      // resolveChipEndpoint(), so any DOM mismatch here is causal.
+      captureWinnerChipEndpoint({
+        site: 'dispatchMany:pre',
+        winnerPlayerId: winSequenceData.winnerId,
+        winnerSeat: winnerPosition ?? null,
+        loserSeats: intents
+          .map((i) => (i.from.kind === 'seat' ? i.from.position : -1))
+          .filter((p) => p > 0),
+        note: `intents=${intents.length}`,
+      });
       dispatchChipTransport(intents, {
         onAllSettled: () => {
           handleChipAnimationEndRef.current?.();
         },
+      });
+      // And one frame later — catches a "winner seat remounted between
+      // dispatch and runtime resolveLayoutEffect" race.
+      requestAnimationFrame(() => {
+        captureWinnerChipEndpoint({
+          site: 'dispatchMany:postRAF',
+          winnerPlayerId: winSequenceData.winnerId,
+          winnerSeat: winnerPosition ?? null,
+          loserSeats: intents
+            .map((i) => (i.from.kind === 'seat' ? i.from.position : -1))
+            .filter((p) => p > 0),
+        });
       });
     } else {
       // No resolvable losers — skip straight to the post-chips lifecycle.
