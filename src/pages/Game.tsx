@@ -7246,6 +7246,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       
       await logStatusChanged(gameId, user?.id, 'game_over', 'dealer_selection', 'Bot won with make it take it, running dealer selection');
       
+      // Topology normalization at the next-dealer-game bootstrap boundary.
+      try { await normalizeTwoPlayerSeatsIfNeeded(gameId); }
+      catch (e) { console.error('[GAME OVER → dealer_selection] normalize threw:', e); }
+
       // P0 GUARD (MUT-02): atomic DB claim
       const { data: dsClaim, error } = await supabase
         .from('games')
@@ -8738,6 +8742,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             const newDealerPos = await rotateDealerPosition(gameId, currentDealerPos);
             const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
             const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
+            // Topology normalization at the next-dealer-game bootstrap boundary.
+            try { await normalizeTwoPlayerSeatsIfNeeded(gameId); }
+            catch (e) { console.error('[ANTE → game_selection] normalize threw:', e); }
             await supabase
               .from('games')
               .update({ 
@@ -8909,6 +8916,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
             setDealerSelectionCards([]);
             setDealerSelectionWinnerPosition(null);
 
+            // Topology normalization at the next-dealer-game bootstrap boundary.
+            try { await normalizeTwoPlayerSeatsIfNeeded(gameId); }
+            catch (e) { console.error('[ANTE → cribbage_dealer_selection] normalize threw:', e); }
             await supabase
               .from('games')
               .update({
@@ -10292,6 +10302,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
                       const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
                       
+                      // Topology normalization at the next-dealer-game bootstrap boundary.
+                      try { await normalizeTwoPlayerSeatsIfNeeded(gameId); }
+                      catch (e) { console.error('[SIT OUT → game_selection] normalize threw:', e); }
+
                       await supabase
                         .from('games')
                         .update({
@@ -10609,6 +10623,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
                       const newDealerPosition = await rotateDealerPosition(gameId, game.dealer_position || 1);
                       const setupSeconds = Math.max(1, game?.game_setup_timer_seconds ?? 30);
                       const configDeadline = new Date(Date.now() + setupSeconds * 1000).toISOString();
+                      // Topology normalization at the next-dealer-game bootstrap boundary.
+                      try { await normalizeTwoPlayerSeatsIfNeeded(gameId); }
+                      catch (e) { console.error('[SIT OUT#2 → game_selection] normalize threw:', e); }
                       await supabase
                         .from('games')
                         .update({
