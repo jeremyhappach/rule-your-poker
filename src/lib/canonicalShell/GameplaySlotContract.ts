@@ -26,6 +26,14 @@ import type { GeometryTokens } from './ResponsiveGeometryProvider';
 /** Provisional center-content size hint. v1 — expect per-game tuning. */
 export type CenterSize = 'compact' | 'standard' | 'dense';
 
+/**
+ * Motion preset for a chip transport intent. Shell-owned table of
+ * keyframe + timing recipes lives in `ChipTransportRuntime`. P8.1 had
+ * only the implicit 'default'; Wave 3B adds 'cribbageBounce' to absorb
+ * the legacy `CribbageChipTransferAnimation` motion verbatim.
+ */
+export type ChipTransportVariant = 'default' | 'cribbageBounce';
+
 /** Game-dispatched chip transport intent. Animation runtime is shell-owned (P8.1). */
 export interface ChipTransportIntent {
   /** Dedupe key — stable per intent across re-renders. */
@@ -40,8 +48,10 @@ export interface ChipTransportIntent {
     | 'leg'
     | 'sweep'
     | 'transfer';
-  /** Optional override; shell picks a default per reason otherwise. */
+  /** Optional override; shell picks a default per reason/variant otherwise. */
   durationMs?: number;
+  /** Motion preset — defaults to 'default'. */
+  variant?: ChipTransportVariant;
 }
 
 export type ChipEndpointRef =
