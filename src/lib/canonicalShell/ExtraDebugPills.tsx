@@ -302,6 +302,15 @@ export function ExtraDebugPills() {
         latest.timerRowChildCount !== timerRowChildCount
       )) {
         const { ts: _ts, ...rest } = latest;
+        // Latency: capture timerMountedAt on false→true transition (only after publish).
+        let timerMountedAt = latest.timerMountedAt;
+        if (mounted && !latest.timerMounted && latest.publishedAt !== null && timerMountedAt === null) {
+          timerMountedAt = Date.now();
+        } else if (!mounted) {
+          timerMountedAt = null;
+        }
+        const latencyProviderToMount = latest.providerReceivedAt !== null && timerMountedAt !== null ? timerMountedAt - latest.providerReceivedAt : null;
+        const latencyTotal = latest.publishedAt !== null && timerMountedAt !== null ? timerMountedAt - latest.publishedAt : null;
         timerDbgStore.record({
           ...(rest as TimerDbgEntry),
           timerMounted: mounted,
@@ -309,6 +318,9 @@ export function ExtraDebugPills() {
           shellHudGridMounted,
           timerRowMounted,
           timerRowChildCount,
+          timerMountedAt,
+          latencyProviderToMount,
+          latencyTotal,
         });
       }
       if (!cancelled) raf = requestAnimationFrame(sample);
@@ -366,7 +378,7 @@ export function ExtraDebugPills() {
         pillKey="timerDbg"
         store={timerDbgStore}
         summarize={(e) => e
-          ? `${e.gameType ?? '—'} pub:${e.timerPublished?'Y':'N'} prov:${e.providerHasState?'Y':'N'} gate:${e.hasTimerGate?'Y':'N'} grid:${e.shellHudGridMounted?'Y':'N'} row:${e.timerRowMounted?'Y':'N'}(${e.timerRowChildCount}) rail:${e.timerMounted?'Y':'N'} vis:${e.timerVisible?'Y':'N'} · ${e.blockedReason}`
+          ? `${e.gameType ?? '—'} pub:${e.timerPublished?'Y':'N'} prov:${e.providerHasState?'Y':'N'} rail:${e.timerMounted?'Y':'N'} vis:${e.timerVisible?'Y':'N'} · lat p→pr:${e.latencyPublishToProvider ?? '—'}ms pr→m:${e.latencyProviderToMount ?? '—'}ms tot:${e.latencyTotal ?? '—'}ms · ${e.blockedReason}`
           : '—'}
         top={168}
       />

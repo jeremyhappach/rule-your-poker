@@ -3401,6 +3401,29 @@ export const MobileGameTable = ({
       }
       const timerDbgEntries = timerDbgStore.get();
       const latestTimerDbg = timerDbgEntries[timerDbgEntries.length - 1];
+      const nowMs = Date.now();
+      const nextTimerPublished = !!shellTimerState;
+      const nextProviderHasState = !!providerStateAfterPublish;
+      // Latency tracking: capture wall-clock at each transition false→true,
+      // reset to null when publish goes back to false (new publish cycle).
+      let publishedAt = latestTimerDbg?.publishedAt ?? null;
+      let providerReceivedAt = latestTimerDbg?.providerReceivedAt ?? null;
+      let timerMountedAt = latestTimerDbg?.timerMountedAt ?? null;
+      if (nextTimerPublished && !latestTimerDbg?.timerPublished) {
+        publishedAt = nowMs;
+        providerReceivedAt = null;
+        timerMountedAt = null;
+      } else if (!nextTimerPublished) {
+        publishedAt = null;
+        providerReceivedAt = null;
+        timerMountedAt = null;
+      }
+      if (nextProviderHasState && !latestTimerDbg?.providerHasState && publishedAt !== null && providerReceivedAt === null) {
+        providerReceivedAt = nowMs;
+      }
+      const latencyPublishToProvider = publishedAt !== null && providerReceivedAt !== null ? providerReceivedAt - publishedAt : null;
+      const latencyProviderToMount = providerReceivedAt !== null && timerMountedAt !== null ? timerMountedAt - providerReceivedAt : null;
+      const latencyTotal = publishedAt !== null && timerMountedAt !== null ? timerMountedAt - publishedAt : null;
       timerDbgStore.record({
         gameType: gameType ?? null,
         roundId: (horsesRoundId ?? null) as string | null,
@@ -3418,8 +3441,8 @@ export const MobileGameTable = ({
         timeLeft: isDice ? (horsesController.timeLeft ?? null) : (timeLeft ?? null),
         maxTime: isDice ? (horsesController.maxTime ?? null) : (maxTime ?? null),
         diceTimerActive: !!diceTimerActive,
-        timerPublished: !!shellTimerState,
-        providerHasState: !!providerStateAfterPublish,
+        timerPublished: nextTimerPublished,
+        providerHasState: nextProviderHasState,
         hasTimerGate: !!hasTimerGateMirror,
         shellHudGridMounted: latestTimerDbg?.shellHudGridMounted ?? false, // DOM-owned; filled by ExtraDebugPills sampler
         timerRowMounted: latestTimerDbg?.timerRowMounted ?? false,         // DOM-owned; filled by ExtraDebugPills sampler
@@ -3427,6 +3450,12 @@ export const MobileGameTable = ({
         timerMounted: latestTimerDbg?.timerMounted ?? false,               // DOM-owned; filled by ExtraDebugPills sampler
         timerVisible: latestTimerDbg?.timerVisible ?? false,               // DOM-owned; filled by ExtraDebugPills sampler
         blockedReason,
+        publishedAt,
+        providerReceivedAt,
+        timerMountedAt,
+        latencyPublishToProvider,
+        latencyProviderToMount,
+        latencyTotal,
       });
     }
   }

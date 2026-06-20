@@ -165,6 +165,18 @@ export interface TimerDbgEntry {
   timerMounted: boolean;
   timerVisible: boolean;
   blockedReason: TimerBlockedReason;
+  /** Wall-clock ms when timerPublished first became true (current publish cycle). */
+  publishedAt: number | null;
+  /** Wall-clock ms when providerHasState first became true after publish. */
+  providerReceivedAt: number | null;
+  /** Wall-clock ms when timerMounted (rail DOM) first became true after publish. */
+  timerMountedAt: number | null;
+  /** providerReceivedAt − publishedAt (ms). */
+  latencyPublishToProvider: number | null;
+  /** timerMountedAt − providerReceivedAt (ms). */
+  latencyProviderToMount: number | null;
+  /** timerMountedAt − publishedAt (ms). */
+  latencyTotal: number | null;
 }
 
 export const dealerDbgStore = makeStore<DealerDbgEntry>();
