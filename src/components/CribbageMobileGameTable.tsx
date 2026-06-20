@@ -6674,15 +6674,10 @@ export const CribbageMobileGameTable = ({
                 }
                 return undefined;
               },
-              hideChipBubble: (p) =>
-                winSequencePhase === 'chips' &&
-                !!storedChipPositions?.losers.some(l => l.playerId === p.id),
-              chipValue: (p) => {
-                const isLoserDuringChipAnim =
-                  winSequencePhase === 'chips' &&
-                  !!storedChipPositions?.losers.some(l => l.playerId === p.id);
-                return isLoserDuringChipAnim ? '' : undefined;
-              },
+              // Wave 3B: hideChipBubble / chipValue='' retired. Shell
+              // ChipTransport runtime owns from-seat suppression while a
+              // fly is in flight (see useChipTransportSuppressedSeats).
+
               cardBacks: (p) => {
                 if (!isGameplayMode || !viewState) return null;
                 const seatState = viewState.playerStates[p.id];
