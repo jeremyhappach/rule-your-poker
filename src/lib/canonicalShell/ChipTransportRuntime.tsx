@@ -154,7 +154,21 @@ function applyDestinationReaction(
     el.style.setProperty('--chip-dest-scale', String(reaction.scale));
     animations.push(`__chipDestScale ${DEST_REACTION_DURATION_MS}ms ease-out`);
   }
-  if (animations.length === 0) return;
+  if (animations.length === 0) {
+    destReactionDbgUpsert(intentId, {
+      reactionMounted: false,
+      note: 'no-animations-for-reaction',
+    });
+    return;
+  }
+
+  // DEST REACTION DBG — element + transformBefore snapshot.
+  let transformBefore = '?';
+  try { transformBefore = window.getComputedStyle(el).transform; } catch { /* */ }
+  destReactionDbgUpsert(intentId, {
+    targetElement: snapshotTargetElement(el),
+    computedTransformBefore: transformBefore,
+  });
 
   // Stash & restore prior animation so we don't clobber static styles.
   const prevAnimation = el.style.animation;
@@ -162,10 +176,69 @@ function applyDestinationReaction(
   el.style.transformOrigin = '50% 50%';
   el.style.animation = animations.join(', ');
   el.setAttribute('data-chip-dest-reaction', Object.entries(reaction).filter(([, v]) => v).map(([k]) => k).join('+'));
+
+  // Capture computed animation values one frame later (after style flush).
+  let computedAnimationName = '?';
+  let computedAnimationDuration = '?';
+  let assignedAnimation = el.style.animation;
+  requestAnimationFrame(() => {
+    try {
+      const cs = window.getComputedStyle(el);
+      computedAnimationName = cs.animationName;
+      computedAnimationDuration = cs.animationDuration;
+    } catch { /* */ }
+    destReactionDbgUpsert(intentId, {
+      reactionMounted: true,
+      computedAnimationName,
+      computedAnimationDuration,
+      note: `assignedAnimation=${assignedAnimation.slice(0, 60)}`,
+    });
+  });
+
+  const onStart = () => {
+    let tfDuring = '?';
+    try { tfDuring = window.getComputedStyle(el).transform; } catch { /* */ }
+    destReactionDbgUpsert(intentId, {
+      reactionStarted: true,
+      computedTransformDuring: tfDuring,
+    });
+  };
+  const onEnd = () => {
+    let tfAfter = '?';
+    try { tfAfter = window.getComputedStyle(el).transform; } catch { /* */ }
+    destReactionDbgUpsert(intentId, {
+      reactionFinished: true,
+      computedTransformAfter: tfAfter,
+    });
+  };
+  el.addEventListener('animationstart', onStart, { once: true });
+  el.addEventListener('animationend', onEnd, { once: true });
+
+  // Mid-animation transform sample + override detection: re-check the
+  // inline animation property; if some other writer has clobbered it,
+  // flag overriddenDuringReaction=true.
+  const midMs = Math.floor(DEST_REACTION_DURATION_MS / 2);
+  const tMid = window.setTimeout(() => {
+    let tfMid = '?';
+    try { tfMid = window.getComputedStyle(el).transform; } catch { /* */ }
+    const overridden = el.style.animation !== assignedAnimation;
+    destReactionDbgUpsert(intentId, {
+      computedTransformDuring: tfMid,
+      overriddenDuringReaction: overridden,
+    });
+  }, midMs);
+
   const clear = () => {
     el.style.animation = prevAnimation;
     el.style.transformOrigin = prevTransformOrigin;
     el.removeAttribute('data-chip-dest-reaction');
+    el.removeEventListener('animationstart', onStart);
+    el.removeEventListener('animationend', onEnd);
+    window.clearTimeout(tMid);
+    // Final after-clear transform capture.
+    let tfFinal = '?';
+    try { tfFinal = window.getComputedStyle(el).transform; } catch { /* */ }
+    destReactionDbgUpsert(intentId, { computedTransformAfter: tfFinal });
   };
   window.setTimeout(clear, DEST_REACTION_DURATION_MS + 80);
   chipTransportDbgUpsert(intentId, {
