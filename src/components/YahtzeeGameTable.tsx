@@ -20,10 +20,6 @@ import { AssignedRectFitter } from "@/lib/wave5GameplayGeometry/AssignedRectPx";
 import { DiceTraceControl } from "./DiceTraceControl";
 // eslint-disable-next-line no-restricted-imports -- P0 migration: move to shell-owned presentation.chipTransfer (plan step 3d)
 import { ChipTransferAnimation } from "./ChipTransferAnimation";
-// eslint-disable-next-line no-restricted-imports -- P0 migration: chip primitives drop out once shell owns Yahtzee seat overlay (plan step 3c)
-import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
-// eslint-disable-next-line no-restricted-imports -- P0 migration: chip primitives drop out once shell owns Yahtzee seat overlay (plan step 3c)
-import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
 import confetti from "canvas-confetti";
 import { MusicToggleButton } from "./MusicToggleButton";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
@@ -1886,51 +1882,12 @@ export function YahtzeeGameTable({
     );
   };
 
-  /* ---- Render chip stack for a player ---- */
-  const renderPlayerChip = (player: Player, compact = false) => {
-    const isTheirTurn = player.id === currentTurnPlayerId && gamePhase === 'playing';
-    const isMe = player.user_id === currentUserId;
-    const ps = viewState?.playerStates?.[player.id];
-    const total = ps ? getTotalScore(ps.scorecard) : 0;
-    const isWinning = total > 0 && total === maxTotal && gamePhase === 'complete';
+  /* Wave 3 / 3C Yahtzee chip primitive cleanup:
+     renderPlayerChip removed — shell-owned CanonicalSeatCluster now
+     renders the opponent chip disc/stack from presentation state
+     (chipValue / statusRing / scoreLine). Games emit state; shell
+     renders artifacts. No JSX escape hatch remains here. */
 
-    // Compact mode: small name badge, no chip circle
-    if (compact) {
-      return (
-        <div className="flex flex-col items-center gap-0.5">
-          <span className={cn(
-            "text-[10px] font-bold truncate max-w-[60px] text-amber-200 drop-shadow-md px-1.5 py-0.5 rounded bg-black/40",
-            isTheirTurn && "animate-pulse ring-1 ring-yellow-400"
-          )}>
-            {getPlayerUsername(player)}
-          </span>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col items-center gap-0.5" data-seat-chip-position={player.position}>
-        <span className={cn(
-          "text-[11px] font-semibold truncate max-w-[70px] text-white drop-shadow-md"
-        )}>
-          {getPlayerUsername(player)}
-        </span>
-        {/* Wave 3 / 3A: shell-owned chip disc. Yahtzee uses the mobile-only
-            compact preset (no tablet doubling).
-            Wave 3B: stack-root identity owned by CanonicalChipstack
-            (thin wrapper — visuals unchanged). */}
-        <CanonicalChipstack position={player.position}>
-          <CanonicalChipDisc
-            amount={player.chips}
-            size="gameplay-compact"
-            showTurnRing={isTheirTurn}
-            pulseDisc={isTheirTurn}
-            positionAnchor={player.position}
-          />
-        </CanonicalChipstack>
-      </div>
-    );
-  };
 
   /* ---- Startup: canonical shell chrome stays mounted continuously ----
      Aligned with the Gin Rummy fix (see GinRummyGameTable.tsx ~L2187).
