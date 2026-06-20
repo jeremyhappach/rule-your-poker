@@ -56,6 +56,8 @@ import {
   CanonicalAnnouncementDebugTrigger,
   useAnnouncementContext,
 } from './announcements';
+import { SettlementProvider } from './settlement/SettlementProvider';
+import { SettlementRuntime } from './settlement/SettlementRuntime';
 
 /**
  * Lobby-mode announcement reset. When the shell transitions into
@@ -414,16 +416,19 @@ export function PersistentTableShell({
         roundId={null}
         viewerUserId={viewerUserId}
       >
-        <ShellOverlayMountsProvider>
-          <ShellTabBarProvider>
-            <ShellTimerProvider>
-              <ShellFeltContextProvider>
-                <LobbyAnnouncementReset lobbyMode={lobbyMode} />
-                {body}
-              </ShellFeltContextProvider>
-            </ShellTimerProvider>
-          </ShellTabBarProvider>
-        </ShellOverlayMountsProvider>
+        <SettlementProvider>
+          <SettlementRuntime />
+          <ShellOverlayMountsProvider>
+            <ShellTabBarProvider>
+              <ShellTimerProvider>
+                <ShellFeltContextProvider>
+                  <LobbyAnnouncementReset lobbyMode={lobbyMode} />
+                  {body}
+                </ShellFeltContextProvider>
+              </ShellTimerProvider>
+            </ShellTabBarProvider>
+          </ShellOverlayMountsProvider>
+        </SettlementProvider>
       </CanonicalAnnouncementProvider>
     </ChipTransportProvider>
   );
