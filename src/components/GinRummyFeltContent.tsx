@@ -45,7 +45,6 @@ const toDisplayCard = (card: GinRummyCard) => ({
 // applied to the spotlight cone.
 const SLOT_TO_SPOTLIGHT_ANGLE: Record<CanonicalSlot, number> = {
   [-3]: 180, // BOTTOM_RAIL (observer-only) — same as HOME
-  [-2]: 0,
   [-1]: 180,
   0: -135,
   1: -90,
@@ -54,6 +53,7 @@ const SLOT_TO_SPOTLIGHT_ANGLE: Record<CanonicalSlot, number> = {
   4: 90,
   5: 135,
 };
+
 
 const GinCanonicalTurnSpotlight = ({
   currentTurnSlot,
