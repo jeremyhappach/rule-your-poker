@@ -171,6 +171,7 @@ import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
+import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
@@ -6739,6 +6740,18 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.error('[GAME START] Failed to normalize waiting-table players:', normalizePlayersError);
       return;
     }
+
+    // Two-Player Seat Normalization (Cribbage / Gin / Yahtzee).
+    // Second orchestration entry point — runs in the waiting →
+    // dealer_selection pre-game window so the dealer-selection bootstrap
+    // reads already-opposed seats. Safe no-op for non-2P game types and
+    // for non-2-human seatings (gated internally).
+    try {
+      await normalizeTwoPlayerSeatsIfNeeded(gameId);
+    } catch (e) {
+      console.error('[GAME START] normalizeTwoPlayerSeatsIfNeeded threw:', e);
+    }
+
 
     // Move to dealer_selection AND clear recovery-waiting scaffolding.
     const { error } = await supabase
