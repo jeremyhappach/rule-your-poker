@@ -84,6 +84,8 @@ import { useLifecycleMount } from '@/lib/canonicalShell/lifecycleDebug';
 import { Wave4CribbageChromeHost } from '@/components/Wave4CribbageChromeHost';
 import { Wave4PegboardSlot } from '@/components/Wave4PegboardSlot';
 import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
+import { recordSettlementIntent } from '@/lib/canonicalShell/settlement/settlementDbg';
+import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
 
 
 import {
@@ -3773,6 +3775,56 @@ export const CribbageMobileGameTable = ({
       multiplier,
     });
     setWinSequencePhase('announcement');
+
+    // === Canonical Settlement Phase — Wave 1 shadow-record ===
+    // Cribbage emits the SettlementIntent it WOULD submit in Wave 2.
+    // Shadow mode: logged to SETTLEMENT DBG for inspection only; the
+    // live runtime is not driven. Existing chip-transfer + announcement
+    // code paths above remain authoritative until W2 cutover.
+    try {
+      const winnerSeat = players.find(p => p.id === winnerId)?.position ?? null;
+      const preludeType: SettlementIntent['prelude'] =
+        multiplier >= 3 ? { type: 'double_skunk' }
+        : multiplier >= 2 ? { type: 'skunk' }
+        : undefined;
+      const transfers: SettlementIntent['transfers'] = loserIds.map((loserId, idx) => {
+        const loserSeat = players.find(p => p.id === loserId)?.position ?? null;
+        return {
+          id: `${terminalEventId}:xf:${idx}`,
+          from: loserSeat != null
+            ? { kind: 'seat' as const, position: loserSeat }
+            : { kind: 'pot' as const },
+          to: winnerSeat != null
+            ? { kind: 'seat' as const, position: winnerSeat }
+            : { kind: 'pot' as const },
+          amount: amountPerLoser,
+          variant: multiplier >= 2 ? 'skunk' : 'default',
+          destinationReaction: { bounce: true },
+          reason: 'cribbage_match_win',
+        };
+      });
+      const shadowIntent: SettlementIntent = {
+        gameId: gameId ?? 'unknown',
+        handNumber: currentHandNumber ?? 0,
+        prelude: preludeType,
+        transfers,
+        celebration: {
+          winners: [winnerId],
+          announcement: `${winnerName} wins ${winnerScoreVal}-${loserLowest}`,
+          confetti: true,
+          spotlight: true,
+          minDurationMs: preludeType ? 4100 : 1800,
+        },
+      };
+      recordSettlementIntent({
+        caller: 'cribbage.triggerWinSequence',
+        intent: shadowIntent,
+        note: 'W1 shadow — legacy chip-transfer + match_win remain authoritative',
+      });
+    } catch (e) {
+      // Diagnostic only; never break the win sequence.
+      console.warn('[CRIBBAGE] settlement shadow-record failed', e);
+    }
 
     // NOTE: dealerGameId intentionally OMITTED from deps. It flips to null when
     // games.current_game_uuid is cleared post-completion, which would otherwise
