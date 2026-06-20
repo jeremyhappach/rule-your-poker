@@ -172,7 +172,8 @@ import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
 import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
-import { recordNormalizationDbg } from "@/lib/normalizationDbg";
+import { recordNormalizationDbg, type NormalizationResultCode } from "@/lib/normalizationDbg";
+import { resolveSessionHostPlayerId } from "@/lib/debugHarness/resolveHarnessHost";
 import { Card as CardType } from "@/lib/cardUtils";
 import { formatChipValue } from "@/lib/utils";
 import { getBotAlias } from "@/lib/botAlias";
@@ -6705,6 +6706,105 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     fetchSpan.end({ status: gameData?.status, round: gameData?.current_round });
   };
 
+  const recordStartGameNormalizationDbg = async (
+    checkpoint: 'before-normalize' | 'after-normalize' | 'after-status-flip',
+    normalizeResult?: Awaited<ReturnType<typeof normalizeTwoPlayerSeatsIfNeeded>> | null,
+  ) => {
+    if (!gameId) return;
+    try {
+      const [playersAuditRes, gameAuditRes] = await Promise.all([
+        supabase
+          .from('players')
+          .select('id, user_id, position, sitting_out, is_bot, status, created_at')
+          .eq('game_id', gameId),
+        supabase
+          .from('games')
+          .select('current_host, status, game_type')
+          .eq('id', gameId)
+          .maybeSingle(),
+      ]);
+
+      if (playersAuditRes.error) {
+        recordNormalizationDbg({
+          kind: 'start-game', caller: 'startGameFromWaiting', checkpoint, gameId,
+          result: 'failed_unknown', errorMessage: playersAuditRes.error.message,
+        });
+        return;
+      }
+
+      const auditGame = gameAuditRes.data as { current_host?: string | null; status?: string | null; game_type?: string | null } | null;
+      const rows = (playersAuditRes.data ?? []) as Array<{
+        id: string; user_id: string | null; position: number | null;
+        sitting_out: boolean | null; is_bot: boolean | null; status: string | null;
+        created_at: string | null;
+      }>;
+      const activeSeated = rows.filter((p) =>
+        p.position != null &&
+        p.status !== 'observer' &&
+        p.status !== 'left' &&
+        p.sitting_out === false
+      );
+      const activeHumans = activeSeated.filter((p) => !p.is_bot);
+      const hostId = resolveSessionHostPlayerId(
+        { current_host: auditGame?.current_host ?? null },
+        activeSeated.map((p) => ({ id: p.id, user_id: p.user_id, is_bot: p.is_bot, created_at: p.created_at })),
+      );
+      const host = activeSeated.find((p) => p.id === hostId) ?? activeSeated[0] ?? null;
+      const other = host ? activeSeated.find((p) => p.id !== host.id) ?? null : null;
+      const decisionHostSeat = normalizeResult?.hostPosition ?? host?.position ?? null;
+      const decisionOtherSeat = normalizeResult?.otherOldPosition ?? other?.position ?? null;
+      const rawDist = decisionHostSeat != null && decisionOtherSeat != null
+        ? Math.abs(decisionHostSeat - decisionOtherSeat)
+        : null;
+      const circDist = rawDist != null ? Math.min(rawDist, 7 - rawDist) : null;
+      const targetSeat = normalizeResult?.otherNewPosition ?? (decisionHostSeat != null ? ((decisionHostSeat - 1 + 3) % 7) + 1 : null);
+      const result: NormalizationResultCode = checkpoint === 'before-normalize'
+        ? 'preflight'
+        : normalizeResult?.result ?? (checkpoint === 'after-status-flip' ? 'status_flip_complete' : 'failed_unknown');
+      const dbWriteAttempted = result === 'normalized' || String(result).startsWith('failed_');
+      const shouldNormalize = normalizeResult?.ran === true
+        ? true
+        : activeSeated.length === 2 && circDist != null
+          ? circDist !== 3
+          : false;
+
+      recordNormalizationDbg({
+        kind: 'start-game',
+        caller: 'startGameFromWaiting',
+        checkpoint,
+        gameId,
+        statusBefore: auditGame?.status ?? game?.status ?? null,
+        gameType: auditGame?.game_type ?? game?.game_type ?? null,
+        activeSeatedPlayers: activeSeated.length,
+        activeHumanPlayers: activeHumans.length,
+        activeHumanCount: activeHumans.length,
+        players: rows.map((p) => ({
+          playerId: p.id,
+          isBot: p.is_bot === true,
+          status: p.status ?? null,
+          sittingOut: p.sitting_out === true,
+          position: p.position ?? null,
+        })),
+        hostPlayerId: host?.id ?? null,
+        hostSeat: decisionHostSeat,
+        otherPlayerId: other?.id ?? null,
+        otherSeat: decisionOtherSeat,
+        rawDistance: rawDist,
+        circularDistance: circDist,
+        shouldNormalize,
+        targetSeat,
+        dbWriteAttempted,
+        dbRowsUpdated: checkpoint === 'before-normalize' ? 0 : normalizeResult?.dbRowsUpdated ?? null,
+        result,
+      });
+    } catch (e: any) {
+      recordNormalizationDbg({
+        kind: 'start-game', caller: 'startGameFromWaiting', checkpoint, gameId,
+        result: 'failed_unknown', errorMessage: e?.message ?? String(e),
+      });
+    }
+  };
+
   // This function is called when 2+ players are seated in waiting status
   const startGameFromWaiting = async () => {
     if (!gameId) return;
@@ -6745,13 +6845,17 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     // Two-Player Seat Normalization (Cribbage / Gin / Yahtzee).
     // Second orchestration entry point — runs in the waiting →
     // dealer_selection pre-game window so the dealer-selection bootstrap
-    // reads already-opposed seats. Safe no-op for non-2P game types and
-    // for non-2-human seatings (gated internally).
+    // reads already-opposed seats. Safe no-op when the Start Game seating
+    // invariant is not exactly two active seated players (bots included).
+    let startGameNormalizeResult: Awaited<ReturnType<typeof normalizeTwoPlayerSeatsIfNeeded>> | null = null;
     try {
       recordNormalizationDbg({ kind: 'call-site', caller: 'StartGameFromWaiting', didInvokeNormalizer: true, statusTransition: 'waiting→dealer_selection' });
-      await normalizeTwoPlayerSeatsIfNeeded(gameId, 'StartGameFromWaiting');
+      await recordStartGameNormalizationDbg('before-normalize');
+      startGameNormalizeResult = await normalizeTwoPlayerSeatsIfNeeded(gameId, 'StartGameFromWaiting');
+      await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
     } catch (e) {
       console.error('[GAME START] normalizeTwoPlayerSeatsIfNeeded threw:', e);
+      await recordStartGameNormalizationDbg('after-normalize', startGameNormalizeResult);
     }
 
 
@@ -6773,6 +6877,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       console.error('Start game error:', error);
       return;
     }
+
+    await recordStartGameNormalizationDbg('after-status-flip', startGameNormalizeResult);
 
     // Manual refetch to ensure UI updates immediately
     setTimeout(() => fetchGameData(), 100);

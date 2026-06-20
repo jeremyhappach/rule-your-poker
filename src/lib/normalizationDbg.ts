@@ -4,7 +4,7 @@
  * decisions. Provides a tiny ring buffer + subscribe/format helpers
  * consumed by <NormalizationDbgPanel/>.
  *
- * Two event kinds:
+ * Event kinds:
  *   - 'call-site' — emitted at every known caller BEFORE invoking (or
  *     deciding not to invoke) the normalizer. Proves which transitions
  *     attempted normalization.
@@ -17,6 +17,7 @@ let seq = 0;
 
 export type NormalizationResultCode =
   | 'skipped_no_game'
+  | 'skipped_not_two_active_seated'
   | 'skipped_not_two_humans'
   | 'skipped_already_opposite'
   | 'skipped_host_or_other_missing_position'
@@ -25,13 +26,24 @@ export type NormalizationResultCode =
   | 'failed_pass1_occupant'
   | 'failed_pass2_other'
   | 'failed_pass2_occupant'
-  | 'failed_unknown';
+  | 'failed_unknown'
+  | 'preflight'
+  | 'status_flip_complete';
+
+export interface NormalizationDbgPlayer {
+  playerId: string;
+  isBot: boolean;
+  status: string | null;
+  sittingOut: boolean;
+  position: number | null;
+}
 
 export interface NormalizationDbgEntry {
   seq: number;
   ts: number;
-  kind: 'call-site' | 'normalize';
+  kind: 'call-site' | 'normalize' | 'start-game';
   caller: string;
+  checkpoint?: 'before-normalize' | 'after-normalize' | 'after-status-flip' | string;
   // call-site fields:
   didInvokeNormalizer?: boolean;
   statusTransition?: string;
@@ -39,7 +51,10 @@ export interface NormalizationDbgEntry {
   gameId?: string;
   gameType?: string | null;
   statusBefore?: string | null;
+  activeSeatedPlayers?: number;
+  activeHumanPlayers?: number;
   activeHumanCount?: number;
+  players?: NormalizationDbgPlayer[];
   hostPlayerId?: string | null;
   hostSeat?: number | null;
   otherPlayerId?: string | null;
@@ -92,9 +107,20 @@ export function formatNormalizationDbgAsText(): string {
       lines.push(
         `${iso} [CALL-SITE] caller=${e.caller} didInvokeNormalizer=${e.didInvokeNormalizer} statusTransition=${e.statusTransition ?? ''}`,
       );
+    } else if (e.kind === 'start-game') {
+      lines.push(
+        `${iso} [START GAME NORMALIZATION DBG] checkpoint=${e.checkpoint ?? ''} caller=${e.caller} result=${e.result ?? ''}`,
+        `  activeSeatedPlayers=${e.activeSeatedPlayers ?? ''} activeHumanPlayers=${e.activeHumanPlayers ?? ''}`,
+        `  players=${(e.players ?? []).map((p) => `{playerId=${p.playerId}, isBot=${p.isBot}, status=${p.status ?? ''}, sittingOut=${p.sittingOut}, position=${p.position ?? ''}}`).join(' ')}`,
+        `  hostSeat=${e.hostSeat ?? ''} otherSeat=${e.otherSeat ?? ''} rawDist=${e.rawDistance ?? ''} circDist=${e.circularDistance ?? ''}`,
+        `  shouldNormalize=${e.shouldNormalize} targetSeat=${e.targetSeat ?? ''}`,
+        `  dbWriteAttempted=${e.dbWriteAttempted} dbRowsUpdated=${e.dbRowsUpdated ?? ''}`,
+        `  ${e.errorMessage ? `error=${e.errorMessage}` : ''}`,
+      );
     } else {
       lines.push(
-        `${iso} [NORMALIZE] caller=${e.caller} statusBefore=${e.statusBefore ?? ''} gameType=${e.gameType ?? ''} activeHumans=${e.activeHumanCount ?? ''}`,
+        `${iso} [NORMALIZE] caller=${e.caller} statusBefore=${e.statusBefore ?? ''} gameType=${e.gameType ?? ''} activeSeated=${e.activeSeatedPlayers ?? ''} activeHumans=${e.activeHumanPlayers ?? e.activeHumanCount ?? ''}`,
+        `  players=${(e.players ?? []).map((p) => `{playerId=${p.playerId}, isBot=${p.isBot}, status=${p.status ?? ''}, sittingOut=${p.sittingOut}, position=${p.position ?? ''}}`).join(' ')}`,
         `  host=${e.hostPlayerId ?? ''}@${e.hostSeat ?? ''} other=${e.otherPlayerId ?? ''}@${e.otherSeat ?? ''} rawDist=${e.rawDistance ?? ''} circDist=${e.circularDistance ?? ''}`,
         `  shouldNormalize=${e.shouldNormalize} targetSeat=${e.targetSeat ?? ''} occupant=${e.occupantPlayerId ?? ''}`,
         `  dbWriteAttempted=${e.dbWriteAttempted} dbRowsUpdated=${e.dbRowsUpdated ?? ''} dealerPos ${e.dealerPositionBefore ?? ''}→${e.dealerPositionAfter ?? ''}`,
