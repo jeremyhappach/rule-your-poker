@@ -6751,15 +6751,22 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
       );
       const host = activeSeated.find((p) => p.id === hostId) ?? activeSeated[0] ?? null;
       const other = host ? activeSeated.find((p) => p.id !== host.id) ?? null : null;
-      const rawDist = host?.position != null && other?.position != null
-        ? Math.abs(host.position - other.position)
+      const decisionHostSeat = normalizeResult?.hostPosition ?? host?.position ?? null;
+      const decisionOtherSeat = normalizeResult?.otherOldPosition ?? other?.position ?? null;
+      const rawDist = decisionHostSeat != null && decisionOtherSeat != null
+        ? Math.abs(decisionHostSeat - decisionOtherSeat)
         : null;
       const circDist = rawDist != null ? Math.min(rawDist, 7 - rawDist) : null;
-      const targetSeat = host?.position != null ? ((host.position - 1 + 3) % 7) + 1 : null;
+      const targetSeat = normalizeResult?.otherNewPosition ?? (decisionHostSeat != null ? ((decisionHostSeat - 1 + 3) % 7) + 1 : null);
       const result = checkpoint === 'before-normalize'
         ? 'preflight'
         : normalizeResult?.result ?? (checkpoint === 'after-status-flip' ? 'status_flip_complete' : 'failed_unknown');
       const dbWriteAttempted = result === 'normalized' || String(result).startsWith('failed_');
+      const shouldNormalize = normalizeResult?.ran === true
+        ? true
+        : activeSeated.length === 2 && circDist != null
+          ? circDist !== 3
+          : false;
 
       recordNormalizationDbg({
         kind: 'start-game',
@@ -6779,12 +6786,12 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
           position: p.position ?? null,
         })),
         hostPlayerId: host?.id ?? null,
-        hostSeat: host?.position ?? null,
+        hostSeat: decisionHostSeat,
         otherPlayerId: other?.id ?? null,
-        otherSeat: other?.position ?? null,
+        otherSeat: decisionOtherSeat,
         rawDistance: rawDist,
         circularDistance: circDist,
-        shouldNormalize: activeSeated.length === 2 && circDist != null ? circDist !== 3 : false,
+        shouldNormalize,
         targetSeat,
         dbWriteAttempted,
         dbRowsUpdated: checkpoint === 'before-normalize' ? 0 : normalizeResult?.dbRowsUpdated ?? null,
