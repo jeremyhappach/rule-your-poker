@@ -55,24 +55,16 @@ export const CribbagePlayingCard = ({
   };
 
   if (faceDown) {
-    // Use player's card back preference if provided, otherwise default blue
-    const bgColor = cardBackColors?.color || '#00308F';
-    const darkBgColor = cardBackColors?.darkColor || '#001a4a';
-    
+    // Canonical card back — colors, border, accent all owned by shell.
+    // `cardBackColors` prop retained for backwards-compat but ignored;
+    // CanonicalCardBack reads useVisualPreferences directly.
     return (
-      <div 
-        style={{ 
-          width, 
-          height,
-          background: `linear-gradient(135deg, ${bgColor} 0%, ${darkBgColor} 100%)`,
-        }}
-        className="rounded-sm border border-white/20 shadow-sm flex items-center justify-center"
-      >
-        <div 
-          className="w-3/4 h-3/4 border border-white/20 rounded-sm"
-          style={{ backgroundColor: `${bgColor}50` }}
-        />
-      </div>
+      <CanonicalCardBack
+        widthPx={width}
+        heightPx={height}
+        variant="flat"
+        radiusPx={2}
+      />
     );
   }
 
