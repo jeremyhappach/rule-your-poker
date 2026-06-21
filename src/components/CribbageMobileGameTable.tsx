@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
-import { DISCARD_COUNT } from '@/lib/cribbageTypes';
+import { DISCARD_COUNT, CARDS_PER_PLAYER } from '@/lib/cribbageTypes';
 import {
   initializeCribbageGame, 
   discardToCrib, 
@@ -6519,6 +6519,10 @@ export const CribbageMobileGameTable = ({
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}
                     seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
+                    cardsPerPlayer={
+                      (CARDS_PER_PLAYER as Record<number, number>)[projectedSeatPlayers.length] ?? 6
+                    }
+                    selfHand={cribbageState?.playerStates[currentPlayerId]?.hand ?? []}
                   />
                 ) : null}
 

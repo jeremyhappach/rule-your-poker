@@ -62,6 +62,13 @@ export interface CardTransportIntent {
    * source these from `useVisualPreferences().getCardBackColors()`.
    */
   cardBackColors?: { color: string; darkColor: string };
+  /**
+   * Optional — when `face: 'visible'`, render the flying card with this
+   * concrete rank/suit so the in-flight asset matches the canonical
+   * face-up styling instead of a plain rectangle. Games stamp this from
+   * authoritative state at dispatch time.
+   */
+  visibleFace?: { rank: string; suit: 'hearts' | 'diamonds' | 'clubs' | 'spades' };
 }
 
 export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
