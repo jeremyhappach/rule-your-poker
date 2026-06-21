@@ -188,23 +188,22 @@ export const PlayingCard = ({
           ...style,
         }}
       >
-        {/* Card Back */}
-        <Card 
-          className={`absolute inset-0 w-full h-full flex items-center justify-center ${borderColor} shadow-lg`}
+        {/* Card Back — CANONICAL renderer (gradient/border/accent owned by shell) */}
+        <div
+          className="absolute inset-0 w-full h-full"
           style={{
-            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
             backfaceVisibility: 'hidden',
             transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
           }}
         >
-          <div className="w-full h-full flex items-center justify-center p-0.5">
-            {teamLogo ? (
-              <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
-            ) : (
-              <div className="text-poker-gold text-2xl font-bold opacity-30">?</div>
-            )}
-          </div>
-        </Card>
+          <CanonicalCardBack
+            widthPx={40}
+            heightPx={60}
+            variant="raised"
+            radiusPx={4}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
         
         {/* Card Front */}
         <Card 
