@@ -59,6 +59,7 @@ export interface CardTransportDbgEntry {
   droppedReason?: string | null;
   durationMs?: number;
   launchDelayMs?: number;
+  ownershipClaimDelayMs?: number;
   dx?: number;
   dy?: number;
   actualStartTime?: number;
@@ -189,7 +190,7 @@ export function formatCardTransportDbgAsText(): string {
       `  from=${JSON.stringify(r.from)} → to=${JSON.stringify(r.to)}`,
       `  resolvedFrom=${r.resolvedFromAnchor ?? '?'} resolvedTo=${r.resolvedToAnchor ?? '?'}`,
       `  fromRect=${JSON.stringify(r.fromAnchorRect)} toRect=${JSON.stringify(r.toAnchorRect)}`,
-      `  dx=${r.dx} dy=${r.dy} dur=${r.durationMs} delay=${r.launchDelayMs}`,
+      `  dx=${r.dx} dy=${r.dy} dur=${r.durationMs} delay=${r.launchDelayMs} ownershipDelay=${r.ownershipClaimDelayMs}`,
       `  actualStart=${r.actualStartTime} actualArrival=${r.actualArrivalTime}`,
       `  ownershipClaim=${r.ownershipClaimTime} destroyed=${r.transportDestroyedTime}`,
       `  portal=${r.portalLayer} mounted=${r.transportMounted} visible=${r.transportVisible}`,

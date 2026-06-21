@@ -20,7 +20,7 @@ import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTranspo
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
-import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
+import { getDealTiming, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 
@@ -51,11 +51,13 @@ export function CribbageDealOrchestrator({
   const ct = useCardTransport();
   const deal = useDealRuntime();
   const dispatchedRef = useRef(false);
+  const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
+    if (!dealTimingHydrated) return;
     if (!seats.length || cardsPerPlayer <= 0) return;
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
@@ -66,6 +68,7 @@ export function CribbageDealOrchestrator({
     const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
     if (dealerIdx < 0) return;
 
+    const emitTime = performance.now();
     const inspect = isCardTransportInspectMode();
     const timing = getDealTiming();
     const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
@@ -81,6 +84,11 @@ export function CribbageDealOrchestrator({
       effectiveStaggerMs: staggerMs,
       effectiveDurationMs: durationMs,
       inspectMode: inspect,
+      handContextId,
+      cardsPerPlayer,
+      seats: sorted.length,
+      expectedCards: cardsPerPlayer * sorted.length,
+      emitTime,
     });
 
     const totalCount = cardsPerPlayer * sorted.length;
@@ -107,6 +115,7 @@ export function CribbageDealOrchestrator({
             : { kind: 'oppStack', position: r.position },
           durationMs,
           launchDelayMs: idx * staggerMs,
+          ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
           handContextId,
           recipientPlayerId: r.playerId,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
@@ -121,7 +130,10 @@ export function CribbageDealOrchestrator({
       intentId: it.id,
       launchDelayMs: it.launchDelayMs,
       durationMs: it.durationMs,
-      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+      ownershipClaimDelayMs: it.ownershipClaimDelayMs,
+      expectedStartTime: emitTime + (it.launchDelayMs ?? 0),
+      expectedArrivalTime: emitTime + (it.launchDelayMs ?? 0) + (it.durationMs ?? 0),
+      handContextId,
       source: timingSource,
     });
     ct.dispatchMany(intents);
@@ -137,7 +149,7 @@ export function CribbageDealOrchestrator({
         intentCount: intents.length,
       });
     }
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors]);
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated]);
 
   return (
     <div

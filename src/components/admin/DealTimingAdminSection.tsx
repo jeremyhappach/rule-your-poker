@@ -12,7 +12,7 @@
  * new values to every other client (including the caller).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -81,20 +81,23 @@ function TimingRow({ label, description, field, value, onChange }: RowProps) {
 export function DealTimingAdminSection() {
   const live = useDealTiming();
   const [draft, setDraft] = useState<DealTimingConfig>(live);
+  const lastLiveRef = useRef<DealTimingConfig>(live);
   const [saving, setSaving] = useState(false);
 
   // When the global authoritative value changes (realtime), snap the
   // draft to it ONLY if the admin has no unsaved edits. Otherwise leave
   // the dirty draft alone so the diff stays meaningful.
   useEffect(() => {
+    const previousLive = lastLiveRef.current;
     setDraft((prev) => {
       const dirty =
-        prev.launchSpacingMs !== live.launchSpacingMs
-        || prev.durationMs !== live.durationMs
-        || prev.ownershipClaimDelayMs !== live.ownershipClaimDelayMs;
+        prev.launchSpacingMs !== previousLive.launchSpacingMs
+        || prev.durationMs !== previousLive.durationMs
+        || prev.ownershipClaimDelayMs !== previousLive.ownershipClaimDelayMs;
       // First mount: prev === initial live snapshot, so treat as clean.
       return dirty ? prev : live;
     });
+    lastLiveRef.current = live;
   }, [live]);
 
   const dirty =
