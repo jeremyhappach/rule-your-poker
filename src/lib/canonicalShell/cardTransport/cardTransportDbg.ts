@@ -158,8 +158,12 @@ export function cardTransportDbgSample(
 }
 
 export function getCardTransportDbg(): CardTransportDbgEntry[] {
-  const bag = bagCT();
-  return order.map((id) => bag[id]).filter(Boolean);
+  if (snapshotDirty) {
+    const bag = bagCT();
+    cachedSnapshot = order.map((id) => bag[id]).filter(Boolean);
+    snapshotDirty = false;
+  }
+  return cachedSnapshot;
 }
 
 export function subscribeCardTransportDbg(l: () => void): () => void {
