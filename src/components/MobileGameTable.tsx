@@ -2105,9 +2105,13 @@ export const MobileGameTable = ({
   } else {
     prevRoundForHandEpochRef.current = null;
   }
+  const threeFiveSevenHandContextId =
+    __is357GameType(gameType) && gameId
+      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}`
+      : null;
   const threeFiveSevenWaveContextId =
-    __is357GameType(gameType) && gameId && typeof currentRound === 'number' && currentRound >= 1
-      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}#r${currentRound}`
+    threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
+      ? `${threeFiveSevenHandContextId}#r${currentRound}`
       : null;
   const threeFiveSevenSelfPlayerId =
     __is357GameType(gameType) && currentUserId
