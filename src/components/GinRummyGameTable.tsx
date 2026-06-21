@@ -2309,8 +2309,15 @@ export const GinRummyGameTable = ({
   }
 
 
+  // Wave 2 canonical deal — stable handContextId per (dealerGameId, handNumber).
+  // Remounts DealRuntime via key, naturally resetting phase + settledCardIds.
+  const handContextId = dealerGameId && handNumber > 0
+    ? `${dealerGameId}#h${handNumber}`
+    : null;
+
   return (
     <div className="h-full flex flex-col bg-transparent relative">
+    <DealRuntimeMaybe handContextId={handContextId}>
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
