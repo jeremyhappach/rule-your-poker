@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, RefreshCw, Bug } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Bug, Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DeadlineDebugPanelProps {
