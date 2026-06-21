@@ -45,6 +45,8 @@ export interface CardTransportIntent {
   durationMs?: number;
   /** Per-card stagger applied at dispatch time. Defaults to 0. */
   launchDelayMs?: number;
+  /** Delay after arrival before the destination claims ownership. Defaults to global Deal Timing. */
+  ownershipClaimDelayMs?: number;
   /**
    * Optional — stamped onto the dbg entry so each flight is traceable
    * to its hand without joining tables in the console.
