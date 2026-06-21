@@ -79,6 +79,10 @@ interface RuntimeCard {
   flightMs: number;
   ownershipClaimDelayMs: number;
   startedAt: number;
+  /** Wall-clock time at which this card's flight should begin (and node mount). */
+  launchAt: number;
+  /** True once the launch timer has fired and the FlyingCard node is mounted. */
+  launched: boolean;
 }
 
 export interface CardTransportRuntimeProps {
@@ -92,6 +96,8 @@ export function CardTransportRuntime({
 }: CardTransportRuntimeProps) {
   const ctx = useCardTransportInternal();
   const resolvedRef = useRef<Map<string, RuntimeCard>>(new Map());
+  const launchTimersRef = useRef<Map<string, number>>(new Map());
+  const settleTimersRef = useRef<Map<string, number>>(new Map());
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
@@ -156,18 +162,23 @@ export function CardTransportRuntime({
       const delayMs = Math.max(0, intent.launchDelayMs ?? 0);
       const flightMs = intent.durationMs ?? DEFAULT_DURATION_MS;
       const ownershipClaimDelayMs = Math.max(0, intent.ownershipClaimDelayMs ?? getDealTiming().ownershipClaimDelayMs);
-      resolvedRef.current.set(intent.id, {
+      const now = performance.now();
+      const launchAt = now + delayMs;
+      const record: RuntimeCard = {
         intent,
         from,
         to,
         delayMs,
         flightMs,
         ownershipClaimDelayMs,
-        startedAt: performance.now(),
-      });
+        startedAt: now,
+        launchAt,
+        launched: delayMs === 0,
+      };
+      resolvedRef.current.set(intent.id, record);
       cardTransportDbgUpsert(intent.id, {
-        transportMounted: true,
-        transportVisible: true,
+        transportMounted: false,
+        transportVisible: false,
         launchDelayMs: delayMs,
         durationMs: flightMs,
         ownershipClaimDelayMs,
@@ -175,6 +186,42 @@ export function CardTransportRuntime({
         dy: to.y - from.y,
         portalLayer: 'overlay-root',
       });
+
+      // Schedule the node mount at the launch time. No CSS animation-delay —
+      // this keeps the dealer origin clear until the card is actually launching.
+      if (delayMs > 0) {
+        const tLaunch = window.setTimeout(() => {
+          const r = resolvedRef.current.get(intent.id);
+          if (!r) return;
+          r.launched = true;
+          cardTransportDbgUpsert(intent.id, {
+            transportMounted: true,
+            transportVisible: true,
+          });
+          launchTimersRef.current.delete(intent.id);
+          rerender();
+        }, delayMs);
+        launchTimersRef.current.set(intent.id, tLaunch);
+      } else {
+        cardTransportDbgUpsert(intent.id, {
+          transportMounted: true,
+          transportVisible: true,
+        });
+      }
+
+      // Schedule settle relative to launch time (flight has no extra CSS delay).
+      const tSettle = window.setTimeout(() => {
+        const tnow = performance.now();
+        cardTransportDbgUpsert(intent.id, {
+          settled: true,
+          transportVisible: false,
+          ownershipClaimTime: tnow,
+        });
+        settleTimersRef.current.delete(intent.id);
+        ctx.__markSettled(intent.id, intent.cardId);
+      }, delayMs + flightMs + ownershipClaimDelayMs);
+      settleTimersRef.current.set(intent.id, tSettle);
+
       mutated = true;
     }
 
@@ -184,33 +231,16 @@ export function CardTransportRuntime({
           transportDestroyedTime: performance.now(),
           transportVisible: false,
         });
+        const lt = launchTimersRef.current.get(id);
+        if (lt != null) { window.clearTimeout(lt); launchTimersRef.current.delete(id); }
+        const st = settleTimersRef.current.get(id);
+        if (st != null) { window.clearTimeout(st); settleTimersRef.current.delete(id); }
         resolvedRef.current.delete(id);
         mutated = true;
       }
     }
     if (mutated) rerender();
   }, [ctx, containerRef, activeIds, active]);
-
-  useEffect(() => {
-    if (!ctx) return;
-    const timers: number[] = [];
-    for (const [id, chip] of resolvedRef.current.entries()) {
-      const elapsed = performance.now() - chip.startedAt;
-      const settleAt = chip.delayMs + chip.flightMs;
-      const remaining = Math.max(0, settleAt - elapsed);
-      const t = window.setTimeout(() => {
-        const now = performance.now();
-        cardTransportDbgUpsert(id, {
-          settled: true,
-          transportVisible: false,
-          ownershipClaimTime: now,
-        });
-        ctx.__markSettled(id, chip.intent.cardId);
-      }, remaining + chip.ownershipClaimDelayMs);
-      timers.push(t);
-    }
-    return () => { for (const t of timers) window.clearTimeout(t); };
-  }, [ctx, activeIds]);
 
   const overlay = overlayRootRef.current;
   if (!ctx || !overlay) return null;
@@ -221,6 +251,7 @@ export function CardTransportRuntime({
 
   const nodes: JSX.Element[] = [];
   for (const card of resolvedRef.current.values()) {
+    if (!card.launched) continue;
     nodes.push(
       <FlyingCard
         key={card.intent.id}
@@ -386,9 +417,11 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     // SINGLE animation token before any frames render.
     snapshot('launch');
 
-    const startAt = card.delayMs;
-    const midAt = card.delayMs + card.flightMs / 2;
-    const endAt = card.delayMs + card.flightMs;
+    // Node is mounted at launch time — animation begins immediately,
+    // there is no CSS animation-delay. Snapshots are relative to mount.
+    const startAt = 0;
+    const midAt = card.flightMs / 2;
+    const endAt = card.flightMs;
 
     window.setTimeout(() => logActualLaunch('timer-fallback'), Math.max(0, startAt + 20));
     window.setTimeout(() => logActualArrival('timer-fallback'), Math.max(0, endAt + 20));
@@ -438,7 +471,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           padding: isHidden ? 0 : '2px 0',
           overflow: 'hidden',
           opacity: 0,
-          animation: `${kf} ${card.flightMs}ms ${easing} ${card.delayMs}ms 1 forwards`,
+          animation: `${kf} ${card.flightMs}ms ${easing} 0ms 1 forwards`,
           willChange: 'transform, opacity',
         }}
         onAnimationStart={() => logActualLaunch('animationstart')}
