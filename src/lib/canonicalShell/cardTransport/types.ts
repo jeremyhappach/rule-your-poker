@@ -9,7 +9,8 @@
  *   Cards do NOT originate from a visible deck. They originate from the
  *   player who currently holds dealing authority (dealer button, caller,
  *   etc.). Games choose the source endpoint per their rules; the shell
- *   only resolves geometry via `[data-card-anchor]`.
+ *   only resolves geometry via `[data-card-anchor]` (with chip-center
+ *   fallback for `seat` endpoints — see cardEndpoints.ts).
  *
  * Visibility rule (Wave 1):
  *   A real card with id `cardId` is visible iff `cardId ∈ settledCardIds`
@@ -42,6 +43,11 @@ export interface CardTransportIntent {
   durationMs?: number;
   /** Per-card stagger applied at dispatch time. Defaults to 0. */
   launchDelayMs?: number;
+  /**
+   * Optional — stamped onto the dbg entry so each flight is traceable
+   * to its hand without joining tables in the console.
+   */
+  handContextId?: string;
 }
 
 export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
