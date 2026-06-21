@@ -23,6 +23,16 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
+import {
+  ThreeFiveSevenDealOrchestrator,
+  ThreeFiveSevenDealRuntimeMaybe,
+  Use357OppCount,
+  Use357SelfHand,
+  is357GameType as __is357GameType,
+  cardsThisWaveFor357,
+  prevWaveCountFor357,
+  totalAfterWaveFor357,
+} from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
