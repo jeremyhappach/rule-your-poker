@@ -330,11 +330,12 @@ export function Use357SelfHand<T>({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  // Cumulative settled: visible = min(max(baseline, settled), cards.length).
   const allowed = deal
     ? deal.phase === 'DEALING'
-      ? Math.min(baseline + settled, cards.length)
+      ? Math.min(Math.max(baseline, settled), cards.length)
       : deal.phase === 'PRE_DEAL'
-        ? Math.min(baseline, cards.length)
+        ? Math.min(Math.max(baseline, settled), cards.length)
         : cards.length
     : cards.length;
   const effectiveCards = cards.slice(0, Math.min(allowed, cards.length));
