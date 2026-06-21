@@ -7,6 +7,7 @@ import { CribbagePlayingCard } from './CribbagePlayingCard';
 import { toast } from 'sonner';
 import { persistSyncDebugEvent } from '@/lib/persistSyncDebugEvent';
 import { useCardRowLayout } from '@/lib/canonicalShell/useCardRowLayout';
+import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 
 /**
  * Discrete CribbagePlayingCard size ladder (width px → size token).
