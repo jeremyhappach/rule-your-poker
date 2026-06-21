@@ -5997,6 +5997,7 @@ export const MobileGameTable = ({
           waveContextId={threeFiveSevenWaveContextId}
           dealerPosition={threeFiveSevenDealerPosition}
           selfPlayerId={threeFiveSevenSelfPlayerId}
+          selfPosition={currentPlayer?.position ?? null}
           activeSeats={threeFiveSevenActiveSeats}
           cardsThisWave={cardsThisWaveFor357(currentRound ?? 0)}
         />
