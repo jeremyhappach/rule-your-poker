@@ -39,6 +39,14 @@ export interface CardTransportDbgEntry {
   transportVisible?: boolean;
   settled?: boolean;
   droppedReason?: string | null;
+  /** Wave 1 timing telemetry — see CardTransportRuntime. */
+  durationMs?: number;
+  launchDelayMs?: number;
+  dx?: number;
+  dy?: number;
+  actualStartTime?: number;
+  actualArrivalTime?: number;
+  portalLayer?: string;
   updatedAt: number;
 }
 
