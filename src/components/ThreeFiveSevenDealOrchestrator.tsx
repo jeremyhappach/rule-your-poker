@@ -331,15 +331,31 @@ export function Use357SelfHand<T>({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
-  // Cumulative settled: visible = min(max(baseline, settled), cards.length).
+
+  // Cache the longest authoritative cards array seen for this hand. If
+  // the upstream DB transiently empties `cards` between waves (e.g. r1→r2
+  // round flip clearing then re-populating), we fall back to the cached
+  // array so previously-settled cards never disappear — even for one
+  // frame. The cache resets on hand boundary via DealRuntime remount.
+  const handKey = deal?.handContextId ?? 'no-runtime';
+  const cacheRef = useRef<{ handKey: string; cards: T[] }>({ handKey, cards: [] });
+  if (cacheRef.current.handKey !== handKey) {
+    cacheRef.current = { handKey, cards: [] };
+  }
+  if (cards.length >= cacheRef.current.cards.length) {
+    cacheRef.current = { handKey, cards };
+  }
+  const sourceCards = cards.length >= cacheRef.current.cards.length ? cards : cacheRef.current.cards;
+
+  // Cumulative settled: visible = min(max(baseline, settled), sourceCards.length).
   const allowed = deal
     ? deal.phase === 'DEALING'
-      ? Math.min(Math.max(baseline, settled), cards.length)
+      ? Math.min(Math.max(baseline, settled), sourceCards.length)
       : deal.phase === 'PRE_DEAL'
-        ? Math.min(Math.max(baseline, settled), cards.length)
-        : cards.length
-    : cards.length;
-  const effectiveCards = cards.slice(0, Math.min(allowed, cards.length));
+        ? Math.min(Math.max(baseline, settled), sourceCards.length)
+        : sourceCards.length
+    : sourceCards.length;
+  const effectiveCards = sourceCards.slice(0, Math.min(allowed, sourceCards.length));
   useEffect(() => {
     if (!deal?.handContextId || !currentPlayerId) return;
     dealDbgUpsertOwnership(deal.handContextId, currentPlayerId, {
@@ -348,10 +364,10 @@ export function Use357SelfHand<T>({
       authoritativeCount: cards.length,
       visibleCount: effectiveCards.length,
       dealPhase: phase,
-      baselineApplied: effectiveCards.length >= Math.min(baseline, cards.length),
+      baselineApplied: effectiveCards.length >= Math.min(baseline, sourceCards.length),
       renderGuardPassed: true,
     });
-  }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase]);
+  }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase, sourceCards.length]);
   return <>{render(effectiveCards)}</>;
 }
 

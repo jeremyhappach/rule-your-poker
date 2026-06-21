@@ -8331,10 +8331,29 @@ export const MobileGameTable = ({
                           <div className="flex items-center justify-center py-4">
                             <span className="text-sm text-muted-foreground italic">Cards on the felt</span>
                           </div>
-                        ) : currentPlayerCards.length > 0 ? (
-                          <div className={cn("flex items-start justify-center", currentPlayerHandReserveClass, gameType !== 'holm-game' && currentRound === 1 ? "w-auto" : "w-full")} data-357-active-hand-region="">
+                        ) : (
+                          // UNIFIED stable subtree — outer wrapper, inner
+                          // transform, and PlayerHand element identity must
+                          // be stable across the empty→populated transition
+                          // so card 0 of round 1 doesn't trigger a remount
+                          // flash. Use357SelfHand clips visibility; when no
+                          // cards have arrived yet the rendered fan is empty
+                          // but the same PlayerHand instance persists.
+                          <div
+                            className={cn(
+                              "flex items-start justify-center",
+                              currentPlayerHandReserveClass,
+                              gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
+                            )}
+                            data-357-active-hand-region=""
+                          >
                             <div
-                              className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
+                              className={cn(
+                                `transform ${currentPlayerHandScaleClass} origin-top`,
+                                isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : '',
+                                (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : '',
+                                currentPlayerCards.length === 0 ? 'opacity-0 pointer-events-none' : '',
+                              )}
                             >
                               <Use357SelfHand
                                 currentPlayerId={currentPlayer?.id ?? ''}
@@ -8343,7 +8362,8 @@ export const MobileGameTable = ({
                                 render={(effectiveCards) => (
                                   <PlayerHand
                                     cards={effectiveCards}
-                                    isHidden={false}
+                                    isHidden={effectiveCards.length === 0}
+                                    expectedCardCount={effectiveCards.length === 0 ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)) : undefined}
                                     highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
                                     kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
                                     hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
@@ -8355,22 +8375,6 @@ export const MobileGameTable = ({
                                     wrapperScale={handScaleNum}
                                   />
                                 )}
-                              />
-                            </div>
-                          </div>
-
-                        ) : (
-                          <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
-                            <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
-                              <PlayerHand
-                                cards={[]}
-                                isHidden={true}
-                                expectedCardCount={gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)}
-                                gameType={gameType}
-                                currentRound={currentRound}
-                                availableHeightPx={handAvailableHeightPx357}
-                                wrapperScale={handScaleNum}
-
                               />
                             </div>
                           </div>
