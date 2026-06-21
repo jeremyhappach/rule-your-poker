@@ -79,6 +79,14 @@ let storeVersion = 0;
 let updatedAt = new Date(0).toISOString();
 let dbUpdatedAt: string | null = null;
 let lastSource = 'initial-defaults';
+let snapshot: DealTimingSnapshot = {
+  ...current,
+  storeVersion,
+  updatedAt,
+  dbUpdatedAt,
+  source: lastSource,
+  hydrated,
+};
 const listeners = new Set<() => void>();
 
 function logDealTimingStore(source: string, next: DealTimingConfig) {
@@ -103,6 +111,14 @@ function setCurrent(next: DealTimingConfig, source = 'unknown', markHydrated = t
   updatedAt = new Date().toISOString();
   dbUpdatedAt = nextDbUpdatedAt;
   lastSource = source;
+  snapshot = {
+    ...current,
+    storeVersion,
+    updatedAt,
+    dbUpdatedAt,
+    source: lastSource,
+    hydrated,
+  };
   logDealTimingStore(source, next);
   listeners.forEach((l) => { try { l(); } catch { /* noop */ } });
 }
@@ -112,14 +128,7 @@ export function getDealTiming(): DealTimingConfig {
 }
 
 export function getDealTimingSnapshot(): DealTimingSnapshot {
-  return {
-    ...current,
-    storeVersion,
-    updatedAt,
-    dbUpdatedAt,
-    source: lastSource,
-    hydrated,
-  };
+  return snapshot;
 }
 
 export function isDealTimingHydrated(): boolean {
