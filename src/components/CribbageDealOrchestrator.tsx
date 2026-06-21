@@ -29,6 +29,7 @@
 import { useEffect, useRef } from 'react';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
 interface SeatEntry {
