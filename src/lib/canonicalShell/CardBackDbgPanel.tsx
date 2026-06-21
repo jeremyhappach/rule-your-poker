@@ -107,31 +107,68 @@ function isVisible(el: Element): boolean {
   return true;
 }
 
+function parsePxTopValue(v: string): number {
+  // border-width / border-radius can come back as "1px" or "1px 1px 1px 1px".
+  if (!v) return 0;
+  const first = v.split(' ')[0];
+  const n = parseFloat(first);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function detectAccent(el: Element): 'logo' | 'frame' | 'none' {
+  const img = el.querySelector('img[aria-hidden="true"]');
+  if (img) return 'logo';
+  // inset frame = absolute child with border styling and no children/text
+  const frame = Array.from(el.children).find((c) => {
+    if (c.tagName.toLowerCase() !== 'div') return false;
+    const cs = window.getComputedStyle(c);
+    return cs.position === 'absolute' && parsePxTopValue(cs.borderTopWidth) > 0;
+  });
+  return frame ? 'frame' : 'none';
+}
+
 function scanInventory(): InventoryRow[] {
   if (typeof document === 'undefined') return [];
   const rows: InventoryRow[] = [];
   let uid = 0;
 
-  // 1) Canonical entries.
-  const canonical = Array.from(document.querySelectorAll('[data-canonical-card-back]')) as HTMLElement[];
-  for (const el of canonical) {
-    if (!isVisible(el)) continue;
+  const pushRow = (
+    el: HTMLElement,
+    kind: 'canonical' | 'legacy',
+    variant: string | null,
+  ) => {
     const cs = window.getComputedStyle(el);
     const stops = parseGradientStops(cs.backgroundImage) ?? { color: '?', darkColor: '?' };
     const r = el.getBoundingClientRect();
+    const w = Math.round(r.width);
+    const radius = parsePxTopValue(cs.borderTopLeftRadius || cs.borderRadius);
     rows.push({
-      uid: `c${uid++}`,
-      kind: 'canonical',
-      variant: el.getAttribute('data-canonical-card-back'),
+      uid: `${kind === 'canonical' ? 'c' : 'l'}${uid++}`,
+      kind,
+      variant,
       color: stops.color,
       darkColor: stops.darkColor,
-      width: Math.round(r.width),
+      width: w,
       height: Math.round(r.height),
+      borderWidthPx: parsePxTopValue(cs.borderTopWidth),
+      borderColor: cs.borderTopColor || '(none)',
+      radiusPx: Math.round(radius * 10) / 10,
+      radiusPctW: w > 0 ? Math.round((radius / w) * 1000) / 10 : 0,
+      boxShadow: cs.boxShadow && cs.boxShadow !== 'none' ? cs.boxShadow : 'none',
+      backgroundImage: cs.backgroundImage,
+      accent: detectAccent(el),
       owner: ownerLabel(el),
       tag: el.tagName.toLowerCase(),
       className: (el.className || '').toString().slice(0, 40),
       cardAnchor: nearestCardAnchor(el),
     });
+  };
+
+  // 1) Canonical entries.
+  const canonical = Array.from(document.querySelectorAll('[data-canonical-card-back]')) as HTMLElement[];
+  for (const el of canonical) {
+    if (!isVisible(el)) continue;
+    pushRow(el, 'canonical', el.getAttribute('data-canonical-card-back'));
   }
 
   // 2) Legacy detection — gradient-painted card-shaped divs that are
@@ -140,7 +177,6 @@ function scanInventory(): InventoryRow[] {
   for (const el of Array.from(allDivs)) {
     if (el.hasAttribute('data-canonical-card-back')) continue;
     if (el.closest('[data-canonical-card-back]')) continue;
-    // Skip the debug pill itself.
     if (el.closest('[data-card-back-dbg-panel]')) continue;
     if (el.closest('[data-debug-tray]')) continue;
     const cs = window.getComputedStyle(el);
@@ -153,20 +189,7 @@ function scanInventory(): InventoryRow[] {
     const aspect = r.height / r.width;
     if (Math.abs(aspect - PLAYING_CARD_ASPECT) / PLAYING_CARD_ASPECT > ASPECT_TOLERANCE) continue;
     if (!isVisible(el)) continue;
-    const stops = parseGradientStops(bg) ?? { color: '?', darkColor: '?' };
-    rows.push({
-      uid: `l${uid++}`,
-      kind: 'legacy',
-      variant: null,
-      color: stops.color,
-      darkColor: stops.darkColor,
-      width: Math.round(r.width),
-      height: Math.round(r.height),
-      owner: ownerLabel(el),
-      tag: el.tagName.toLowerCase(),
-      className: (el.className || '').toString().slice(0, 40),
-      cardAnchor: nearestCardAnchor(el),
-    });
+    pushRow(el as HTMLElement, 'legacy', null);
   }
 
   return rows;
