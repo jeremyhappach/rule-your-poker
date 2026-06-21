@@ -427,7 +427,7 @@ function CribbageDealerSelectionVisibilityTracker({
  * destination consumers fall through to the legacy "full hand
  * immediately" path (useDealRuntime() returns null).
  */
-function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: React.ReactNode }) {
+function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
   if (!handContextId) return <>{children}</>;
   return (
     <DealRuntime key={handContextId} handContextId={handContextId}>
