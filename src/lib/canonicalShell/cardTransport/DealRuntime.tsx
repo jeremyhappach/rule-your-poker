@@ -44,6 +44,12 @@ interface DealContextValue {
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
   isSettled: (cardId: string) => boolean;
+  /**
+   * Per-recipient settled count. Destination consumers clip their
+   * visible card count to this during DEALING so cards appear one
+   * at a time as transports settle.
+   */
+  getSettledCountForPlayer: (playerId: string) => number;
   beginDeal: (expectedCount: number) => void;
   enterGameplay: () => void;
 }
@@ -64,18 +70,17 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
   const [phase, setPhase] = useState<DealPhase>('PRE_DEAL');
   const [expectedCount, setExpectedCount] = useState(0);
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
+  const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
   const ctx = useCardTransportInternal();
 
-  // Track expected count in a ref for the settle subscriber.
   const expectedRef = useRef(0);
   expectedRef.current = expectedCount;
 
-  // Subscribe to card-transport settle events for the lifetime of this
-  // hand's DealRuntime. Each settle adds to settledCardIds and, when
-  // we reach expectedCount, transitions DEALING → READY.
+  // Subscribe to card-transport settle events with full intent metadata.
   useEffect(() => {
     if (!ctx) return;
-    const off = ctx.onCardSettled((cardId) => {
+    const off = ctx.onCardSettledIntent((intent) => {
+      const cardId = intent.cardId;
       setSettledCardIds((prev) => {
         if (prev.has(cardId)) return prev;
         const next = new Set(prev);
@@ -87,11 +92,18 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
           ...(ready ? { phase: 'READY', readyReleased: true } : {}),
         });
         if (ready) {
-          // Defer setPhase to next tick to avoid setState-during-setState.
           queueMicrotask(() => setPhase((p) => (p === 'DEALING' ? 'READY' : p)));
         }
         return next;
       });
+      if (intent.recipientPlayerId) {
+        const pid = intent.recipientPlayerId;
+        setSettledByRecipient((prev) => {
+          const next = new Map(prev);
+          next.set(pid, (next.get(pid) ?? 0) + 1);
+          return next;
+        });
+      }
     });
     return off;
   }, [ctx, handContextId]);
@@ -99,6 +111,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
   const beginDeal = useCallback((count: number) => {
     setExpectedCount(count);
     setSettledCardIds(new Set());
+    setSettledByRecipient(new Map());
     setPhase('DEALING');
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
@@ -119,6 +132,11 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     [settledCardIds],
   );
 
+  const getSettledCountForPlayer = useCallback(
+    (playerId: string) => settledByRecipient.get(playerId) ?? 0,
+    [settledByRecipient],
+  );
+
   const value = useMemo<DealContextValue>(
     () => ({
       handContextId,
@@ -127,10 +145,11 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       settledCardIds,
       dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
       isSettled,
+      getSettledCountForPlayer,
       beginDeal,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, isSettled, beginDeal, enterGameplay],
+    [handContextId, phase, expectedCount, settledCardIds, isSettled, getSettledCountForPlayer, beginDeal, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
