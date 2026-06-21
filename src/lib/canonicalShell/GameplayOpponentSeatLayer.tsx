@@ -174,8 +174,8 @@ export function GameplayOpponentSeatLayer({
 }: GameplayOpponentSeatLayerProps) {
   const ambient = useSeatAnchorsOptional();
   const preSessionOwned = usePreSessionSeatOwned();
-  const { getCardBackColors } = useVisualPreferences();
-  const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
+  // Card-back colors now sourced inside CanonicalCardBack — no per-layer
+  // prop drilling needed.
 
   if (!ambient) return null;
   // While PreSessionSeatLayer owns the cluster set, hard-skip to keep
