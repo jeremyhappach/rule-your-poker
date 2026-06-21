@@ -225,8 +225,6 @@ export function GameplayOpponentSeatLayer({
               <ShellOpponentCardBacks
                 count={cardBacks.count}
                 variant={cardBacks.variant}
-                color={cardBackColors.color}
-                darkColor={cardBackColors.darkColor}
                 position={p.position}
               />
             ) : (
