@@ -1,30 +1,18 @@
 /**
  * CribbageDealOrchestrator — Wave 1 substrate proof for ONE DEAL.
  *
- *   handContextId changes
- *     ↓
- *   beginDeal(N)
- *     ↓
- *   dispatch N intents:
- *     from = dealer seat
- *     to   = round-robin starting at seat clockwise of dealer
- *     face = 'visible' iff recipient === self, else 'hidden'
- *     stagger = inspect 800ms / normal 40ms
- *     duration = inspect 600ms / normal 110ms
- *     recipientPlayerId stamped so DealRuntime can clip per-player
- *       destination visibility one card at a time.
- *     cardBackColors threaded from useVisualPreferences so the in-flight
- *       hidden cardback matches the canonical Cribbage cardback styling.
- *     ↓
- *   each settle → settledCardIds (+ per-recipient counter)
- *     ↓
- *   when settledCardIds.size === N: DealRuntime flips DEALING → READY
+ * Round-robin starting at seat clockwise of dealer, repeated until
+ * every player has cardsPerPlayer cards. Total intents:
  *
- * Source authority: `{ kind: 'seat', position: dealerPosition }`.
+ *   expectedCount = cardsPerPlayer × seats.length
  *
- * Local-hand anchor is positioned at the very bottom of the felt
- * container so dealer→self has a visible drop, not "appear/disappear
- * on top of the dealer button."
+ * (matches CARDS_PER_PLAYER[playerCount] in cribbageGameLogic.)
+ *
+ * Self-recipient intents stamp `visibleFace` from the authoritative
+ * `selfHand` so the in-flight asset is a real canonical face card
+ * (rank + suit) instead of a plain white rectangle. Dispatch waits
+ * until `selfHand.length >= cardsPerPlayer` so the visible faces are
+ * deterministic.
  */
 
 import { useEffect, useMemo, useRef } from 'react';
@@ -33,6 +21,7 @@ import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
+import type { CribbageCard } from '@/lib/cribbageTypes';
 
 interface SeatEntry {
   playerId: string;
@@ -44,8 +33,10 @@ export interface CribbageDealOrchestratorProps {
   dealerPlayerId: string;
   selfPlayerId: string;
   seats: SeatEntry[];
-  /** Total cards to deal in this Wave 1 substrate proof. Default 6. */
-  dealCount?: number;
+  /** Cards each player must visibly receive. From CARDS_PER_PLAYER. */
+  cardsPerPlayer: number;
+  /** Authoritative local hand. Required to stamp visibleFace. */
+  selfHand: CribbageCard[];
 }
 
 export function CribbageDealOrchestrator({
@@ -53,7 +44,8 @@ export function CribbageDealOrchestrator({
   dealerPlayerId,
   selfPlayerId,
   seats,
-  dealCount = 6,
+  cardsPerPlayer,
+  selfHand,
 }: CribbageDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
@@ -63,43 +55,52 @@ export function CribbageDealOrchestrator({
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
-    if (!seats.length) return;
+    if (!seats.length || cardsPerPlayer <= 0) return;
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
+    // Wait for authoritative self hand so visible faces are real cards.
+    if (!selfHand || selfHand.length < cardsPerPlayer) return;
 
     const sorted = [...seats].sort((a, b) => a.position - b.position);
     const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
     if (dealerIdx < 0) return;
 
-    const recipients: SeatEntry[] = [];
-    for (let i = 1; i <= dealCount; i++) {
-      recipients.push(sorted[(dealerIdx + i) % sorted.length]);
-    }
-
     const inspect = isCardTransportInspectMode();
     const staggerMs  = inspect ? 800 : 40;
     const durationMs = inspect ? 600 : 110;
 
-    const intents: CardTransportIntent[] = recipients.map((r, idx) => {
-      const isSelf = r.playerId === selfPlayerId;
-      return {
-        id: `${handContextId}#card-${idx}`,
-        cardId: `${handContextId}#card-${idx}`,
-        face: isSelf ? 'visible' : 'hidden',
-        from: { kind: 'seat', position: dealerSeat.position },
-        to: isSelf
-          ? { kind: 'hand', playerId: selfPlayerId }
-          : { kind: 'seat', position: r.position },
-        durationMs,
-        launchDelayMs: idx * staggerMs,
-        handContextId,
-        recipientPlayerId: r.playerId,
-        cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
-      };
-    });
+    const totalCount = cardsPerPlayer * sorted.length;
+    const intents: CardTransportIntent[] = [];
+    let selfCardIdx = 0;
+    for (let round = 0; round < cardsPerPlayer; round++) {
+      for (let off = 1; off <= sorted.length; off++) {
+        const r = sorted[(dealerIdx + off) % sorted.length];
+        const idx = intents.length;
+        const isSelf = r.playerId === selfPlayerId;
+        const visibleFace = isSelf ? selfHand[selfCardIdx] : undefined;
+        if (isSelf) selfCardIdx += 1;
+        intents.push({
+          id: `${handContextId}#card-${idx}`,
+          cardId: `${handContextId}#card-${idx}`,
+          face: isSelf ? 'visible' : 'hidden',
+          from: { kind: 'seat', position: dealerSeat.position },
+          to: isSelf
+            ? { kind: 'hand', playerId: selfPlayerId }
+            : { kind: 'seat', position: r.position },
+          durationMs,
+          launchDelayMs: idx * staggerMs,
+          handContextId,
+          recipientPlayerId: r.playerId,
+          cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
+          visibleFace: visibleFace
+            ? { rank: visibleFace.rank, suit: visibleFace.suit }
+            : undefined,
+        });
+      }
+    }
 
     dispatchedRef.current = true;
-    deal.beginDeal(intents.length);
+    deal.beginDeal(totalCount);
     ct.dispatchMany(intents);
     if (typeof window !== 'undefined' && (window as unknown as { __DEAL_DEBUG?: boolean }).__DEAL_DEBUG) {
       // eslint-disable-next-line no-console
@@ -108,16 +109,13 @@ export function CribbageDealOrchestrator({
         dealerPlayerId: dealerPlayerId.slice(0, 8),
         selfPlayerId: selfPlayerId.slice(0, 8),
         dealerPosition: dealerSeat.position,
-        count: intents.length,
-        recipients: recipients.map(r => r.playerId.slice(0, 8)),
+        cardsPerPlayer,
+        totalCount,
+        intentCount: intents.length,
       });
     }
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, dealCount, cardBackColors]);
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors]);
 
-  // Publish the local-hand anchor at the bottom of the felt container.
-  // Sitting at `bottom: 0` (the felt's south rail) gives dealer→self a
-  // visible vertical drop from the dealer-button chip area down toward
-  // the player's hand region, instead of collapsing on top of itself.
   return (
     <div
       aria-hidden="true"
