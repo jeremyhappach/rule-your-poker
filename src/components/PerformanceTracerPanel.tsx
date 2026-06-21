@@ -8,7 +8,7 @@ import {
   isTracing, 
   getTraceSessionId 
 } from '@/lib/performanceTracer';
-import { Circle, Square, Eye, X, Activity } from 'lucide-react';
+import { Circle, Square, Eye, X, Activity, Copy, Check } from 'lucide-react';
 
 interface TraceSession {
   id: string;
