@@ -285,6 +285,50 @@ export function ThreeFiveSevenDealDiagPanel() {
             <span style={{ fontWeight: 400, opacity: 0.6 }}> · (no 357 hand yet)</span>
           )}
         </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            const snapshot = {
+              capturedAt: new Date().toISOString(),
+              latestHand: latest,
+              selfOwnership: selfOwn,
+              timer,
+              card0Timeline: card0,
+              domProbes: { playerHandMounted, playerHandKey, fanLayoutInitialized },
+              transitions: [...transitions],
+              allDeals: deals,
+              cardTransport: cts,
+            };
+            const text = JSON.stringify(snapshot, null, 2);
+            const done = (label: string) => {
+              const btn = e.currentTarget as HTMLButtonElement | null;
+              if (btn) {
+                const orig = btn.textContent;
+                btn.textContent = label;
+                setTimeout(() => { if (btn) btn.textContent = orig; }, 1200);
+              }
+            };
+            navigator.clipboard?.writeText(text).then(
+              () => done('✓'),
+              () => {
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = text;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  done('✓');
+                } catch { done('✗'); }
+              }
+            );
+          }}
+          style={{ background: '#1e3a5f', color: '#fff', border: '1px solid #4a7bb8', borderRadius: 3, padding: '2px 8px', fontFamily: 'inherit', fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+          title="Copy full diagnostic snapshot as JSON"
+        >
+          Copy
+        </button>
       </div>
 
       {expanded ? (
