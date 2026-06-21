@@ -237,6 +237,9 @@ interface FlyingCardProps {
 
 function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   const elRef = useRef<HTMLDivElement | null>(null);
+  const launchLoggedRef = useRef(false);
+  const arrivalLoggedRef = useRef(false);
+  const actualStartRef = useRef<number | null>(null);
   const dx = card.to.x - card.from.x;
   const dy = card.to.y - card.from.y;
   const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -250,6 +253,63 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     ? (vf.suit === 'hearts' ? '♥' : vf.suit === 'diamonds' ? '♦' : vf.suit === 'clubs' ? '♣' : '♠')
     : '';
   const suitColor = vf && (vf.suit === 'hearts' || vf.suit === 'diamonds') ? '#ef4444' : '#111827';
+
+  const logActualLaunch = (source: 'animationstart' | 'timer-fallback') => {
+    if (launchLoggedRef.current) return;
+    launchLoggedRef.current = true;
+    const now = performance.now();
+    actualStartRef.current = now;
+    const cardIndex = cardIndexFromIntentId(card.intent.id);
+    const handContextId = card.intent.handContextId ?? '__unknown_hand__';
+    let actualStartDeltaFromPreviousMs: number | null = null;
+    if (cardIndex != null) {
+      let byIndex = launchProofByHand.get(handContextId);
+      if (!byIndex || cardIndex === 0) {
+        byIndex = new Map<number, number>();
+        launchProofByHand.set(handContextId, byIndex);
+      }
+      const prevStart = byIndex.get(cardIndex - 1);
+      actualStartDeltaFromPreviousMs = prevStart == null ? null : now - prevStart;
+      byIndex.set(cardIndex, now);
+    }
+    cardTransportDbgUpsert(card.intent.id, { actualStartTime: now });
+    // eslint-disable-next-line no-console
+    console.log('[DEAL TIMING PROOF LAUNCH]', {
+      intentId: card.intent.id,
+      handContextId: card.intent.handContextId ?? null,
+      cardIndex,
+      launchDelayMs: card.delayMs,
+      durationMs: card.flightMs,
+      actualStartTime: now,
+      actualArrivalTime: null,
+      actualStartDeltaFromPreviousMs,
+      expectedStartTime: card.startedAt + card.delayMs,
+      startSkewMs: now - (card.startedAt + card.delayMs),
+      source,
+    });
+  };
+
+  const logActualArrival = (source: 'animationend' | 'timer-fallback') => {
+    if (arrivalLoggedRef.current) return;
+    arrivalLoggedRef.current = true;
+    const now = performance.now();
+    const actualStartTime = actualStartRef.current;
+    cardTransportDbgUpsert(card.intent.id, { actualArrivalTime: now });
+    // eslint-disable-next-line no-console
+    console.log('[DEAL TIMING PROOF ARRIVAL]', {
+      intentId: card.intent.id,
+      handContextId: card.intent.handContextId ?? null,
+      cardIndex: cardIndexFromIntentId(card.intent.id),
+      launchDelayMs: card.delayMs,
+      durationMs: card.flightMs,
+      actualStartTime,
+      actualArrivalTime: now,
+      actualFlightDurationMs: actualStartTime == null ? null : now - actualStartTime,
+      expectedArrivalTime: card.startedAt + card.delayMs + card.flightMs,
+      arrivalSkewMs: now - (card.startedAt + card.delayMs + card.flightMs),
+      source,
+    });
+  };
 
   useEffect(() => {
     const intentId = card.intent.id;
@@ -292,11 +352,15 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const midAt = card.delayMs + card.flightMs / 2;
     const endAt = card.delayMs + card.flightMs;
 
+    const tProofLaunch = window.setTimeout(() => logActualLaunch('timer-fallback'), Math.max(0, startAt + 20));
+    const tProofArrival = window.setTimeout(() => logActualArrival('timer-fallback'), Math.max(0, endAt + 20));
     const tLaunch = window.setTimeout(() => snapshot('launch'), Math.max(0, startAt + 16));
     const tMid    = window.setTimeout(() => snapshot('midflight'), midAt);
     const tEnd    = window.setTimeout(() => snapshot('arrival'), Math.max(0, endAt - 8));
 
     return () => {
+      window.clearTimeout(tProofLaunch);
+      window.clearTimeout(tProofArrival);
       window.clearTimeout(tLaunch);
       window.clearTimeout(tMid);
       window.clearTimeout(tEnd);
@@ -341,6 +405,8 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           animation: `${kf} ${card.flightMs}ms ${easing} ${card.delayMs}ms 1 forwards`,
           willChange: 'transform, opacity',
         }}
+        onAnimationStart={() => logActualLaunch('animationstart')}
+        onAnimationEnd={() => logActualArrival('animationend')}
       >
         {isHidden ? (
           <div
