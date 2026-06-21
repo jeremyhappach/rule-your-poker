@@ -84,6 +84,9 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
     if (error) {
       toast.error('Failed to save preferences');
     } else {
+      // Refresh the shared provider so every CanonicalCardBack /
+      // table-felt consumer picks up the new colors immediately.
+      await refreshPreferences();
       toast.success('Preferences saved');
       onSave?.();
     }
