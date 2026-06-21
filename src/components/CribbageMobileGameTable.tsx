@@ -6672,19 +6672,10 @@ export const CribbageMobileGameTable = ({
               <p className="text-sm font-semibold text-foreground truncate">
                 {currentPlayer.profiles?.username || 'You'}
               </p>
-              {/* LOCAL VIEWER VISIBLE CHIP — published as the canonical
-                  reaction target for the viewer seat. Without this,
-                  destination reactions (e.g. cribbageBounce arrival)
-                  resolve only the 0x0 ShellViewerChipEndpoint geometry
-                  anchor and animate an invisible node. */}
-              <span
-                data-chip-reaction-target={currentPlayer.position}
-                data-canonical-viewer-hud-chip=""
-                className={cn(
-                  "font-bold text-lg tabular-nums inline-block",
-                  currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
-                )}
-              >
+              <span className={cn(
+                "font-bold text-lg tabular-nums",
+                currentPlayer.chips < 0 ? 'text-destructive' : 'text-poker-gold'
+              )}>
                 ${formatChipValue(currentPlayer.chips)}
               </span>
               {isCribDealer(currentPlayerId) && <DealerIndicator />}
