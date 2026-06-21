@@ -7550,14 +7550,13 @@ export const MobileGameTable = ({
                               )}
                             </div>
                           ) : (
-                            <div
-                              className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg"
-                              style={{
-                                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                              }}
-                            >
-                              <span className="text-amber-400/50 text-xl">?</span>
-                            </div>
+                            <CanonicalCardBack
+                              widthPx={40}
+                              heightPx={60}
+                              variant="raised"
+                              radiusPx={6}
+                              style={{ width: '100%', height: '100%' }}
+                            />
                           )}
                         </div>
                       );
