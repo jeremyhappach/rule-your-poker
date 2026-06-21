@@ -81,7 +81,7 @@ export function CribbageDealOrchestrator({
         face: isSelf ? 'visible' : 'hidden',
         from: { kind: 'seat', position: dealerSeat.position },
         to: isSelf
-          ? { kind: 'hand', position: undefined as never, playerId: selfPlayerId } as CardTransportIntent['to']
+          ? { kind: 'hand', playerId: selfPlayerId }
           : { kind: 'seat', position: r.position },
         durationMs: 110,
         launchDelayMs: idx * 40,
