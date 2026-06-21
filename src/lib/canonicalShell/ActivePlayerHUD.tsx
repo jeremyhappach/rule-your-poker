@@ -18,6 +18,7 @@
  */
 
 import { MobilePlayerTimer } from '@/components/MobilePlayerTimer';
+import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
@@ -97,11 +98,22 @@ export function ActivePlayerHUD({
     }
   }, [isActive, seatPosition, gameId, gameType]);
 
+  // Timer ownership rule: while a DealRuntime is in DEALING phase the
+  // turn timer is suppressed everywhere on this felt — cards are still
+  // flying, GAMEPLAY hasn't begun. Once the runtime advances to
+  // READY/GAMEPLAY (or no runtime is mounted) the timer resumes from
+  // the authoritative props. Applies to every game (Cribbage, Gin,
+  // 3-5-7) for consistency.
+  const deal = useDealRuntime();
+  const dealing = !!deal && deal.phase === 'DEALING';
+  const effectiveIsActive = dealing ? false : isActive;
+  const effectiveTimeLeft = dealing ? null : timeLeft;
+
   return (
     <MobilePlayerTimer
-      timeLeft={timeLeft}
+      timeLeft={effectiveTimeLeft}
       maxTime={maxTime}
-      isActive={isActive}
+      isActive={effectiveIsActive}
       size={size}
     >
       {children}

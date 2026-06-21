@@ -66,6 +66,13 @@ export function ThreeFiveSevenDealOrchestrator({
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
+  // Compute dealerIsSelf at render time (also used to mount a dealer-seat
+  // anchor when CanonicalSeatCluster suppresses the self-viewer's seat).
+  const dealerIsSelf =
+    typeof dealerPosition === 'number' &&
+    dealerPosition > 0 &&
+    activeSeats.some(s => s.position === dealerPosition && s.playerId === selfPlayerId);
+
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
     if (!dealTimingHydrated) return;
@@ -73,11 +80,24 @@ export function ThreeFiveSevenDealOrchestrator({
     if (!activeSeats.length) return;
     if (typeof dealerPosition !== 'number' || dealerPosition <= 0) return;
 
-    // Ring: active seats sorted by position, ascending.
-    const ring = [...activeSeats].sort((a, b) => a.position - b.position);
-    // Start at first seat with position > dealerPosition, else wrap to ring[0].
-    let startIdx = ring.findIndex(s => s.position > dealerPosition);
-    if (startIdx < 0) startIdx = 0;
+    // Build deal order:
+    //   left-of-dealer first, then continue clockwise (LOWER position in
+    //   our seatRing convention; see src/lib/canonicalShell/seatRing.ts —
+    //   `nextClockwise = nearest LOWER occupied (wrap high)`).
+    //   Dealer is included LAST (everyone plays in 357), never first.
+    const sorted = [...activeSeats].sort((a, b) => a.position - b.position);
+    // startIdx = index of largest position strictly less than dealer,
+    // else wrap to the largest seat (last in ascending array).
+    let startIdx = -1;
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      if (sorted[i].position < dealerPosition) { startIdx = i; break; }
+    }
+    if (startIdx < 0) startIdx = sorted.length - 1;
+    const dealOrder: ThreeFiveSevenSeatEntry[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      dealOrder.push(sorted[(startIdx - i + sorted.length) % sorted.length]);
+    }
+    const recipientPositions = dealOrder.map(s => s.position);
 
     const emitTime = performance.now();
     const inspect = isCardTransportInspectMode();
@@ -86,25 +106,19 @@ export function ThreeFiveSevenDealOrchestrator({
     const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
     const durationMs = inspect ? 600 : timing.durationMs;
     const launchDelayFormula = inspect
-      ? 'idx * inspectionMode.launchSpacingMs(800)'
-      : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
+      ? `idx * inspectionMode.launchSpacingMs(800); order=[${recipientPositions.join(',')}]`
+      : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}; order=[${recipientPositions.join(',')}]`;
 
-    // Dealer-seat-suppressed-when-self contract (mirrors Gin):
-    // CanonicalSeatCluster suppresses the self seat, so
-    // [data-card-anchor="seat-${dealerPosition}"] does not exist
-    // when the viewer IS the dealer. Fall back to the self hand
-    // anchor (which this orchestrator mounts unconditionally) so
-    // transport endpoint resolution succeeds and intents actually fly.
-    const dealerIsSelf =
-      activeSeats.some(s => s.position === dealerPosition && s.playerId === selfPlayerId);
-    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
-      ? { kind: 'hand', playerId: selfPlayerId }
-      : { kind: 'seat', position: dealerPosition };
+    // Dealer seat is the canonical visual source for ALL flights —
+    // including when the viewer is the dealer. We mount an invisible
+    // `[data-card-anchor="seat-${dealerPosition}"]` anchor below when
+    // dealerIsSelf so resolveCardEndpoint always finds it.
+    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerPosition };
     const intents: CardTransportIntent[] = [];
 
     for (let pass = 0; pass < cardsThisWave; pass++) {
-      for (let off = 0; off < ring.length; off++) {
-        const r = ring[(startIdx + off) % ring.length];
+      for (let off = 0; off < dealOrder.length; off++) {
+        const r = dealOrder[off];
         const idx = intents.length;
         const isSelf = r.playerId === selfPlayerId;
         const cardId = `${waveContextId}#card-${idx}`;
@@ -158,21 +172,45 @@ export function ThreeFiveSevenDealOrchestrator({
     activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated,
   ]);
 
-  // Canonical destination terminus for self-recipient intents.
   return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: 'absolute',
-        left: '50%',
-        bottom: 0,
-        width: 1,
-        height: 1,
-        transform: 'translate(-50%, 0)',
-        pointerEvents: 'none',
-      }}
-      data-card-anchor={`hand-${selfPlayerId}`}
-    />
+    <>
+      {/* Canonical destination terminus for self-recipient intents.
+          Felt-bottom-center, 1×1, invisible. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          left: '50%',
+          bottom: 0,
+          width: 1,
+          height: 1,
+          transform: 'translate(-50%, 0)',
+          pointerEvents: 'none',
+        }}
+        data-card-anchor={`hand-${selfPlayerId}`}
+      />
+      {/* Dealer-seat origin anchor for the self-viewer-as-dealer case.
+          CanonicalSeatCluster suppresses the viewer's own seat anchor,
+          so we mount one here at felt-bottom-center so all deal flights
+          resolve from the canonical dealer-seat location regardless of
+          who the viewer is. */}
+      {dealerIsSelf ? (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            bottom: 0,
+            width: 1,
+            height: 1,
+            transform: 'translate(-50%, 0)',
+            pointerEvents: 'none',
+          }}
+          data-card-anchor={`seat-${dealerPosition}`}
+          data-canonical-dealer-origin-self="357"
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -225,9 +263,17 @@ export function Use357OppCount({
   render: (visibleCount: number) => ReactNode;
 }) {
   const deal = useDealRuntime();
-  if (!deal || deal.phase !== 'DEALING') return <>{render(defaultCount)}</>;
-  const settled = deal.getSettledCountForPlayer(playerId) ?? 0;
-  const visible = Math.min(baseline + settled, expected);
+  // During DEALING: baseline + settled (this wave), clamped to expected.
+  if (deal && deal.phase === 'DEALING') {
+    const settled = deal.getSettledCountForPlayer(playerId) ?? 0;
+    const visible = Math.min(baseline + settled, expected);
+    return <>{render(visible)}</>;
+  }
+  // Outside DEALING (READY / GAMEPLAY / no runtime / between waves):
+  // floor at baseline so previously-settled cards never disappear
+  // during the round-transition gap (when authoritative defaultCount
+  // briefly drops to 0 before the next wave re-deals).
+  const visible = Math.max(baseline, defaultCount);
   return <>{render(visible)}</>;
 }
 

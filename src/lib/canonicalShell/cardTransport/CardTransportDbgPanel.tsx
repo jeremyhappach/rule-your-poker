@@ -196,8 +196,14 @@ export function CardTransportDbgPanel() {
                         .filter((p): p is number => typeof p === 'number')))
                         .sort((a, b) => a - b);
                       if (dealerPos != null && ring.length) {
-                        const expectFirst = ring.find(p => p > dealerPos) ?? ring[0];
-                        // If first recipient is self, we can only verify dealer != self position.
+                        // Left-of-dealer per seatRing convention =
+                        // largest occupied position strictly less than
+                        // dealer, else wrap to largest occupied.
+                        let expectFirst: number | null = null;
+                        for (let i = ring.length - 1; i >= 0; i--) {
+                          if (ring[i] < dealerPos) { expectFirst = ring[i]; break; }
+                        }
+                        if (expectFirst === null) expectFirst = ring[ring.length - 1];
                         leftOfDealerPass = firstToPos != null
                           ? (firstToPos === expectFirst)
                           : null;
