@@ -127,20 +127,26 @@ function endpointSelector(ref: ChipEndpointRef): string {
 }
 
 const DEST_REACTION_STYLE_ID = '__chip-dest-reaction-keyframes';
-const DEST_REACTION_DURATION_MS = 650;
+const DEST_REACTION_DURATION_MS = 900;
 
 function ensureDestReactionStylesheet() {
   if (typeof document === 'undefined') return;
   if (document.getElementById(DEST_REACTION_STYLE_ID)) return;
   const style = document.createElement('style');
   style.id = DEST_REACTION_STYLE_ID;
+  // canonicalWinBounce — promoted from Holm's signature hop/land/hop/settle.
+  // Recognizable arc: big hop → land → secondary hop → settle. Translate-only
+  // displacement is kept small (chip transport owns position); the recognizable
+  // feel comes from the scale pumping.
   style.textContent = `
     @keyframes __chipDestBounce {
-      0%   { transform: translateY(0) scale(1); }
-      35%  { transform: translateY(-10px) scale(1.10); }
-      60%  { transform: translateY(0) scale(0.96); }
-      80%  { transform: translateY(-4px) scale(1.04); }
-      100% { transform: translateY(0) scale(1); }
+      0%   { transform: translateY(0)    scale(1); }
+      18%  { transform: translateY(-14px) scale(1.22); }
+      34%  { transform: translateY(0)    scale(1.00); }
+      48%  { transform: translateY(-9px) scale(1.14); }
+      62%  { transform: translateY(0)    scale(0.96); }
+      78%  { transform: translateY(-3px) scale(1.04); }
+      100% { transform: translateY(0)    scale(1); }
     }
     @keyframes __chipDestPulse {
       0%   { box-shadow: 0 0 0 0 rgba(255, 215, 100, 0.7); }
