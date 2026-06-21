@@ -23,6 +23,16 @@ import { PotToPlayerAnimation } from "./PotToPlayerAnimation";
 import { HolmWinPotAnimation } from "./HolmWinPotAnimation";
 import { ValueChangeFlash } from "./ValueChangeFlash";
 import { TurnSpotlight } from "./TurnSpotlight";
+import {
+  ThreeFiveSevenDealOrchestrator,
+  ThreeFiveSevenDealRuntimeMaybe,
+  Use357OppCount,
+  Use357SelfHand,
+  is357GameType as __is357GameType,
+  cardsThisWaveFor357,
+  prevWaveCountFor357,
+  totalAfterWaveFor357,
+} from "./ThreeFiveSevenDealOrchestrator";
 
 import { useLifecycleMount, setLifecycleFact, setLifecycleContext } from "@/lib/canonicalShell/lifecycleDebug";
 import { useChangeTracker as useShellChangeTracker, useUnmountSnapshot as useShellUnmountSnapshot } from "@/lib/canonicalShell/shellLifecycleLog";
@@ -2054,6 +2064,37 @@ export const MobileGameTable = ({
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
   const prevGameTypeForCacheClearRef = useRef<string | null | undefined>(gameType);
+
+  // 3-5-7 hand epoch — bumps when round transitions back to 1 (new hand
+  // within the same dealer game) so the per-wave DealRuntime key reflects
+  // a fresh hand even though the round number repeats.
+  const threeFiveSevenHandEpochRef = useRef<number>(0);
+  const prevRoundForHandEpochRef = useRef<number | null>(null);
+  if (__is357GameType(gameType)) {
+    const prev = prevRoundForHandEpochRef.current;
+    if (currentRound === 1 && prev !== null && prev > 1) {
+      threeFiveSevenHandEpochRef.current += 1;
+    }
+    prevRoundForHandEpochRef.current = currentRound ?? null;
+  } else {
+    prevRoundForHandEpochRef.current = null;
+  }
+  const threeFiveSevenWaveContextId =
+    __is357GameType(gameType) && gameId && typeof currentRound === 'number' && currentRound >= 1
+      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}#r${currentRound}`
+      : null;
+  const threeFiveSevenSelfPlayerId =
+    __is357GameType(gameType) && currentUserId
+      ? (players.find(p => p.user_id === currentUserId)?.id ?? null)
+      : null;
+  const threeFiveSevenActiveSeats = __is357GameType(gameType)
+    ? players
+        .filter(p => p.status === 'active' && !p.sitting_out)
+        .map(p => ({ playerId: p.id, position: p.position }))
+    : [];
+  const threeFiveSevenDealerPosition =
+    __is357GameType(gameType) ? (typeof dealerPosition === 'number' ? dealerPosition : 0) : 0;
+
   
   // Clear showdown/community/Chucky caches when starting a NEW game:
   // 1. Round goes from 2/3 back to 1
@@ -5491,21 +5532,30 @@ export const MobileGameTable = ({
       </div>
     ) : (
       !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && cardCountToShow > 0 && (
-        <div className="flex">
-          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
-            <CanonicalCardBack
-              key={i}
-              widthPx={12}
-              heightPx={20}
-              variant="flat"
-
-              style={{
-                marginLeft: i > 0 ? '-5px' : '0',
-                zIndex: cardCountToShow - i,
-              }}
-            />
-          ))}
-        </div>
+        <Use357OppCount
+          playerId={player.id}
+          baseline={prevWaveCountFor357(currentRound ?? 0)}
+          defaultCount={cardCountToShow}
+          expected={totalAfterWaveFor357(currentRound ?? 0) || cardCountToShow}
+          render={(visibleCount) => (
+            visibleCount > 0 ? (
+              <div className="flex">
+                {Array.from({ length: Math.min(visibleCount, 7) }, (_, i) => (
+                  <CanonicalCardBack
+                    key={i}
+                    widthPx={12}
+                    heightPx={20}
+                    variant="flat"
+                    style={{
+                      marginLeft: i > 0 ? '-5px' : '0',
+                      zIndex: visibleCount - i,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null
+          )}
+        />
       )
     );
 
@@ -5900,7 +5950,18 @@ export const MobileGameTable = ({
   };
 
 
-  return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+  return <ThreeFiveSevenDealRuntimeMaybe waveContextId={threeFiveSevenWaveContextId}>
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+      {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
+        <ThreeFiveSevenDealOrchestrator
+          key={threeFiveSevenWaveContextId}
+          waveContextId={threeFiveSevenWaveContextId}
+          dealerPosition={threeFiveSevenDealerPosition}
+          selfPlayerId={threeFiveSevenSelfPlayerId}
+          activeSeats={threeFiveSevenActiveSeats}
+          cardsThisWave={cardsThisWaveFor357(currentRound ?? 0)}
+        />
+      ) : null}
       
 
       {/* Status badges moved to bottom section */}
@@ -8232,22 +8293,29 @@ export const MobileGameTable = ({
                             <div
                               className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                             >
-                              <PlayerHand
+                              <Use357SelfHand
+                                currentPlayerId={currentPlayer?.id ?? ''}
                                 cards={currentPlayerCards}
-                                isHidden={false}
-                                highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                                kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                                hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                                gameType={gameType}
-                                currentRound={currentRound}
-                                showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
-                                tightOverlap={isHolmMultiPlayerShowdown}
-                                availableHeightPx={handAvailableHeightPx357}
-                                wrapperScale={handScaleNum}
-
+                                baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
+                                render={(effectiveCards) => (
+                                  <PlayerHand
+                                    cards={effectiveCards}
+                                    isHidden={false}
+                                    highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                                    kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                                    hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                                    gameType={gameType}
+                                    currentRound={currentRound}
+                                    showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
+                                    tightOverlap={isHolmMultiPlayerShowdown}
+                                    availableHeightPx={handAvailableHeightPx357}
+                                    wrapperScale={handScaleNum}
+                                  />
+                                )}
                               />
                             </div>
                           </div>
+
                         ) : (
                           <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
                             <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
@@ -8617,5 +8685,6 @@ export const MobileGameTable = ({
       </div>
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
-    </div>;
+    </div>
+  </ThreeFiveSevenDealRuntimeMaybe>;
 };

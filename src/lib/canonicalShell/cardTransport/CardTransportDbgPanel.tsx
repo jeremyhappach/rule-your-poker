@@ -161,6 +161,49 @@ export function CardTransportDbgPanel() {
                     const discardCt = handProof.filter(r => r.to?.kind === 'discard').length;
                     const discardVisible = handProof.some(r => r.to?.kind === 'discard' && r.face === 'visible');
                     const fmtPF = (b: boolean) => (b ? '✓ PASS' : '✗ FAIL');
+
+                    // 3-5-7 wave smoke — handContextId of the form
+                    // `${gameId}#h${epoch}#r${round}` identifies a wave.
+                    const handCtx = handProof[0]?.handContextId ?? '';
+                    const waveMatch = handCtx.match(/#h\d+#r(\d+)$/);
+                    const isThreeFiveSevenWave = !!waveMatch;
+                    const waveRound = waveMatch ? Number(waveMatch[1]) : 0;
+                    const expectedThisWave = waveRound === 1 ? 3 : (waveRound === 2 || waveRound === 3 ? 2 : 0);
+                    const activePlayers = isThreeFiveSevenWave
+                      ? new Set(handProof.map(r => r.to?.kind === 'oppStack' ? `opp:${r.to.position}` : (r.to?.kind === 'hand' ? `self:${r.to.playerId}` : ''))).size - (handProof.some(r => !r.to) ? 1 : 0)
+                      : 0;
+                    const oppIntents = handProof.filter(r => r.to?.kind === 'oppStack');
+                    const selfIntents = handProof.filter(r => r.to?.kind === 'hand');
+                    const settledOpp = oppIntents.filter(r => r.settled).length;
+                    const settledSelf = selfIntents.filter(r => r.settled).length;
+                    const expectedTotal = expectedThisWave * activePlayers;
+                    const settledTotal = settledOpp + settledSelf;
+                    const dispatchedTotal = handProof.length;
+                    // starts-left-of-dealer — the first dispatched intent's
+                    // recipient seat must be the seat immediately after the
+                    // dealer in position order. We infer dealer from the
+                    // `from` of any intent (always { kind: seat, position }).
+                    let leftOfDealerPass: boolean | null = null;
+                    if (isThreeFiveSevenWave && handProof.length > 0) {
+                      const fromIntent = handProof[0];
+                      const dealerPos = fromIntent.from?.kind === 'seat' ? fromIntent.from.position : null;
+                      const firstToPos = fromIntent.to?.kind === 'oppStack'
+                        ? fromIntent.to.position
+                        : (fromIntent.to?.kind === 'hand' ? null : null);
+                      // Determine ring of active seat positions from intents.
+                      const ring = Array.from(new Set(handProof
+                        .map(r => r.to?.kind === 'oppStack' ? r.to.position : null)
+                        .filter((p): p is number => typeof p === 'number')))
+                        .sort((a, b) => a - b);
+                      if (dealerPos != null && ring.length) {
+                        const expectFirst = ring.find(p => p > dealerPos) ?? ring[0];
+                        // If first recipient is self, we can only verify dealer != self position.
+                        leftOfDealerPass = firstToPos != null
+                          ? (firstToPos === expectFirst)
+                          : null;
+                      }
+                    }
+
                     return (
                       <div style={{ marginTop: 3, padding: '3px 4px', background: 'rgba(0,0,0,0.4)', borderLeft: '2px solid #FFD580' }}>
                         <div style={{ opacity: 0.95, color: '#FFD580', fontWeight: 700 }}>DEAL SMOKE</div>
@@ -170,6 +213,26 @@ export function CardTransportDbgPanel() {
                         <div style={{ color: discardCt === 1 && discardVisible ? '#7CFC00' : (discardCt === 0 ? '#aaaaaa' : '#ff7777') }}>
                           discard ({discardCt}{discardCt ? `, face=${discardVisible ? 'visible' : 'hidden'}` : ''}) {fmtPF(discardCt === 1 && discardVisible)}
                         </div>
+                        {isThreeFiveSevenWave ? (
+                          <div style={{ marginTop: 4, paddingTop: 3, borderTop: '1px dashed #555' }}>
+                            <div style={{ color: '#87CEFA', fontWeight: 700 }}>357 wave r{waveRound}</div>
+                            <div style={{ color: dispatchedTotal === expectedTotal ? '#7CFC00' : '#ff7777' }}>
+                              357: r{waveRound}=dispatched {dispatchedTotal}/{expectedTotal} {fmtPF(dispatchedTotal === expectedTotal)}
+                            </div>
+                            <div style={{ color: settledTotal === expectedTotal ? '#7CFC00' : '#FFD580' }}>
+                              357: r{waveRound}=settled {settledTotal}/{expectedTotal} {fmtPF(settledTotal === expectedTotal)}
+                            </div>
+                            <div style={{ color: leftOfDealerPass === true ? '#7CFC00' : leftOfDealerPass === false ? '#ff7777' : '#aaaaaa' }}>
+                              357: starts-left-of-dealer={leftOfDealerPass === null ? 'N/A' : fmtPF(leftOfDealerPass)}
+                            </div>
+                            <div style={{ color: settledSelf > 0 || selfIntents.length === 0 ? '#7CFC00' : '#FFD580' }}>
+                              357: self={settledSelf}/{selfIntents.length} {fmtPF(settledSelf === selfIntents.length)}
+                            </div>
+                            <div style={{ color: settledOpp === oppIntents.length ? '#7CFC00' : '#FFD580' }}>
+                              357: opp={settledOpp}/{oppIntents.length} {fmtPF(settledOpp === oppIntents.length)}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })()}
