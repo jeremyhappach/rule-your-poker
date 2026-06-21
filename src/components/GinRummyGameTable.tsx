@@ -2473,8 +2473,7 @@ export const GinRummyGameTable = ({
                 Games emit typed presentation accessors; the shell mounts
                 CanonicalSeatCluster per opponent and renders the
                 card-back strip from typed `cardBacks` data. */}
-            <GameplayOpponentSeatLayer
-              family="gin-rummy"
+            <GinDealClippedOpponentSeatLayer
               participants={(isObserver
                 ? activeSeatPlayers
                 : activeSeatPlayers.filter(p => p.id !== currentPlayerId)
