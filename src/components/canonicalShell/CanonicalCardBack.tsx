@@ -46,10 +46,38 @@ const TEAM_LOGOS: Record<string, string> = {
   hawks: hawksLogo,
 };
 
+/**
+ * Variants differ ONLY in geometry (border weight + shadow intensity).
+ * They MUST share the same design language:
+ *   • same gradient (135deg, color → darkColor)
+ *   • same border color  (rgba(255,255,255,0.22))
+ *   • same corner radius scaling rule (max(3, width * 0.08))
+ *   • same accent (team logo OR inset frame)
+ *
+ * If you find yourself adding amber borders, different radii, or
+ * variant-specific gradients, STOP — you are breaking the invariant.
+ */
 export type CanonicalCardBackVariant =
-  | 'flat'        // crisp 1px border, slight radius — opponent strips, transport
-  | 'raised'      // shadow + 2px border — primary hand surfaces
-  | 'flush';      // no border — embedded inside a parent that already has chrome
+  | 'flat'        // 1px border, no shadow — opponent strips, transport, cut
+  | 'raised'      // 2px border, soft shadow — primary hand surfaces, stock
+  | 'flush';      // 0 border, no shadow — embedded inside existing chrome
+
+// SHARED DESIGN LANGUAGE — do not branch these by variant.
+const BORDER_COLOR = 'rgba(255,255,255,0.22)';
+const ACCENT_FRAME_COLOR = 'rgba(255,255,255,0.18)';
+const RAISED_SHADOW = '0 4px 12px rgba(0,0,0,0.35)';
+
+function variantGeometry(variant: CanonicalCardBackVariant) {
+  switch (variant) {
+    case 'raised':
+      return { borderWidth: 2, boxShadow: RAISED_SHADOW };
+    case 'flush':
+      return { borderWidth: 0, boxShadow: 'none' };
+    case 'flat':
+    default:
+      return { borderWidth: 1, boxShadow: 'none' };
+  }
+}
 
 export interface CanonicalCardBackProps {
   /** Width in px. Required — caller owns geometry. */
@@ -58,17 +86,12 @@ export interface CanonicalCardBackProps {
   heightPx?: number;
   /** Visual chrome. Defaults to 'flat'. */
   variant?: CanonicalCardBackVariant;
-  /** Corner radius in px. Defaults derived from variant. */
+  /** Corner radius in px. Defaults to the shared scaling rule. */
   radiusPx?: number;
-  /** Show the team-logo accent when the user picked a sports card-back. Default true. */
+  /** Show the team-logo / inset accent. Default true. */
   showAccent?: boolean;
   className?: string;
   style?: CSSProperties;
-  /**
-   * Optional data attribute pass-through (e.g. data-card-anchor) — kept
-   * loose so callers that need to mark anchors don't have to wrap in
-   * another div.
-   */
   dataAttrs?: Record<string, string>;
 }
 
@@ -88,24 +111,24 @@ export function CanonicalCardBack({
   const teamLogo = TEAM_LOGOS[id] || null;
 
   const h = heightPx ?? widthPx * 1.5;
-  const r = radiusPx ?? (variant === 'raised' ? Math.max(2, widthPx * 0.08) : 2);
-
-  const borderClass =
-    variant === 'raised'
-      ? 'border-2 border-amber-400 shadow-xl'
-      : variant === 'flush'
-        ? ''
-        : 'border border-white/20';
+  // Shared radius rule — identical across variants.
+  const r = radiusPx ?? Math.max(3, widthPx * 0.08);
+  const { borderWidth, boxShadow } = variantGeometry(variant);
 
   return (
     <div
       {...(dataAttrs ?? {})}
       data-canonical-card-back={variant}
-      className={`relative overflow-hidden ${borderClass} ${className ?? ''}`.trim()}
+      data-cb-pref-id={id}
+      className={`relative overflow-hidden ${className ?? ''}`.trim()}
       style={{
         width: widthPx,
         height: h,
         borderRadius: r,
+        borderStyle: borderWidth > 0 ? 'solid' : 'none',
+        borderWidth,
+        borderColor: BORDER_COLOR,
+        boxShadow,
         background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)`,
         ...style,
       }}
@@ -120,12 +143,14 @@ export function CanonicalCardBack({
             draggable={false}
           />
         </div>
-      ) : showAccent && !teamLogo ? (
-        // Subtle inset frame for non-team backs so the gradient reads as
-        // a card rather than a colored rectangle.
+      ) : showAccent ? (
         <div
-          className="absolute pointer-events-none rounded-[2px] border border-white/15"
-          style={{ inset: '12%' }}
+          className="absolute pointer-events-none"
+          style={{
+            inset: '10%',
+            borderRadius: Math.max(2, r * 0.6),
+            border: `1px solid ${ACCENT_FRAME_COLOR}`,
+          }}
           aria-hidden="true"
         />
       ) : null}
