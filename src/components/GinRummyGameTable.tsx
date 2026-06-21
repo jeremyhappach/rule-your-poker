@@ -140,6 +140,60 @@ const SpadeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+/**
+ * DealRuntimeMaybe — wraps children with DealRuntime when a stable
+ * handContextId exists. When absent, children render unwrapped so
+ * destination consumers fall through to the legacy "full hand
+ * immediately" path (useDealRuntime() returns null).
+ */
+function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+  if (!handContextId) return <>{children}</>;
+  return (
+    <DealRuntime key={handContextId} handContextId={handContextId}>
+      {children}
+    </DealRuntime>
+  );
+}
+
+/**
+ * GinDealClippedOpponentSeatLayer — wraps GameplayOpponentSeatLayer
+ * with a deal-runtime-aware cardBacks clipper. During DEALING, each
+ * opponent's visible cardback count is capped at the number of
+ * intents addressed to that recipient that have already settled, so
+ * cards arrive one at a time. PRE_DEAL → 0 backs. READY/GAMEPLAY or
+ * no runtime → full hand size from the base callback.
+ */
+function GinDealClippedOpponentSeatLayer(props: {
+  participants: Array<{ id: string; position: number; name: string; chips: number }>;
+  presentation: import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation;
+}) {
+  const deal = useDealRuntime();
+  const wrapped = useMemo<import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation>(() => {
+    const base = props.presentation;
+    return {
+      ...base,
+      cardBacks: (p) => {
+        const baseBacks = base.cardBacks?.(p) ?? null;
+        if (!baseBacks || !deal) return baseBacks;
+        if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return baseBacks;
+        if (deal.phase === 'PRE_DEAL') return { ...baseBacks, count: 0, visible: false };
+        const allowed = deal.getSettledCountForPlayer(p.id);
+        const clipped = Math.min(baseBacks.count, allowed);
+        if (clipped <= 0) return { ...baseBacks, count: 0, visible: false };
+        return { ...baseBacks, count: clipped };
+      },
+    };
+  }, [props.presentation, deal]);
+  return (
+    <GameplayOpponentSeatLayer
+      family="gin-rummy"
+      participants={props.participants}
+      presentation={wrapped}
+    />
+  );
+}
+
+
 interface GinRummyGameTableProps {
   gameId: string;
   roundId: string;
