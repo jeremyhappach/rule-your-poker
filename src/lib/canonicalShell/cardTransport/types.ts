@@ -56,6 +56,21 @@ export interface CardTransportIntent {
     effectiveLaunchSpacingMs: number;
     effectiveDurationMs: number;
   };
+  /** Store snapshot read by the game at the exact moment intents are created. */
+  dealTimingStoreSnapshot?: {
+    launchSpacingMs: number;
+    durationMs: number;
+    ownershipClaimDelayMs: number;
+    updatedAt: string;
+    dbUpdatedAt: string | null;
+    storeVersion: number;
+    source: string;
+    hydrated: boolean;
+  };
+  /** Exact branch that produced launchDelayMs = cardIndex * this value. */
+  intentTimingSource?: 'GeometryLab' | 'inspectMode' | 'fallback' | 'hardcoded';
+  /** Source annotation for launchDelayMs, e.g. `idx * store.launchSpacingMs`. */
+  launchDelayFormula?: string;
   expectedStartTime?: number;
   expectedArrivalTime?: number;
   /**
