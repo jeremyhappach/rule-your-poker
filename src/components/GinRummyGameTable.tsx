@@ -2606,6 +2606,7 @@ export const GinRummyGameTable = ({
           </div>
         }
       />
+    </DealRuntimeMaybe>
     </div>
 
   );
