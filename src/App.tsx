@@ -129,6 +129,7 @@ const App = () => {
                 <SettlementDbgPanel />
                 <ChipTransportDbgPanel />
                 <CardTransportDbgPanel />
+                <CardBackDbgPanel />
                 <WinnerChipEndpointDbgPanel />
                 <DestReactionDbgPanel />
                 <VisibleChipDbgPanel />
