@@ -85,7 +85,7 @@ export function CribbageDealOrchestrator({
           id: `${handContextId}#card-${idx}`,
           cardId: `${handContextId}#card-${idx}`,
           face: 'hidden',
-          from: { kind: 'dealer', playerId: dealerPlayerId },
+          from: { kind: 'seat', position: dealerSeat.position },
           to: isSelf
             ? { kind: 'hand', playerId: selfPlayerId }
             : { kind: 'oppStack', position: r.position },
