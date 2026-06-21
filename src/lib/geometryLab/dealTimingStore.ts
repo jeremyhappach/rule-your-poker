@@ -1,20 +1,26 @@
 /**
- * Deal Timing — local-only Geometry Lab knobs that tune ONE DEAL motion.
+ * Deal Timing — GLOBAL, shell-owned motion knobs that shape ONE DEAL.
  *
- * Persisted in localStorage, mirroring Geometry Lab overlay-flag persistence.
- * Read at dispatch time by CribbageDealOrchestrator, and at settle time by
- * CardTransportRuntime, so live edits apply to the next deal without reload.
+ * Mirrors `canonicalShellLayoutConfig` exactly: a single value lives in
+ * `public.system_settings` (key: `deal_timing`), is bootstrapped once at
+ * app boot, kept in sync via realtime, and is editable only by admins.
  *
- *   dealLaunchSpacingMs       — gap between successive card launches
- *   dealDurationMs            — translate(0)→translate(dx,dy) flight time
- *   dealOwnershipClaimDelayMs — pause between arrival and destination
- *                               claiming ownership (transport destroyed)
+ * Invariant — ONE DEAL, ONE FEEL:
+ *   These values are NOT a per-user / per-device / per-game preference.
+ *   Every player, every observer, every device sees the same timing so
+ *   no one can infer who changed the settings by watching the motion.
  *
- * Inspect Mode still applies its own (slower) override for visual auditing.
- * Normal play uses these values, which the user can tune in Geometry Lab.
+ *   launchSpacingMs       — gap between successive card launches
+ *   durationMs            — translate(0)→translate(dx,dy) flight time
+ *   ownershipClaimDelayMs — pause between arrival and destination
+ *                           claiming ownership (transport destroyed)
+ *
+ * Inspect Mode still applies its own (slower) override at the call site
+ * for visual auditing; normal play uses these global values.
  */
 
 import { useSyncExternalStore } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface DealTimingConfig {
   launchSpacingMs: number;
@@ -34,62 +40,120 @@ export const DEAL_TIMING_BOUNDS = {
   ownershipClaimDelayMs: { min: 0, max: 100, step: 1 },
 } as const;
 
-const STORAGE_KEY = 'geometryLab.dealTiming.v1';
+export const DEAL_TIMING_KEY = 'deal_timing';
 
-function clamp(n: number, key: keyof DealTimingConfig): number {
+function clampField(n: unknown, key: keyof DealTimingConfig): number {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return DEAL_TIMING_DEFAULTS[key];
   const b = DEAL_TIMING_BOUNDS[key];
-  if (!Number.isFinite(n)) return DEAL_TIMING_DEFAULTS[key];
-  return Math.max(b.min, Math.min(b.max, n));
+  const c = Math.max(b.min, Math.min(b.max, num));
+  return Math.round(c / b.step) * b.step;
 }
 
-function load(): DealTimingConfig {
-  if (typeof window === 'undefined') return { ...DEAL_TIMING_DEFAULTS };
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEAL_TIMING_DEFAULTS };
-    const parsed = JSON.parse(raw) as Partial<DealTimingConfig>;
-    return {
-      launchSpacingMs: clamp(parsed.launchSpacingMs ?? DEAL_TIMING_DEFAULTS.launchSpacingMs, 'launchSpacingMs'),
-      durationMs: clamp(parsed.durationMs ?? DEAL_TIMING_DEFAULTS.durationMs, 'durationMs'),
-      ownershipClaimDelayMs: clamp(parsed.ownershipClaimDelayMs ?? DEAL_TIMING_DEFAULTS.ownershipClaimDelayMs, 'ownershipClaimDelayMs'),
-    };
-  } catch {
-    return { ...DEAL_TIMING_DEFAULTS };
-  }
+function sanitize(value: unknown): DealTimingConfig {
+  const v = (value ?? {}) as Partial<Record<keyof DealTimingConfig, unknown>>;
+  return {
+    launchSpacingMs: clampField(v.launchSpacingMs, 'launchSpacingMs'),
+    durationMs: clampField(v.durationMs, 'durationMs'),
+    ownershipClaimDelayMs: clampField(v.ownershipClaimDelayMs, 'ownershipClaimDelayMs'),
+  };
 }
 
-let snapshot: DealTimingConfig = load();
+// ── In-memory store + subscribers ──────────────────────────────
+
+let current: DealTimingConfig = { ...DEAL_TIMING_DEFAULTS };
 const listeners = new Set<() => void>();
 
-function emit() { for (const l of listeners) l(); }
+function setCurrent(next: DealTimingConfig) {
+  current = next;
+  listeners.forEach((l) => { try { l(); } catch { /* noop */ } });
+}
 
 export function getDealTiming(): DealTimingConfig {
-  return snapshot;
+  return current;
 }
 
-export function setDealTiming(next: Partial<DealTimingConfig>) {
-  snapshot = {
-    launchSpacingMs: clamp(next.launchSpacingMs ?? snapshot.launchSpacingMs, 'launchSpacingMs'),
-    durationMs: clamp(next.durationMs ?? snapshot.durationMs, 'durationMs'),
-    ownershipClaimDelayMs: clamp(next.ownershipClaimDelayMs ?? snapshot.ownershipClaimDelayMs, 'ownershipClaimDelayMs'),
-  };
-  try {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-    }
-  } catch { /* ignore quota errors */ }
-  emit();
-}
-
-export function resetDealTiming() {
-  setDealTiming({ ...DEAL_TIMING_DEFAULTS });
-}
-
-function subscribe(l: () => void) {
+function subscribe(l: () => void): () => void {
   listeners.add(l);
   return () => { listeners.delete(l); };
 }
 
 export function useDealTiming(): DealTimingConfig {
   return useSyncExternalStore(subscribe, getDealTiming, getDealTiming);
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────
+
+let bootstrapped = false;
+
+export function bootstrapDealTiming(): void {
+  if (bootstrapped) return;
+  bootstrapped = true;
+
+  void (async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', DEAL_TIMING_KEY)
+        .maybeSingle();
+      if (error) {
+        console.warn('[DealTiming] fetch error', error);
+        return;
+      }
+      if (data?.value) setCurrent(sanitize(data.value));
+    } catch (err) {
+      console.warn('[DealTiming] fetch threw', err);
+    }
+  })();
+
+  try {
+    supabase
+      .channel('deal-timing-config')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'system_settings',
+          filter: `key=eq.${DEAL_TIMING_KEY}`,
+        },
+        (payload) => {
+          const next = (payload.new as { value?: unknown } | null)?.value;
+          if (next != null) setCurrent(sanitize(next));
+        },
+      )
+      .subscribe();
+  } catch (err) {
+    console.warn('[DealTiming] realtime subscribe failed', err);
+  }
+}
+
+// ── Admin save ────────────────────────────────────────────────
+
+/**
+ * Persist new GLOBAL values. Requires admin role (enforced by RLS on
+ * `system_settings`). Realtime broadcasts to every other client.
+ */
+export async function saveDealTiming(
+  next: Partial<DealTimingConfig>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const merged = sanitize({ ...current, ...next });
+  const { error } = await supabase
+    .from('system_settings')
+    .upsert(
+      {
+        key: DEAL_TIMING_KEY,
+        value: merged as unknown as Record<string, number>,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'key' },
+    );
+  if (error) return { ok: false, error: error.message };
+  setCurrent(merged);
+  return { ok: true };
+}
+
+export async function resetDealTiming(): Promise<{ ok: true } | { ok: false; error: string }> {
+  return saveDealTiming({ ...DEAL_TIMING_DEFAULTS });
 }

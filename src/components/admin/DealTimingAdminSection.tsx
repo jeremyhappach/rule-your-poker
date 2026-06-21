@@ -3,34 +3,40 @@
  *
  *   How things move.
  *
- * Controls the three motion knobs that shape ONE DEAL:
- *   - dealLaunchSpacingMs       (gap between launches)
- *   - dealDurationMs            (per-card flight time)
- *   - dealOwnershipClaimDelayMs (arrival → ownership claim → destroy)
+ * GLOBAL — values are written to `public.system_settings` and shared
+ * across every player, observer, and device in realtime. NOT a
+ * per-user preference. Edit requires admin role (enforced by RLS).
  *
- * Persisted via localStorage in dealTimingStore. Live edits apply
- * to the NEXT deal — no reload required.
+ * Pattern mirrors LayoutTuningAdminSection (safe areas): sliders edit
+ * a local draft, "Save" upserts the row, and realtime broadcasts the
+ * new values to every other client (including the caller).
  */
 
+import { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
 import {
   DEAL_TIMING_BOUNDS,
   DEAL_TIMING_DEFAULTS,
+  type DealTimingConfig,
+  saveDealTiming,
   resetDealTiming,
-  setDealTiming,
   useDealTiming,
 } from '@/lib/geometryLab/dealTimingStore';
+
+type Field = keyof DealTimingConfig;
 
 interface RowProps {
   label: string;
   description: string;
-  field: 'launchSpacingMs' | 'durationMs' | 'ownershipClaimDelayMs';
+  field: Field;
   value: number;
+  onChange: (v: number) => void;
 }
 
-function TimingRow({ label, description, field, value }: RowProps) {
+function TimingRow({ label, description, field, value, onChange }: RowProps) {
   const b = DEAL_TIMING_BOUNDS[field];
   const def = DEAL_TIMING_DEFAULTS[field];
   return (
@@ -50,7 +56,7 @@ function TimingRow({ label, description, field, value }: RowProps) {
         max={b.max}
         step={b.step}
         value={[value]}
-        onValueChange={([v]) => setDealTiming({ [field]: v } as Record<typeof field, number>)}
+        onValueChange={([v]) => onChange(v)}
       />
       <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
         <span>{b.min}</span>
@@ -58,13 +64,13 @@ function TimingRow({ label, description, field, value }: RowProps) {
         <span>{b.max}</span>
       </div>
       <div className="flex gap-2">
-        <Button size="sm" variant={value === b.min ? 'default' : 'outline'} className="flex-1" onClick={() => setDealTiming({ [field]: b.min } as Record<typeof field, number>)}>
+        <Button size="sm" variant={value === b.min ? 'default' : 'outline'} className="flex-1" onClick={() => onChange(b.min)}>
           MIN ({b.min})
         </Button>
-        <Button size="sm" variant={value === def ? 'default' : 'outline'} className="flex-1" onClick={() => setDealTiming({ [field]: def } as Record<typeof field, number>)}>
+        <Button size="sm" variant={value === def ? 'default' : 'outline'} className="flex-1" onClick={() => onChange(def)}>
           DEFAULT ({def})
         </Button>
-        <Button size="sm" variant={value === b.max ? 'default' : 'outline'} className="flex-1" onClick={() => setDealTiming({ [field]: b.max } as Record<typeof field, number>)}>
+        <Button size="sm" variant={value === b.max ? 'default' : 'outline'} className="flex-1" onClick={() => onChange(b.max)}>
           MAX ({b.max})
         </Button>
       </div>
@@ -73,15 +79,60 @@ function TimingRow({ label, description, field, value }: RowProps) {
 }
 
 export function DealTimingAdminSection() {
-  const t = useDealTiming();
+  const live = useDealTiming();
+  const [draft, setDraft] = useState<DealTimingConfig>(live);
+  const [saving, setSaving] = useState(false);
+
+  // When the global authoritative value changes (realtime), snap the
+  // draft to it ONLY if the admin has no unsaved edits. Otherwise leave
+  // the dirty draft alone so the diff stays meaningful.
+  useEffect(() => {
+    setDraft((prev) => {
+      const dirty =
+        prev.launchSpacingMs !== live.launchSpacingMs
+        || prev.durationMs !== live.durationMs
+        || prev.ownershipClaimDelayMs !== live.ownershipClaimDelayMs;
+      // First mount: prev === initial live snapshot, so treat as clean.
+      return dirty ? prev : live;
+    });
+  }, [live]);
+
+  const dirty =
+    draft.launchSpacingMs !== live.launchSpacingMs
+    || draft.durationMs !== live.durationMs
+    || draft.ownershipClaimDelayMs !== live.ownershipClaimDelayMs;
+
+  const handleSave = async () => {
+    setSaving(true);
+    const res = await saveDealTiming(draft);
+    setSaving(false);
+    if (res.ok === true) {
+      toast.success('Deal Timing saved globally');
+    } else {
+      toast.error(`Save failed: ${res.error}`);
+    }
+  };
+
+  const handleReset = async () => {
+    setSaving(true);
+    const res = await resetDealTiming();
+    setSaving(false);
+    if (res.ok === true) {
+      setDraft({ ...DEAL_TIMING_DEFAULTS });
+      toast.success('Deal Timing reset globally');
+    } else {
+      toast.error(`Reset failed: ${res.error}`);
+    }
+  };
+
   return (
     <div className="space-y-3 py-2 border-t border-border">
       <div className="space-y-0.5">
         <Label className="text-sm font-semibold">Deal Timing</Label>
         <p className="text-xs text-muted-foreground">
-          Per-device tuning for how cards are dealt. Values persist in this
-          browser only. Defaults aim for deliberate, smooth, obviously-dealt
-          motion; max values approach Inspect Mode pacing for visual audit.
+          Geometry Lab values are shared globally and affect all players,
+          observers, and devices in real time. Edits save to the canonical
+          shell config — there is one table, one deal, one feel.
         </p>
       </div>
 
@@ -89,23 +140,29 @@ export function DealTimingAdminSection() {
         label="Launch Spacing"
         description="Time between successive card launches."
         field="launchSpacingMs"
-        value={t.launchSpacingMs}
+        value={draft.launchSpacingMs}
+        onChange={(v) => setDraft((d) => ({ ...d, launchSpacingMs: v }))}
       />
       <TimingRow
         label="Flight Duration"
         description="Per-card translate(0)→translate(dx,dy) flight time."
         field="durationMs"
-        value={t.durationMs}
+        value={draft.durationMs}
+        onChange={(v) => setDraft((d) => ({ ...d, durationMs: v }))}
       />
       <TimingRow
         label="Ownership Claim Delay"
         description="Pause between transport arrival and destination claiming ownership (transport destroyed)."
         field="ownershipClaimDelayMs"
-        value={t.ownershipClaimDelayMs}
+        value={draft.ownershipClaimDelayMs}
+        onChange={(v) => setDraft((d) => ({ ...d, ownershipClaimDelayMs: v }))}
       />
 
-      <div className="flex">
-        <Button variant="outline" size="sm" onClick={resetDealTiming}>
+      <div className="flex gap-2">
+        <Button size="sm" disabled={!dirty || saving} onClick={handleSave} className="flex-1">
+          {saving ? 'Saving…' : dirty ? 'Save globally' : 'Saved'}
+        </Button>
+        <Button variant="outline" size="sm" disabled={saving} onClick={handleReset}>
           Reset all to defaults
         </Button>
       </div>

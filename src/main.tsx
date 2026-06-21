@@ -4,12 +4,13 @@ import "./index.css";
 import { supabase } from "@/integrations/supabase/client";
 import { persistSyncDebugEvent } from "@/lib/persistSyncDebugEvent";
 import { bootstrapCanonicalShellLayout } from "@/lib/canonicalShell/canonicalShellLayoutConfig";
+import { bootstrapDealTiming } from "@/lib/geometryLab/dealTimingStore";
 
-// Rehydrate the global Canonical Shell Layout config before first render.
-// Applies baked defaults synchronously and then fetches the DB-backed
-// authoritative values + subscribes to realtime updates so every device
-// stays in sync without a reload.
+// Rehydrate global Geometry Lab config before first render. Applies
+// baked defaults synchronously, fetches DB-backed authoritative values,
+// and subscribes to realtime updates so every device stays in sync.
 bootstrapCanonicalShellLayout();
+bootstrapDealTiming();
 
 // ── Token refresh failure tracing ────────────────────────────
 // Listen for auth errors that indicate a refresh failure
