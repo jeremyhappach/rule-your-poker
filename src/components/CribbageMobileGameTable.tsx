@@ -6519,6 +6519,10 @@ export const CribbageMobileGameTable = ({
                     dealerPlayerId={cribbageState.dealerPlayerId}
                     selfPlayerId={currentPlayerId}
                     seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
+                    cardsPerPlayer={
+                      (CARDS_PER_PLAYER as Record<number, number>)[projectedSeatPlayers.length] ?? 6
+                    }
+                    selfHand={cribbageState?.playerStates[currentPlayerId]?.hand ?? []}
                   />
                 ) : null}
 
