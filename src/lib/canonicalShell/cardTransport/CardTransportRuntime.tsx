@@ -471,7 +471,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           padding: isHidden ? 0 : '2px 0',
           overflow: 'hidden',
           opacity: 0,
-          animation: `${kf} ${card.flightMs}ms ${easing} ${card.delayMs}ms 1 forwards`,
+          animation: `${kf} ${card.flightMs}ms ${easing} 0ms 1 forwards`,
           willChange: 'transform, opacity',
         }}
         onAnimationStart={() => logActualLaunch('animationstart')}
