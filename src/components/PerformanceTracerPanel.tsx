@@ -114,6 +114,20 @@ export function PerformanceTracerPanel() {
     );
   }
 
+  const handleCopy = async () => {
+    let text = '';
+    if (selectedSession) {
+      text = traces.map((t) => `${t.created_at} | ${t.operation} | ${t.duration_ms}ms | ${t.table_name ?? '-'} | ${JSON.stringify(t.metadata)}`).join('\n');
+    } else {
+      text = sessions.map((s) => `${s.started_at} | ${s.label} | ${s.total_operations} ops | max ${s.slowest_operation_ms}ms | avg ${s.avg_duration_ms}ms`).join('\n');
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* noop */ }
+  };
+
   return (
     <div className="fixed bottom-4 right-4 z-50 w-[500px] max-h-[600px] bg-background border border-border rounded-lg shadow-xl flex flex-col">
       {/* Header */}
@@ -128,6 +142,9 @@ export function PerformanceTracerPanel() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={handleCopy} title="Copy">
+            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+          </Button>
           {recording ? (
             <Button size="sm" variant="destructive" onClick={handleStopRecording}>
               <Square className="w-3 h-3 mr-1" /> Stop
