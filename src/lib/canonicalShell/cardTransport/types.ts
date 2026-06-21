@@ -3,7 +3,13 @@
  *
  * Mirrors ChipTransport ownership model:
  *   - Shell owns: launch, travel, arrival, destroy, settle barrier.
- *   - Games own:  deal order, card identity, card visibility.
+ *   - Games own:  deal order, card identity, card visibility, source authority.
+ *
+ * Source authority:
+ *   Cards do NOT originate from a visible deck. They originate from the
+ *   player who currently holds dealing authority (dealer button, caller,
+ *   etc.). Games choose the source endpoint per their rules; the shell
+ *   only resolves geometry via `[data-card-anchor]`.
  *
  * Visibility rule (Wave 1):
  *   A real card with id `cardId` is visible iff `cardId ∈ settledCardIds`
@@ -12,7 +18,7 @@
  */
 
 export type CardEndpoint =
-  | { kind: 'deck' }
+  | { kind: 'dealer'; playerId: string }
   | { kind: 'seat'; position: number }
   | { kind: 'hand'; playerId: string }
   | { kind: 'stock' }
@@ -42,7 +48,7 @@ export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
 
 export function describeCardEndpoint(ep: CardEndpoint): string {
   switch (ep.kind) {
-    case 'deck':    return 'deck';
+    case 'dealer':  return `dealer:${ep.playerId}`;
     case 'seat':    return `seat:${ep.position}`;
     case 'hand':    return `hand:${ep.playerId}`;
     case 'stock':   return 'stock';
