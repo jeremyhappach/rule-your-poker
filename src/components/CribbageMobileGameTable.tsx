@@ -6667,7 +6667,7 @@ export const CribbageMobileGameTable = ({
           {/* ═══════ PROJECTED SEAT OVERLAY — shell-owned via GameplayOpponentSeatLayer ═══════
               Games emit presentation state (typed accessors); the
               shell mounts CanonicalSeatCluster per opponent. */}
-          <GameplayOpponentSeatLayer
+          <DealClippedOpponentSeatLayer
             family="cribbage"
             participants={projectedSeatPlayers
               .filter(seatPlayer => isObserver || seatPlayer.id !== currentPlayerId)
