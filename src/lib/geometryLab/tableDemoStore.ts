@@ -146,7 +146,7 @@ export async function saveTableDemo(
     .upsert(
       [{
         key: TABLE_DEMO_KEY,
-        value: merged as unknown as Record<string, unknown>,
+        value: merged as unknown as { enabled: boolean; pauseBetweenHandsMs: number },
         updated_at: new Date().toISOString(),
       }],
       { onConflict: 'key' },
