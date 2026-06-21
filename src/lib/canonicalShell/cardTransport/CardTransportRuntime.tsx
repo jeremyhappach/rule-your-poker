@@ -180,9 +180,24 @@ export function CardTransportRuntime({
     const isHidden = card.intent.face === 'hidden';
     const inspect = isCardTransportInspectMode();
     const cbc = card.intent.cardBackColors;
+    const vf = card.intent.visibleFace;
     const hiddenBg = cbc
       ? `linear-gradient(135deg, ${cbc.color} 0%, ${cbc.darkColor} 100%)`
       : 'linear-gradient(135deg, hsl(220 70% 28%), hsl(220 70% 18%))';
+    const suitChar = vf
+      ? (vf.suit === 'hearts' ? '♥' : vf.suit === 'diamonds' ? '♦' : vf.suit === 'clubs' ? '♣' : '♠')
+      : '';
+    const suitColor = vf && (vf.suit === 'hearts' || vf.suit === 'diamonds') ? '#ef4444' : '#111827';
+    // Per-flight timing telemetry — wall-clock anchors so dbg can show
+    // actualStartTime / actualArrivalTime / dx / dy / portalLayer.
+    cardTransportDbgUpsert(card.intent.id, {
+      durationMs: card.flightMs,
+      launchDelayMs: card.delayMs,
+      dx,
+      dy,
+      actualStartTime: card.startedAt + card.delayMs,
+      portalLayer: 'overlay-root',
+    } as never);
     nodes.push(
       <div
         key={card.intent.id}
@@ -202,18 +217,16 @@ export function CardTransportRuntime({
           style={{
             width: CARD_W,
             height: CARD_H,
-            borderRadius: 6,
-            border: '1px solid rgba(255,255,255,0.85)',
+            borderRadius: 4,
+            border: isHidden ? '1px solid rgba(255,255,255,0.85)' : '1px solid #d1d5db',
             boxShadow: '0 6px 14px rgba(0,0,0,0.45)',
-            background: isHidden
-              ? hiddenBg
-              : 'linear-gradient(180deg, #ffffff, #f1f1f1)',
-            color: isHidden ? 'rgba(255,255,255,0.4)' : 'hsl(220 30% 20%)',
+            background: isHidden ? hiddenBg : '#ffffff',
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 700,
-            fontSize: 10,
+            justifyContent: 'space-between',
+            padding: '2px 0',
+            overflow: 'hidden',
             opacity: 0,
             animation: `${kf} ${card.flightMs}ms ${inspect ? INSPECT_EASING : NORMAL_EASING} ${card.delayMs}ms both`,
             willChange: 'transform, opacity',
@@ -224,12 +237,35 @@ export function CardTransportRuntime({
               style={{
                 width: '75%',
                 height: '75%',
+                margin: 'auto',
                 background: `${cbc.color}55`,
                 border: '1px solid rgba(255,255,255,0.2)',
                 borderRadius: 4,
               }}
             />
-          ) : (isHidden ? '' : '\u2660')}
+          ) : !isHidden && vf ? (
+            <>
+              <span
+                style={{
+                  fontSize: `${CARD_W * 0.55}px`,
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  color: suitColor,
+                }}
+              >
+                {vf.rank}
+              </span>
+              <span
+                style={{
+                  fontSize: `${CARD_W * 0.7}px`,
+                  lineHeight: 1,
+                  color: suitColor,
+                }}
+              >
+                {suitChar}
+              </span>
+            </>
+          ) : null}
         </div>
         <style>{`@keyframes ${kf} {
           0%   { transform: translate(0, 0) scale(0.92); opacity: 0; }
