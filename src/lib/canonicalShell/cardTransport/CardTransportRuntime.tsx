@@ -129,6 +129,10 @@ export function CardTransportRuntime({
         from: intent.from,
         to: intent.to,
         handContextId: intent.handContextId ?? null,
+        timingSource: intent.timingSource,
+        dealTimingSettings: intent.dealTimingSettings,
+        expectedStartTime: intent.expectedStartTime,
+        expectedArrivalTime: intent.expectedArrivalTime,
         fromEndpointFound: !!from,
         toEndpointFound: !!to,
         resolvedFromAnchor: from?.resolvedAnchor ?? null,
@@ -281,7 +285,15 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         : actualStartDeltaFromPreviousMs - expectedStartDeltaFromPreviousMs;
       byIndex.set(cardIndex, { start: now, delay: card.delayMs });
     }
-    cardTransportDbgUpsert(card.intent.id, { actualStartTime: now });
+    const expectedStartTime = card.intent.expectedStartTime ?? card.startedAt + card.delayMs;
+    cardTransportDbgUpsert(card.intent.id, {
+      actualStartTime: now,
+      actualStartDeltaFromPreviousMs,
+      expectedStartDeltaFromPreviousMs,
+      startDeltaErrorMs,
+      startSkewMs: now - expectedStartTime,
+      launchProofSource: source,
+    });
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF LAUNCH]', {
       intentId: card.intent.id,
@@ -294,8 +306,8 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       actualStartDeltaFromPreviousMs,
       expectedStartDeltaFromPreviousMs,
       startDeltaErrorMs,
-      expectedStartTime: card.startedAt + card.delayMs,
-      startSkewMs: now - (card.startedAt + card.delayMs),
+      expectedStartTime,
+      startSkewMs: now - expectedStartTime,
       source,
     });
   };
@@ -305,7 +317,13 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     arrivalLoggedRef.current = true;
     const now = performance.now();
     const actualStartTime = actualStartRef.current;
-    cardTransportDbgUpsert(card.intent.id, { actualArrivalTime: now });
+    const expectedArrivalTime = card.intent.expectedArrivalTime ?? card.startedAt + card.delayMs + card.flightMs;
+    cardTransportDbgUpsert(card.intent.id, {
+      actualArrivalTime: now,
+      actualFlightDurationMs: actualStartTime == null ? null : now - actualStartTime,
+      arrivalSkewMs: now - expectedArrivalTime,
+      arrivalProofSource: source,
+    });
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF ARRIVAL]', {
       intentId: card.intent.id,
@@ -316,8 +334,8 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       actualStartTime,
       actualArrivalTime: now,
       actualFlightDurationMs: actualStartTime == null ? null : now - actualStartTime,
-      expectedArrivalTime: card.startedAt + card.delayMs + card.flightMs,
-      arrivalSkewMs: now - (card.startedAt + card.delayMs + card.flightMs),
+      expectedArrivalTime,
+      arrivalSkewMs: now - expectedArrivalTime,
       source,
     });
   };

@@ -102,6 +102,7 @@ export function CribbageDealOrchestrator({
         const r = sorted[(dealerIdx + off) % sorted.length];
         const idx = intents.length;
         const isSelf = r.playerId === selfPlayerId;
+        const launchDelayMs = idx * staggerMs;
         // ONE TRANSPORT, ONE CARDBACK — all flights render the canonical
         // cardback. The reveal moment is arrival, when the destination
         // (opponent stack or self hand) claims ownership of the real card.
@@ -114,8 +115,18 @@ export function CribbageDealOrchestrator({
             ? { kind: 'hand', playerId: selfPlayerId }
             : { kind: 'oppStack', position: r.position },
           durationMs,
-          launchDelayMs: idx * staggerMs,
+          launchDelayMs,
           ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+          timingSource,
+          dealTimingSettings: {
+            launchSpacingMs: timing.launchSpacingMs,
+            durationMs: timing.durationMs,
+            ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+            effectiveLaunchSpacingMs: staggerMs,
+            effectiveDurationMs: durationMs,
+          },
+          expectedStartTime: emitTime + launchDelayMs,
+          expectedArrivalTime: emitTime + launchDelayMs + durationMs,
           handContextId,
           recipientPlayerId: r.playerId,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
