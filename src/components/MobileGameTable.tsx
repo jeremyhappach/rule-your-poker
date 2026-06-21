@@ -8251,22 +8251,29 @@ export const MobileGameTable = ({
                             <div
                               className={`transform ${currentPlayerHandScaleClass} origin-top ${isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : ''} ${(isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : ''}`}
                             >
-                              <PlayerHand
+                              <Use357SelfHand
+                                currentPlayerId={currentPlayer?.id ?? ''}
                                 cards={currentPlayerCards}
-                                isHidden={false}
-                                highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                                kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                                hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                                gameType={gameType}
-                                currentRound={currentRound}
-                                showSeparated={gameType !== 'holm-game' && currentRound === 3 && currentPlayerCards.length === 7}
-                                tightOverlap={isHolmMultiPlayerShowdown}
-                                availableHeightPx={handAvailableHeightPx357}
-                                wrapperScale={handScaleNum}
-
+                                baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
+                                render={(effectiveCards) => (
+                                  <PlayerHand
+                                    cards={effectiveCards}
+                                    isHidden={false}
+                                    highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                                    kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                                    hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                                    gameType={gameType}
+                                    currentRound={currentRound}
+                                    showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
+                                    tightOverlap={isHolmMultiPlayerShowdown}
+                                    availableHeightPx={handAvailableHeightPx357}
+                                    wrapperScale={handScaleNum}
+                                  />
+                                )}
                               />
                             </div>
                           </div>
+
                         ) : (
                           <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
                             <div className={`transform ${currentPlayerHandScaleClass} origin-top opacity-0 pointer-events-none`}>
