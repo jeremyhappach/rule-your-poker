@@ -39,6 +39,7 @@
 import { useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { Wave4CribCutGroupSlot } from './Wave4CribCutGroupSlot';
 import { useCribbageGameplayGeometry } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
 import { useLiveGeometryConstraints } from '@/lib/wave4LayoutResolver/useLiveGeometryConstraints';
