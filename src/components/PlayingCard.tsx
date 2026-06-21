@@ -159,14 +159,16 @@ export const PlayingCard = ({
   const cardFaceStyle = getCardFaceStyle();
   
   // If hidden or no card, show CANONICAL card back.
-  // All color/border/accent/team-logo concerns live in CanonicalCardBack.
+  // The Tailwind sizeClasses.container drives the box size; CanonicalCardBack
+  // fills it via width:100%/height:100% so we never duplicate gradient/border code.
   if (isHidden || !card) {
     return (
       <div className={`${sizeClasses.container} ${className}`} style={style}>
         <CanonicalCardBack
-          widthPx={containerPx.width}
-          heightPx={containerPx.height}
+          widthPx={0}
+          heightPx={0}
           variant="raised"
+          style={{ width: '100%', height: '100%' }}
         />
       </div>
     );
