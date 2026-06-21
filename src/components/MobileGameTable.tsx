@@ -5531,7 +5531,7 @@ export const MobileGameTable = ({
         />
       </div>
     ) : (
-      !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && cardCountToShow > 0 && (
+      !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && (cardCountToShow > 0 || prevWaveCountFor357(currentRound ?? 0) > 0) && (
         <Use357OppCount
           playerId={player.id}
           baseline={prevWaveCountFor357(currentRound ?? 0)}
