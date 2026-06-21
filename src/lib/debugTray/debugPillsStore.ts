@@ -66,6 +66,7 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'winnerChipEndpointDbg', abbreviation: 'WIN ENDPT', fullName: 'Winner Chip Endpoint Audit', description: 'DOM snapshot of [data-chip-center] at announcementComplete + dispatch + drop. Diagnoses asymmetric winner-endpoint-missing failures.' },
   { key: 'destReactionDbg',  abbreviation: 'DEST REACT', fullName: 'Destination Reaction Audit', description: 'Per-intent destination-reaction lifecycle: target element snapshot, animation mount/start/finish, computed transform before/during/after, override detection.' },
   { key: 'visibleChipDbg',   abbreviation: 'VIS CHIP',   fullName: 'Visible Chip Inventory',     description: 'DOM inventory of every [data-chip-reaction-target] at chip-transport dispatch + arrival: rect, visibility, owner hint (canonical vs HUD vs self), winner-cluster presence + missing reason.' },
+  { key: 'cardTransportDbg', abbreviation: 'CARD DBG',  fullName: 'Card Transport Audit',  description: 'Per-intent canonical card transport: endpoint resolution, rects, dx/dy, lifecycle samples (launch/midflight/arrival/destroy) with computed animation + transition CSS, ownershipClaim/destroyed timing.' },
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';

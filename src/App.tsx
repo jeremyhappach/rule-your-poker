@@ -29,6 +29,7 @@ import { ShellLifecyclePanel } from "@/lib/canonicalShell/ShellLifecyclePanel";
 import { NormalizationDbgPanel } from "@/lib/NormalizationDbgPanel";
 import { SettlementDbgPanel } from "@/lib/canonicalShell/settlement/SettlementDbgPanel";
 import { ChipTransportDbgPanel } from "@/lib/canonicalShell/ChipTransportDbgPanel";
+import { CardTransportDbgPanel } from "@/lib/canonicalShell/cardTransport/CardTransportDbgPanel";
 import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
 import { DestReactionDbgPanel } from "@/lib/canonicalShell/DestReactionDbgPanel";
 import { VisibleChipDbgPanel } from "@/lib/canonicalShell/VisibleChipDbgPanel";
@@ -126,6 +127,7 @@ const App = () => {
                 <NormalizationDbgPanel />
                 <SettlementDbgPanel />
                 <ChipTransportDbgPanel />
+                <CardTransportDbgPanel />
                 <WinnerChipEndpointDbgPanel />
                 <DestReactionDbgPanel />
                 <VisibleChipDbgPanel />
