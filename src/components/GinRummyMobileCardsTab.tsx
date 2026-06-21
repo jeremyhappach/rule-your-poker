@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import type { GinRummyState, GinRummyCard, Meld } from '@/lib/ginRummyTypes';
 import { canKnock, hasGin, findLayOffOptions, findOptimalMelds } from '@/lib/ginRummyScoring';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 
 interface Player {
   id: string;
