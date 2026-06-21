@@ -144,11 +144,11 @@ export async function saveTableDemo(
   const { error } = await supabase
     .from('system_settings')
     .upsert(
-      {
+      [{
         key: TABLE_DEMO_KEY,
         value: merged as unknown as Record<string, unknown>,
         updated_at: new Date().toISOString(),
-      },
+      }],
       { onConflict: 'key' },
     );
   if (error) return { ok: false, error: error.message };
