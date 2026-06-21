@@ -5954,6 +5954,7 @@ export const MobileGameTable = ({
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
+          key={threeFiveSevenWaveContextId}
           waveContextId={threeFiveSevenWaveContextId}
           dealerPosition={threeFiveSevenDealerPosition}
           selfPlayerId={threeFiveSevenSelfPlayerId}
