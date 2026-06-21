@@ -51,6 +51,7 @@ import {
 } from "./GeometryLabCrashBoundary";
 import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
 import { DealTimingAdminSection } from "./DealTimingAdminSection";
+import { TableDemoAdminSection } from "./TableDemoAdminSection";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
@@ -551,8 +552,11 @@ export function GeometryLab({ userId }: { userId: string }) {
       {/* Safe Areas — global canonical-shell layout (moved from Admin). */}
       <LayoutTuningAdminSection />
 
-      {/* Deal Timing — per-device motion knobs for ONE DEAL. */}
+      {/* Deal Timing — global motion knobs for ONE DEAL. */}
       <DealTimingAdminSection />
+
+      {/* Table Demo — global tuning mode that skips gameplay. */}
+      <TableDemoAdminSection />
 
       <div className="flex gap-2">
         <Button onClick={handleSave} disabled={saving} className="flex-1">
