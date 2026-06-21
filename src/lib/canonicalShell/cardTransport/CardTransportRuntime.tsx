@@ -160,7 +160,11 @@ export function CardTransportRuntime({
       const settleAt = chip.delayMs + chip.flightMs;
       const remaining = Math.max(0, settleAt - elapsed);
       const t = window.setTimeout(() => {
-        cardTransportDbgUpsert(id, { settled: true, transportVisible: false });
+        cardTransportDbgUpsert(id, {
+          settled: true,
+          transportVisible: false,
+          actualArrivalTime: performance.now(),
+        } as never);
         ctx.__markSettled(id, chip.intent.cardId);
       }, remaining + 8);
       timers.push(t);
