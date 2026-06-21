@@ -1,4 +1,6 @@
 import type { CribbageCard } from '@/lib/cribbageTypes';
+import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
+
 
 interface CribbagePlayingCardProps {
   card: CribbageCard;
