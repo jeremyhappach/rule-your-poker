@@ -133,7 +133,7 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
     return (
       <div {...anchorProps} className="flex -space-x-1.5 mt-1 justify-center min-w-[1rem] min-h-[1.5rem]">
         {Array.from({ length: count }).map((_, i) => (
-          <CanonicalCardBack key={i} widthPx={16} heightPx={24} showAccent={false} />
+          <CanonicalCardBack key={i} widthPx={16} heightPx={24} />
         ))}
       </div>
     );
