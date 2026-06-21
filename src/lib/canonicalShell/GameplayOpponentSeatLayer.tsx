@@ -236,8 +236,18 @@ export function GameplayOpponentSeatLayer({
                 variant={cardBacks.variant}
                 color={cardBackColors.color}
                 darkColor={cardBackColors.darkColor}
+                position={p.position}
               />
-            ) : null}
+            ) : (
+              // Anchor-only placeholder so card transport endpoints
+              // resolve even before any opponent card has settled.
+              <div
+                data-card-anchor={`opp-stack-${p.position}`}
+                className="mt-1 w-4 h-6 pointer-events-none"
+                style={{ opacity: 0 }}
+                aria-hidden="true"
+              />
+            )}
           </CanonicalSeatCluster>
         );
       })}
