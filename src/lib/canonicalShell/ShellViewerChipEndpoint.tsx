@@ -1,31 +1,35 @@
 /**
- * ShellViewerChipEndpoint — shell-owned `[data-chip-center]` anchor for
- * the local viewer's seat.
+ * ShellViewerChipEndpoint — shell-owned chip endpoint for the local
+ * viewer's seat, portaled onto the canonical felt at the HOME slot.
  *
  * Why this exists
  * ---------------
  * Canonical seat clusters (`CanonicalSeatCluster`) deliberately suppress
  * rendering when `position === viewerPosition` (`allowSelfRender=false`)
  * because the viewer's hand / chip stack lives in the HUD, not the
- * felt rail. That invariant works for steady-state gameplay, but it
- * breaks the canonical Economy precondition:
+ * felt rail. That invariant breaks two canonical preconditions:
  *
- *     All transfer endpoints must exist before economy dispatch.
+ *   1. All transfer endpoints must exist before economy dispatch.
+ *      Without this marker, `resolveChipEndpoint` returns null and a
+ *      local-winner transport silently drops with `missing-endpoint`.
  *
- * When the local viewer is the WINNER of a chip transfer, the
- * `ChipTransportRuntime` has no `[data-chip-center="<viewerPosition>"]`
- * to resolve as the destination. `resolveChipEndpoint` returns null and
- * the transport silently drops with `reason=missing-endpoint`.
+ *   2. The destination reaction (e.g. `cribbageBounce` arrival) needs
+ *      a VISIBLE reaction target — `[data-chip-reaction-target=N]` on a
+ *      chip-shaped DOM node with non-zero rect. The previous 0×0
+ *      geometry-only marker satisfied (1) but not (2): the runtime
+ *      either dropped the reaction (`no-visible-reaction-target`) or
+ *      was redirected to a hand-rolled HUD `<span>` that bounced text
+ *      instead of the chip body.
  *
- * Fix: the shell — which owns seat anchors and viewer identity — mounts
- * a zero-size, pointer-events-disabled marker portaled into the canonical
- * felt surface at the HOME slot. This guarantees the viewer's chip
- * endpoint is present for the ENTIRE settlement window, regardless of
- * which game is on the felt and regardless of `allowSelfRender`.
+ * Fix: render a real `CanonicalChipDisc` (amount=null, transparent) at
+ * the HOME slot. The disc body publishes BOTH `data-chip-center`
+ * (geometry) and `data-chip-reaction-target` (visible bounce target)
+ * for the viewer's position, matching the contract every opponent seat
+ * already satisfies via `CanonicalSeatCluster`.
  *
  * Tiebreaker note: if a game also mounts its own `CanonicalSeatCluster`
  * for the viewer (e.g. Holm showdown with `allowSelfRender=true`), the
- * cluster's `[data-chip-center]` appears earlier in DOM order and wins
+ * cluster's anchors appear earlier in DOM order and win
  * `container.querySelector`. The shell endpoint is the fallback, not
  * the override.
  */
@@ -35,6 +39,7 @@ import { useShellFeltFrameElement } from './useShellFeltFrameElement';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { getCanonicalSlotPlacement } from './canonicalSlotPlacement';
 import { SLOT } from './seatAnchors';
+import { CanonicalChipDisc } from '@/components/canonicalShell/CanonicalChipDisc';
 
 export function ShellViewerChipEndpoint(): JSX.Element | null {
   const anchors = useSeatAnchorsOptional();
@@ -57,11 +62,21 @@ export function ShellViewerChipEndpoint(): JSX.Element | null {
   return createPortal(
     <div
       data-canonical-shell-viewer-chip-endpoint=""
-      data-chip-center={viewerPosition}
       aria-hidden="true"
       className={`absolute ${placement.className} pointer-events-none`}
-      style={{ width: 0, height: 0 }}
-    />,
+    >
+      {/* Transparent, value-less chip body. The disc publishes
+          `data-chip-center` and `data-chip-reaction-target` for the
+          viewer's seat — the visible canonical endpoint required for
+          chip transport AND destination-reaction targeting. The HUD
+          owns numeric chip display; this disc owns geometry + bounce. */}
+      <CanonicalChipDisc
+        amount={null}
+        bgClass="bg-transparent border-transparent"
+        positionAnchor={viewerPosition}
+        size="gameplay"
+      />
+    </div>,
     felt,
   );
 }
