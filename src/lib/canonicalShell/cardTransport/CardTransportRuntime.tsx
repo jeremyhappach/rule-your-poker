@@ -352,15 +352,13 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const midAt = card.delayMs + card.flightMs / 2;
     const endAt = card.delayMs + card.flightMs;
 
-    const tProofLaunch = window.setTimeout(() => logActualLaunch('timer-fallback'), Math.max(0, startAt + 20));
-    const tProofArrival = window.setTimeout(() => logActualArrival('timer-fallback'), Math.max(0, endAt + 20));
+    window.setTimeout(() => logActualLaunch('timer-fallback'), Math.max(0, startAt + 20));
+    window.setTimeout(() => logActualArrival('timer-fallback'), Math.max(0, endAt + 20));
     const tLaunch = window.setTimeout(() => snapshot('launch'), Math.max(0, startAt + 16));
     const tMid    = window.setTimeout(() => snapshot('midflight'), midAt);
     const tEnd    = window.setTimeout(() => snapshot('arrival'), Math.max(0, endAt - 8));
 
     return () => {
-      window.clearTimeout(tProofLaunch);
-      window.clearTimeout(tProofArrival);
       window.clearTimeout(tLaunch);
       window.clearTimeout(tMid);
       window.clearTimeout(tEnd);
