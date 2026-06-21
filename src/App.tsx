@@ -30,6 +30,8 @@ import { NormalizationDbgPanel } from "@/lib/NormalizationDbgPanel";
 import { SettlementDbgPanel } from "@/lib/canonicalShell/settlement/SettlementDbgPanel";
 import { ChipTransportDbgPanel } from "@/lib/canonicalShell/ChipTransportDbgPanel";
 import { CardTransportDbgPanel } from "@/lib/canonicalShell/cardTransport/CardTransportDbgPanel";
+import { ThreeFiveSevenDealDiagPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenDealDiagPanel";
+
 import { CardBackDbgPanel } from "@/lib/canonicalShell/CardBackDbgPanel";
 import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
 import { DestReactionDbgPanel } from "@/lib/canonicalShell/DestReactionDbgPanel";
