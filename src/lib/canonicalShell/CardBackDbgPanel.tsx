@@ -41,6 +41,17 @@ interface InventoryRow {
   darkColor: string;
   width: number;
   height: number;
+  // Full style fingerprint — exposes drift between variants of the same
+  // canonical component. Two rows with the same `kind=canonical` but
+  // different `borderColor`/`gradient`/`radiusPctW` are a design-language
+  // violation, even though both pass the "is canonical?" check.
+  borderWidthPx: number;
+  borderColor: string;
+  radiusPx: number;
+  radiusPctW: number;       // radius as % of width — must be ~same across variants
+  boxShadow: string;
+  backgroundImage: string;  // raw computed gradient string
+  accent: 'logo' | 'frame' | 'none';
   owner: string;
   tag: string;
   className: string;
