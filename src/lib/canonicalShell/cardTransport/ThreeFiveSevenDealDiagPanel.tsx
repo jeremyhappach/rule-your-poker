@@ -339,6 +339,11 @@ export function ThreeFiveSevenDealDiagPanel() {
               timer,
               card0Timeline: card0,
               domProbes: { playerHandMounted, playerHandKey, fanLayoutInitialized },
+              probes: {
+                selfLanding: { handAnchorRect, playerHandRect, fanRootRect, card0DomRect, distancePx, actualVisibleCardDOMCount, ownershipClaimTime: card0?.ownershipClaimTime, transportDestroyedTime: card0?.transportDestroyedTime },
+                renderedCardCounts: { actualSelfCardDomCount: actualVisibleCardDOMCount, actualOpponentCardDomCount, effectiveCards: selfOwn?.visibleCount, visibleCount: selfOwn?.visibleCount, authoritativeCount: selfOwn?.authoritativeCount },
+                timerOwner: { renderedTimerComponent, timerSource: timer.timerSource, usesDealRuntime, phase: timer.phase, is357, legacyTimerCount: legacyTimerEls.length, canonicalRailMounted: !!timerRailEl },
+              },
               transitions: [...transitions],
               allDeals: deals,
               cardTransport: cts,
