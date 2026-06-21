@@ -1,12 +1,19 @@
 /**
  * cardEndpoints — pure endpoint resolver for canonical card transport.
  *
- * Every owner publishes `[data-card-anchor="<key>"]` on its visible
- * geometry root. The resolver returns container-relative center coords.
+ * Invariant: cards terminate where cards are owned.
+ *   - [data-card-anchor="opp-stack-${position}"]  — opponent card stack
+ *   - [data-card-anchor="hand-${playerId}"]       — local active hand
+ *   - [data-card-anchor="community-${idx}"]       — shared community slot
+ *   - [data-card-anchor="stock-..."] / "stock"    — draw pile
+ *   - [data-card-anchor="discard"]                — discard pile
+ *   - [data-card-anchor="seat-${pos}"]            — generic seat origin
+ *   - [data-card-anchor="dealer-${playerId}"]     — current dealer origin
  *
- * Wave 1 fallbacks (so games can wire incrementally):
- *   - seat-${pos}        → also matches `[data-chip-center="${pos}"]`.
- *   - dealer-${playerId} → also matches `[data-card-anchor="hand-${playerId}"]`.
+ * [data-chip-center] / [data-pot-anchor] are reserved for ECONOMY
+ * (chip transport) only. This resolver MUST NOT fall back to them —
+ * cards flying to chip geometry then "teleporting" into a stack is
+ * exactly the artifact this contract eliminates.
  *
  * The resolved key (anchor that actually matched) is returned so the
  * runtime can record it on the dbg entry.
@@ -20,7 +27,7 @@ export interface ResolvedCardEndpoint {
   y: number;
   w: number;
   h: number;
-  /** The DOM attribute string that matched. e.g. "hand-abc" or "chip-center:0". */
+  /** The DOM attribute string that matched. e.g. "hand-abc" or "opp-stack-2". */
   resolvedAnchor: string;
 }
 
@@ -33,11 +40,18 @@ function anchorCandidates(ep: CardEndpoint): AnchorCandidate[] {
       { selector: `[data-card-anchor="hand-${ep.playerId}"]`,   label: `hand-${ep.playerId}` },
     ];
     case 'seat':    return [
-      { selector: `[data-card-anchor="seat-${ep.position}"]`, label: `seat-${ep.position}` },
-      { selector: `[data-chip-center="${ep.position}"]`,      label: `chip-center:${ep.position}` },
+      { selector: `[data-card-anchor="seat-${ep.position}"]`,      label: `seat-${ep.position}` },
+      { selector: `[data-card-anchor="opp-stack-${ep.position}"]`, label: `opp-stack-${ep.position}` },
+    ];
+    case 'oppStack': return [
+      { selector: `[data-card-anchor="opp-stack-${ep.position}"]`, label: `opp-stack-${ep.position}` },
+      { selector: `[data-card-anchor="seat-${ep.position}"]`,      label: `seat-${ep.position}` },
     ];
     case 'hand':    return [
       { selector: `[data-card-anchor="hand-${ep.playerId}"]`, label: `hand-${ep.playerId}` },
+    ];
+    case 'community': return [
+      { selector: `[data-card-anchor="community-${ep.index}"]`, label: `community-${ep.index}` },
     ];
     case 'stock':   return [
       { selector: `[data-card-anchor="stock"]`, label: 'stock' },
