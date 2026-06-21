@@ -165,11 +165,13 @@ export const PlayingCard = ({
     return (
       <div className={`${sizeClasses.container} ${className}`} style={style}>
         <CanonicalCardBack
-          widthPx={0}
-          heightPx={0}
+          widthPx={40}
+          heightPx={60}
           variant="raised"
+          radiusPx={4}
           style={{ width: '100%', height: '100%' }}
         />
+
       </div>
     );
   }
