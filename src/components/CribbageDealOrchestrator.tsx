@@ -202,19 +202,30 @@ export function CribbageDealOrchestrator({
     }
   }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, cardsPerPlayer, selfHand, cardBackColors, dealTimingHydrated]);
 
-  return (
+  // Portal canonical hand anchor into the active-player pane, near
+  // the TOP edge — cards land on top and fan grows downward.
+  const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
+    setSelfHandRegion(el);
+  }, [handContextId, selfPlayerId]);
+
+  const anchorEl = (
     <div
       aria-hidden="true"
       style={{
         position: 'absolute',
         left: '50%',
-        bottom: 0,
+        top: '15%',
         width: 1,
         height: 1,
-        transform: 'translate(-50%, 0)',
+        transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
       }}
       data-card-anchor={`hand-${selfPlayerId}`}
+      data-canonical-self-hand-anchor-position="top-of-pane"
+      data-anchor-owner="CribbageDealOrchestrator.selfHandRegion"
     />
   );
+  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
 }
