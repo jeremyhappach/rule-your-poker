@@ -18,6 +18,7 @@
  */
 
 import { MobilePlayerTimer } from '@/components/MobilePlayerTimer';
+import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
