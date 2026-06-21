@@ -37,7 +37,8 @@ export type DebugPillKey =
   | 'destReactionDbg'
   | 'visibleChipDbg'
   | 'cardTransportDbg'
-  | 'cardBackDbg';
+  | 'cardBackDbg'
+  | 'threeFiveSevenDealDiag';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
@@ -45,6 +46,7 @@ export interface DebugPillDescriptor {
   fullName: string;
   description: string;
 }
+
 
 export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'felt',             abbreviation: 'FELT',      fullName: 'Felt',              description: 'Felt ownership, displayed plate, stakes, sources' },
