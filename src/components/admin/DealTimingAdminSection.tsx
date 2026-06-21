@@ -106,8 +106,11 @@ export function DealTimingAdminSection() {
     setSaving(true);
     const res = await saveDealTiming(draft);
     setSaving(false);
-    if (res.ok) toast.success('Deal Timing saved globally');
-    else toast.error(`Save failed: ${res.error}`);
+    if (res.ok) {
+      toast.success('Deal Timing saved globally');
+    } else {
+      toast.error(`Save failed: ${res.error}`);
+    }
   };
 
   const handleReset = async () => {
