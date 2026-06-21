@@ -53,6 +53,7 @@ export interface ThreeFiveSevenDealOrchestratorProps {
   waveContextId: string;          // ${dealerGameId}#h${hand}#r${round}
   dealerPosition: number;         // authoritative dealer seat position
   selfPlayerId: string;
+  selfPosition?: number | null;
   activeSeats: ThreeFiveSevenSeatEntry[]; // active+not-sitting-out, any order
   cardsThisWave: number;          // 3 for r=1, 2 for r=2 & r=3
 }
@@ -61,6 +62,7 @@ export function ThreeFiveSevenDealOrchestrator({
   waveContextId,
   dealerPosition,
   selfPlayerId,
+  selfPosition = null,
   activeSeats,
   cardsThisWave,
 }: ThreeFiveSevenDealOrchestratorProps) {
@@ -76,7 +78,7 @@ export function ThreeFiveSevenDealOrchestrator({
   const dealerIsSelf =
     typeof dealerPosition === 'number' &&
     dealerPosition > 0 &&
-    activeSeats.some(s => s.position === dealerPosition && s.playerId === selfPlayerId);
+    selfPosition === dealerPosition;
   const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
   const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
 
