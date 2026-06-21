@@ -417,9 +417,11 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     // SINGLE animation token before any frames render.
     snapshot('launch');
 
-    const startAt = card.delayMs;
-    const midAt = card.delayMs + card.flightMs / 2;
-    const endAt = card.delayMs + card.flightMs;
+    // Node is mounted at launch time — animation begins immediately,
+    // there is no CSS animation-delay. Snapshots are relative to mount.
+    const startAt = 0;
+    const midAt = card.flightMs / 2;
+    const endAt = card.flightMs;
 
     window.setTimeout(() => logActualLaunch('timer-fallback'), Math.max(0, startAt + 20));
     window.setTimeout(() => logActualArrival('timer-fallback'), Math.max(0, endAt + 20));
