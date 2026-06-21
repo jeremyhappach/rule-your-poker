@@ -355,6 +355,48 @@ export function CardBackDbgPanel() {
             );
           })()}
 
+          {/* Design-language drift across canonical variants.
+              "Same design language, different geometry" means: gradient,
+              border color, radius%w, and accent kind MUST be uniform across
+              every canonical surface; only borderWidth + boxShadow may differ. */}
+          {(() => {
+            const canon = rows.filter((r) => r.kind === 'canonical');
+            if (canon.length < 2) return null;
+            const ref = canon[0];
+            const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+            const offenders: { row: InventoryRow; reasons: string[] }[] = [];
+            for (const r of canon.slice(1)) {
+              const reasons: string[] = [];
+              if (norm(r.borderColor) !== norm(ref.borderColor))
+                reasons.push(`borderColor ${r.borderColor} ≠ ${ref.borderColor}`);
+              if (norm(r.backgroundImage) !== norm(ref.backgroundImage))
+                reasons.push('gradient ≠ reference');
+              if (Math.abs(r.radiusPctW - ref.radiusPctW) > 1.5)
+                reasons.push(`radius ${r.radiusPctW}%w ≠ ${ref.radiusPctW}%w`);
+              if (r.accent !== ref.accent)
+                reasons.push(`accent ${r.accent} ≠ ${ref.accent}`);
+              if (reasons.length) offenders.push({ row: r, reasons });
+            }
+            if (offenders.length === 0) {
+              return (
+                <div style={{ marginBottom: 6, color: '#7CFC00' }}>
+                  ✓ design language uniform across {canon.length} canonical backs
+                  (border color, gradient, radius%w, accent all match {ref.variant}).
+                </div>
+              );
+            }
+            return (
+              <div style={{ marginBottom: 6, color: '#FFA500' }}>
+                ⚠ design-language drift vs reference [{ref.variant} {ref.uid}]:
+                {offenders.map((o) => (
+                  <div key={o.row.uid} style={{ marginLeft: 8 }}>
+                    [{o.row.uid} {o.row.variant}] {o.reasons.join('; ')}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Legacy offenders */}
           {legacyCount > 0 && (
             <div style={{ marginBottom: 6, color: '#ff7777' }}>
@@ -370,7 +412,7 @@ export function CardBackDbgPanel() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '14px 70px 80px 60px 1fr',
+              gridTemplateColumns: '14px 78px 70px 56px 70px 70px 1fr',
               columnGap: 4,
               rowGap: 2,
               marginTop: 2,
@@ -380,6 +422,8 @@ export function CardBackDbgPanel() {
             <b>kind</b>
             <b>colors</b>
             <b>size</b>
+            <b>rad/bdr</b>
+            <b>shadow/acc</b>
             <b>owner / anchor</b>
             {rows.length === 0 && (
               <div style={{ gridColumn: '1 / -1', opacity: 0.7 }}>
@@ -403,6 +447,12 @@ export function CardBackDbgPanel() {
                     {r.color}/{r.darkColor}
                   </div>
                   <div>{r.width}×{r.height}</div>
+                  <div title={`radius ${r.radiusPx}px (${r.radiusPctW}%w) · border ${r.borderWidthPx}px ${r.borderColor}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.radiusPx}/{r.radiusPctW}% · {r.borderWidthPx}px
+                  </div>
+                  <div title={`shadow: ${r.boxShadow}\naccent: ${r.accent}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.boxShadow === 'none' ? '—' : 'shd'}/{r.accent}
+                  </div>
                   <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {r.cardAnchor ? `[${r.cardAnchor}] ` : ''}
                     {r.owner}
