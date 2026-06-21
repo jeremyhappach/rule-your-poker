@@ -5168,8 +5168,7 @@ export const MobileGameTable = ({
               widthPx={12}
               heightPx={20}
               variant="flat"
-              radiusPx={2}
-              showAccent={false}
+
               style={{
                 marginLeft: i > 0 ? '-5px' : '0',
                 zIndex: cardCountToShow - i,
