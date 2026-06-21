@@ -97,14 +97,16 @@ function defaultChipValue(n: number): string {
 interface ShellOpponentCardBacksProps {
   count: number;
   variant: 'cribbage' | 'gin';
-  color: string;
-  darkColor: string;
+  /** @deprecated Canonicalized — colors now sourced from CanonicalCardBack/useVisualPreferences. */
+  color?: string;
+  /** @deprecated Canonicalized — colors now sourced from CanonicalCardBack/useVisualPreferences. */
+  darkColor?: string;
   /** Seat position — stamped as [data-card-anchor="opp-stack-${position}"]
    *  so canonical card transport can terminate exactly on this stack. */
   position: number;
 }
 
-function ShellOpponentCardBacks({ count, variant, color, darkColor, position }: ShellOpponentCardBacksProps) {
+function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardBacksProps) {
   // Hooks must run unconditionally — both branches read geometry tokens
   // even though only the gin branch consumes the layout.
   const geo = useGeometryTokensOptional();
@@ -132,13 +134,7 @@ function ShellOpponentCardBacks({ count, variant, color, darkColor, position }: 
     return (
       <div {...anchorProps} className="flex -space-x-1.5 mt-1 justify-center min-w-[1rem] min-h-[1.5rem]">
         {Array.from({ length: count }).map((_, i) => (
-          <div
-            key={i}
-            className="w-4 h-6 rounded-sm border border-white/20"
-            style={{
-              background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)`,
-            }}
-          />
+          <CanonicalCardBack key={i} widthPx={16} heightPx={24} showAccent={false} />
         ))}
       </div>
     );
@@ -149,11 +145,7 @@ function ShellOpponentCardBacks({ count, variant, color, darkColor, position }: 
     return (
       <div {...anchorProps} className="flex -space-x-3 mt-1 min-w-[0.875rem] min-h-[1.25rem]">
         {Array.from({ length: count }).map((_, i) => (
-          <div
-            key={i}
-            className="w-3.5 h-5 rounded-sm border border-white/20"
-            style={{ background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)` }}
-          />
+          <CanonicalCardBack key={i} widthPx={14} heightPx={20} showAccent={false} />
         ))}
       </div>
     );
@@ -161,15 +153,13 @@ function ShellOpponentCardBacks({ count, variant, color, darkColor, position }: 
   return (
     <div {...anchorProps} className="flex mt-1" style={{ width: layout.totalWidth, minHeight: layout.cardHeight }}>
       {Array.from({ length: count }).map((_, i) => (
-        <div
+        <CanonicalCardBack
           key={i}
-          className="rounded-sm border border-white/20 shrink-0"
-          style={{
-            width: layout.cardWidth,
-            height: layout.cardHeight,
-            marginLeft: i === 0 ? 0 : -layout.overlapPx,
-            background: `linear-gradient(135deg, ${color} 0%, ${darkColor} 100%)`,
-          }}
+          widthPx={layout.cardWidth}
+          heightPx={layout.cardHeight}
+          showAccent={false}
+          className="shrink-0"
+          style={{ marginLeft: i === 0 ? 0 : -layout.overlapPx }}
         />
       ))}
     </div>
