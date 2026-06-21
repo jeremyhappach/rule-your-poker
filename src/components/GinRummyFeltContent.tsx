@@ -231,48 +231,63 @@ export const GinRummyFeltContent = ({
           artifactId="gin.stockDiscardGroup"
           innerStyle={{ gap: '1rem' }}
         >
-          {/* Stock Pile */}
+          {/* Stock Pile — anchor mounted always so transport can resolve
+              before the stock intent settles. CardBack hidden until the
+              stock-claim intent arrives (canonical deal). */}
           <div className="flex flex-col items-center gap-0.5">
             <button
               onClick={stockClickable ? onDrawStock : undefined}
               disabled={!stockClickable}
+              data-card-anchor="stock"
               className={`relative w-12 h-[68px] rounded-md transition-all ${
                 stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
               }`}
             >
-              <CanonicalCardBack
-                widthPx={48}
-                heightPx={68}
-                variant="raised"
-                radiusPx={6}
-                style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
-              />
-              <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
-                {stockCount}
-              </span>
+              {stockRevealed ? (
+                <>
+                  <CanonicalCardBack
+                    widthPx={48}
+                    heightPx={68}
+                    variant="raised"
+                    radiusPx={6}
+                    style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
+                  />
+                  <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
+                    {stockCount}
+                  </span>
+                </>
+              ) : null}
             </button>
             <span className={`text-[8px] ${stockDanger ? 'text-red-400/80' : 'text-white/50'}`}>
               {stockDanger ? 'Low!' : 'Stock'}
             </span>
           </div>
 
-          {/* Discard Pile */}
+          {/* Discard Pile — anchor mounted always (wrapper carries
+              data-card-anchor) so the discard intent resolves geometry
+              before the upcard exists. Upcard face renders only once
+              the discard intent has settled. */}
           <div className="flex flex-col items-center gap-0.5">
-            {discardTopCard ? (
+            {discardTopCard && discardRevealed ? (
               <button
                 onClick={discardClickable ? onDrawDiscard : undefined}
                 disabled={!discardClickable}
+                data-card-anchor="discard"
                 className={`rounded-md transition-all ${discardClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
               >
                 <CribbagePlayingCard card={toDisplayCard(discardTopCard)} size="lg" />
               </button>
             ) : (
-              <div className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center">
-                <span className="text-white/20 text-[8px]">Empty</span>
+              <div
+                data-card-anchor="discard"
+                className="w-12 h-[68px] rounded-md border border-dashed border-white/20 flex items-center justify-center"
+              >
+                <span className="text-white/20 text-[8px]">{discardTopCard ? '' : 'Empty'}</span>
               </div>
             )}
             <span className="text-[8px] text-white/50">Discard</span>
           </div>
+
         </GinAnchoredSlot>
       )}
 
