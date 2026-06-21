@@ -49,6 +49,10 @@ import {
 } from '@/lib/ginRummyRoundLogic';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
+import { GinRummyDealOrchestrator } from './GinRummyDealOrchestrator';
+import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER } from '@/lib/ginRummyTypes';
+import type { ReactNode } from 'react';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
@@ -135,6 +139,60 @@ const SpadeIcon = ({ className }: { className?: string }) => (
     <path d="M9 22L15 22" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
+
+/**
+ * DealRuntimeMaybe — wraps children with DealRuntime when a stable
+ * handContextId exists. When absent, children render unwrapped so
+ * destination consumers fall through to the legacy "full hand
+ * immediately" path (useDealRuntime() returns null).
+ */
+function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+  if (!handContextId) return <>{children}</>;
+  return (
+    <DealRuntime key={handContextId} handContextId={handContextId}>
+      {children}
+    </DealRuntime>
+  );
+}
+
+/**
+ * GinDealClippedOpponentSeatLayer — wraps GameplayOpponentSeatLayer
+ * with a deal-runtime-aware cardBacks clipper. During DEALING, each
+ * opponent's visible cardback count is capped at the number of
+ * intents addressed to that recipient that have already settled, so
+ * cards arrive one at a time. PRE_DEAL → 0 backs. READY/GAMEPLAY or
+ * no runtime → full hand size from the base callback.
+ */
+function GinDealClippedOpponentSeatLayer(props: {
+  participants: Array<{ id: string; position: number; name: string; chips: number }>;
+  presentation: import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation;
+}) {
+  const deal = useDealRuntime();
+  const wrapped = useMemo<import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation>(() => {
+    const base = props.presentation;
+    return {
+      ...base,
+      cardBacks: (p) => {
+        const baseBacks = base.cardBacks?.(p) ?? null;
+        if (!baseBacks || !deal) return baseBacks;
+        if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return baseBacks;
+        if (deal.phase === 'PRE_DEAL') return { ...baseBacks, count: 0, visible: false };
+        const allowed = deal.getSettledCountForPlayer(p.id);
+        const clipped = Math.min(baseBacks.count, allowed);
+        if (clipped <= 0) return { ...baseBacks, count: 0, visible: false };
+        return { ...baseBacks, count: clipped };
+      },
+    };
+  }, [props.presentation, deal]);
+  return (
+    <GameplayOpponentSeatLayer
+      family="gin-rummy"
+      participants={props.participants}
+      presentation={wrapped}
+    />
+  );
+}
+
 
 interface GinRummyGameTableProps {
   gameId: string;
@@ -2251,8 +2309,15 @@ export const GinRummyGameTable = ({
   }
 
 
+  // Wave 2 canonical deal — stable handContextId per (dealerGameId, handNumber).
+  // Remounts DealRuntime via key, naturally resetting phase + settledCardIds.
+  const handContextId = dealerGameId && handNumber > 0
+    ? `${dealerGameId}#h${handNumber}`
+    : null;
+
   return (
     <div className="h-full flex flex-col bg-transparent relative">
+    <DealRuntimeMaybe handContextId={handContextId}>
       {/* Felt Area - Upper Section with canonical oval table */}
       <div
         ref={tableContainerRef}
@@ -2291,8 +2356,32 @@ export const GinRummyGameTable = ({
                 onDrawStock={handleDrawStock}
                 onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
                 isProcessing={isProcessing}
+                handContextId={handContextId}
               />
             )}
+
+            {/* Wave 2 canonical deal orchestrator — emits the 22 Gin
+                intents (20 alternating hidden, +stock, +discard upcard)
+                once authoritative state hydrates. Also mounts the
+                canonical [data-card-anchor="hand-${selfPlayerId}"]
+                terminus for self-recipient intents. */}
+            {handContextId && viewState && currentPlayerId &&
+              viewState.dealerPlayerId && viewState.nonDealerPlayerId &&
+              (viewState.playerStates?.[currentPlayerId]?.hand?.length ?? 0) >= GIN_CARDS_PER_PLAYER &&
+              viewState.discardPile?.[0] ? (
+                <GinRummyDealOrchestrator
+                  handContextId={handContextId}
+                  dealerPlayerId={viewState.dealerPlayerId}
+                  nonDealerPlayerId={viewState.nonDealerPlayerId}
+                  selfPlayerId={currentPlayerId}
+                  seats={activeSeatPlayers
+                    .filter(p => p.id === viewState.dealerPlayerId || p.id === viewState.nonDealerPlayerId)
+                    .map(p => ({ playerId: p.id, position: p.position }))}
+                  cardsPerPlayer={GIN_CARDS_PER_PLAYER}
+                  selfHand={viewState.playerStates[currentPlayerId].hand}
+                  discardTop={viewState.discardPile[0]}
+                />
+              ) : null}
 
 
             {/* Opponent Draw Animation */}
@@ -2384,8 +2473,7 @@ export const GinRummyGameTable = ({
                 Games emit typed presentation accessors; the shell mounts
                 CanonicalSeatCluster per opponent and renders the
                 card-back strip from typed `cardBacks` data. */}
-            <GameplayOpponentSeatLayer
-              family="gin-rummy"
+            <GinDealClippedOpponentSeatLayer
               participants={(isObserver
                 ? activeSeatPlayers
                 : activeSeatPlayers.filter(p => p.id !== currentPlayerId)
@@ -2541,6 +2629,7 @@ export const GinRummyGameTable = ({
           </div>
         }
       />
+    </DealRuntimeMaybe>
     </div>
 
   );
