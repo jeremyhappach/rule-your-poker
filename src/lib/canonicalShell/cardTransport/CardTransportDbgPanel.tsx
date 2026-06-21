@@ -40,6 +40,22 @@ function summarize(r: CardTransportDbgEntry): string {
   return `${fromK}→${toK} ${r.face ?? ''} [${status}]`;
 }
 
+function fmt(n: number | null | undefined, digits = 1): string {
+  return typeof n === 'number' && Number.isFinite(n) ? n.toFixed(digits) : '—';
+}
+
+function cardIndex(r: CardTransportDbgEntry): number {
+  const m = r.intentId.match(/#card-(\d+)$/);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function latestHand(records: CardTransportDbgEntry[]): CardTransportDbgEntry[] {
+  const hand = [...records].reverse().find((r) => r.handContextId)?.handContextId;
+  return hand
+    ? records.filter((r) => r.handContextId === hand).sort((a, b) => cardIndex(a) - cardIndex(b))
+    : [];
+}
+
 export function CardTransportDbgPanel() {
   const inTray = useInDebugTray();
   const records = useSyncExternalStore(
