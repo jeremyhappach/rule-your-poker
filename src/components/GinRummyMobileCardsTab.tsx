@@ -81,7 +81,22 @@ export const GinRummyMobileCardsTab = ({
   const [drawnCard, setDrawnCard] = useState<{ rank: string; suit: string } | null>(null);
   const prevTurnPhaseRef = useRef(ginState.turnPhase);
 
-  const myState = ginState.playerStates[currentPlayerId];
+  const rawMyState = ginState.playerStates[currentPlayerId];
+  // Wave 2 canonical deal — during DEALING, render only the cards the
+  // shell transport has already settled for THIS player. Each settled
+  // self-recipient intent reveals one more card; READY/GAMEPLAY (or
+  // null runtime) → full hand (legacy instant path). The self-hand
+  // fills one card at a time, matching opponent stacks.
+  const deal = useDealRuntime();
+  const myState = useMemo(() => {
+    if (!rawMyState) return rawMyState;
+    if (!deal) return rawMyState;
+    if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return rawMyState;
+    if (deal.phase === 'PRE_DEAL') return { ...rawMyState, hand: [] };
+    const allowed = deal.getSettledCountForPlayer(currentPlayerId);
+    if (allowed >= rawMyState.hand.length) return rawMyState;
+    return { ...rawMyState, hand: rawMyState.hand.slice(0, allowed) };
+  }, [rawMyState, deal, currentPlayerId, deal?.phase, deal?.settledCardIds]);
   const isMyTurn = ginState.currentTurnPlayerId === currentPlayerId;
 
   // Track newly drawn card
