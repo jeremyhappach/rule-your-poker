@@ -66,6 +66,7 @@ export function CribbageDealOrchestrator({
     const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
     if (dealerIdx < 0) return;
 
+    const emitTime = performance.now();
     const inspect = isCardTransportInspectMode();
     const timing = getDealTiming();
     const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
@@ -81,6 +82,11 @@ export function CribbageDealOrchestrator({
       effectiveStaggerMs: staggerMs,
       effectiveDurationMs: durationMs,
       inspectMode: inspect,
+      handContextId,
+      cardsPerPlayer,
+      seats: sorted.length,
+      expectedCards: cardsPerPlayer * sorted.length,
+      emitTime,
     });
 
     const totalCount = cardsPerPlayer * sorted.length;
@@ -122,6 +128,9 @@ export function CribbageDealOrchestrator({
       launchDelayMs: it.launchDelayMs,
       durationMs: it.durationMs,
       ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+      expectedStartTime: emitTime + (it.launchDelayMs ?? 0),
+      expectedArrivalTime: emitTime + (it.launchDelayMs ?? 0) + (it.durationMs ?? 0),
+      handContextId,
       source: timingSource,
     });
     ct.dispatchMany(intents);
