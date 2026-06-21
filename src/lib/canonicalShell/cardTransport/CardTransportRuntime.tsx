@@ -38,6 +38,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useCardTransportInternal, type ActiveCardIntent } from './CardTransportProvider';
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
+import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
   cardTransportDbgUpsert,
@@ -254,11 +255,10 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   const dy = card.to.y - card.from.y;
   const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
   const isHidden = card.intent.face === 'hidden';
-  const cbc = card.intent.cardBackColors;
+  // Hidden-card colors are owned by CanonicalCardBack (reads useVisualPreferences
+  // directly). `card.intent.cardBackColors` is retained on the intent for debug
+  // parity but no longer drives paint here.
   const vf = card.intent.visibleFace;
-  const bgColor = cbc?.color ?? '#00308F';
-  const darkBgColor = cbc?.darkColor ?? '#001a4a';
-  const hiddenBg = `linear-gradient(135deg, ${bgColor} 0%, ${darkBgColor} 100%)`;
   const suitChar = vf
     ? (vf.suit === 'hearts' ? '♥' : vf.suit === 'diamonds' ? '♦' : vf.suit === 'clubs' ? '♣' : '♠')
     : '';
@@ -428,9 +428,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           width: CARD_W,
           height: CARD_H,
           borderRadius: 2,
-          border: '1px solid rgba(255,255,255,0.2)',
+          border: isHidden ? 'none' : '1px solid rgba(255,255,255,0.2)',
           boxShadow: '0 6px 14px rgba(0,0,0,0.45)',
-          background: isHidden ? hiddenBg : '#ffffff',
+          background: isHidden ? 'transparent' : '#ffffff',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -445,14 +445,15 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         onAnimationEnd={() => logActualArrival('animationend')}
       >
         {isHidden ? (
-          <div
-            style={{
-              width: '75%',
-              height: '75%',
-              background: `${bgColor}50`,
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: 2,
-            }}
+          // CANONICAL hidden-card renderer. Gradient/border/accent owned
+          // by shell; stamped cardBackColors on the intent are ignored
+          // for paint purposes (kept on the intent for debug parity).
+          <CanonicalCardBack
+            widthPx={CARD_W}
+            heightPx={CARD_H}
+            variant="flat"
+            radiusPx={2}
+            style={{ width: '100%', height: '100%' }}
           />
         ) : vf ? (
           <>

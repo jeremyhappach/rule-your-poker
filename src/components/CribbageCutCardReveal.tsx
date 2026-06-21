@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { logDebugEvent } from '@/lib/debugEventLogger';
 import { buildMetaPayload } from '@/lib/buildMeta';
 
@@ -211,13 +212,11 @@ export const CribbageCutCardReveal = ({
           {showFace || !isFlipping ? (
             <CribbagePlayingCard card={card} size="sm" widthPx={widthPx} />
           ) : (
-            <div
-              className="rounded-sm border border-white/20"
-              style={{
-                width: `${backWidth}px`,
-                height: `${backHeight}px`,
-                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-              }}
+            <CanonicalCardBack
+              widthPx={backWidth}
+              heightPx={backHeight}
+              variant="flat"
+              radiusPx={2}
             />
           )}
         </div>

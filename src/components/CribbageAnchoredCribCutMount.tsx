@@ -39,6 +39,7 @@
 import { useRef } from 'react';
 import type { CribbageState } from '@/lib/cribbageTypes';
 import { CribbageCutCardReveal } from './CribbageCutCardReveal';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { Wave4CribCutGroupSlot } from './Wave4CribCutGroupSlot';
 import { useCribbageGameplayGeometry } from '@/lib/wave5GameplayGeometry/CribbageGameplayGeometryProvider';
 import { useLiveGeometryConstraints } from '@/lib/wave4LayoutResolver/useLiveGeometryConstraints';
@@ -170,15 +171,13 @@ export function CribbageAnchoredCribCutMount({
             style={{ marginRight: `${cribCardOverlapPx}px` }}
           >
             {cribbageState.crib.map((_, i) => (
-              <div
+              <CanonicalCardBack
                 key={i}
-                style={{
-                  width: `${cribCardWidthPx}px`,
-                  height: `${cribCardHeightPx}px`,
-                  marginLeft: i === 0 ? 0 : `-${cribCardOverlapPx}px`,
-                  background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                }}
-                className="rounded-sm border border-white/20"
+                widthPx={cribCardWidthPx}
+                heightPx={cribCardHeightPx}
+                variant="flat"
+                radiusPx={2}
+                style={{ marginLeft: i === 0 ? 0 : `-${cribCardOverlapPx}px` }}
               />
             ))}
           </div>

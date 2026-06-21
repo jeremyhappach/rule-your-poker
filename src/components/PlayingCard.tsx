@@ -2,6 +2,7 @@ import { Card as CardType, Suit } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
@@ -157,23 +158,20 @@ export const PlayingCard = ({
   
   const cardFaceStyle = getCardFaceStyle();
   
-  // If hidden or no card, show card back
+  // If hidden or no card, show CANONICAL card back.
+  // The Tailwind sizeClasses.container drives the box size; CanonicalCardBack
+  // fills it via width:100%/height:100% so we never duplicate gradient/border code.
   if (isHidden || !card) {
     return (
-      <div
-        className={`${sizeClasses.container} rounded border-2 border-amber-400 shadow-xl relative overflow-hidden ${className}`}
-        style={{ 
-          background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-          ...style,
-        }}
-      >
-        <div className="absolute inset-0 flex items-center justify-center p-1">
-          {teamLogo ? (
-            <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
-          ) : (
-            <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
-          )}
-        </div>
+      <div className={`${sizeClasses.container} ${className}`} style={style}>
+        <CanonicalCardBack
+          widthPx={40}
+          heightPx={60}
+          variant="raised"
+          radiusPx={4}
+          style={{ width: '100%', height: '100%' }}
+        />
+
       </div>
     );
   }
@@ -190,23 +188,22 @@ export const PlayingCard = ({
           ...style,
         }}
       >
-        {/* Card Back */}
-        <Card 
-          className={`absolute inset-0 w-full h-full flex items-center justify-center ${borderColor} shadow-lg`}
+        {/* Card Back — CANONICAL renderer (gradient/border/accent owned by shell) */}
+        <div
+          className="absolute inset-0 w-full h-full"
           style={{
-            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
             backfaceVisibility: 'hidden',
             transform: showFront ? 'rotateY(180deg)' : 'rotateY(0deg)',
           }}
         >
-          <div className="w-full h-full flex items-center justify-center p-0.5">
-            {teamLogo ? (
-              <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
-            ) : (
-              <div className="text-poker-gold text-2xl font-bold opacity-30">?</div>
-            )}
-          </div>
-        </Card>
+          <CanonicalCardBack
+            widthPx={40}
+            heightPx={60}
+            variant="raised"
+            radiusPx={4}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
         
         {/* Card Front */}
         <Card 
