@@ -64,15 +64,18 @@ export function CardTransportProvider({
 }: CardTransportProviderProps) {
   const [activeIntents, setActiveIntents] = useState<ActiveCardIntent[]>([]);
   const seenRef = useRef<Set<string>>(new Set());
+  const intentByIdRef = useRef<Map<string, CardTransportIntent>>(new Map());
   const seqRef = useRef(0);
   const onSettledMapRef = useRef<Map<string, (cardId: string) => void>>(new Map());
   const subscribersRef = useRef<Set<(cardId: string) => void>>(new Set());
+  const intentSubscribersRef = useRef<Set<(intent: CardTransportIntent) => void>>(new Set());
 
   const acceptOne = useCallback(
     (intent: CardTransportIntent, opts?: CardDispatchOptions): boolean => {
       if (!intent || !intent.id) return false;
       if (seenRef.current.has(intent.id)) return false;
       seenRef.current.add(intent.id);
+      intentByIdRef.current.set(intent.id, intent);
       const enqueueSeq = ++seqRef.current;
       if (opts?.onSettled) onSettledMapRef.current.set(intent.id, opts.onSettled);
       setActiveIntents((prev) => [
@@ -117,9 +120,16 @@ export function CardTransportProvider({
         console.warn('[card-transport] onSettled threw', e);
       }
     }
+    const intent = intentByIdRef.current.get(intentId);
     for (const sub of subscribersRef.current) {
       try { sub(cardId); } catch { /* ignore */ }
     }
+    if (intent) {
+      for (const sub of intentSubscribersRef.current) {
+        try { sub(intent); } catch { /* ignore */ }
+      }
+    }
+    intentByIdRef.current.delete(intentId);
   }, []);
 
   const markSettled = useCallback((intentId: string, cardId: string) => {
@@ -147,18 +157,24 @@ export function CardTransportProvider({
     return () => { subscribersRef.current.delete(handler); };
   }, []);
 
+  const onCardSettledIntent = useCallback((handler: (intent: CardTransportIntent) => void) => {
+    intentSubscribersRef.current.add(handler);
+    return () => { intentSubscribersRef.current.delete(handler); };
+  }, []);
+
   const value = useMemo<CardTransportContextValue>(
     () => ({
       dispatch,
       dispatchMany,
       onCardSettled,
+      onCardSettledIntent,
       __activeIntents: activeIntents,
       __markSettled: markSettled,
       __markDropped: markDropped,
       gameId,
       gameType,
     }),
-    [dispatch, dispatchMany, onCardSettled, activeIntents, markSettled, markDropped, gameId, gameType],
+    [dispatch, dispatchMany, onCardSettled, onCardSettledIntent, activeIntents, markSettled, markDropped, gameId, gameType],
   );
 
   return (
@@ -170,7 +186,7 @@ export function CardTransportProvider({
 
 export function useCardTransport(): Pick<
   CardTransportContextValue,
-  'dispatch' | 'dispatchMany' | 'onCardSettled'
+  'dispatch' | 'dispatchMany' | 'onCardSettled' | 'onCardSettledIntent'
 > {
   const ctx = useContext(CardTransportContext);
   if (!ctx) {
@@ -178,9 +194,15 @@ export function useCardTransport(): Pick<
       dispatch: () => false,
       dispatchMany: () => 0,
       onCardSettled: () => () => {},
+      onCardSettledIntent: () => () => {},
     };
   }
-  return { dispatch: ctx.dispatch, dispatchMany: ctx.dispatchMany, onCardSettled: ctx.onCardSettled };
+  return {
+    dispatch: ctx.dispatch,
+    dispatchMany: ctx.dispatchMany,
+    onCardSettled: ctx.onCardSettled,
+    onCardSettledIntent: ctx.onCardSettledIntent,
+  };
 }
 
 export function useCardTransportInternal(): CardTransportContextValue | null {
