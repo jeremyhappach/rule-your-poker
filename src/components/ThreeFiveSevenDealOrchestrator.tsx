@@ -263,9 +263,17 @@ export function Use357OppCount({
   render: (visibleCount: number) => ReactNode;
 }) {
   const deal = useDealRuntime();
-  if (!deal || deal.phase !== 'DEALING') return <>{render(defaultCount)}</>;
-  const settled = deal.getSettledCountForPlayer(playerId) ?? 0;
-  const visible = Math.min(baseline + settled, expected);
+  // During DEALING: baseline + settled (this wave), clamped to expected.
+  if (deal && deal.phase === 'DEALING') {
+    const settled = deal.getSettledCountForPlayer(playerId) ?? 0;
+    const visible = Math.min(baseline + settled, expected);
+    return <>{render(visible)}</>;
+  }
+  // Outside DEALING (READY / GAMEPLAY / no runtime / between waves):
+  // floor at baseline so previously-settled cards never disappear
+  // during the round-transition gap (when authoritative defaultCount
+  // briefly drops to 0 before the next wave re-deals).
+  const visible = Math.max(baseline, defaultCount);
   return <>{render(visible)}</>;
 }
 
