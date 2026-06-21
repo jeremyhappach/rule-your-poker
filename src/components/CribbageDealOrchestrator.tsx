@@ -74,6 +74,12 @@ export function CribbageDealOrchestrator({
       recipients.push(sorted[(dealerIdx + i) % sorted.length]);
     }
 
+    const inspect = isCardTransportInspectMode();
+    // Inspect mode: absurdly slow — 800ms stagger, 600ms travel.
+    // Normal mode: 40ms stagger, 110ms travel.
+    const staggerMs  = inspect ? 800 : 40;
+    const durationMs = inspect ? 600 : 110;
+
     const intents: CardTransportIntent[] = recipients.map((r, idx) => {
       const isSelf = r.playerId === selfPlayerId;
       return {
@@ -84,8 +90,8 @@ export function CribbageDealOrchestrator({
         to: isSelf
           ? { kind: 'hand', playerId: selfPlayerId }
           : { kind: 'seat', position: r.position },
-        durationMs: 110,
-        launchDelayMs: idx * 40,
+        durationMs,
+        launchDelayMs: idx * staggerMs,
         handContextId,
       };
     });
