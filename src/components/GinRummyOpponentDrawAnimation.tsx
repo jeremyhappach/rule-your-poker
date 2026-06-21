@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import type { GinRummyCard } from '@/lib/ginRummyTypes';
 import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 
