@@ -28,6 +28,11 @@ interface VisualPreferencesProps {
 }
 
 export function VisualPreferences({ userId, onSave, disabled = false }: VisualPreferencesProps) {
+  // Pull the shared provider so saves can propagate to every consumer
+  // (CanonicalCardBack, table felt, etc.) immediately — without this
+  // call, the provider only re-fetches on userId change, and the user's
+  // newly-saved card-back preference stays stale across the app.
+  const { refreshPreferences } = useVisualPreferences();
   const [tableLayout, setTableLayout] = useState('bridge');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
