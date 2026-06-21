@@ -212,30 +212,82 @@ export function CardBackDbgPanel() {
         pointerEvents: 'auto',
       }}
     >
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
+      <div
         style={{
-          width: '100%',
-          textAlign: 'left',
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          font: 'inherit',
-          color: '#fff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           padding: '3px 6px',
-          fontWeight: 700,
           borderBottom: expanded ? '1px solid #333' : 'none',
         }}
       >
-        {expanded ? '▼' : '▶'} CB DBG{' '}
-        <span style={{ color: headerColor }}>{summary}</span>
-        {!expanded && (
-          <span style={{ fontWeight: 400, opacity: 0.8 }}>
-            {' '}· pref={prefId} {prefs.color}/{prefs.darkColor}
-          </span>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            font: 'inherit',
+            color: '#fff',
+            padding: 0,
+            fontWeight: 700,
+          }}
+        >
+          {expanded ? '▼' : '▶'} CB DBG{' '}
+          <span style={{ color: headerColor }}>{summary}</span>
+          {!expanded && (
+            <span style={{ fontWeight: 400, opacity: 0.8 }}>
+              {' '}· pref={prefId} {prefs.color}/{prefs.darkColor}
+            </span>
+          )}
+        </button>
+
+        {expanded && (
+          <button
+            type="button"
+            onClick={() => {
+              const lines: string[] = [];
+              lines.push(`CB DBG INVENTORY — ${new Date().toLocaleTimeString()}`);
+              lines.push(`preference: ${prefId}  ${prefs.color} / ${prefs.darkColor}`);
+              lines.push(`canonical: ${canonicalCount}  legacy: ${legacyCount}`);
+              lines.push('');
+              lines.push('uid | kind | variant | color | darkColor | width | height | owner | cardAnchor');
+              for (const r of rows) {
+                lines.push(`${r.uid} | ${r.kind} | ${r.variant ?? '-'} | ${r.color} | ${r.darkColor} | ${r.width} | ${r.height} | ${r.owner} | ${r.cardAnchor ?? '-'}`);
+              }
+              const text = lines.join('\n');
+              if (navigator?.clipboard?.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                });
+              } else {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }
+            }}
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: 4,
+              padding: '2px 6px',
+              color: '#fff',
+              font: 'inherit',
+              fontSize: 10,
+              cursor: 'pointer',
+            }}
+          >
+            {copied ? 'COPIED' : 'COPY'}
+          </button>
         )}
-      </button>
+      </div>
 
       {expanded && (
         <div style={{ padding: '4px 6px', maxHeight: '60vh', overflowY: 'auto' }}>
