@@ -164,7 +164,7 @@ export function CardTransportRuntime({
           settled: true,
           transportVisible: false,
           actualArrivalTime: performance.now(),
-        } as never);
+        });
         ctx.__markSettled(id, chip.intent.cardId);
       }, remaining + 8);
       timers.push(t);
@@ -201,7 +201,7 @@ export function CardTransportRuntime({
       dy,
       actualStartTime: card.startedAt + card.delayMs,
       portalLayer: 'overlay-root',
-    } as never);
+    });
     nodes.push(
       <div
         key={card.intent.id}
