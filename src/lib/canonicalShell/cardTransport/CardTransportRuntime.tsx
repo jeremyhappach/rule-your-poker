@@ -63,6 +63,12 @@ export function isCardTransportInspectMode(): boolean {
 }
 const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
 const NORMAL_EASING = 'ease-out';
+const launchProofByHand = new Map<string, Map<number, number>>();
+
+function cardIndexFromIntentId(intentId: string): number | null {
+  const m = intentId.match(/#card-(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
 
 interface RuntimeCard {
   intent: ActiveCardIntent;
@@ -186,7 +192,6 @@ export function CardTransportRuntime({
         cardTransportDbgUpsert(id, {
           settled: true,
           transportVisible: false,
-          actualArrivalTime: now,
           ownershipClaimTime: now,
         });
         ctx.__markSettled(id, chip.intent.cardId);
