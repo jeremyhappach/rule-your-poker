@@ -34,6 +34,29 @@ const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
 const CARD_H = 62;
 
+/**
+ * DEAL INSPECT MODE
+ * ------------------
+ * Intentionally slow timings so we can audit ownership, origin,
+ * cardbacks, reveal timing, and hand claiming one card at a time.
+ *
+ *   launchDelayMs = idx * 800
+ *   durationMs    = 600
+ *   midFlightScale= 1.10
+ *   easing        = cubic-bezier(.25,.8,.25,1)
+ *
+ * Toggle at runtime:
+ *   window.__CARD_TRANSPORT_INSPECT_MODE = false
+ * Default: true until ownership/feel is signed off.
+ */
+export function isCardTransportInspectMode(): boolean {
+  if (typeof window === 'undefined') return true;
+  const w = window as unknown as { __CARD_TRANSPORT_INSPECT_MODE?: boolean };
+  return w.__CARD_TRANSPORT_INSPECT_MODE !== false;
+}
+const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
+const NORMAL_EASING = 'ease-out';
+
 interface RuntimeCard {
   intent: ActiveCardIntent;
   from: ResolvedCardEndpoint;
