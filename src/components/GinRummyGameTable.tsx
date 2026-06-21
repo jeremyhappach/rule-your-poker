@@ -2356,8 +2356,32 @@ export const GinRummyGameTable = ({
                 onDrawStock={handleDrawStock}
                 onDrawDiscard={viewState.phase === 'first_draw' ? handleTakeFirstDraw : handleDrawDiscard}
                 isProcessing={isProcessing}
+                handContextId={handContextId}
               />
             )}
+
+            {/* Wave 2 canonical deal orchestrator — emits the 22 Gin
+                intents (20 alternating hidden, +stock, +discard upcard)
+                once authoritative state hydrates. Also mounts the
+                canonical [data-card-anchor="hand-${selfPlayerId}"]
+                terminus for self-recipient intents. */}
+            {handContextId && viewState && currentPlayerId &&
+              viewState.dealerPlayerId && viewState.nonDealerPlayerId &&
+              (viewState.playerStates?.[currentPlayerId]?.hand?.length ?? 0) >= GIN_CARDS_PER_PLAYER &&
+              viewState.discardPile?.[0] ? (
+                <GinRummyDealOrchestrator
+                  handContextId={handContextId}
+                  dealerPlayerId={viewState.dealerPlayerId}
+                  nonDealerPlayerId={viewState.nonDealerPlayerId}
+                  selfPlayerId={currentPlayerId}
+                  seats={activeSeatPlayers
+                    .filter(p => p.id === viewState.dealerPlayerId || p.id === viewState.nonDealerPlayerId)
+                    .map(p => ({ playerId: p.id, position: p.position }))}
+                  cardsPerPlayer={GIN_CARDS_PER_PLAYER}
+                  selfHand={viewState.playerStates[currentPlayerId].hand}
+                  discardTop={viewState.discardPile[0]}
+                />
+              ) : null}
 
 
             {/* Opponent Draw Animation */}
