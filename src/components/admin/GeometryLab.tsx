@@ -548,6 +548,12 @@ export function GeometryLab({ userId }: { userId: string }) {
         ))}
       </div>
 
+      {/* Safe Areas — global canonical-shell layout (moved from Admin). */}
+      <LayoutTuningAdminSection />
+
+      {/* Deal Timing — per-device motion knobs for ONE DEAL. */}
+      <DealTimingAdminSection />
+
       <div className="flex gap-2">
         <Button onClick={handleSave} disabled={saving} className="flex-1">
           {saving ? "Saving…" : "Save"}
