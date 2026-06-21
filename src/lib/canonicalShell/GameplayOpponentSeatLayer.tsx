@@ -99,9 +99,12 @@ interface ShellOpponentCardBacksProps {
   variant: 'cribbage' | 'gin';
   color: string;
   darkColor: string;
+  /** Seat position — stamped as [data-card-anchor="opp-stack-${position}"]
+   *  so canonical card transport can terminate exactly on this stack. */
+  position: number;
 }
 
-function ShellOpponentCardBacks({ count, variant, color, darkColor }: ShellOpponentCardBacksProps) {
+function ShellOpponentCardBacks({ count, variant, color, darkColor, position }: ShellOpponentCardBacksProps) {
   // Hooks must run unconditionally — both branches read geometry tokens
   // even though only the gin branch consumes the layout.
   const geo = useGeometryTokensOptional();
@@ -119,11 +122,15 @@ function ShellOpponentCardBacks({ count, variant, color, darkColor }: ShellOppon
     maxOverlapRatio: 0.7,
   });
 
-  if (count <= 0) return null;
+  // Always render the anchor wrapper — card transport endpoints must
+  // resolve even before the first card has settled (count=0).
+  const anchorProps = {
+    'data-card-anchor': `opp-stack-${position}`,
+  } as const;
 
   if (variant === 'cribbage') {
     return (
-      <div className="flex -space-x-1.5 mt-1 justify-center">
+      <div {...anchorProps} className="flex -space-x-1.5 mt-1 justify-center min-w-[1rem] min-h-[1.5rem]">
         {Array.from({ length: count }).map((_, i) => (
           <div
             key={i}
@@ -140,7 +147,7 @@ function ShellOpponentCardBacks({ count, variant, color, darkColor }: ShellOppon
   // gin variant
   if (!layout) {
     return (
-      <div className="flex -space-x-3 mt-1">
+      <div {...anchorProps} className="flex -space-x-3 mt-1 min-w-[0.875rem] min-h-[1.25rem]">
         {Array.from({ length: count }).map((_, i) => (
           <div
             key={i}
@@ -152,7 +159,7 @@ function ShellOpponentCardBacks({ count, variant, color, darkColor }: ShellOppon
     );
   }
   return (
-    <div className="flex mt-1" style={{ width: layout.totalWidth }}>
+    <div {...anchorProps} className="flex mt-1" style={{ width: layout.totalWidth, minHeight: layout.cardHeight }}>
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
