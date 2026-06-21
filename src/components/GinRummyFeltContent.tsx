@@ -169,6 +169,7 @@ export const GinRummyFeltContent = ({
   onDrawStock,
   onDrawDiscard,
   isProcessing,
+  handContextId,
 }: GinRummyFeltContentProps) => {
   const discardTopCard = getDiscardTop(ginState);
   const stockCount = stockRemaining(ginState);
@@ -181,6 +182,22 @@ export const GinRummyFeltContent = ({
 
   // Hide stock/discard when the hand is decided — they're no longer relevant
   const hidePiles = ['knocking', 'laying_off', 'scoring', 'complete'].includes(ginState.phase);
+
+  // Wave 2 canonical deal — gate the discard upcard reveal on the
+  // discard intent settling. Stock card-back is shown immediately; it's
+  // a structural placeholder ("the pile"). The first upcard, like
+  // opponent stack cards, becomes visible only when its transport has
+  // arrived. No DealRuntime → legacy instant reveal.
+  const deal = useDealRuntime();
+  const discardCardId = handContextId ? `${handContextId}#discard` : null;
+  const stockCardId = handContextId ? `${handContextId}#stock` : null;
+  const discardRevealed = !deal || !discardCardId
+    ? true
+    : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(discardCardId);
+  const stockRevealed = !deal || !stockCardId
+    ? true
+    : deal.phase === 'GAMEPLAY' || deal.phase === 'READY' || deal.isSettled(stockCardId);
+
 
   return (
     <>
