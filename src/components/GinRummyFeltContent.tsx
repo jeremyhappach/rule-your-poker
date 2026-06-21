@@ -29,6 +29,9 @@ interface GinRummyFeltContentProps {
   onDrawStock?: () => void;
   onDrawDiscard?: () => void;
   isProcessing?: boolean;
+  /** Canonical hand identity — used to gate the discard upcard reveal
+   *  on the deal-runtime settle event (`${handContextId}#discard`). */
+  handContextId?: string | null;
 }
 
 const SYMBOL_TO_WORD: Record<string, string> = {
