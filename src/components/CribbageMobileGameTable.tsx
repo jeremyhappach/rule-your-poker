@@ -6514,14 +6514,12 @@ export const CribbageMobileGameTable = ({
                     Cribbage deal). Mounted only when we have a dealer +
                     viewer + at least one seated player. */}
                 {currentHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
-                  <DealRuntime key={currentHandKey} handContextId={currentHandKey}>
-                    <CribbageDealOrchestrator
-                      handContextId={currentHandKey}
-                      dealerPlayerId={cribbageState.dealerPlayerId}
-                      selfPlayerId={currentPlayerId}
-                      seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
-                    />
-                  </DealRuntime>
+                  <CribbageDealOrchestrator
+                    handContextId={currentHandKey}
+                    dealerPlayerId={cribbageState.dealerPlayerId}
+                    selfPlayerId={currentPlayerId}
+                    seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
+                  />
                 ) : null}
 
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
