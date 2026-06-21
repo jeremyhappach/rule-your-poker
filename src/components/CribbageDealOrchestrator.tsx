@@ -67,8 +67,9 @@ export function CribbageDealOrchestrator({
     if (dealerIdx < 0) return;
 
     const inspect = isCardTransportInspectMode();
-    const staggerMs  = inspect ? 800 : 40;
-    const durationMs = inspect ? 600 : 110;
+    const timing = getDealTiming();
+    const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
+    const durationMs = inspect ? 600 : timing.durationMs;
 
     const totalCount = cardsPerPlayer * sorted.length;
     const intents: CardTransportIntent[] = [];
