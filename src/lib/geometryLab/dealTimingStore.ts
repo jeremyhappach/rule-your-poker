@@ -64,8 +64,20 @@ function sanitize(value: unknown): DealTimingConfig {
 let current: DealTimingConfig = { ...DEAL_TIMING_DEFAULTS };
 const listeners = new Set<() => void>();
 
-function setCurrent(next: DealTimingConfig) {
+function logDealTimingStore(source: string, next: DealTimingConfig) {
+  // eslint-disable-next-line no-console
+  console.log('[DEAL TIMING STORE]', {
+    source,
+    launchSpacingMs: next.launchSpacingMs,
+    durationMs: next.durationMs,
+    ownershipClaimDelayMs: next.ownershipClaimDelayMs,
+    t: typeof performance !== 'undefined' ? performance.now() : Date.now(),
+  });
+}
+
+function setCurrent(next: DealTimingConfig, source = 'unknown') {
   current = next;
+  logDealTimingStore(source, next);
   listeners.forEach((l) => { try { l(); } catch { /* noop */ } });
 }
 
@@ -101,7 +113,7 @@ export function bootstrapDealTiming(): void {
         console.warn('[DealTiming] fetch error', error);
         return;
       }
-      if (data?.value) setCurrent(sanitize(data.value));
+      if (data?.value) setCurrent(sanitize(data.value), 'bootstrap:system_settings');
     } catch (err) {
       console.warn('[DealTiming] fetch threw', err);
     }
@@ -120,7 +132,7 @@ export function bootstrapDealTiming(): void {
         },
         (payload) => {
           const next = (payload.new as { value?: unknown } | null)?.value;
-          if (next != null) setCurrent(sanitize(next));
+          if (next != null) setCurrent(sanitize(next), 'realtime:system_settings');
         },
       )
       .subscribe();
@@ -139,6 +151,7 @@ export async function saveDealTiming(
   next: Partial<DealTimingConfig>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const merged = sanitize({ ...current, ...next });
+  logDealTimingStore('save:attempt', merged);
   const { error } = await supabase
     .from('system_settings')
     .upsert(
@@ -150,7 +163,7 @@ export async function saveDealTiming(
       { onConflict: 'key' },
     );
   if (error) return { ok: false, error: error.message };
-  setCurrent(merged);
+  setCurrent(merged, 'save:local-confirm');
   return { ok: true };
 }
 
