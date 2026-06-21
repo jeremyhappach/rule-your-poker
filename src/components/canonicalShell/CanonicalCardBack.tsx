@@ -88,19 +88,27 @@ export interface CanonicalCardBackProps {
   variant?: CanonicalCardBackVariant;
   /** Corner radius in px. Defaults to the shared scaling rule. */
   radiusPx?: number;
-  /** Show the team-logo / inset accent. Default true. */
-  showAccent?: boolean;
   className?: string;
   style?: CSSProperties;
   dataAttrs?: Record<string, string>;
 }
 
+/**
+ * IDENTITY IS NOT OPTIONAL.
+ *
+ * There is intentionally NO `showAccent` / `hideLogo` / `plain` prop.
+ * Every canonical card back paints the user's accent (team logo or
+ * inset frame). Variants differ in geometry only — never in identity.
+ *
+ * If a surface is "too small for a logo," shrink the surface, don't
+ * strip the accent: a player must recognize their card back at any
+ * size, anywhere on the table.
+ */
 export function CanonicalCardBack({
   widthPx,
   heightPx,
   variant = 'flat',
   radiusPx,
-  showAccent = true,
   className,
   style,
   dataAttrs,
@@ -115,11 +123,17 @@ export function CanonicalCardBack({
   const r = radiusPx ?? Math.max(3, widthPx * 0.08);
   const { borderWidth, boxShadow } = variantGeometry(variant);
 
+  // Accent geometry scales with the surface so a 16px opponent back
+  // and a 100px hand card read as the same artwork at different sizes.
+  const accentInsetPct = 10;
+  const accentRadius = Math.max(1, r * 0.6);
+
   return (
     <div
       {...(dataAttrs ?? {})}
       data-canonical-card-back={variant}
       data-cb-pref-id={id}
+      data-cb-accent={teamLogo ? 'logo' : 'frame'}
       className={`relative overflow-hidden ${className ?? ''}`.trim()}
       style={{
         width: widthPx,
@@ -133,27 +147,31 @@ export function CanonicalCardBack({
         ...style,
       }}
     >
-      {showAccent && teamLogo ? (
-        <div className="absolute inset-0 flex items-center justify-center p-[6%]">
+      {teamLogo ? (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ padding: `${accentInsetPct}%` }}
+          aria-hidden="true"
+        >
           <img
             src={teamLogo}
             alt=""
             aria-hidden="true"
-            className="w-full h-full object-contain pointer-events-none select-none"
+            className="w-full h-full object-contain select-none"
             draggable={false}
           />
         </div>
-      ) : showAccent ? (
+      ) : (
         <div
           className="absolute pointer-events-none"
           style={{
-            inset: '10%',
-            borderRadius: Math.max(2, r * 0.6),
+            inset: `${accentInsetPct}%`,
+            borderRadius: accentRadius,
             border: `1px solid ${ACCENT_FRAME_COLOR}`,
           }}
           aria-hidden="true"
         />
-      ) : null}
+      )}
     </div>
   );
 }
