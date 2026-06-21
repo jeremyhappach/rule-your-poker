@@ -136,11 +136,11 @@ function ensureDestReactionStylesheet() {
   style.id = DEST_REACTION_STYLE_ID;
   style.textContent = `
     @keyframes __chipDestBounce {
-      0%   { transform: scale(1); }
-      25%  { transform: scale(1.35); }
-      55%  { transform: scale(0.92); }
-      80%  { transform: scale(1.08); }
-      100% { transform: scale(1); }
+      0%   { transform: translateY(0) scale(1); }
+      35%  { transform: translateY(-10px) scale(1.10); }
+      60%  { transform: translateY(0) scale(0.96); }
+      80%  { transform: translateY(-4px) scale(1.04); }
+      100% { transform: translateY(0) scale(1); }
     }
     @keyframes __chipDestPulse {
       0%   { box-shadow: 0 0 0 0 rgba(255, 215, 100, 0.7); }
