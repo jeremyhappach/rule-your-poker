@@ -6870,5 +6870,6 @@ export const CribbageMobileGameTable = ({
         }
       />
     </div>
+    </DealRuntimeMaybe>
   );
 };
