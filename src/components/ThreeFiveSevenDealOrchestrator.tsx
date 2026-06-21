@@ -185,8 +185,8 @@ export function ThreeFiveSevenDealOrchestrator({
       }
     }
 
-    dispatchedRef.current = true;
-    deal.beginDeal(intents.length);
+    dispatchedWaveRef.current = waveContextId;
+    deal.beginWave(intents.length);
     ct.dispatchMany(intents);
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
@@ -195,25 +195,29 @@ export function ThreeFiveSevenDealOrchestrator({
 
   return (
     <>
-      {/* Canonical destination terminus for self-recipient intents.
-          Felt-bottom-center, 1×1, invisible. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: 0,
-          width: 1,
-          height: 1,
-          transform: 'translate(-50%, 0)',
-          pointerEvents: 'none',
-        }}
-        data-card-anchor={`hand-${selfPlayerId}`}
-      />
+      {/* Canonical destination terminus for self-recipient intents —
+          portaled into [data-357-active-hand-region] so resolved
+          toRect lands on the visual active-player hand fan, NOT the
+          identity row at the bottom of MobileGameTable. */}
+      {selfHandRegion ? createPortal(
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 1,
+            height: 1,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+          }}
+          data-card-anchor={`hand-${selfPlayerId}`}
+          data-canonical-shell-viewer-card-endpoint="357-self-hand"
+          data-anchor-owner="ThreeFiveSevenDealOrchestrator.selfHandRegion"
+        />
+      , selfHandRegion) : null}
       {/* Dealer-seat origin anchor for the self-viewer-as-dealer case.
-          This MUST be portaled onto the shell felt HOME slot, not mounted
-          in the active-player/HUD subtree, so fromRect proves a real felt
-          dealer origin. */}
+          Portaled onto the shell felt HOME slot. */}
       {dealerIsSelf && selfDealerFelt && selfDealerFeltIsSurface ? createPortal(
         <div
           aria-hidden="true"
