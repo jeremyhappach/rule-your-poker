@@ -38,7 +38,8 @@ export type DebugPillKey =
   | 'visibleChipDbg'
   | 'cardTransportDbg'
   | 'cardBackDbg'
-  | 'threeFiveSevenDealDiag';
+  | 'threeFiveSevenDealDiag'
+  | 'threeFiveSevenForensics';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;
