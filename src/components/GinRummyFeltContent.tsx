@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
 import { GinAnchoredSlot } from './GinAnchoredSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
