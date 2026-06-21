@@ -713,8 +713,7 @@ const Index = () => {
                     {/* Wartime Debug (platform instrumentation framework) */}
                     <WartimeDebugSettingRow />
 
-                    {/* Layout Tuning — first-class persistent canonical-shell knobs */}
-                    <LayoutTuningAdminSection />
+                    {/* Layout Tuning moved to Geometry Lab (Safe Areas). */}
 
                     {/* Debug Tools — per-pill visibility for the Debug Pill Tray */}
                     <DebugPillsAdminSection />
