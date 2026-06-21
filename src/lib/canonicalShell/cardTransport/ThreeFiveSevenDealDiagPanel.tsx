@@ -237,7 +237,50 @@ export function ThreeFiveSevenDealDiagPanel() {
   const playerHandMounted = !!playerHandEl;
   const playerHandKey =
     playerHandEl?.getAttribute('data-card-anchor') ?? '∅';
-  const fanLayoutInitialized = !!document.querySelector('[data-357-active-hand-region] [data-fan-card]');
+  const activeHandRegionEl =
+    typeof document !== 'undefined'
+      ? document.querySelector('[data-357-active-hand-region]')
+      : null;
+  const fanLayoutInitialized = !!document.querySelector('[data-357-active-hand-region] [data-card-id]');
+
+  // ── PROBE 1 · SELF LANDING ──────────────────────────────────────
+  const rectOf = (el: Element | null) => {
+    if (!el || typeof (el as HTMLElement).getBoundingClientRect !== 'function') return null;
+    const r = (el as HTMLElement).getBoundingClientRect();
+    return { x: +r.x.toFixed(1), y: +r.y.toFixed(1), w: +r.width.toFixed(2), h: +r.height.toFixed(2), cx: +(r.x + r.width / 2).toFixed(1), cy: +(r.y + r.height / 2).toFixed(1) };
+  };
+  const selfCardEls = activeHandRegionEl
+    ? Array.from(activeHandRegionEl.querySelectorAll('[data-card-id]'))
+    : [];
+  const allCardEls = typeof document !== 'undefined'
+    ? Array.from(document.querySelectorAll('[data-card-id]'))
+    : [];
+  const fanRootEl = (selfCardEls[0]?.parentElement as Element | null) ?? activeHandRegionEl;
+  const handAnchorRect = rectOf(playerHandEl);
+  const playerHandRect = rectOf(activeHandRegionEl);
+  const fanRootRect = rectOf(fanRootEl);
+  const card0DomEl = selfCardEls[0] ?? null;
+  const card0DomRect = rectOf(card0DomEl);
+  const distancePx = (handAnchorRect && card0DomRect)
+    ? +Math.hypot(card0DomRect.cx - handAnchorRect.cx, card0DomRect.cy - handAnchorRect.cy).toFixed(1)
+    : null;
+  const actualVisibleCardDOMCount = selfCardEls.length;
+  const actualOpponentCardDomCount = allCardEls.length - selfCardEls.length;
+
+  // ── PROBE 3 · TIMER OWNER ───────────────────────────────────────
+  const timerRailEl = typeof document !== 'undefined'
+    ? document.querySelector('[data-canonical-shell-timer-rail]')
+    : null;
+  const legacyTimerEls = typeof document !== 'undefined'
+    ? Array.from(document.querySelectorAll('[data-shell-timer], [data-mobile-player-timer], [data-three-five-seven-timer], [data-legacy-timer]'))
+    : [];
+  const renderedTimerComponent = timerRailEl
+    ? 'ShellTimerRail'
+    : legacyTimerEls.length
+      ? `legacy(${legacyTimerEls.map((e) => e.getAttribute('data-shell-timer') || e.getAttribute('data-mobile-player-timer') || e.tagName).join(',')})`
+      : 'none';
+  const usesDealRuntime = latest?.timerVisible !== undefined;
+  const is357 = !!latest?.handContextId && /#h\d+#r\d+$/.test(latest.handContextId);
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '0 2px' };
   const k: React.CSSProperties = { color: '#9fb3c8' };
