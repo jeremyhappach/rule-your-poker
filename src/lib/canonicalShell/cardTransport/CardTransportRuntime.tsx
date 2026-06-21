@@ -323,8 +323,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
           justifyContent: isHidden ? 'center' : 'space-between',
           padding: isHidden ? 0 : '2px 0',
           overflow: 'hidden',
-          animation: `${kf} ${card.flightMs}ms ${easing} ${card.delayMs}ms 1 both`,
-          willChange: 'transform',
+          opacity: 0,
+          animation: `${kf} ${card.flightMs}ms ${easing} ${card.delayMs}ms 1 forwards`,
+          willChange: 'transform, opacity',
         }}
       >
         {isHidden ? (
@@ -345,8 +346,8 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         ) : null}
       </div>
       <style>{`@keyframes ${kf} {
-        from { transform: translate(0, 0); }
-        to   { transform: translate(${dx}px, ${dy}px); }
+        from { transform: translate(0, 0); opacity: 1; }
+        to   { transform: translate(${dx}px, ${dy}px); opacity: 1; }
       }`}</style>
     </div>
   );
