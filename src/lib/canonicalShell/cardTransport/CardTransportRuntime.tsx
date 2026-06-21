@@ -34,6 +34,29 @@ const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
 const CARD_H = 62;
 
+/**
+ * DEAL INSPECT MODE
+ * ------------------
+ * Intentionally slow timings so we can audit ownership, origin,
+ * cardbacks, reveal timing, and hand claiming one card at a time.
+ *
+ *   launchDelayMs = idx * 800
+ *   durationMs    = 600
+ *   midFlightScale= 1.10
+ *   easing        = cubic-bezier(.25,.8,.25,1)
+ *
+ * Toggle at runtime:
+ *   window.__CARD_TRANSPORT_INSPECT_MODE = false
+ * Default: true until ownership/feel is signed off.
+ */
+export function isCardTransportInspectMode(): boolean {
+  if (typeof window === 'undefined') return true;
+  const w = window as unknown as { __CARD_TRANSPORT_INSPECT_MODE?: boolean };
+  return w.__CARD_TRANSPORT_INSPECT_MODE !== false;
+}
+const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
+const NORMAL_EASING = 'ease-out';
+
 interface RuntimeCard {
   intent: ActiveCardIntent;
   from: ResolvedCardEndpoint;
@@ -186,7 +209,7 @@ export function CardTransportRuntime({
             justifyContent: 'center',
             fontWeight: 700,
             fontSize: 10,
-            animation: `${kf} ${card.flightMs}ms ease-out ${card.delayMs}ms forwards`,
+            animation: `${kf} ${card.flightMs}ms ${isCardTransportInspectMode() ? INSPECT_EASING : NORMAL_EASING} ${card.delayMs}ms forwards`,
             willChange: 'transform',
           }}
         >
@@ -194,7 +217,7 @@ export function CardTransportRuntime({
         </div>
         <style>{`@keyframes ${kf} {
           0%   { transform: translate(0, 0) scale(0.92); opacity: 0.95; }
-          40%  { transform: translate(${dx * 0.4}px, ${dy * 0.4 - 6}px) scale(1.02); opacity: 1; }
+          50%  { transform: translate(${dx * 0.5}px, ${dy * 0.5 - 8}px) scale(${isCardTransportInspectMode() ? 1.10 : 1.02}); opacity: 1; }
           100% { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
         }`}</style>
       </div>,
