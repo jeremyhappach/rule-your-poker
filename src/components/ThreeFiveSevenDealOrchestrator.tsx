@@ -353,21 +353,21 @@ export function Use357SelfHand<T>({
 // ─── DealRuntime per-wave wrapper ────────────────────────────────────
 
 /**
- * Wraps children with a DealRuntime keyed by `waveContextId`. When the
- * key is null/empty (e.g. game not in progress, round not yet known)
- * renders children directly — `useDealRuntime()` returns null and the
- * legacy paths run unchanged.
+ * Wraps children with a DealRuntime keyed by `handContextId` (one runtime
+ * per HAND, not per round/wave). The orchestrator inside dispatches
+ * per-wave via `beginWave()` so ownership accumulates across waves
+ * (3 → 5 → 7) without remount churn.
  */
 export function ThreeFiveSevenDealRuntimeMaybe({
-  waveContextId,
+  handContextId,
   children,
 }: {
-  waveContextId: string | null | undefined;
+  handContextId: string | null | undefined;
   children: ReactNode;
 }) {
-  if (!waveContextId) return <>{children}</>;
+  if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={waveContextId} handContextId={waveContextId}>
+    <DealRuntime key={handContextId} handContextId={handContextId}>
       {children}
     </DealRuntime>
   );
