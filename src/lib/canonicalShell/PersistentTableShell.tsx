@@ -33,6 +33,8 @@ import { recordShellEvent } from './diagnostics';
 import { recordWaitingLifecycle } from './waitingTableFlight';
 import { ChipTransportProvider } from './ChipTransportProvider';
 import { ChipTransportRuntime } from './ChipTransportRuntime';
+import { CardTransportProvider } from './cardTransport/CardTransportProvider';
+import { CardTransportRuntime } from './cardTransport/CardTransportRuntime';
 import { ShellOverlayLayers, ShellOverlayMountsProvider } from './ShellOverlayMounts';
 import {
   useWartimeSurface,
@@ -393,6 +395,13 @@ export function PersistentTableShell({
         containerRef={shellRootRef}
         overlayRootRef={overlayRootRef}
       />
+      {/* Canonical card transport — z82, sits with chip transport (z80).
+          DealRuntime is mounted by gameplay surfaces with a key tied to
+          their handContextId so deal-phase state resets per hand. */}
+      <CardTransportRuntime
+        containerRef={shellRootRef}
+        overlayRootRef={overlayRootRef}
+      />
       {/* Shell-owned transient overlay layers — slot (z78), settlement
           (z83), transient (z85). Sit between ChipTransportRuntime
           (z80) and CanonicalCelebrationLayer (z90). Gameplay surfaces
@@ -411,6 +420,7 @@ export function PersistentTableShell({
 
   const wrapped = (
     <ChipTransportProvider gameId={gameId ?? null} gameType={gameType ?? null}>
+     <CardTransportProvider gameId={gameId ?? null} gameType={gameType ?? null}>
       <CanonicalAnnouncementProvider
         dealerGameId={gameId ?? null}
         roundId={null}
@@ -430,6 +440,7 @@ export function PersistentTableShell({
           </ShellOverlayMountsProvider>
         </SettlementProvider>
       </CanonicalAnnouncementProvider>
+     </CardTransportProvider>
     </ChipTransportProvider>
   );
 
