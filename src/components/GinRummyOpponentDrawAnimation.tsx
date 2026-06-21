@@ -97,11 +97,11 @@ export const GinRummyOpponentDrawAnimation = ({
           size="lg"
         />
       ) : (
-        <div
-          className="w-12 h-[68px] rounded-md border border-white/30 shadow-lg"
-          style={{
-            background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-          }}
+        <CanonicalCardBack
+          widthPx={48}
+          heightPx={68}
+          variant="raised"
+          radiusPx={6}
         />
       )}
     </div>
