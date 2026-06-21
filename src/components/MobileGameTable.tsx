@@ -2064,6 +2064,37 @@ export const MobileGameTable = ({
   // Track previous round AND game type to detect new game start
   const prevRoundForCacheClearRef = useRef<number | null>(null);
   const prevGameTypeForCacheClearRef = useRef<string | null | undefined>(gameType);
+
+  // 3-5-7 hand epoch — bumps when round transitions back to 1 (new hand
+  // within the same dealer game) so the per-wave DealRuntime key reflects
+  // a fresh hand even though the round number repeats.
+  const threeFiveSevenHandEpochRef = useRef<number>(0);
+  const prevRoundForHandEpochRef = useRef<number | null>(null);
+  if (__is357GameType(gameType)) {
+    const prev = prevRoundForHandEpochRef.current;
+    if (currentRound === 1 && prev !== null && prev > 1) {
+      threeFiveSevenHandEpochRef.current += 1;
+    }
+    prevRoundForHandEpochRef.current = currentRound ?? null;
+  } else {
+    prevRoundForHandEpochRef.current = null;
+  }
+  const threeFiveSevenWaveContextId =
+    __is357GameType(gameType) && gameId && typeof currentRound === 'number' && currentRound >= 1
+      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}#r${currentRound}`
+      : null;
+  const threeFiveSevenSelfPlayerId =
+    __is357GameType(gameType) && currentUserId
+      ? (players.find(p => p.user_id === currentUserId)?.id ?? null)
+      : null;
+  const threeFiveSevenActiveSeats = __is357GameType(gameType)
+    ? players
+        .filter(p => p.status === 'active' && !p.sitting_out)
+        .map(p => ({ playerId: p.id, position: p.position }))
+    : [];
+  const threeFiveSevenDealerPosition =
+    __is357GameType(gameType) ? (typeof dealerPosition === 'number' ? dealerPosition : 0) : 0;
+
   
   // Clear showdown/community/Chucky caches when starting a NEW game:
   // 1. Round goes from 2/3 back to 1
