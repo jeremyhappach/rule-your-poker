@@ -157,23 +157,16 @@ export const PlayingCard = ({
   
   const cardFaceStyle = getCardFaceStyle();
   
-  // If hidden or no card, show card back
+  // If hidden or no card, show CANONICAL card back.
+  // All color/border/accent/team-logo concerns live in CanonicalCardBack.
   if (isHidden || !card) {
     return (
-      <div
-        className={`${sizeClasses.container} rounded border-2 border-amber-400 shadow-xl relative overflow-hidden ${className}`}
-        style={{ 
-          background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-          ...style,
-        }}
-      >
-        <div className="absolute inset-0 flex items-center justify-center p-1">
-          {teamLogo ? (
-            <img src={teamLogo} alt="Team logo" className="w-full h-full object-contain" />
-          ) : (
-            <div className="w-6 h-10 border-2 border-amber-400/30 rounded" />
-          )}
-        </div>
+      <div className={`${sizeClasses.container} ${className}`} style={style}>
+        <CanonicalCardBack
+          widthPx={containerPx.width}
+          heightPx={containerPx.height}
+          variant="raised"
+        />
       </div>
     );
   }
