@@ -63,7 +63,7 @@ export function isCardTransportInspectMode(): boolean {
 }
 const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
 const NORMAL_EASING = 'ease-out';
-const launchProofByHand = new Map<string, Map<number, number>>();
+const launchProofByHand = new Map<string, Map<number, { start: number; delay: number }>>();
 
 function cardIndexFromIntentId(intentId: string): number | null {
   const m = intentId.match(/#card-(\d+)$/);
@@ -262,15 +262,21 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const cardIndex = cardIndexFromIntentId(card.intent.id);
     const handContextId = card.intent.handContextId ?? '__unknown_hand__';
     let actualStartDeltaFromPreviousMs: number | null = null;
+    let expectedStartDeltaFromPreviousMs: number | null = null;
+    let startDeltaErrorMs: number | null = null;
     if (cardIndex != null) {
       let byIndex = launchProofByHand.get(handContextId);
       if (!byIndex || cardIndex === 0) {
         byIndex = new Map<number, number>();
         launchProofByHand.set(handContextId, byIndex);
       }
-      const prevStart = byIndex.get(cardIndex - 1);
-      actualStartDeltaFromPreviousMs = prevStart == null ? null : now - prevStart;
-      byIndex.set(cardIndex, now);
+      const prev = byIndex.get(cardIndex - 1);
+      actualStartDeltaFromPreviousMs = prev == null ? null : now - prev.start;
+      expectedStartDeltaFromPreviousMs = prev == null ? null : card.delayMs - prev.delay;
+      startDeltaErrorMs = actualStartDeltaFromPreviousMs == null || expectedStartDeltaFromPreviousMs == null
+        ? null
+        : actualStartDeltaFromPreviousMs - expectedStartDeltaFromPreviousMs;
+      byIndex.set(cardIndex, { start: now, delay: card.delayMs });
     }
     cardTransportDbgUpsert(card.intent.id, { actualStartTime: now });
     // eslint-disable-next-line no-console
@@ -283,6 +289,8 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       actualStartTime: now,
       actualArrivalTime: null,
       actualStartDeltaFromPreviousMs,
+      expectedStartDeltaFromPreviousMs,
+      startDeltaErrorMs,
       expectedStartTime: card.startedAt + card.delayMs,
       startSkewMs: now - (card.startedAt + card.delayMs),
       source,
