@@ -49,6 +49,8 @@ import {
   logGeometryLab,
   recordGeometryLabContext,
 } from "./GeometryLabCrashBoundary";
+import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
+import { DealTimingAdminSection } from "./DealTimingAdminSection";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
