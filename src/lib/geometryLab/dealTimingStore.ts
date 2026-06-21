@@ -135,6 +135,10 @@ export function useDealTiming(): DealTimingConfig {
   return useSyncExternalStore(subscribe, getDealTiming, getDealTiming);
 }
 
+export function useDealTimingSnapshot(): DealTimingSnapshot {
+  return useSyncExternalStore(subscribe, getDealTimingSnapshot, getDealTimingSnapshot);
+}
+
 export function useDealTimingHydrated(): boolean {
   return useSyncExternalStore(subscribe, isDealTimingHydrated, isDealTimingHydrated);
 }
