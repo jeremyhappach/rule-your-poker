@@ -68,7 +68,7 @@ export function ThreeFiveSevenDealOrchestrator({
 }: ThreeFiveSevenDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
-  const dispatchedRef = useRef(false);
+  const dispatchedWaveRef = useRef<string | null>(null);
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
@@ -82,8 +82,18 @@ export function ThreeFiveSevenDealOrchestrator({
   const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
   const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
 
+  // Resolve the visual active-player hand region (destination for self
+  // recipient intents) — re-queried on every render so wave/hand changes
+  // pick up a freshly-mounted node.
+  const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    if (!deal || dispatchedRef.current) return;
+    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
+    setSelfHandRegion(el);
+  }, [waveContextId, selfPlayerId]);
+
+  useEffect(() => {
+    if (!deal) return;
+    if (dispatchedWaveRef.current === waveContextId) return;
     if (!dealTimingHydrated) return;
     if (cardsThisWave <= 0) return;
     if (!activeSeats.length) return;
