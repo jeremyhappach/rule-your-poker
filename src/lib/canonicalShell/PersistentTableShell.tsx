@@ -440,6 +440,7 @@ export function PersistentTableShell({
           </ShellOverlayMountsProvider>
         </SettlementProvider>
       </CanonicalAnnouncementProvider>
+     </CardTransportProvider>
     </ChipTransportProvider>
   );
 
