@@ -9,27 +9,29 @@
  *     from = dealer seat
  *     to   = round-robin starting at seat clockwise of dealer
  *     face = 'visible' iff recipient === self, else 'hidden'
- *     stagger = idx * 40ms
- *     duration = 110ms
+ *     stagger = inspect 800ms / normal 40ms
+ *     duration = inspect 600ms / normal 110ms
+ *     recipientPlayerId stamped so DealRuntime can clip per-player
+ *       destination visibility one card at a time.
+ *     cardBackColors threaded from useVisualPreferences so the in-flight
+ *       hidden cardback matches the canonical Cribbage cardback styling.
  *     ↓
- *   each settle → settledCardIds
+ *   each settle → settledCardIds (+ per-recipient counter)
  *     ↓
  *   when settledCardIds.size === N: DealRuntime flips DEALING → READY
  *
  * Source authority: `{ kind: 'seat', position: dealerPosition }`.
- * cardEndpoints falls back to `[data-chip-center="${pos}"]` so no new
- * dealer-button anchor is required for Wave 1. The orchestrator only
- * publishes ONE new anchor — `[data-card-anchor="hand-${selfPlayerId}"]`
- * — for cards arriving in the local player's hand.
  *
- * Re-dispatch guard: the parent mounts this with `key={handContextId}`,
- * so a new hand naturally remounts and the useEffect runs once.
+ * Local-hand anchor is positioned at the very bottom of the felt
+ * container so dealer→self has a visible drop, not "appear/disappear
+ * on top of the dealer button."
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
+import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
 interface SeatEntry {
@@ -56,6 +58,8 @@ export function CribbageDealOrchestrator({
   const ct = useCardTransport();
   const deal = useDealRuntime();
   const dispatchedRef = useRef(false);
+  const { getCardBackColors } = useVisualPreferences();
+  const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
@@ -63,8 +67,6 @@ export function CribbageDealOrchestrator({
     const dealerSeat = seats.find(s => s.playerId === dealerPlayerId);
     if (!dealerSeat) return;
 
-    // Round-robin recipients starting clockwise of dealer (real Cribbage
-    // pone-first order). seats are not assumed sorted; sort by position.
     const sorted = [...seats].sort((a, b) => a.position - b.position);
     const dealerIdx = sorted.findIndex(s => s.playerId === dealerPlayerId);
     if (dealerIdx < 0) return;
@@ -75,8 +77,6 @@ export function CribbageDealOrchestrator({
     }
 
     const inspect = isCardTransportInspectMode();
-    // Inspect mode: absurdly slow — 800ms stagger, 600ms travel.
-    // Normal mode: 40ms stagger, 110ms travel.
     const staggerMs  = inspect ? 800 : 40;
     const durationMs = inspect ? 600 : 110;
 
@@ -93,14 +93,16 @@ export function CribbageDealOrchestrator({
         durationMs,
         launchDelayMs: idx * staggerMs,
         handContextId,
+        recipientPlayerId: r.playerId,
+        cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
       };
     });
 
     dispatchedRef.current = true;
     deal.beginDeal(intents.length);
     ct.dispatchMany(intents);
-    // eslint-disable-next-line no-console
     if (typeof window !== 'undefined' && (window as unknown as { __DEAL_DEBUG?: boolean }).__DEAL_DEBUG) {
+      // eslint-disable-next-line no-console
       console.log('[cribbage-deal] dispatched', {
         handContextId,
         dealerPlayerId: dealerPlayerId.slice(0, 8),
@@ -110,19 +112,19 @@ export function CribbageDealOrchestrator({
         recipients: recipients.map(r => r.playerId.slice(0, 8)),
       });
     }
-  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, dealCount]);
+  }, [deal, ct, handContextId, dealerPlayerId, selfPlayerId, seats, dealCount, cardBackColors]);
 
-  // Publish the local-hand anchor for `{ kind: 'hand', playerId: selfPlayerId }`.
-  // Positioned at the bottom-center of the nearest positioned ancestor —
-  // the shell's children flex column — which matches where Cribbage
-  // mounts the player's hand row.
+  // Publish the local-hand anchor at the bottom of the felt container.
+  // Sitting at `bottom: 0` (the felt's south rail) gives dealer→self a
+  // visible vertical drop from the dealer-button chip area down toward
+  // the player's hand region, instead of collapsing on top of itself.
   return (
     <div
       aria-hidden="true"
       style={{
         position: 'absolute',
         left: '50%',
-        bottom: '8%',
+        bottom: 0,
         width: 1,
         height: 1,
         transform: 'translate(-50%, 0)',

@@ -178,6 +178,11 @@ export function CardTransportRuntime({
     const dy = card.to.y - card.from.y;
     const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const isHidden = card.intent.face === 'hidden';
+    const inspect = isCardTransportInspectMode();
+    const cbc = card.intent.cardBackColors;
+    const hiddenBg = cbc
+      ? `linear-gradient(135deg, ${cbc.color} 0%, ${cbc.darkColor} 100%)`
+      : 'linear-gradient(135deg, hsl(220 70% 28%), hsl(220 70% 18%))';
     nodes.push(
       <div
         key={card.intent.id}
@@ -201,7 +206,7 @@ export function CardTransportRuntime({
             border: '1px solid rgba(255,255,255,0.85)',
             boxShadow: '0 6px 14px rgba(0,0,0,0.45)',
             background: isHidden
-              ? 'linear-gradient(135deg, hsl(220 70% 28%), hsl(220 70% 18%))'
+              ? hiddenBg
               : 'linear-gradient(180deg, #ffffff, #f1f1f1)',
             color: isHidden ? 'rgba(255,255,255,0.4)' : 'hsl(220 30% 20%)',
             display: 'flex',
@@ -209,15 +214,27 @@ export function CardTransportRuntime({
             justifyContent: 'center',
             fontWeight: 700,
             fontSize: 10,
-            animation: `${kf} ${card.flightMs}ms ${isCardTransportInspectMode() ? INSPECT_EASING : NORMAL_EASING} ${card.delayMs}ms forwards`,
-            willChange: 'transform',
+            opacity: 0,
+            animation: `${kf} ${card.flightMs}ms ${inspect ? INSPECT_EASING : NORMAL_EASING} ${card.delayMs}ms both`,
+            willChange: 'transform, opacity',
           }}
         >
-          {isHidden ? '' : '\u2660'}
+          {isHidden && cbc ? (
+            <div
+              style={{
+                width: '75%',
+                height: '75%',
+                background: `${cbc.color}55`,
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 4,
+              }}
+            />
+          ) : (isHidden ? '' : '\u2660')}
         </div>
         <style>{`@keyframes ${kf} {
-          0%   { transform: translate(0, 0) scale(0.92); opacity: 0.95; }
-          50%  { transform: translate(${dx * 0.5}px, ${dy * 0.5 - 8}px) scale(${isCardTransportInspectMode() ? 1.10 : 1.02}); opacity: 1; }
+          0%   { transform: translate(0, 0) scale(0.92); opacity: 0; }
+          8%   { transform: translate(${dx * 0.08}px, ${dy * 0.08}px) scale(0.96); opacity: 1; }
+          50%  { transform: translate(${dx * 0.5}px, ${dy * 0.5 - 8}px) scale(${inspect ? 1.10 : 1.02}); opacity: 1; }
           100% { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
         }`}</style>
       </div>,

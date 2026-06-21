@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
@@ -87,7 +87,7 @@ import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/Cr
 import { recordSettlementIntent } from '@/lib/canonicalShell/settlement/settlementDbg';
 import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpointDbg';
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
-import { DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 
 
@@ -420,6 +420,65 @@ function CribbageDealerSelectionVisibilityTracker({
   }, []);
   return null;
 }
+
+/**
+ * DealRuntimeMaybe — wraps children with DealRuntime when a stable
+ * handContextId exists. When absent, children render unwrapped so
+ * destination consumers fall through to the legacy "full hand
+ * immediately" path (useDealRuntime() returns null).
+ */
+function DealRuntimeMaybe({ handContextId, children }: { handContextId: string | null | undefined; children: ReactNode }) {
+  if (!handContextId) return <>{children}</>;
+  return (
+    <DealRuntime key={handContextId} handContextId={handContextId}>
+      {children}
+    </DealRuntime>
+  );
+}
+
+/**
+ * DealClippedOpponentSeatLayer — wraps GameplayOpponentSeatLayer with
+ * a deal-runtime-aware `cardBacks` clipper. During DEALING, each
+ * opponent's visible cardback count is capped at the number of
+ * intents addressed to that recipient that have already settled, so
+ * cards arrive one at a time. PRE_DEAL → 0 backs. READY / GAMEPLAY
+ * or no runtime → full hand size from the base callback.
+ */
+function DealClippedOpponentSeatLayer(props: {
+  family: 'cribbage' | 'gin-rummy' | 'yahtzee';
+  participants: Array<{ id: string; position: number; name: string; chips: number }>;
+  presentation: import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation;
+}) {
+  const deal = useDealRuntime();
+  const wrapped = useMemo<import('@/lib/canonicalShell/GameplayOpponentSeatLayer').GameplayOpponentSeatPresentation>(() => {
+    const base = props.presentation;
+    return {
+      ...base,
+      cardBacks: (p) => {
+        const baseBacks = base.cardBacks?.(p) ?? null;
+        if (!baseBacks || !deal) return baseBacks;
+        if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return baseBacks;
+        if (deal.phase === 'PRE_DEAL') {
+          return { ...baseBacks, count: 0, visible: false };
+        }
+        // DEALING
+        const allowed = deal.getSettledCountForPlayer(p.id);
+        const clipped = Math.min(baseBacks.count, allowed);
+        if (clipped <= 0) return { ...baseBacks, count: 0, visible: false };
+        return { ...baseBacks, count: clipped };
+      },
+    };
+  }, [props.presentation, deal]);
+  return (
+    <GameplayOpponentSeatLayer
+      family={props.family}
+      participants={props.participants}
+      presentation={wrapped}
+    />
+  );
+}
+
+
 
 
 export const CribbageMobileGameTable = ({
@@ -6184,7 +6243,9 @@ export const CribbageMobileGameTable = ({
   // The full table shell renders below; bootstrap mode shows a transition placeholder
   // inside the felt circle to avoid unmount/remount flicker.
   return (
+    <DealRuntimeMaybe handContextId={currentHandKey}>
     <div className={cn('h-full flex flex-col overflow-hidden bg-transparent')}>
+
       {/* Phase E: canonical `match_win` announcement owns winner UI.
           The 'skunk' win-sequence phase is retired — skunk semantics
           ride inside the canonical announcement payload. */}
@@ -6453,14 +6514,12 @@ export const CribbageMobileGameTable = ({
                     Cribbage deal). Mounted only when we have a dealer +
                     viewer + at least one seated player. */}
                 {currentHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
-                  <DealRuntime key={currentHandKey} handContextId={currentHandKey}>
-                    <CribbageDealOrchestrator
-                      handContextId={currentHandKey}
-                      dealerPlayerId={cribbageState.dealerPlayerId}
-                      selfPlayerId={currentPlayerId}
-                      seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
-                    />
-                  </DealRuntime>
+                  <CribbageDealOrchestrator
+                    handContextId={currentHandKey}
+                    dealerPlayerId={cribbageState.dealerPlayerId}
+                    selfPlayerId={currentPlayerId}
+                    seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
+                  />
                 ) : null}
 
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
@@ -6608,7 +6667,7 @@ export const CribbageMobileGameTable = ({
           {/* ═══════ PROJECTED SEAT OVERLAY — shell-owned via GameplayOpponentSeatLayer ═══════
               Games emit presentation state (typed accessors); the
               shell mounts CanonicalSeatCluster per opponent. */}
-          <GameplayOpponentSeatLayer
+          <DealClippedOpponentSeatLayer
             family="cribbage"
             participants={projectedSeatPlayers
               .filter(seatPlayer => isObserver || seatPlayer.id !== currentPlayerId)
@@ -6809,5 +6868,6 @@ export const CribbageMobileGameTable = ({
         }
       />
     </div>
+    </DealRuntimeMaybe>
   );
 };

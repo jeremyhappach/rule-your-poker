@@ -48,6 +48,20 @@ export interface CardTransportIntent {
    * to its hand without joining tables in the console.
    */
   handContextId?: string;
+  /**
+   * Optional — recipient seat owner. Surfaces in DealRuntime as a
+   * per-player settled count so destinations can clip their visible
+   * cards by "how many of MY intents have already settled" during
+   * DEALING. The runtime never reads this for movement; it's metadata.
+   */
+  recipientPlayerId?: string;
+  /**
+   * Optional — cardback styling for `face: 'hidden'` flights. When
+   * present, the transport renders the flying cardback using these
+   * canonical colors instead of the runtime default. Games should
+   * source these from `useVisualPreferences().getCardBackColors()`.
+   */
+  cardBackColors?: { color: string; darkColor: string };
 }
 
 export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
