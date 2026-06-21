@@ -213,6 +213,7 @@ export async function saveDealTiming(
   next: Partial<DealTimingConfig>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const merged = sanitize({ ...current, ...next });
+  const savedAt = new Date().toISOString();
   logDealTimingStore('save:attempt', merged);
   const { error } = await supabase
     .from('system_settings')
@@ -220,12 +221,12 @@ export async function saveDealTiming(
       {
         key: DEAL_TIMING_KEY,
         value: merged as unknown as Record<string, number>,
-        updated_at: new Date().toISOString(),
+        updated_at: savedAt,
       },
       { onConflict: 'key' },
     );
   if (error) return { ok: false, error: error.message };
-  setCurrent(merged, 'save:local-confirm', true, null);
+  setCurrent(merged, 'save:local-confirm', true, savedAt);
   return { ok: true };
 }
 
