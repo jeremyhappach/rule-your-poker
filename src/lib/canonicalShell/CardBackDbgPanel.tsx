@@ -286,9 +286,11 @@ export function CardBackDbgPanel() {
               lines.push(`preference: ${prefId}  ${prefs.color} / ${prefs.darkColor}`);
               lines.push(`canonical: ${canonicalCount}  legacy: ${legacyCount}`);
               lines.push('');
-              lines.push('uid | kind | variant | color | darkColor | width | height | owner | cardAnchor');
+              lines.push('uid | kind | variant | colors | size | radius (px / %w) | border (px / color) | shadow | accent | bg | owner | cardAnchor');
               for (const r of rows) {
-                lines.push(`${r.uid} | ${r.kind} | ${r.variant ?? '-'} | ${r.color} | ${r.darkColor} | ${r.width} | ${r.height} | ${r.owner} | ${r.cardAnchor ?? '-'}`);
+                lines.push(
+                  `${r.uid} | ${r.kind} | ${r.variant ?? '-'} | ${r.color}/${r.darkColor} | ${r.width}x${r.height} | ${r.radiusPx}px ${r.radiusPctW}%w | ${r.borderWidthPx}px ${r.borderColor} | ${r.boxShadow} | ${r.accent} | ${r.backgroundImage} | ${r.owner} | ${r.cardAnchor ?? '-'}`,
+                );
               }
               const text = lines.join('\n');
               if (navigator?.clipboard?.writeText) {
