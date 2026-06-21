@@ -31,6 +31,7 @@ import { SettlementDbgPanel } from "@/lib/canonicalShell/settlement/SettlementDb
 import { ChipTransportDbgPanel } from "@/lib/canonicalShell/ChipTransportDbgPanel";
 import { CardTransportDbgPanel } from "@/lib/canonicalShell/cardTransport/CardTransportDbgPanel";
 import { ThreeFiveSevenDealDiagPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenDealDiagPanel";
+import { ThreeFiveSevenForensicsPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenForensicsPanel";
 
 import { CardBackDbgPanel } from "@/lib/canonicalShell/CardBackDbgPanel";
 import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
