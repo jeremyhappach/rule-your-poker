@@ -168,6 +168,7 @@ export function CardBackDbgPanel() {
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [tick, setTick] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   // Poll the DOM once per 500ms while enabled. Mutation-observer would be
   // more efficient but card backs mount/unmount inside transport intervals
