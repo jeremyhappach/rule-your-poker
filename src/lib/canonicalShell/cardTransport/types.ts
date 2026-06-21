@@ -92,6 +92,8 @@ export interface CardTransportIntent {
    * source these from `useVisualPreferences().getCardBackColors()`.
    */
   cardBackColors?: { color: string; darkColor: string };
+  /** Optional smoke metadata for dealer-origin audits. */
+  dealerIsSelf?: boolean;
   /**
    * Optional — when `face: 'visible'`, render the flying card with this
    * concrete rank/suit so the in-flight asset matches the canonical

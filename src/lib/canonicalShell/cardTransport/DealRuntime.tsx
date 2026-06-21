@@ -89,7 +89,8 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
         const ready = expected > 0 && next.size >= expected;
         dealDbgUpsert(handContextId, {
           cardsSettled: next.size,
-          ...(ready ? { phase: 'READY', readyReleased: true } : {}),
+          dealSettled: ready,
+          ...(ready ? { phase: 'READY', readyReleased: true, dealSettled: true } : {}),
         });
         if (ready) {
           queueMicrotask(() => setPhase((p) => (p === 'DEALING' ? 'READY' : p)));
@@ -119,12 +120,14 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       cardsDispatched: count,
       cardsSettled: 0,
       readyReleased: false,
+      dealSettled: false,
+      enterGameplayCalledAt: null,
     });
   }, [handContextId]);
 
   const enterGameplay = useCallback(() => {
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
-    dealDbgUpsert(handContextId, { phase: 'GAMEPLAY' });
+    dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
   }, [handContextId]);
 
   const isSettled = useCallback(

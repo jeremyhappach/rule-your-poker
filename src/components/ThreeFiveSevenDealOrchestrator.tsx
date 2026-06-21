@@ -32,11 +32,16 @@
  */
 
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime, DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
+import { SLOT } from '@/lib/canonicalShell/seatAnchors';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
+import { dealDbgUpsertOwnership } from '@/lib/canonicalShell/cardTransport/cardTransportDbg';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
 export interface ThreeFiveSevenSeatEntry {
@@ -48,6 +53,7 @@ export interface ThreeFiveSevenDealOrchestratorProps {
   waveContextId: string;          // ${dealerGameId}#h${hand}#r${round}
   dealerPosition: number;         // authoritative dealer seat position
   selfPlayerId: string;
+  selfPosition?: number | null;
   activeSeats: ThreeFiveSevenSeatEntry[]; // active+not-sitting-out, any order
   cardsThisWave: number;          // 3 for r=1, 2 for r=2 & r=3
 }
@@ -56,6 +62,7 @@ export function ThreeFiveSevenDealOrchestrator({
   waveContextId,
   dealerPosition,
   selfPlayerId,
+  selfPosition = null,
   activeSeats,
   cardsThisWave,
 }: ThreeFiveSevenDealOrchestratorProps) {
@@ -71,7 +78,9 @@ export function ThreeFiveSevenDealOrchestrator({
   const dealerIsSelf =
     typeof dealerPosition === 'number' &&
     dealerPosition > 0 &&
-    activeSeats.some(s => s.position === dealerPosition && s.playerId === selfPlayerId);
+    selfPosition === dealerPosition;
+  const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
+  const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
 
   useEffect(() => {
     if (!deal || dispatchedRef.current) return;
@@ -79,6 +88,7 @@ export function ThreeFiveSevenDealOrchestrator({
     if (cardsThisWave <= 0) return;
     if (!activeSeats.length) return;
     if (typeof dealerPosition !== 'number' || dealerPosition <= 0) return;
+    if (dealerIsSelf && !selfDealerFeltIsSurface) return;
 
     // Build deal order:
     //   left-of-dealer first, then continue clockwise (LOWER position in
@@ -159,6 +169,7 @@ export function ThreeFiveSevenDealOrchestrator({
           handContextId: waveContextId,
           recipientPlayerId: r.playerId,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
+          dealerIsSelf,
           // visibleFace intentionally omitted — all deal flights are hidden.
         });
       }
@@ -169,7 +180,7 @@ export function ThreeFiveSevenDealOrchestrator({
     ct.dispatchMany(intents);
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
-    activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated,
+    activeSeats, cardsThisWave, cardBackColors, dealTimingHydrated, dealerIsSelf, selfDealerFeltIsSurface,
   ]);
 
   return (
@@ -190,26 +201,20 @@ export function ThreeFiveSevenDealOrchestrator({
         data-card-anchor={`hand-${selfPlayerId}`}
       />
       {/* Dealer-seat origin anchor for the self-viewer-as-dealer case.
-          CanonicalSeatCluster suppresses the viewer's own seat anchor,
-          so we mount one here at felt-bottom-center so all deal flights
-          resolve from the canonical dealer-seat location regardless of
-          who the viewer is. */}
-      {dealerIsSelf ? (
+          This MUST be portaled onto the shell felt HOME slot, not mounted
+          in the active-player/HUD subtree, so fromRect proves a real felt
+          dealer origin. */}
+      {dealerIsSelf && selfDealerFelt && selfDealerFeltIsSurface ? createPortal(
         <div
           aria-hidden="true"
-          style={{
-            position: 'absolute',
-            left: '50%',
-            bottom: 0,
-            width: 1,
-            height: 1,
-            transform: 'translate(-50%, 0)',
-            pointerEvents: 'none',
-          }}
+          className={`absolute ${getCanonicalSlotPlacement(SLOT.HOME).className} pointer-events-none`}
+          style={{ width: 40, height: 40 }}
           data-card-anchor={`seat-${dealerPosition}`}
           data-canonical-dealer-origin-self="357"
+          data-canonical-shell-viewer-card-endpoint="357-dealer-origin"
+          data-anchor-owner="ThreeFiveSevenDealOrchestrator.selfDealerFeltOrigin"
         />
-      ) : null}
+      , selfDealerFelt) : null}
     </>
   );
 }
@@ -263,17 +268,29 @@ export function Use357OppCount({
   render: (visibleCount: number) => ReactNode;
 }) {
   const deal = useDealRuntime();
+  const phase = deal?.phase ?? 'NO_RUNTIME';
+  const settled = deal?.getSettledCountForPlayer(playerId) ?? 0;
+  const dealingVisible = Math.min(baseline + settled, expected);
+  const visible = deal
+    ? deal.phase === 'DEALING'
+      ? dealingVisible
+      : deal.phase === 'PRE_DEAL'
+        ? baseline
+        : Math.max(baseline, defaultCount, dealingVisible)
+    : Math.max(baseline, defaultCount);
+  useEffect(() => {
+    if (!deal?.handContextId) return;
+    dealDbgUpsertOwnership(deal.handContextId, playerId, {
+      role: 'opp',
+      prevWaveCount: baseline,
+      authoritativeCount: defaultCount,
+      visibleCount: visible,
+      dealPhase: phase,
+      baselineApplied: visible >= baseline,
+      renderGuardPassed: true,
+    });
+  }, [deal?.handContextId, playerId, baseline, defaultCount, visible, phase]);
   // During DEALING: baseline + settled (this wave), clamped to expected.
-  if (deal && deal.phase === 'DEALING') {
-    const settled = deal.getSettledCountForPlayer(playerId) ?? 0;
-    const visible = Math.min(baseline + settled, expected);
-    return <>{render(visible)}</>;
-  }
-  // Outside DEALING (READY / GAMEPLAY / no runtime / between waves):
-  // floor at baseline so previously-settled cards never disappear
-  // during the round-transition gap (when authoritative defaultCount
-  // briefly drops to 0 before the next wave re-deals).
-  const visible = Math.max(baseline, defaultCount);
   return <>{render(visible)}</>;
 }
 
@@ -294,10 +311,29 @@ export function Use357SelfHand<T>({
   render: (effectiveCards: T[]) => ReactNode;
 }) {
   const deal = useDealRuntime();
-  if (!deal || deal.phase !== 'DEALING') return <>{render(cards)}</>;
-  const settled = deal.getSettledCountForPlayer(currentPlayerId) ?? 0;
-  const allowed = Math.min(baseline + settled, cards.length);
-  return <>{render(cards.slice(0, allowed))}</>;
+  const phase = deal?.phase ?? 'NO_RUNTIME';
+  const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  const allowed = deal
+    ? deal.phase === 'DEALING'
+      ? Math.min(baseline + settled, cards.length)
+      : deal.phase === 'PRE_DEAL'
+        ? Math.min(baseline, cards.length)
+        : cards.length
+    : cards.length;
+  const effectiveCards = cards.slice(0, Math.min(allowed, cards.length));
+  useEffect(() => {
+    if (!deal?.handContextId || !currentPlayerId) return;
+    dealDbgUpsertOwnership(deal.handContextId, currentPlayerId, {
+      role: 'self',
+      prevWaveCount: baseline,
+      authoritativeCount: cards.length,
+      visibleCount: effectiveCards.length,
+      dealPhase: phase,
+      baselineApplied: effectiveCards.length >= Math.min(baseline, cards.length),
+      renderGuardPassed: true,
+    });
+  }, [deal?.handContextId, currentPlayerId, baseline, cards.length, effectiveCards.length, phase]);
+  return <>{render(effectiveCards)}</>;
 }
 
 // ─── DealRuntime per-wave wrapper ────────────────────────────────────

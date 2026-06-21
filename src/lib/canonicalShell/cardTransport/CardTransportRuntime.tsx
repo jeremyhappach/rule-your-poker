@@ -149,6 +149,13 @@ export function CardTransportRuntime({
         resolvedToAnchor: to?.resolvedAnchor ?? null,
         fromAnchorRect: from ? { x: from.x, y: from.y, w: from.w, h: from.h } : null,
         toAnchorRect:   to   ? { x: to.x,   y: to.y,   w: to.w,   h: to.h }   : null,
+        fromAnchorOwner: from?.owner ?? null,
+        toAnchorOwner: to?.owner ?? null,
+        fromAnchorParent: from?.parent ?? null,
+        toAnchorParent: to?.parent ?? null,
+        fromAnchorViewportRect: from?.viewportRect ?? null,
+        toAnchorViewportRect: to?.viewportRect ?? null,
+        dealerIsSelf: intent.dealerIsSelf ?? null,
       });
       if (!from || !to) {
         cardTransportDbgUpsert(intent.id, {
