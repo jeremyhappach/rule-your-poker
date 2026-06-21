@@ -70,6 +70,18 @@ export function CribbageDealOrchestrator({
     const timing = getDealTiming();
     const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
     const durationMs = inspect ? 600 : timing.durationMs;
+    const timingSource: 'GeometryLab' | 'inspectMode' = inspect ? 'inspectMode' : 'GeometryLab';
+
+    // eslint-disable-next-line no-console
+    console.log('[GEOM DEAL SETTINGS]', {
+      source: timingSource,
+      launchSpacingMs: timing.launchSpacingMs,
+      durationMs: timing.durationMs,
+      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+      effectiveStaggerMs: staggerMs,
+      effectiveDurationMs: durationMs,
+      inspectMode: inspect,
+    });
 
     const totalCount = cardsPerPlayer * sorted.length;
     const dealerIsSelf = dealerPlayerId === selfPlayerId;
@@ -104,6 +116,14 @@ export function CribbageDealOrchestrator({
 
     dispatchedRef.current = true;
     deal.beginDeal(totalCount);
+    // eslint-disable-next-line no-console
+    for (const it of intents) console.log('[INTENT STAMP]', {
+      intentId: it.id,
+      launchDelayMs: it.launchDelayMs,
+      durationMs: it.durationMs,
+      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+      source: timingSource,
+    });
     ct.dispatchMany(intents);
     if (typeof window !== 'undefined' && (window as unknown as { __DEAL_DEBUG?: boolean }).__DEAL_DEBUG) {
       // eslint-disable-next-line no-console
