@@ -37,6 +37,7 @@ export function PerformanceTracerPanel() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [traces, setTraces] = useState<TraceEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
