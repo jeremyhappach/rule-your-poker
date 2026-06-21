@@ -38,6 +38,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useCardTransportInternal, type ActiveCardIntent } from './CardTransportProvider';
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
+import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
   cardTransportDbgUpsert,
