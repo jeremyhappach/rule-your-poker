@@ -41,6 +41,17 @@ interface InventoryRow {
   darkColor: string;
   width: number;
   height: number;
+  // Full style fingerprint — exposes drift between variants of the same
+  // canonical component. Two rows with the same `kind=canonical` but
+  // different `borderColor`/`gradient`/`radiusPctW` are a design-language
+  // violation, even though both pass the "is canonical?" check.
+  borderWidthPx: number;
+  borderColor: string;
+  radiusPx: number;
+  radiusPctW: number;       // radius as % of width — must be ~same across variants
+  boxShadow: string;
+  backgroundImage: string;  // raw computed gradient string
+  accent: 'logo' | 'frame' | 'none';
   owner: string;
   tag: string;
   className: string;
@@ -96,31 +107,68 @@ function isVisible(el: Element): boolean {
   return true;
 }
 
+function parsePxTopValue(v: string): number {
+  // border-width / border-radius can come back as "1px" or "1px 1px 1px 1px".
+  if (!v) return 0;
+  const first = v.split(' ')[0];
+  const n = parseFloat(first);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function detectAccent(el: Element): 'logo' | 'frame' | 'none' {
+  const img = el.querySelector('img[aria-hidden="true"]');
+  if (img) return 'logo';
+  // inset frame = absolute child with border styling and no children/text
+  const frame = Array.from(el.children).find((c) => {
+    if (c.tagName.toLowerCase() !== 'div') return false;
+    const cs = window.getComputedStyle(c);
+    return cs.position === 'absolute' && parsePxTopValue(cs.borderTopWidth) > 0;
+  });
+  return frame ? 'frame' : 'none';
+}
+
 function scanInventory(): InventoryRow[] {
   if (typeof document === 'undefined') return [];
   const rows: InventoryRow[] = [];
   let uid = 0;
 
-  // 1) Canonical entries.
-  const canonical = Array.from(document.querySelectorAll('[data-canonical-card-back]')) as HTMLElement[];
-  for (const el of canonical) {
-    if (!isVisible(el)) continue;
+  const pushRow = (
+    el: HTMLElement,
+    kind: 'canonical' | 'legacy',
+    variant: string | null,
+  ) => {
     const cs = window.getComputedStyle(el);
     const stops = parseGradientStops(cs.backgroundImage) ?? { color: '?', darkColor: '?' };
     const r = el.getBoundingClientRect();
+    const w = Math.round(r.width);
+    const radius = parsePxTopValue(cs.borderTopLeftRadius || cs.borderRadius);
     rows.push({
-      uid: `c${uid++}`,
-      kind: 'canonical',
-      variant: el.getAttribute('data-canonical-card-back'),
+      uid: `${kind === 'canonical' ? 'c' : 'l'}${uid++}`,
+      kind,
+      variant,
       color: stops.color,
       darkColor: stops.darkColor,
-      width: Math.round(r.width),
+      width: w,
       height: Math.round(r.height),
+      borderWidthPx: parsePxTopValue(cs.borderTopWidth),
+      borderColor: cs.borderTopColor || '(none)',
+      radiusPx: Math.round(radius * 10) / 10,
+      radiusPctW: w > 0 ? Math.round((radius / w) * 1000) / 10 : 0,
+      boxShadow: cs.boxShadow && cs.boxShadow !== 'none' ? cs.boxShadow : 'none',
+      backgroundImage: cs.backgroundImage,
+      accent: detectAccent(el),
       owner: ownerLabel(el),
       tag: el.tagName.toLowerCase(),
       className: (el.className || '').toString().slice(0, 40),
       cardAnchor: nearestCardAnchor(el),
     });
+  };
+
+  // 1) Canonical entries.
+  const canonical = Array.from(document.querySelectorAll('[data-canonical-card-back]')) as HTMLElement[];
+  for (const el of canonical) {
+    if (!isVisible(el)) continue;
+    pushRow(el, 'canonical', el.getAttribute('data-canonical-card-back'));
   }
 
   // 2) Legacy detection — gradient-painted card-shaped divs that are
@@ -129,7 +177,6 @@ function scanInventory(): InventoryRow[] {
   for (const el of Array.from(allDivs)) {
     if (el.hasAttribute('data-canonical-card-back')) continue;
     if (el.closest('[data-canonical-card-back]')) continue;
-    // Skip the debug pill itself.
     if (el.closest('[data-card-back-dbg-panel]')) continue;
     if (el.closest('[data-debug-tray]')) continue;
     const cs = window.getComputedStyle(el);
@@ -142,20 +189,7 @@ function scanInventory(): InventoryRow[] {
     const aspect = r.height / r.width;
     if (Math.abs(aspect - PLAYING_CARD_ASPECT) / PLAYING_CARD_ASPECT > ASPECT_TOLERANCE) continue;
     if (!isVisible(el)) continue;
-    const stops = parseGradientStops(bg) ?? { color: '?', darkColor: '?' };
-    rows.push({
-      uid: `l${uid++}`,
-      kind: 'legacy',
-      variant: null,
-      color: stops.color,
-      darkColor: stops.darkColor,
-      width: Math.round(r.width),
-      height: Math.round(r.height),
-      owner: ownerLabel(el),
-      tag: el.tagName.toLowerCase(),
-      className: (el.className || '').toString().slice(0, 40),
-      cardAnchor: nearestCardAnchor(el),
-    });
+    pushRow(el as HTMLElement, 'legacy', null);
   }
 
   return rows;
@@ -252,9 +286,11 @@ export function CardBackDbgPanel() {
               lines.push(`preference: ${prefId}  ${prefs.color} / ${prefs.darkColor}`);
               lines.push(`canonical: ${canonicalCount}  legacy: ${legacyCount}`);
               lines.push('');
-              lines.push('uid | kind | variant | color | darkColor | width | height | owner | cardAnchor');
+              lines.push('uid | kind | variant | colors | size | radius (px / %w) | border (px / color) | shadow | accent | bg | owner | cardAnchor');
               for (const r of rows) {
-                lines.push(`${r.uid} | ${r.kind} | ${r.variant ?? '-'} | ${r.color} | ${r.darkColor} | ${r.width} | ${r.height} | ${r.owner} | ${r.cardAnchor ?? '-'}`);
+                lines.push(
+                  `${r.uid} | ${r.kind} | ${r.variant ?? '-'} | ${r.color}/${r.darkColor} | ${r.width}x${r.height} | ${r.radiusPx}px ${r.radiusPctW}%w | ${r.borderWidthPx}px ${r.borderColor} | ${r.boxShadow} | ${r.accent} | ${r.backgroundImage} | ${r.owner} | ${r.cardAnchor ?? '-'}`,
+                );
               }
               const text = lines.join('\n');
               if (navigator?.clipboard?.writeText) {
@@ -319,6 +355,48 @@ export function CardBackDbgPanel() {
             );
           })()}
 
+          {/* Design-language drift across canonical variants.
+              "Same design language, different geometry" means: gradient,
+              border color, radius%w, and accent kind MUST be uniform across
+              every canonical surface; only borderWidth + boxShadow may differ. */}
+          {(() => {
+            const canon = rows.filter((r) => r.kind === 'canonical');
+            if (canon.length < 2) return null;
+            const ref = canon[0];
+            const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+            const offenders: { row: InventoryRow; reasons: string[] }[] = [];
+            for (const r of canon.slice(1)) {
+              const reasons: string[] = [];
+              if (norm(r.borderColor) !== norm(ref.borderColor))
+                reasons.push(`borderColor ${r.borderColor} ≠ ${ref.borderColor}`);
+              if (norm(r.backgroundImage) !== norm(ref.backgroundImage))
+                reasons.push('gradient ≠ reference');
+              if (Math.abs(r.radiusPctW - ref.radiusPctW) > 1.5)
+                reasons.push(`radius ${r.radiusPctW}%w ≠ ${ref.radiusPctW}%w`);
+              if (r.accent !== ref.accent)
+                reasons.push(`accent ${r.accent} ≠ ${ref.accent}`);
+              if (reasons.length) offenders.push({ row: r, reasons });
+            }
+            if (offenders.length === 0) {
+              return (
+                <div style={{ marginBottom: 6, color: '#7CFC00' }}>
+                  ✓ design language uniform across {canon.length} canonical backs
+                  (border color, gradient, radius%w, accent all match {ref.variant}).
+                </div>
+              );
+            }
+            return (
+              <div style={{ marginBottom: 6, color: '#FFA500' }}>
+                ⚠ design-language drift vs reference [{ref.variant} {ref.uid}]:
+                {offenders.map((o) => (
+                  <div key={o.row.uid} style={{ marginLeft: 8 }}>
+                    [{o.row.uid} {o.row.variant}] {o.reasons.join('; ')}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* Legacy offenders */}
           {legacyCount > 0 && (
             <div style={{ marginBottom: 6, color: '#ff7777' }}>
@@ -334,7 +412,7 @@ export function CardBackDbgPanel() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '14px 70px 80px 60px 1fr',
+              gridTemplateColumns: '14px 78px 70px 56px 70px 70px 1fr',
               columnGap: 4,
               rowGap: 2,
               marginTop: 2,
@@ -344,6 +422,8 @@ export function CardBackDbgPanel() {
             <b>kind</b>
             <b>colors</b>
             <b>size</b>
+            <b>rad/bdr</b>
+            <b>shadow/acc</b>
             <b>owner / anchor</b>
             {rows.length === 0 && (
               <div style={{ gridColumn: '1 / -1', opacity: 0.7 }}>
@@ -367,6 +447,12 @@ export function CardBackDbgPanel() {
                     {r.color}/{r.darkColor}
                   </div>
                   <div>{r.width}×{r.height}</div>
+                  <div title={`radius ${r.radiusPx}px (${r.radiusPctW}%w) · border ${r.borderWidthPx}px ${r.borderColor}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.radiusPx}/{r.radiusPctW}% · {r.borderWidthPx}px
+                  </div>
+                  <div title={`shadow: ${r.boxShadow}\naccent: ${r.accent}`} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.boxShadow === 'none' ? '—' : 'shd'}/{r.accent}
+                  </div>
                   <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {r.cardAnchor ? `[${r.cardAnchor}] ` : ''}
                     {r.owner}
