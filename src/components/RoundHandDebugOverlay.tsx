@@ -405,6 +405,21 @@ export function RoundHandDebugOverlay({ gameId, inline = false }: RoundHandDebug
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2"
+                  onClick={async () => {
+                    if (!snapshot) return;
+                    try {
+                      await navigator.clipboard.writeText(formatSnapshotForCopy(snapshot));
+                    } catch { /* noop */ }
+                  }}
+                  disabled={!snapshot}
+                  title="Copy snapshot"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
                   onClick={() => setAutoRefresh((v) => !v)}
                 >
                   {autoRefresh ? "Stop" : "Auto"}
