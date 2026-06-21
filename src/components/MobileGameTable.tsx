@@ -5950,7 +5950,17 @@ export const MobileGameTable = ({
   };
 
 
-  return <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+  return <ThreeFiveSevenDealRuntimeMaybe waveContextId={threeFiveSevenWaveContextId}>
+    <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
+      {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
+        <ThreeFiveSevenDealOrchestrator
+          waveContextId={threeFiveSevenWaveContextId}
+          dealerPosition={threeFiveSevenDealerPosition}
+          selfPlayerId={threeFiveSevenSelfPlayerId}
+          activeSeats={threeFiveSevenActiveSeats}
+          cardsThisWave={cardsThisWaveFor357(currentRound ?? 0)}
+        />
+      ) : null}
       
 
       {/* Status badges moved to bottom section */}
