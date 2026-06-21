@@ -35,7 +35,8 @@ export type DebugPillKey =
   | 'chipTransportDbg'
   | 'winnerChipEndpointDbg'
   | 'destReactionDbg'
-  | 'visibleChipDbg';
+  | 'visibleChipDbg'
+  | 'cardTransportDbg';
 
 export interface DebugPillDescriptor {
   key: DebugPillKey;

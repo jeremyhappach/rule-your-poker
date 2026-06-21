@@ -1,16 +1,17 @@
 /**
- * cardTransportDbg — per-intent lifecycle record exposed on window.
+ * cardTransportDbg — per-intent lifecycle record exposed on window and
+ * as a subscribable store for the CARD TRANSPORT DBG pill.
  *
  *   window.__cardTransportDbg   →  Record<intentId, CardTransportDbgEntry>
  *   window.__dealDbg            →  Record<handContextId, DealDbgEntry>
  *
- * Wave 1 additions (Cribbage smoke):
- *   - resolvedFromAnchor / resolvedToAnchor: the actual DOM anchor key
- *     the resolver matched (e.g. "hand-abc123" or "chip-center:0").
- *   - anchorRect: container-relative {x,y,w,h} for both endpoints so
- *     wrong-origin bugs are visible without DevTools.
- *   - handContextId: stamped from the dispatching intent so each flight
- *     is traceable to its hand without joining tables in the console.
+ * Tracks the FULL flight lifecycle so motion choppiness can be
+ * attributed to a specific cause (animation vs ownership transfer vs
+ * remount vs anchor movement vs sequential transforms).
+ *
+ * Lifecycle samples (launch / midflight / arrival / destroy) capture
+ * computed animation + transition CSS so we can prove the flight is a
+ * single continuous animation rather than multiple sequential phases.
  */
 
 import type { CardEndpoint, CardFace, DealPhase } from './types';
@@ -20,6 +21,23 @@ export interface AnchorRect {
   y: number;
   w: number;
   h: number;
+}
+
+export interface CardTransportDbgSample {
+  /** 'launch' | 'midflight' | 'arrival' | 'destroy' */
+  phase: 'launch' | 'midflight' | 'arrival' | 'destroy';
+  t: number;
+  animationName?: string;
+  animationIterationCount?: string;
+  animationPlayState?: string;
+  animationTimingFunction?: string;
+  animationDuration?: string;
+  animationDelay?: string;
+  transitionProperty?: string;
+  transitionDuration?: string;
+  transform?: string;
+  /** Bounding rect (container-relative) at the moment of the sample. */
+  rect?: AnchorRect | null;
 }
 
 export interface CardTransportDbgEntry {
@@ -39,14 +57,16 @@ export interface CardTransportDbgEntry {
   transportVisible?: boolean;
   settled?: boolean;
   droppedReason?: string | null;
-  /** Wave 1 timing telemetry — see CardTransportRuntime. */
   durationMs?: number;
   launchDelayMs?: number;
   dx?: number;
   dy?: number;
   actualStartTime?: number;
   actualArrivalTime?: number;
+  ownershipClaimTime?: number;
+  transportDestroyedTime?: number;
   portalLayer?: string;
+  samples?: CardTransportDbgSample[];
   updatedAt: number;
 }
 
@@ -64,6 +84,16 @@ type W = typeof window & {
   __cardTransportDbg?: Record<string, CardTransportDbgEntry>;
   __dealDbg?: Record<string, DealDbgEntry>;
 };
+
+const MAX_INTENTS = 60;
+const MAX_SAMPLES_PER_INTENT = 8;
+
+// Insertion-ordered list of intentIds for bounded retention.
+const order: string[] = [];
+const listeners = new Set<() => void>();
+function emit() {
+  listeners.forEach((l) => { try { l(); } catch { /* */ } });
+}
 
 function bagCT(): Record<string, CardTransportDbgEntry> {
   if (typeof window === 'undefined') return {};
@@ -84,8 +114,83 @@ export function cardTransportDbgUpsert(
   patch: Partial<CardTransportDbgEntry>,
 ): void {
   const bag = bagCT();
-  const prev = bag[intentId] ?? { intentId, updatedAt: 0 };
-  bag[intentId] = { ...prev, ...patch, intentId, updatedAt: Date.now() };
+  const isNew = !bag[intentId];
+  const prev = bag[intentId] ?? { intentId, updatedAt: 0, samples: [] };
+  bag[intentId] = {
+    ...prev,
+    ...patch,
+    intentId,
+    samples: prev.samples ?? [],
+    updatedAt: Date.now(),
+  };
+  if (isNew) {
+    order.push(intentId);
+    while (order.length > MAX_INTENTS) {
+      const oldest = order.shift();
+      if (oldest) delete bag[oldest];
+    }
+  }
+  emit();
+}
+
+export function cardTransportDbgSample(
+  intentId: string,
+  sample: CardTransportDbgSample,
+): void {
+  const bag = bagCT();
+  const entry = bag[intentId];
+  if (!entry) return;
+  const samples = (entry.samples ?? []).concat(sample);
+  entry.samples = samples.slice(-MAX_SAMPLES_PER_INTENT);
+  entry.updatedAt = Date.now();
+  emit();
+}
+
+export function getCardTransportDbg(): CardTransportDbgEntry[] {
+  const bag = bagCT();
+  return order.map((id) => bag[id]).filter(Boolean);
+}
+
+export function subscribeCardTransportDbg(l: () => void): () => void {
+  listeners.add(l);
+  return () => { listeners.delete(l); };
+}
+
+export function clearCardTransportDbg(): void {
+  const bag = bagCT();
+  for (const id of order) delete bag[id];
+  order.length = 0;
+  emit();
+}
+
+export function formatCardTransportDbgAsText(): string {
+  const entries = getCardTransportDbg();
+  if (!entries.length) return 'CARD TRANSPORT DBG (empty)\n';
+  const lines: string[] = ['CARD TRANSPORT DBG'];
+  for (const r of entries) {
+    lines.push(
+      `${new Date(r.updatedAt).toISOString()} ${r.intentId}`,
+      `  cardId=${r.cardId} face=${r.face} handCtx=${r.handContextId ?? '∅'}`,
+      `  from=${JSON.stringify(r.from)} → to=${JSON.stringify(r.to)}`,
+      `  resolvedFrom=${r.resolvedFromAnchor ?? '?'} resolvedTo=${r.resolvedToAnchor ?? '?'}`,
+      `  fromRect=${JSON.stringify(r.fromAnchorRect)} toRect=${JSON.stringify(r.toAnchorRect)}`,
+      `  dx=${r.dx} dy=${r.dy} dur=${r.durationMs} delay=${r.launchDelayMs}`,
+      `  actualStart=${r.actualStartTime} actualArrival=${r.actualArrivalTime}`,
+      `  ownershipClaim=${r.ownershipClaimTime} destroyed=${r.transportDestroyedTime}`,
+      `  portal=${r.portalLayer} mounted=${r.transportMounted} visible=${r.transportVisible}`,
+      `  settled=${r.settled} dropped=${r.droppedReason ?? '∅'}`,
+    );
+    for (const s of r.samples ?? []) {
+      lines.push(
+        `  · ${s.phase}@${s.t.toFixed?.(1) ?? s.t} ` +
+          `anim=${s.animationName}/${s.animationPlayState}/${s.animationIterationCount} ` +
+          `dur=${s.animationDuration} delay=${s.animationDelay} ease=${s.animationTimingFunction} ` +
+          `trans=${s.transitionProperty}/${s.transitionDuration} ` +
+          `xform=${s.transform} rect=${JSON.stringify(s.rect)}`,
+      );
+    }
+  }
+  return lines.join('\n') + '\n';
 }
 
 export function dealDbgUpsert(
