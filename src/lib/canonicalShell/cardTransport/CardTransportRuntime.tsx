@@ -76,6 +76,7 @@ interface RuntimeCard {
   to: ResolvedCardEndpoint;
   delayMs: number;
   flightMs: number;
+  ownershipClaimDelayMs: number;
   startedAt: number;
 }
 
@@ -146,12 +147,14 @@ export function CardTransportRuntime({
 
       const delayMs = Math.max(0, intent.launchDelayMs ?? 0);
       const flightMs = intent.durationMs ?? DEFAULT_DURATION_MS;
+      const ownershipClaimDelayMs = Math.max(0, intent.ownershipClaimDelayMs ?? getDealTiming().ownershipClaimDelayMs);
       resolvedRef.current.set(intent.id, {
         intent,
         from,
         to,
         delayMs,
         flightMs,
+        ownershipClaimDelayMs,
         startedAt: performance.now(),
       });
       cardTransportDbgUpsert(intent.id, {
@@ -159,6 +162,7 @@ export function CardTransportRuntime({
         transportVisible: true,
         launchDelayMs: delayMs,
         durationMs: flightMs,
+        ownershipClaimDelayMs,
         dx: to.x - from.x,
         dy: to.y - from.y,
         portalLayer: 'overlay-root',
@@ -182,7 +186,6 @@ export function CardTransportRuntime({
   useEffect(() => {
     if (!ctx) return;
     const timers: number[] = [];
-    const { ownershipClaimDelayMs } = getDealTiming();
     for (const [id, chip] of resolvedRef.current.entries()) {
       const elapsed = performance.now() - chip.startedAt;
       const settleAt = chip.delayMs + chip.flightMs;
@@ -195,7 +198,7 @@ export function CardTransportRuntime({
           ownershipClaimTime: now,
         });
         ctx.__markSettled(id, chip.intent.cardId);
-      }, remaining + Math.max(0, ownershipClaimDelayMs));
+      }, remaining + chip.ownershipClaimDelayMs);
       timers.push(t);
     }
     return () => { for (const t of timers) window.clearTimeout(t); };
