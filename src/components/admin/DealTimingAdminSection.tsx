@@ -106,7 +106,7 @@ export function DealTimingAdminSection() {
     setSaving(true);
     const res = await saveDealTiming(draft);
     setSaving(false);
-    if (res.ok) {
+    if (res.ok === true) {
       toast.success('Deal Timing saved globally');
     } else {
       toast.error(`Save failed: ${res.error}`);
@@ -117,7 +117,7 @@ export function DealTimingAdminSection() {
     setSaving(true);
     const res = await resetDealTiming();
     setSaving(false);
-    if (res.ok) {
+    if (res.ok === true) {
       setDraft({ ...DEAL_TIMING_DEFAULTS });
       toast.success('Deal Timing reset globally');
     } else {
