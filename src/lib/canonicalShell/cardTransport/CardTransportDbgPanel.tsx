@@ -149,6 +149,30 @@ export function CardTransportDbgPanel() {
                 <div style={{ marginBottom: 8, padding: 6, border: '1px solid #555', background: 'rgba(255,255,255,0.05)' }}>
                   <div style={{ fontWeight: 800, color: '#FFD580' }}>DEAL TIMING PROOF · latest hand</div>
                   <div style={{ opacity: 0.9 }}>handCtx={handProof[0].handContextId ?? '∅'} source={handProof[0].timingSource ?? '?'}</div>
+                  {(() => {
+                    // Wave 2 Gin deal smoke: assert at least one intent
+                    // terminated at each canonical anchor for the latest
+                    // hand. Derived purely from dispatched intents — no
+                    // game-side plumbing. Visible to the user via the
+                    // CT DBG pill (no console reliance).
+                    const oppCt = handProof.filter(r => r.to?.kind === 'oppStack').length;
+                    const selfCt = handProof.filter(r => r.to?.kind === 'hand').length;
+                    const stockCt = handProof.filter(r => r.to?.kind === 'stock').length;
+                    const discardCt = handProof.filter(r => r.to?.kind === 'discard').length;
+                    const discardVisible = handProof.some(r => r.to?.kind === 'discard' && r.face === 'visible');
+                    const fmtPF = (b: boolean) => (b ? '✓ PASS' : '✗ FAIL');
+                    return (
+                      <div style={{ marginTop: 3, padding: '3px 4px', background: 'rgba(0,0,0,0.4)', borderLeft: '2px solid #FFD580' }}>
+                        <div style={{ opacity: 0.95, color: '#FFD580', fontWeight: 700 }}>DEAL SMOKE</div>
+                        <div style={{ color: oppCt > 0 ? '#7CFC00' : '#ff7777' }}>opp ({oppCt}) {fmtPF(oppCt > 0)}</div>
+                        <div style={{ color: selfCt > 0 ? '#7CFC00' : '#ff7777' }}>self ({selfCt}) {fmtPF(selfCt > 0)}</div>
+                        <div style={{ color: stockCt === 1 ? '#7CFC00' : '#ff7777' }}>stock ({stockCt}) {fmtPF(stockCt === 1)}</div>
+                        <div style={{ color: discardCt === 1 && discardVisible ? '#7CFC00' : (discardCt === 0 ? '#aaaaaa' : '#ff7777') }}>
+                          discard ({discardCt}{discardCt ? `, face=${discardVisible ? 'visible' : 'hidden'}` : ''}) {fmtPF(discardCt === 1 && discardVisible)}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ opacity: 0.95, color: '#87CEFA' }}>GEOM STORE launchSpacingMs={proofStore?.launchSpacingMs ?? '—'} durationMs={proofStore?.durationMs ?? '—'} ownershipClaimDelayMs={proofStore?.ownershipClaimDelayMs ?? '—'} updatedAt={proofStore?.updatedAt ?? '—'} storeVersion={proofStore?.storeVersion ?? '—'}</div>
                   <div style={{ opacity: 0.9 }}>GEOM DEAL SETTINGS launchSpacingMs={proofSettings?.launchSpacingMs ?? '—'} durationMs={proofSettings?.durationMs ?? '—'} ownershipClaimDelayMs={proofSettings?.ownershipClaimDelayMs ?? '—'}</div>
                   <div style={{ opacity: 0.9 }}>INTENT source={handProof[0].intentTimingSource ?? handProof[0].timingSource ?? '?'} formula={handProof[0].launchDelayFormula ?? '?'} effectiveSpacingMs={proofSettings?.effectiveLaunchSpacingMs ?? '—'} effectiveDurationMs={proofSettings?.effectiveDurationMs ?? '—'}</div>
