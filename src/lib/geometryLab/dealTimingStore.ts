@@ -62,6 +62,7 @@ function sanitize(value: unknown): DealTimingConfig {
 // ── In-memory store + subscribers ──────────────────────────────
 
 let current: DealTimingConfig = { ...DEAL_TIMING_DEFAULTS };
+let hydrated = false;
 const listeners = new Set<() => void>();
 
 function logDealTimingStore(source: string, next: DealTimingConfig) {
@@ -71,18 +72,24 @@ function logDealTimingStore(source: string, next: DealTimingConfig) {
     launchSpacingMs: next.launchSpacingMs,
     durationMs: next.durationMs,
     ownershipClaimDelayMs: next.ownershipClaimDelayMs,
+    hydrated,
     t: typeof performance !== 'undefined' ? performance.now() : Date.now(),
   });
 }
 
-function setCurrent(next: DealTimingConfig, source = 'unknown') {
+function setCurrent(next: DealTimingConfig, source = 'unknown', markHydrated = true) {
   current = next;
+  if (markHydrated) hydrated = true;
   logDealTimingStore(source, next);
   listeners.forEach((l) => { try { l(); } catch { /* noop */ } });
 }
 
 export function getDealTiming(): DealTimingConfig {
   return current;
+}
+
+export function isDealTimingHydrated(): boolean {
+  return hydrated;
 }
 
 function subscribe(l: () => void): () => void {
@@ -92,6 +99,10 @@ function subscribe(l: () => void): () => void {
 
 export function useDealTiming(): DealTimingConfig {
   return useSyncExternalStore(subscribe, getDealTiming, getDealTiming);
+}
+
+export function useDealTimingHydrated(): boolean {
+  return useSyncExternalStore(subscribe, isDealTimingHydrated, isDealTimingHydrated);
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────
@@ -111,11 +122,14 @@ export function bootstrapDealTiming(): void {
         .maybeSingle();
       if (error) {
         console.warn('[DealTiming] fetch error', error);
+        setCurrent(current, 'bootstrap:fetch-error-default');
         return;
       }
       if (data?.value) setCurrent(sanitize(data.value), 'bootstrap:system_settings');
+      else setCurrent(current, 'bootstrap:no-row-default');
     } catch (err) {
       console.warn('[DealTiming] fetch threw', err);
+      setCurrent(current, 'bootstrap:fetch-threw-default');
     }
   })();
 
