@@ -3,6 +3,13 @@
  *
  * Every owner publishes `[data-card-anchor="<key>"]` on its visible
  * geometry root. The resolver returns container-relative center coords.
+ *
+ * Wave 1 fallbacks (so games can wire incrementally):
+ *   - seat-${pos}        → also matches `[data-chip-center="${pos}"]`.
+ *   - dealer-${playerId} → also matches `[data-card-anchor="hand-${playerId}"]`.
+ *
+ * The resolved key (anchor that actually matched) is returned so the
+ * runtime can record it on the dbg entry.
  */
 
 import type { CardEndpoint } from './types';
@@ -13,23 +20,36 @@ export interface ResolvedCardEndpoint {
   y: number;
   w: number;
   h: number;
+  /** The DOM attribute string that matched. e.g. "hand-abc" or "chip-center:0". */
+  resolvedAnchor: string;
 }
 
-function anchorKeys(ep: CardEndpoint): string[] {
+interface AnchorCandidate { selector: string; label: string; }
+
+function anchorCandidates(ep: CardEndpoint): AnchorCandidate[] {
   switch (ep.kind) {
-    // Dealer origin resolves to the dealer's published anchor first,
-    // then falls back to the dealer's hand or seat anchor so games can
-    // wire incrementally without a dedicated dealer-button anchor.
-    case 'dealer':  return [`dealer-${ep.playerId}`, `hand-${ep.playerId}`];
-    case 'seat':    return [`seat-${ep.position}`];
-    case 'hand':    return [`hand-${ep.playerId}`];
-    case 'stock':   return ['stock'];
-    case 'discard': return ['discard'];
+    case 'dealer':  return [
+      { selector: `[data-card-anchor="dealer-${ep.playerId}"]`, label: `dealer-${ep.playerId}` },
+      { selector: `[data-card-anchor="hand-${ep.playerId}"]`,   label: `hand-${ep.playerId}` },
+    ];
+    case 'seat':    return [
+      { selector: `[data-card-anchor="seat-${ep.position}"]`, label: `seat-${ep.position}` },
+      { selector: `[data-chip-center="${ep.position}"]`,      label: `chip-center:${ep.position}` },
+    ];
+    case 'hand':    return [
+      { selector: `[data-card-anchor="hand-${ep.playerId}"]`, label: `hand-${ep.playerId}` },
+    ];
+    case 'stock':   return [
+      { selector: `[data-card-anchor="stock"]`, label: 'stock' },
+    ];
+    case 'discard': return [
+      { selector: `[data-card-anchor="discard"]`, label: 'discard' },
+    ];
   }
 }
 
 export function cardAnchorSelector(ep: CardEndpoint): string {
-  return anchorKeys(ep).map(k => `[data-card-anchor="${k}"]`).join(',');
+  return anchorCandidates(ep).map(c => c.selector).join(',');
 }
 
 export function resolveCardEndpoint(
@@ -38,19 +58,19 @@ export function resolveCardEndpoint(
 ): ResolvedCardEndpoint | null {
   const cRect = container.getBoundingClientRect();
   if (cRect.width <= 0 || cRect.height <= 0) return null;
-  let el: HTMLElement | null = null;
-  for (const key of anchorKeys(ep)) {
-    el = container.querySelector(`[data-card-anchor="${key}"]`) as HTMLElement | null;
-    if (el) break;
+  for (const c of anchorCandidates(ep)) {
+    const el = container.querySelector(c.selector) as HTMLElement | null;
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left - cRect.left + r.width / 2,
+      y: r.top - cRect.top + r.height / 2,
+      w: r.width,
+      h: r.height,
+      resolvedAnchor: c.label,
+    };
   }
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  return {
-    x: r.left - cRect.left + r.width / 2,
-    y: r.top - cRect.top + r.height / 2,
-    w: r.width,
-    h: r.height,
-  };
+  return null;
 }
 
 export { describeCardEndpoint };

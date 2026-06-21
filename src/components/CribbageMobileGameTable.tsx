@@ -87,6 +87,8 @@ import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/Cr
 import { recordSettlementIntent } from '@/lib/canonicalShell/settlement/settlementDbg';
 import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpointDbg';
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
+import { DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 
 
 import {
@@ -6444,6 +6446,23 @@ export const CribbageMobileGameTable = ({
             {/* GAMEPLAY MODE: full game content */}
             {isGameplayMode && viewState && (
               <>
+                {/* Canonical deal substrate (Wave 1) — DealRuntime keyed by
+                    handContextId so a new hand naturally resets phase +
+                    settledCardIds. Orchestrator emits 6 alternating
+                    dealer→opp/self intents (substrate proof, NOT full
+                    Cribbage deal). Mounted only when we have a dealer +
+                    viewer + at least one seated player. */}
+                {currentHandKey && cribbageState?.dealerPlayerId && currentPlayerId && projectedSeatPlayers.length > 0 ? (
+                  <DealRuntime key={currentHandKey} handContextId={currentHandKey}>
+                    <CribbageDealOrchestrator
+                      handContextId={currentHandKey}
+                      dealerPlayerId={cribbageState.dealerPlayerId}
+                      selfPlayerId={currentPlayerId}
+                      seats={projectedSeatPlayers.map(p => ({ playerId: p.id, position: p.position }))}
+                    />
+                  </DealRuntime>
+                ) : null}
+
                 {/* Spotlight is shell-aware: in shell-owned felt mode it
                     portals itself into the canonical felt frame so the
                     ellipse clip aligns with the true canonical geometry

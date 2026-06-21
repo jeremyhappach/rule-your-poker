@@ -3,9 +3,24 @@
  *
  *   window.__cardTransportDbg   →  Record<intentId, CardTransportDbgEntry>
  *   window.__dealDbg            →  Record<handContextId, DealDbgEntry>
+ *
+ * Wave 1 additions (Cribbage smoke):
+ *   - resolvedFromAnchor / resolvedToAnchor: the actual DOM anchor key
+ *     the resolver matched (e.g. "hand-abc123" or "chip-center:0").
+ *   - anchorRect: container-relative {x,y,w,h} for both endpoints so
+ *     wrong-origin bugs are visible without DevTools.
+ *   - handContextId: stamped from the dispatching intent so each flight
+ *     is traceable to its hand without joining tables in the console.
  */
 
 import type { CardEndpoint, CardFace, DealPhase } from './types';
+
+export interface AnchorRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 export interface CardTransportDbgEntry {
   intentId: string;
@@ -15,6 +30,11 @@ export interface CardTransportDbgEntry {
   to?: CardEndpoint;
   fromEndpointFound?: boolean;
   toEndpointFound?: boolean;
+  resolvedFromAnchor?: string | null;
+  resolvedToAnchor?: string | null;
+  fromAnchorRect?: AnchorRect | null;
+  toAnchorRect?: AnchorRect | null;
+  handContextId?: string | null;
   transportMounted?: boolean;
   transportVisible?: boolean;
   settled?: boolean;

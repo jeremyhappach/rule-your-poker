@@ -91,8 +91,13 @@ export function CardTransportRuntime({
         face: intent.face,
         from: intent.from,
         to: intent.to,
+        handContextId: intent.handContextId ?? null,
         fromEndpointFound: !!from,
         toEndpointFound: !!to,
+        resolvedFromAnchor: from?.resolvedAnchor ?? null,
+        resolvedToAnchor: to?.resolvedAnchor ?? null,
+        fromAnchorRect: from ? { x: from.x, y: from.y, w: from.w, h: from.h } : null,
+        toAnchorRect:   to   ? { x: to.x,   y: to.y,   w: to.w,   h: to.h }   : null,
       });
       if (!from || !to) {
         cardTransportDbgUpsert(intent.id, {
