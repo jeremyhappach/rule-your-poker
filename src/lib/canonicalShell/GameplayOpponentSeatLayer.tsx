@@ -36,13 +36,11 @@
  * viewerPosition === position).
  */
 
-import { useMemo } from 'react';
 import { CanonicalSeatCluster } from './CanonicalSeatCluster';
 import { useSeatAnchorsOptional } from './SeatAnchorLayer';
 import { usePreSessionSeatOwned } from './PreSessionSeatLayer';
 import { useGeometryTokensOptional } from './ResponsiveGeometryProvider';
 import { useCardRowLayout } from './useCardRowLayout';
-import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { CanonicalCardBack } from '@/components/canonicalShell/CanonicalCardBack';
 import { formatChipValue } from '@/lib/utils';
 import type { CanonicalSeatStatusRing } from './participantStatus';
