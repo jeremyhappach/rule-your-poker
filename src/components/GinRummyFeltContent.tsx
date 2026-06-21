@@ -14,6 +14,7 @@ import type { CanonicalSlot } from '@/lib/canonicalShell/seatAnchors';
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 import { useSeatAnchorsOptional } from '@/lib/canonicalShell/SeatAnchorLayer';
 import { useSeatTargetAngle } from '@/lib/canonicalShell/useSeatTargetAngle';
+import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 
 interface GinRummyFeltContentProps {
   ginState: GinRummyState;
