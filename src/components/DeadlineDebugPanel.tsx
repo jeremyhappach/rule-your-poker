@@ -267,6 +267,19 @@ export const DeadlineDebugPanel = ({ gameId, userId }: DeadlineDebugPanelProps) 
     return value ? 'destructive' : 'outline';
   };
 
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    if (!snapshot) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* noop */
+    }
+  }, [snapshot]);
+
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-md">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -292,6 +305,16 @@ export const DeadlineDebugPanel = ({ gameId, userId }: DeadlineDebugPanelProps) 
                 {snapshot?.timestamp ? new Date(snapshot.timestamp).toLocaleTimeString() : 'Loading...'}
               </span>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2"
+                  onClick={handleCopy}
+                  disabled={!snapshot}
+                  title="Copy snapshot JSON"
+                >
+                  {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
