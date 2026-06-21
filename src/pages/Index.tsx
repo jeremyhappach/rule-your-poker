@@ -55,7 +55,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { usePlayerBalance } from "@/hooks/usePlayerBalance";
 import { TransactionHistoryDialog } from "@/components/TransactionHistoryDialog";
 import { AdminPlayerListDialog } from "@/components/AdminPlayerListDialog";
-import { LayoutTuningAdminSection } from "@/components/admin/LayoutTuningAdminSection";
+// LayoutTuningAdminSection now lives inside Geometry Lab.
 import { DebugPillsAdminSection } from "@/components/admin/DebugPillsAdminSection";
 import { GeometryLab } from "@/components/admin/GeometryLab";
 import { GeometryLabCrashBoundary } from "@/components/admin/GeometryLabCrashBoundary";
