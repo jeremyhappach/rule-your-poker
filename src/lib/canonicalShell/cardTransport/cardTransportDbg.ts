@@ -52,6 +52,13 @@ export interface CardTransportDbgEntry {
   resolvedToAnchor?: string | null;
   fromAnchorRect?: AnchorRect | null;
   toAnchorRect?: AnchorRect | null;
+  fromAnchorOwner?: string | null;
+  toAnchorOwner?: string | null;
+  fromAnchorParent?: string | null;
+  toAnchorParent?: string | null;
+  fromAnchorViewportRect?: AnchorRect | null;
+  toAnchorViewportRect?: AnchorRect | null;
+  dealerIsSelf?: boolean | null;
   handContextId?: string | null;
   transportMounted?: boolean;
   transportVisible?: boolean;
@@ -108,6 +115,23 @@ export interface DealDbgEntry {
   cardsDispatched: number;
   cardsSettled: number;
   readyReleased: boolean;
+  dealSettled?: boolean;
+  enterGameplayCalledAt?: number | null;
+  timerVisible?: boolean;
+  timerRunning?: boolean;
+  ownership?: Record<string, DealOwnershipDbgEntry>;
+  updatedAt: number;
+}
+
+export interface DealOwnershipDbgEntry {
+  playerId: string;
+  role: 'self' | 'opp';
+  prevWaveCount: number;
+  authoritativeCount: number;
+  visibleCount: number;
+  dealPhase: DealPhase | 'NO_RUNTIME' | null;
+  baselineApplied: boolean;
+  renderGuardPassed: boolean;
   updatedAt: number;
 }
 
@@ -122,9 +146,13 @@ const MAX_SAMPLES_PER_INTENT = 8;
 // Insertion-ordered list of intentIds for bounded retention.
 const order: string[] = [];
 const listeners = new Set<() => void>();
+const dealListeners = new Set<() => void>();
 let cachedSnapshot: CardTransportDbgEntry[] = [];
+let cachedDealSnapshot: DealDbgEntry[] = [];
 let snapshotDirty = true;
+let dealSnapshotDirty = true;
 let emitScheduled = false;
+let dealEmitScheduled = false;
 function emit() {
   snapshotDirty = true;
   if (emitScheduled) return;
@@ -132,6 +160,18 @@ function emit() {
   const flush = () => {
     emitScheduled = false;
     listeners.forEach((l) => { try { l(); } catch { /* */ } });
+  };
+  if (typeof queueMicrotask === 'function') queueMicrotask(flush);
+  else Promise.resolve().then(flush);
+}
+
+function emitDeal() {
+  dealSnapshotDirty = true;
+  if (dealEmitScheduled) return;
+  dealEmitScheduled = true;
+  const flush = () => {
+    dealEmitScheduled = false;
+    dealListeners.forEach((l) => { try { l(); } catch { /* */ } });
   };
   if (typeof queueMicrotask === 'function') queueMicrotask(flush);
   else Promise.resolve().then(flush);
@@ -202,6 +242,19 @@ export function subscribeCardTransportDbg(l: () => void): () => void {
   return () => { listeners.delete(l); };
 }
 
+export function getDealDbg(): DealDbgEntry[] {
+  if (dealSnapshotDirty) {
+    cachedDealSnapshot = Object.values(bagDeal()).sort((a, b) => a.updatedAt - b.updatedAt);
+    dealSnapshotDirty = false;
+  }
+  return cachedDealSnapshot;
+}
+
+export function subscribeDealDbg(l: () => void): () => void {
+  dealListeners.add(l);
+  return () => { dealListeners.delete(l); };
+}
+
 export function clearCardTransportDbg(): void {
   const bag = bagCT();
   for (const id of order) delete bag[id];
@@ -220,6 +273,7 @@ export function formatCardTransportDbgAsText(): string {
       `  from=${JSON.stringify(r.from)} → to=${JSON.stringify(r.to)}`,
       `  resolvedFrom=${r.resolvedFromAnchor ?? '?'} resolvedTo=${r.resolvedToAnchor ?? '?'}`,
       `  fromRect=${JSON.stringify(r.fromAnchorRect)} toRect=${JSON.stringify(r.toAnchorRect)}`,
+      `  dealerIsSelf=${r.dealerIsSelf ?? '∅'} anchorOwner=${r.fromAnchorOwner ?? '∅'} anchorParent=${r.fromAnchorParent ?? '∅'} anchorRect=${JSON.stringify(r.fromAnchorViewportRect)}`,
       `  GEOM STORE launchSpacing=${r.dealTimingStoreSnapshot?.launchSpacingMs} duration=${r.dealTimingStoreSnapshot?.durationMs} ownershipDelay=${r.dealTimingStoreSnapshot?.ownershipClaimDelayMs} updatedAt=${r.dealTimingStoreSnapshot?.updatedAt} dbUpdatedAt=${r.dealTimingStoreSnapshot?.dbUpdatedAt} storeVersion=${r.dealTimingStoreSnapshot?.storeVersion} source=${r.dealTimingStoreSnapshot?.source} hydrated=${r.dealTimingStoreSnapshot?.hydrated}`,
       `  GEOM DEAL SETTINGS source=${r.timingSource ?? '?'} launchSpacing=${r.dealTimingSettings?.launchSpacingMs} duration=${r.dealTimingSettings?.durationMs} ownershipDelay=${r.dealTimingSettings?.ownershipClaimDelayMs}`,
       `  INTENT source=${r.intentTimingSource ?? r.timingSource ?? '?'} formula=${r.launchDelayFormula ?? '?'} effectiveSpacing=${r.dealTimingSettings?.effectiveLaunchSpacingMs} effectiveDuration=${r.dealTimingSettings?.effectiveDurationMs} expectedStart=${r.expectedStartTime} expectedArrival=${r.expectedArrivalTime}`,
@@ -262,7 +316,25 @@ export function dealDbgUpsert(
   bag[handContextId] = {
     ...prev,
     ...patch,
+    ownership: patch.ownership ? { ...(prev.ownership ?? {}), ...patch.ownership } : prev.ownership,
     handContextId,
     updatedAt: Date.now(),
   };
+  emitDeal();
+}
+
+export function dealDbgUpsertOwnership(
+  handContextId: string,
+  playerId: string,
+  patch: Omit<DealOwnershipDbgEntry, 'playerId' | 'updatedAt'>,
+): void {
+  dealDbgUpsert(handContextId, {
+    ownership: {
+      [playerId]: {
+        playerId,
+        ...patch,
+        updatedAt: Date.now(),
+      },
+    },
+  });
 }

@@ -150,12 +150,38 @@ import { useShellTimer, ShellTimerRail, useShellTimerStateForRender } from "@/li
 import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
+import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
+import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 
 
 // P9.1 — First visible canonical shell visual cutover.
 // Default ON; flip VITE_CANONICAL_SHELL_VISUAL='off' to revert.
 const CANONICAL_SHELL_VISUAL_ENABLED =
   import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
+
+function DealAwareShellTimerRail() {
+  const deal = useDealRuntime();
+  const hiddenForDeal = deal?.phase === 'DEALING';
+  const timerVisible = !hiddenForDeal;
+
+  useEffect(() => {
+    if (!deal) return;
+    dealDbgUpsert(deal.handContextId, {
+      phase: deal.phase,
+      expectedCount: deal.expectedCount,
+      cardsSettled: deal.settledCardIds.size,
+      dealSettled: deal.dealSettled,
+      timerVisible,
+      timerRunning: timerVisible && deal.phase === 'GAMEPLAY',
+    });
+    if (deal.phase !== 'READY' || !timerVisible) return;
+    const raf = requestAnimationFrame(() => deal.enterGameplay());
+    return () => cancelAnimationFrame(raf);
+  }, [deal, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, deal?.dealSettled, timerVisible]);
+
+  if (hiddenForDeal) return null;
+  return <ShellTimerRail />;
+}
 
 function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGameKind | null {
   if (!CANONICAL_SHELL_VISUAL_ENABLED) return null;
@@ -2802,6 +2828,7 @@ export const MobileGameTable = ({
   const __mgtCurrentPlayerCardsSourceRef = useRef<string>('init');
   const handTransitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevHandContextForTransitionRef = useRef<string | null>(null);
+  const prevRoundForHandTransitionRef = useRef<number | null>(null);
   
   useEffect(() => {
     // P0 fix: hand-boundary transition guard applied UNIVERSALLY — not
@@ -2815,6 +2842,12 @@ export const MobileGameTable = ({
     const newContext = handContextId ?? null;
 
     if (prevContext !== newContext) {
+      const is357StagedRoundAdvance =
+        __is357GameType(gameType) &&
+        prevContext !== null &&
+        newContext !== null &&
+        (currentRound ?? 0) > 1 &&
+        (prevRoundForHandTransitionRef.current ?? 0) < (currentRound ?? 0);
       // PR-B.5 FIX (asymmetric Holm first-hand flash): Do NOT arm the
       // transition guard on null → non-null bootstrap when raw player_cards
       // for the new hand are already present. The guard exists to bridge
@@ -2830,7 +2863,7 @@ export const MobileGameTable = ({
           ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards?.length ?? 0
           : 0) > 0;
 
-      if (!(isBootstrapFromNull && rawCardsAlreadyPresent)) {
+      if (!(isBootstrapFromNull && rawCardsAlreadyPresent) && !is357StagedRoundAdvance) {
         setIsHandTransitioning(true);
 
         if (handTransitionTimeoutRef.current) {
@@ -2845,13 +2878,14 @@ export const MobileGameTable = ({
     }
 
     prevHandContextForTransitionRef.current = newContext;
+    prevRoundForHandTransitionRef.current = currentRound ?? null;
 
     return () => {
       if (handTransitionTimeoutRef.current) {
         clearTimeout(handTransitionTimeoutRef.current);
       }
     };
-  }, [handContextId]);
+  }, [handContextId, gameType, currentRound]);
   
   const rawCurrentPlayerCards = currentPlayer 
     ? playerCards.find(pc => pc.player_id === currentPlayer.id)?.cards || [] 
@@ -2893,7 +2927,7 @@ export const MobileGameTable = ({
       holmWinPotFrozenCardsRef.current.cards.length > 0
     ) {
       chosen = { source: 'frozen-trigger-cleared-same-hand', cards: holmWinPotFrozenCardsRef.current.cards };
-    } else if (isHandTransitioning) {
+    } else if (isHandTransitioning && !(__is357GameType(gameType) && (currentRound ?? 0) > 1)) {
       // TRANSITION GUARD: During hand transition, return empty to prevent stale card flash
       chosen = { source: 'empty-hand-transitioning', cards: [] };
     } else if (gameType === 'holm-game' && roundStatus === 'completed') {
@@ -2920,7 +2954,13 @@ export const MobileGameTable = ({
 
       if (handContextId !== cachedHandContextId) {
         // Case 1: handContextId changed — new hand boundary.
-        if (rawCurrentPlayerCards.length > 0) {
+        if (__is357GameType(gameType) && (currentRound ?? 0) > 1 && cachedCards.length > 0) {
+          const stagedCards = rawCurrentPlayerCards.length >= cachedCards.length ? rawCurrentPlayerCards : cachedCards;
+          if (rawCurrentPlayerCards.length >= cachedCards.length) {
+            currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
+          }
+          chosen = { source: '357-staged-round-floor', cards: stagedCards };
+        } else if (rawCurrentPlayerCards.length > 0) {
           currentPlayerCardsRef.current = { cards: rawCurrentPlayerCards, handContextId: handContextId ?? null };
           chosen = { source: 'raw-new-hand', cards: rawCurrentPlayerCards };
         } else {
@@ -5314,9 +5354,8 @@ export const MobileGameTable = ({
     // While we're hiding decisions from opponents, treat "folded" as
     // still active so the visible card-back stack doesn't disappear
     // before the round resolves.
-    const apparentIsActivePlayer = (isCurrentUser || allDecisionsIn)
-      ? rawIsActivePlayer
-      : (player.status === 'active' || player.status === 'folded') && !player.sitting_out;
+    const apparentIsActivePlayer =
+      (player.status === 'active' || player.status === 'folded') && !player.sitting_out;
 
     const showCardBacks = apparentIsActivePlayer && expectedCardCount > 0 && currentRound > 0;
     const cardCountToShow = cards.length > 0 ? cards.length : expectedCardCount;
@@ -8676,7 +8715,7 @@ export const MobileGameTable = ({
 
           return (
             <ShellHudGrid
-              timer={hasTimer ? <ShellTimerRail /> : null}
+              timer={hasTimer ? <DealAwareShellTimerRail /> : null}
               pane={paneContent}
               identity={identityContent}
             />

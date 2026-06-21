@@ -14,7 +14,9 @@ import {
   clearCardTransportDbg,
   formatCardTransportDbgAsText,
   getCardTransportDbg,
+  getDealDbg,
   subscribeCardTransportDbg,
+  subscribeDealDbg,
   type CardTransportDbgEntry,
 } from './cardTransportDbg';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
@@ -63,6 +65,11 @@ export function CardTransportDbgPanel() {
     getCardTransportDbg,
     getCardTransportDbg,
   );
+  const dealRecords = useSyncExternalStore(
+    subscribeDealDbg,
+    getDealDbg,
+    getDealDbg,
+  );
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
@@ -88,6 +95,7 @@ export function CardTransportDbgPanel() {
 
   const newest = [...records].reverse();
   const recent = newest[0];
+  const latestDeal = [...dealRecords].reverse().find(Boolean);
   const handProof = latestHand(records);
   const proofSettings = handProof[0]?.dealTimingSettings;
   const proofStore = handProof[0]?.dealTimingStoreSnapshot;
@@ -147,6 +155,18 @@ export function CardTransportDbgPanel() {
             <>
               {handProof.length ? (
                 <div style={{ marginBottom: 8, padding: 6, border: '1px solid #555', background: 'rgba(255,255,255,0.05)' }}>
+                  {latestDeal ? (
+                    <div style={{ marginBottom: 6, padding: 5, border: '1px solid #666', background: 'rgba(0,0,0,0.45)' }}>
+                      <div style={{ fontWeight: 800, color: '#7CFC00' }}>DEAL DBG</div>
+                      <div>phase={latestDeal.phase} cardsExpected={latestDeal.expectedCount} cardsSettled={latestDeal.cardsSettled} dealSettled={String(latestDeal.dealSettled ?? latestDeal.readyReleased)}</div>
+                      <div>enterGameplayCalledAt={latestDeal.enterGameplayCalledAt?.toFixed?.(1) ?? '—'} timerVisible={String(latestDeal.timerVisible ?? false)} timerRunning={String(latestDeal.timerRunning ?? false)}</div>
+                      {Object.values(latestDeal.ownership ?? {}).map((o) => (
+                        <div key={o.playerId} style={{ color: o.visibleCount >= o.prevWaveCount ? '#7CFC00' : '#ff7777' }}>
+                          {o.role}:{o.playerId.slice(0, 6)} prevWaveCount={o.prevWaveCount} authoritativeCount={o.authoritativeCount} visibleCount={o.visibleCount} dealPhase={o.dealPhase} baselineApplied={String(o.baselineApplied)} renderGuardPassed={String(o.renderGuardPassed)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   <div style={{ fontWeight: 800, color: '#FFD580' }}>DEAL TIMING PROOF · latest hand</div>
                   <div style={{ opacity: 0.9 }}>handCtx={handProof[0].handContextId ?? '∅'} source={handProof[0].timingSource ?? '?'}</div>
                   {(() => {
@@ -276,7 +296,8 @@ export function CardTransportDbgPanel() {
                       <div style={{ opacity: 0.85 }}>cardId={r.cardId} face={r.face} handCtx={r.handContextId ?? '∅'}</div>
                       <div style={{ opacity: 0.85 }}>from={JSON.stringify(r.from)} → to={JSON.stringify(r.to)}</div>
                       <div style={{ opacity: 0.85 }}>resolvedFrom={r.resolvedFromAnchor ?? '?'} resolvedTo={r.resolvedToAnchor ?? '?'}</div>
-                      <div style={{ opacity: 0.85 }}>fromRect={JSON.stringify(r.fromAnchorRect)}</div>
+                      <div style={{ opacity: 0.85 }}>fromRect={JSON.stringify(r.fromAnchorRect)} dealerIsSelf={String(r.dealerIsSelf ?? '—')}</div>
+                      <div style={{ opacity: 0.85 }}>anchorOwner={r.fromAnchorOwner ?? '—'} anchorParent={r.fromAnchorParent ?? '—'} anchorRect={JSON.stringify(r.fromAnchorViewportRect)}</div>
                       <div style={{ opacity: 0.85 }}>toRect={JSON.stringify(r.toAnchorRect)}</div>
                       <div style={{ opacity: 0.95, color: '#87CEFA' }}>GEOM STORE launchSpacingMs={r.dealTimingStoreSnapshot?.launchSpacingMs ?? '—'} durationMs={r.dealTimingStoreSnapshot?.durationMs ?? '—'} ownershipClaimDelayMs={r.dealTimingStoreSnapshot?.ownershipClaimDelayMs ?? '—'} updatedAt={r.dealTimingStoreSnapshot?.updatedAt ?? '—'} dbUpdatedAt={r.dealTimingStoreSnapshot?.dbUpdatedAt ?? '—'} storeVersion={r.dealTimingStoreSnapshot?.storeVersion ?? '—'} source={r.dealTimingStoreSnapshot?.source ?? '?'} hydrated={String(r.dealTimingStoreSnapshot?.hydrated ?? false)}</div>
                       <div style={{ opacity: 0.95, color: '#FFD580' }}>GEOM DEAL SETTINGS source={r.timingSource ?? '?'} launchSpacingMs={r.dealTimingSettings?.launchSpacingMs ?? '—'} durationMs={r.dealTimingSettings?.durationMs ?? '—'} ownershipClaimDelayMs={r.dealTimingSettings?.ownershipClaimDelayMs ?? '—'}</div>

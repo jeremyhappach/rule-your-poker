@@ -29,6 +29,9 @@ export interface ResolvedCardEndpoint {
   h: number;
   /** The DOM attribute string that matched. e.g. "hand-abc" or "opp-stack-2". */
   resolvedAnchor: string;
+  owner: string | null;
+  parent: string | null;
+  viewportRect: { x: number; y: number; w: number; h: number };
 }
 
 interface AnchorCandidate { selector: string; label: string; }
@@ -73,15 +76,31 @@ export function resolveCardEndpoint(
   const cRect = container.getBoundingClientRect();
   if (cRect.width <= 0 || cRect.height <= 0) return null;
   for (const c of anchorCandidates(ep)) {
-    const el = container.querySelector(c.selector) as HTMLElement | null;
+    const matches = Array.from(container.querySelectorAll(c.selector)) as HTMLElement[];
+    const el = matches.find((m) => m.hasAttribute('data-canonical-shell-viewer-card-endpoint')) ?? matches[0] ?? null;
     if (!el) continue;
     const r = el.getBoundingClientRect();
+    const parent = el.parentElement;
     return {
       x: r.left - cRect.left + r.width / 2,
       y: r.top - cRect.top + r.height / 2,
       w: r.width,
       h: r.height,
       resolvedAnchor: c.label,
+      owner:
+        el.getAttribute('data-anchor-owner') ??
+        el.getAttribute('data-owner-label') ??
+        (el.hasAttribute('data-canonical-shell-viewer-card-endpoint') ? 'ShellViewerCardEndpoint' : null),
+      parent: parent
+        ? parent.getAttribute('data-canonical-felt-surface') != null
+          ? 'data-canonical-felt-surface'
+          : parent.getAttribute('data-canonical-shell-slot-content') != null
+            ? 'data-canonical-shell-slot-content'
+            : parent.getAttribute('data-canonical-table-container') != null
+              ? 'data-canonical-table-container'
+              : parent.getAttribute('data-owner-label') ?? parent.tagName.toLowerCase()
+        : null,
+      viewportRect: { x: r.left, y: r.top, w: r.width, h: r.height },
     };
   }
   return null;
