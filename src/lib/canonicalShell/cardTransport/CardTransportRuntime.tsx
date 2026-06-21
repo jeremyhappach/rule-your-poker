@@ -267,7 +267,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     if (cardIndex != null) {
       let byIndex = launchProofByHand.get(handContextId);
       if (!byIndex || cardIndex === 0) {
-        byIndex = new Map<number, number>();
+        byIndex = new Map<number, { start: number; delay: number }>();
         launchProofByHand.set(handContextId, byIndex);
       }
       const prev = byIndex.get(cardIndex - 1);
