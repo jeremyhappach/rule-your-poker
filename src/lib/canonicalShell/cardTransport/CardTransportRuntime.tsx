@@ -209,7 +209,7 @@ export function CardTransportRuntime({
             justifyContent: 'center',
             fontWeight: 700,
             fontSize: 10,
-            animation: `${kf} ${card.flightMs}ms ease-out ${card.delayMs}ms forwards`,
+            animation: `${kf} ${card.flightMs}ms ${isCardTransportInspectMode() ? INSPECT_EASING : NORMAL_EASING} ${card.delayMs}ms forwards`,
             willChange: 'transform',
           }}
         >
@@ -217,7 +217,7 @@ export function CardTransportRuntime({
         </div>
         <style>{`@keyframes ${kf} {
           0%   { transform: translate(0, 0) scale(0.92); opacity: 0.95; }
-          40%  { transform: translate(${dx * 0.4}px, ${dy * 0.4 - 6}px) scale(1.02); opacity: 1; }
+          50%  { transform: translate(${dx * 0.5}px, ${dy * 0.5 - 8}px) scale(${isCardTransportInspectMode() ? 1.10 : 1.02}); opacity: 1; }
           100% { transform: translate(${dx}px, ${dy}px) scale(1); opacity: 1; }
         }`}</style>
       </div>,
