@@ -255,11 +255,10 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
   const dy = card.to.y - card.from.y;
   const kf = `__cardFly_${card.intent.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
   const isHidden = card.intent.face === 'hidden';
-  const cbc = card.intent.cardBackColors;
+  // Hidden-card colors are owned by CanonicalCardBack (reads useVisualPreferences
+  // directly). `card.intent.cardBackColors` is retained on the intent for debug
+  // parity but no longer drives paint here.
   const vf = card.intent.visibleFace;
-  const bgColor = cbc?.color ?? '#00308F';
-  const darkBgColor = cbc?.darkColor ?? '#001a4a';
-  const hiddenBg = `linear-gradient(135deg, ${bgColor} 0%, ${darkBgColor} 100%)`;
   const suitChar = vf
     ? (vf.suit === 'hearts' ? '♥' : vf.suit === 'diamonds' ? '♦' : vf.suit === 'clubs' ? '♣' : '♠')
     : '';
