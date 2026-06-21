@@ -284,12 +284,15 @@ export function Use357OppCount({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(playerId) ?? 0;
-  const dealingVisible = Math.min(baseline + settled, expected);
+  // settled is CUMULATIVE across waves within the hand — visibility is
+  // simply min(settled, expected) during DEALING, floored by baseline
+  // (prevWaveCount) in PRE_DEAL so previously-settled cards never vanish.
+  const dealingVisible = Math.min(Math.max(baseline, settled), expected);
   const visible = deal
     ? deal.phase === 'DEALING'
       ? dealingVisible
       : deal.phase === 'PRE_DEAL'
-        ? baseline
+        ? Math.max(baseline, Math.min(settled, expected))
         : Math.max(baseline, defaultCount, dealingVisible)
     : Math.max(baseline, defaultCount);
   useEffect(() => {
