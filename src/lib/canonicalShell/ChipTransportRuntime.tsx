@@ -67,6 +67,7 @@ const PRESETS: Record<ChipTransportVariant, MotionPreset> = {
   /**
    * Cribbage flight: lift, arc, arrive at destination, hold briefly,
    * fade out. NO landing bounce — destination reaction owns that.
+   * (Retained for back-compat; new code should use canonicalWinTransfer.)
    */
   cribbageBounce: {
     durationMs: 2200,
@@ -79,6 +80,51 @@ const PRESETS: Record<ChipTransportVariant, MotionPreset> = {
       80%  { transform: translate(${dx}px, ${dy}px) scale(1.05) rotate(2deg); opacity: 1; filter: brightness(1); }
       90%  { transform: translate(${dx}px, ${dy}px) scale(1) rotate(0deg); opacity: 1; }
       100% { transform: translate(${dx}px, ${dy}px) scale(0.4); opacity: 0; }
+    `,
+    discStyle: {
+      width: 40,
+      height: 40,
+      borderRadius: 9999,
+      background: 'linear-gradient(135deg, hsl(45 90% 65%), hsl(45 90% 55%) 50%, hsl(38 80% 42%))',
+      border: '3px solid hsl(0 0% 100%)',
+      boxShadow: '0 0 20px rgba(245, 158, 11, 0.6), 0 4px 15px rgba(0,0,0,0.4)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'hsl(40 70% 12%)',
+      fontSize: 11,
+      fontWeight: 900,
+    },
+    prefix: '$',
+  },
+  /**
+   * canonicalWinTransfer — the MOVING chip owns the canonical win feel.
+   *
+   *   0–65%  : arc flight from `from` to `to` (lift + travel + arrive)
+   *   65–93% : Holm-style landing bounce IN PLACE at `to`
+   *            (hop → land → secondary hop → settle), pumped via
+   *            scale + small translateY relative to the arrival point
+   *   93–100%: fade / scale-down into the destination stack
+   *
+   * Recipient chipstack stays stable. Use destinationReaction.pulse for
+   * an optional subtle glow — never .bounce here.
+   */
+  canonicalWinTransfer: {
+    durationMs: 2400,
+    staggerMs: 300,
+    keyframes: (dx, dy) => `
+      0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+      5%   { transform: translate(0, -22px) scale(1.25) rotate(-4deg); opacity: 1; filter: brightness(1.2); }
+      22%  { transform: translate(${dx * 0.25}px, ${dy * 0.15 - 38}px) scale(1.18) rotate(3deg); opacity: 1; filter: brightness(1.25); }
+      48%  { transform: translate(${dx * 0.7}px, ${dy * 0.55 - 26}px) scale(1.1) rotate(-2deg); opacity: 1; filter: brightness(1.1); }
+      65%  { transform: translate(${dx}px, ${dy}px) scale(1.04) rotate(0deg); opacity: 1; filter: brightness(1); }
+      71%  { transform: translate(${dx}px, ${dy - 14}px) scale(1.22); opacity: 1; }
+      78%  { transform: translate(${dx}px, ${dy}px) scale(1.00); opacity: 1; }
+      84%  { transform: translate(${dx}px, ${dy - 9}px) scale(1.14); opacity: 1; }
+      90%  { transform: translate(${dx}px, ${dy}px) scale(0.96); opacity: 1; }
+      94%  { transform: translate(${dx}px, ${dy - 3}px) scale(1.04); opacity: 1; }
+      97%  { transform: translate(${dx}px, ${dy}px) scale(1.0); opacity: 1; }
+      100% { transform: translate(${dx}px, ${dy}px) scale(0.5); opacity: 0; }
     `,
     discStyle: {
       width: 40,

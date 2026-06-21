@@ -32,7 +32,7 @@ export type CenterSize = 'compact' | 'standard' | 'dense';
  * only the implicit 'default'; Wave 3B adds 'cribbageBounce' to absorb
  * the legacy `CribbageChipTransferAnimation` motion verbatim.
  */
-export type ChipTransportVariant = 'default' | 'cribbageBounce';
+export type ChipTransportVariant = 'default' | 'cribbageBounce' | 'canonicalWinTransfer';
 
 /**
  * Destination reaction descriptor — Economy Wave 1.

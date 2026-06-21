@@ -3800,7 +3800,6 @@ export const CribbageMobileGameTable = ({
             : { kind: 'pot' as const },
           amount: amountPerLoser,
           variant: multiplier >= 2 ? 'skunk' : 'default',
-          destinationReaction: { bounce: true },
           reason: 'cribbage_match_win',
         };
       });
@@ -5348,8 +5347,9 @@ export const CribbageMobileGameTable = ({
           from: { kind: 'seat' as const, position: loserPosition },
           to: { kind: 'seat' as const, position: winnerPosition },
           reason: 'transfer' as const,
-          variant: 'cribbageBounce' as const,
-          destinationReaction: { bounce: true },
+          // canonicalWinTransfer — moving chip owns the landing bounce;
+          // recipient stack stays stable. No destinationReaction.bounce.
+          variant: 'canonicalWinTransfer' as const,
         };
       })
       .filter((i): i is NonNullable<typeof i> => i !== null);
