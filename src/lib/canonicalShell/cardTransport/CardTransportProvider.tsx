@@ -40,6 +40,8 @@ interface CardTransportContextValue {
   dispatchMany: (intents: CardTransportIntent[], opts?: CardDispatchManyOptions) => number;
   /** Subscribe to per-card settle events (cardId emitted). */
   onCardSettled: (handler: (cardId: string) => void) => () => void;
+  /** Subscribe to settle events with full intent metadata. */
+  onCardSettledIntent: (handler: (intent: CardTransportIntent) => void) => () => void;
   __activeIntents: ActiveCardIntent[];
   __markSettled: (intentId: string, cardId: string) => void;
   __markDropped: (intent: CardTransportIntent, reason: string) => void;
