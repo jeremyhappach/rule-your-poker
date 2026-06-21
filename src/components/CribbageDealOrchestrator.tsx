@@ -20,6 +20,7 @@ import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTranspo
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
+import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 
@@ -66,8 +67,9 @@ export function CribbageDealOrchestrator({
     if (dealerIdx < 0) return;
 
     const inspect = isCardTransportInspectMode();
-    const staggerMs  = inspect ? 800 : 40;
-    const durationMs = inspect ? 600 : 110;
+    const timing = getDealTiming();
+    const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
+    const durationMs = inspect ? 600 : timing.durationMs;
 
     const totalCount = cardsPerPlayer * sorted.length;
     const intents: CardTransportIntent[] = [];

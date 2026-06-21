@@ -38,6 +38,7 @@ import {
 import { createPortal } from 'react-dom';
 import { useCardTransportInternal, type ActiveCardIntent } from './CardTransportProvider';
 import { resolveCardEndpoint, type ResolvedCardEndpoint } from './cardEndpoints';
+import { getDealTiming } from '@/lib/geometryLab/dealTimingStore';
 import {
   cardTransportDbgUpsert,
   cardTransportDbgSample,
@@ -168,6 +169,7 @@ export function CardTransportRuntime({
   useEffect(() => {
     if (!ctx) return;
     const timers: number[] = [];
+    const { ownershipClaimDelayMs } = getDealTiming();
     for (const [id, chip] of resolvedRef.current.entries()) {
       const elapsed = performance.now() - chip.startedAt;
       const settleAt = chip.delayMs + chip.flightMs;
@@ -181,7 +183,7 @@ export function CardTransportRuntime({
           ownershipClaimTime: now,
         });
         ctx.__markSettled(id, chip.intent.cardId);
-      }, remaining + 8);
+      }, remaining + Math.max(0, ownershipClaimDelayMs));
       timers.push(t);
     }
     return () => { for (const t of timers) window.clearTimeout(t); };

@@ -49,6 +49,8 @@ import {
   logGeometryLab,
   recordGeometryLabContext,
 } from "./GeometryLabCrashBoundary";
+import { LayoutTuningAdminSection } from "./LayoutTuningAdminSection";
+import { DealTimingAdminSection } from "./DealTimingAdminSection";
 
 const ANCHOR_ORIGINS: AnchorOrigin[] = [
   "center",
@@ -545,6 +547,12 @@ export function GeometryLab({ userId }: { userId: string }) {
           <OverlayFlagRow key={flag.key} flag={flag} />
         ))}
       </div>
+
+      {/* Safe Areas — global canonical-shell layout (moved from Admin). */}
+      <LayoutTuningAdminSection />
+
+      {/* Deal Timing — per-device motion knobs for ONE DEAL. */}
+      <DealTimingAdminSection />
 
       <div className="flex gap-2">
         <Button onClick={handleSave} disabled={saving} className="flex-1">
