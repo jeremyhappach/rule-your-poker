@@ -47,6 +47,17 @@ export interface CardTransportIntent {
   launchDelayMs?: number;
   /** Delay after arrival before the destination claims ownership. Defaults to global Deal Timing. */
   ownershipClaimDelayMs?: number;
+  /** Debug proof metadata stamped at emit time from the authoritative deal timing source. */
+  timingSource?: 'GeometryLab' | 'inspectMode' | string;
+  dealTimingSettings?: {
+    launchSpacingMs: number;
+    durationMs: number;
+    ownershipClaimDelayMs: number;
+    effectiveLaunchSpacingMs: number;
+    effectiveDurationMs: number;
+  };
+  expectedStartTime?: number;
+  expectedArrivalTime?: number;
   /**
    * Optional — stamped onto the dbg entry so each flight is traceable
    * to its hand without joining tables in the console.

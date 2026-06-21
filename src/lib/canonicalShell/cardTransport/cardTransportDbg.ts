@@ -60,6 +60,24 @@ export interface CardTransportDbgEntry {
   durationMs?: number;
   launchDelayMs?: number;
   ownershipClaimDelayMs?: number;
+  timingSource?: string;
+  dealTimingSettings?: {
+    launchSpacingMs: number;
+    durationMs: number;
+    ownershipClaimDelayMs: number;
+    effectiveLaunchSpacingMs: number;
+    effectiveDurationMs: number;
+  };
+  expectedStartTime?: number;
+  expectedArrivalTime?: number;
+  actualStartDeltaFromPreviousMs?: number | null;
+  expectedStartDeltaFromPreviousMs?: number | null;
+  startDeltaErrorMs?: number | null;
+  startSkewMs?: number | null;
+  actualFlightDurationMs?: number | null;
+  arrivalSkewMs?: number | null;
+  launchProofSource?: string;
+  arrivalProofSource?: string;
   dx?: number;
   dy?: number;
   actualStartTime?: number;
@@ -190,8 +208,12 @@ export function formatCardTransportDbgAsText(): string {
       `  from=${JSON.stringify(r.from)} → to=${JSON.stringify(r.to)}`,
       `  resolvedFrom=${r.resolvedFromAnchor ?? '?'} resolvedTo=${r.resolvedToAnchor ?? '?'}`,
       `  fromRect=${JSON.stringify(r.fromAnchorRect)} toRect=${JSON.stringify(r.toAnchorRect)}`,
+      `  GEOM DEAL SETTINGS source=${r.timingSource ?? '?'} launchSpacing=${r.dealTimingSettings?.launchSpacingMs} duration=${r.dealTimingSettings?.durationMs} ownershipDelay=${r.dealTimingSettings?.ownershipClaimDelayMs}`,
+      `  INTENT effectiveSpacing=${r.dealTimingSettings?.effectiveLaunchSpacingMs} effectiveDuration=${r.dealTimingSettings?.effectiveDurationMs} expectedStart=${r.expectedStartTime} expectedArrival=${r.expectedArrivalTime}`,
       `  dx=${r.dx} dy=${r.dy} dur=${r.durationMs} delay=${r.launchDelayMs} ownershipDelay=${r.ownershipClaimDelayMs}`,
       `  actualStart=${r.actualStartTime} actualArrival=${r.actualArrivalTime}`,
+      `  LAUNCH PROOF actualΔ=${r.actualStartDeltaFromPreviousMs} expectedΔ=${r.expectedStartDeltaFromPreviousMs} error=${r.startDeltaErrorMs} startSkew=${r.startSkewMs} source=${r.launchProofSource ?? '?'}`,
+      `  ARRIVAL PROOF actualFlight=${r.actualFlightDurationMs} arrivalSkew=${r.arrivalSkewMs} source=${r.arrivalProofSource ?? '?'}`,
       `  ownershipClaim=${r.ownershipClaimTime} destroyed=${r.transportDestroyedTime}`,
       `  portal=${r.portalLayer} mounted=${r.transportMounted} visible=${r.transportVisible}`,
       `  settled=${r.settled} dropped=${r.droppedReason ?? '∅'}`,
