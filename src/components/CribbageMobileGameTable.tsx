@@ -87,7 +87,7 @@ import { CribbageGameplayGeometryProvider } from '@/lib/wave5GameplayGeometry/Cr
 import { recordSettlementIntent } from '@/lib/canonicalShell/settlement/settlementDbg';
 import { captureWinnerChipEndpoint } from '@/lib/canonicalShell/winnerChipEndpointDbg';
 import type { SettlementIntent } from '@/lib/canonicalShell/settlement/types';
-import { DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { CribbageDealOrchestrator } from '@/components/CribbageDealOrchestrator';
 
 
