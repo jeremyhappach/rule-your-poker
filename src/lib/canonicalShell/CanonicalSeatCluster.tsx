@@ -700,6 +700,7 @@ export function CanonicalSeatCluster({
       data-player-id={playerId ?? ''}
       data-seat-orientation={seatOrientation}
       data-seat-growth={growsDown ? 'down' : 'up'}
+      data-card-anchor={`seat-${position}`}
       className={cn(
         // CHIP ANCHOR INVARIANT — the outer wrapper is sized to the chip
         // cell only. Slot placement anchors this 40x40 box; name/score/

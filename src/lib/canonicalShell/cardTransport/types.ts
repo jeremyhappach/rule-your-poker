@@ -21,7 +21,9 @@
 export type CardEndpoint =
   | { kind: 'dealer'; playerId: string }
   | { kind: 'seat'; position: number }
+  | { kind: 'oppStack'; position: number }
   | { kind: 'hand'; playerId: string }
+  | { kind: 'community'; index: number }
   | { kind: 'stock' }
   | { kind: 'discard' };
 
@@ -75,10 +77,12 @@ export type DealPhase = 'PRE_DEAL' | 'DEALING' | 'READY' | 'GAMEPLAY';
 
 export function describeCardEndpoint(ep: CardEndpoint): string {
   switch (ep.kind) {
-    case 'dealer':  return `dealer:${ep.playerId}`;
-    case 'seat':    return `seat:${ep.position}`;
-    case 'hand':    return `hand:${ep.playerId}`;
-    case 'stock':   return 'stock';
-    case 'discard': return 'discard';
+    case 'dealer':    return `dealer:${ep.playerId}`;
+    case 'seat':      return `seat:${ep.position}`;
+    case 'oppStack':  return `opp-stack:${ep.position}`;
+    case 'hand':      return `hand:${ep.playerId}`;
+    case 'community': return `community:${ep.index}`;
+    case 'stock':     return 'stock';
+    case 'discard':   return 'discard';
   }
 }
