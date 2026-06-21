@@ -2,6 +2,7 @@ import { Card as CardType, Suit } from "@/lib/cardUtils";
 import { Card } from "@/components/ui/card";
 import { useVisualPreferences, FOUR_COLOR_SUITS } from "@/hooks/useVisualPreferences";
 import { useDeviceSize } from "@/hooks/useDeviceSize";
+import { CanonicalCardBack } from "@/components/canonicalShell/CanonicalCardBack";
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
 import cubsLogo from '@/assets/cubs-logo.png';
