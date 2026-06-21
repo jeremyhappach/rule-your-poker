@@ -21,7 +21,9 @@
 export type CardEndpoint =
   | { kind: 'dealer'; playerId: string }
   | { kind: 'seat'; position: number }
+  | { kind: 'oppStack'; position: number }
   | { kind: 'hand'; playerId: string }
+  | { kind: 'community'; index: number }
   | { kind: 'stock' }
   | { kind: 'discard' };
 
