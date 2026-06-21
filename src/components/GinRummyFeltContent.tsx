@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CribbagePlayingCard } from './CribbagePlayingCard';
+import { CanonicalCardBack } from './canonicalShell/CanonicalCardBack';
 import { GinRummyPegBoard } from './GinRummyPegBoard';
 import { GinAnchoredSlot } from './GinAnchoredSlot';
 import type { GinRummyState, GinRummyCard } from '@/lib/ginRummyTypes';
@@ -214,14 +215,18 @@ export const GinRummyFeltContent = ({
             <button
               onClick={stockClickable ? onDrawStock : undefined}
               disabled={!stockClickable}
-              className={`w-12 h-[68px] rounded-md border flex items-center justify-center shadow-lg transition-all ${
-                stockDanger ? 'border-red-500/60' : 'border-white/30'
-              } ${stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''}`}
-              style={{
-                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-              }}
+              className={`relative w-12 h-[68px] rounded-md transition-all ${
+                stockClickable ? 'ring-2 ring-poker-gold/70 animate-pulse cursor-pointer active:scale-95' : ''
+              }`}
             >
-              <span className={`text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/80'}`}>
+              <CanonicalCardBack
+                widthPx={48}
+                heightPx={68}
+                variant="raised"
+                radiusPx={6}
+                style={{ width: '100%', height: '100%', borderColor: stockDanger ? 'rgba(239,68,68,0.6)' : undefined }}
+              />
+              <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${stockDanger ? 'text-red-300' : 'text-white/90'}`} style={{ textShadow: '0 0 4px rgba(0,0,0,0.8)' }}>
                 {stockCount}
               </span>
             </button>

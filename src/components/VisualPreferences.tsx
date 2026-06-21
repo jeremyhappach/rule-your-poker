@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Palette, Volume2, Vibrate, Wifi } from 'lucide-react';
-import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode } from '@/hooks/useVisualPreferences';
+import { TABLE_LAYOUTS, CARD_BACKS, FOUR_COLOR_SUITS, DeckColorMode, useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { NetworkSimMode, NETWORK_SIM_MODE_LABELS } from '@/lib/networkSim';
 import bullsLogo from '@/assets/bulls-logo.png';
 import bearsLogo from '@/assets/bears-logo.png';
@@ -28,6 +28,11 @@ interface VisualPreferencesProps {
 }
 
 export function VisualPreferences({ userId, onSave, disabled = false }: VisualPreferencesProps) {
+  // Pull the shared provider so saves can propagate to every consumer
+  // (CanonicalCardBack, table felt, etc.) immediately — without this
+  // call, the provider only re-fetches on userId change, and the user's
+  // newly-saved card-back preference stays stale across the app.
+  const { refreshPreferences } = useVisualPreferences();
   const [tableLayout, setTableLayout] = useState('bridge');
   const [cardBackDesign, setCardBackDesign] = useState('red');
   const [deckColorMode, setDeckColorMode] = useState<DeckColorMode>('four_color');
@@ -79,6 +84,9 @@ export function VisualPreferences({ userId, onSave, disabled = false }: VisualPr
     if (error) {
       toast.error('Failed to save preferences');
     } else {
+      // Refresh the shared provider so every CanonicalCardBack /
+      // table-felt consumer picks up the new colors immediately.
+      await refreshPreferences();
       toast.success('Preferences saved');
       onSave?.();
     }

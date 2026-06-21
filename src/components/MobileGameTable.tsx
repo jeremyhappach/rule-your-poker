@@ -7,6 +7,7 @@ import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
 import { DealerIndicator } from "./canonicalShell/DealerIndicator";
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
+import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
@@ -5162,11 +5163,14 @@ export const MobileGameTable = ({
       !shouldHideForTabling && showCardBacks && cardCountToShow > 0 && (
         <div className={cn('flex', hasFolded && 'animate-[foldCards_1.5s_ease-out_forwards]')}>
           {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
-            <div
+            <CanonicalCardBack
               key={i}
-              className="w-3 h-5 rounded-[2px] border border-amber-600/50"
+              widthPx={12}
+              heightPx={20}
+              variant="flat"
+              radiusPx={2}
+              showAccent={false}
               style={{
-                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
                 marginLeft: i > 0 ? '-5px' : '0',
                 zIndex: cardCountToShow - i,
                 animationDelay: hasFolded ? `${i * 0.05}s` : '0s',
@@ -5490,11 +5494,14 @@ export const MobileGameTable = ({
       !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && cardCountToShow > 0 && (
         <div className="flex">
           {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
-            <div
+            <CanonicalCardBack
               key={i}
-              className="w-3 h-5 rounded-[2px] border border-amber-600/50"
+              widthPx={12}
+              heightPx={20}
+              variant="flat"
+              radiusPx={2}
+              showAccent={false}
               style={{
-                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
                 marginLeft: i > 0 ? '-5px' : '0',
                 zIndex: cardCountToShow - i,
               }}
@@ -7543,14 +7550,13 @@ export const MobileGameTable = ({
                               )}
                             </div>
                           ) : (
-                            <div
-                              className="w-full h-full rounded-md border-2 border-red-600 flex items-center justify-center shadow-lg"
-                              style={{
-                                background: `linear-gradient(135deg, ${cardBackColors.color} 0%, ${cardBackColors.darkColor} 100%)`,
-                              }}
-                            >
-                              <span className="text-amber-400/50 text-xl">?</span>
-                            </div>
+                            <CanonicalCardBack
+                              widthPx={40}
+                              heightPx={60}
+                              variant="raised"
+                              radiusPx={6}
+                              style={{ width: '100%', height: '100%' }}
+                            />
                           )}
                         </div>
                       );
