@@ -68,6 +68,18 @@ export interface CardTransportDbgEntry {
     effectiveLaunchSpacingMs: number;
     effectiveDurationMs: number;
   };
+  dealTimingStoreSnapshot?: {
+    launchSpacingMs: number;
+    durationMs: number;
+    ownershipClaimDelayMs: number;
+    updatedAt: string;
+    dbUpdatedAt: string | null;
+    storeVersion: number;
+    source: string;
+    hydrated: boolean;
+  };
+  intentTimingSource?: string;
+  launchDelayFormula?: string;
   expectedStartTime?: number;
   expectedArrivalTime?: number;
   actualStartDeltaFromPreviousMs?: number | null;
@@ -208,8 +220,9 @@ export function formatCardTransportDbgAsText(): string {
       `  from=${JSON.stringify(r.from)} → to=${JSON.stringify(r.to)}`,
       `  resolvedFrom=${r.resolvedFromAnchor ?? '?'} resolvedTo=${r.resolvedToAnchor ?? '?'}`,
       `  fromRect=${JSON.stringify(r.fromAnchorRect)} toRect=${JSON.stringify(r.toAnchorRect)}`,
+      `  GEOM STORE launchSpacing=${r.dealTimingStoreSnapshot?.launchSpacingMs} duration=${r.dealTimingStoreSnapshot?.durationMs} ownershipDelay=${r.dealTimingStoreSnapshot?.ownershipClaimDelayMs} updatedAt=${r.dealTimingStoreSnapshot?.updatedAt} dbUpdatedAt=${r.dealTimingStoreSnapshot?.dbUpdatedAt} storeVersion=${r.dealTimingStoreSnapshot?.storeVersion} source=${r.dealTimingStoreSnapshot?.source} hydrated=${r.dealTimingStoreSnapshot?.hydrated}`,
       `  GEOM DEAL SETTINGS source=${r.timingSource ?? '?'} launchSpacing=${r.dealTimingSettings?.launchSpacingMs} duration=${r.dealTimingSettings?.durationMs} ownershipDelay=${r.dealTimingSettings?.ownershipClaimDelayMs}`,
-      `  INTENT effectiveSpacing=${r.dealTimingSettings?.effectiveLaunchSpacingMs} effectiveDuration=${r.dealTimingSettings?.effectiveDurationMs} expectedStart=${r.expectedStartTime} expectedArrival=${r.expectedArrivalTime}`,
+      `  INTENT source=${r.intentTimingSource ?? r.timingSource ?? '?'} formula=${r.launchDelayFormula ?? '?'} effectiveSpacing=${r.dealTimingSettings?.effectiveLaunchSpacingMs} effectiveDuration=${r.dealTimingSettings?.effectiveDurationMs} expectedStart=${r.expectedStartTime} expectedArrival=${r.expectedArrivalTime}`,
       `  dx=${r.dx} dy=${r.dy} dur=${r.durationMs} delay=${r.launchDelayMs} ownershipDelay=${r.ownershipClaimDelayMs}`,
       `  actualStart=${r.actualStartTime} actualArrival=${r.actualArrivalTime}`,
       `  LAUNCH PROOF actualΔ=${r.actualStartDeltaFromPreviousMs} expectedΔ=${r.expectedStartDeltaFromPreviousMs} error=${r.startDeltaErrorMs} startSkew=${r.startSkewMs} source=${r.launchProofSource ?? '?'}`,

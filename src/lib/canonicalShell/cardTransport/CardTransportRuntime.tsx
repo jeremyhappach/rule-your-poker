@@ -131,6 +131,9 @@ export function CardTransportRuntime({
         handContextId: intent.handContextId ?? null,
         timingSource: intent.timingSource,
         dealTimingSettings: intent.dealTimingSettings,
+        dealTimingStoreSnapshot: intent.dealTimingStoreSnapshot,
+        intentTimingSource: intent.intentTimingSource,
+        launchDelayFormula: intent.launchDelayFormula,
         expectedStartTime: intent.expectedStartTime,
         expectedArrivalTime: intent.expectedArrivalTime,
         fromEndpointFound: !!from,
@@ -308,6 +311,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       startDeltaErrorMs,
       expectedStartTime,
       startSkewMs: now - expectedStartTime,
+      intentTimingSource: card.intent.intentTimingSource,
+      launchDelayFormula: card.intent.launchDelayFormula,
+      storeSnapshot: card.intent.dealTimingStoreSnapshot,
       source,
     });
   };
@@ -336,6 +342,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       actualFlightDurationMs: actualStartTime == null ? null : now - actualStartTime,
       expectedArrivalTime,
       arrivalSkewMs: now - expectedArrivalTime,
+      intentTimingSource: card.intent.intentTimingSource,
+      launchDelayFormula: card.intent.launchDelayFormula,
+      storeSnapshot: card.intent.dealTimingStoreSnapshot,
       source,
     });
   };

@@ -20,7 +20,7 @@ import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTranspo
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
-import { getDealTiming, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
+import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 import type { CribbageCard } from '@/lib/cribbageTypes';
 
@@ -70,14 +70,31 @@ export function CribbageDealOrchestrator({
 
     const emitTime = performance.now();
     const inspect = isCardTransportInspectMode();
-    const timing = getDealTiming();
+    const timing = getDealTimingSnapshot();
+    const intentTimingSource: 'GeometryLab' | 'inspectionMode' = inspect ? 'inspectionMode' : 'GeometryLab';
     const staggerMs  = inspect ? 800 : timing.launchSpacingMs;
     const durationMs = inspect ? 600 : timing.durationMs;
-    const timingSource: 'GeometryLab' | 'inspectMode' = inspect ? 'inspectMode' : 'GeometryLab';
+    const launchDelayFormula = inspect
+      ? 'idx * inspectionMode.launchSpacingMs(800)'
+      : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
+
+    // eslint-disable-next-line no-console
+    console.log('[GEOM STORE]', {
+      source: timing.source,
+      launchSpacingMs: timing.launchSpacingMs,
+      durationMs: timing.durationMs,
+      ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+      updatedAt: timing.updatedAt,
+      dbUpdatedAt: timing.dbUpdatedAt,
+      storeVersion: timing.storeVersion,
+      hydrated: timing.hydrated,
+      readAt: emitTime,
+      handContextId,
+    });
 
     // eslint-disable-next-line no-console
     console.log('[GEOM DEAL SETTINGS]', {
-      source: timingSource,
+      source: intentTimingSource,
       launchSpacingMs: timing.launchSpacingMs,
       durationMs: timing.durationMs,
       ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
@@ -89,6 +106,9 @@ export function CribbageDealOrchestrator({
       seats: sorted.length,
       expectedCards: cardsPerPlayer * sorted.length,
       emitTime,
+      storeUpdatedAt: timing.updatedAt,
+      storeVersion: timing.storeVersion,
+      launchDelayFormula,
     });
 
     const totalCount = cardsPerPlayer * sorted.length;
@@ -117,7 +137,7 @@ export function CribbageDealOrchestrator({
           durationMs,
           launchDelayMs,
           ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
-          timingSource,
+          timingSource: intentTimingSource,
           dealTimingSettings: {
             launchSpacingMs: timing.launchSpacingMs,
             durationMs: timing.durationMs,
@@ -125,6 +145,18 @@ export function CribbageDealOrchestrator({
             effectiveLaunchSpacingMs: staggerMs,
             effectiveDurationMs: durationMs,
           },
+          dealTimingStoreSnapshot: {
+            launchSpacingMs: timing.launchSpacingMs,
+            durationMs: timing.durationMs,
+            ownershipClaimDelayMs: timing.ownershipClaimDelayMs,
+            updatedAt: timing.updatedAt,
+            dbUpdatedAt: timing.dbUpdatedAt,
+            storeVersion: timing.storeVersion,
+            source: timing.source,
+            hydrated: timing.hydrated,
+          },
+          intentTimingSource,
+          launchDelayFormula,
           expectedStartTime: emitTime + launchDelayMs,
           expectedArrivalTime: emitTime + launchDelayMs + durationMs,
           handContextId,
@@ -142,10 +174,17 @@ export function CribbageDealOrchestrator({
       launchDelayMs: it.launchDelayMs,
       durationMs: it.durationMs,
       ownershipClaimDelayMs: it.ownershipClaimDelayMs,
+      launchSpacing: it.dealTimingSettings?.effectiveLaunchSpacingMs,
+      source: it.intentTimingSource,
+      storeLaunchSpacingMs: it.dealTimingStoreSnapshot?.launchSpacingMs,
+      storeDurationMs: it.dealTimingStoreSnapshot?.durationMs,
+      storeOwnershipClaimDelayMs: it.dealTimingStoreSnapshot?.ownershipClaimDelayMs,
+      storeUpdatedAt: it.dealTimingStoreSnapshot?.updatedAt,
+      storeVersion: it.dealTimingStoreSnapshot?.storeVersion,
+      launchDelayFormula: it.launchDelayFormula,
       expectedStartTime: emitTime + (it.launchDelayMs ?? 0),
       expectedArrivalTime: emitTime + (it.launchDelayMs ?? 0) + (it.durationMs ?? 0),
       handContextId,
-      source: timingSource,
     });
     ct.dispatchMany(intents);
     if (typeof window !== 'undefined' && (window as unknown as { __DEAL_DEBUG?: boolean }).__DEAL_DEBUG) {

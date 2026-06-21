@@ -24,6 +24,7 @@ import {
   saveDealTiming,
   resetDealTiming,
   useDealTiming,
+  useDealTimingSnapshot,
 } from '@/lib/geometryLab/dealTimingStore';
 
 type Field = keyof DealTimingConfig;
@@ -80,6 +81,7 @@ function TimingRow({ label, description, field, value, onChange }: RowProps) {
 
 export function DealTimingAdminSection() {
   const live = useDealTiming();
+  const liveSnapshot = useDealTimingSnapshot();
   const [draft, setDraft] = useState<DealTimingConfig>(live);
   const lastLiveRef = useRef<DealTimingConfig>(live);
   const [saving, setSaving] = useState(false);
@@ -137,6 +139,11 @@ export function DealTimingAdminSection() {
           observers, and devices in real time. Edits save to the canonical
           shell config — there is one table, one deal, one feel.
         </p>
+        <div className="rounded border border-border bg-muted/40 px-2 py-1 text-[10px] font-mono text-muted-foreground">
+          AUTH STORE v{liveSnapshot.storeVersion} · source={liveSnapshot.source} · updatedAt={liveSnapshot.updatedAt}<br />
+          launch={liveSnapshot.launchSpacingMs} duration={liveSnapshot.durationMs} ownership={liveSnapshot.ownershipClaimDelayMs}
+          {dirty ? ` · DRAFT launch=${draft.launchSpacingMs} duration=${draft.durationMs} ownership=${draft.ownershipClaimDelayMs}` : ''}
+        </div>
       </div>
 
       <TimingRow

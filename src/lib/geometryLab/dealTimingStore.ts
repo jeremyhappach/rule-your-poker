@@ -28,6 +28,18 @@ export interface DealTimingConfig {
   ownershipClaimDelayMs: number;
 }
 
+export interface DealTimingSnapshot extends DealTimingConfig {
+  /** Monotonic in-memory revision. Increments on every authoritative store write. */
+  storeVersion: number;
+  /** Last store mutation wall-clock, visible in CARD DBG proof. */
+  updatedAt: string;
+  /** Backend row timestamp when available. */
+  dbUpdatedAt: string | null;
+  /** Exact code path that last wrote the store. */
+  source: string;
+  hydrated: boolean;
+}
+
 export const DEAL_TIMING_DEFAULTS: DealTimingConfig = {
   launchSpacingMs: 80,
   durationMs: 220,
@@ -63,29 +75,60 @@ function sanitize(value: unknown): DealTimingConfig {
 
 let current: DealTimingConfig = { ...DEAL_TIMING_DEFAULTS };
 let hydrated = false;
+let storeVersion = 0;
+let updatedAt = new Date(0).toISOString();
+let dbUpdatedAt: string | null = null;
+let lastSource = 'initial-defaults';
+let snapshot: DealTimingSnapshot = {
+  ...current,
+  storeVersion,
+  updatedAt,
+  dbUpdatedAt,
+  source: lastSource,
+  hydrated,
+};
 const listeners = new Set<() => void>();
 
 function logDealTimingStore(source: string, next: DealTimingConfig) {
   // eslint-disable-next-line no-console
-  console.log('[DEAL TIMING STORE]', {
+  console.log('[GEOM STORE]', {
     source,
     launchSpacingMs: next.launchSpacingMs,
     durationMs: next.durationMs,
     ownershipClaimDelayMs: next.ownershipClaimDelayMs,
+    updatedAt,
+    dbUpdatedAt,
+    storeVersion,
     hydrated,
     t: typeof performance !== 'undefined' ? performance.now() : Date.now(),
   });
 }
 
-function setCurrent(next: DealTimingConfig, source = 'unknown', markHydrated = true) {
+function setCurrent(next: DealTimingConfig, source = 'unknown', markHydrated = true, nextDbUpdatedAt: string | null = null) {
   current = next;
   if (markHydrated) hydrated = true;
+  storeVersion += 1;
+  updatedAt = new Date().toISOString();
+  dbUpdatedAt = nextDbUpdatedAt;
+  lastSource = source;
+  snapshot = {
+    ...current,
+    storeVersion,
+    updatedAt,
+    dbUpdatedAt,
+    source: lastSource,
+    hydrated,
+  };
   logDealTimingStore(source, next);
   listeners.forEach((l) => { try { l(); } catch { /* noop */ } });
 }
 
 export function getDealTiming(): DealTimingConfig {
   return current;
+}
+
+export function getDealTimingSnapshot(): DealTimingSnapshot {
+  return snapshot;
 }
 
 export function isDealTimingHydrated(): boolean {
@@ -99,6 +142,10 @@ function subscribe(l: () => void): () => void {
 
 export function useDealTiming(): DealTimingConfig {
   return useSyncExternalStore(subscribe, getDealTiming, getDealTiming);
+}
+
+export function useDealTimingSnapshot(): DealTimingSnapshot {
+  return useSyncExternalStore(subscribe, getDealTimingSnapshot, getDealTimingSnapshot);
 }
 
 export function useDealTimingHydrated(): boolean {
@@ -117,7 +164,7 @@ export function bootstrapDealTiming(): void {
     try {
       const { data, error } = await supabase
         .from('system_settings')
-        .select('value')
+        .select('value, updated_at')
         .eq('key', DEAL_TIMING_KEY)
         .maybeSingle();
       if (error) {
@@ -125,7 +172,7 @@ export function bootstrapDealTiming(): void {
         setCurrent(current, 'bootstrap:fetch-error-default');
         return;
       }
-      if (data?.value) setCurrent(sanitize(data.value), 'bootstrap:system_settings');
+      if (data?.value) setCurrent(sanitize(data.value), 'bootstrap:system_settings', true, data.updated_at ?? null);
       else setCurrent(current, 'bootstrap:no-row-default');
     } catch (err) {
       console.warn('[DealTiming] fetch threw', err);
@@ -145,8 +192,9 @@ export function bootstrapDealTiming(): void {
           filter: `key=eq.${DEAL_TIMING_KEY}`,
         },
         (payload) => {
-          const next = (payload.new as { value?: unknown } | null)?.value;
-          if (next != null) setCurrent(sanitize(next), 'realtime:system_settings');
+          const row = payload.new as { value?: unknown; updated_at?: string | null } | null;
+          const next = row?.value;
+          if (next != null) setCurrent(sanitize(next), 'realtime:system_settings', true, row?.updated_at ?? null);
         },
       )
       .subscribe();
@@ -165,6 +213,7 @@ export async function saveDealTiming(
   next: Partial<DealTimingConfig>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const merged = sanitize({ ...current, ...next });
+  const savedAt = new Date().toISOString();
   logDealTimingStore('save:attempt', merged);
   const { error } = await supabase
     .from('system_settings')
@@ -172,12 +221,12 @@ export async function saveDealTiming(
       {
         key: DEAL_TIMING_KEY,
         value: merged as unknown as Record<string, number>,
-        updated_at: new Date().toISOString(),
+        updated_at: savedAt,
       },
       { onConflict: 'key' },
     );
   if (error) return { ok: false, error: error.message };
-  setCurrent(merged, 'save:local-confirm');
+  setCurrent(merged, 'save:local-confirm', true, savedAt);
   return { ok: true };
 }
 

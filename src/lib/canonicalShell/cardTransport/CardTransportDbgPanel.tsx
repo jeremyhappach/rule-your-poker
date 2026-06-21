@@ -90,6 +90,7 @@ export function CardTransportDbgPanel() {
   const recent = newest[0];
   const handProof = latestHand(records);
   const proofSettings = handProof[0]?.dealTimingSettings;
+  const proofStore = handProof[0]?.dealTimingStoreSnapshot;
   const toggleId = (id: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -148,14 +149,16 @@ export function CardTransportDbgPanel() {
                 <div style={{ marginBottom: 8, padding: 6, border: '1px solid #555', background: 'rgba(255,255,255,0.05)' }}>
                   <div style={{ fontWeight: 800, color: '#FFD580' }}>DEAL TIMING PROOF · latest hand</div>
                   <div style={{ opacity: 0.9 }}>handCtx={handProof[0].handContextId ?? '∅'} source={handProof[0].timingSource ?? '?'}</div>
+                  <div style={{ opacity: 0.95, color: '#87CEFA' }}>GEOM STORE launchSpacingMs={proofStore?.launchSpacingMs ?? '—'} durationMs={proofStore?.durationMs ?? '—'} ownershipClaimDelayMs={proofStore?.ownershipClaimDelayMs ?? '—'} updatedAt={proofStore?.updatedAt ?? '—'} storeVersion={proofStore?.storeVersion ?? '—'}</div>
                   <div style={{ opacity: 0.9 }}>GEOM DEAL SETTINGS launchSpacingMs={proofSettings?.launchSpacingMs ?? '—'} durationMs={proofSettings?.durationMs ?? '—'} ownershipClaimDelayMs={proofSettings?.ownershipClaimDelayMs ?? '—'}</div>
-                  <div style={{ opacity: 0.9 }}>INTENT effectiveSpacingMs={proofSettings?.effectiveLaunchSpacingMs ?? '—'} effectiveDurationMs={proofSettings?.effectiveDurationMs ?? '—'}</div>
-                  <div style={{ marginTop: 5, display: 'grid', gridTemplateColumns: '38px 60px 64px 54px 54px 54px', gap: 4, alignItems: 'baseline' }}>
-                    <b>#</b><b>delay</b><b>actualΔ</b><b>expectΔ</b><b>error</b><b>skew</b>
+                  <div style={{ opacity: 0.9 }}>INTENT source={handProof[0].intentTimingSource ?? handProof[0].timingSource ?? '?'} formula={handProof[0].launchDelayFormula ?? '?'} effectiveSpacingMs={proofSettings?.effectiveLaunchSpacingMs ?? '—'} effectiveDurationMs={proofSettings?.effectiveDurationMs ?? '—'}</div>
+                  <div style={{ marginTop: 5, display: 'grid', gridTemplateColumns: '38px 60px 60px 64px 54px 54px 54px', gap: 4, alignItems: 'baseline' }}>
+                    <b>#</b><b>delay</b><b>store</b><b>actualΔ</b><b>expectΔ</b><b>error</b><b>skew</b>
                     {handProof.map((r) => (
                       <div key={`proof-${r.intentId}`} style={{ display: 'contents', color: Math.abs(r.startDeltaErrorMs ?? 0) > 40 ? '#ff7777' : '#7CFC00' }}>
                         <span>{cardIndex(r)}</span>
                         <span>{fmt(r.launchDelayMs, 0)}</span>
+                        <span>{r.dealTimingStoreSnapshot?.launchSpacingMs ?? '—'}</span>
                         <span>{fmt(r.actualStartDeltaFromPreviousMs)}</span>
                         <span>{fmt(r.expectedStartDeltaFromPreviousMs)}</span>
                         <span>{fmt(r.startDeltaErrorMs)}</span>
@@ -182,8 +185,9 @@ export function CardTransportDbgPanel() {
                       <div style={{ opacity: 0.85 }}>resolvedFrom={r.resolvedFromAnchor ?? '?'} resolvedTo={r.resolvedToAnchor ?? '?'}</div>
                       <div style={{ opacity: 0.85 }}>fromRect={JSON.stringify(r.fromAnchorRect)}</div>
                       <div style={{ opacity: 0.85 }}>toRect={JSON.stringify(r.toAnchorRect)}</div>
+                      <div style={{ opacity: 0.95, color: '#87CEFA' }}>GEOM STORE launchSpacingMs={r.dealTimingStoreSnapshot?.launchSpacingMs ?? '—'} durationMs={r.dealTimingStoreSnapshot?.durationMs ?? '—'} ownershipClaimDelayMs={r.dealTimingStoreSnapshot?.ownershipClaimDelayMs ?? '—'} updatedAt={r.dealTimingStoreSnapshot?.updatedAt ?? '—'} dbUpdatedAt={r.dealTimingStoreSnapshot?.dbUpdatedAt ?? '—'} storeVersion={r.dealTimingStoreSnapshot?.storeVersion ?? '—'} source={r.dealTimingStoreSnapshot?.source ?? '?'} hydrated={String(r.dealTimingStoreSnapshot?.hydrated ?? false)}</div>
                       <div style={{ opacity: 0.95, color: '#FFD580' }}>GEOM DEAL SETTINGS source={r.timingSource ?? '?'} launchSpacingMs={r.dealTimingSettings?.launchSpacingMs ?? '—'} durationMs={r.dealTimingSettings?.durationMs ?? '—'} ownershipClaimDelayMs={r.dealTimingSettings?.ownershipClaimDelayMs ?? '—'}</div>
-                      <div style={{ opacity: 0.95, color: '#FFD580' }}>INTENT effectiveSpacingMs={r.dealTimingSettings?.effectiveLaunchSpacingMs ?? '—'} effectiveDurationMs={r.dealTimingSettings?.effectiveDurationMs ?? '—'} expectedStart={fmt(r.expectedStartTime)} expectedArrival={fmt(r.expectedArrivalTime)}</div>
+                      <div style={{ opacity: 0.95, color: '#FFD580' }}>INTENT source={r.intentTimingSource ?? r.timingSource ?? '?'} formula={r.launchDelayFormula ?? '?'} launchSpacing={r.dealTimingSettings?.effectiveLaunchSpacingMs ?? '—'} duration={r.durationMs ?? '—'} ownershipDelay={r.ownershipClaimDelayMs ?? '—'} expectedStart={fmt(r.expectedStartTime)} expectedArrival={fmt(r.expectedArrivalTime)}</div>
                       <div style={{ opacity: 0.85 }}>dx={r.dx} dy={r.dy} dur={r.durationMs}ms delay={r.launchDelayMs}ms</div>
                       <div style={{ opacity: 0.85 }}>actualStart={r.actualStartTime?.toFixed?.(1)} actualArrival={r.actualArrivalTime?.toFixed?.(1)}</div>
                       <div style={{ opacity: 0.95, color: '#7CFC00' }}>LAUNCH PROOF actualΔ={fmt(r.actualStartDeltaFromPreviousMs)} expectedΔ={fmt(r.expectedStartDeltaFromPreviousMs)} error={fmt(r.startDeltaErrorMs)} startSkew={fmt(r.startSkewMs)} source={r.launchProofSource ?? '?'}</div>
