@@ -133,6 +133,8 @@ const App = () => {
                 <ChipTransportDbgPanel />
                 <CardTransportDbgPanel />
                 <ThreeFiveSevenDealDiagPanel />
+                <ThreeFiveSevenForensicsPanel />
+
 
                 <CardBackDbgPanel />
                 <WinnerChipEndpointDbgPanel />
