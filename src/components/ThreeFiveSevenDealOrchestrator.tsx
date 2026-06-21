@@ -205,7 +205,7 @@ export function ThreeFiveSevenDealOrchestrator({
           style={{
             position: 'absolute',
             left: '50%',
-            top: '50%',
+            top: '15%',
             width: 1,
             height: 1,
             transform: 'translate(-50%, -50%)',
@@ -213,6 +213,7 @@ export function ThreeFiveSevenDealOrchestrator({
           }}
           data-card-anchor={`hand-${selfPlayerId}`}
           data-canonical-shell-viewer-card-endpoint="357-self-hand"
+          data-canonical-self-hand-anchor-position="top-of-pane"
           data-anchor-owner="ThreeFiveSevenDealOrchestrator.selfHandRegion"
         />
       , selfHandRegion) : null}

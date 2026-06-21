@@ -20,7 +20,8 @@
  * `discardTop` is present so every stamped face is deterministic.
  */
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
@@ -200,21 +201,30 @@ export function GinRummyDealOrchestrator({
     seats, cardsPerPlayer, selfHand, discardTop, cardBackColors, dealTimingHydrated,
   ]);
 
-  // Canonical 1×1 anchor for hand-${selfPlayerId} — origin/terminus for
-  // self-recipient intents. Matches CribbageDealOrchestrator footprint.
-  return (
+  // Canonical 1×1 anchor portaled into the active-player pane near the
+  // TOP edge — cards land on top of the fan and grow downward.
+  const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
+    setSelfHandRegion(el);
+  }, [handContextId, selfPlayerId]);
+
+  const anchorEl = (
     <div
       aria-hidden="true"
       style={{
         position: 'absolute',
         left: '50%',
-        bottom: 0,
+        top: '15%',
         width: 1,
         height: 1,
-        transform: 'translate(-50%, 0)',
+        transform: 'translate(-50%, -50%)',
         pointerEvents: 'none',
       }}
       data-card-anchor={`hand-${selfPlayerId}`}
+      data-canonical-self-hand-anchor-position="top-of-pane"
+      data-anchor-owner="GinRummyDealOrchestrator.selfHandRegion"
     />
   );
+  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
 }
