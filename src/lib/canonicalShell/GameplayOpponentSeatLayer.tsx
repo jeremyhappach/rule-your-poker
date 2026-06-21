@@ -156,8 +156,8 @@ function ShellOpponentCardBacks({ count, variant, position }: ShellOpponentCardB
           key={i}
           widthPx={layout.cardWidth}
           heightPx={layout.cardHeight}
-          showAccent={false}
           className="shrink-0"
+
           style={{ marginLeft: i === 0 ? 0 : -layout.overlapPx }}
         />
       ))}
