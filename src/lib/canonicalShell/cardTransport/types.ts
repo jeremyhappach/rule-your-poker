@@ -68,7 +68,7 @@ export interface CardTransportIntent {
     hydrated: boolean;
   };
   /** Exact branch that produced launchDelayMs = cardIndex * this value. */
-  intentTimingSource?: 'GeometryLab' | 'inspectMode' | 'fallback' | 'hardcoded';
+  intentTimingSource?: 'GeometryLab' | 'inspectionMode' | 'fallback' | 'hardcoded';
   /** Source annotation for launchDelayMs, e.g. `idx * store.launchSpacingMs`. */
   launchDelayFormula?: string;
   expectedStartTime?: number;
