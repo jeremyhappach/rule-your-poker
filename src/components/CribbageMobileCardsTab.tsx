@@ -123,7 +123,20 @@ export const CribbageMobileCardsTab = ({
   );
   const parentSuppressed = !!renderTrace && renderTrace.interactionsAllowed === false;
   const activeHandBlocked = !!renderTrace && (roundIdentityMismatch || handIdentityMismatch || parentSuppressed);
-  const renderedHand = activeHandBlocked ? [] : sourceHand;
+  // Wave 1 deal-runtime gating: during DEALING, clip the self hand to
+  // the per-recipient settled count so cards appear one at a time as
+  // each transport arrives. PRE_DEAL → 0. READY/GAMEPLAY / no runtime
+  // → full hand (legacy path).
+  const deal = useDealRuntime();
+  const dealClippedSourceHand = (() => {
+    if (activeHandBlocked) return [];
+    if (!deal) return sourceHand;
+    if (deal.phase === 'GAMEPLAY' || deal.phase === 'READY') return sourceHand;
+    if (deal.phase === 'PRE_DEAL') return [];
+    const allowed = deal.getSettledCountForPlayer(currentPlayerId);
+    return sourceHand.slice(0, allowed);
+  })();
+  const renderedHand = dealClippedSourceHand;
   const sourceCardIds = sourceHand.map(cardId);
   const renderedCardIds = renderedHand.map(cardId);
   const sourceFingerprint = sourceCardIds.join(',');
