@@ -237,7 +237,50 @@ export function ThreeFiveSevenDealDiagPanel() {
   const playerHandMounted = !!playerHandEl;
   const playerHandKey =
     playerHandEl?.getAttribute('data-card-anchor') ?? '∅';
-  const fanLayoutInitialized = !!document.querySelector('[data-357-active-hand-region] [data-fan-card]');
+  const activeHandRegionEl =
+    typeof document !== 'undefined'
+      ? document.querySelector('[data-357-active-hand-region]')
+      : null;
+  const fanLayoutInitialized = !!document.querySelector('[data-357-active-hand-region] [data-card-id]');
+
+  // ── PROBE 1 · SELF LANDING ──────────────────────────────────────
+  const rectOf = (el: Element | null) => {
+    if (!el || typeof (el as HTMLElement).getBoundingClientRect !== 'function') return null;
+    const r = (el as HTMLElement).getBoundingClientRect();
+    return { x: +r.x.toFixed(1), y: +r.y.toFixed(1), w: +r.width.toFixed(2), h: +r.height.toFixed(2), cx: +(r.x + r.width / 2).toFixed(1), cy: +(r.y + r.height / 2).toFixed(1) };
+  };
+  const selfCardEls = activeHandRegionEl
+    ? Array.from(activeHandRegionEl.querySelectorAll('[data-card-id]'))
+    : [];
+  const allCardEls = typeof document !== 'undefined'
+    ? Array.from(document.querySelectorAll('[data-card-id]'))
+    : [];
+  const fanRootEl = (selfCardEls[0]?.parentElement as Element | null) ?? activeHandRegionEl;
+  const handAnchorRect = rectOf(playerHandEl);
+  const playerHandRect = rectOf(activeHandRegionEl);
+  const fanRootRect = rectOf(fanRootEl);
+  const card0DomEl = selfCardEls[0] ?? null;
+  const card0DomRect = rectOf(card0DomEl);
+  const distancePx = (handAnchorRect && card0DomRect)
+    ? +Math.hypot(card0DomRect.cx - handAnchorRect.cx, card0DomRect.cy - handAnchorRect.cy).toFixed(1)
+    : null;
+  const actualVisibleCardDOMCount = selfCardEls.length;
+  const actualOpponentCardDomCount = allCardEls.length - selfCardEls.length;
+
+  // ── PROBE 3 · TIMER OWNER ───────────────────────────────────────
+  const timerRailEl = typeof document !== 'undefined'
+    ? document.querySelector('[data-canonical-shell-timer-rail]')
+    : null;
+  const legacyTimerEls = typeof document !== 'undefined'
+    ? Array.from(document.querySelectorAll('[data-shell-timer], [data-mobile-player-timer], [data-three-five-seven-timer], [data-legacy-timer]'))
+    : [];
+  const renderedTimerComponent = timerRailEl
+    ? 'ShellTimerRail'
+    : legacyTimerEls.length
+      ? `legacy(${legacyTimerEls.map((e) => e.getAttribute('data-shell-timer') || e.getAttribute('data-mobile-player-timer') || e.tagName).join(',')})`
+      : 'none';
+  const usesDealRuntime = latest?.timerVisible !== undefined;
+  const is357 = !!latest?.handContextId && /#h\d+#r\d+$/.test(latest.handContextId);
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '0 2px' };
   const k: React.CSSProperties = { color: '#9fb3c8' };
@@ -296,6 +339,11 @@ export function ThreeFiveSevenDealDiagPanel() {
               timer,
               card0Timeline: card0,
               domProbes: { playerHandMounted, playerHandKey, fanLayoutInitialized },
+              probes: {
+                selfLanding: { handAnchorRect, playerHandRect, fanRootRect, card0DomRect, distancePx, actualVisibleCardDOMCount, ownershipClaimTime: card0?.ownershipClaimTime, transportDestroyedTime: card0?.transportDestroyedTime },
+                renderedCardCounts: { actualSelfCardDomCount: actualVisibleCardDOMCount, actualOpponentCardDomCount, effectiveCards: selfOwn?.visibleCount, visibleCount: selfOwn?.visibleCount, authoritativeCount: selfOwn?.authoritativeCount },
+                timerOwner: { renderedTimerComponent, timerSource: timer.timerSource, usesDealRuntime, phase: timer.phase, is357, legacyTimerCount: legacyTimerEls.length, canonicalRailMounted: !!timerRailEl },
+              },
               transitions: [...transitions],
               allDeals: deals,
               cardTransport: cts,
@@ -452,6 +500,51 @@ export function ThreeFiveSevenDealDiagPanel() {
                 </div>
               </>
             )}
+          </div>
+
+          {/* Section 5 — New Probes (landing / counts / timer-owner) */}
+          <div style={sect}>
+            <div style={sectTitle}>5 · PROBES</div>
+            <div style={{ ...sectTitle, fontSize: 10, color: '#9fd6ff', marginTop: 2 }}>5a · SELF LANDING (r1 self card0)</div>
+            <div style={rowStyle}><span style={k}>handAnchorRect</span><span style={v}>{handAnchorRect ? `x=${handAnchorRect.x} y=${handAnchorRect.y} ${handAnchorRect.w}×${handAnchorRect.h} c=(${handAnchorRect.cx},${handAnchorRect.cy})` : '—'}</span></div>
+            <div style={rowStyle}><span style={k}>playerHandRect</span><span style={v}>{playerHandRect ? `x=${playerHandRect.x} y=${playerHandRect.y} ${playerHandRect.w}×${playerHandRect.h}` : '—'}</span></div>
+            <div style={rowStyle}><span style={k}>fanRootRect</span><span style={v}>{fanRootRect ? `x=${fanRootRect.x} y=${fanRootRect.y} ${fanRootRect.w}×${fanRootRect.h}` : '—'}</span></div>
+            <div style={rowStyle}><span style={k}>card0Rect (DOM, after ownership)</span><span style={v}>{card0DomRect ? `x=${card0DomRect.x} y=${card0DomRect.y} ${card0DomRect.w}×${card0DomRect.h} c=(${card0DomRect.cx},${card0DomRect.cy})` : '—'}</span></div>
+            <div style={rowStyle}>
+              <span style={k}>distancePx (card0 ↔ anchor)</span>
+              <span style={distancePx == null ? v : (distancePx < 5 ? ok : violation)}>{distancePx == null ? '—' : `${distancePx}px ${distancePx < 5 ? '✓<5' : '⚠ ≥5'}`}</span>
+            </div>
+            <div style={rowStyle}><span style={k}>ownershipClaimTime</span><span style={v}>{fmtAbs(card0?.ownershipClaimTime)}</span></div>
+            <div style={rowStyle}><span style={k}>transportDestroyedTime</span><span style={v}>{fmtAbs(card0?.transportDestroyedTime)}</span></div>
+            <div style={rowStyle}><span style={k}>actualVisibleCardDOMCount</span><span style={v}>{actualVisibleCardDOMCount}</span></div>
+
+            <div style={{ ...sectTitle, fontSize: 10, color: '#9fd6ff', marginTop: 4 }}>5b · ACTUAL RENDERED CARD COUNTS</div>
+            <div style={rowStyle}><span style={k}>actualSelfCardDomCount</span><span style={v}>{actualVisibleCardDOMCount}</span></div>
+            <div style={rowStyle}><span style={k}>actualOpponentCardDomCount</span><span style={v}>{actualOpponentCardDomCount}</span></div>
+            <div style={rowStyle}><span style={k}>effectiveCards.length</span><span style={v}>{selfOwn?.visibleCount ?? '—'}</span></div>
+            <div style={rowStyle}><span style={k}>visibleCount (ownership)</span><span style={v}>{selfOwn?.visibleCount ?? '—'}</span></div>
+            <div style={rowStyle}><span style={k}>authoritativeCount</span><span style={v}>{selfOwn?.authoritativeCount ?? '—'}</span></div>
+            <div style={rowStyle}>
+              <span style={k}>DOM vs ownership</span>
+              <span style={selfOwn && actualVisibleCardDOMCount !== selfOwn.visibleCount ? violation : ok}>
+                {selfOwn ? (actualVisibleCardDOMCount === selfOwn.visibleCount ? 'match' : `MISMATCH (${actualVisibleCardDOMCount} dom / ${selfOwn.visibleCount} own)`) : '—'}
+              </span>
+            </div>
+
+            <div style={{ ...sectTitle, fontSize: 10, color: '#9fd6ff', marginTop: 4 }}>5c · TIMER OWNER</div>
+            <div style={rowStyle}><span style={k}>renderedTimerComponent</span><span style={v}>{renderedTimerComponent}</span></div>
+            <div style={rowStyle}><span style={k}>timerSource</span><span style={v}>{timer.timerSource}</span></div>
+            <div style={rowStyle}><span style={k}>usesDealRuntime</span><span style={usesDealRuntime ? ok : violation}>{String(usesDealRuntime)}</span></div>
+            <div style={rowStyle}><span style={k}>phase</span><span style={v}>{timer.phase}</span></div>
+            <div style={rowStyle}><span style={k}>is357</span><span style={v}>{String(is357)}</span></div>
+            <div style={rowStyle}><span style={k}>canonicalRailMounted</span><span style={timerRailEl ? ok : v}>{String(!!timerRailEl)}</span></div>
+            <div style={rowStyle}>
+              <span style={k}>legacyTimerCount</span>
+              <span style={legacyTimerEls.length ? violation : ok}>{legacyTimerEls.length}</span>
+            </div>
+            {timer.phase === 'DEALING' && (timerRailEl || legacyTimerEls.length) ? (
+              <div style={{ ...violation, padding: '3px 2px' }}>⚠ phase=DEALING but a timer DOM element is rendered ({renderedTimerComponent})</div>
+            ) : null}
           </div>
         </div>
       ) : null}
