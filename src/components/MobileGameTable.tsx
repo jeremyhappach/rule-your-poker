@@ -7,6 +7,7 @@ import { PlayingCard } from "./PlayingCard";
 import { CanonicalChipDisc } from "./canonicalShell/CanonicalChipDisc";
 import { DealerIndicator } from "./canonicalShell/DealerIndicator";
 import { CanonicalChipstack } from "./canonicalShell/CanonicalChipstack";
+import { CanonicalCardBack } from "./canonicalShell/CanonicalCardBack";
 import { QuickEmoticonPicker } from "./QuickEmoticonPicker";
 import { CommunityCards } from "./CommunityCards";
 import { ChuckyHand } from "./ChuckyHand";
