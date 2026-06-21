@@ -501,6 +501,51 @@ export function ThreeFiveSevenDealDiagPanel() {
               </>
             )}
           </div>
+
+          {/* Section 5 — New Probes (landing / counts / timer-owner) */}
+          <div style={sect}>
+            <div style={sectTitle}>5 · PROBES</div>
+            <div style={{ ...sectTitle, fontSize: 10, color: '#9fd6ff', marginTop: 2 }}>5a · SELF LANDING (r1 self card0)</div>
+            <div style={rowStyle}><span style={k}>handAnchorRect</span><span style={v}>{handAnchorRect ? `x=${handAnchorRect.x} y=${handAnchorRect.y} ${handAnchorRect.w}×${handAnchorRect.h} c=(${handAnchorRect.cx},${handAnchorRect.cy})` : '—'}</span></div>
+            <div style={rowStyle}><span style={k}>playerHandRect</span><span style={v}>{playerHandRect ? `x=${playerHandRect.x} y=${playerHandRect.y} ${playerHandRect.w}×${playerHandRect.h}` : '—'}</span></div>
+            <div style={rowStyle}><span style={k}>fanRootRect</span><span style={v}>{fanRootRect ? `x=${fanRootRect.x} y=${fanRootRect.y} ${fanRootRect.w}×${fanRootRect.h}` : '—'}</span></div>
+            <div style={rowStyle}><span style={k}>card0Rect (DOM, after ownership)</span><span style={v}>{card0DomRect ? `x=${card0DomRect.x} y=${card0DomRect.y} ${card0DomRect.w}×${card0DomRect.h} c=(${card0DomRect.cx},${card0DomRect.cy})` : '—'}</span></div>
+            <div style={rowStyle}>
+              <span style={k}>distancePx (card0 ↔ anchor)</span>
+              <span style={distancePx == null ? v : (distancePx < 5 ? ok : violation)}>{distancePx == null ? '—' : `${distancePx}px ${distancePx < 5 ? '✓<5' : '⚠ ≥5'}`}</span>
+            </div>
+            <div style={rowStyle}><span style={k}>ownershipClaimTime</span><span style={v}>{fmtAbs(card0?.ownershipClaimTime)}</span></div>
+            <div style={rowStyle}><span style={k}>transportDestroyedTime</span><span style={v}>{fmtAbs(card0?.transportDestroyedTime)}</span></div>
+            <div style={rowStyle}><span style={k}>actualVisibleCardDOMCount</span><span style={v}>{actualVisibleCardDOMCount}</span></div>
+
+            <div style={{ ...sectTitle, fontSize: 10, color: '#9fd6ff', marginTop: 4 }}>5b · ACTUAL RENDERED CARD COUNTS</div>
+            <div style={rowStyle}><span style={k}>actualSelfCardDomCount</span><span style={v}>{actualVisibleCardDOMCount}</span></div>
+            <div style={rowStyle}><span style={k}>actualOpponentCardDomCount</span><span style={v}>{actualOpponentCardDomCount}</span></div>
+            <div style={rowStyle}><span style={k}>effectiveCards.length</span><span style={v}>{selfOwn?.visibleCount ?? '—'}</span></div>
+            <div style={rowStyle}><span style={k}>visibleCount (ownership)</span><span style={v}>{selfOwn?.visibleCount ?? '—'}</span></div>
+            <div style={rowStyle}><span style={k}>authoritativeCount</span><span style={v}>{selfOwn?.authoritativeCount ?? '—'}</span></div>
+            <div style={rowStyle}>
+              <span style={k}>DOM vs ownership</span>
+              <span style={selfOwn && actualVisibleCardDOMCount !== selfOwn.visibleCount ? violation : ok}>
+                {selfOwn ? (actualVisibleCardDOMCount === selfOwn.visibleCount ? 'match' : `MISMATCH (${actualVisibleCardDOMCount} dom / ${selfOwn.visibleCount} own)`) : '—'}
+              </span>
+            </div>
+
+            <div style={{ ...sectTitle, fontSize: 10, color: '#9fd6ff', marginTop: 4 }}>5c · TIMER OWNER</div>
+            <div style={rowStyle}><span style={k}>renderedTimerComponent</span><span style={v}>{renderedTimerComponent}</span></div>
+            <div style={rowStyle}><span style={k}>timerSource</span><span style={v}>{timer.timerSource}</span></div>
+            <div style={rowStyle}><span style={k}>usesDealRuntime</span><span style={usesDealRuntime ? ok : violation}>{String(usesDealRuntime)}</span></div>
+            <div style={rowStyle}><span style={k}>phase</span><span style={v}>{timer.phase}</span></div>
+            <div style={rowStyle}><span style={k}>is357</span><span style={v}>{String(is357)}</span></div>
+            <div style={rowStyle}><span style={k}>canonicalRailMounted</span><span style={timerRailEl ? ok : v}>{String(!!timerRailEl)}</span></div>
+            <div style={rowStyle}>
+              <span style={k}>legacyTimerCount</span>
+              <span style={legacyTimerEls.length ? violation : ok}>{legacyTimerEls.length}</span>
+            </div>
+            {timer.phase === 'DEALING' && (timerRailEl || legacyTimerEls.length) ? (
+              <div style={{ ...violation, padding: '3px 2px' }}>⚠ phase=DEALING but a timer DOM element is rendered ({renderedTimerComponent})</div>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </div>
