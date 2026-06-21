@@ -91,8 +91,19 @@ const MAX_SAMPLES_PER_INTENT = 8;
 // Insertion-ordered list of intentIds for bounded retention.
 const order: string[] = [];
 const listeners = new Set<() => void>();
+let cachedSnapshot: CardTransportDbgEntry[] = [];
+let snapshotDirty = true;
+let emitScheduled = false;
 function emit() {
-  listeners.forEach((l) => { try { l(); } catch { /* */ } });
+  snapshotDirty = true;
+  if (emitScheduled) return;
+  emitScheduled = true;
+  const flush = () => {
+    emitScheduled = false;
+    listeners.forEach((l) => { try { l(); } catch { /* */ } });
+  };
+  if (typeof queueMicrotask === 'function') queueMicrotask(flush);
+  else Promise.resolve().then(flush);
 }
 
 function bagCT(): Record<string, CardTransportDbgEntry> {
@@ -147,8 +158,12 @@ export function cardTransportDbgSample(
 }
 
 export function getCardTransportDbg(): CardTransportDbgEntry[] {
-  const bag = bagCT();
-  return order.map((id) => bag[id]).filter(Boolean);
+  if (snapshotDirty) {
+    const bag = bagCT();
+    cachedSnapshot = order.map((id) => bag[id]).filter(Boolean);
+    snapshotDirty = false;
+  }
+  return cachedSnapshot;
 }
 
 export function subscribeCardTransportDbg(l: () => void): () => void {
