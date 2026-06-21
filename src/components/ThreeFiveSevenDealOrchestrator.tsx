@@ -89,7 +89,17 @@ export function ThreeFiveSevenDealOrchestrator({
       ? 'idx * inspectionMode.launchSpacingMs(800)'
       : `idx * DealTimingStore.launchSpacingMs(${timing.launchSpacingMs}) @v${timing.storeVersion}`;
 
-    const dealerOrigin: CardTransportIntent['from'] = { kind: 'seat', position: dealerPosition };
+    // Dealer-seat-suppressed-when-self contract (mirrors Gin):
+    // CanonicalSeatCluster suppresses the self seat, so
+    // [data-card-anchor="seat-${dealerPosition}"] does not exist
+    // when the viewer IS the dealer. Fall back to the self hand
+    // anchor (which this orchestrator mounts unconditionally) so
+    // transport endpoint resolution succeeds and intents actually fly.
+    const dealerIsSelf =
+      activeSeats.some(s => s.position === dealerPosition && s.playerId === selfPlayerId);
+    const dealerOrigin: CardTransportIntent['from'] = dealerIsSelf
+      ? { kind: 'hand', playerId: selfPlayerId }
+      : { kind: 'seat', position: dealerPosition };
     const intents: CardTransportIntent[] = [];
 
     for (let pass = 0; pass < cardsThisWave; pass++) {
