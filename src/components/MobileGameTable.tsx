@@ -2105,9 +2105,13 @@ export const MobileGameTable = ({
   } else {
     prevRoundForHandEpochRef.current = null;
   }
+  const threeFiveSevenHandContextId =
+    __is357GameType(gameType) && gameId
+      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}`
+      : null;
   const threeFiveSevenWaveContextId =
-    __is357GameType(gameType) && gameId && typeof currentRound === 'number' && currentRound >= 1
-      ? `${gameId}#h${threeFiveSevenHandEpochRef.current}#r${currentRound}`
+    threeFiveSevenHandContextId && typeof currentRound === 'number' && currentRound >= 1
+      ? `${threeFiveSevenHandContextId}#r${currentRound}`
       : null;
   const threeFiveSevenSelfPlayerId =
     __is357GameType(gameType) && currentUserId
@@ -5989,11 +5993,10 @@ export const MobileGameTable = ({
   };
 
 
-  return <ThreeFiveSevenDealRuntimeMaybe waveContextId={threeFiveSevenWaveContextId}>
+  return <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
-          key={threeFiveSevenWaveContextId}
           waveContextId={threeFiveSevenWaveContextId}
           dealerPosition={threeFiveSevenDealerPosition}
           selfPlayerId={threeFiveSevenSelfPlayerId}

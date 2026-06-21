@@ -31,7 +31,7 @@
  *   <Use357SelfHand currentPlayerId cards baseline render={(cards)=>...}/>
  */
 
-import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { useDealRuntime, DealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
@@ -68,7 +68,7 @@ export function ThreeFiveSevenDealOrchestrator({
 }: ThreeFiveSevenDealOrchestratorProps) {
   const ct = useCardTransport();
   const deal = useDealRuntime();
-  const dispatchedRef = useRef(false);
+  const dispatchedWaveRef = useRef<string | null>(null);
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
@@ -82,8 +82,18 @@ export function ThreeFiveSevenDealOrchestrator({
   const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
   const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
 
+  // Resolve the visual active-player hand region (destination for self
+  // recipient intents) — re-queried on every render so wave/hand changes
+  // pick up a freshly-mounted node.
+  const [selfHandRegion, setSelfHandRegion] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    if (!deal || dispatchedRef.current) return;
+    const el = document.querySelector('[data-357-active-hand-region]') as HTMLElement | null;
+    setSelfHandRegion(el);
+  }, [waveContextId, selfPlayerId]);
+
+  useEffect(() => {
+    if (!deal) return;
+    if (dispatchedWaveRef.current === waveContextId) return;
     if (!dealTimingHydrated) return;
     if (cardsThisWave <= 0) return;
     if (!activeSeats.length) return;
@@ -175,8 +185,8 @@ export function ThreeFiveSevenDealOrchestrator({
       }
     }
 
-    dispatchedRef.current = true;
-    deal.beginDeal(intents.length);
+    dispatchedWaveRef.current = waveContextId;
+    deal.beginWave(intents.length);
     ct.dispatchMany(intents);
   }, [
     deal, ct, waveContextId, dealerPosition, selfPlayerId,
@@ -185,25 +195,29 @@ export function ThreeFiveSevenDealOrchestrator({
 
   return (
     <>
-      {/* Canonical destination terminus for self-recipient intents.
-          Felt-bottom-center, 1×1, invisible. */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: 0,
-          width: 1,
-          height: 1,
-          transform: 'translate(-50%, 0)',
-          pointerEvents: 'none',
-        }}
-        data-card-anchor={`hand-${selfPlayerId}`}
-      />
+      {/* Canonical destination terminus for self-recipient intents —
+          portaled into [data-357-active-hand-region] so resolved
+          toRect lands on the visual active-player hand fan, NOT the
+          identity row at the bottom of MobileGameTable. */}
+      {selfHandRegion ? createPortal(
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 1,
+            height: 1,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+          }}
+          data-card-anchor={`hand-${selfPlayerId}`}
+          data-canonical-shell-viewer-card-endpoint="357-self-hand"
+          data-anchor-owner="ThreeFiveSevenDealOrchestrator.selfHandRegion"
+        />
+      , selfHandRegion) : null}
       {/* Dealer-seat origin anchor for the self-viewer-as-dealer case.
-          This MUST be portaled onto the shell felt HOME slot, not mounted
-          in the active-player/HUD subtree, so fromRect proves a real felt
-          dealer origin. */}
+          Portaled onto the shell felt HOME slot. */}
       {dealerIsSelf && selfDealerFelt && selfDealerFeltIsSurface ? createPortal(
         <div
           aria-hidden="true"
@@ -270,12 +284,15 @@ export function Use357OppCount({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(playerId) ?? 0;
-  const dealingVisible = Math.min(baseline + settled, expected);
+  // settled is CUMULATIVE across waves within the hand — visibility is
+  // simply min(settled, expected) during DEALING, floored by baseline
+  // (prevWaveCount) in PRE_DEAL so previously-settled cards never vanish.
+  const dealingVisible = Math.min(Math.max(baseline, settled), expected);
   const visible = deal
     ? deal.phase === 'DEALING'
       ? dealingVisible
       : deal.phase === 'PRE_DEAL'
-        ? baseline
+        ? Math.max(baseline, Math.min(settled, expected))
         : Math.max(baseline, defaultCount, dealingVisible)
     : Math.max(baseline, defaultCount);
   useEffect(() => {
@@ -313,11 +330,12 @@ export function Use357SelfHand<T>({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  // Cumulative settled: visible = min(max(baseline, settled), cards.length).
   const allowed = deal
     ? deal.phase === 'DEALING'
-      ? Math.min(baseline + settled, cards.length)
+      ? Math.min(Math.max(baseline, settled), cards.length)
       : deal.phase === 'PRE_DEAL'
-        ? Math.min(baseline, cards.length)
+        ? Math.min(Math.max(baseline, settled), cards.length)
         : cards.length
     : cards.length;
   const effectiveCards = cards.slice(0, Math.min(allowed, cards.length));
@@ -339,21 +357,21 @@ export function Use357SelfHand<T>({
 // ─── DealRuntime per-wave wrapper ────────────────────────────────────
 
 /**
- * Wraps children with a DealRuntime keyed by `waveContextId`. When the
- * key is null/empty (e.g. game not in progress, round not yet known)
- * renders children directly — `useDealRuntime()` returns null and the
- * legacy paths run unchanged.
+ * Wraps children with a DealRuntime keyed by `handContextId` (one runtime
+ * per HAND, not per round/wave). The orchestrator inside dispatches
+ * per-wave via `beginWave()` so ownership accumulates across waves
+ * (3 → 5 → 7) without remount churn.
  */
 export function ThreeFiveSevenDealRuntimeMaybe({
-  waveContextId,
+  handContextId,
   children,
 }: {
-  waveContextId: string | null | undefined;
+  handContextId: string | null | undefined;
   children: ReactNode;
 }) {
-  if (!waveContextId) return <>{children}</>;
+  if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={waveContextId} handContextId={waveContextId}>
+    <DealRuntime key={handContextId} handContextId={handContextId}>
       {children}
     </DealRuntime>
   );
