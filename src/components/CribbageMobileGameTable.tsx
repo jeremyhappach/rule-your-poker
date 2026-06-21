@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 import type { CribbageCard, CribbageState } from '@/lib/cribbageTypes';
-import { DISCARD_COUNT } from '@/lib/cribbageTypes';
+import { DISCARD_COUNT, CARDS_PER_PLAYER } from '@/lib/cribbageTypes';
 import {
   initializeCribbageGame, 
   discardToCrib, 
