@@ -129,6 +129,25 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     });
   }, [handContextId]);
 
+  const beginWave = useCallback((addedCount: number) => {
+    // Preserve settledCardIds / settledByRecipient — ownership is
+    // cumulative across waves within the same hand. We just grow
+    // expectedCount and re-enter DEALING.
+    setExpectedCount((prev) => {
+      const next = prev + addedCount;
+      expectedRef.current = next;
+      return next;
+    });
+    setPhase('DEALING');
+    dealDbgUpsert(handContextId, {
+      phase: 'DEALING',
+      cardsDispatched: addedCount,
+      readyReleased: false,
+      dealSettled: false,
+      enterGameplayCalledAt: null,
+    });
+  }, [handContextId]);
+
   const enterGameplay = useCallback(() => {
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
     dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
@@ -154,9 +173,10 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       isSettled,
       getSettledCountForPlayer,
       beginDeal,
+      beginWave,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, isSettled, getSettledCountForPlayer, beginDeal, enterGameplay],
+    [handContextId, phase, expectedCount, settledCardIds, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
