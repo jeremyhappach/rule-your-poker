@@ -5501,21 +5501,30 @@ export const MobileGameTable = ({
       </div>
     ) : (
       !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && cardCountToShow > 0 && (
-        <div className="flex">
-          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
-            <CanonicalCardBack
-              key={i}
-              widthPx={12}
-              heightPx={20}
-              variant="flat"
-
-              style={{
-                marginLeft: i > 0 ? '-5px' : '0',
-                zIndex: cardCountToShow - i,
-              }}
-            />
-          ))}
-        </div>
+        <Use357OppCount
+          playerId={player.id}
+          baseline={prevWaveCountFor357(currentRound ?? 0)}
+          defaultCount={cardCountToShow}
+          expected={totalAfterWaveFor357(currentRound ?? 0) || cardCountToShow}
+          render={(visibleCount) => (
+            visibleCount > 0 ? (
+              <div className="flex">
+                {Array.from({ length: Math.min(visibleCount, 7) }, (_, i) => (
+                  <CanonicalCardBack
+                    key={i}
+                    widthPx={12}
+                    heightPx={20}
+                    variant="flat"
+                    style={{
+                      marginLeft: i > 0 ? '-5px' : '0',
+                      zIndex: visibleCount - i,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null
+          )}
+        />
       )
     );
 
