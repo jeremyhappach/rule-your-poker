@@ -71,6 +71,8 @@ export const DEBUG_PILL_REGISTRY: readonly DebugPillDescriptor[] = [
   { key: 'visibleChipDbg',   abbreviation: 'VIS CHIP',   fullName: 'Visible Chip Inventory',     description: 'DOM inventory of every [data-chip-reaction-target] at chip-transport dispatch + arrival: rect, visibility, owner hint (canonical vs HUD vs self), winner-cluster presence + missing reason.' },
   { key: 'cardTransportDbg', abbreviation: 'CARD DBG',  fullName: 'Card Transport Audit',  description: 'Per-intent canonical card transport: endpoint resolution, rects, dx/dy, lifecycle samples (launch/midflight/arrival/destroy) with computed animation + transition CSS, ownershipClaim/destroyed timing.' },
   { key: 'cardBackDbg',      abbreviation: 'CB DBG',    fullName: 'Card Back Inventory',   description: 'Live DOM inventory of every hidden-card surface. Verifies ONE TABLE · ONE DEAL · ONE CARD BACK — flags any element painting a card back that is NOT a CanonicalCardBack, and shows the colors each canonical back is currently rendering with.' },
+  { key: 'threeFiveSevenDealDiag', abbreviation: '357 DEAL DIAG', fullName: '3-5-7 Deal Diagnostics', description: 'Canonical staged-deal diagnostics: self hand ownership, round transitions (last 50), timer ownership, and the card-0 lifecycle timeline. Always-on for staged-deal games (Holm, 3-5-7, future).' },
+
 ];
 
 const LS_KEY = 'ptp_debug_pills_v1';
