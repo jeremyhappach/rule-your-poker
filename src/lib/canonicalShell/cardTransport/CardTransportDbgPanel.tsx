@@ -88,6 +88,8 @@ export function CardTransportDbgPanel() {
 
   const newest = [...records].reverse();
   const recent = newest[0];
+  const handProof = latestHand(records);
+  const proofSettings = handProof[0]?.dealTimingSettings;
   const toggleId = (id: string) =>
     setOpenIds((prev) => {
       const next = new Set(prev);
@@ -141,7 +143,29 @@ export function CardTransportDbgPanel() {
           {newest.length === 0 ? (
             <div style={{ opacity: 0.6 }}>(no card transport intents yet)</div>
           ) : (
-            newest.map((r) => {
+            <>
+              {handProof.length ? (
+                <div style={{ marginBottom: 8, padding: 6, border: '1px solid #555', background: 'rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontWeight: 800, color: '#FFD580' }}>DEAL TIMING PROOF · latest hand</div>
+                  <div style={{ opacity: 0.9 }}>handCtx={handProof[0].handContextId ?? '∅'} source={handProof[0].timingSource ?? '?'}</div>
+                  <div style={{ opacity: 0.9 }}>GEOM DEAL SETTINGS launchSpacingMs={proofSettings?.launchSpacingMs ?? '—'} durationMs={proofSettings?.durationMs ?? '—'} ownershipClaimDelayMs={proofSettings?.ownershipClaimDelayMs ?? '—'}</div>
+                  <div style={{ opacity: 0.9 }}>INTENT effectiveSpacingMs={proofSettings?.effectiveLaunchSpacingMs ?? '—'} effectiveDurationMs={proofSettings?.effectiveDurationMs ?? '—'}</div>
+                  <div style={{ marginTop: 5, display: 'grid', gridTemplateColumns: '38px 60px 64px 54px 54px 54px', gap: 4, alignItems: 'baseline' }}>
+                    <b>#</b><b>delay</b><b>actualΔ</b><b>expectΔ</b><b>error</b><b>skew</b>
+                    {handProof.map((r) => (
+                      <div key={`proof-${r.intentId}`} style={{ display: 'contents', color: Math.abs(r.startDeltaErrorMs ?? 0) > 40 ? '#ff7777' : '#7CFC00' }}>
+                        <span>{cardIndex(r)}</span>
+                        <span>{fmt(r.launchDelayMs, 0)}</span>
+                        <span>{fmt(r.actualStartDeltaFromPreviousMs)}</span>
+                        <span>{fmt(r.expectedStartDeltaFromPreviousMs)}</span>
+                        <span>{fmt(r.startDeltaErrorMs)}</span>
+                        <span>{fmt(r.startSkewMs)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {newest.map((r) => {
               const open = openIds.has(r.intentId);
               return (
                 <div key={r.intentId} style={{ marginBottom: 6, borderTop: '1px dashed #333', paddingTop: 3 }}>
@@ -158,8 +182,12 @@ export function CardTransportDbgPanel() {
                       <div style={{ opacity: 0.85 }}>resolvedFrom={r.resolvedFromAnchor ?? '?'} resolvedTo={r.resolvedToAnchor ?? '?'}</div>
                       <div style={{ opacity: 0.85 }}>fromRect={JSON.stringify(r.fromAnchorRect)}</div>
                       <div style={{ opacity: 0.85 }}>toRect={JSON.stringify(r.toAnchorRect)}</div>
+                      <div style={{ opacity: 0.95, color: '#FFD580' }}>GEOM DEAL SETTINGS source={r.timingSource ?? '?'} launchSpacingMs={r.dealTimingSettings?.launchSpacingMs ?? '—'} durationMs={r.dealTimingSettings?.durationMs ?? '—'} ownershipClaimDelayMs={r.dealTimingSettings?.ownershipClaimDelayMs ?? '—'}</div>
+                      <div style={{ opacity: 0.95, color: '#FFD580' }}>INTENT effectiveSpacingMs={r.dealTimingSettings?.effectiveLaunchSpacingMs ?? '—'} effectiveDurationMs={r.dealTimingSettings?.effectiveDurationMs ?? '—'} expectedStart={fmt(r.expectedStartTime)} expectedArrival={fmt(r.expectedArrivalTime)}</div>
                       <div style={{ opacity: 0.85 }}>dx={r.dx} dy={r.dy} dur={r.durationMs}ms delay={r.launchDelayMs}ms</div>
                       <div style={{ opacity: 0.85 }}>actualStart={r.actualStartTime?.toFixed?.(1)} actualArrival={r.actualArrivalTime?.toFixed?.(1)}</div>
+                      <div style={{ opacity: 0.95, color: '#7CFC00' }}>LAUNCH PROOF actualΔ={fmt(r.actualStartDeltaFromPreviousMs)} expectedΔ={fmt(r.expectedStartDeltaFromPreviousMs)} error={fmt(r.startDeltaErrorMs)} startSkew={fmt(r.startSkewMs)} source={r.launchProofSource ?? '?'}</div>
+                      <div style={{ opacity: 0.95, color: '#7CFC00' }}>ARRIVAL PROOF actualFlight={fmt(r.actualFlightDurationMs)} arrivalSkew={fmt(r.arrivalSkewMs)} source={r.arrivalProofSource ?? '?'}</div>
                       <div style={{ opacity: 0.85 }}>ownershipClaim={r.ownershipClaimTime?.toFixed?.(1)} destroyed={r.transportDestroyedTime?.toFixed?.(1)}</div>
                       <div style={{ opacity: 0.85 }}>portal={r.portalLayer} mounted={String(r.transportMounted)} visible={String(r.transportVisible)}</div>
                       <div style={{ opacity: 0.85 }}>settled={String(r.settled)} dropped={r.droppedReason ?? '∅'}</div>
@@ -177,7 +205,8 @@ export function CardTransportDbgPanel() {
                   ) : null}
                 </div>
               );
-            })
+              })}
+            </>
           )}
         </div>
       ) : null}
