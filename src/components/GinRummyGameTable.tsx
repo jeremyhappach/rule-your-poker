@@ -49,6 +49,10 @@ import {
 } from '@/lib/ginRummyRoundLogic';
 import { GinRummyFeltContent } from './GinRummyFeltContent';
 import { GinRummyMobileCardsTab } from './GinRummyMobileCardsTab';
+import { GinRummyDealOrchestrator } from './GinRummyDealOrchestrator';
+import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { CARDS_PER_PLAYER as GIN_CARDS_PER_PLAYER } from '@/lib/ginRummyTypes';
+import type { ReactNode } from 'react';
 import { GinRummyKnockDisplay } from './GinRummyKnockDisplay';
 import { GinRummyOpponentDrawAnimation } from './GinRummyOpponentDrawAnimation';
 // GinRummyMatchWinner intentionally not imported — see terminal-lifecycle note below.
