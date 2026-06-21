@@ -71,18 +71,18 @@ export function CribbageDealOrchestrator({
 
     const totalCount = cardsPerPlayer * sorted.length;
     const intents: CardTransportIntent[] = [];
-    let selfCardIdx = 0;
     for (let round = 0; round < cardsPerPlayer; round++) {
       for (let off = 1; off <= sorted.length; off++) {
         const r = sorted[(dealerIdx + off) % sorted.length];
         const idx = intents.length;
         const isSelf = r.playerId === selfPlayerId;
-        const visibleFace = isSelf ? selfHand[selfCardIdx] : undefined;
-        if (isSelf) selfCardIdx += 1;
+        // ONE TRANSPORT, ONE CARDBACK — all flights render the canonical
+        // cardback. The reveal moment is arrival, when the destination
+        // (opponent stack or self hand) claims ownership of the real card.
         intents.push({
           id: `${handContextId}#card-${idx}`,
           cardId: `${handContextId}#card-${idx}`,
-          face: isSelf ? 'visible' : 'hidden',
+          face: 'hidden',
           from: { kind: 'seat', position: dealerSeat.position },
           to: isSelf
             ? { kind: 'hand', playerId: selfPlayerId }
@@ -92,9 +92,6 @@ export function CribbageDealOrchestrator({
           handContextId,
           recipientPlayerId: r.playerId,
           cardBackColors: { color: cardBackColors.color, darkColor: cardBackColors.darkColor },
-          visibleFace: visibleFace
-            ? { rank: visibleFace.rank, suit: visibleFace.suit }
-            : undefined,
         });
       }
     }
