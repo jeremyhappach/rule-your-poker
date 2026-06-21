@@ -161,7 +161,7 @@ const CANONICAL_SHELL_VISUAL_ENABLED =
 
 function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
-  const hiddenForDeal = deal?.phase === 'DEALING';
+  const hiddenForDeal = deal?.phase === 'DEALING' || (deal?.phase === 'PRE_DEAL' && deal.expectedCount === 0);
   const timerVisible = !hiddenForDeal;
 
   useEffect(() => {
