@@ -95,8 +95,10 @@ export function CardTransportDbgPanel() {
 
   const newest = [...records].reverse();
   const recent = newest[0];
-  const latestDeal = [...dealRecords].reverse().find(Boolean);
   const handProof = latestHand(records);
+  const latestDeal = handProof[0]?.handContextId
+    ? dealRecords.find((d) => d.handContextId === handProof[0].handContextId)
+    : [...dealRecords].reverse().find(Boolean);
   const proofSettings = handProof[0]?.dealTimingSettings;
   const proofStore = handProof[0]?.dealTimingStoreSnapshot;
   const toggleId = (id: string) =>
