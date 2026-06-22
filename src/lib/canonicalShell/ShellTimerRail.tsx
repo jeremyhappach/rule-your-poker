@@ -41,6 +41,7 @@ import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
+import { record357DiagnosticViolation } from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
 
 export interface ShellTimerState {
   /** Seconds remaining (integer, clamped >= 0 by renderer). */
@@ -95,29 +96,46 @@ export function ShellTimerProvider({ children }: { children: React.ReactNode }) 
  */
 export function useShellTimer(state: ShellTimerState | null): void {
   const register = useContext(ShellTimerRegisterContext);
+  const deal = useDealRuntime();
+  const blocked357State = !!deal && !deal.timerAllowed && !!state && state.secondsRemaining > 0;
+  const effectiveState = blocked357State ? null : state;
   const registrationIdRef = useRef<number | null>(null);
   if (registrationIdRef.current === null) {
     registrationIdRef.current = nextShellTimerRegistrationId++;
   }
-  const signature = state
+  const signature = effectiveState
     ? JSON.stringify({
-        s: state.secondsRemaining,
-        t: state.totalSeconds,
-        p: !!state.paused,
-        a: state.actorLabel ?? null,
-        pid: state.activePlayerId ?? null,
-        k: state.identityKey ?? null,
+        s: effectiveState.secondsRemaining,
+        t: effectiveState.totalSeconds,
+        p: !!effectiveState.paused,
+        a: effectiveState.actorLabel ?? null,
+        pid: effectiveState.activePlayerId ?? null,
+        k: effectiveState.identityKey ?? null,
       })
     : 'null';
   useEffect(() => {
     if (!register) return;
-    if (!state) {
+    if (!effectiveState) {
       register(registrationIdRef.current!, null);
       return;
     }
-    register(registrationIdRef.current!, state);
+    register(registrationIdRef.current!, effectiveState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register, signature]);
+  useEffect(() => {
+    if (!blocked357State || !deal || !state) return;
+    record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+      component: 'useShellTimer',
+      attemptedSeconds: state.secondsRemaining,
+      dealPhase: deal.phase,
+      dealSettled: deal.dealSettled,
+      readyReleased: deal.readyReleased,
+    }, {
+      handContextId: deal.handContextId,
+      phase: deal.phase,
+      component: 'PLAYER_HAND',
+    });
+  }, [blocked357State, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, state]);
   useEffect(() => {
     return () => {
       register?.(registrationIdRef.current!, null);
@@ -147,6 +165,7 @@ export function ShellTimerRail() {
   const paused = !!state?.paused;
   const eligibility = deal
     ? getCanonicalTimerEligibility({
+        gameType: deal.gameType,
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
@@ -167,6 +186,7 @@ export function ShellTimerRail() {
         : 'bg-green-500';
 
   const ownerId = `ShellTimerRail:${deal?.handContextId ?? state?.identityKey ?? 'global'}`;
+  const blocked357TimerAttempt = !!deal && !deal.timerAllowed && !!state && !paused && seconds > 0;
   useEffect(() => {
     if (!state && !deal) {
       unregisterThreeFiveSevenTimerOwner(ownerId);
@@ -174,7 +194,7 @@ export function ShellTimerRail() {
     }
     recordThreeFiveSevenTimerOwner(ownerId, {
       componentName: 'ShellTimerRail',
-      gameType: null,
+      gameType: deal?.gameType ?? null,
       handContextId: deal?.handContextId ?? null,
       waveContextId: deal?.handContextId ?? null,
       dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
@@ -191,7 +211,22 @@ export function ShellTimerRail() {
   }, [ownerId, state, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, paused, seconds, eligibility.visible, eligibility.running]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(ownerId), [ownerId]);
 
-  if (!eligibility.visible) return null;
+  useEffect(() => {
+    if (!blocked357TimerAttempt || !deal) return;
+    record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+      component: 'ShellTimerRail',
+      attemptedSeconds: seconds,
+      dealPhase: deal.phase,
+      dealSettled: deal.dealSettled,
+      readyReleased: deal.readyReleased,
+    }, {
+      handContextId: deal.handContextId,
+      phase: deal.phase,
+      component: 'PLAYER_HAND',
+    });
+  }, [blocked357TimerAttempt, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, seconds]);
+
+  if (!eligibility.visible || blocked357TimerAttempt) return null;
 
   // ROOT-CAUSE FIX (helper-text clipping under timer):
   // The timer row's fixed height (`--hud-h-timer`) clips any text rendered

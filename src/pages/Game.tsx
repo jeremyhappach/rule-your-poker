@@ -182,6 +182,7 @@ import { logSessionEvent, logStatusChanged, logConfigDeadlineSet, logSessionDele
 import { traceMilestone, linkTraceToGame, startSpan } from "@/lib/traceHelpers";
 import { logDebugEvent } from "@/lib/debugEventLogger";
 import { shouldLogTurnTransition, isFreshMountForRound, logTurnTransitionSeed, logTurnTimerFirstRender, checkTimerRefill } from "@/lib/turnTransitionInstrumentation";
+import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 import { buildMetaPayload } from "@/lib/buildMeta";
 import { isSafetyPollingDisabled } from "@/lib/debugFlags";
 import { applyWithDebugTiming } from "@/lib/debugRaceHarness";
@@ -781,6 +782,7 @@ const Game = () => {
   const isPausedRef = useRef<boolean | undefined>(false); // Track pause state for timer interval
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Track timer interval for cleanup
   const [decisionDeadline, setDecisionDeadline] = useState<string | null>(null); // Server deadline for timer sync
+  const [dealTimerAllowed357, setDealTimerAllowed357] = useState<boolean>(false);
   // Per-deadline maxTime: captured from the first frame of a new deadline identity so
   // visuals always start full and scale to the actual configured timeout window,
   // independent of any stale game_defaults cache (memory or localStorage).
@@ -3178,6 +3180,27 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Server-driven timer countdown - uses ref for pause state to avoid dependency issues
   // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
+    const is357TimerBlocked =
+      game?.game_type === '3-5-7' ||
+      game?.game_type === '3-5-7-game' ||
+      game?.game_type === '357'
+        ? !dealTimerAllowed357
+        : false;
+    if (is357TimerBlocked) {
+      record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+        component: 'Game timer countdown',
+        decisionDeadline,
+        dealTimerAllowed357,
+      }, {
+        handContextId: null,
+        phase: null,
+        component: 'PLAYER_HAND',
+      });
+      decisionMaxTimeDeadlineRef.current = null;
+      setDecisionMaxTime(null);
+      setTimeLeft(null);
+      return;
+    }
     // Don't start timer if no deadline or game conditions prevent it
     if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || isAllDecisionsInFor(game, currentRound?.id)) {
       console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
@@ -3318,7 +3341,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         timerIntervalRef.current = null;
       }
     };
-  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id]);
+  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id, dealTimerAllowed357]);
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
@@ -11353,8 +11376,8 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               currentRound={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.roundNumber : (game.current_round ?? 0)) : 0}
               allDecisionsIn={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.players.every(p => p.decisionLocked || p.sittingOut || p.autoFold) : allDecisionsInForPresentation) : false}
               playerCards={renderRoundContext ? playerCardsForPresentation : []}
-              timeLeft={isInProgress ? timeLeft : (isAnteDecision ? anteTimeLeft : null)}
-              maxTime={isInProgress ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
+              timeLeft={isInProgress ? (is357GameType && !dealTimerAllowed357 ? null : timeLeft) : (isAnteDecision ? anteTimeLeft : null)}
+              maxTime={isInProgress && !(is357GameType && !dealTimerAllowed357) ? (decisionMaxTime ?? decisionTimerSeconds) : undefined}
               lastRoundResult={renderRoundContext ? (is357GameType && threeFiveSevenView ? threeFiveSevenView.lastRoundResult : ((game as any).last_round_result || null)) : null}
               dealerPosition={game.game_type === 'holm-game' && holmView ? holmView.dealerPosition : (is357GameType && threeFiveSevenView ? threeFiveSevenView.dealerPosition : game.dealer_position)}
               legValue={game.leg_value ?? 0}
@@ -11477,6 +11500,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
               pendingAutoRollOff={pendingAutoRollOff}
+              on357TimerAllowedChange={setDealTimerAllowed357}
               reAnteMessage={reAnteMessage}
             />
           );

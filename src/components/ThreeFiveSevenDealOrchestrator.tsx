@@ -48,6 +48,7 @@ import {
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
 import {
   record357CardOwnership,
+  record357DiagnosticViolation,
   type CardHiddenReason,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
 
@@ -423,6 +424,7 @@ export function Use357SelfHand<T>({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(currentPlayerId) ?? 0;
+  const settledCardIds = deal?.getSettledCardIdsForPlayer(currentPlayerId) ?? [];
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
@@ -448,10 +450,38 @@ export function Use357SelfHand<T>({
   // authoritative hand.
   const allowed = deal
     ? (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')
-      ? Math.min(settled, sourceCards.length)
+      ? settled
       : sourceCards.length
     : sourceCards.length;
-  const effectiveCards = sourceCards.slice(0, Math.min(allowed, sourceCards.length));
+  const resolvedCards: T[] = [];
+  const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
+  if (deal && (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')) {
+    for (let i = 0; i < allowed; i++) {
+      const card = sourceCards[i];
+      if (card) resolvedCards.push(card);
+      else unresolvedSelfCards.push({ intentId: settledCardIds[i] ?? null, cardId: settledCardIds[i] ?? null, claimedIndex: i });
+    }
+  } else {
+    resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));
+  }
+  const effectiveCards = resolvedCards;
+  useEffect(() => {
+    if (!deal?.handContextId || unresolvedSelfCards.length === 0) return;
+    const authoritativeHandIds = sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`);
+    unresolvedSelfCards.forEach((missing) => {
+      record357DiagnosticViolation('357_SELF_CARD_FACE_UNRESOLVED', {
+        ...missing,
+        playerId: currentPlayerId,
+        authoritativeHandIds,
+        dealPhase: phase,
+      }, {
+        handContextId: deal.handContextId,
+        phase,
+        component: 'SELF',
+        playerId: currentPlayerId,
+      });
+    });
+  }, [deal?.handContextId, unresolvedSelfCards.length, currentPlayerId, phase, sourceCards]);
   useEffect(() => {
     if (!deal?.handContextId || !currentPlayerId) return;
     dealDbgUpsertOwnership(deal.handContextId, currentPlayerId, {
@@ -570,7 +600,7 @@ export function ThreeFiveSevenDealRuntimeMaybe({
 }) {
   if (!handContextId) return <>{children}</>;
   return (
-    <DealRuntime key={handContextId} handContextId={handContextId}>
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="three-five-seven">
       {children}
     </DealRuntime>
   );

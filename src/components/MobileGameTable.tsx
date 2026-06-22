@@ -164,6 +164,7 @@ function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
+        gameType: deal.gameType,
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
@@ -189,6 +190,19 @@ function DealAwareShellTimerRail() {
 
   if (!eligibility.visible) return null;
   return <ShellTimerRail />;
+}
+
+function ThreeFiveSevenTimerGateReporter({
+  onAllowedChange,
+}: {
+  onAllowedChange?: (allowed: boolean) => void;
+}) {
+  const deal = useDealRuntime();
+  const allowed = deal ? deal.timerAllowed : true;
+  useEffect(() => {
+    onAllowedChange?.(allowed);
+  }, [allowed, onAllowedChange]);
+  return null;
 }
 
 function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGameKind | null {
@@ -482,6 +496,7 @@ interface MobileGameTableProps {
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
   // When true, auto-roll disable is deferred until end of current turn
   pendingAutoRollOff?: boolean;
+  on357TimerAllowedChange?: (allowed: boolean) => void;
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
@@ -690,6 +705,7 @@ export const MobileGameTable = ({
   reAnteMessage,
   onAutoFoldChange,
   pendingAutoRollOff = false,
+  on357TimerAllowedChange,
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
@@ -6005,6 +6021,7 @@ export const MobileGameTable = ({
 
 
   return <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
+    <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
         <ThreeFiveSevenDealOrchestrator
@@ -8395,7 +8412,7 @@ export const MobileGameTable = ({
                                       hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                                       gameType={gameType}
                                       currentRound={currentRound}
-                                      forceHiddenFaces={is357 && dealPhase === 'DEALING'}
+                                      forceHiddenFaces={false}
                                       showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
                                       tightOverlap={isHolmMultiPlayerShowdown}
                                       availableHeightPx={handAvailableHeightPx357}

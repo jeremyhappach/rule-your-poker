@@ -39,17 +39,20 @@ import { useCardTransportInternal } from './CardTransportProvider';
 
 interface DealContextValue {
   handContextId: string;
+  gameType: string | null;
   phase: DealPhase;
   expectedCount: number;
   settledCardIds: ReadonlySet<string>;
   dealSettled: boolean;
   readyReleased: boolean;
+  timerAllowed: boolean;
   isSettled: (cardId: string) => boolean;
   /**
    * Per-recipient settled count. Cumulative across waves within the
    * same hand — consumers clip visible card count to this directly.
    */
   getSettledCountForPlayer: (playerId: string) => number;
+  getSettledCardIdsForPlayer: (playerId: string) => string[];
   beginDeal: (expectedCount: number) => void;
   /**
    * Begin an additional wave of cards in the SAME hand without dropping
@@ -64,6 +67,7 @@ const DealContext = createContext<DealContextValue | null>(null);
 export interface DealRuntimeProps {
   /** Authoritative hand identity. Remount when this changes. */
   handContextId: string;
+  gameType?: string | null;
   children: ReactNode;
 }
 
@@ -71,11 +75,12 @@ export interface DealRuntimeProps {
  * Mount DealRuntime with a `key={handContextId}` from the host so a new
  * hand naturally resets state via remount.
  */
-export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
+export function DealRuntime({ handContextId, gameType = null, children }: DealRuntimeProps) {
   const [phase, setPhase] = useState<DealPhase>('PRE_DEAL');
   const [expectedCount, setExpectedCount] = useState(0);
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
   const [settledByRecipient, setSettledByRecipient] = useState<Map<string, number>>(() => new Map());
+  const [settledCardIdsByRecipient, setSettledCardIdsByRecipient] = useState<Map<string, string[]>>(() => new Map());
   const ctx = useCardTransportInternal();
   const activeIntentsForHand = useMemo(
     () => (ctx?.__activeIntents ?? []).filter((intent) => {
@@ -116,6 +121,12 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
           next.set(pid, (next.get(pid) ?? 0) + 1);
           return next;
         });
+        setSettledCardIdsByRecipient((prev) => {
+          const next = new Map(prev);
+          const list = next.get(pid) ?? [];
+          next.set(pid, list.includes(cardId) ? list : list.concat(cardId));
+          return next;
+        });
       }
     });
     return off;
@@ -125,6 +136,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     setExpectedCount(count);
     setSettledCardIds(new Set());
     setSettledByRecipient(new Map());
+    setSettledCardIdsByRecipient(new Map());
     setPhase('DEALING');
     dealDbgUpsert(handContextId, {
       phase: 'DEALING',
@@ -178,21 +190,29 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     [settledByRecipient],
   );
 
+  const getSettledCardIdsForPlayer = useCallback(
+    (playerId: string) => settledCardIdsByRecipient.get(playerId) ?? [],
+    [settledCardIdsByRecipient],
+  );
+
   const value = useMemo<DealContextValue>(
     () => ({
       handContextId,
+      gameType,
       phase,
       expectedCount,
       settledCardIds,
       dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
       readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
+      timerAllowed: gameType !== 'three-five-seven' || (phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0),
       isSettled,
       getSettledCountForPlayer,
+      getSettledCardIdsForPlayer,
       beginDeal,
       beginWave,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
