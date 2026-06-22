@@ -20,6 +20,7 @@ import {
 } from 'react';
 import type { CardTransportIntent } from './types';
 import { describeCardEndpoint } from './types';
+import { cardTransportDbgUpsert } from './cardTransportDbg';
 
 export interface ActiveCardIntent extends CardTransportIntent {
   enqueueSeq: number;
@@ -74,13 +75,25 @@ export function CardTransportProvider({
     (intent: CardTransportIntent, opts?: CardDispatchOptions): boolean => {
       if (!intent || !intent.id) return false;
       if (seenRef.current.has(intent.id)) return false;
+      const now = performance.now();
       seenRef.current.add(intent.id);
       intentByIdRef.current.set(intent.id, intent);
       const enqueueSeq = ++seqRef.current;
       if (opts?.onSettled) onSettledMapRef.current.set(intent.id, opts.onSettled);
+      cardTransportDbgUpsert(intent.id, {
+        cardId: intent.cardId,
+        face: intent.face,
+        from: intent.from,
+        to: intent.to,
+        handContextId: intent.handContextId ?? null,
+        providerReceivedAt: now,
+        activeIntentVisibleAt: now,
+        lifecycleState: 'active_visible',
+        droppedReason: null,
+      });
       setActiveIntents((prev) => [
         ...prev,
-        { ...intent, enqueueSeq, enqueuedAt: performance.now() },
+        { ...intent, enqueueSeq, enqueuedAt: now },
       ]);
       return true;
     },
@@ -144,6 +157,13 @@ export function CardTransportProvider({
     //      node is destroyed. Eliminates the inter-mount paint gap that
     //      caused card-0 r1 flash and inter-round disappearances.
     fireCallbacks(intentId, cardId);
+    cardTransportDbgUpsert(intentId, {
+      cardId,
+      settled: true,
+      markSettledAt: performance.now(),
+      markSettledSource: 'flight_complete',
+      lifecycleState: 'settled',
+    });
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
@@ -165,6 +185,15 @@ export function CardTransportProvider({
           `reason=${reason}`,
       );
       // Honor settle waiters so deal phase never hangs.
+      cardTransportDbgUpsert(intent.id, {
+        cardId: intent.cardId,
+        droppedAt: performance.now(),
+        droppedReason: reason,
+        settled: true,
+        markSettledAt: performance.now(),
+        markSettledSource: 'dropped',
+        lifecycleState: 'dropped',
+      });
       fireCallbacks(intent.id, intent.cardId);
     },
     [fireCallbacks],
