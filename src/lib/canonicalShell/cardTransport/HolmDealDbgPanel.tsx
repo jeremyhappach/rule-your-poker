@@ -333,6 +333,10 @@ export function HolmDealDbgPanel() {
         visibleDomCards: visibleCount,
       });
 
+      // WAR-TIME forensics tick (community / chucky / ownership +
+      // timeline events + violation detection). Pure instrumentation.
+      try { holmWartimeTick(); } catch { /* noop */ }
+
       // keep panel-side meta fresh too
       void handCtx;
       raf = window.requestAnimationFrame(loop);
