@@ -9,6 +9,7 @@ import {
   recordThreeFiveSevenTimerOwner,
   unregisterThreeFiveSevenTimerOwner,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
+import { record357DiagnosticViolation } from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
@@ -37,6 +38,7 @@ export const MobilePlayerTimer = ({
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
+        gameType: 'three-five-seven',
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
@@ -45,6 +47,7 @@ export const MobilePlayerTimer = ({
     : { visible: isActive, running: isActive && timeLeft !== null && timeLeft > 0 };
   const effectiveIsActive = eligibility.visible && isActive;
   const effectiveTimeLeft = eligibility.running ? timeLeft : null;
+  const blocked357TimerAttempt = !!deal && !deal.timerAllowed && !!isActive && timeLeft !== null && timeLeft > 0;
 
   // ── DIAGNOSTIC: timer remount audit ─────────────────────────────
   const instanceIdRef = useRef<number>(0);
@@ -162,6 +165,25 @@ export const MobilePlayerTimer = ({
     });
   }, [timerOwnerId, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, effectiveIsActive, effectiveTimeLeft, isActive, timeLeft]);
   useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
+
+  useEffect(() => {
+    if (!blocked357TimerAttempt || !deal) return;
+    record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+      component: 'MobilePlayerTimer',
+      attemptedTimeLeft: timeLeft,
+      dealPhase: deal.phase,
+      dealSettled: deal.dealSettled,
+      readyReleased: deal.readyReleased,
+    }, {
+      handContextId: deal.handContextId,
+      phase: deal.phase,
+      component: 'PLAYER_HAND',
+    });
+  }, [blocked357TimerAttempt, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, timeLeft]);
+
+  if (blocked357TimerAttempt || (!!deal && !deal.timerAllowed)) {
+    return <>{children}</>;
+  }
 
   return (
     <div 
