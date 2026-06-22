@@ -8718,6 +8718,7 @@ export const MobileGameTable = ({
                       handContextId={handContextId ?? null}
                       soloDeclared={!!isSoloVsChucky}
                       phase={chuckyVisible ? (cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
+                      caller="MobileGameTable.lonePlayerTabledCardsStage"
                     />
                     <HolmLonePlayerFan
                       sortedCards={sortedCards}
