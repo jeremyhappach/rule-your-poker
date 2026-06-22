@@ -7906,6 +7906,14 @@ export const MobileGameTable = ({
                     artifactId="holm.lonePlayerTabledCardsStage"
                     zIndex={20}
                   >
+                    <HolmSoloRootRegistrar
+                      root="TABLED_SELF"
+                      mounted={true}
+                      cardIds={loneSoloCards.map((c) => `${c.rank}${c.suit}`)}
+                      handContextId={handContextId ?? null}
+                      soloDeclared={!!isSoloVsChucky}
+                      phase={chuckyVisible ? (cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
+                    />
                     <HolmLonePlayerFan
                       sortedCards={sortedCards}
                       isSoloPlayerWinner={isSoloPlayerWinner}
