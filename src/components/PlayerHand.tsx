@@ -502,8 +502,8 @@ export const PlayerHand = ({
 
 
   // Render card backs for hidden cards
-  if (isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
-    const count = isHidden ? displayCardCount : expectedCardCount!;
+  if (forceHiddenFaces || isHidden || (cards.length === 0 && expectedCardCount && expectedCardCount > 0)) {
+    const count = forceHiddenFaces || isHidden ? displayCardCount : expectedCardCount!;
     
     
     // For 3-5-7 games with multiple cards, use fanned arc layout
