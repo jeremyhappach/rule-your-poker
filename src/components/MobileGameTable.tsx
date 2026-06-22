@@ -4804,7 +4804,7 @@ export const MobileGameTable = ({
       });
       setCachedChuckyCards(null);
       setCachedChuckyActive(false);
-      setCachedChuckyCardsRevealed(0);
+      setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.handContextChanged', reason: 'handContextId changed (stale cache clear)' });
       chuckyTargetRevealedRef.current = 0;
       cachedChuckyHandContextRef.current = null;
       return;
