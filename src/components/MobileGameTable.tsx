@@ -5134,6 +5134,19 @@ export const MobileGameTable = ({
     };
     step('EFFECT_BODY_ENTER', { changedDeps: oldDeps ? Object.keys(changed) : null });
 
+    recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
+      instanceId,
+      effectId,
+      effectInstance,
+      mountAt,
+      cleanupAt: null,
+      reason: 'MOUNT',
+      renderSeqAtMount: enterRenderSeq,
+      renderSeqAtCleanup: null,
+      timeoutId: null,
+      firedBeforeCleanup: null,
+    }, handContextId ?? null);
+
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
       instanceId,
       effectId,
