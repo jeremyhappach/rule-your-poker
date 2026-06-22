@@ -2417,6 +2417,7 @@ export const MobileGameTable = ({
         const handCtx = cachedChuckyHandContextRef.current ?? handContextIdRef.current ?? null;
         if (resolved !== prev) {
           recordHolmTimelineEvent('CHUCKY_REVEALED_STATE_CHANGED', {
+            instanceId: chuckyInstanceIdRef.current,
             oldValue: prev,
             newValue: resolved,
             source: writerMeta?.writer ?? 'unknown',
