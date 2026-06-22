@@ -8755,6 +8755,7 @@ export const MobileGameTable = ({
                       handContextId={handContextId ?? null}
                       soloDeclared={!!isSoloVsChucky}
                       phase={chuckyVisible ? 'CHUCKY_REVEAL' : 'GAMEPLAY'}
+                      caller="MobileGameTable.communityCardsStage"
                     />
                     {/*
                       Holm canonical deal ownership cutover:
