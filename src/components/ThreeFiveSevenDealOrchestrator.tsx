@@ -450,7 +450,7 @@ export function Use357SelfHand<T>({
   // authoritative hand.
   const allowed = deal
     ? (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')
-      ? Math.min(settled, sourceCards.length)
+      ? settled
       : sourceCards.length
     : sourceCards.length;
   const resolvedCards: T[] = [];
