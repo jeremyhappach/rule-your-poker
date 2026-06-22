@@ -4921,12 +4921,36 @@ export const MobileGameTable = ({
       return;
     }
     
-    // Cache Chucky data when it's available AND track which hand it belongs to
-    if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
+    // Cache Chucky data when it's available AND track which hand it belongs to.
+    // GUARD: require non-null handContextId — never cache without authoritative
+    // hand identity (prevents stale renders after hand completes).
+    if (chuckyActive && chuckyCards && chuckyCards.length > 0 && handContextId !== null) {
       if (cachedChuckyHandContextRef.current === null || cachedChuckyHandContextRef.current === handContextId) {
-        // CALLGRAPH: every call to setCachedChuckyCards from this branch creates a
-        // BRAND NEW array reference (`[...chuckyCards]`). If this fires every render
-        // it directly causes cachedChuckyCards identity to churn → stepper re-arm loop.
+        // IDENTITY-PRESERVING WRITE: bail out early if incoming chuckyCards have
+        // identical contents AND belong to the same handContextId as what we've
+        // already cached. Without this, every parent render produces a new
+        // `chuckyCards` array reference → this effect re-runs →
+        // `setCachedChuckyCards([...chuckyCards])` churns the cached identity →
+        // the reveal stepper re-arms and its cleanup clears the pending timeout
+        // BEFORE it fires.
+        const incomingHash = chuckyCards.map((c: any) => `${c?.rank}${c?.suit}`).join('|');
+        const cachedHash = cachedChuckyCards ? cachedChuckyCards.map((c: any) => `${c?.rank}${c?.suit}`).join('|') : '';
+        const sameContents =
+          cachedChuckyCards != null &&
+          cachedChuckyCards.length === chuckyCards.length &&
+          incomingHash === cachedHash;
+        const sameHand = cachedChuckyHandContextRef.current === handContextId;
+
+        if (sameContents && sameHand) {
+          // No-op: preserve cached array identity so the reveal stepper effect
+          // stays stable. Still advance the monotonic target.
+          const newTarget = chuckyCardsRevealed || 0;
+          if (newTarget > chuckyTargetRevealedRef.current) {
+            chuckyTargetRevealedRef.current = newTarget;
+          }
+          return;
+        }
+
         recordHolmTimelineEvent('CHUCKY_CACHE_SET_CARDS', {
           renderSeq: chuckyRenderSeqRef.current,
           instanceId: chuckyInstanceIdRef.current,
@@ -4934,12 +4958,13 @@ export const MobileGameTable = ({
           chuckyCardsLen: chuckyCards.length,
           alreadyCachedLen: cachedChuckyCards?.length ?? 0,
           willCreateNewArrayIdentity: true,
+          sameContents,
+          sameHand,
           handContextId: handContextId ?? null,
         }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards], { writer: 'cacheEffect.cachePath', reason: 'chuckyActive && cards available' });
         setCachedChuckyActive(true);
-        // Update TARGET only (monotonic). Rendered count is advanced by the stepper.
         const newTarget = chuckyCardsRevealed || 0;
         if (newTarget > chuckyTargetRevealedRef.current) {
           chuckyTargetRevealedRef.current = newTarget;
@@ -4952,7 +4977,19 @@ export const MobileGameTable = ({
         });
       }
     }
-  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase]);
+
+    // GUARD: clear cachedChuckyActive once handContextId clears, UNLESS we are
+    // still actively rendering the final reveal sequence (revealed < total).
+    // Without this, cachedChuckyActive stays true after hand resolution and the
+    // cache effect keeps re-running on every render.
+    if (
+      cachedChuckyActive &&
+      handContextId === null &&
+      (!cachedChuckyCards || cachedChuckyCardsRevealed >= cachedChuckyCards.length)
+    ) {
+      setCachedChuckyActive(false);
+    }
+  }, [gameType, gameStatus, chuckyActive, chuckyCards, chuckyCardsRevealed, awaitingNextRound, lastRoundResult, cachedChuckyCards, handContextId, isDealerConfigPhase, cachedChuckyActive, cachedChuckyCardsRevealed]);
 
   // Chucky reveal BARRIER: hold all reveals until every chucky card has
   // settled (DealRuntime enters GAMEPLAY → markHolmHandReady). Once the
