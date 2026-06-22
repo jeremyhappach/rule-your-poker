@@ -5222,6 +5222,8 @@ export const MobileGameTable = ({
 
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
+    const STEPPER_DELAY_MS = 250;
+    const STEPPER_DELAY_SOURCE: 'hardcoded' | 'gameDefaults' | 'fallback' = 'hardcoded';
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
       effectId,
@@ -5230,10 +5232,17 @@ export const MobileGameTable = ({
       mountAt,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
-      delay: 250,
+      delay: STEPPER_DELAY_MS,
       prev: cachedChuckyCardsRevealed,
       total,
     }, handContextId ?? null);
+    recordChuckyRevealTimerArm({
+      handContextId: handContextId ?? null,
+      delayMs: STEPPER_DELAY_MS,
+      index: cachedChuckyCardsRevealed,
+      total,
+      delaySource: STEPPER_DELAY_SOURCE,
+    });
     step('setTimeout(armed)', { timeoutId: timeoutSeq });
 
     const t = setTimeout(() => {
@@ -5259,6 +5268,13 @@ export const MobileGameTable = ({
         cachedChuckyActive,
         chuckyBarrierOpen,
       }, handContextId ?? null);
+      recordChuckyRevealStep({
+        handContextId: handContextId ?? null,
+        index: cachedChuckyCardsRevealed,
+        total,
+        actualDelayUsedMs: STEPPER_DELAY_MS,
+        source: STEPPER_DELAY_SOURCE,
+      });
       recordChuckyVisualTrigger({
         handContextId: handContextId ?? null,
         source: 'stepper.fire',
@@ -5275,7 +5291,8 @@ export const MobileGameTable = ({
         (prev) => (prev < total ? prev + 1 : prev),
         { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
       );
-    }, 250);
+    }, STEPPER_DELAY_MS);
+
 
     return () => {
       clearTimeout(t);
