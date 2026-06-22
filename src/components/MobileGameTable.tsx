@@ -5131,6 +5131,9 @@ export const MobileGameTable = ({
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
         instanceId,
         effectInstance,
+        armedAtRenderSeq: enterRenderSeq,
+        cleanupAtRenderSeq: chuckyRenderSeqRef.current,
+        rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         firedBeforeCleanup: fired,
@@ -5139,6 +5142,17 @@ export const MobileGameTable = ({
         changedDeps: diff,
         oldDeps: newDeps,
         newDeps: nextSnapshot,
+      }, handContextId ?? null);
+      // CALLGRAPH SUMMARY: ordered synchronous step list for this effect run.
+      recordHolmTimelineEvent('CHUCKY_EFFECT_CALLGRAPH', {
+        instanceId,
+        effectInstance,
+        armedAtRenderSeq: enterRenderSeq,
+        cleanupAtRenderSeq: chuckyRenderSeqRef.current,
+        rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
+        firedBeforeCleanup: fired,
+        cleanupReason,
+        trail: callgraph,
       }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
         handContextId: handContextId ?? null,
