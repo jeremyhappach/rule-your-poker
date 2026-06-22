@@ -7996,6 +7996,14 @@ export const MobileGameTable = ({
                   artifactId="holm.chuckyStage"
                   zIndex={10}
                 >
+                  <HolmSoloRootRegistrar
+                    root="CHUCKY_TABLED"
+                    mounted={true}
+                    cardIds={(cachedChuckyCards ?? []).map((c) => `${c.rank}${c.suit}`)}
+                    handContextId={handContextId ?? null}
+                    soloDeclared={!!isSoloVsChucky}
+                    phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                  />
                   <div
                     className={cn(
                       "flex items-center",
