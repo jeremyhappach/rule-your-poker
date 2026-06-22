@@ -597,8 +597,8 @@ export function ThreeFiveSevenForensicsPanel() {
 
   const snap = lastSnapshot;
   const aBad = snap && snap.phase === 'DEALING' && snap.enterGameplayCalled;
-  const bBadRunning = snap && snap.phase === 'DEALING' && snap.runningTimerCount > 0;
-  const bBadVisible = snap && snap.phase === 'DEALING' && snap.visibleTimerCount > 0;
+  const bBadRunning = snap && snap.timers.some((t) => t.running && t.phase === 'DEALING');
+  const bBadVisible = false;
   const cBadDom = snap && (snap.selfHand.effectiveLength ?? 0) > snap.selfHand.actualRenderedDomCount;
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '0 2px' };
@@ -741,16 +741,20 @@ export function ThreeFiveSevenForensicsPanel() {
                   <Row label="mountedTimerCount" value={String(snap.mountedTimerCount)} bad={snap.mountedTimerCount > 1} />
                   <Row label="runningTimerCount" value={String(snap.runningTimerCount)} bad={!!bBadRunning} />
                   <Row label="visibleTimerCount" value={String(snap.visibleTimerCount)} bad={!!bBadVisible} />
-                  {(bBadRunning || bBadVisible) ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ phase=DEALING but timer is running/visible</div> : null}
-                  <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>per-timer inventory</div>
-                  {snap.timers.length === 0 ? <div style={{ opacity: 0.6 }}>(no timer DOM)</div> : snap.timers.map((t, i) => (
-                    <div key={i} style={{ borderTop: '1px dashed #2a2a2a', padding: '2px 0' }}>
-                      <div style={{ color: t.visible ? '#7CFC00' : '#9fb3c8' }}>{t.selector} <span style={{ opacity: 0.7 }}>({t.tag})</span></div>
-                      <div>mounted={String(t.mounted)} visible={String(t.visible)} paused={t.attrs['data-shell-timer-paused'] ?? '—'}</div>
-                      <div>rect={t.rect ? `${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}` : '—'}</div>
-                      <div style={{ opacity: 0.75 }}>parent={t.parent || '∅'}</div>
+                  {bBadRunning ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ timer owner running=true AND phase=DEALING</div> : null}
+                  <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>ALL TIMER OWNERS</div>
+                  {snap.timers.length === 0 ? <div style={{ opacity: 0.6 }}>(no mounted timer owners)</div> : snap.timers.map((t, i) => {
+                    const bad = t.running && t.phase === 'DEALING';
+                    return (
+                    <div key={i} style={{ borderTop: '1px dashed #2a2a2a', padding: '2px 0', background: bad ? 'rgba(255,0,0,0.18)' : undefined }}>
+                      <div style={{ color: bad ? '#ff6b6b' : t.running ? '#7CFC00' : '#9fb3c8', fontWeight: 700 }}>{t.componentName} <span style={{ opacity: 0.7 }}>id={t.ownerId}</span></div>
+                      <div>gameType={t.gameType ?? '∅'} handContextId={t.handContextId ?? '∅'}</div>
+                      <div>waveContextId={t.waveContextId ?? '∅'} dealRuntimeId={t.dealRuntimeId ?? '∅'}</div>
+                      <div>phase={t.phase} visible={String(t.visible)} running={String(t.running)} timeLeft={t.timeLeft ?? '—'}</div>
+                      <div>usesDealRuntime={String(t.usesDealRuntime)} reactKey={t.reactKey ?? '∅'} renderCount={t.renderCount}</div>
+                      <div style={{ opacity: 0.75 }}>source={t.selector} rect={t.rect ? `${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}` : '—'} parent={t.parent || '∅'}</div>
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
 
