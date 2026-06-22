@@ -167,6 +167,60 @@ import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibil
 const CANONICAL_SHELL_VISUAL_ENABLED =
   import.meta.env.VITE_CANONICAL_SHELL_VISUAL !== 'off';
 
+/**
+ * HolmOpponentCardBackSlot — slot DOM always exists; the actual
+ * CanonicalCardBack content only renders once DealRuntime has settled
+ * the cardId. This prevents the cardBacks renderer from bypassing the
+ * canonical deal animation by mounting all opponent cards in a single
+ * React commit (which made domMountAt == firstVisibleAt < settleAt).
+ */
+function HolmOpponentCardBackSlot({
+  index,
+  cardId,
+  cardCount,
+  hasFolded,
+}: {
+  index: number;
+  cardId: string;
+  cardCount: number;
+  hasFolded: boolean;
+}) {
+  const deal = useDealRuntime();
+  const settled = deal ? deal.isSettled(cardId) : true;
+  const slotStyle: React.CSSProperties = {
+    width: 12,
+    height: 20,
+    marginLeft: index > 0 ? '-5px' : '0',
+    zIndex: cardCount - index,
+    animationDelay: hasFolded ? `${index * 0.05}s` : '0s',
+  };
+  if (!settled) {
+    return (
+      <div
+        data-holm-card-id={cardId}
+        data-holm-renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
+        data-holm-component="OPPONENT"
+        data-holm-slot-pending="1"
+        style={slotStyle}
+        aria-hidden="true"
+      />
+    );
+  }
+  return (
+    <CanonicalCardBack
+      widthPx={12}
+      heightPx={20}
+      variant="flat"
+      dataAttrs={{
+        'data-holm-card-id': cardId,
+        'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
+        'data-holm-component': 'OPPONENT',
+      }}
+      style={slotStyle}
+    />
+  );
+}
+
 function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
   const eligibility = deal
@@ -5317,25 +5371,19 @@ export const MobileGameTable = ({
     ) : (
       !shouldHideForTabling && showCardBacks && cardCountToShow > 0 && (
         <div className={cn('flex', hasFolded && 'animate-[foldCards_1.5s_ease-out_forwards]')}>
-          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
-            <CanonicalCardBack
-              key={i}
-              widthPx={12}
-              heightPx={20}
-              variant="flat"
-              dataAttrs={{
-                'data-holm-card-id': holmDealCardIdsForPlayer[i] ?? `${handContextId ?? 'no-hand'}#opp-${player.id}-${i}`,
-                'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
-                'data-holm-component': 'OPPONENT',
-              }}
-
-              style={{
-                marginLeft: i > 0 ? '-5px' : '0',
-                zIndex: cardCountToShow - i,
-                animationDelay: hasFolded ? `${i * 0.05}s` : '0s',
-              }}
-            />
-          ))}
+          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => {
+            const cardId =
+              holmDealCardIdsForPlayer[i] ?? `${handContextId ?? 'no-hand'}#opp-${player.id}-${i}`;
+            return (
+              <HolmOpponentCardBackSlot
+                key={i}
+                index={i}
+                cardId={cardId}
+                cardCount={cardCountToShow}
+                hasFolded={hasFolded}
+              />
+            );
+          })}
         </div>
       )
     );
