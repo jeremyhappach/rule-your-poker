@@ -496,6 +496,7 @@ interface MobileGameTableProps {
   onAutoFoldChange?: (playerId: string, autoFold: boolean) => void;
   // When true, auto-roll disable is deferred until end of current turn
   pendingAutoRollOff?: boolean;
+  on357TimerAllowedChange?: (allowed: boolean) => void;
   // High card dealer selection props
   dealerSelectionCards?: { playerId: string; position: number; card: { suit: string; rank: string }; isRevealed: boolean; isWinner: boolean; isDimmed: boolean; roundNumber: number }[];
   dealerSelectionAnnouncement?: string | null;
@@ -704,6 +705,7 @@ export const MobileGameTable = ({
   reAnteMessage,
   onAutoFoldChange,
   pendingAutoRollOff = false,
+  on357TimerAllowedChange,
   dealerSelectionCards = [],
   dealerSelectionAnnouncement,
   dealerSelectionWinnerPosition,
