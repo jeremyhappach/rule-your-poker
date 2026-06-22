@@ -62,7 +62,7 @@ export interface ChuckyVisualTriggerSnapshot {
 }
 
 export function recordChuckyVisualTrigger(s: ChuckyVisualTriggerSnapshot): void {
-  recordHolmTimelineEvent('CHUCKY_VISUAL_TRIGGER', s, s.handContextId ?? null);
+  recordHolmTimelineEvent('CHUCKY_VISUAL_TRIGGER', { ...s }, s.handContextId ?? null);
 }
 
 export function captureStack(skip = 1): string | null {
