@@ -44,7 +44,7 @@ interface CardTransportContextValue {
   /** Subscribe to settle events with full intent metadata. */
   onCardSettledIntent: (handler: (intent: CardTransportIntent) => void) => () => void;
   __activeIntents: ActiveCardIntent[];
-  __markSettled: (intentId: string, cardId: string) => void;
+  __markSettled: (intentId: string, cardId: string, source?: string) => void;
   __markDropped: (intent: CardTransportIntent, reason: string) => void;
   gameId?: string | null;
   gameType?: string | null;
@@ -145,7 +145,7 @@ export function CardTransportProvider({
     intentByIdRef.current.delete(intentId);
   }, []);
 
-  const markSettled = useCallback((intentId: string, cardId: string) => {
+  const markSettled = useCallback((intentId: string, cardId: string, source = 'flight_complete') => {
     // PRESENTATION-LAYER CONTRACT (357 deal forensics fix):
     //   1. Fire ownership callbacks FIRST. This bumps DealRuntime's
     //      `settledByRecipient`, causing the destination consumer
@@ -161,7 +161,7 @@ export function CardTransportProvider({
       cardId,
       settled: true,
       markSettledAt: performance.now(),
-      markSettledSource: 'flight_complete',
+      markSettledSource: source,
       lifecycleState: 'settled',
     });
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -177,6 +177,7 @@ export function CardTransportProvider({
 
   const markDropped = useCallback(
     (intent: CardTransportIntent, reason: string) => {
+      const now = performance.now();
       setActiveIntents((prev) => prev.filter((i) => i.id !== intent.id));
       // eslint-disable-next-line no-console
       console.warn(
@@ -187,10 +188,10 @@ export function CardTransportProvider({
       // Honor settle waiters so deal phase never hangs.
       cardTransportDbgUpsert(intent.id, {
         cardId: intent.cardId,
-        droppedAt: performance.now(),
+        droppedAt: now,
         droppedReason: reason,
         settled: true,
-        markSettledAt: performance.now(),
+        markSettledAt: now,
         markSettledSource: 'dropped',
         lifecycleState: 'dropped',
       });
