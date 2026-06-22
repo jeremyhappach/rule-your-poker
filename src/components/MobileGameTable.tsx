@@ -8605,6 +8605,7 @@ export const MobileGameTable = ({
                                 }) => {
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
+                                  const isHolmStaged = gameType === 'holm-game' && dealPhase !== 'GAMEPLAY';
                                   // 357 HARD CONTRACT: during the staged
                                   // deal, the self hand is the EXACT set
                                   // of transport-claimed cards. No
@@ -8614,9 +8615,9 @@ export const MobileGameTable = ({
                                   return (
                                     <PlayerHand
                                       cards={effectiveCards}
-                                      isHidden={is357Staged ? false : effectiveCards.length === 0}
+                                      isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
                                       expectedCardCount={
-                                        is357Staged
+                                        is357Staged || isHolmStaged
                                           ? undefined
                                           : (effectiveCards.length === 0
                                             ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7))
