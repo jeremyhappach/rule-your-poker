@@ -41,7 +41,7 @@ export interface SoloStateSnapshot {
 }
 
 export function recordSoloStateChange(snapshot: SoloStateSnapshot): void {
-  recordHolmTimelineEvent('SOLO_STATE_CHANGED', snapshot, snapshot.handContextId ?? null);
+  recordHolmTimelineEvent('SOLO_STATE_CHANGED', { ...snapshot }, snapshot.handContextId ?? null);
 }
 
 export interface ChuckyVisualTriggerSnapshot {
