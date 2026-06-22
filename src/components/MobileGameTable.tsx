@@ -158,6 +158,7 @@ import { ShellHudGrid } from "@/lib/canonicalShell/ShellHudGrid";
 import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
+import { HolmOwnershipBeacon } from "@/lib/canonicalShell/cardTransport/HolmOwnershipBeacon";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
