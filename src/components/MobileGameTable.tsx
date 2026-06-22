@@ -4717,11 +4717,42 @@ export const MobileGameTable = ({
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
     chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
+    const schedStack = captureStack();
+    recordChuckyVisualTrigger({
+      handContextId: handContextId ?? null,
+      source: 'stepper.schedule',
+      callsite: 'MobileGameTable:4720 setTimeout(setCachedChuckyCardsRevealed)',
+      stack: schedStack,
+      prevRevealed: cachedChuckyCardsRevealed,
+      nextRevealed: cachedChuckyCardsRevealed + 1,
+      total,
+      cachedChuckyCardsRevealed,
+      chuckyBarrierOpen,
+      revealSchedulerState: 'scheduled',
+      extra: {
+        chuckyCardsRevealedServer: chuckyCardsRevealed,
+        cachedChuckyActive,
+        chuckyActive: !!chuckyActive,
+        isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
+      },
+    });
     const t = setTimeout(() => {
+      recordChuckyVisualTrigger({
+        handContextId: handContextId ?? null,
+        source: 'stepper.fire',
+        callsite: 'MobileGameTable:4721 setCachedChuckyCardsRevealed(prev=>prev+1)',
+        stack: captureStack(),
+        prevRevealed: cachedChuckyCardsRevealed,
+        nextRevealed: cachedChuckyCardsRevealed + 1,
+        total,
+        cachedChuckyCardsRevealed,
+        chuckyBarrierOpen,
+        revealSchedulerState: 'fired',
+      });
       setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
     }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive]);
 
 
 
