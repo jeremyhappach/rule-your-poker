@@ -5003,9 +5003,55 @@ export const MobileGameTable = ({
   //   CASE A (remount): MOUNT#1→ARM→UNMOUNT→MOUNT#2→ARM
   //   CASE B (effect re-run): MOUNT#1→ARM→CLEANUP→ARM→CLEANUP→ARM
   const chuckyEffectInstanceRef = useRef(0);
+  const chuckyEffectIdRef = useRef(0);
+  const chuckyComponentUnmountingRef = useRef(false);
+  const chuckyLatestRevealDepsRef = useRef<Record<string, unknown> | null>(null);
+  const chuckyRevealDepSnapshot: Record<string, unknown> = {
+    cachedChuckyCardsRef: __chuckyAuditRefId(cachedChuckyCards),
+    cachedChuckyCardsContentsHash: __chuckyAuditCardsHash(cachedChuckyCards),
+    cachedChuckyCardsRevealed,
+    cachedChuckyActive,
+    cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+    handContextId: handContextId ?? null,
+    phase: roundStatus ?? null,
+    announcementShowing: !!isShowingAnnouncement,
+    soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+    gameType,
+    chuckyCardsRevealed,
+    chuckyBarrierOpen,
+    cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
+    isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+    chuckyActive: !!chuckyActive,
+  };
+  chuckyLatestRevealDepsRef.current = chuckyRevealDepSnapshot;
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    recordHolmTimelineEvent('CHUCKY_RENDER_TREE', {
+      instanceId: chuckyInstanceIdRef.current,
+      renderSeq: chuckyRenderSeqRef.current,
+      mounted: true,
+      owners: {
+        chuckyStage: cachedChuckyActive && cachedChuckyCards && cachedChuckyCards.length > 0 ? 'MobileGameTable.holmChuckyStage' : null,
+        cachedChuckyCards: 'MobileGameTable.useState(cachedChuckyCards)',
+        cachedChuckyCardsRevealed: 'MobileGameTable.useState(cachedChuckyCardsRevealed)',
+        revealEffect: 'MobileGameTable.ChuckyRevealStepperEffect',
+      },
+      cachedChuckyCardsRef: __chuckyAuditRefId(cachedChuckyCards),
+      cachedChuckyCardsContentsHash: __chuckyAuditCardsHash(cachedChuckyCards),
+      cachedChuckyCardsCount: cachedChuckyCards?.length ?? 0,
+      cachedChuckyCardsRevealed,
+      cachedChuckyActive,
+      handContextId: handContextId ?? null,
+      cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
+      phase: roundStatus ?? null,
+      announcementShowing: !!isShowingAnnouncement,
+      soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+    }, handContextId ?? null);
+  });
   // Component MOUNT / UNMOUNT (per MobileGameTable instance).
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    chuckyComponentUnmountingRef.current = false;
     const instanceId = chuckyInstanceIdRef.current;
     recordHolmTimelineEvent('CHUCKY_COMPONENT_MOUNT', {
       instanceId,
@@ -5014,10 +5060,29 @@ export const MobileGameTable = ({
       cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
     }, handContextIdRef.current ?? null);
     return () => {
+      chuckyComponentUnmountingRef.current = true;
+      const componentStack = captureStack();
+      const ownerStack = __chuckyAuditOwnerStack();
       recordHolmTimelineEvent('CHUCKY_COMPONENT_UNMOUNT', {
         instanceId,
         handContextId: handContextIdRef.current ?? null,
         cachedChuckyCardsRevealed: lastChuckyRevealedRef.current,
+        componentStack,
+        ownerStack,
+      }, handContextIdRef.current ?? null);
+      recordHolmTimelineEvent('CHUCKY_RENDER_TREE', {
+        instanceId,
+        renderSeq: chuckyRenderSeqRef.current,
+        mounted: false,
+        owners: {
+          chuckyStage: null,
+          cachedChuckyCards: 'MobileGameTable.useState(cachedChuckyCards)',
+          cachedChuckyCardsRevealed: 'MobileGameTable.useState(cachedChuckyCardsRevealed)',
+          revealEffect: 'MobileGameTable.ChuckyRevealStepperEffect',
+        },
+        why: 'MobileGameTable component unmount cleanup',
+        componentStack,
+        ownerStack,
       }, handContextIdRef.current ?? null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
