@@ -56,6 +56,7 @@ const MAX_TRANSITIONS = 500;
 let timerOwnersSnapshot: ForensicsTimerOwner[] = [];
 let mountedTimerOwnersSnapshot: ForensicsTimerOwner[] = [];
 let handRendersSnapshot: ForensicsHandRender[] = [];
+let transitionsSnapshot: ForensicsRenderTransition[] = [];
 let dirty = true;
 
 function now(): number { return typeof performance !== 'undefined' ? performance.now() : Date.now(); }
@@ -65,6 +66,7 @@ function refreshSnapshots(): void {
   timerOwnersSnapshot = Array.from(timerOwners.values()).sort((a, b) => a.mountedAt - b.mountedAt);
   mountedTimerOwnersSnapshot = timerOwnersSnapshot.filter((o) => o.mounted);
   handRendersSnapshot = Array.from(handRenders.values()).sort((a, b) => a.mountedAt - b.mountedAt);
+  transitionsSnapshot = transitions.slice();
   dirty = false;
 }
 function pushTransition(component: string, event: ForensicsRenderTransition['event'], oldValue: unknown, newValue: unknown): void {
@@ -93,7 +95,8 @@ export function getThreeFiveSevenHandRenders(): ForensicsHandRender[] {
 }
 
 export function getThreeFiveSevenRenderTransitions(): ForensicsRenderTransition[] {
-  return transitions;
+  refreshSnapshots();
+  return transitionsSnapshot;
 }
 
 export function recordThreeFiveSevenTimerOwner(
