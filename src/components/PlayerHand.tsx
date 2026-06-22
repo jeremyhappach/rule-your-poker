@@ -406,7 +406,7 @@ export const PlayerHand = ({
     const angleStep = count > 1 ? arcSpread / (count - 1) : 0;
     
     return (
-      <div className="flex justify-center relative" style={{ minHeight: '60px' }}>
+      <div className="flex justify-center relative" ref={is357Game ? measureRef : undefined} style={{ minHeight: '60px' }}>
         {Array.from({ length: count }, (_, index) => {
           // Calculate rotation and vertical offset for arc effect
           const rotation = useFannedArc ? startAngle + (index * angleStep) : (index * 2 - 2);
@@ -486,7 +486,7 @@ export const PlayerHand = ({
     );
     
     return (
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5" ref={is357Game ? measureRef : undefined}>
         {/* For bottom positions: unused above, used below. For others: used above, unused below */}
         {isBottomPosition ? (
           <>
