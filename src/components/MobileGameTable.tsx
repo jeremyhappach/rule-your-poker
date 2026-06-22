@@ -4669,16 +4669,17 @@ export const MobileGameTable = ({
       return;
     }
     
-    // When buck passes (awaitingNextRound AND no result), clear cached Chucky data
-    if (awaitingNextRound && !lastRoundResult) {
-      console.log('[MOBILE_CHUCKY] Buck passed - clearing cached Chucky cards');
-      setCachedChuckyCards(null);
-      setCachedChuckyActive(false);
-      setCachedChuckyCardsRevealed(0);
-      chuckyTargetRevealedRef.current = 0;
-      cachedChuckyHandContextRef.current = null;
-      return;
-    }
+    // BUG-1 FIX: Do NOT clear the cache off `awaitingNextRound && !lastRoundResult`.
+    // That branch races the result-path: when player beats Chucky, awaitingNextRound
+    // flips true a few frames before lastRoundResult arrives, blanking
+    // cachedChuckyActive/cachedChuckyCards before the visual stepper can run.
+    // Cache teardown is now owned exclusively by:
+    //   - handContextId change (above)
+    //   - isDealerConfigPhase (above)
+    //   - prevHandWasSolo destroy effect (handContextId boundary)
+    // The visual reveal sequence is therefore driven purely by ALL_CHUCKY_SETTLED
+    // (chuckyBarrierOpen), independent of winner / result / announcement.
+
     
     // Cache Chucky data when it's available AND track which hand it belongs to
     if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
