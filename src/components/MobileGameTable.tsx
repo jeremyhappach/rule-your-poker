@@ -163,6 +163,14 @@ import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { HolmOwnershipBeacon } from "@/lib/canonicalShell/cardTransport/HolmOwnershipBeacon";
 import { HolmSoloRootRegistrar } from "@/lib/canonicalShell/cardTransport/holmSoloOwnership";
+import {
+  ChuckyVisualCardInstrumenter,
+  chuckyVisualMarkAllSettled,
+  chuckyVisualMarkAnnouncement,
+  chuckyVisualMarkRevealSequenceScheduled,
+  chuckyVisualResetForHand,
+} from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
+import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
