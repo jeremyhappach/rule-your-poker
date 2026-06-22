@@ -7942,6 +7942,14 @@ export const MobileGameTable = ({
                     zIndex={110}
                     ref={communityCardsWrapperRef}
                   >
+                    <HolmSoloRootRegistrar
+                      root="COMMUNITY"
+                      mounted={true}
+                      cardIds={(approvedCommunityCards ?? []).map((c) => `${c.rank}${c.suit}`)}
+                      handContextId={handContextId ?? null}
+                      soloDeclared={!!isSoloVsChucky}
+                      phase={chuckyVisible ? 'CHUCKY_REVEAL' : 'GAMEPLAY'}
+                    />
                     {/*
                       Holm canonical deal ownership cutover:
                         - Always mount HolmCanonicalCommunityRow so the
