@@ -174,6 +174,10 @@ import {
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
 import {
+  recordChuckyRevealTimerArm,
+  recordChuckyRevealStep,
+} from "@/lib/canonicalShell/cardTransport/holmChuckyRevealTimingDbg";
+import {
   recordSoloStateChange,
   recordChuckyVisualTrigger,
   captureStack,
@@ -5217,6 +5221,8 @@ export const MobileGameTable = ({
 
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
+    const STEPPER_DELAY_MS = 250;
+    const STEPPER_DELAY_SOURCE: 'hardcoded' | 'gameDefaults' | 'fallback' = 'hardcoded';
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
       effectId,
@@ -5225,10 +5231,17 @@ export const MobileGameTable = ({
       mountAt,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
-      delay: 250,
+      delay: STEPPER_DELAY_MS,
       prev: cachedChuckyCardsRevealed,
       total,
     }, handContextId ?? null);
+    recordChuckyRevealTimerArm({
+      handContextId: handContextId ?? null,
+      delayMs: STEPPER_DELAY_MS,
+      index: cachedChuckyCardsRevealed,
+      total,
+      delaySource: STEPPER_DELAY_SOURCE,
+    });
     step('setTimeout(armed)', { timeoutId: timeoutSeq });
 
     const t = setTimeout(() => {
@@ -5254,6 +5267,13 @@ export const MobileGameTable = ({
         cachedChuckyActive,
         chuckyBarrierOpen,
       }, handContextId ?? null);
+      recordChuckyRevealStep({
+        handContextId: handContextId ?? null,
+        index: cachedChuckyCardsRevealed,
+        total,
+        actualDelayUsedMs: STEPPER_DELAY_MS,
+        source: STEPPER_DELAY_SOURCE,
+      });
       recordChuckyVisualTrigger({
         handContextId: handContextId ?? null,
         source: 'stepper.fire',
@@ -5270,7 +5290,8 @@ export const MobileGameTable = ({
         (prev) => (prev < total ? prev + 1 : prev),
         { writer: 'stepper.setTimeout', reason: 'sequential reveal advance' },
       );
-    }, 250);
+    }, STEPPER_DELAY_MS);
+
 
     return () => {
       clearTimeout(t);
@@ -8696,6 +8717,7 @@ export const MobileGameTable = ({
                       handContextId={handContextId ?? null}
                       soloDeclared={!!isSoloVsChucky}
                       phase={chuckyVisible ? (cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL') : 'SOLO_DECLARED'}
+                      caller="MobileGameTable.lonePlayerTabledCardsStage"
                     />
                     <HolmLonePlayerFan
                       sortedCards={sortedCards}
@@ -8732,6 +8754,7 @@ export const MobileGameTable = ({
                       handContextId={handContextId ?? null}
                       soloDeclared={!!isSoloVsChucky}
                       phase={chuckyVisible ? 'CHUCKY_REVEAL' : 'GAMEPLAY'}
+                      caller="MobileGameTable.communityCardsStage"
                     />
                     {/*
                       Holm canonical deal ownership cutover:
@@ -8786,6 +8809,7 @@ export const MobileGameTable = ({
                     handContextId={handContextId ?? null}
                     soloDeclared={!!isSoloVsChucky}
                     phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                    caller="MobileGameTable.chuckyStage"
                   />
                   <div
                     className={cn(
@@ -9574,14 +9598,15 @@ export const MobileGameTable = ({
                                     return (
                                      <>
                                        {gameType === 'holm-game' && (
-                                         <HolmSoloRootRegistrar
-                                           root="SELF_HAND"
-                                           mounted={effectiveCards.length > 0}
-                                           cardIds={effectiveCards.map((c) => `${c.rank}${c.suit}`)}
-                                           handContextId={boundary.baseHandContextId}
-                                           soloDeclared={!!isSoloVsChucky}
-                                           phase={dealPhase}
-                                         />
+                                          <HolmSoloRootRegistrar
+                                            root="SELF_HAND"
+                                            mounted={effectiveCards.length > 0}
+                                            cardIds={effectiveCards.map((c) => `${c.rank}${c.suit}`)}
+                                            handContextId={boundary.baseHandContextId}
+                                            soloDeclared={!!isSoloVsChucky}
+                                            phase={dealPhase}
+                                            caller="MobileGameTable.activeSelfHand.PlayerHand"
+                                          />
                                        )}
                                        {gameType === 'holm-game' && boundary.rawClaimedCardIds.map((cid) => (
                                          <HolmOwnershipBeacon
