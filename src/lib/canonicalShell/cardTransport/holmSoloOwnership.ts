@@ -114,3 +114,29 @@ export function getHolmSoloOwnership(): Record<string, HolmSoloRootRecord> {
 export function getHolmSoloOwnershipViolations(): HolmSoloOwnershipViolation[] {
   return viol();
 }
+
+// ── React registrar ────────────────────────────────────────────────
+import { useEffect } from 'react';
+
+export function HolmSoloRootRegistrar({
+  root,
+  mounted,
+  cardIds,
+  handContextId,
+  soloDeclared,
+  phase,
+}: {
+  root: HolmSoloRoot;
+  mounted: boolean;
+  cardIds: string[];
+  handContextId: string | null;
+  soloDeclared: boolean;
+  phase: string;
+}) {
+  const key = cardIds.join(',');
+  useEffect(() => {
+    recordHolmSoloRoot({ root, mounted, cardIds, handContextId, soloDeclared, phase });
+    return () => clearHolmSoloRoot(root, handContextId);
+  }, [root, mounted, key, handContextId, soloDeclared, phase, cardIds]);
+  return null;
+}
