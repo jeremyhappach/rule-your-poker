@@ -441,13 +441,15 @@ export function Use357SelfHand<T>({
   }
   const sourceCards = cards.length >= cacheRef.current.cards.length ? cards : cacheRef.current.cards;
 
-  // Cumulative settled: visible = min(max(baseline, settled), sourceCards.length).
+  // CONTRACT: during DEALING / PRE_DEAL render ONLY transport-claimed
+  // cards (cumulative `settled`). Baseline / authoritative `cards` length
+  // must NEVER mount DOM during a staged deal — they exist in state for
+  // ownership math only. Only READY/GAMEPLAY may render the full
+  // authoritative hand.
   const allowed = deal
-    ? deal.phase === 'DEALING'
-      ? Math.min(Math.max(baseline, settled), sourceCards.length)
-      : deal.phase === 'PRE_DEAL'
-        ? Math.min(Math.max(baseline, settled), sourceCards.length)
-        : sourceCards.length
+    ? (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')
+      ? Math.min(settled, sourceCards.length)
+      : sourceCards.length
     : sourceCards.length;
   const effectiveCards = sourceCards.slice(0, Math.min(allowed, sourceCards.length));
   useEffect(() => {
