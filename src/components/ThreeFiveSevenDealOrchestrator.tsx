@@ -46,6 +46,11 @@ import {
   recordThreeFiveSevenHandRender,
   unregisterThreeFiveSevenHandRender,
 } from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
+import {
+  record357CardOwnership,
+  type CardHiddenReason,
+} from '@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics';
+
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
 
 export interface ThreeFiveSevenSeatEntry {
