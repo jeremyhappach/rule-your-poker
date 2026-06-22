@@ -45,6 +45,7 @@ import {
   cardTransportDbgSample,
   type CardTransportDbgSample,
 } from './cardTransportDbg';
+import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
 
 const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
@@ -224,6 +225,7 @@ export function CardTransportRuntime({
           transportVisible: false,
           ownershipClaimTime: tnow,
         });
+        record357CardOwnership(intent.cardId, { ownershipClaimed: true });
         settleTimersRef.current.delete(intent.id);
         ctx.__markSettled(intent.id, intent.cardId);
       }, delayMs + flightMs + ownershipClaimDelayMs);
@@ -436,17 +438,32 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const tMid    = window.setTimeout(() => snapshot('midflight'), midAt);
     const tEnd    = window.setTimeout(() => snapshot('arrival'), Math.max(0, endAt - 8));
 
+    // Card-ownership forensics — transport mount.
+    record357CardOwnership(card.intent.cardId, {
+      intentId: card.intent.id,
+      handContextId: card.intent.handContextId ?? null,
+      transportMounted: true,
+      transportVisible: true,
+      transportMountTime: performance.now(),
+    });
+
     return () => {
       window.clearTimeout(tLaunch);
       window.clearTimeout(tMid);
       window.clearTimeout(tEnd);
       // Destroy snapshot — captured before React unmounts the element.
       try { snapshot('destroy'); } catch { /* */ }
+      const destroyT = performance.now();
       cardTransportDbgUpsert(intentId, {
-        transportDestroyedTime: performance.now(),
+        transportDestroyedTime: destroyT,
+      });
+      record357CardOwnership(card.intent.cardId, {
+        transportMounted: false,
+        transportVisible: false,
+        transportDestroyTime: destroyT,
       });
     };
-  }, [card.intent.id, card.delayMs, card.flightMs, containerRef]);
+  }, [card.intent.id, card.intent.cardId, card.intent.handContextId, card.delayMs, card.flightMs, containerRef]);
 
   return (
     <div

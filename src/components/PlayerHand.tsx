@@ -7,8 +7,14 @@ import {
   recordThreeFiveSevenHandRender,
   unregisterThreeFiveSevenHandRender,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
+import {
+  record357HandLifecycle,
+  record357FanLifecycle,
+  record357CardOwnership,
+} from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 
 let __playerHandForensicsSeq = 0;
+
 
 interface PlayerHandProps {
   cards: CardType[];
@@ -215,15 +221,20 @@ export const PlayerHand = ({
     const handAnchor = typeof document !== 'undefined'
       ? document.querySelector<HTMLElement>('[data-canonical-self-hand-anchor-position="top-of-pane"]')
       : null;
-    const actualRenderedDomCount = el.querySelectorAll('[data-playing-card-root], [data-canonical-card-back], [data-card-id]').length;
+    const cardEls = Array.from(el.querySelectorAll<HTMLElement>('[data-playing-card-root], [data-canonical-card-back], [data-card-id]'));
+    const actualRenderedDomCount = cardEls.length;
+    const componentKind: 'SELF' | 'OPPONENT' | 'PLAYER_HAND' = activeRegion ? 'SELF' : seatCluster ? 'OPPONENT' : 'PLAYER_HAND';
+    const playerId = seatCluster?.getAttribute('data-player-id') ?? null;
+    const reactKey = `${gameType ?? 'unknown'}:r${currentRound}:inst${instanceIdRef.current}`;
+    const handContextId = handAnchor?.getAttribute('data-card-anchor') ?? null;
     recordThreeFiveSevenHandRender(forensicsId, {
-      component: activeRegion ? 'SELF' : seatCluster ? 'OPPONENT' : 'PLAYER_HAND',
+      component: componentKind,
       componentName: activeRegion ? 'SELF PlayerHand' : seatCluster ? 'OPPONENT PlayerHand' : 'PlayerHand',
       seat: seatCluster?.getAttribute('data-seat-position') ? Number(seatCluster.getAttribute('data-seat-position')) : null,
-      playerId: seatCluster?.getAttribute('data-player-id') ?? null,
+      playerId,
       playerHandMounted: true,
       playerHandKey: activeRegion ? (handAnchor?.getAttribute('data-card-anchor') ?? null) : null,
-      reactKey: `${gameType ?? 'unknown'}:r${currentRound}:inst${instanceIdRef.current}`,
+      reactKey,
       renderCount: renderCountRef.current,
       cardsLength: cards.length,
       effectiveCardsLength: cards.length,
@@ -231,8 +242,104 @@ export const PlayerHand = ({
       actualRenderedDomCount,
       fanLayoutInitialized: actualRenderedDomCount > 0,
     });
+    // Section A — HAND RENDER LIFECYCLE FORENSICS
+    const cs = typeof window !== 'undefined' ? window.getComputedStyle(el) : null;
+    const cardIds = cardEls.map((node) => node.getAttribute('data-card-id') || node.getAttribute('data-card-transport-card-id') || '');
+    record357HandLifecycle({
+      handContextId,
+      phase: el.closest<HTMLElement>('[data-deal-phase]')?.getAttribute('data-deal-phase') ?? null,
+      reactKey,
+      mounted: true,
+      visible: !!cs && cs.opacity !== '0' && cs.display !== 'none',
+      opacity: cs?.opacity ?? null,
+      display: cs?.display ?? null,
+      cardCount: actualRenderedDomCount,
+      cardIds,
+      component: componentKind,
+      playerId,
+    });
+    // Section C — FAN layout pass (this is the PlayerHand fan root render)
+    record357FanLifecycle({
+      event: 'layout-pass',
+      reason: renderCountRef.current === 1 ? 'initialMount' : 'authoritativeUpdate',
+      fanId: forensicsId,
+      cardCount: actualRenderedDomCount,
+      layoutPasses: renderCountRef.current,
+      mountedAt: null,
+      unmountedAt: null,
+    });
   });
+  useEffect(() => {
+    if (!is357Game) return;
+    record357FanLifecycle({
+      event: 'mount',
+      reason: 'initialMount',
+      fanId: forensicsId,
+      cardCount: 0,
+      layoutPasses: 0,
+      mountedAt: performance.now(),
+      unmountedAt: null,
+    });
+    return () => {
+      record357FanLifecycle({
+        event: 'unmount',
+        reason: 'componentUnmount',
+        fanId: forensicsId,
+        cardCount: 0,
+        layoutPasses: renderCountRef.current,
+        mountedAt: null,
+        unmountedAt: performance.now(),
+      });
+    };
+  }, [is357Game, forensicsId]);
   useEffect(() => () => unregisterThreeFiveSevenHandRender(forensicsId), [forensicsId]);
+  // Section B — static card MOUNT detection via MutationObserver on the
+  // fan root. Each freshly inserted [data-playing-card-root] is timestamped
+  // and correlated against the card-ownership timeline. Provides ground
+  // truth for `staticMountTime` independent of React render timing.
+  useEffect(() => {
+    if (!is357Game || typeof window === 'undefined') return;
+    const el = measureRef.current;
+    if (!el) return;
+    const stampInsert = (node: HTMLElement) => {
+      const cardId = node.getAttribute('data-card-id')
+        || node.getAttribute('data-card-transport-card-id')
+        || `${forensicsId}#staticPos-${Date.now()}`;
+      record357CardOwnership(cardId, {
+        staticMounted: true,
+        staticVisible: true,
+        staticMountTime: performance.now(),
+      });
+    };
+    const stampRemove = (node: HTMLElement) => {
+      const cardId = node.getAttribute('data-card-id')
+        || node.getAttribute('data-card-transport-card-id');
+      if (!cardId) return;
+      record357CardOwnership(cardId, {
+        staticMounted: false,
+        staticVisible: false,
+        staticUnmountTime: performance.now(),
+      });
+    };
+    // Stamp anything already present.
+    el.querySelectorAll<HTMLElement>('[data-playing-card-root]').forEach(stampInsert);
+    const obs = new MutationObserver((muts) => {
+      for (const m of muts) {
+        m.addedNodes.forEach((n) => {
+          if (!(n instanceof HTMLElement)) return;
+          if (n.matches('[data-playing-card-root]')) stampInsert(n);
+          n.querySelectorAll?.<HTMLElement>('[data-playing-card-root]').forEach(stampInsert);
+        });
+        m.removedNodes.forEach((n) => {
+          if (!(n instanceof HTMLElement)) return;
+          if (n.matches('[data-playing-card-root]')) stampRemove(n);
+          n.querySelectorAll?.<HTMLElement>('[data-playing-card-root]').forEach(stampRemove);
+        });
+      }
+    });
+    obs.observe(el, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [is357Game, forensicsId, currentRound, displayCardCount]);
   useLayoutEffect(() => {
     if (!is357Game) return;
     const el = measureRef.current;

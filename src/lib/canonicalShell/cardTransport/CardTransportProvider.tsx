@@ -133,8 +133,26 @@ export function CardTransportProvider({
   }, []);
 
   const markSettled = useCallback((intentId: string, cardId: string) => {
-    setActiveIntents((prev) => prev.filter((i) => i.id !== intentId));
+    // PRESENTATION-LAYER CONTRACT (357 deal forensics fix):
+    //   1. Fire ownership callbacks FIRST. This bumps DealRuntime's
+    //      `settledByRecipient`, causing the destination consumer
+    //      (e.g. Use357SelfHand) to grow effectiveCards and mount the
+    //      static card.
+    //   2. Defer removal of the flying intent (which unmounts the
+    //      transient FlyingCard node) by TWO requestAnimationFrame
+    //      passes so the static card is painted before the transport
+    //      node is destroyed. Eliminates the inter-mount paint gap that
+    //      caused card-0 r1 flash and inter-round disappearances.
     fireCallbacks(intentId, cardId);
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          setActiveIntents((prev) => prev.filter((i) => i.id !== intentId));
+        });
+      });
+    } else {
+      setActiveIntents((prev) => prev.filter((i) => i.id !== intentId));
+    }
   }, [fireCallbacks]);
 
   const markDropped = useCallback(
