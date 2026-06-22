@@ -35,6 +35,7 @@ import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/C
 import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
 import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
 import { SLOT } from '@/lib/canonicalShell/seatAnchors';
+import { nextClockwise } from '@/lib/canonicalShell/seatRing';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
@@ -188,10 +189,20 @@ export function HolmDealOrchestrator({
     if (!seats.length || cardsPerPlayer <= 0) return;
     if (!selfHand || selfHand.length < cardsPerPlayer) return;
 
-    const sorted = [...seats].sort((a, b) => a.position - b.position);
-    const idx = sorted.findIndex(s => s.position === buckPosition);
-    if (idx < 0) return;
-    const ring = [...sorted.slice(idx), ...sorted.slice(0, idx)]; // buck first, then clockwise
+    // CLOCKWISE from buck (poker convention: nearest LOWER position w/ wrap).
+    // seatRing.nextClockwise is the canonical ring traversal — do NOT
+    // iterate the ascending-sorted seat array directly.
+    const positions = seats.map(s => s.position);
+    const byPos = new Map(seats.map(s => [s.position, s]));
+    if (!byPos.has(buckPosition)) return;
+    const ring: SeatEntry[] = [];
+    let cur = buckPosition;
+    for (let i = 0; i < seats.length; i++) {
+      const seat = byPos.get(cur);
+      if (!seat) return;
+      ring.push(seat);
+      if (i < seats.length - 1) cur = nextClockwise(cur, positions);
+    }
 
     const specs: Parameters<typeof buildIntents>[0] = [];
     let selfRound = 0;
