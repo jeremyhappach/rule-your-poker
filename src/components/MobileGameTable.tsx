@@ -5317,25 +5317,19 @@ export const MobileGameTable = ({
     ) : (
       !shouldHideForTabling && showCardBacks && cardCountToShow > 0 && (
         <div className={cn('flex', hasFolded && 'animate-[foldCards_1.5s_ease-out_forwards]')}>
-          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => (
-            <CanonicalCardBack
-              key={i}
-              widthPx={12}
-              heightPx={20}
-              variant="flat"
-              dataAttrs={{
-                'data-holm-card-id': holmDealCardIdsForPlayer[i] ?? `${handContextId ?? 'no-hand'}#opp-${player.id}-${i}`,
-                'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
-                'data-holm-component': 'OPPONENT',
-              }}
-
-              style={{
-                marginLeft: i > 0 ? '-5px' : '0',
-                zIndex: cardCountToShow - i,
-                animationDelay: hasFolded ? `${i * 0.05}s` : '0s',
-              }}
-            />
-          ))}
+          {Array.from({ length: Math.min(cardCountToShow, 7) }, (_, i) => {
+            const cardId =
+              holmDealCardIdsForPlayer[i] ?? `${handContextId ?? 'no-hand'}#opp-${player.id}-${i}`;
+            return (
+              <HolmOpponentCardBackSlot
+                key={i}
+                index={i}
+                cardId={cardId}
+                cardCount={cardCountToShow}
+                hasFolded={hasFolded}
+              />
+            );
+          })}
         </div>
       )
     );
