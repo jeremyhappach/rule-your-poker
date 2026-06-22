@@ -454,30 +454,34 @@ export function Use357SelfHand<T>({
       : sourceCards.length
     : sourceCards.length;
   const resolvedCards: T[] = [];
+  const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
   if (deal && (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')) {
     for (let i = 0; i < allowed; i++) {
       const card = sourceCards[i];
       if (card) resolvedCards.push(card);
-      else {
-        record357DiagnosticViolation('357_SELF_CARD_FACE_UNRESOLVED', {
-          intentId: settledCardIds[i] ?? null,
-          cardId: settledCardIds[i] ?? null,
-          playerId: currentPlayerId,
-          claimedIndex: i,
-          authoritativeHandIds: sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`),
-          dealPhase: phase,
-        }, {
-          handContextId: deal.handContextId,
-          phase,
-          component: 'SELF',
-          playerId: currentPlayerId,
-        });
-      }
+      else unresolvedSelfCards.push({ intentId: settledCardIds[i] ?? null, cardId: settledCardIds[i] ?? null, claimedIndex: i });
     }
   } else {
     resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));
   }
   const effectiveCards = resolvedCards;
+  useEffect(() => {
+    if (!deal?.handContextId || unresolvedSelfCards.length === 0) return;
+    const authoritativeHandIds = sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`);
+    unresolvedSelfCards.forEach((missing) => {
+      record357DiagnosticViolation('357_SELF_CARD_FACE_UNRESOLVED', {
+        ...missing,
+        playerId: currentPlayerId,
+        authoritativeHandIds,
+        dealPhase: phase,
+      }, {
+        handContextId: deal.handContextId,
+        phase,
+        component: 'SELF',
+        playerId: currentPlayerId,
+      });
+    });
+  }, [deal?.handContextId, unresolvedSelfCards.length, currentPlayerId, phase, sourceCards]);
   useEffect(() => {
     if (!deal?.handContextId || !currentPlayerId) return;
     dealDbgUpsertOwnership(deal.handContextId, currentPlayerId, {
