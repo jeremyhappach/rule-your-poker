@@ -8422,6 +8422,8 @@ export const MobileGameTable = ({
                             renderer="MobileGameTable.holmChuckyStage"
                             owner="cachedChuckyCardsRevealed"
                             phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                            cachedChuckyCardsRevealed={cachedChuckyCardsRevealed}
+                            cachedChuckyCardsCount={cachedChuckyCards?.length ?? 0}
                           />
                           <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
                             {isRevealed ? (
