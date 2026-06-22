@@ -468,13 +468,18 @@ function UseHolmSelfHand<T>({
     () => selfCardIds.filter((cardId) => deal?.isSettled(cardId)),
     [deal, selfCardIds],
   );
+  const boundaryCardIdPrefix = `${baseHandContextId}#holm-self#${currentPlayerId || 'no-player'}`;
+  const boundaryClaimedCardIds = useMemo(
+    () => Array.from({ length: effectiveCards.length }, (_unused, index) => `${boundaryCardIdPrefix}#idx-${index}`),
+    [boundaryCardIdPrefix, effectiveCards.length],
+  );
 
   return <>{render(effectiveCards, phase, {
-    claimedCardIds: settledSelfCardIds,
+    claimedCardIds: boundaryClaimedCardIds,
     rawClaimedCardIds: settledSelfCardIds,
     baseHandContextId,
     playerId: currentPlayerId,
-    boundaryCardIdPrefix: `${baseHandContextId}#holm-self#${currentPlayerId || 'no-player'}`,
+    boundaryCardIdPrefix,
   })}</>;
 }
 
