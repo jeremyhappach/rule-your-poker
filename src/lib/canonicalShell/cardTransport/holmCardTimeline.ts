@@ -15,6 +15,8 @@ export interface HolmCardTimelineEntry {
   wave: HolmCardWave;
   endpoint: string;
   dispatchAt: number | null;
+  launchAt: number | null;
+  arrivalAt: number | null;
   claimAt: number | null;
   settleAt: number | null;
   domMountAt: number | null;
@@ -88,6 +90,8 @@ function ensure(cardId: string, wave: HolmCardWave, endpoint: string): HolmCardT
       wave,
       endpoint,
       dispatchAt: null,
+      launchAt: null,
+      arrivalAt: null,
       claimAt: null,
       settleAt: null,
       domMountAt: null,
@@ -123,6 +127,18 @@ export function holmTimelineRecordClaim(cardId: string, at: number): void {
   const b = bag();
   const e = b[cardId];
   if (e && e.claimAt == null) e.claimAt = at;
+}
+
+export function holmTimelineRecordLaunch(cardId: string, at: number): void {
+  const b = bag();
+  const e = b[cardId];
+  if (e && e.launchAt == null) e.launchAt = at;
+}
+
+export function holmTimelineRecordArrival(cardId: string, at: number): void {
+  const b = bag();
+  const e = b[cardId];
+  if (e && e.arrivalAt == null) e.arrivalAt = at;
 }
 
 export function holmTimelineRecordSettle(cardId: string, at: number): void {
