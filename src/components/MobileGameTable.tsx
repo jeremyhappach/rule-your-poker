@@ -6044,7 +6044,32 @@ export const MobileGameTable = ({
   };
 
 
-  return <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
+  return <HolmDealRuntimeMaybe
+    handContextId={gameType === 'holm-game' ? (handContextId ?? null) : null}
+    gameType={gameType}
+  >
+    {gameType === 'holm-game' && handContextId && currentPlayer && (currentPlayer as any).id && typeof buckPosition === 'number' && typeof dealerPosition === 'number' && (
+      <>
+        <HolmDealOrchestrator
+          handContextId={handContextId}
+          seats={players.filter(p => p.status === 'active' && !p.sitting_out).map(p => ({ playerId: p.id, position: p.position }))}
+          buckPosition={buckPosition}
+          dealerPosition={dealerPosition}
+          selfPlayerId={(currentPlayer as any).id}
+          cardsPerPlayer={4}
+          selfHand={currentPlayerCards}
+          communityCards={communityCards ?? []}
+          soloDeclared={isSoloVsChucky}
+          chuckyCards={chuckyCards ?? null}
+        />
+        <HolmDealPhaseHost
+          handContextId={handContextId}
+          soloDeclared={isSoloVsChucky}
+          chuckyCount={(chuckyCards ?? []).length}
+        />
+      </>
+    )}
+    <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
     <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
