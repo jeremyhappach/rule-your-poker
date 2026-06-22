@@ -3180,6 +3180,28 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Server-driven timer countdown - uses ref for pause state to avoid dependency issues
   // CARD GAMES ONLY: Players with auto_fold=true should NOT see a timer - they fold instantly
   useEffect(() => {
+    const is357TimerBlocked =
+      game?.game_type === '3-5-7' ||
+      game?.game_type === '3-5-7-game' ||
+      game?.game_type === '357'
+        ? !dealTimerAllowed357
+        : false;
+    if (is357TimerBlocked) {
+      record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+        component: 'Game timer countdown',
+        decisionDeadline,
+        dealTimerAllowed357,
+        roundId: currentRound?.id ?? null,
+      }, {
+        handContextId: currentRound?.id ?? null,
+        phase: currentRound?.status ?? null,
+        component: 'PLAYER_HAND',
+      });
+      decisionMaxTimeDeadlineRef.current = null;
+      setDecisionMaxTime(null);
+      setTimeLeft(null);
+      return;
+    }
     // Don't start timer if no deadline or game conditions prevent it
     if (!decisionDeadline || game?.awaiting_next_round || game?.last_round_result || isAllDecisionsInFor(game, currentRound?.id)) {
       console.log('[TIMER COUNTDOWN] Not starting - conditions not met', { 
@@ -3320,7 +3342,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
         timerIntervalRef.current = null;
       }
     };
-  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id]);
+  }, [decisionDeadline, game?.awaiting_next_round, game?.last_round_result, game?.all_decisions_in, game?.all_decisions_in_round_id, game?.game_type, players, user?.id, dealTimerAllowed357, currentRound?.id, currentRound?.status]);
 
   // Ante timer countdown effect - SKIP when game is paused
   useEffect(() => {
