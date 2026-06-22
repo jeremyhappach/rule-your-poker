@@ -4637,6 +4637,13 @@ export const MobileGameTable = ({
     isHolmHandReady(handContextId);
   void holmBarrierTick; // re-evaluates above on barrier flip
 
+  // War-time forensics: hook the barrier flip → allChuckySettled marker.
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    if (!chuckyBarrierOpen) return;
+    chuckyVisualMarkAllSettled(handContextId ?? null);
+  }, [gameType, chuckyBarrierOpen, handContextId]);
+
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
@@ -4649,11 +4656,13 @@ export const MobileGameTable = ({
     // Override the server target — once barrier is open we reveal ALL.
     if (chuckyTargetRevealedRef.current < total) chuckyTargetRevealedRef.current = total;
     if (cachedChuckyCardsRevealed >= total) return;
+    chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
     const t = setTimeout(() => {
       setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
     }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId]);
+
 
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────
