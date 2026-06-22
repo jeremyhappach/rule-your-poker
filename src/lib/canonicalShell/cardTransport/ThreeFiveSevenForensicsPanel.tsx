@@ -28,6 +28,14 @@ import {
 } from './cardTransportDbg';
 import { useInDebugTray } from '@/lib/debugTray/DebugTray';
 import { useDebugPillEnabled } from '@/lib/debugTray/debugPillsStore';
+import {
+  getMountedThreeFiveSevenTimerOwners,
+  getThreeFiveSevenHandRenders,
+  getThreeFiveSevenRenderTransitions,
+  subscribeThreeFiveSevenForensics,
+  type ForensicsHandRender,
+  type ForensicsRenderTransition,
+} from './threeFiveSevenForensicsStore';
 
 // ─────────────────────────────────────────────────────────────────────
 // Ring buffers + transition log (module-level so data survives panel
@@ -41,6 +49,18 @@ const CARD0_TIMELINE_MAX = 500;
 interface Rect { x: number; y: number; w: number; h: number; cx: number; cy: number }
 
 interface TimerInventoryItem {
+  ownerId: string;
+  componentName: string;
+  gameType: string | null;
+  handContextId: string | null;
+  waveContextId: string | null;
+  dealRuntimeId: string | null;
+  phase: string;
+  running: boolean;
+  timeLeft: number | null;
+  usesDealRuntime: boolean;
+  reactKey: string | null;
+  renderCount: number;
   selector: string;
   tag: string;
   rect: Rect | null;
@@ -108,6 +128,8 @@ interface ForensicsSnapshot {
   selfHand: SelfHandSnapshot;
   // Section D
   opponents: OpponentSnapshot[];
+  handRenders: ForensicsHandRender[];
+  renderTransitions: ForensicsRenderTransition[];
 }
 
 interface TransitionEntry {
@@ -120,6 +142,9 @@ interface TransitionEntry {
 
 interface Card0Frame {
   t: number;
+  ownershipClaimAt: number | null;
+  transportDestroyedAt: number | null;
+  card0DomMountedAt: number | null;
   transportMounted: boolean;
   transportVisible: boolean;
   ownershipClaimed: boolean;
@@ -148,6 +173,7 @@ let lastSnapshot: ForensicsSnapshot | null = null;
 let lastCard0IntentId: string | null = null;
 let card0LaunchedAt: number | null = null;
 let card0DestroyedAt: number | null = null;
+let card0DomMountedAt: number | null = null;
 let installed = false;
 
 function emit() { listeners.forEach((l) => { try { l(); } catch { /* */ } }); }
@@ -263,6 +289,7 @@ function appendCard0Frame(cts: CardTransportDbgEntry[], deal: DealDbgEntry | nul
     lastCard0IntentId = card0.intentId;
     card0LaunchedAt = performance.now();
     card0DestroyedAt = null;
+    card0DomMountedAt = null;
     card0Timeline.length = 0;
   }
   if (card0.transportDestroyedTime && card0DestroyedAt == null) {
@@ -272,8 +299,9 @@ function appendCard0Frame(cts: CardTransportDbgEntry[], deal: DealDbgEntry | nul
   // DOM probes
   const handAnchorEl = document.querySelector('[data-canonical-self-hand-anchor-position="top-of-pane"]');
   const activeRegion = document.querySelector('[data-357-active-hand-region]');
-  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-card-id]')) : [];
+  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]')) : [];
   const card0DomEl = selfCardEls[0] ?? null;
+  if (card0DomEl && card0DomMountedAt == null) card0DomMountedAt = performance.now();
   const flyingCardEl = document.querySelector(`[data-card-transport-intent-id="${card0.intentId}"]`);
   const handAnchorRect = rectOf(handAnchorEl);
   const fanRootRect = rectOf((selfCardEls[0]?.parentElement as Element | null) ?? activeRegion);
@@ -284,6 +312,9 @@ function appendCard0Frame(cts: CardTransportDbgEntry[], deal: DealDbgEntry | nul
 
   card0Timeline.push({
     t: performance.now(),
+    ownershipClaimAt: card0.ownershipClaimTime ?? null,
+    transportDestroyedAt: card0.transportDestroyedTime ?? null,
+    card0DomMountedAt,
     transportMounted: !!card0.transportMounted,
     transportVisible: !!card0.transportVisible,
     ownershipClaimed: !!card0.ownershipClaimTime,
@@ -322,9 +353,51 @@ function scan(): ForensicsSnapshot | null {
   for (const sel of timerSelectors) {
     document.querySelectorAll(sel).forEach((el) => timerEls.add(el));
   }
-  const timers: TimerInventoryItem[] = Array.from(timerEls).map((el) => {
+  const registeredTimerOwners = getMountedThreeFiveSevenTimerOwners();
+  const registeredIds = new Set(registeredTimerOwners.map((o) => o.id));
+  const registeredTimers: TimerInventoryItem[] = registeredTimerOwners.map((o) => ({
+    ownerId: o.id,
+    componentName: o.componentName,
+    gameType: o.gameType,
+    handContextId: o.handContextId,
+    waveContextId: o.waveContextId,
+    dealRuntimeId: o.dealRuntimeId,
+    phase: o.phase,
+    running: o.running,
+    timeLeft: o.timeLeft,
+    usesDealRuntime: o.usesDealRuntime,
+    reactKey: o.reactKey,
+    renderCount: o.renderCount,
+    selector: 'registered-owner',
+    tag: 'react',
+    rect: null,
+    mounted: o.mounted,
+    visible: o.visible,
+    parent: '',
+    attrs: {},
+  }));
+  const domTimers: TimerInventoryItem[] = Array.from(timerEls).filter((el) => {
+    const id = el.getAttribute('data-forensics-timer-owner-id');
+    return !id || !registeredIds.has(id);
+  }).map((el) => {
     const sel = timerSelectors.find((s) => el.matches(s)) ?? '?';
+    const phase = el.getAttribute('data-forensics-timer-phase') ?? String(deal?.phase ?? 'NO_RUNTIME');
+    const running = el.getAttribute('data-forensics-timer-running') === '1'
+      || (isVisible(el) && el.getAttribute('data-shell-timer-paused') !== '1');
+    const timeLeftRaw = el.getAttribute('data-forensics-timer-time-left');
     return {
+      ownerId: el.getAttribute('data-forensics-timer-owner-id') ?? `DOM:${sel}:${parentChain(el, 1)}`,
+      componentName: el.getAttribute('data-forensics-component') ?? (sel.includes('canonical') ? 'ShellTimerRail' : 'DOM timer'),
+      gameType: el.getAttribute('data-forensics-game-type') ?? null,
+      handContextId: el.getAttribute('data-forensics-hand-context-id') ?? ctx,
+      waveContextId: el.getAttribute('data-forensics-wave-context-id') ?? ctx,
+      dealRuntimeId: el.getAttribute('data-forensics-deal-runtime-id') ?? ctx?.replace(/#r\d+$/, '') ?? null,
+      phase,
+      running,
+      timeLeft: timeLeftRaw != null && timeLeftRaw !== '' ? Number(timeLeftRaw) : null,
+      usesDealRuntime: !!ctx,
+      reactKey: el.getAttribute('data-forensics-react-key'),
+      renderCount: Number(el.getAttribute('data-forensics-render-count') ?? 0),
       selector: sel,
       tag: el.tagName.toLowerCase(),
       rect: rectOf(el),
@@ -334,17 +407,14 @@ function scan(): ForensicsSnapshot | null {
       attrs: attrsOf(el),
     };
   });
+  const timers: TimerInventoryItem[] = [...registeredTimers, ...domTimers];
   const visibleTimerCount = timers.filter((t) => t.visible).length;
-  // "running" heuristic: timer rail with a non-paused attr
-  const runningTimerCount = timers.filter((t) => {
-    if (t.attrs['data-shell-timer-paused'] === '1') return false;
-    return t.visible;
-  }).length;
+  const runningTimerCount = timers.filter((t) => t.running).length;
 
   // ── Self hand probes ────────────────────────────────────────────
   const handAnchorEl = document.querySelector('[data-canonical-self-hand-anchor-position="top-of-pane"]');
   const activeRegion = document.querySelector('[data-357-active-hand-region]');
-  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-card-id]')) : [];
+  const selfCardEls = activeRegion ? Array.from(activeRegion.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]')) : [];
   const fanLayoutInitialized = selfCardEls.length > 0;
   const playerHandKey = handAnchorEl?.getAttribute('data-card-anchor') ?? '∅';
   if (playerHandKey !== lastPlayerHandKey) {
@@ -379,7 +449,7 @@ function scan(): ForensicsSnapshot | null {
     // Use opp-stack anchor proximity if present; otherwise filter [data-card-id] containing playerId.
     const stackEl = document.querySelector(`[data-card-anchor="opp-stack-${o.playerId}"]`)
       || document.querySelector(`[data-opp-player-id="${o.playerId}"]`);
-    const stackChildren = stackEl ? Array.from(stackEl.querySelectorAll('[data-card-id], [data-canonical-card-back]')) : [];
+    const stackChildren = stackEl ? Array.from(stackEl.querySelectorAll('[data-playing-card-root], [data-card-id], [data-canonical-card-back]')) : [];
     // Fallback: any [data-card-id*=":<playerId-prefix>:"] outside active region
     const fallback = stackChildren.length === 0
       ? Array.from(document.querySelectorAll(`[data-card-id*="${o.playerId.slice(0, 6)}"]`))
@@ -433,6 +503,8 @@ function scan(): ForensicsSnapshot | null {
     timers,
     selfHand,
     opponents,
+    handRenders: getThreeFiveSevenHandRenders(),
+    renderTransitions: [...getThreeFiveSevenRenderTransitions()],
   };
 
   diffAndRecord(lastSnapshot, snap);
@@ -499,8 +571,14 @@ export function ThreeFiveSevenForensicsPanel() {
   useSyncExternalStore(subscribeForensics, getRingBuffer, getRingBuffer);
   useSyncExternalStore(subscribeDealDbg, getDealDbg, getDealDbg);
   useSyncExternalStore(subscribeCardTransportDbg, getCardTransportDbg, getCardTransportDbg);
+  useSyncExternalStore(subscribeThreeFiveSevenForensics, getThreeFiveSevenHandRenders, getThreeFiveSevenHandRenders);
   const transitions = useSyncExternalStore(subscribeForensics, getTransitionLog, getTransitionLog);
   const card0frames = useSyncExternalStore(subscribeForensics, getCard0Timeline, getCard0Timeline);
+  const renderTransitions = useSyncExternalStore(
+    subscribeThreeFiveSevenForensics,
+    getThreeFiveSevenRenderTransitions,
+    getThreeFiveSevenRenderTransitions,
+  );
 
   const [expanded, setExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState<'A'|'B'|'C'|'D'|'E'|'F'|'G'>('A');
@@ -518,8 +596,8 @@ export function ThreeFiveSevenForensicsPanel() {
 
   const snap = lastSnapshot;
   const aBad = snap && snap.phase === 'DEALING' && snap.enterGameplayCalled;
-  const bBadRunning = snap && snap.phase === 'DEALING' && snap.runningTimerCount > 0;
-  const bBadVisible = snap && snap.phase === 'DEALING' && snap.visibleTimerCount > 0;
+  const bBadRunning = snap && snap.timers.some((t) => t.running && t.phase === 'DEALING');
+  const bBadVisible = false;
   const cBadDom = snap && (snap.selfHand.effectiveLength ?? 0) > snap.selfHand.actualRenderedDomCount;
 
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '0 2px' };
@@ -536,7 +614,10 @@ export function ThreeFiveSevenForensicsPanel() {
       latest: snap,
       ringBuffer: [...ringBuffer],
       transitions: [...transitions],
+      renderLayerTransitions: [...renderTransitions],
       card0Timeline: [...card0frames],
+      timerOwners: getMountedThreeFiveSevenTimerOwners(),
+      handRenders: getThreeFiveSevenHandRenders(),
       inventory: {
         timers: inventory('Timer', '[data-canonical-shell-timer-rail], [data-shell-timer], [data-mobile-player-timer], [data-three-five-seven-timer], [data-legacy-timer], [data-active-player-timer], [data-game-timer]'),
         playerHands: inventory('PlayerHand', '[data-canonical-self-hand-anchor-position], [data-player-hand]'),
@@ -659,16 +740,27 @@ export function ThreeFiveSevenForensicsPanel() {
                   <Row label="mountedTimerCount" value={String(snap.mountedTimerCount)} bad={snap.mountedTimerCount > 1} />
                   <Row label="runningTimerCount" value={String(snap.runningTimerCount)} bad={!!bBadRunning} />
                   <Row label="visibleTimerCount" value={String(snap.visibleTimerCount)} bad={!!bBadVisible} />
-                  {(bBadRunning || bBadVisible) ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ phase=DEALING but timer is running/visible</div> : null}
-                  <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>per-timer inventory</div>
-                  {snap.timers.length === 0 ? <div style={{ opacity: 0.6 }}>(no timer DOM)</div> : snap.timers.map((t, i) => (
-                    <div key={i} style={{ borderTop: '1px dashed #2a2a2a', padding: '2px 0' }}>
-                      <div style={{ color: t.visible ? '#7CFC00' : '#9fb3c8' }}>{t.selector} <span style={{ opacity: 0.7 }}>({t.tag})</span></div>
-                      <div>mounted={String(t.mounted)} visible={String(t.visible)} paused={t.attrs['data-shell-timer-paused'] ?? '—'}</div>
-                      <div>rect={t.rect ? `${t.rect.x},${t.rect.y} ${t.rect.w}×${t.rect.h}` : '—'}</div>
-                      <div style={{ opacity: 0.75 }}>parent={t.parent || '∅'}</div>
-                    </div>
-                  ))}
+                  {bBadRunning ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ timer owner running=true AND phase=DEALING</div> : null}
+                  <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>ALL TIMER OWNERS</div>
+                  {snap.timers.length === 0 ? <div style={{ opacity: 0.6 }}>(no mounted timer owners)</div> : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 9, marginTop: 3 }}>
+                      <thead>
+                        <tr style={{ color: '#9fb3c8', textAlign: 'left' }}>
+                          <th>componentName</th><th>gameType</th><th>handContextId</th><th>waveContextId</th><th>dealRuntimeId</th><th>phase</th><th>visible</th><th>running</th><th>timeLeft</th><th>usesDealRuntime</th><th>reactKey</th><th>renderCount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {snap.timers.map((t, i) => {
+                          const bad = t.running && t.phase === 'DEALING';
+                          return (
+                            <tr key={i} style={{ background: bad ? 'rgba(255,0,0,0.25)' : undefined, color: bad ? '#ff6b6b' : '#fff', borderTop: '1px dashed #2a2a2a' }}>
+                              <td title={t.ownerId}>{t.componentName}</td><td>{t.gameType ?? '∅'}</td><td>{short(t.handContextId)}</td><td>{short(t.waveContextId)}</td><td>{short(t.dealRuntimeId)}</td><td>{t.phase}</td><td>{String(t.visible)}</td><td>{String(t.running)}</td><td>{t.timeLeft ?? '—'}</td><td>{String(t.usesDealRuntime)}</td><td>{short(t.reactKey)}</td><td>{t.renderCount}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
 
@@ -689,12 +781,16 @@ export function ThreeFiveSevenForensicsPanel() {
                   <Row label="ownershipFloor (prevWave)" value={String(snap.selfHand.ownershipFloor ?? '—')} />
                   <Row label="ownershipFloorApplied" value={String(snap.selfHand.ownershipFloorApplied ?? '—')} />
                   {cBadDom ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ actualRenderedDomCount &lt; effectiveLength</div> : null}
+                  <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>ACTUAL SELF RENDERS</div>
+                  {snap.handRenders.filter((h) => h.component === 'SELF').map((h) => <HandRenderRow key={h.id} h={h} />)}
                 </div>
               )}
 
               {activeSection === 'D' && (
                 <div style={sect}>
                   <div style={sectTitle}>D · OPPONENT FORENSICS</div>
+                  <div style={{ color: '#9fd6ff', fontWeight: 700 }}>ACTUAL OPPONENT RENDERS</div>
+                  {snap.handRenders.filter((h) => h.component === 'OPPONENT').map((h) => <HandRenderRow key={h.id} h={h} />)}
                   {snap.opponents.length === 0 ? <div style={{ opacity: 0.6 }}>(no opponents in ownership)</div> : snap.opponents.map((o) => {
                     const bad = (o.visibleCount ?? 0) > o.actualRenderedDomCount;
                     return (
@@ -730,7 +826,9 @@ export function ThreeFiveSevenForensicsPanel() {
                           <div style={{ color: bad || gap ? '#ff6b6b' : '#87CEFA' }}>
                             +{(f.t - (card0LaunchedAt ?? f.t)).toFixed(0)}ms · M{f.transportMounted ? '1' : '0'} V{f.transportVisible ? '1' : '0'} OC{f.ownershipClaimed ? '1' : '0'} D{f.destroyed ? '1' : '0'} · domCard0={String(f.card0PresentInDOM)} domTransport={String(f.transportPresentInDOM)} {gap ? '⚠ GAP' : ''}
                           </div>
-                          <div style={{ opacity: 0.8 }}>dist={f.distancePx ?? '—'}px · anchor={f.handAnchorRect ? `(${f.handAnchorRect.cx},${f.handAnchorRect.cy})` : '—'} card={f.card0Rect ? `(${f.card0Rect.cx},${f.card0Rect.cy})` : '—'}</div>
+                          <div style={{ opacity: 0.8 }}>ownershipClaimAt={f.ownershipClaimAt ? `${(f.ownershipClaimAt/1000).toFixed(2)}s` : '—'} destroyedAt={f.transportDestroyedAt ? `${(f.transportDestroyedAt/1000).toFixed(2)}s` : '—'} domMountedAt={f.card0DomMountedAt ? `${(f.card0DomMountedAt/1000).toFixed(2)}s` : '—'}</div>
+                          <div style={{ color: f.distancePx != null && f.distancePx > 5 ? '#ff6b6b' : '#9fb3c8', fontWeight: f.distancePx != null && f.distancePx > 5 ? 700 : 400 }}>distancePx={f.distancePx ?? '—'} · card0DomRect={fmtRect(f.card0Rect)} · fanRootRect={fmtRect(f.fanRootRect)}</div>
+                          <div style={{ opacity: 0.8 }}>anchor={fmtRect(f.handAnchorRect)}</div>
                         </div>
                       );
                     })}
@@ -754,13 +852,13 @@ export function ThreeFiveSevenForensicsPanel() {
 
               {activeSection === 'G' && (
                 <div style={sect}>
-                  <div style={sectTitle}>G · TRANSITION HISTORY (last {transitions.length}/{TRANSITIONS_MAX})</div>
+                  <div style={sectTitle}>G · RENDER TRANSITION LOG (last {renderTransitions.length})</div>
                   <div style={{ maxHeight: 360, overflow: 'auto' }}>
-                    {transitions.length === 0 ? <div style={{ opacity: 0.6 }}>(no transitions yet)</div> : [...transitions].reverse().map((tr, i) => (
+                    {renderTransitions.length === 0 ? <div style={{ opacity: 0.6 }}>(no render transitions yet)</div> : [...renderTransitions].reverse().map((tr, i) => (
                       <div key={i} style={{ borderTop: '1px dashed #2a2a2a', padding: '2px 0' }}>
-                        <div style={{ color: '#FFD580' }}>+{tr.t.toFixed(0)}ms · <b>{tr.field}</b></div>
-                        <div>old={fmtVal(tr.oldValue)} → new={fmtVal(tr.newValue)}</div>
-                        <div style={{ opacity: 0.6 }}>{tr.stackHint}</div>
+                        <div style={{ color: '#FFD580' }}>+{tr.timestamp.toFixed(0)}ms · <b>{tr.component}</b> · {tr.event}</div>
+                        <div>old={fmtVal(tr.old)} → new={fmtVal(tr.new)}</div>
+                        <div style={{ opacity: 0.6 }}>{tr.wallTime}</div>
                       </div>
                     ))}
                   </div>
@@ -790,6 +888,20 @@ function Row({ label, value, good, bad }: { label: string; value: string; good?:
   );
 }
 
+function HandRenderRow({ h }: { h: ForensicsHandRender }) {
+  const bad = (h.effectiveCardsLength ?? h.visibleCount ?? 0) > h.actualRenderedDomCount;
+  return (
+    <div style={{ borderTop: '1px dashed #2a2a2a', padding: '3px 0', background: bad ? 'rgba(255,0,0,0.14)' : undefined }}>
+      <div style={{ color: bad ? '#ff6b6b' : '#87CEFA', fontWeight: 700 }}>{h.componentName} {bad ? '⚠ DOM&lt;EFFECTIVE' : ''}</div>
+      <div>mounted={String(h.mounted)} PlayerHandMounted={String(h.playerHandMounted)} PlayerHandKey={h.playerHandKey ?? '∅'}</div>
+      <div>seat={h.seat ?? '—'} player={h.playerId?.slice(0, 8) ?? '∅'} reactKey={h.reactKey ?? '∅'}</div>
+      <div>renderCount={h.renderCount} cards.length={h.cardsLength ?? '—'} effectiveCards.length={h.effectiveCardsLength ?? '—'}</div>
+      <div>visibleCount={h.visibleCount ?? '—'} actualRenderedDomCount={h.actualRenderedDomCount}</div>
+      <div>mountedAt={(h.mountedAt / 1000).toFixed(2)}s unmountedAt={h.unmountedAt ? `${(h.unmountedAt / 1000).toFixed(2)}s` : '—'}</div>
+    </div>
+  );
+}
+
 function fmtRect(r: Rect | null): string {
   if (!r) return '—';
   return `${r.x},${r.y} ${r.w}×${r.h} c=(${r.cx},${r.cy})`;
@@ -799,6 +911,11 @@ function fmtVal(v: unknown): string {
   if (v === null || v === undefined) return '∅';
   if (typeof v === 'string') return v.length > 60 ? v.slice(0, 60) + '…' : v;
   try { return JSON.stringify(v); } catch { return String(v); }
+}
+
+function short(v: string | null | undefined): string {
+  if (!v) return '∅';
+  return v.length > 18 ? `${v.slice(0, 8)}…${v.slice(-8)}` : v;
 }
 
 function InventoryBlock({ title, selector }: { title: string; selector: string }) {

@@ -3,6 +3,12 @@ import { Card as CardType, Rank, getBestFiveCardIndices } from "@/lib/cardUtils"
 import { PlayingCard, getCardSize, CardSize } from "@/components/PlayingCard";
 import { useCardRowLayout } from "@/lib/canonicalShell/useCardRowLayout";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  recordThreeFiveSevenHandRender,
+  unregisterThreeFiveSevenHandRender,
+} from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
+
+let __playerHandForensicsSeq = 0;
 
 interface PlayerHandProps {
   cards: CardType[];
@@ -79,6 +85,13 @@ export const PlayerHand = ({
   availableWidthPx,
   wrapperScale = 1,
 }: PlayerHandProps) => {
+  const instanceIdRef = useRef(0);
+  if (instanceIdRef.current === 0) {
+    __playerHandForensicsSeq += 1;
+    instanceIdRef.current = __playerHandForensicsSeq;
+  }
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
 
   const RANK_ORDER: Record<string, number> = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
@@ -192,6 +205,34 @@ export const PlayerHand = ({
   const measureRef = useRef<HTMLDivElement | null>(null);
   const [measuredPaneWidth, setMeasuredPaneWidth] = useState<number>(0);
   const [measuredParentWidth, setMeasuredParentWidth] = useState<number>(0);
+  const forensicsId = `PlayerHand:${instanceIdRef.current}`;
+  useLayoutEffect(() => {
+    if (!is357Game) return;
+    const el = measureRef.current;
+    if (!el) return;
+    const activeRegion = el.closest<HTMLElement>('[data-357-active-hand-region]');
+    const seatCluster = el.closest<HTMLElement>('[data-canonical-seat-cluster]');
+    const handAnchor = typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>('[data-canonical-self-hand-anchor-position="top-of-pane"]')
+      : null;
+    const actualRenderedDomCount = el.querySelectorAll('[data-playing-card-root], [data-canonical-card-back], [data-card-id]').length;
+    recordThreeFiveSevenHandRender(forensicsId, {
+      component: activeRegion ? 'SELF' : seatCluster ? 'OPPONENT' : 'PLAYER_HAND',
+      componentName: activeRegion ? 'SELF PlayerHand' : seatCluster ? 'OPPONENT PlayerHand' : 'PlayerHand',
+      seat: seatCluster?.getAttribute('data-seat-position') ? Number(seatCluster.getAttribute('data-seat-position')) : null,
+      playerId: seatCluster?.getAttribute('data-player-id') ?? null,
+      playerHandMounted: true,
+      playerHandKey: activeRegion ? (handAnchor?.getAttribute('data-card-anchor') ?? null) : null,
+      reactKey: `${gameType ?? 'unknown'}:r${currentRound}:inst${instanceIdRef.current}`,
+      renderCount: renderCountRef.current,
+      cardsLength: cards.length,
+      effectiveCardsLength: cards.length,
+      visibleCount: displayCardCount,
+      actualRenderedDomCount,
+      fanLayoutInitialized: actualRenderedDomCount > 0,
+    });
+  });
+  useEffect(() => () => unregisterThreeFiveSevenHandRender(forensicsId), [forensicsId]);
   useLayoutEffect(() => {
     if (!is357Game) return;
     const el = measureRef.current;
@@ -365,7 +406,7 @@ export const PlayerHand = ({
     const angleStep = count > 1 ? arcSpread / (count - 1) : 0;
     
     return (
-      <div className="flex justify-center relative" style={{ minHeight: '60px' }}>
+      <div className="flex justify-center relative" ref={is357Game ? measureRef : undefined} style={{ minHeight: '60px' }}>
         {Array.from({ length: count }, (_, index) => {
           // Calculate rotation and vertical offset for arc effect
           const rotation = useFannedArc ? startAngle + (index * angleStep) : (index * 2 - 2);
@@ -445,7 +486,7 @@ export const PlayerHand = ({
     );
     
     return (
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-0.5" ref={is357Game ? measureRef : undefined}>
         {/* For bottom positions: unused above, used below. For others: used above, unused below */}
         {isBottomPosition ? (
           <>

@@ -3,6 +3,11 @@ import {
   useLifecycleMount,
   recordLifecycleEvent,
 } from "@/lib/canonicalShell/lifecycleDebug";
+import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
+import {
+  recordThreeFiveSevenTimerOwner,
+  unregisterThreeFiveSevenTimerOwner,
+} from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
 
 // Monotonically increasing instance counter so we can distinguish a
 // fresh mount (new id) from a re-render of the same mount (same id).
@@ -28,6 +33,7 @@ export const MobilePlayerTimer = ({
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
+  const deal = useDealRuntime();
 
   // ── DIAGNOSTIC: timer remount audit ─────────────────────────────
   const instanceIdRef = useRef<number>(0);
@@ -35,6 +41,8 @@ export const MobilePlayerTimer = ({
     __mptInstanceSeq += 1;
     instanceIdRef.current = __mptInstanceSeq;
   }
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
   useLifecycleMount('MobilePlayerTimer', {
     id: instanceIdRef.current,
     initialTimeLeft: timeLeft,
@@ -123,8 +131,33 @@ export const MobilePlayerTimer = ({
     return {};
   };
 
+  const timerOwnerId = `MobilePlayerTimer:${instanceIdRef.current}`;
+  useEffect(() => {
+    recordThreeFiveSevenTimerOwner(timerOwnerId, {
+      componentName: 'MobilePlayerTimer',
+      gameType: null,
+      handContextId: deal?.handContextId ?? null,
+      waveContextId: deal?.handContextId ?? null,
+      dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
+      phase: deal?.phase ?? 'NO_RUNTIME',
+      visible: !!isActive,
+      running: !!isActive && timeLeft !== null && timeLeft > 0,
+      timeLeft,
+      usesDealRuntime: !!deal,
+      reactKey: `MobilePlayerTimer:${instanceIdRef.current}`,
+      renderCount: renderCountRef.current,
+    });
+  }, [timerOwnerId, deal?.handContextId, deal?.phase, isActive, timeLeft]);
+  useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
+
   return (
     <div 
+      data-mobile-player-timer=""
+      data-forensics-component="MobilePlayerTimer"
+      data-forensics-timer-owner-id={timerOwnerId}
+      data-forensics-timer-phase={deal?.phase ?? 'NO_RUNTIME'}
+      data-forensics-timer-running={isActive && timeLeft !== null && timeLeft > 0 ? '1' : '0'}
+      data-forensics-timer-time-left={timeLeft === null ? '' : String(timeLeft)}
       className="relative inline-flex items-center justify-center" 
       style={{ width: size + 8, height: size + 8 }}
     >

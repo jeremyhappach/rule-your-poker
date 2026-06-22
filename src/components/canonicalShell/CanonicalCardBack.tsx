@@ -131,6 +131,7 @@ export function CanonicalCardBack({
   return (
     <div
       {...(dataAttrs ?? {})}
+      data-playing-card-root=""
       data-canonical-card-back={variant}
       data-cb-pref-id={id}
       data-cb-accent={teamLogo ? 'logo' : 'frame'}

@@ -19,6 +19,10 @@
 
 import { MobilePlayerTimer } from '@/components/MobilePlayerTimer';
 import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import {
+  recordThreeFiveSevenTimerOwner,
+  unregisterThreeFiveSevenTimerOwner,
+} from '@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore';
 import { recordShellEvent } from './diagnostics';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useLifecycleMount } from './lifecycleDebug';
@@ -108,6 +112,26 @@ export function ActivePlayerHUD({
   const dealing = !!deal && deal.phase === 'DEALING';
   const effectiveIsActive = dealing ? false : isActive;
   const effectiveTimeLeft = dealing ? null : timeLeft;
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  const timerOwnerId = `ActivePlayerHUD:${gameId ?? 'game'}:${seatPosition ?? 'seat'}:${gameType ?? 'unknown'}`;
+  useEffect(() => {
+    recordThreeFiveSevenTimerOwner(timerOwnerId, {
+      componentName: 'ActivePlayerHUD→MobilePlayerTimer',
+      gameType: gameType ?? null,
+      handContextId: deal?.handContextId ?? null,
+      waveContextId: deal?.handContextId ?? null,
+      dealRuntimeId: deal?.handContextId?.replace(/#r\d+$/, '') ?? null,
+      phase: deal?.phase ?? 'NO_RUNTIME',
+      visible: !!effectiveIsActive,
+      running: !!effectiveIsActive && effectiveTimeLeft !== null && effectiveTimeLeft > 0,
+      timeLeft: effectiveTimeLeft,
+      usesDealRuntime: !!deal,
+      reactKey: `${gameType ?? 'unknown'}:${seatPosition ?? 'seat'}`,
+      renderCount: renderCountRef.current,
+    });
+  }, [timerOwnerId, gameType, seatPosition, deal?.handContextId, deal?.phase, effectiveIsActive, effectiveTimeLeft, gameId]);
+  useEffect(() => () => unregisterThreeFiveSevenTimerOwner(timerOwnerId), [timerOwnerId]);
 
   return (
     <MobilePlayerTimer
