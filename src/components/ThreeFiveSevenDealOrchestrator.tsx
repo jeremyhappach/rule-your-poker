@@ -434,12 +434,13 @@ export function Use357SelfHand<T>({
   // array so previously-settled cards never disappear — even for one
   // frame. The cache resets on hand boundary via DealRuntime remount.
   const handKey = deal?.handContextId ?? 'no-runtime';
-  const cacheRef = useRef<{ handKey: string; cards: T[] }>({ handKey, cards: [] });
+  const cacheRef = useRef<{ handKey: string; cards: T[]; rendered: T[] }>({ handKey, cards: [], rendered: [] });
   if (cacheRef.current.handKey !== handKey) {
-    cacheRef.current = { handKey, cards: [] };
+    cacheRef.current = { handKey, cards: [], rendered: [] };
   }
   if (cards.length >= cacheRef.current.cards.length) {
-    cacheRef.current = { handKey, cards };
+    cacheRef.current.cards = cards;
+    cacheRef.current.handKey = handKey;
   }
   const sourceCards = cards.length >= cacheRef.current.cards.length ? cards : cacheRef.current.cards;
 
@@ -457,12 +458,26 @@ export function Use357SelfHand<T>({
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
   if (deal && (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')) {
     for (let i = 0; i < allowed; i++) {
-      const card = sourceCards[i];
+      const card = sourceCards[i] ?? cacheRef.current.rendered[i];
       if (card) resolvedCards.push(card);
       else unresolvedSelfCards.push({ intentId: settledCardIds[i] ?? null, cardId: settledCardIds[i] ?? null, claimedIndex: i });
     }
   } else {
     resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));
+  }
+  // STICKINESS: once a card index has been rendered for this hand, never
+  // shrink below it. If the authoritative cards array transiently empties
+  // (DB refresh between waves, hand boundary lag), fall back to the
+  // previously-rendered card object so it does NOT disappear.
+  if (resolvedCards.length < cacheRef.current.rendered.length && handKey === cacheRef.current.handKey) {
+    for (let i = resolvedCards.length; i < cacheRef.current.rendered.length; i++) {
+      const prev = cacheRef.current.rendered[i];
+      if (prev) resolvedCards.push(prev);
+    }
+  }
+  // Update rendered cache (monotonic within hand).
+  if (resolvedCards.length >= cacheRef.current.rendered.length) {
+    cacheRef.current.rendered = resolvedCards.slice();
   }
   const effectiveCards = resolvedCards;
   useEffect(() => {
