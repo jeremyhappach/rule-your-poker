@@ -2407,6 +2407,12 @@ export const MobileGameTable = ({
   if (!chuckyInstanceIdRef.current) {
     chuckyInstanceIdRef.current = `mgt#${Math.random().toString(36).slice(2, 10)}`;
   }
+  // WAR-TIME CALLGRAPH: per-render seq incremented on EVERY render of MobileGameTable.
+  // Stamped on every Chucky event so we can prove render→effect ordering.
+  const chuckyRenderSeqRef = useRef(0);
+  chuckyRenderSeqRef.current += 1;
+  // Track chuckyCards PROP identity (same contents, new array reference each render = parent churn).
+  const chuckyCardsPropIdentityRef = useRef<{ ref: unknown; contents: string; renderSeq: number } | null>(null);
   const setCachedChuckyCardsRevealed = useCallback(
     (
       next: number | ((prev: number) => number),
@@ -4786,6 +4792,31 @@ export const MobileGameTable = ({
   // simultaneously under jittered/coalesced snapshots).
   useEffect(() => {
     if (gameType !== 'holm-game') return;
+    // CALLGRAPH: identity churn audit. If chuckyCards is a NEW array reference
+    // but contents are unchanged, the parent is churning the prop identity which
+    // re-runs this effect → setCachedChuckyCards([...]) → new cachedChuckyCards
+    // identity → stepper effect re-arms → cleanup clears timeout before fire.
+    {
+      const contents = chuckyCards ? chuckyCards.map((c: any) => `${c?.rank}${c?.suit}`).join('|') : '';
+      const prev = chuckyCardsPropIdentityRef.current;
+      const refChanged = !prev || prev.ref !== chuckyCards;
+      const contentsChanged = !prev || prev.contents !== contents;
+      if (refChanged) {
+        recordHolmTimelineEvent('CHUCKY_CACHE_EFFECT_ENTER', {
+          renderSeq: chuckyRenderSeqRef.current,
+          instanceId: chuckyInstanceIdRef.current,
+          chuckyCardsRefChanged: refChanged,
+          chuckyCardsContentsChanged: contentsChanged,
+          identityChurn: refChanged && !contentsChanged,
+          prevRenderSeq: prev?.renderSeq ?? null,
+          contentsLen: chuckyCards?.length ?? 0,
+          chuckyActive,
+          handContextId: handContextId ?? null,
+        }, handContextId ?? null);
+        chuckyCardsPropIdentityRef.current = { ref: chuckyCards, contents, renderSeq: chuckyRenderSeqRef.current };
+      }
+    }
+
     
     // CRITICAL: Clear cached Chucky cards when entering dealer config phases
     if (isDealerConfigPhase) {
@@ -4832,6 +4863,18 @@ export const MobileGameTable = ({
     // Cache Chucky data when it's available AND track which hand it belongs to
     if (chuckyActive && chuckyCards && chuckyCards.length > 0) {
       if (cachedChuckyHandContextRef.current === null || cachedChuckyHandContextRef.current === handContextId) {
+        // CALLGRAPH: every call to setCachedChuckyCards from this branch creates a
+        // BRAND NEW array reference (`[...chuckyCards]`). If this fires every render
+        // it directly causes cachedChuckyCards identity to churn → stepper re-arm loop.
+        recordHolmTimelineEvent('CHUCKY_CACHE_SET_CARDS', {
+          renderSeq: chuckyRenderSeqRef.current,
+          instanceId: chuckyInstanceIdRef.current,
+          writer: 'cacheEffect.cachePath',
+          chuckyCardsLen: chuckyCards.length,
+          alreadyCachedLen: cachedChuckyCards?.length ?? 0,
+          willCreateNewArrayIdentity: true,
+          handContextId: handContextId ?? null,
+        }, handContextId ?? null);
         console.log('[MOBILE_CHUCKY] Caching Chucky cards:', chuckyCards.length, 'for hand:', handContextId);
         setCachedChuckyCards([...chuckyCards]);
         setCachedChuckyActive(true);
@@ -4958,16 +5001,33 @@ export const MobileGameTable = ({
 
     const effectInstance = ++chuckyEffectInstanceRef.current;
     const instanceId = chuckyInstanceIdRef.current;
+    const enterRenderSeq = chuckyRenderSeqRef.current;
+
+    // CALLGRAPH trail: every synchronous step inside the effect body.
+    const callgraph: Array<{ t: number; renderSeq: number; step: string; info?: Record<string, unknown> }> = [];
+    const step = (label: string, info?: Record<string, unknown>) => {
+      callgraph.push({
+        t: typeof performance !== 'undefined' ? performance.now() : Date.now(),
+        renderSeq: chuckyRenderSeqRef.current,
+        step: label,
+        info,
+      });
+    };
+    step('EFFECT_BODY_ENTER', { changedDeps: oldDeps ? Object.keys(changed) : null });
 
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
       instanceId,
       effectInstance,
+      renderSeq: enterRenderSeq,
       handContextId: handContextId ?? null,
       deps: newDeps,
       changedSinceLastEnter: oldDeps ? changed : null,
     }, handContextId ?? null);
+    step('recordHolmTimelineEvent(CHUCKY_EFFECT_ENTER)');
+
 
     chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
+    step('chuckyVisualMarkRevealSequenceScheduled');
     const schedStack = captureStack();
     recordChuckyVisualTrigger({
       handContextId: handContextId ?? null,
@@ -4987,24 +5047,29 @@ export const MobileGameTable = ({
         isSoloVsChucky: !!(isSoloVsChuckyRaw || soloVsChuckyTableLocked),
       },
     });
+    step('recordChuckyVisualTrigger(scheduled)');
 
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
       instanceId,
       effectInstance,
+      renderSeq: chuckyRenderSeqRef.current,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
       delay: 250,
       prev: cachedChuckyCardsRevealed,
       total,
     }, handContextId ?? null);
+    step('setTimeout(armed)', { timeoutId: timeoutSeq });
 
     const t = setTimeout(() => {
       fired = true;
       recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
         instanceId,
         effectInstance,
+        renderSeq: chuckyRenderSeqRef.current,
+        armedAtRenderSeq: enterRenderSeq,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         prev: cachedChuckyCardsRevealed,
@@ -5066,6 +5131,9 @@ export const MobileGameTable = ({
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
         instanceId,
         effectInstance,
+        armedAtRenderSeq: enterRenderSeq,
+        cleanupAtRenderSeq: chuckyRenderSeqRef.current,
+        rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         firedBeforeCleanup: fired,
@@ -5074,6 +5142,17 @@ export const MobileGameTable = ({
         changedDeps: diff,
         oldDeps: newDeps,
         newDeps: nextSnapshot,
+      }, handContextId ?? null);
+      // CALLGRAPH SUMMARY: ordered synchronous step list for this effect run.
+      recordHolmTimelineEvent('CHUCKY_EFFECT_CALLGRAPH', {
+        instanceId,
+        effectInstance,
+        armedAtRenderSeq: enterRenderSeq,
+        cleanupAtRenderSeq: chuckyRenderSeqRef.current,
+        rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
+        firedBeforeCleanup: fired,
+        cleanupReason,
+        trail: callgraph,
       }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
         handContextId: handContextId ?? null,
