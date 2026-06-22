@@ -100,6 +100,7 @@ export function DealRuntime({ handContextId, gameType = null, children }: DealRu
     if (!ctx) return;
     const off = ctx.onCardSettledIntent((intent) => {
       const cardId = intent.cardId;
+      if (gameType === 'holm-game') holmTimelineRecordSettle(cardId, performance.now());
       setSettledCardIds((prev) => {
         if (prev.has(cardId)) return prev;
         const next = new Set(prev);
