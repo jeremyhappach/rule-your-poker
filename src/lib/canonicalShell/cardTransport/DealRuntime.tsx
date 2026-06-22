@@ -37,6 +37,7 @@ import type { DealPhase } from './types';
 import { dealDbgUpsert } from './cardTransportDbg';
 import { useCardTransportInternal } from './CardTransportProvider';
 import { holmDealDbgRecordRuntime } from './holmDealDbg';
+import { holmTimelineRecordSettle } from './holmCardTimeline';
 
 interface DealContextValue {
   handContextId: string;
