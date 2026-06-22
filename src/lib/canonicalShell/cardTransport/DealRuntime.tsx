@@ -102,7 +102,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
         dealDbgUpsert(handContextId, {
           cardsSettled: next.size,
           dealSettled: ready,
-          ...(ready ? { phase: 'READY', readyReleased: true, dealSettled: true } : {}),
+          ...(ready ? { phase: 'READY', readyReleased: false, dealSettled: true } : {}),
         });
         if (ready) {
           queueMicrotask(() => setPhase((p) => (p === 'DEALING' ? 'READY' : p)));
@@ -160,6 +160,13 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
     setPhase((p) => (p === 'READY' ? 'GAMEPLAY' : p));
     dealDbgUpsert(handContextId, { phase: 'GAMEPLAY', enterGameplayCalledAt: performance.now() });
   }, [handContextId]);
+
+  useEffect(() => {
+    if (phase !== 'READY') return;
+    if (!(expectedCount > 0 && settledCardIds.size >= expectedCount)) return;
+    if (activeIntentsForHand !== 0) return;
+    dealDbgUpsert(handContextId, { readyReleased: true, dealSettled: true });
+  }, [phase, expectedCount, settledCardIds.size, activeIntentsForHand, handContextId]);
 
   const isSettled = useCallback(
     (cardId: string) => settledCardIds.has(cardId),
