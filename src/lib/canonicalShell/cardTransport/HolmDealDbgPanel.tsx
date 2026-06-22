@@ -541,6 +541,33 @@ export function HolmDealDbgPanel() {
               <pre key={`${violation.type}-${index}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(violation, null, 2)}</pre>
             ))}
           </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Community</div>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: '#cfd8e3' }}>{JSON.stringify(wartimeCommunity ?? {}, null, 2)}</pre>
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Chucky</div>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: '#cfd8e3' }}>{JSON.stringify(wartimeChucky ?? {}, null, 2)}</pre>
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Ownership</div>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: '#cfd8e3' }}>{JSON.stringify(wartimeOwnership ?? {}, null, 2)}</pre>
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Timeline ({wartimeEvents.length})</div>
+            {wartimeEvents.slice(-40).map((e) => (
+              <div key={e.seq} style={rowStyle}>
+                <span style={k}>#{e.seq} +{e.t.toFixed(0)} {e.event}</span>
+                <span style={v}>{e.payload ? JSON.stringify(e.payload).slice(0, 120) : ''}</span>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Violations ({wartimeViolations.length})</div>
+            {wartimeViolations.length === 0 ? <div style={ok}>none</div> : wartimeViolations.slice(-20).map((v2) => (
+              <pre key={v2.seq} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
