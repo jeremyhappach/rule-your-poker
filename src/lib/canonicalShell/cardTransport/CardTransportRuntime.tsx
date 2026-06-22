@@ -400,7 +400,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       startSkewMs: now - expectedStartTime,
       launchProofSource: source,
     });
-    if (card.intent.cardId.includes('#hand-') || card.intent.cardId.includes('#community-') || card.intent.cardId.includes('#chucky-')) {
+    if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordLaunch(card.intent.cardId, now);
     }
     // eslint-disable-next-line no-console
@@ -436,7 +436,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       arrivalSkewMs: now - expectedArrivalTime,
       arrivalProofSource: source,
     });
-    if (card.intent.cardId.includes('#hand-') || card.intent.cardId.includes('#community-') || card.intent.cardId.includes('#chucky-')) {
+    if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordArrival(card.intent.cardId, now);
       holmTimelineRecordClaim(card.intent.cardId, now);
     }
