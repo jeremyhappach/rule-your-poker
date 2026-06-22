@@ -40,6 +40,8 @@ export interface HolmTimelineViolation {
   cardId?: string;
   endpoint?: string;
   dispatchAt?: number | null;
+  launchAt?: number | null;
+  arrivalAt?: number | null;
   claimAt?: number | null;
   settleAt?: number | null;
   domMountAt?: number | null;
@@ -164,6 +166,8 @@ export function holmTimelineRecordVisible(cardId: string, at: number): void {
         cardId: e.cardId,
         endpoint: e.endpoint,
         dispatchAt: e.dispatchAt,
+        launchAt: e.launchAt,
+        arrivalAt: e.arrivalAt,
         claimAt: e.claimAt,
         settleAt: e.settleAt,
         domMountAt: e.domMountAt,
