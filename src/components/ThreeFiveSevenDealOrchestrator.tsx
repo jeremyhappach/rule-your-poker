@@ -419,7 +419,7 @@ export function Use357SelfHand<T>({
   currentPlayerId: string;
   cards: T[];
   baseline: number;          // prevWaveCount
-  render: (effectiveCards: T[], dealPhase: typeof phase) => ReactNode;
+  render: (effectiveCards: T[], dealPhase: string) => ReactNode;
 }) {
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
