@@ -35,6 +35,12 @@ import {
   getHolmSoloOwnership,
   getHolmSoloOwnershipViolations,
 } from './holmSoloOwnership';
+import {
+  getHolmTimelineEvents,
+  getHolmWartimeViolations,
+  holmWartimeTick,
+  subscribeHolmWartime,
+} from './holmWartimeForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -327,6 +333,10 @@ export function HolmDealDbgPanel() {
         visibleDomCards: visibleCount,
       });
 
+      // WAR-TIME forensics tick (community / chucky / ownership +
+      // timeline events + violation detection). Pure instrumentation.
+      try { holmWartimeTick(); } catch { /* noop */ }
+
       // keep panel-side meta fresh too
       void handCtx;
       raf = window.requestAnimationFrame(loop);
@@ -354,6 +364,12 @@ export function HolmDealDbgPanel() {
   const timeline = getHolmCardTimeline();
   const frames = getHolmDealFrames();
   const timelineViolations = getHolmTimelineViolations();
+  // WAR-TIME ring buffers (subscribed via useSyncExternalStore below)
+  const wartimeEvents = useSyncExternalStore(subscribeHolmWartime, getHolmTimelineEvents, getHolmTimelineEvents);
+  const wartimeViolations = useSyncExternalStore(subscribeHolmWartime, getHolmWartimeViolations, getHolmWartimeViolations);
+  const wartimeCommunity = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeCommunity) as Record<string, unknown> | undefined;
+  const wartimeChucky = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeChucky) as Record<string, unknown> | undefined;
+  const wartimeOwnership = (typeof window !== 'undefined' && (window as unknown as { __holmDealDbg?: Record<string, unknown> }).__holmDealDbg?.wartimeOwnership) as Record<string, unknown> | undefined;
   const expectedIds = new Set(snapshot.expectedCards.map((c) => c.cardId));
   const transportLifecycle = records.filter((r) =>
     (snapshot.handContextId && r.handContextId === snapshot.handContextId) ||
@@ -366,7 +382,12 @@ export function HolmDealDbgPanel() {
       '\n\n--- TRANSPORT LIFECYCLE ---\n' + JSON.stringify(transportLifecycle, null, 2) +
       '\n\n--- TIMELINE ---\n' + JSON.stringify(timeline, null, 2) +
       '\n\n--- FRAMES (last ' + frames.length + ') ---\n' + JSON.stringify(frames.slice(-60), null, 2) +
-      '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2);
+      '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2) +
+      '\n\n--- WARTIME COMMUNITY ---\n' + JSON.stringify(wartimeCommunity, null, 2) +
+      '\n\n--- WARTIME CHUCKY ---\n' + JSON.stringify(wartimeChucky, null, 2) +
+      '\n\n--- WARTIME OWNERSHIP ---\n' + JSON.stringify(wartimeOwnership, null, 2) +
+      '\n\n--- WARTIME TIMELINE EVENTS (' + wartimeEvents.length + ') ---\n' + JSON.stringify(wartimeEvents, null, 2) +
+      '\n\n--- WARTIME VIOLATIONS (' + wartimeViolations.length + ') ---\n' + JSON.stringify(wartimeViolations, null, 2);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -374,8 +395,8 @@ export function HolmDealDbgPanel() {
     } catch { /* noop */ }
   };
 
-  const totalViol = snapshot.violations.length + timelineViolations.length;
-  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol}`;
+  const totalViol = snapshot.violations.length + timelineViolations.length + wartimeViolations.length;
+  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol} wt=${wartimeEvents.length}/${wartimeViolations.length}`;
 
   return (
     <div
@@ -518,6 +539,33 @@ export function HolmDealDbgPanel() {
             <div style={title}>Timeline Violations</div>
             {timelineViolations.length === 0 ? <div style={ok}>none</div> : timelineViolations.slice(-20).map((violation, index) => (
               <pre key={`${violation.type}-${index}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(violation, null, 2)}</pre>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Community</div>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: '#cfd8e3' }}>{JSON.stringify(wartimeCommunity ?? {}, null, 2)}</pre>
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Chucky</div>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: '#cfd8e3' }}>{JSON.stringify(wartimeChucky ?? {}, null, 2)}</pre>
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Ownership</div>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0, color: '#cfd8e3' }}>{JSON.stringify(wartimeOwnership ?? {}, null, 2)}</pre>
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Timeline ({wartimeEvents.length})</div>
+            {wartimeEvents.slice(-40).map((e) => (
+              <div key={e.seq} style={rowStyle}>
+                <span style={k}>#{e.seq} +{e.t.toFixed(0)} {e.event}</span>
+                <span style={v}>{e.payload ? JSON.stringify(e.payload).slice(0, 120) : ''}</span>
+              </div>
+            ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>WAR-TIME Violations ({wartimeViolations.length})</div>
+            {wartimeViolations.length === 0 ? <div style={ok}>none</div> : wartimeViolations.slice(-20).map((v2) => (
+              <pre key={v2.seq} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
             ))}
           </div>
         </div>
