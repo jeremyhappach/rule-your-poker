@@ -105,6 +105,7 @@ export function CardTransportRuntime({
   const resolvedRef = useRef<Map<string, RuntimeCard>>(new Map());
   const launchTimersRef = useRef<Map<string, number>>(new Map());
   const settleTimersRef = useRef<Map<string, number>>(new Map());
+  const resolveAttemptCountRef = useRef<Map<string, number>>(new Map());
   /**
    * Endpoint-resolution retry buffer. When `from`/`to` anchors are not
    * yet present (gameplay surface still mounting), park the intent here
@@ -140,8 +141,11 @@ export function CardTransportRuntime({
           face: intent.face,
           from: intent.from,
           to: intent.to,
+          endpointResolveAttemptedAt: performance.now(),
+          endpointResolveAttemptCount: (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1,
           droppedReason: 'no-runtime-container',
           transportMounted: false,
+          lifecycleState: 'dropped',
         });
         ctx.__markDropped(intent, 'no-runtime-container');
       }
@@ -155,6 +159,8 @@ export function CardTransportRuntime({
       seen.add(intent.id);
       if (resolvedRef.current.has(intent.id)) continue;
 
+      const attemptCount = (resolveAttemptCountRef.current.get(intent.id) ?? 0) + 1;
+      resolveAttemptCountRef.current.set(intent.id, attemptCount);
       const from = resolveCardEndpoint(intent.from, container);
       const to = resolveCardEndpoint(intent.to, container);
       cardTransportDbgUpsert(intent.id, {
@@ -170,6 +176,10 @@ export function CardTransportRuntime({
         launchDelayFormula: intent.launchDelayFormula,
         expectedStartTime: intent.expectedStartTime,
         expectedArrivalTime: intent.expectedArrivalTime,
+        activeIntentVisibleAt: intent.enqueuedAt,
+        endpointResolveAttemptedAt: nowOuter,
+        endpointResolveAttemptCount: attemptCount,
+        lifecycleState: 'resolving',
         fromEndpointFound: !!from,
         toEndpointFound: !!to,
         resolvedFromAnchor: from?.resolvedAnchor ?? null,
@@ -196,6 +206,8 @@ export function CardTransportRuntime({
         cardTransportDbgUpsert(intent.id, {
           droppedReason: null,
           transportMounted: false,
+          queuedAt: firstSeenAt,
+          lifecycleState: 'queued',
         });
 
         if (waited > MAX_PENDING_MS) {
@@ -203,6 +215,8 @@ export function CardTransportRuntime({
           cardTransportDbgUpsert(intent.id, {
             droppedReason: 'missing-endpoint-after-retry',
             transportMounted: false,
+            droppedAt: performance.now(),
+            lifecycleState: 'dropped',
           });
           ctx.__markDropped(intent, 'missing-endpoint-after-retry');
         }
@@ -231,6 +245,9 @@ export function CardTransportRuntime({
       cardTransportDbgUpsert(intent.id, {
         transportMounted: false,
         transportVisible: false,
+        endpointResolvedAt: now,
+        lifecycleState: delayMs > 0 ? 'queued' : 'launched',
+        ...(delayMs > 0 ? { queuedAt: now } : { launchedAt: now }),
         launchDelayMs: delayMs,
         durationMs: flightMs,
         ownershipClaimDelayMs,
@@ -249,6 +266,8 @@ export function CardTransportRuntime({
           cardTransportDbgUpsert(intent.id, {
             transportMounted: true,
             transportVisible: true,
+            launchedAt: performance.now(),
+            lifecycleState: 'launched',
           });
           launchTimersRef.current.delete(intent.id);
           rerender();
@@ -258,6 +277,8 @@ export function CardTransportRuntime({
         cardTransportDbgUpsert(intent.id, {
           transportMounted: true,
           transportVisible: true,
+          flyingCardMountedAt: performance.now(),
+          lifecycleState: 'flying_mounted',
         });
       }
 
@@ -272,10 +293,13 @@ export function CardTransportRuntime({
           settled: true,
           transportVisible: false,
           ownershipClaimTime: tnow,
+          markSettledAt: tnow,
+          markSettledSource: 'timer_fallback',
+          lifecycleState: 'settled',
         });
         record357CardOwnership(intent.cardId, { ownershipClaimed: true });
         settleTimersRef.current.delete(intent.id);
-        ctx.__markSettled(intent.id, intent.cardId);
+        ctx.__markSettled(intent.id, intent.cardId, 'timer_fallback');
       }, delayMs + flightMs + ownershipClaimDelayMs);
       settleTimersRef.current.set(intent.id, tSettle);
 
@@ -414,11 +438,13 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const expectedStartTime = card.intent.expectedStartTime ?? card.startedAt + card.delayMs;
     cardTransportDbgUpsert(card.intent.id, {
       actualStartTime: now,
+      animationStartAt: now,
       actualStartDeltaFromPreviousMs,
       expectedStartDeltaFromPreviousMs,
       startDeltaErrorMs,
       startSkewMs: now - expectedStartTime,
       launchProofSource: source,
+      lifecycleState: 'flying_mounted',
     });
     if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordLaunch(card.intent.cardId, now);
@@ -452,6 +478,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const expectedArrivalTime = card.intent.expectedArrivalTime ?? card.startedAt + card.delayMs + card.flightMs;
     cardTransportDbgUpsert(card.intent.id, {
       actualArrivalTime: now,
+      animationEndAt: now,
       actualFlightDurationMs: actualStartTime == null ? null : now - actualStartTime,
       arrivalSkewMs: now - expectedArrivalTime,
       arrivalProofSource: source,
@@ -534,6 +561,12 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       transportMounted: true,
       transportVisible: true,
       transportMountTime: performance.now(),
+    });
+    cardTransportDbgUpsert(intentId, {
+      flyingCardMountedAt: performance.now(),
+      transportMounted: true,
+      transportVisible: true,
+      lifecycleState: 'flying_mounted',
     });
     const holmOwnerInstance = registerHolmCardOwner({
       cardId: card.intent.cardId,

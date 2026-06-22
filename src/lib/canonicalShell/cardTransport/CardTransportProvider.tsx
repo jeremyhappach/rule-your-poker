@@ -20,6 +20,7 @@ import {
 } from 'react';
 import type { CardTransportIntent } from './types';
 import { describeCardEndpoint } from './types';
+import { cardTransportDbgUpsert } from './cardTransportDbg';
 
 export interface ActiveCardIntent extends CardTransportIntent {
   enqueueSeq: number;
@@ -43,7 +44,7 @@ interface CardTransportContextValue {
   /** Subscribe to settle events with full intent metadata. */
   onCardSettledIntent: (handler: (intent: CardTransportIntent) => void) => () => void;
   __activeIntents: ActiveCardIntent[];
-  __markSettled: (intentId: string, cardId: string) => void;
+  __markSettled: (intentId: string, cardId: string, source?: string) => void;
   __markDropped: (intent: CardTransportIntent, reason: string) => void;
   gameId?: string | null;
   gameType?: string | null;
@@ -74,13 +75,25 @@ export function CardTransportProvider({
     (intent: CardTransportIntent, opts?: CardDispatchOptions): boolean => {
       if (!intent || !intent.id) return false;
       if (seenRef.current.has(intent.id)) return false;
+      const now = performance.now();
       seenRef.current.add(intent.id);
       intentByIdRef.current.set(intent.id, intent);
       const enqueueSeq = ++seqRef.current;
       if (opts?.onSettled) onSettledMapRef.current.set(intent.id, opts.onSettled);
+      cardTransportDbgUpsert(intent.id, {
+        cardId: intent.cardId,
+        face: intent.face,
+        from: intent.from,
+        to: intent.to,
+        handContextId: intent.handContextId ?? null,
+        providerReceivedAt: now,
+        activeIntentVisibleAt: now,
+        lifecycleState: 'active_visible',
+        droppedReason: null,
+      });
       setActiveIntents((prev) => [
         ...prev,
-        { ...intent, enqueueSeq, enqueuedAt: performance.now() },
+        { ...intent, enqueueSeq, enqueuedAt: now },
       ]);
       return true;
     },
@@ -132,7 +145,7 @@ export function CardTransportProvider({
     intentByIdRef.current.delete(intentId);
   }, []);
 
-  const markSettled = useCallback((intentId: string, cardId: string) => {
+  const markSettled = useCallback((intentId: string, cardId: string, source = 'flight_complete') => {
     // PRESENTATION-LAYER CONTRACT (357 deal forensics fix):
     //   1. Fire ownership callbacks FIRST. This bumps DealRuntime's
     //      `settledByRecipient`, causing the destination consumer
@@ -144,6 +157,13 @@ export function CardTransportProvider({
     //      node is destroyed. Eliminates the inter-mount paint gap that
     //      caused card-0 r1 flash and inter-round disappearances.
     fireCallbacks(intentId, cardId);
+    cardTransportDbgUpsert(intentId, {
+      cardId,
+      settled: true,
+      markSettledAt: performance.now(),
+      markSettledSource: source,
+      lifecycleState: 'settled',
+    });
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
@@ -157,6 +177,7 @@ export function CardTransportProvider({
 
   const markDropped = useCallback(
     (intent: CardTransportIntent, reason: string) => {
+      const now = performance.now();
       setActiveIntents((prev) => prev.filter((i) => i.id !== intent.id));
       // eslint-disable-next-line no-console
       console.warn(
@@ -165,6 +186,15 @@ export function CardTransportProvider({
           `reason=${reason}`,
       );
       // Honor settle waiters so deal phase never hangs.
+      cardTransportDbgUpsert(intent.id, {
+        cardId: intent.cardId,
+        droppedAt: now,
+        droppedReason: reason,
+        settled: true,
+        markSettledAt: now,
+        markSettledSource: 'dropped',
+        lifecycleState: 'dropped',
+      });
       fireCallbacks(intent.id, intent.cardId);
     },
     [fireCallbacks],
