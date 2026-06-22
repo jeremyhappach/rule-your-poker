@@ -8370,7 +8370,7 @@ export const MobileGameTable = ({
                                 currentPlayerId={currentPlayer?.id ?? ''}
                                 cards={currentPlayerCards}
                                 baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
-                                render={(effectiveCards) => (
+                                render={(effectiveCards, dealPhase) => (
                                   <PlayerHand
                                     cards={effectiveCards}
                                     isHidden={effectiveCards.length === 0}
@@ -8380,7 +8380,7 @@ export const MobileGameTable = ({
                                     hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                                     gameType={gameType}
                                     currentRound={currentRound}
-                                    forceHiddenFaces={__is357GameType(gameType) && providerStateAfterPublish === null}
+                                    forceHiddenFaces={__is357GameType(gameType) && dealPhase === 'DEALING'}
                                     showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
                                     tightOverlap={isHolmMultiPlayerShowdown}
                                     availableHeightPx={handAvailableHeightPx357}
