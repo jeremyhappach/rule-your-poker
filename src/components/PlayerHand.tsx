@@ -119,6 +119,9 @@ export const PlayerHand = ({
   
   // Determine wild rank for 3-5-7 games
   const is357Game = gameType === '3-5-7' || gameType === '3-5-7-game' || gameType === '357' || gameType === 'three-five-seven';
+  const isHolmGame = gameType === 'holm-game';
+  // Boundary guard applies to any canonical-deal game during DEALING.
+  const isCanonicalDealGuarded = is357Game || isHolmGame;
   const claimedSet = new Set(claimedCardIds ?? []);
   const cardBoundaryId = (card: CardType, index: number) => {
     const explicitId = (card as any).id ?? (card as any).cardId;
@@ -126,7 +129,7 @@ export const PlayerHand = ({
     return `${boundaryCardIdPrefix ?? baseHandContextId ?? 'no-base'}#idx-${index}`;
   };
   const incomingIds = incomingCards.map(cardBoundaryId);
-  const boundaryBlocked = is357Game && dealPhase === 'DEALING' && claimedCardIds
+  const boundaryBlocked = isCanonicalDealGuarded && dealPhase === 'DEALING' && claimedCardIds
     ? incomingCards
         .map((card, index) => ({ card, index, id: cardBoundaryId(card, index) }))
         .filter(({ id }) => !claimedSet.has(id))
@@ -135,7 +138,8 @@ export const PlayerHand = ({
     ? incomingCards.filter((card, index) => claimedSet.has(cardBoundaryId(card, index)))
     : incomingCards;
   useEffect(() => {
-    if (!is357Game || dealPhase !== 'DEALING' || boundaryBlocked.length === 0) return;
+    if (!isCanonicalDealGuarded || dealPhase !== 'DEALING' || boundaryBlocked.length === 0) return;
+
     const renderedIds = cards.map(cardBoundaryId);
     boundaryBlocked.forEach(({ id }) => {
       record357DiagnosticViolation('357_UNCLAIMED_CARD_BLOCKED_AT_PLAYERHAND_BOUNDARY', {
