@@ -1,6 +1,7 @@
 import { recordSurfaceOwnership, recordWaitingLifecycle, recordWaitingLifecycleIfChanged } from "@/lib/canonicalShell/waitingTableFlight";
 import { nextClockwise } from "@/lib/canonicalShell/seatRing";
 import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
+import { subscribeHolmDealDbg, getHolmDealDbgMeta } from "@/lib/canonicalShell/cardTransport/holmDealDbg";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -139,6 +140,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import { useVisualPreferences } from "@/hooks/useVisualPreferences";
@@ -2626,23 +2628,135 @@ export const MobileGameTable = ({
     stayedPlayersCount >= 2 && 
     (allDecisionsIn || awaitingNextRound);
   
-  // HOLM: Detect solo player vs Chucky showdown (1 player stayed)
-  // Keep tabled cards visible through win animation + until next hand to avoid flicker.
-  // IMPORTANT: Holm showdown should table player cards BEFORE flipping the final 2 community cards,
-  // so we allow this state to become true as soon as all_decisions_in is set.
-  // CRITICAL: For 'completed' and 'showdown' phases, require chuckyActive or holmWinPotTriggerId
-  // to confirm this is the CURRENT hand's state, not stale roundStatus from the previous hand.
-  // Without this, lingering current_decision='stay' + stale roundStatus='completed' causes
-  // isSoloVsChuckyRaw to be true during hand transitions, locking the wrong player.
-  const isSoloVsChuckyRaw = gameType === 'holm-game' && 
-    stayedPlayersCount === 1 && 
-    (chuckyActive || roundStatus === 'showdown' || (roundStatus === 'completed' && (chuckyActive || !!holmWinPotTriggerId || isGameOver)) || allDecisionsIn || (awaitingNextRound && lastRoundResult) || holmWinPotTriggerId || isGameOver);
+  // ── HOLM hand-lifecycle gating (root-cause fix #1) ──────────────
+  // Solo eligibility MUST be scoped to the active Holm hand. The DealRuntime
+  // singleton (holmDealDbg) is the authoritative source for the *current*
+  // handContextId's deal phase. Any stale `allDecisionsIn` / `awaitingNextRound` /
+  // `holmWinPotTriggerId` / `lastRoundResult` from h1 must NOT be allowed to
+  // declare solo for h2 while DealRuntime says PRE_DEAL / DEALING.
+  const holmDealMetaSnap = useSyncExternalStore(
+    subscribeHolmDealDbg,
+    getHolmDealDbgMeta,
+    getHolmDealDbgMeta,
+  );
+  const holmDealPhaseForHand =
+    gameType === 'holm-game' &&
+    !!handContextId &&
+    holmDealMetaSnap.handContextId === handContextId
+      ? holmDealMetaSnap.phase
+      : null;
+  const holmDealNotReady =
+    gameType === 'holm-game' &&
+    (holmDealPhaseForHand === 'PRE_DEAL' || holmDealPhaseForHand === 'DEALING');
+  const earlyRoundForSolo =
+    roundStatus === 'pending' || roundStatus === 'betting' || roundStatus === 'ante';
+  // Stay count gated to the CURRENT hand (decision_locked === true means the
+  // server confirmed the decision belongs to this hand, not stale h1 carry-over).
+  const stayedLockedCount = players.filter(
+    p => p.current_decision === 'stay' && p.decision_locked === true,
+  ).length;
+
+  // HOLM: Detect solo player vs Chucky showdown (1 player stayed).
+  // Hard guards (audit RC1):
+  //   - gameType === 'holm-game'
+  //   - handContextId present
+  //   - DealRuntime NOT in PRE_DEAL/DEALING for THIS hand
+  //   - roundStatus NOT in pending/betting/ante (config phases never solo)
+  //   - exactly one decision_locked stayer for THIS hand
+  //   - hand actually entered solo/resolution lifecycle (allDecisionsIn OR
+  //     chuckyActive OR an active showdown/completed signal). awaitingNextRound
+  //     and lastRoundResult are accepted ONLY together with holmWinPotTriggerId,
+  //     because both can linger from h1 into h2 PRE_DEAL.
+  const isSoloVsChuckyRaw =
+    gameType === 'holm-game' &&
+    !!handContextId &&
+    !holmDealNotReady &&
+    !earlyRoundForSolo &&
+    stayedLockedCount === 1 &&
+    (
+      chuckyActive ||
+      roundStatus === 'showdown' ||
+      (roundStatus === 'completed' &&
+        (chuckyActive || !!holmWinPotTriggerId || isGameOver)) ||
+      allDecisionsIn ||
+      (!!awaitingNextRound && !!lastRoundResult && !!holmWinPotTriggerId) ||
+      !!holmWinPotTriggerId ||
+      isGameOver
+    );
 
   useEffect(() => {
-    if (isSoloVsChuckyRaw || holmWinPotTriggerId) {
+    if (isSoloVsChuckyRaw) {
+      setSoloVsChuckyTableLocked(true);
+      return;
+    }
+    // holmWinPotTriggerId alone may NOT relatch across a hand boundary.
+    // Require the deal to be past DEALING for THIS hand and a real solo lock.
+    if (
+      holmWinPotTriggerId &&
+      !holmDealNotReady &&
+      stayedLockedCount === 1 &&
+      !earlyRoundForSolo
+    ) {
       setSoloVsChuckyTableLocked(true);
     }
-  }, [isSoloVsChuckyRaw, holmWinPotTriggerId]);
+  }, [
+    isSoloVsChuckyRaw,
+    holmWinPotTriggerId,
+    holmDealNotReady,
+    stayedLockedCount,
+    earlyRoundForSolo,
+  ]);
+
+  // Wartime invariant: SOLO must never be declared during PRE_DEAL/DEALING.
+  useEffect(() => {
+    if (gameType !== 'holm-game' || !handContextId) return;
+    if (!(isSoloVsChuckyRaw || soloVsChuckyTableLocked)) return;
+    if (holmDealPhaseForHand === 'PRE_DEAL') {
+      recordHolmTimelineEvent(
+        'SOLO_DECLARED_DURING_PRE_DEAL',
+        {
+          handContextId,
+          isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+          soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+          stayedLockedCount,
+          stayedPlayersCount,
+          roundStatus,
+          allDecisionsIn,
+          awaitingNextRound,
+          holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+        },
+        handContextId,
+      );
+    } else if (holmDealPhaseForHand === 'DEALING') {
+      recordHolmTimelineEvent(
+        'SOLO_DECLARED_DURING_DEALING',
+        {
+          handContextId,
+          isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
+          soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
+          stayedLockedCount,
+          stayedPlayersCount,
+          roundStatus,
+          allDecisionsIn,
+          awaitingNextRound,
+          holmWinPotTriggerId: holmWinPotTriggerId ?? null,
+        },
+        handContextId,
+      );
+    }
+  }, [
+    gameType,
+    handContextId,
+    holmDealPhaseForHand,
+    isSoloVsChuckyRaw,
+    soloVsChuckyTableLocked,
+    stayedLockedCount,
+    stayedPlayersCount,
+    roundStatus,
+    allDecisionsIn,
+    awaitingNextRound,
+    holmWinPotTriggerId,
+  ]);
 
   // Correction effect: if the latch fired due to a transient stayedPlayersCount===1
   // but the count later proves it's a multi-player showdown, unlock so cards stay in
@@ -3969,7 +4083,20 @@ export const MobileGameTable = ({
   // 4. We've locked showdown mode (prevents snap-back after announcement clears)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
   // Check if we're showing an announcement (either normal round result or game-over)
-  const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && (awaitingNextRound || isGameOver);
+  // Result announcement must wait for the Chucky VISUAL reveal to finish.
+  // Otherwise the announcement can render before / during the flips, gating
+  // observers and producing the "rapid reveal after announcement" artifact.
+  const chuckyVisualRevealPending =
+    gameType === 'holm-game' &&
+    !!cachedChuckyActive &&
+    !!cachedChuckyCards &&
+    cachedChuckyCards.length > 0 &&
+    cachedChuckyCardsRevealed < cachedChuckyCards.length;
+  const isShowingAnnouncement =
+    gameType === 'holm-game' &&
+    !!lastRoundResult &&
+    (awaitingNextRound || isGameOver) &&
+    !chuckyVisualRevealPending;
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4681,10 +4808,20 @@ export const MobileGameTable = ({
   // requires sequential reveal, not per-card settled callbacks.
   const [holmBarrierTick, setHolmBarrierTick] = useState(0);
   useEffect(() => subscribeHolmHandReady(() => setHolmBarrierTick(t => t + 1)), []);
+  // Chucky-specific barrier (audit RC3). isHolmHandReady can be satisfied by
+  // the hands/community waves alone in some paths; the visual stepper must
+  // additionally require that the chucky wave's expected cards are ALL
+  // settled for THIS handContextId and that the local cache matches.
   const chuckyBarrierOpen =
     gameType === 'holm-game' &&
     !!handContextId &&
-    isHolmHandReady(handContextId);
+    isHolmHandReady(handContextId) &&
+    holmDealMetaSnap.handContextId === handContextId &&
+    holmDealMetaSnap.chuckyExpected > 0 &&
+    holmDealMetaSnap.chuckySettled >= holmDealMetaSnap.chuckyExpected &&
+    cachedChuckyHandContextRef.current === handContextId &&
+    !!cachedChuckyCards &&
+    cachedChuckyCards.length >= holmDealMetaSnap.chuckyExpected;
   void holmBarrierTick; // re-evaluates above on barrier flip
 
   // War-time forensics: hook the barrier flip → allChuckySettled marker.
@@ -7949,8 +8086,19 @@ export const MobileGameTable = ({
           const liveLoneSoloCards = liveLoneSoloPlayer
             ? getPlayerCards(liveLoneSoloPlayer.id)
             : [];
+          // Audit RC2: TABLED_SELF live path must be hand-context-scoped.
+          // Require an explicit locked solo player whose lock was captured
+          // FOR this handContextId, and that the deal is past PRE_DEAL/DEALING.
+          const liveLockMatchesHand =
+            !!soloVsChuckyPlayerIdLocked &&
+            soloVsChuckyLockHandRef.current === handContextId &&
+            liveLoneSoloPlayerId === soloVsChuckyPlayerIdLocked;
           const hasLiveLonePlayer =
-            !!isSoloVsChucky && !!liveLoneSoloPlayer && liveLoneSoloCards.length > 0;
+            !!isSoloVsChucky &&
+            !!liveLoneSoloPlayer &&
+            liveLoneSoloCards.length > 0 &&
+            liveLockMatchesHand &&
+            !holmDealNotReady;
 
           // Wave 5D follow-up — capture / re-use the persistence snapshot.
           // The snapshot is keyed on handContextId and survives every
