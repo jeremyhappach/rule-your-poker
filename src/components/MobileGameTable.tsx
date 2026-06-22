@@ -7652,18 +7652,20 @@ export const MobileGameTable = ({
                     zIndex={110}
                     ref={communityCardsWrapperRef}
                   >
-                    <CommunityCards
-                      cards={approvedCommunityCards!}
-                      revealed={
-                        isDelayingCommunityCards
-                          ? staggeredCardCount
-                          : (communityCardsRevealed || 2)
-                      }
-                      highlightedIndices={winningCardHighlights.communityIndices}
-                      kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                      hasHighlights={winningCardHighlights.hasHighlights}
-                      tightOverlap={isHolmMultiPlayerShowdown}
-                    />
+                    <HolmSettledGate cardId={`${handContextId}#community-0`}>
+                      <CommunityCards
+                        cards={approvedCommunityCards!}
+                        revealed={
+                          isDelayingCommunityCards
+                            ? staggeredCardCount
+                            : (communityCardsRevealed || 2)
+                        }
+                        highlightedIndices={winningCardHighlights.communityIndices}
+                        kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                        hasHighlights={winningCardHighlights.hasHighlights}
+                        tightOverlap={isHolmMultiPlayerShowdown}
+                      />
+                    </HolmSettledGate>
                   </HolmAnchoredSlot>
 
                   {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
