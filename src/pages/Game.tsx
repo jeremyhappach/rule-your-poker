@@ -11501,6 +11501,7 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
               onChatInputChange={setMobileChatInput}
               onAutoFoldChange={isInProgress ? handleAutoFoldChange : undefined}
               pendingAutoRollOff={pendingAutoRollOff}
+              on357TimerAllowedChange={setDealTimerAllowed357}
               reAnteMessage={reAnteMessage}
             />
           );
