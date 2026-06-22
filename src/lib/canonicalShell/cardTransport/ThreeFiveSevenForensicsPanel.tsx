@@ -35,7 +35,6 @@ import {
   subscribeThreeFiveSevenForensics,
   type ForensicsHandRender,
   type ForensicsRenderTransition,
-  type ForensicsTimerOwner,
 } from './threeFiveSevenForensicsStore';
 
 // ─────────────────────────────────────────────────────────────────────
