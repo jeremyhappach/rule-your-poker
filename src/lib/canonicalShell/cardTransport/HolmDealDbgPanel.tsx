@@ -35,6 +35,12 @@ import {
   getHolmSoloOwnership,
   getHolmSoloOwnershipViolations,
 } from './holmSoloOwnership';
+import {
+  getHolmTimelineEvents,
+  getHolmWartimeViolations,
+  holmWartimeTick,
+  subscribeHolmWartime,
+} from './holmWartimeForensics';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
