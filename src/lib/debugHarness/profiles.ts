@@ -93,6 +93,19 @@ export const DEBUG_HARNESS_REGISTRY: Record<string, DebugHarnessProfile[]> = {
       description: 'All dice forced to 1 (wild) every roll — both players land Five 1s, guaranteed tie/re-roll path.',
     },
   ],
+  holm: [
+    NONE_HARNESS,
+    {
+      id: 'force_player_beats_chucky',
+      label: 'Force Player Beats Chucky',
+      description: 'Solo vs Chucky → winner = PLAYER after natural reveal. Deal, reveal, announcement, pot transfer all run naturally.',
+    },
+    {
+      id: 'force_chucky_beats_player',
+      label: 'Force Chucky Beats Player',
+      description: 'Solo vs Chucky → winner = CHUCKY after natural reveal. Deal, reveal, announcement, pot transfer all run naturally.',
+    },
+  ],
   // Game types intentionally absent below have no existing harness to wrap yet.
 };
 
