@@ -37,6 +37,17 @@ export interface HandLifecycleEntry {
   playerId: string | null;
 }
 
+export type CardHiddenReason =
+  | 'none'
+  | 'transport_inflight'
+  | 'wave_transition'
+  | 'fan_layout'
+  | 'opacity_zero'
+  | 'visibility_hidden'
+  | 'display_none'
+  | 'render_guard'
+  | 'unknown';
+
 export interface CardOwnershipEntry {
   cardId: string;
   intentId: string | null;
@@ -52,8 +63,21 @@ export interface CardOwnershipEntry {
   staticUnmountTime: number | null;
   /** staticMountTime - transportDestroyTime (negative ⇒ destroy preceded mount). */
   gapMs: number | null;
+  // ─── Per-card "who killed it" forensic (added for authoritative vs visible diff) ───
+  role?: 'self' | 'opp' | null;
+  playerId?: string | null;
+  fanIndex?: number | null;
+  authoritativeVisible?: boolean;
+  domMounted?: boolean;
+  domRect?: { x: number; y: number; w: number; h: number } | null;
+  hiddenByReason?: CardHiddenReason;
+  dealPhase?: string | null;
+  authoritativeCount?: number;
+  visibleCount?: number;
+  settledCount?: number;
   updatedAt: number;
 }
+
 
 export interface FanLifecycleEntry {
   t: number;
