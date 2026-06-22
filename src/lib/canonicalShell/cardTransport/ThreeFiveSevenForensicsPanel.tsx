@@ -880,6 +880,20 @@ function Row({ label, value, good, bad }: { label: string; value: string; good?:
   );
 }
 
+function HandRenderRow({ h }: { h: ForensicsHandRender }) {
+  const bad = (h.effectiveCardsLength ?? h.visibleCount ?? 0) > h.actualRenderedDomCount;
+  return (
+    <div style={{ borderTop: '1px dashed #2a2a2a', padding: '3px 0', background: bad ? 'rgba(255,0,0,0.14)' : undefined }}>
+      <div style={{ color: bad ? '#ff6b6b' : '#87CEFA', fontWeight: 700 }}>{h.componentName} {bad ? '⚠ DOM&lt;EFFECTIVE' : ''}</div>
+      <div>mounted={String(h.mounted)} PlayerHandMounted={String(h.playerHandMounted)} PlayerHandKey={h.playerHandKey ?? '∅'}</div>
+      <div>seat={h.seat ?? '—'} player={h.playerId?.slice(0, 8) ?? '∅'} reactKey={h.reactKey ?? '∅'}</div>
+      <div>renderCount={h.renderCount} cards.length={h.cardsLength ?? '—'} effectiveCards.length={h.effectiveCardsLength ?? '—'}</div>
+      <div>visibleCount={h.visibleCount ?? '—'} actualRenderedDomCount={h.actualRenderedDomCount}</div>
+      <div>mountedAt={(h.mountedAt / 1000).toFixed(2)}s unmountedAt={h.unmountedAt ? `${(h.unmountedAt / 1000).toFixed(2)}s` : '—'}</div>
+    </div>
+  );
+}
+
 function fmtRect(r: Rect | null): string {
   if (!r) return '—';
   return `${r.x},${r.y} ${r.w}×${r.h} c=(${r.cx},${r.cy})`;
