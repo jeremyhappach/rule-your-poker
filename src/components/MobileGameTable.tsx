@@ -2441,8 +2441,6 @@ export const MobileGameTable = ({
   if (!chuckyInstanceIdRef.current) {
     chuckyInstanceIdRef.current = `mgt#${Math.random().toString(36).slice(2, 10)}`;
   }
-  const cachedChuckyCardsStateRef = useRef<CardType[] | null>(cachedChuckyCards);
-  cachedChuckyCardsStateRef.current = cachedChuckyCards;
   // WAR-TIME CALLGRAPH: per-render seq incremented on EVERY render of MobileGameTable.
   // Stamped on every Chucky event so we can prove render→effect ordering.
   const chuckyRenderSeqRef = useRef(0);
