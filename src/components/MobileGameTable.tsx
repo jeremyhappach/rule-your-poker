@@ -103,6 +103,13 @@ import {
 } from "@/lib/wave5GameplayGeometry/HolmGameplayGeometryProvider";
 import { HolmAnchoredSlot } from "./HolmAnchoredSlot";
 import { HolmLonePlayerFan } from "./HolmLonePlayerFan";
+import {
+  HolmDealOrchestrator,
+  HolmDealRuntimeMaybe,
+  HolmDealPhaseHost,
+  HolmSettledGate,
+  useHolmSettledIds,
+} from "./HolmDealOrchestrator";
 import { ThreeFiveSevenGameplayGeometryProvider } from "@/lib/wave5GameplayGeometry/ThreeFiveSevenGameplayGeometryProvider";
 import { ThreeFiveSevenAnchoredSlot } from "./ThreeFiveSevenAnchoredSlot";
 import {
@@ -6038,7 +6045,32 @@ export const MobileGameTable = ({
   };
 
 
-  return <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
+  return <HolmDealRuntimeMaybe
+    handContextId={gameType === 'holm-game' ? (handContextId ?? null) : null}
+    gameType={gameType}
+  >
+    {gameType === 'holm-game' && handContextId && currentPlayer && (currentPlayer as any).id && typeof buckPosition === 'number' && typeof dealerPosition === 'number' && (
+      <>
+        <HolmDealOrchestrator
+          handContextId={handContextId}
+          seats={players.filter(p => p.status === 'active' && !p.sitting_out).map(p => ({ playerId: p.id, position: p.position }))}
+          buckPosition={buckPosition}
+          dealerPosition={dealerPosition}
+          selfPlayerId={(currentPlayer as any).id}
+          cardsPerPlayer={4}
+          selfHand={currentPlayerCards}
+          communityCards={communityCards ?? []}
+          soloDeclared={!!isSoloVsChucky}
+          chuckyCards={chuckyCards ?? null}
+        />
+        <HolmDealPhaseHost
+          handContextId={handContextId}
+          soloDeclared={!!isSoloVsChucky}
+          chuckyCount={(chuckyCards ?? []).length}
+        />
+      </>
+    )}
+    <ThreeFiveSevenDealRuntimeMaybe handContextId={threeFiveSevenHandContextId}>
     <ThreeFiveSevenTimerGateReporter onAllowedChange={on357TimerAllowedChange} />
     <div className="flex flex-col h-full min-h-0 overflow-hidden relative bg-transparent">
       {threeFiveSevenWaveContextId && threeFiveSevenSelfPlayerId && threeFiveSevenDealerPosition > 0 && threeFiveSevenActiveSeats.length > 0 ? (
@@ -7620,18 +7652,20 @@ export const MobileGameTable = ({
                     zIndex={110}
                     ref={communityCardsWrapperRef}
                   >
-                    <CommunityCards
-                      cards={approvedCommunityCards!}
-                      revealed={
-                        isDelayingCommunityCards
-                          ? staggeredCardCount
-                          : (communityCardsRevealed || 2)
-                      }
-                      highlightedIndices={winningCardHighlights.communityIndices}
-                      kickerIndices={winningCardHighlights.kickerCommunityIndices}
-                      hasHighlights={winningCardHighlights.hasHighlights}
-                      tightOverlap={isHolmMultiPlayerShowdown}
-                    />
+                    <HolmSettledGate cardId={`${handContextId}#community-0`}>
+                      <CommunityCards
+                        cards={approvedCommunityCards!}
+                        revealed={
+                          isDelayingCommunityCards
+                            ? staggeredCardCount
+                            : (communityCardsRevealed || 2)
+                        }
+                        highlightedIndices={winningCardHighlights.communityIndices}
+                        kickerIndices={winningCardHighlights.kickerCommunityIndices}
+                        hasHighlights={winningCardHighlights.hasHighlights}
+                        tightOverlap={isHolmMultiPlayerShowdown}
+                      />
+                    </HolmSettledGate>
                   </HolmAnchoredSlot>
 
                   {shouldShowRabbitHuntLabel && rabbitHuntLabelTop !== null && (
@@ -7681,31 +7715,33 @@ export const MobileGameTable = ({
                           key={index}
                           style={{ height: '100%', aspectRatio: '5 / 7' }}
                         >
-                          {isRevealed ? (
-                            <div
-                              className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
-                              style={{
-                                backgroundColor: cardBg,
-                                ...twoColorTextStyle,
-                                ...dimStyle,
-                              }}
-                            >
-                              <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
-                                {card.rank}
-                              </span>
-                              {!isFourColor && (
-                                <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
-                              )}
-                            </div>
-                          ) : (
-                            <CanonicalCardBack
-                              widthPx={40}
-                              heightPx={60}
-                              variant="raised"
-                              radiusPx={6}
-                              style={{ width: '100%', height: '100%' }}
-                            />
-                          )}
+                          <HolmSettledGate cardId={`${handContextId}#chucky-${index}`}>
+                            {isRevealed ? (
+                              <div
+                                className="w-full h-full rounded-md border-2 border-red-500 flex flex-col items-center justify-center shadow-lg transition-opacity duration-300"
+                                style={{
+                                  backgroundColor: cardBg,
+                                  ...twoColorTextStyle,
+                                  ...dimStyle,
+                                }}
+                              >
+                                <span className={`text-xl font-black leading-none ${isFourColor ? 'text-white' : ''}`}>
+                                  {card.rank}
+                                </span>
+                                {!isFourColor && (
+                                  <span className="text-2xl leading-none -mt-0.5">{card.suit}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <CanonicalCardBack
+                                widthPx={40}
+                                heightPx={60}
+                                variant="raised"
+                                radiusPx={6}
+                                style={{ width: '100%', height: '100%' }}
+                              />
+                            )}
+                          </HolmSettledGate>
                         </div>
                       );
                     })}
@@ -8349,7 +8385,7 @@ export const MobileGameTable = ({
                           (() => {
                             if (currentRound === 3) return null;
                             return !winner357ShowCards && currentPlayerCards.length > 0 ? (
-                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="">
+                              <div className={cn("flex items-start justify-center w-full", currentPlayerHandReserveClass)} data-357-active-hand-region="" data-holm-active-hand-region="">
                                 <div className={`transform ${currentPlayerHandScaleClass} origin-top`}>
                                   <PlayerHand
                                     cards={currentPlayerCards}
@@ -8391,7 +8427,7 @@ export const MobileGameTable = ({
                               currentPlayerHandReserveClass,
                               gameType !== 'holm-game' && currentRound === 1 && currentPlayerCards.length > 0 ? "w-auto" : "w-full",
                             )}
-                            data-357-active-hand-region=""
+                            data-357-active-hand-region="" data-holm-active-hand-region=""
                           >
                             <div
                               className={cn(
@@ -8801,5 +8837,6 @@ export const MobileGameTable = ({
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
     </div>
-  </ThreeFiveSevenDealRuntimeMaybe>;
+  </ThreeFiveSevenDealRuntimeMaybe>
+  </HolmDealRuntimeMaybe>;
 };

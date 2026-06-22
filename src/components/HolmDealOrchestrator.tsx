@@ -27,10 +27,10 @@
  * not touch timer state.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
-import { useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
+import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
@@ -276,4 +276,95 @@ export function HolmDealOrchestrator({
     />
   );
   return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
+}
+
+// ─── DealRuntime per-hand wrapper ──────────────────────────────────
+/**
+ * Mounts a single DealRuntime keyed by `handContextId` for Holm hands.
+ * Pass-through when `gameType !== 'holm-game'` or no handContextId, so
+ * it can be nested safely outside (or alongside) other game wrappers.
+ */
+export function HolmDealRuntimeMaybe({
+  handContextId,
+  gameType,
+  children,
+}: {
+  handContextId: string | null | undefined;
+  gameType: string | null | undefined;
+  children: ReactNode;
+}) {
+  if (gameType !== 'holm-game' || !handContextId) return <>{children}</>;
+  return (
+    <DealRuntime key={handContextId} handContextId={handContextId} gameType="holm-game">
+      {children}
+    </DealRuntime>
+  );
+}
+
+// ─── Phase host ────────────────────────────────────────────────────
+/**
+ * Drives READY → GAMEPLAY transition for Holm.
+ *
+ *   multi: enterGameplay once community wave has settled (community-3 in).
+ *   solo:  enterGameplay once chucky wave has settled (chucky-(N-1) in).
+ *
+ * Idempotent — uses a ref latch.
+ */
+export function HolmDealPhaseHost({
+  handContextId,
+  soloDeclared,
+  chuckyCount,
+}: {
+  handContextId: string;
+  soloDeclared: boolean;
+  chuckyCount: number;
+}) {
+  const deal = useDealRuntime();
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (!deal || firedRef.current) return;
+    if (!deal.dealSettled) return;
+    if (deal.phase !== 'READY') return;
+
+    if (soloDeclared) {
+      if (chuckyCount <= 0) return;
+      const lastChucky = `${handContextId}#chucky-${chuckyCount - 1}`;
+      if (!deal.isSettled(lastChucky)) return;
+    } else {
+      const lastCommunity = `${handContextId}#community-3`;
+      if (!deal.isSettled(lastCommunity)) return;
+    }
+
+    firedRef.current = true;
+    deal.enterGameplay();
+  }, [deal, handContextId, soloDeclared, chuckyCount, deal?.dealSettled, deal?.phase]);
+  return null;
+}
+
+// ─── Settled-id reader ────────────────────────────────────────────
+/**
+ * Returns a Set-like helper for `cardId → settled?` checks.
+ * Null when there is no active DealRuntime — consumers should treat
+ * null as "render legacy path".
+ */
+export function useHolmSettledIds(): { has: (cardId: string) => boolean } | null {
+  const deal = useDealRuntime();
+  if (!deal) return null;
+  return { has: (id: string) => deal.isSettled(id) };
+}
+
+/**
+ * Renders children iff `cardId` is settled in the active DealRuntime.
+ * Falls back to rendering when no DealRuntime is mounted (legacy path).
+ */
+export function HolmSettledGate({
+  cardId,
+  children,
+}: {
+  cardId: string;
+  children: ReactNode;
+}) {
+  const settled = useHolmSettledIds();
+  if (!settled) return <>{children}</>;
+  return settled.has(cardId) ? <>{children}</> : null;
 }
