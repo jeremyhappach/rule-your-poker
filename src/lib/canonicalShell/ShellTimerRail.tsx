@@ -158,7 +158,7 @@ export function ShellTimerRail() {
   const effectivePaused = paused || !eligibility.running;
   const pct = effectivePaused ? 100 : Math.max(0, Math.min(100, (seconds / total) * 100));
 
-  const fillClass = paused
+  const fillClass = effectivePaused
     ? 'bg-muted-foreground/40'
     : seconds <= 3
       ? 'bg-red-500'
@@ -185,7 +185,7 @@ export function ShellTimerRail() {
       usesDealRuntime: !!deal,
       suppressedLegacySource: deal?.phase === 'DEALING' && state ? 'ShellTimerRail/useShellTimer' : null,
       attemptedRunning: !!state && !paused && seconds > 0,
-      reactKey: state.identityKey ?? null,
+      reactKey: state?.identityKey ?? null,
       renderCount: renderCountRef.current,
     });
   }, [ownerId, state, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, paused, seconds, eligibility.visible, eligibility.running]);
