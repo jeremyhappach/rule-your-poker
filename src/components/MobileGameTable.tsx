@@ -8807,5 +8807,6 @@ export const MobileGameTable = ({
     {/* Dice trace HUD for debugging observer hold/unhold hop */}
     {(gameType === 'horses' || gameType === 'ship-captain-crew') && <DiceTraceHUD />}
     </div>
-  </ThreeFiveSevenDealRuntimeMaybe>;
+  </ThreeFiveSevenDealRuntimeMaybe>
+  </HolmDealRuntimeMaybe>;
 };
