@@ -2713,7 +2713,7 @@ export const MobileGameTable = ({
     if (!(isSoloVsChuckyRaw || soloVsChuckyTableLocked)) return;
     if (holmDealPhaseForHand === 'PRE_DEAL') {
       recordHolmTimelineEvent(
-        'SOLO_DECLARED_DURING_PRE_DEAL' as any,
+        'SOLO_DECLARED_DURING_PRE_DEAL',
         {
           handContextId,
           isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
@@ -2729,7 +2729,7 @@ export const MobileGameTable = ({
       );
     } else if (holmDealPhaseForHand === 'DEALING') {
       recordHolmTimelineEvent(
-        'SOLO_DECLARED_DURING_DEALING' as any,
+        'SOLO_DECLARED_DURING_DEALING',
         {
           handContextId,
           isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
