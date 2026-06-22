@@ -296,17 +296,16 @@ export function Use357OppCount({
   const deal = useDealRuntime();
   const phase = deal?.phase ?? 'NO_RUNTIME';
   const settled = deal?.getSettledCountForPlayer(playerId) ?? 0;
-  // settled is CUMULATIVE across waves within the hand — visibility is
-  // simply min(settled, expected) during DEALING, floored by baseline
-  // (prevWaveCount) in PRE_DEAL so previously-settled cards never vanish.
-  const dealingVisible = Math.min(Math.max(baseline, settled), expected);
+  // CONTRACT: during DEALING / PRE_DEAL render ONLY transport-claimed
+  // cards (cumulative `settled`). Baseline / defaultCount must NEVER
+  // mount DOM during a staged deal — they're for math only. Only
+  // READY/GAMEPLAY may fall through to authoritative defaultCount.
+  const dealingVisible = Math.min(settled, expected);
   const visible = deal
-    ? deal.phase === 'DEALING'
+    ? (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')
       ? dealingVisible
-      : deal.phase === 'PRE_DEAL'
-        ? Math.max(baseline, Math.min(settled, expected))
-        : Math.max(baseline, defaultCount, dealingVisible)
-    : Math.max(baseline, defaultCount);
+      : Math.max(defaultCount, dealingVisible)
+    : defaultCount;
   useEffect(() => {
     if (!deal?.handContextId) return;
     dealDbgUpsertOwnership(deal.handContextId, playerId, {
