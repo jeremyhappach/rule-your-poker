@@ -5229,33 +5229,57 @@ export const MobileGameTable = ({
 
     return () => {
       clearTimeout(t);
-      // Capture cleanup so we can prove WHICH dep caused cancellation.
-      const nextSnapshot: Record<string, unknown> = {
-        gameType,
-        cachedChuckyActive,
-        cachedChuckyCardsRevealed,
-        chuckyCardsRevealed,
-        chuckyBarrierOpen,
-        cachedChuckyCardsLength: cachedChuckyCards?.length ?? 0,
-        cachedChuckyCardsIdentity: cachedChuckyCards?.map((c: any) => `${c?.rank}${c?.suit}`).join('|') ?? '',
-        cachedChuckyCardsRefIdentity: cachedChuckyCards ? 'ref#present' : 'ref#null',
-        handContextId: handContextId ?? null,
-        cachedChuckyHandContextId: cachedChuckyHandContextRef.current ?? null,
-        isSoloVsChuckyRaw: !!isSoloVsChuckyRaw,
-        soloVsChuckyTableLocked: !!soloVsChuckyTableLocked,
-        chuckyActive: !!chuckyActive,
-      };
+      const cleanupAt = __chuckyAuditNow();
+      const nextSnapshot = chuckyLatestRevealDepsRef.current ?? newDeps;
       const diff: Record<string, { from: unknown; to: unknown }> = {};
-      for (const k of Object.keys(newDeps)) {
+      for (const k of Array.from(new Set([...Object.keys(newDeps), ...Object.keys(nextSnapshot)]))) {
         if (newDeps[k] !== nextSnapshot[k]) diff[k] = { from: newDeps[k], to: nextSnapshot[k] };
       }
       const reasonKeys = Object.keys(diff);
-      const cleanupReason = reasonKeys.length === 0
-        ? 'NO_DEP_DIFF (unmount or identical re-run)'
-        : reasonKeys.join(',');
+      const cleanupReason = chuckyComponentUnmountingRef.current
+        ? 'COMPONENT_UNMOUNT'
+        : reasonKeys.length === 0
+          ? 'NO_DEP_DIFF (identical re-run / StrictMode cleanup)'
+          : `DEP_DIFF:${reasonKeys.join(',')}`;
+      const componentStack = captureStack();
+      const ownerStack = __chuckyAuditOwnerStack();
+      recordHolmTimelineEvent('CHUCKY_EFFECT_INSTANCE', {
+        instanceId,
+        effectId,
+        effectInstance,
+        mountAt,
+        cleanupAt,
+        reason: cleanupReason,
+        renderSeqAtMount: enterRenderSeq,
+        renderSeqAtCleanup: chuckyRenderSeqRef.current,
+        timeoutId: timeoutSeq,
+        firedBeforeCleanup: fired,
+      }, handContextId ?? null);
+      recordHolmTimelineEvent('CHUCKY_EFFECT_DEP_DIFF', {
+        instanceId,
+        effectId,
+        effectInstance,
+        oldDeps: newDeps,
+        newDeps: nextSnapshot,
+        changedDeps: diff,
+        reason: cleanupReason,
+      }, handContextId ?? null);
+      recordHolmTimelineEvent('CHUCKY_UNMOUNT_STACK', {
+        instanceId,
+        effectId,
+        effectInstance,
+        componentStack,
+        ownerStack,
+        whyReactThinksCleanupOccurred: cleanupReason,
+        componentUnmounting: chuckyComponentUnmountingRef.current,
+        firedBeforeCleanup: fired,
+      }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
         instanceId,
+        effectId,
         effectInstance,
+        mountAt,
+        cleanupAt,
         armedAtRenderSeq: enterRenderSeq,
         cleanupAtRenderSeq: chuckyRenderSeqRef.current,
         rendersBetweenArmAndCleanup: chuckyRenderSeqRef.current - enterRenderSeq,
@@ -5271,6 +5295,7 @@ export const MobileGameTable = ({
       // CALLGRAPH SUMMARY: ordered synchronous step list for this effect run.
       recordHolmTimelineEvent('CHUCKY_EFFECT_CALLGRAPH', {
         instanceId,
+        effectId,
         effectInstance,
         armedAtRenderSeq: enterRenderSeq,
         cleanupAtRenderSeq: chuckyRenderSeqRef.current,
@@ -5280,12 +5305,15 @@ export const MobileGameTable = ({
         trail: callgraph,
       }, handContextId ?? null);
       recordHolmTimelineEvent('CHUCKY_REVEAL_TIMEOUT_CLEARED', {
+        instanceId,
+        effectId,
+        effectInstance,
         handContextId: handContextId ?? null,
         prev: cachedChuckyCardsRevealed,
         total,
         cachedChuckyHandContextId: cachedChuckyHandContextRef.current,
         firedBeforeCleanup: fired,
-        reason: reasonKeys.length === 0 ? 'NO_DEP_DIFF' : reasonKeys.join(','),
+        reason: cleanupReason,
       }, handContextId ?? null);
     };
   }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards, handContextId, isSoloVsChuckyRaw, soloVsChuckyTableLocked, chuckyActive, setCachedChuckyCardsRevealed]);
