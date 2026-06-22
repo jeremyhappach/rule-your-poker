@@ -439,11 +439,13 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const expectedStartTime = card.intent.expectedStartTime ?? card.startedAt + card.delayMs;
     cardTransportDbgUpsert(card.intent.id, {
       actualStartTime: now,
+      animationStartAt: now,
       actualStartDeltaFromPreviousMs,
       expectedStartDeltaFromPreviousMs,
       startDeltaErrorMs,
       startSkewMs: now - expectedStartTime,
       launchProofSource: source,
+      lifecycleState: 'flying_mounted',
     });
     if (isHolmTimelineCardId(card.intent.cardId)) {
       holmTimelineRecordLaunch(card.intent.cardId, now);
@@ -477,6 +479,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
     const expectedArrivalTime = card.intent.expectedArrivalTime ?? card.startedAt + card.delayMs + card.flightMs;
     cardTransportDbgUpsert(card.intent.id, {
       actualArrivalTime: now,
+      animationEndAt: now,
       actualFlightDurationMs: actualStartTime == null ? null : now - actualStartTime,
       arrivalSkewMs: now - expectedArrivalTime,
       arrivalProofSource: source,
@@ -559,6 +562,12 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       transportMounted: true,
       transportVisible: true,
       transportMountTime: performance.now(),
+    });
+    cardTransportDbgUpsert(intentId, {
+      flyingCardMountedAt: performance.now(),
+      transportMounted: true,
+      transportVisible: true,
+      lifecycleState: 'flying_mounted',
     });
     const holmOwnerInstance = registerHolmCardOwner({
       cardId: card.intent.cardId,
