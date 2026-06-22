@@ -176,7 +176,6 @@ import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holm
 import {
   recordChuckyRevealTimerArm,
   recordChuckyRevealStep,
-  resetChuckyRevealTimingForHand,
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealTimingDbg";
 import {
   recordSoloStateChange,
