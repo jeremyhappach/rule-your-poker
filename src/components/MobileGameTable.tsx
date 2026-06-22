@@ -3437,12 +3437,14 @@ export const MobileGameTable = ({
         secondsRemaining: horsesController.timeLeft as number,
         totalSeconds: horsesController.maxTime ?? 30,
         actorLabel: horsesController.currentTurnPlayerName ?? null,
+        activePlayerId: horsesController.currentTurnPlayerId,
         identityKey: `dice-${horsesController.currentTurnPlayerId}`,
       };
     } else if (turnTimerActive) {
       shellTimerState = {
         secondsRemaining: timeLeft as number,
         totalSeconds: maxTime as number,
+        activePlayerId: currentPlayer.id,
         identityKey: `turn-${currentRound}-${currentTurnPosition ?? ''}`,
       };
     }
@@ -8361,7 +8363,7 @@ export const MobileGameTable = ({
                                 `transform ${currentPlayerHandScaleClass} origin-top`,
                                 isPlayerTurn && roundStatus === 'betting' && !hasDecided && !isPaused && timeLeft !== null && timeLeft <= 3 ? 'animate-rapid-flash' : '',
                                 (isShowingAnnouncement && winnerPlayerId && !isCurrentPlayerWinner && currentPlayer?.current_decision === 'stay') || currentPlayer?.current_decision === 'fold' ? 'opacity-40 grayscale-[30%]' : '',
-                                currentPlayerCards.length === 0 ? 'opacity-0 pointer-events-none' : '',
+                                currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
                             >
                               <Use357SelfHand
@@ -8378,6 +8380,7 @@ export const MobileGameTable = ({
                                     hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
                                     gameType={gameType}
                                     currentRound={currentRound}
+                                    forceHiddenFaces={__is357GameType(gameType) && providerStateAfterPublish === null}
                                     showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
                                     tightOverlap={isHolmMultiPlayerShowdown}
                                     availableHeightPx={handAvailableHeightPx357}
