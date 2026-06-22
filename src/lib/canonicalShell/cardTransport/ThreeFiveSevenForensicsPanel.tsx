@@ -913,6 +913,11 @@ function fmtVal(v: unknown): string {
   try { return JSON.stringify(v); } catch { return String(v); }
 }
 
+function short(v: string | null | undefined): string {
+  if (!v) return '∅';
+  return v.length > 18 ? `${v.slice(0, 8)}…${v.slice(-8)}` : v;
+}
+
 function InventoryBlock({ title, selector }: { title: string; selector: string }) {
   const items = inventory(title, selector);
   return (
