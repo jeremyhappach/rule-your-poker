@@ -12,6 +12,7 @@ import { getActiveHolmRoundWithGame, updateRoundById, atomicRoundStatusTransitio
 import { logGameState, logAllDecisionsIn, logStatusChange } from "./gameStateDebugLog";
 import { persistTransition } from "./persistSyncDebugEvent";
 import { getBuckStartPosition, nextClockwise } from "./canonicalShell/seatRing";
+import { getHolmForcedWinner } from "./holm/holmDebugOverrides";
 
 /**
  * Check if all players have decided in a Holm game round
@@ -1589,7 +1590,14 @@ async function handleChuckyShowdown(
   console.log('[HOLM SHOWDOWN] Chucky:', chuckyHandDesc, '| rank:', chuckyEval.rank, '| value:', chuckyEval.value);
   console.log('[HOLM SHOWDOWN] Player value > Chucky value?', playerEval.value, '>', chuckyEval.value, '=', playerEval.value > chuckyEval.value);
 
-  const playerWins = playerEval.value > chuckyEval.value;
+  const naturalPlayerWins = playerEval.value > chuckyEval.value;
+  // ADMIN DEBUG: Result override (post-reveal only — handleHolmGameEnd
+  // awaits the full Chucky reveal sequence before invoking this).
+  const forced = getHolmForcedWinner();
+  const playerWins = forced === 'player' ? true : forced === 'chucky' ? false : naturalPlayerWins;
+  if (forced) {
+    console.log('[HOLM SHOWDOWN] *** ADMIN OVERRIDE active:', forced, '(natural would be', naturalPlayerWins ? 'PLAYER' : 'CHUCKY', ')');
+  }
 
   console.log('[HOLM SHOWDOWN] *** WINNER:', playerWins ? 'PLAYER' : 'CHUCKY', '***');
   
