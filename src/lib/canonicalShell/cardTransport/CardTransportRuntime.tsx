@@ -47,6 +47,7 @@ import {
 } from './cardTransportDbg';
 import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
 import { holmTimelineRecordArrival, holmTimelineRecordClaim, holmTimelineRecordLaunch } from './holmCardTimeline';
+import { updateHolmTransportInventory, registerHolmCardOwner, unregisterHolmCardOwner } from './holmCardOwnership';
 
 const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
@@ -300,6 +301,25 @@ export function CardTransportRuntime({
       if (!seen.has(id)) pendingRef.current.delete(id);
     }
     if (mutated) rerender();
+
+    // WAR-TIME ownership inventory snapshot (cheap, no logic impact).
+    try {
+      const resolved = Array.from(resolvedRef.current.values());
+      const launched = resolved.filter((r) => r.launched);
+      const pending = Array.from(pendingRef.current.values()).map((p) => p.intent);
+      updateHolmTransportInventory({
+        active: active.length,
+        queued: pending.length,
+        launched: launched.length,
+        claimed: launched.length, // claim fires at settle-timer; approximate as launched
+        settled: 0, // settled is owned by DealRuntime/Provider, not tracked here
+        activeIds: active.slice(0, 20).map((i) => i.cardId),
+        queuedIds: pending.slice(0, 20).map((i) => i.cardId),
+        launchedIds: launched.slice(0, 20).map((r) => r.intent.cardId),
+        claimedIds: launched.slice(0, 20).map((r) => r.intent.cardId),
+        settledIds: [],
+      });
+    } catch { /* */ }
   }, [ctx, containerRef, activeIds, active, resolveTick]);
 
   // Retry tick — while pending intents exist, re-run the layout effect
@@ -515,6 +535,14 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       transportVisible: true,
       transportMountTime: performance.now(),
     });
+    const holmOwnerInstance = registerHolmCardOwner({
+      cardId: card.intent.cardId,
+      renderer: 'CardTransportRuntime.FlyingCard',
+      componentName: 'FlyingCard',
+      handContextId: card.intent.handContextId ?? null,
+      phase: 'TRANSPORT',
+      renderReason: 'launched',
+    });
 
     return () => {
       window.clearTimeout(tLaunch);
@@ -531,6 +559,7 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
         transportVisible: false,
         transportDestroyTime: destroyT,
       });
+      unregisterHolmCardOwner(card.intent.cardId, holmOwnerInstance);
     };
   }, [card.intent.id, card.intent.cardId, card.intent.handContextId, card.delayMs, card.flightMs, containerRef]);
 

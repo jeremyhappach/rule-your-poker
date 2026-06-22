@@ -26,6 +26,11 @@ import {
   holmTimelineRecordDomMount,
   holmTimelineRecordVisible,
 } from './holmCardTimeline';
+import {
+  getHolmCardOwnership,
+  getHolmOwnershipViolations,
+  scanHolmDomOwnership,
+} from './holmCardOwnership';
 
 function fmt(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—';
@@ -424,6 +429,40 @@ export function HolmDealDbgPanel() {
             {frames.slice(-8).map((f, i) => (
               <div key={i} style={rowStyle}><span style={k}>{f.t.toFixed(0)} {f.phase}</span><span style={v}>claim={f.cardsClaimed} settle={f.cardsSettled} vis={f.visibleDomCards} self={f.actualSelfDomCount} opp={`[${f.actualOppDomCounts.join(',')}]`} comm={f.actualCommunityDomCount} chk={f.actualChuckyDomCount}</span></div>
             ))}
+          </div>
+          <div style={sect}>
+            <div style={title}>Ownership Registry</div>
+            {(() => {
+              const reg = getHolmCardOwnership();
+              const ids = Object.keys(reg);
+              const inv = (typeof window !== 'undefined' && (window as unknown as { __holmTransportInventory?: { active: number; queued: number; launched: number; claimed: number; settled: number } }).__holmTransportInventory) || { active: 0, queued: 0, launched: 0, claimed: 0, settled: 0 };
+              const dom = scanHolmDomOwnership();
+              const violOwn = getHolmOwnershipViolations();
+              return (
+                <>
+                  <div style={rowStyle}><span style={k}>transport inv</span><span style={v}>active={inv.active} queued={inv.queued} launched={inv.launched} claimed={inv.claimed} settled={inv.settled}</span></div>
+                  <div style={rowStyle}><span style={k}>registry cards</span><span style={v}>{ids.length}</span></div>
+                  <div style={rowStyle}><span style={k}>dom owners</span><span style={v}>{dom.length}</span></div>
+                  {ids.slice(-32).map((cid) => {
+                    const live = reg[cid].filter((r) => r.unregisteredAt == null);
+                    const domHits = dom.filter((d) => d.cardId === cid);
+                    const dup = live.length > 1 || domHits.length > 1;
+                    return (
+                      <div key={cid} style={{ borderTop: '1px dashed #333', padding: '3px 0', color: dup ? '#ff6b6b' : '#cfd8e3' }}>
+                        <div style={{ fontWeight: 700 }}>{cid}</div>
+                        <div>live={live.length} dom={domHits.length}</div>
+                        {live.map((r) => <div key={r.instanceId} style={{ opacity: 0.85 }}>· {r.renderer} ({r.componentName}) phase={r.phase}</div>)}
+                        {domHits.map((d, i) => <div key={`${d.domNodeId}-${i}`} style={{ opacity: 0.7 }}>~ dom: {d.renderer} visible={String(d.visible)}</div>)}
+                      </div>
+                    );
+                  })}
+                  <div style={{ marginTop: 4 }}><span style={title}>Ownership Violations</span></div>
+                  {violOwn.length === 0 ? <div style={ok}>none</div> : violOwn.slice(-20).map((v2, i) => (
+                    <pre key={`${v2.type}-${i}`} style={{ whiteSpace: 'pre-wrap', margin: 0, padding: '4px 0', color: '#ff6b6b' }}>{JSON.stringify(v2, null, 2)}</pre>
+                  ))}
+                </>
+              );
+            })()}
           </div>
           <div style={sect}>
             <div style={title}>Timeline Violations</div>

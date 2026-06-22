@@ -33,6 +33,8 @@ import { CardTransportDbgPanel } from "@/lib/canonicalShell/cardTransport/CardTr
 import { ThreeFiveSevenDealDiagPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenDealDiagPanel";
 import { ThreeFiveSevenForensicsPanel } from "@/lib/canonicalShell/cardTransport/ThreeFiveSevenForensicsPanel";
 import { HolmDealDbgPanel } from "@/lib/canonicalShell/cardTransport/HolmDealDbgPanel";
+import { startHolmOwnershipScanner } from "@/lib/canonicalShell/cardTransport/holmCardOwnership";
+if (typeof window !== "undefined") startHolmOwnershipScanner(500);
 
 import { CardBackDbgPanel } from "@/lib/canonicalShell/CardBackDbgPanel";
 import { WinnerChipEndpointDbgPanel } from "@/lib/canonicalShell/WinnerChipEndpointDbgPanel";
