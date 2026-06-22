@@ -32,6 +32,9 @@ import { createPortal } from 'react-dom';
 import { useCardTransport } from '@/lib/canonicalShell/cardTransport/CardTransportProvider';
 import { DealRuntime, useDealRuntime } from '@/lib/canonicalShell/cardTransport/DealRuntime';
 import { isCardTransportInspectMode } from '@/lib/canonicalShell/cardTransport/CardTransportRuntime';
+import { useShellFeltFrameElement } from '@/lib/canonicalShell/useShellFeltFrameElement';
+import { getCanonicalSlotPlacement } from '@/lib/canonicalShell/canonicalSlotPlacement';
+import { SLOT } from '@/lib/canonicalShell/seatAnchors';
 import { useVisualPreferences } from '@/hooks/useVisualPreferences';
 import { getDealTimingSnapshot, useDealTimingHydrated } from '@/lib/geometryLab/dealTimingStore';
 import type { CardTransportIntent } from '@/lib/canonicalShell/cardTransport/types';
@@ -64,6 +67,10 @@ export interface HolmDealOrchestratorProps {
   dealerPosition: number;
   /** Viewer playerId — receives visibleFace stamped self cards. */
   selfPlayerId: string;
+  /** Viewer seat position — used to detect dealerIsSelf and mount a
+   *  fallback `[data-card-anchor="seat-${dealerPosition}"]` origin since
+   *  CanonicalSeatCluster suppresses the self-viewer's seat node. */
+  selfPosition?: number | null;
   /** Cards-per-player for this hand (Holm hand size). */
   cardsPerPlayer: number;
   /** Authoritative viewer self-hand. */
@@ -82,6 +89,7 @@ export function HolmDealOrchestrator({
   buckPosition,
   dealerPosition,
   selfPlayerId,
+  selfPosition = null,
   cardsPerPlayer,
   selfHand,
   communityCards,
@@ -93,6 +101,18 @@ export function HolmDealOrchestrator({
   const dealTimingHydrated = useDealTimingHydrated();
   const { getCardBackColors } = useVisualPreferences();
   const cardBackColors = useMemo(() => getCardBackColors(), [getCardBackColors]);
+
+  // dealerIsSelf — when true, CanonicalSeatCluster suppresses the
+  // viewer's own seat node, so [data-card-anchor="seat-${dealerPosition}"]
+  // is missing and every Holm intent drops with
+  // missing-endpoint-after-retry. Mount a fallback origin anchor onto the
+  // canonical shell felt HOME slot (same fix as 3-5-7).
+  const dealerIsSelf =
+    typeof dealerPosition === 'number' &&
+    dealerPosition > 0 &&
+    selfPosition === dealerPosition;
+  const selfDealerFelt = useShellFeltFrameElement(dealerIsSelf);
+  const selfDealerFeltIsSurface = !!selfDealerFelt?.hasAttribute('data-canonical-felt-surface');
 
   const handsDispatchedRef = useRef(false);
   const communityDispatchedRef = useRef(false);
@@ -339,7 +359,26 @@ export function HolmDealOrchestrator({
       data-anchor-owner="HolmDealOrchestrator.selfHandRegion"
     />
   );
-  return selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl;
+  const selfDealerOriginEl =
+    dealerIsSelf && selfDealerFelt && selfDealerFeltIsSurface ? (
+      <div
+        aria-hidden="true"
+        className={`absolute ${getCanonicalSlotPlacement(SLOT.HOME).className} pointer-events-none`}
+        style={{ width: 40, height: 40 }}
+        data-card-anchor={`seat-${dealerPosition}`}
+        data-canonical-dealer-origin-self="holm"
+        data-canonical-shell-viewer-card-endpoint="holm-dealer-origin"
+        data-anchor-owner="HolmDealOrchestrator.selfDealerFeltOrigin"
+      />
+    ) : null;
+  return (
+    <>
+      {selfHandRegion ? createPortal(anchorEl, selfHandRegion) : anchorEl}
+      {selfDealerOriginEl && selfDealerFelt
+        ? createPortal(selfDealerOriginEl, selfDealerFelt)
+        : null}
+    </>
+  );
 }
 
 // ─── DealRuntime per-hand wrapper ──────────────────────────────────

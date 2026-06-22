@@ -6300,6 +6300,7 @@ export const MobileGameTable = ({
           buckPosition={buckPosition}
           dealerPosition={dealerPosition}
           selfPlayerId={(currentPlayer as any).id}
+          selfPosition={currentPlayer?.position ?? null}
           cardsPerPlayer={4}
           selfHand={currentPlayerCards}
           communityCards={communityCards ?? []}
