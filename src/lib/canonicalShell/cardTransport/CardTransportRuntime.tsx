@@ -46,6 +46,7 @@ import {
   type CardTransportDbgSample,
 } from './cardTransportDbg';
 import { record357CardOwnership } from './threeFiveSevenPresentationForensics';
+import { holmTimelineRecordArrival, holmTimelineRecordClaim, holmTimelineRecordLaunch } from './holmCardTimeline';
 
 const DEFAULT_DURATION_MS = 110;
 const CARD_W = 44;
@@ -66,6 +67,10 @@ export function isCardTransportInspectMode(): boolean {
 const INSPECT_EASING = 'cubic-bezier(.25,.8,.25,1)';
 const NORMAL_EASING = 'ease-out';
 const launchProofByHand = new Map<string, Map<number, { start: number; delay: number }>>();
+
+function isHolmTimelineCardId(cardId: string): boolean {
+  return cardId.includes('#hand-') || cardId.includes('#community-') || cardId.includes('#chucky-');
+}
 
 function cardIndexFromIntentId(intentId: string): number | null {
   const m = intentId.match(/#card-(\d+)$/);
@@ -258,6 +263,10 @@ export function CardTransportRuntime({
       // Schedule settle relative to launch time (flight has no extra CSS delay).
       const tSettle = window.setTimeout(() => {
         const tnow = performance.now();
+        if (isHolmTimelineCardId(intent.cardId)) {
+          holmTimelineRecordArrival(intent.cardId, tnow);
+          holmTimelineRecordClaim(intent.cardId, tnow);
+        }
         cardTransportDbgUpsert(intent.id, {
           settled: true,
           transportVisible: false,
@@ -391,6 +400,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       startSkewMs: now - expectedStartTime,
       launchProofSource: source,
     });
+    if (isHolmTimelineCardId(card.intent.cardId)) {
+      holmTimelineRecordLaunch(card.intent.cardId, now);
+    }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF LAUNCH]', {
       intentId: card.intent.id,
@@ -424,6 +436,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       arrivalSkewMs: now - expectedArrivalTime,
       arrivalProofSource: source,
     });
+    if (isHolmTimelineCardId(card.intent.cardId)) {
+      holmTimelineRecordArrival(card.intent.cardId, now);
+    }
     // eslint-disable-next-line no-console
     console.log('[DEAL TIMING PROOF ARRIVAL]', {
       intentId: card.intent.id,

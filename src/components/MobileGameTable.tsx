@@ -398,6 +398,91 @@ interface PlayerCards {
   cards: CardType[];
 }
 
+function getHolmSelfDealCardIds({
+  handContextId,
+  players,
+  buckPosition,
+  selfPlayerId,
+  cardsPerPlayer = 4,
+}: {
+  handContextId: string | null | undefined;
+  players: Player[];
+  buckPosition: number | null | undefined;
+  selfPlayerId: string;
+  cardsPerPlayer?: number;
+}): string[] {
+  if (!handContextId || typeof buckPosition !== 'number' || !selfPlayerId) return [];
+  const active = players
+    .filter((p) => p.status === 'active' && !p.sitting_out)
+    .sort((a, b) => a.position - b.position);
+  const start = active.findIndex((p) => p.position === buckPosition);
+  if (start < 0) return [];
+  const ring = [...active.slice(start), ...active.slice(0, start)];
+  const ids: string[] = [];
+  let dealIndex = 0;
+  for (let round = 0; round < cardsPerPlayer; round++) {
+    for (const recipient of ring) {
+      if (recipient.id === selfPlayerId) ids.push(`${handContextId}#hand-${dealIndex}`);
+      dealIndex += 1;
+    }
+  }
+  return ids;
+}
+
+function UseHolmSelfHand<T>({
+  currentPlayerId,
+  handContextId,
+  players,
+  buckPosition,
+  cards,
+  render,
+}: {
+  currentPlayerId: string;
+  handContextId: string | null | undefined;
+  players: Player[];
+  buckPosition: number | null | undefined;
+  cards: T[];
+  render: (effectiveCards: T[], dealPhase: string, boundary: {
+    claimedCardIds: string[];
+    rawClaimedCardIds: string[];
+    baseHandContextId: string;
+    playerId: string;
+    boundaryCardIdPrefix: string;
+  }) => ReactNode;
+}) {
+  const deal = useDealRuntime();
+  const phase = deal?.phase ?? 'NO_RUNTIME';
+  const baseHandContextId = handContextId ?? deal?.handContextId ?? 'no-runtime';
+  const selfCardIds = useMemo(
+    () => getHolmSelfDealCardIds({ handContextId: baseHandContextId, players, buckPosition, selfPlayerId: currentPlayerId }),
+    [baseHandContextId, players, buckPosition, currentPlayerId],
+  );
+  const effectiveCards = useMemo(() => {
+    if (!deal || deal.gameType !== 'holm-game' || deal.phase === 'GAMEPLAY') return cards;
+    return cards.filter((_card, index) => {
+      const cardId = selfCardIds[index];
+      return !!cardId && deal.isSettled(cardId);
+    });
+  }, [cards, deal, selfCardIds]);
+  const settledSelfCardIds = useMemo(
+    () => selfCardIds.filter((cardId) => deal?.isSettled(cardId)),
+    [deal, selfCardIds],
+  );
+  const boundaryCardIdPrefix = `${baseHandContextId}#holm-self#${currentPlayerId || 'no-player'}`;
+  const boundaryClaimedCardIds = useMemo(
+    () => Array.from({ length: effectiveCards.length }, (_unused, index) => `${boundaryCardIdPrefix}#idx-${index}`),
+    [boundaryCardIdPrefix, effectiveCards.length],
+  );
+
+  return <>{render(effectiveCards, phase, {
+    claimedCardIds: boundaryClaimedCardIds,
+    rawClaimedCardIds: settledSelfCardIds,
+    baseHandContextId,
+    playerId: currentPlayerId,
+    boundaryCardIdPrefix,
+  })}</>;
+}
+
 
 interface ChatBubbleData {
   id: string;
@@ -8515,13 +8600,17 @@ export const MobileGameTable = ({
                                 currentPlayerCards.length === 0 && !__is357GameType(gameType) ? 'opacity-0 pointer-events-none' : '',
                               )}
                             >
-                              <Use357SelfHand
-                                currentPlayerId={currentPlayer?.id ?? ''}
-                                cards={currentPlayerCards}
-                                baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
-                                render={(effectiveCards, dealPhase, boundary) => {
+                              {(() => {
+                                const renderActiveSelfHand = (effectiveCards: CardType[], dealPhase: string, boundary: {
+                                  claimedCardIds: string[];
+                                  rawClaimedCardIds: string[];
+                                  baseHandContextId: string;
+                                  playerId: string;
+                                  boundaryCardIdPrefix: string;
+                                }) => {
                                   const is357 = __is357GameType(gameType);
                                   const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
+                                  const isHolmStaged = gameType === 'holm-game' && dealPhase !== 'GAMEPLAY';
                                   // 357 HARD CONTRACT: during the staged
                                   // deal, the self hand is the EXACT set
                                   // of transport-claimed cards. No
@@ -8531,9 +8620,9 @@ export const MobileGameTable = ({
                                   return (
                                     <PlayerHand
                                       cards={effectiveCards}
-                                      isHidden={is357Staged ? false : effectiveCards.length === 0}
+                                      isHidden={is357Staged || isHolmStaged ? false : effectiveCards.length === 0}
                                       expectedCardCount={
-                                        is357Staged
+                                        is357Staged || isHolmStaged
                                           ? undefined
                                           : (effectiveCards.length === 0
                                             ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7))
@@ -8556,8 +8645,25 @@ export const MobileGameTable = ({
                                       wrapperScale={handScaleNum}
                                     />
                                   );
-                                }}
-                              />
+                                };
+                                return gameType === 'holm-game' ? (
+                                  <UseHolmSelfHand
+                                    currentPlayerId={currentPlayer?.id ?? ''}
+                                    handContextId={handContextId}
+                                    players={players}
+                                    buckPosition={buckPosition}
+                                    cards={currentPlayerCards}
+                                    render={renderActiveSelfHand}
+                                  />
+                                ) : (
+                                  <Use357SelfHand
+                                    currentPlayerId={currentPlayer?.id ?? ''}
+                                    cards={currentPlayerCards}
+                                    baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
+                                    render={renderActiveSelfHand}
+                                  />
+                                );
+                              })()}
                             </div>
                           </div>
                         )}
