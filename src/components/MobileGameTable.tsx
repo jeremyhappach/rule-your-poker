@@ -8370,23 +8370,39 @@ export const MobileGameTable = ({
                                 currentPlayerId={currentPlayer?.id ?? ''}
                                 cards={currentPlayerCards}
                                 baseline={__is357GameType(gameType) ? prevWaveCountFor357(currentRound ?? 0) : 0}
-                                render={(effectiveCards, dealPhase) => (
-                                  <PlayerHand
-                                    cards={effectiveCards}
-                                    isHidden={effectiveCards.length === 0}
-                                    expectedCardCount={effectiveCards.length === 0 ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7)) : undefined}
-                                    highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
-                                    kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
-                                    hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
-                                    gameType={gameType}
-                                    currentRound={currentRound}
-                                    forceHiddenFaces={__is357GameType(gameType) && dealPhase === 'DEALING'}
-                                    showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
-                                    tightOverlap={isHolmMultiPlayerShowdown}
-                                    availableHeightPx={handAvailableHeightPx357}
-                                    wrapperScale={handScaleNum}
-                                  />
-                                )}
+                                render={(effectiveCards, dealPhase) => {
+                                  const is357 = __is357GameType(gameType);
+                                  const is357Staged = is357 && (dealPhase === 'DEALING' || dealPhase === 'PRE_DEAL' || dealPhase === 'READY');
+                                  // 357 HARD CONTRACT: during the staged
+                                  // deal, the self hand is the EXACT set
+                                  // of transport-claimed cards. No
+                                  // placeholder backs, no isHidden
+                                  // expansion, no expectedCardCount
+                                  // pre-render. 0→1→2→3 strictly.
+                                  return (
+                                    <PlayerHand
+                                      cards={effectiveCards}
+                                      isHidden={is357Staged ? false : effectiveCards.length === 0}
+                                      expectedCardCount={
+                                        is357Staged
+                                          ? undefined
+                                          : (effectiveCards.length === 0
+                                            ? (gameType === 'holm-game' ? 2 : (currentRound === 1 ? 3 : currentRound === 2 ? 5 : 7))
+                                            : undefined)
+                                      }
+                                      highlightedIndices={isCurrentPlayerWinner ? winningCardHighlights.playerIndices : []}
+                                      kickerIndices={isCurrentPlayerWinner ? winningCardHighlights.kickerPlayerIndices : []}
+                                      hasHighlights={isCurrentPlayerWinner && winningCardHighlights.hasHighlights}
+                                      gameType={gameType}
+                                      currentRound={currentRound}
+                                      forceHiddenFaces={is357 && dealPhase === 'DEALING'}
+                                      showSeparated={gameType !== 'holm-game' && currentRound === 3 && effectiveCards.length === 7}
+                                      tightOverlap={isHolmMultiPlayerShowdown}
+                                      availableHeightPx={handAvailableHeightPx357}
+                                      wrapperScale={handScaleNum}
+                                    />
+                                  );
+                                }}
                               />
                             </div>
                           </div>
