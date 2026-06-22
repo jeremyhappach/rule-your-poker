@@ -308,6 +308,8 @@ export function HolmDealOrchestrator({
       })),
       soloDeclared,
     });
+    const dispatchAtK = performance.now();
+    for (const intent of intents) holmTimelineRecordDispatch(intent.cardId, 'chucky', holmDbgEndpoint(intent.to), dispatchAtK);
     ct.dispatchMany(intents);
   }, [deal, ct, handContextId, soloDeclared, chuckyCards, cardBackColors, dealTimingHydrated, deal?.dealSettled]);
 
