@@ -152,6 +152,7 @@ import { useAnnouncements } from "@/lib/canonicalShell/announcements";
 import { dealerAffordanceStore, timerDbgStore, type TimerBlockedReason } from "@/lib/canonicalShell/extraDebugStore";
 import { useDealRuntime } from "@/lib/canonicalShell/cardTransport/DealRuntime";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
+import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
 
 // P9.1 — First visible canonical shell visual cutover.
@@ -161,8 +162,14 @@ const CANONICAL_SHELL_VISUAL_ENABLED =
 
 function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
-  const hiddenForDeal = deal?.phase === 'DEALING' || (deal?.phase === 'PRE_DEAL' && deal.expectedCount === 0);
-  const timerVisible = !hiddenForDeal;
+  const eligibility = deal
+    ? getCanonicalTimerEligibility({
+        dealPhase: deal.phase,
+        dealSettled: deal.dealSettled,
+        readyReleased: deal.readyReleased,
+        activePlayerId: deal.phase === 'GAMEPLAY' ? 'shell-active-turn' : null,
+      })
+    : { visible: true, running: true };
 
   useEffect(() => {
     if (!deal) return;
@@ -171,15 +178,16 @@ function DealAwareShellTimerRail() {
       expectedCount: deal.expectedCount,
       cardsSettled: deal.settledCardIds.size,
       dealSettled: deal.dealSettled,
-      timerVisible,
-      timerRunning: timerVisible && deal.phase === 'GAMEPLAY',
+      readyReleased: deal.readyReleased,
+      timerVisible: eligibility.visible,
+      timerRunning: eligibility.running,
     });
-    if (deal.phase !== 'READY' || !timerVisible) return;
+    if (deal.phase !== 'READY' || !deal.readyReleased) return;
     const raf = requestAnimationFrame(() => deal.enterGameplay());
     return () => cancelAnimationFrame(raf);
-  }, [deal, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, deal?.dealSettled, timerVisible]);
+  }, [deal, deal?.phase, deal?.expectedCount, deal?.settledCardIds.size, deal?.dealSettled, deal?.readyReleased, eligibility.visible, eligibility.running]);
 
-  if (hiddenForDeal) return null;
+  if (!eligibility.visible) return null;
   return <ShellTimerRail />;
 }
 
