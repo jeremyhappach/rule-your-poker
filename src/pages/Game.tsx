@@ -170,7 +170,7 @@ import {
 import type { GinRummyState } from "@/lib/ginRummyTypes";
 import { startYahtzeeRound } from "@/lib/yahtzeeRoundLogic";
 import { addBotPlayer, addBotPlayerSittingOut, makeBotDecisions, makeBotAnteDecisions } from "@/lib/botPlayer";
-import { isHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
+import { isHolmHandReady, subscribeHolmHandReady } from "@/lib/canonicalShell/cardTransport/holmDealBarrier";
 import { evaluatePlayerStatesEndOfGame, rotateDealerPosition, removeSittingOutPlayersOnWaiting, getMakeItTakeItDealer, sanitizePlayerAutomationStateForSession, clearDealerGameTransientSessionState } from "@/lib/playerStateEvaluation";
 import { normalizeTwoPlayerSeatsIfNeeded } from "@/lib/normalizeTwoPlayerSeats";
 import { recordNormalizationDbg, type NormalizationResultCode } from "@/lib/normalizationDbg";
@@ -4716,6 +4716,10 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
   // Use a ref to track if we're already processing a bot decision to avoid duplicates
   // SKIP if game is paused
   const botProcessingRef = useRef(false);
+  // Re-render-trigger for Holm deal-ready barrier flips so the bot
+  // trigger effect re-evaluates the moment the deal completes.
+  const [holmReadyTick, setHolmReadyTick] = useState(0);
+  useEffect(() => subscribeHolmHandReady(() => setHolmReadyTick(t => t + 1)), []);
   useEffect(() => {
     if (safetyPollsDisabled) {
       if (awaitingPollRef.current) {
@@ -4820,7 +4824,9 @@ const [anteAnimationTriggerId, setAnteAnimationTriggerId] = useState<string | nu
     currentRound?.current_turn_position,
     currentRound?.id,
     game?.game_type,
-    gameId
+    gameId,
+    handContextKey,
+    holmReadyTick,
   ]);
   // Holm recovery poller dedup ref — prevents repeated endHolmRound calls for the same stuck round
   const holmRecoveryAttemptedRef = useRef<string | null>(null);
