@@ -141,27 +141,77 @@ export function auditHolmEndpointResolution(params: {
 
   // ── 1. Self-hand endpoint must NOT live inside tabled markers ─────
   if (isHandEndpoint) {
-    for (const forbidden of FORBIDDEN_SELF_HAND_SELECTORS) {
-      const ancestor = el.closest(forbidden);
-      if (ancestor) {
+    const playerId = endpoint.kind === 'hand' ? endpoint.playerId : null;
+
+    // 1a. Duplicate hand anchor scan — there must be EXACTLY ONE
+    //     [data-card-anchor="hand-${playerId}"] in the live DOM, and it
+    //     must live inside [data-holm-active-hand-region].
+    if (playerId) {
+      const selector = `[data-card-anchor="hand-${playerId}"]`;
+      const matches = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+      if (matches.length > 1) {
         recordHolmTimelineEvent(
-          'HOLM_HAND_ENDPOINT_RESOLVED_TO_TABLED_SELF',
+          'HOLM_DUPLICATE_HAND_ANCHOR',
           {
-            cardId,
             handContextId,
-            playerId: endpoint.kind === 'hand' ? endpoint.playerId : null,
-            endpoint: { ...endpoint },
-            resolvedSelector: `[data-card-anchor="${resolved.resolvedAnchor}"]`,
-            anchorOwner: resolved.owner,
-            rect: { ...resolved.viewportRect, cx: center.x, cy: center.y },
-            forbiddenAncestor: forbidden,
-            forbiddenAncestorOwner: (ancestor as HTMLElement).getAttribute('data-anchor-owner'),
-            nearestComponent: describeNearest(el),
+            playerId,
+            count: matches.length,
+            matchingSelectors: matches.map(() => selector),
+            ownerComponents: matches.map((m) => m.getAttribute('data-anchor-owner') ?? describeNearest(m)),
+            insideActiveRegion: matches.map((m) => !!m.closest('[data-holm-active-hand-region]')),
+            insideForbidden: matches.map((m) =>
+              FORBIDDEN_SELF_HAND_SELECTORS.find((sel) => m.closest(sel)) ?? null,
+            ),
+            rects: matches.map((m) => {
+              const r = m.getBoundingClientRect();
+              return { x: r.left, y: r.top, w: r.width, h: r.height };
+            }),
           },
           handContextId,
         );
+      }
+    }
+
+    for (const forbidden of FORBIDDEN_SELF_HAND_SELECTORS) {
+      const ancestor = el.closest(forbidden);
+      if (ancestor) {
+        const payload = {
+          cardId,
+          handContextId,
+          playerId,
+          endpoint: { ...endpoint },
+          resolvedSelector: `[data-card-anchor="${resolved.resolvedAnchor}"]`,
+          anchorOwner: resolved.owner,
+          owner: resolved.owner,
+          rect: { ...resolved.viewportRect, cx: center.x, cy: center.y },
+          forbiddenAncestor: forbidden,
+          forbiddenAncestorOwner: (ancestor as HTMLElement).getAttribute('data-anchor-owner'),
+          nearestComponent: describeNearest(el),
+        };
+        recordHolmTimelineEvent('HOLM_HAND_ENDPOINT_RESOLVED_TO_TABLED_SELF', payload, handContextId);
+        // Alias requested by the war-time spec.
+        recordHolmTimelineEvent('HOLM_HAND_ENDPOINT_RESOLVED_TO_TABLED', payload, handContextId);
         break;
       }
+    }
+
+    // 1b. Hand anchor outside the active-hand region is also a violation.
+    if (!el.closest('[data-holm-active-hand-region]')) {
+      recordHolmTimelineEvent(
+        'HOLM_HAND_ENDPOINT_RESOLVED_TO_TABLED',
+        {
+          cardId,
+          handContextId,
+          playerId,
+          endpoint: { ...endpoint },
+          resolvedSelector: `[data-card-anchor="${resolved.resolvedAnchor}"]`,
+          anchorOwner: resolved.owner,
+          rect: { ...resolved.viewportRect, cx: center.x, cy: center.y },
+          reason: 'NOT_INSIDE_ACTIVE_HAND_REGION',
+          nearestComponent: describeNearest(el),
+        },
+        handContextId,
+      );
     }
   }
 
