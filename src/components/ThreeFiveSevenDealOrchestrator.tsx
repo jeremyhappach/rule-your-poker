@@ -453,19 +453,18 @@ export function Use357SelfHand<T>({
   }
   const sourceCards = cards.length >= cacheRef.current.cards.length ? cards : cacheRef.current.cards;
 
-  // CONTRACT: during DEALING / PRE_DEAL render ONLY transport-claimed
-  // cards (cumulative `settled`). Baseline / authoritative `cards` length
-  // must NEVER mount DOM during a staged deal — they exist in state for
-  // ownership math only. Only READY/GAMEPLAY may render the full
-  // authoritative hand.
-  const allowed = deal
-    ? (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')
-      ? settled
-      : sourceCards.length
-    : sourceCards.length;
+  // CONTRACT: during DEALING / PRE_DEAL / READY render ONLY transport-
+  // claimed cards (cumulative `settled`). Authoritative `cards` length
+  // must NEVER mount DOM during a staged deal — it exists in state for
+  // ownership math and face resolution only. Only GAMEPLAY may render
+  // the full authoritative hand. (READY is the transient gap between
+  // waves; admitting authoritative there leaks future cards instantly at
+  // r2/r3 start.)
+  const isStagedRender = deal && deal.phase !== 'GAMEPLAY';
+  const allowed = isStagedRender ? settled : sourceCards.length;
   const resolvedCards: T[] = [];
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
-  if (deal && (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')) {
+  if (isStagedRender) {
     for (let i = 0; i < allowed; i++) {
       // Try authoritative first, then previously-rendered card for the
       // same index within the same base hand. NEVER render a cardback —
