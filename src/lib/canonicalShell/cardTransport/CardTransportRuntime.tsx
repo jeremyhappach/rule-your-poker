@@ -99,11 +99,30 @@ export function CardTransportRuntime({
   const resolvedRef = useRef<Map<string, RuntimeCard>>(new Map());
   const launchTimersRef = useRef<Map<string, number>>(new Map());
   const settleTimersRef = useRef<Map<string, number>>(new Map());
+  /**
+   * Endpoint-resolution retry buffer. When `from`/`to` anchors are not
+   * yet present (gameplay surface still mounting), park the intent here
+   * instead of immediately calling `__markDropped`. A polling tick
+   * re-attempts resolution every RETRY_INTERVAL_MS until either it
+   * succeeds (intent promotes into `resolvedRef`) or MAX_PENDING_MS
+   * elapses (then we drop).
+   *
+   * Without this buffer, an intent that landed during a single
+   * missing-endpoint frame was being fake-settled by
+   * `__markDropped → fireCallbacks` and DealRuntime marked the card as
+   * arrived in ~60ms with `ownershipClaimTime` (claimAt) = null. That
+   * is the bug surfaced by the Holm forensics timeline.
+   */
+  const pendingRef = useRef<Map<string, { intent: ActiveCardIntent; firstSeenAt: number }>>(new Map());
+  const [resolveTick, setResolveTick] = useState(0);
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
   const active = ctx?.__activeIntents ?? [];
   const activeIds = useMemo(() => active.map((i) => i.id).join('|'), [active]);
+
+  const RETRY_INTERVAL_MS = 100;
+  const MAX_PENDING_MS = 3000;
 
   useLayoutEffect(() => {
     if (!ctx) return;
@@ -125,6 +144,7 @@ export function CardTransportRuntime({
 
     let mutated = false;
     const seen = new Set<string>();
+    const nowOuter = performance.now();
     for (const intent of active) {
       seen.add(intent.id);
       if (resolvedRef.current.has(intent.id)) continue;
@@ -159,13 +179,36 @@ export function CardTransportRuntime({
         dealerIsSelf: intent.dealerIsSelf ?? null,
       });
       if (!from || !to) {
+        // Park for retry — do NOT fake-settle via __markDropped on the
+        // first missing-endpoint frame. The gameplay surface (seat
+        // clusters, opp-stack, community, chucky anchors) may still be
+        // mounting. Promote out of pending once anchors resolve.
+        const existing = pendingRef.current.get(intent.id);
+        const firstSeenAt = existing?.firstSeenAt ?? nowOuter;
+        pendingRef.current.set(intent.id, { intent, firstSeenAt });
+        const waited = nowOuter - firstSeenAt;
         cardTransportDbgUpsert(intent.id, {
-          droppedReason: 'missing-endpoint',
+          droppedReason: null,
           transportMounted: false,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          pendingEndpointResolution: true as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          pendingFirstSeenAt: firstSeenAt as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          pendingWaitedMs: waited as any,
         });
-        ctx.__markDropped(intent, 'missing-endpoint');
+        if (waited > MAX_PENDING_MS) {
+          pendingRef.current.delete(intent.id);
+          cardTransportDbgUpsert(intent.id, {
+            droppedReason: 'missing-endpoint-after-retry',
+            transportMounted: false,
+          });
+          ctx.__markDropped(intent, 'missing-endpoint-after-retry');
+        }
         continue;
       }
+      // Endpoints resolved — promote out of pending.
+      pendingRef.current.delete(intent.id);
 
       const delayMs = Math.max(0, intent.launchDelayMs ?? 0);
       const flightMs = intent.durationMs ?? DEFAULT_DURATION_MS;
@@ -248,8 +291,24 @@ export function CardTransportRuntime({
         mutated = true;
       }
     }
+    // Drop pending entries for intents no longer active (cancelled wave).
+    for (const id of Array.from(pendingRef.current.keys())) {
+      if (!seen.has(id)) pendingRef.current.delete(id);
+    }
     if (mutated) rerender();
-  }, [ctx, containerRef, activeIds, active]);
+  }, [ctx, containerRef, activeIds, active, resolveTick]);
+
+  // Retry tick — while pending intents exist, re-run the layout effect
+  // every RETRY_INTERVAL_MS so anchors that mount after dispatch
+  // (opp-stack / community / chucky / seat clusters appearing as the
+  // game phase advances) resolve instead of being fake-settled.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (pendingRef.current.size === 0) return;
+      setResolveTick((n) => n + 1);
+    }, RETRY_INTERVAL_MS);
+    return () => { window.clearInterval(id); };
+  }, []);
 
   const overlay = overlayRootRef.current;
   if (!ctx || !overlay) return null;
