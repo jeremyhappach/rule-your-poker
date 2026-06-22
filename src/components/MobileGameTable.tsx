@@ -4986,6 +4986,8 @@ export const MobileGameTable = ({
     const timeoutSeq = ++chuckyEffectTimeoutSeqRef.current;
     let fired = false;
     recordHolmTimelineEvent('CHUCKY_TIMEOUT_ARMED', {
+      instanceId,
+      effectInstance,
       handContextId: handContextId ?? null,
       timeoutId: timeoutSeq,
       delay: 250,
@@ -4996,6 +4998,8 @@ export const MobileGameTable = ({
     const t = setTimeout(() => {
       fired = true;
       recordHolmTimelineEvent('CHUCKY_TIMEOUT_FIRED', {
+        instanceId,
+        effectInstance,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         prev: cachedChuckyCardsRevealed,
