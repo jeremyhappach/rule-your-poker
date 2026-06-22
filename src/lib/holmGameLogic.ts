@@ -1593,10 +1593,20 @@ async function handleChuckyShowdown(
   const naturalPlayerWins = playerEval.value > chuckyEval.value;
   // ADMIN DEBUG: Result override (post-reveal only — handleHolmGameEnd
   // awaits the full Chucky reveal sequence before invoking this).
-  const forced = getHolmForcedWinner();
+  // Authoritative async read avoids cache-hydration races.
+  const forced = (await getHolmForcedWinnerAsync()) ?? getHolmForcedWinner();
   const playerWins = forced === 'player' ? true : forced === 'chucky' ? false : naturalPlayerWins;
   if (forced) {
     console.log('[HOLM SHOWDOWN] *** ADMIN OVERRIDE active:', forced, '(natural would be', naturalPlayerWins ? 'PLAYER' : 'CHUCKY', ')');
+    try {
+      const w = window as unknown as { __holmForcedWinnerLast?: unknown };
+      w.__holmForcedWinnerLast = {
+        forced,
+        naturalPlayerWins,
+        finalPlayerWins: playerWins,
+        at: new Date().toISOString(),
+      };
+    } catch { /* noop */ }
   }
 
   console.log('[HOLM SHOWDOWN] *** WINNER:', playerWins ? 'PLAYER' : 'CHUCKY', '***');
