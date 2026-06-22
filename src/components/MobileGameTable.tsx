@@ -4785,7 +4785,7 @@ export const MobileGameTable = ({
         console.log('[MOBILE_CHUCKY] Dealer config phase - clearing cached Chucky cards');
         setCachedChuckyCards(null);
         setCachedChuckyActive(false);
-        setCachedChuckyCardsRevealed(0);
+        setCachedChuckyCardsRevealed(0, { writer: 'cacheEffect.dealerConfigPhase', reason: 'dealer-config phase entered' });
         chuckyTargetRevealedRef.current = 0;
         cachedChuckyHandContextRef.current = null;
       }
