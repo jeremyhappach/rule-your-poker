@@ -342,8 +342,16 @@ export function HolmDealDbgPanel() {
   const sect: React.CSSProperties = { borderTop: '1px solid #2a2a2a', padding: '6px 6px 4px', marginTop: 4 };
   const title: React.CSSProperties = { color: '#FFD580', fontWeight: 800, marginBottom: 3 };
 
+  const timeline = getHolmCardTimeline();
+  const frames = getHolmDealFrames();
+  const timelineViolations = getHolmTimelineViolations();
+  void sampleTick;
+
   const copy = async () => {
-    const text = formatHolmDealDbgSnapshot(snapshot);
+    const text = formatHolmDealDbgSnapshot(snapshot) +
+      '\n\n--- TIMELINE ---\n' + JSON.stringify(timeline, null, 2) +
+      '\n\n--- FRAMES (last ' + frames.length + ') ---\n' + JSON.stringify(frames.slice(-60), null, 2) +
+      '\n\n--- TIMELINE VIOLATIONS ---\n' + JSON.stringify(timelineViolations, null, 2);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -351,7 +359,8 @@ export function HolmDealDbgPanel() {
     } catch { /* noop */ }
   };
 
-  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${snapshot.violations.length}`;
+  const totalViol = snapshot.violations.length + timelineViolations.length;
+  const compact = `phase=${snapshot.phase} settled=${snapshot.settledIds.length}/${snapshot.expectedCount} dom=${snapshot.visibility.filter((r) => r.domMounted).length} viol=${totalViol}`;
 
   return (
     <div
