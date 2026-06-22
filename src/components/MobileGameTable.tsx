@@ -164,6 +164,7 @@ function DealAwareShellTimerRail() {
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
+        gameType: 'three-five-seven',
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
@@ -189,6 +190,19 @@ function DealAwareShellTimerRail() {
 
   if (!eligibility.visible) return null;
   return <ShellTimerRail />;
+}
+
+function ThreeFiveSevenTimerGateReporter({
+  onAllowedChange,
+}: {
+  onAllowedChange?: (allowed: boolean) => void;
+}) {
+  const deal = useDealRuntime();
+  const allowed = deal ? deal.timerAllowed : true;
+  useEffect(() => {
+    onAllowedChange?.(allowed);
+  }, [allowed, onAllowedChange]);
+  return null;
 }
 
 function resolveCanonicalFeltKind(gameType: string | undefined): CanonicalFeltGameKind | null {
