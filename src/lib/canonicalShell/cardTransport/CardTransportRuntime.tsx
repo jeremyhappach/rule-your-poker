@@ -471,6 +471,9 @@ function FlyingCard({ card, containerRef, easing }: FlyingCardProps) {
       data-card-transport-intent={card.intent.id}
       data-card-transport-card-id={card.intent.cardId}
       data-card-transport-face={card.intent.face}
+      data-card-transport-flying="true"
+      data-recipient-player-id={card.intent.recipientPlayerId ?? ''}
+
       style={{
         position: 'absolute',
         left: card.from.x,
