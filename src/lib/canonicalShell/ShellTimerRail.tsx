@@ -96,29 +96,46 @@ export function ShellTimerProvider({ children }: { children: React.ReactNode }) 
  */
 export function useShellTimer(state: ShellTimerState | null): void {
   const register = useContext(ShellTimerRegisterContext);
+  const deal = useDealRuntime();
+  const blocked357State = !!deal && !deal.timerAllowed && !!state && state.secondsRemaining > 0;
+  const effectiveState = blocked357State ? null : state;
   const registrationIdRef = useRef<number | null>(null);
   if (registrationIdRef.current === null) {
     registrationIdRef.current = nextShellTimerRegistrationId++;
   }
-  const signature = state
+  const signature = effectiveState
     ? JSON.stringify({
-        s: state.secondsRemaining,
-        t: state.totalSeconds,
-        p: !!state.paused,
-        a: state.actorLabel ?? null,
-        pid: state.activePlayerId ?? null,
-        k: state.identityKey ?? null,
+        s: effectiveState.secondsRemaining,
+        t: effectiveState.totalSeconds,
+        p: !!effectiveState.paused,
+        a: effectiveState.actorLabel ?? null,
+        pid: effectiveState.activePlayerId ?? null,
+        k: effectiveState.identityKey ?? null,
       })
     : 'null';
   useEffect(() => {
     if (!register) return;
-    if (!state) {
+    if (!effectiveState) {
       register(registrationIdRef.current!, null);
       return;
     }
-    register(registrationIdRef.current!, state);
+    register(registrationIdRef.current!, effectiveState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [register, signature]);
+  useEffect(() => {
+    if (!blocked357State || !deal || !state) return;
+    record357DiagnosticViolation('357_TIMER_TICK_DURING_DEAL_BLOCKED', {
+      component: 'useShellTimer',
+      attemptedSeconds: state.secondsRemaining,
+      dealPhase: deal.phase,
+      dealSettled: deal.dealSettled,
+      readyReleased: deal.readyReleased,
+    }, {
+      handContextId: deal.handContextId,
+      phase: deal.phase,
+      component: 'PLAYER_HAND',
+    });
+  }, [blocked357State, deal, deal?.handContextId, deal?.phase, deal?.dealSettled, deal?.readyReleased, state]);
   useEffect(() => {
     return () => {
       register?.(registrationIdRef.current!, null);
