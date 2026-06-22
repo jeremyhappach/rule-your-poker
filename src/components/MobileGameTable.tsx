@@ -175,6 +175,22 @@ const CANONICAL_SHELL_VISUAL_ENABLED =
  * canonical deal animation by mounting all opponent cards in a single
  * React commit (which made domMountAt == firstVisibleAt < settleAt).
  */
+/**
+ * HolmOpponentCardBackSlot — strict anchor/card split.
+ *
+ * Outer container is a layout-stable invisible spacer. It is NOT a card:
+ * no `data-holm-card-id`, no `data-holm-renderer`, no card markers, not
+ * counted by the ownership scanner. It exists only to reserve fan
+ * geometry so settled cards land in the same x-positions they will
+ * occupy after settle.
+ *
+ * The actual `CanonicalCardBack` (with `data-holm-card-id`) mounts ONLY
+ * when `deal.isSettled(cardId)`. Before settle, the slot's visible
+ * width is zero — no painted DOM that the DOM scanner can mistake for
+ * a card. The opp-stack flight target itself is owned by
+ * `GameplayOpponentSeatLayer` via `[data-card-anchor="opp-stack-{pos}"]`,
+ * not by this slot.
+ */
 function HolmOpponentCardBackSlot({
   index,
   cardId,
@@ -188,57 +204,47 @@ function HolmOpponentCardBackSlot({
 }) {
   const deal = useDealRuntime();
   const settled = deal ? deal.isSettled(cardId) : true;
-  const slotStyle: React.CSSProperties = {
+  const containerStyle: React.CSSProperties = {
+    position: 'relative',
     width: 12,
     height: 20,
     marginLeft: index > 0 ? '-5px' : '0',
     zIndex: cardCount - index,
-    animationDelay: hasFolded ? `${index * 0.05}s` : '0s',
   };
-  if (!settled) {
-    return (
-      <>
-        <HolmOwnershipBeacon
-          cardId={cardId}
-          renderer="MobileGameTable.holmCanonicalSeat.cardBacks.pending"
-          componentName="HolmOpponentCardBackSlot"
-          handContextId={deal?.handContextId ?? null}
-          phase={deal?.phase ?? 'NO_RUNTIME'}
-          renderReason="not-settled-placeholder"
-        />
-        <div
-          data-holm-card-id={cardId}
-          data-holm-renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
-          data-holm-component="OPPONENT"
-          data-holm-slot-pending="1"
-          style={slotStyle}
-          aria-hidden="true"
-        />
-      </>
-    );
-  }
   return (
-    <>
-      <HolmOwnershipBeacon
-        cardId={cardId}
-        renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
-        componentName="HolmOpponentCardBackSlot"
-        handContextId={deal?.handContextId ?? null}
-        phase={deal?.phase ?? 'NO_RUNTIME'}
-        renderReason="settled-cardback"
-      />
-      <CanonicalCardBack
-        widthPx={12}
-        heightPx={20}
-        variant="flat"
-        dataAttrs={{
-          'data-holm-card-id': cardId,
-          'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
-          'data-holm-component': 'OPPONENT',
-        }}
-        style={slotStyle}
-      />
-    </>
+    <div
+      style={containerStyle}
+      data-holm-opp-slot-pending={settled ? undefined : '1'}
+      aria-hidden={settled ? undefined : 'true'}
+    >
+      {settled && (
+        <>
+          <HolmOwnershipBeacon
+            cardId={cardId}
+            renderer="MobileGameTable.holmCanonicalSeat.cardBacks"
+            componentName="HolmOpponentCardBackSlot"
+            handContextId={deal?.handContextId ?? null}
+            phase={deal?.phase ?? 'NO_RUNTIME'}
+            renderReason="settled-cardback"
+          />
+          <CanonicalCardBack
+            widthPx={12}
+            heightPx={20}
+            variant="flat"
+            dataAttrs={{
+              'data-holm-card-id': cardId,
+              'data-holm-renderer': 'MobileGameTable.holmCanonicalSeat.cardBacks',
+              'data-holm-component': 'OPPONENT',
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              animationDelay: hasFolded ? `${index * 0.05}s` : '0s',
+            }}
+          />
+        </>
+      )}
+    </div>
   );
 }
 
@@ -478,12 +484,22 @@ function UseHolmSelfHand<T>({
     () => getHolmSelfDealCardIds({ handContextId: baseHandContextId, players, buckPosition, selfPlayerId: currentPlayerId }),
     [baseHandContextId, players, buckPosition, currentPlayerId],
   );
+  // EXPLICIT 1:1 self-ordinal → settled mapping.
+  //
+  // selfCardIds is built in self-ordinal order from the buck-first ring
+  // (e.g. hand-1, hand-5, hand-9, hand-13 for a 4-handed table). For
+  // each self ordinal i, render currentPlayerCards[i] iff that ordinal
+  // has been canonically settled. Cards appear in self-ordinal order;
+  // never bulk-flash, never fall through to authoritative until the
+  // canonical Holm deal completes (phase === GAMEPLAY).
   const effectiveCards = useMemo(() => {
     if (!deal || deal.gameType !== 'holm-game' || deal.phase === 'GAMEPLAY') return cards;
-    return cards.filter((_card, index) => {
-      const cardId = selfCardIds[index];
-      return !!cardId && deal.isSettled(cardId);
-    });
+    const out: T[] = [];
+    for (let i = 0; i < selfCardIds.length; i++) {
+      const cid = selfCardIds[i];
+      if (cid && deal.isSettled(cid) && cards[i] != null) out.push(cards[i]);
+    }
+    return out;
   }, [cards, deal, selfCardIds]);
   const settledSelfCardIds = useMemo(
     () => selfCardIds.filter((cardId) => deal?.isSettled(cardId)),
