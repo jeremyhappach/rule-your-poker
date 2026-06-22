@@ -428,19 +428,26 @@ export function Use357SelfHand<T>({
   const renderCountRef = useRef(0);
   renderCountRef.current += 1;
 
-  // Cache the longest authoritative cards array seen for this hand. If
-  // the upstream DB transiently empties `cards` between waves (e.g. r1→r2
-  // round flip clearing then re-populating), we fall back to the cached
-  // array so previously-settled cards never disappear — even for one
-  // frame. The cache resets on hand boundary via DealRuntime remount.
-  const handKey = deal?.handContextId ?? 'no-runtime';
-  const cacheRef = useRef<{ handKey: string; cards: T[]; rendered: T[] }>({ handKey, cards: [], rendered: [] });
-  if (cacheRef.current.handKey !== handKey) {
-    cacheRef.current = { handKey, cards: [], rendered: [] };
+  // ── Self-hand cache (refined semantics) ───────────────────────────
+  // cacheKey = baseHandContextId + playerId
+  //   baseHandContextId = deal.handContextId = `${gameId}#h${epoch}`
+  //   DOES NOT include round (r1/r2/r3). DealRuntime persists across
+  //   rounds within a base hand and remounts only at hand boundary.
+  //
+  // Contract:
+  //   - Within a single base hand: cache may refuse to shrink (sticky).
+  //   - On baseHandContextId change: HARD RESET — destroy previous cache,
+  //     start empty, rebuild exclusively from new ownership claims.
+  //   - Transient authoritative empty (e.g. 7 → [] → 7): stick at 7.
+  const baseHandContextId = deal?.handContextId ?? 'no-runtime';
+  const cacheKey = `${baseHandContextId}::${currentPlayerId || 'no-player'}`;
+  const cacheRef = useRef<{ cacheKey: string; cards: T[]; rendered: T[] }>({ cacheKey, cards: [], rendered: [] });
+  if (cacheRef.current.cacheKey !== cacheKey) {
+    // HARD RESET at hand boundary — never carry rendered cards across hands.
+    cacheRef.current = { cacheKey, cards: [], rendered: [] };
   }
   if (cards.length >= cacheRef.current.cards.length) {
     cacheRef.current.cards = cards;
-    cacheRef.current.handKey = handKey;
   }
   const sourceCards = cards.length >= cacheRef.current.cards.length ? cards : cacheRef.current.cards;
 
@@ -458,18 +465,30 @@ export function Use357SelfHand<T>({
   const unresolvedSelfCards: Array<{ intentId: string | null; cardId: string | null; claimedIndex: number }> = [];
   if (deal && (deal.phase === 'DEALING' || deal.phase === 'PRE_DEAL')) {
     for (let i = 0; i < allowed; i++) {
+      // Try authoritative first, then previously-rendered card for the
+      // same index within the same base hand. NEVER render a cardback —
+      // if face resolution fails, store unresolved claim and log
+      // 357_SELF_CARD_FACE_UNRESOLVED so the next render retries from
+      // authoritative once DB catches up.
       const card = sourceCards[i] ?? cacheRef.current.rendered[i];
-      if (card) resolvedCards.push(card);
-      else unresolvedSelfCards.push({ intentId: settledCardIds[i] ?? null, cardId: settledCardIds[i] ?? null, claimedIndex: i });
+      if (card) {
+        resolvedCards.push(card);
+      } else {
+        unresolvedSelfCards.push({
+          intentId: settledCardIds[i] ?? null,
+          cardId: settledCardIds[i] ?? null,
+          claimedIndex: i,
+        });
+      }
     }
   } else {
     resolvedCards.push(...sourceCards.slice(0, Math.min(allowed, sourceCards.length)));
   }
-  // STICKINESS: once a card index has been rendered for this hand, never
-  // shrink below it. If the authoritative cards array transiently empties
-  // (DB refresh between waves, hand boundary lag), fall back to the
-  // previously-rendered card object so it does NOT disappear.
-  if (resolvedCards.length < cacheRef.current.rendered.length && handKey === cacheRef.current.handKey) {
+  // STICKINESS (within same base hand only): once a card index has been
+  // rendered for this hand, never shrink below it. Guarded by cacheKey
+  // equality — on hand boundary the cache is already reset above, so this
+  // fallback cannot leak prior-hand cards.
+  if (resolvedCards.length < cacheRef.current.rendered.length && cacheRef.current.cacheKey === cacheKey) {
     for (let i = resolvedCards.length; i < cacheRef.current.rendered.length; i++) {
       const prev = cacheRef.current.rendered[i];
       if (prev) resolvedCards.push(prev);
@@ -482,12 +501,14 @@ export function Use357SelfHand<T>({
   const effectiveCards = resolvedCards;
   useEffect(() => {
     if (!deal?.handContextId || unresolvedSelfCards.length === 0) return;
-    const authoritativeHandIds = sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`);
+    const authoritativeCardIds = sourceCards.map((c: any) => `${c?.rank ?? '?'}-${c?.suit ?? '?'}`);
     unresolvedSelfCards.forEach((missing) => {
       record357DiagnosticViolation('357_SELF_CARD_FACE_UNRESOLVED', {
-        ...missing,
+        baseHandContextId,
         playerId: currentPlayerId,
-        authoritativeHandIds,
+        cardId: missing.cardId,
+        claimedIndex: missing.claimedIndex,
+        authoritativeCardIds,
         dealPhase: phase,
       }, {
         handContextId: deal.handContextId,
@@ -496,7 +517,7 @@ export function Use357SelfHand<T>({
         playerId: currentPlayerId,
       });
     });
-  }, [deal?.handContextId, unresolvedSelfCards.length, currentPlayerId, phase, sourceCards]);
+  }, [deal?.handContextId, baseHandContextId, unresolvedSelfCards.length, currentPlayerId, phase, sourceCards]);
   useEffect(() => {
     if (!deal?.handContextId || !currentPlayerId) return;
     dealDbgUpsertOwnership(deal.handContextId, currentPlayerId, {
