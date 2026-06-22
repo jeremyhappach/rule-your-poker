@@ -39,6 +39,7 @@ import { useCardTransportInternal } from './CardTransportProvider';
 
 interface DealContextValue {
   handContextId: string;
+  gameType: string | null;
   phase: DealPhase;
   expectedCount: number;
   settledCardIds: ReadonlySet<string>;
@@ -66,6 +67,7 @@ const DealContext = createContext<DealContextValue | null>(null);
 export interface DealRuntimeProps {
   /** Authoritative hand identity. Remount when this changes. */
   handContextId: string;
+  gameType?: string | null;
   children: ReactNode;
 }
 
@@ -73,7 +75,7 @@ export interface DealRuntimeProps {
  * Mount DealRuntime with a `key={handContextId}` from the host so a new
  * hand naturally resets state via remount.
  */
-export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
+export function DealRuntime({ handContextId, gameType = null, children }: DealRuntimeProps) {
   const [phase, setPhase] = useState<DealPhase>('PRE_DEAL');
   const [expectedCount, setExpectedCount] = useState(0);
   const [settledCardIds, setSettledCardIds] = useState<Set<string>>(() => new Set());
@@ -196,12 +198,13 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
   const value = useMemo<DealContextValue>(
     () => ({
       handContextId,
+      gameType,
       phase,
       expectedCount,
       settledCardIds,
       dealSettled: expectedCount > 0 && settledCardIds.size >= expectedCount,
       readyReleased: expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
-      timerAllowed: phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0,
+      timerAllowed: gameType !== 'three-five-seven' || (phase === 'GAMEPLAY' && expectedCount > 0 && settledCardIds.size >= expectedCount && activeIntentsForHand === 0),
       isSettled,
       getSettledCountForPlayer,
       getSettledCardIdsForPlayer,
@@ -209,7 +212,7 @@ export function DealRuntime({ handContextId, children }: DealRuntimeProps) {
       beginWave,
       enterGameplay,
     }),
-    [handContextId, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay],
+    [handContextId, gameType, phase, expectedCount, settledCardIds, activeIntentsForHand, isSettled, getSettledCountForPlayer, getSettledCardIdsForPlayer, beginDeal, beginWave, enterGameplay],
   );
 
   return <DealContext.Provider value={value}>{children}</DealContext.Provider>;
