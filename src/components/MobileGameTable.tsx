@@ -5577,6 +5577,7 @@ export const MobileGameTable = ({
       !shouldHideForTabling && !hideBacksDuringWin && showCardBacks && (cardCountToShow > 0 || prevWaveCountFor357(currentRound ?? 0) > 0) && (
         <Use357OppCount
           playerId={player.id}
+          seat={player.position}
           baseline={prevWaveCountFor357(currentRound ?? 0)}
           defaultCount={cardCountToShow}
           expected={totalAfterWaveFor357(currentRound ?? 0) || cardCountToShow}
