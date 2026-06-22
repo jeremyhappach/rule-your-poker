@@ -171,6 +171,11 @@ import {
   chuckyVisualResetForHand,
 } from "@/lib/canonicalShell/cardTransport/holmChuckyRevealDbg";
 import { recordHolmTimelineEvent } from "@/lib/canonicalShell/cardTransport/holmWartimeForensics";
+import {
+  recordSoloStateChange,
+  recordChuckyVisualTrigger,
+  captureStack,
+} from "@/lib/canonicalShell/cardTransport/holmSoloStateTrace";
 import { dealDbgUpsert } from "@/lib/canonicalShell/cardTransport/cardTransportDbg";
 import { getCanonicalTimerEligibility } from "@/lib/canonicalShell/timerEligibility";
 
