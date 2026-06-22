@@ -5001,14 +5001,30 @@ export const MobileGameTable = ({
 
     const effectInstance = ++chuckyEffectInstanceRef.current;
     const instanceId = chuckyInstanceIdRef.current;
+    const enterRenderSeq = chuckyRenderSeqRef.current;
+
+    // CALLGRAPH trail: every synchronous step inside the effect body.
+    const callgraph: Array<{ t: number; renderSeq: number; step: string; info?: Record<string, unknown> }> = [];
+    const step = (label: string, info?: Record<string, unknown>) => {
+      callgraph.push({
+        t: typeof performance !== 'undefined' ? performance.now() : Date.now(),
+        renderSeq: chuckyRenderSeqRef.current,
+        step: label,
+        info,
+      });
+    };
+    step('EFFECT_BODY_ENTER', { changedDeps: oldDeps ? Object.keys(changed) : null });
 
     recordHolmTimelineEvent('CHUCKY_EFFECT_ENTER', {
       instanceId,
       effectInstance,
+      renderSeq: enterRenderSeq,
       handContextId: handContextId ?? null,
       deps: newDeps,
       changedSinceLastEnter: oldDeps ? changed : null,
     }, handContextId ?? null);
+    step('recordHolmTimelineEvent(CHUCKY_EFFECT_ENTER)');
+
 
     chuckyVisualMarkRevealSequenceScheduled(handContextId ?? null);
     const schedStack = captureStack();
