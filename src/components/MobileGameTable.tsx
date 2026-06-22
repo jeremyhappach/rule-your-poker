@@ -4083,7 +4083,20 @@ export const MobileGameTable = ({
   // 4. We've locked showdown mode (prevents snap-back after announcement clears)
   const hasExposedPlayers = players.some(p => isPlayerCardsExposed(p.id));
   // Check if we're showing an announcement (either normal round result or game-over)
-  const isShowingAnnouncement = gameType === 'holm-game' && !!lastRoundResult && (awaitingNextRound || isGameOver);
+  // Result announcement must wait for the Chucky VISUAL reveal to finish.
+  // Otherwise the announcement can render before / during the flips, gating
+  // observers and producing the "rapid reveal after announcement" artifact.
+  const chuckyVisualRevealPending =
+    gameType === 'holm-game' &&
+    !!cachedChuckyActive &&
+    !!cachedChuckyCards &&
+    cachedChuckyCards.length > 0 &&
+    cachedChuckyCardsRevealed < cachedChuckyCards.length;
+  const isShowingAnnouncement =
+    gameType === 'holm-game' &&
+    !!lastRoundResult &&
+    (awaitingNextRound || isGameOver) &&
+    !chuckyVisualRevealPending;
   // Include Chucky active state to prevent flicker when community cards start revealing
   const isChuckyRevealing = gameType === 'holm-game' && (chuckyActive || cachedChuckyActive);
   const isAnyPlayerInShowdownRaw = gameType === 'holm-game' && (hasExposedPlayers || isShowingAnnouncement || isChuckyRevealing);
@@ -4795,10 +4808,20 @@ export const MobileGameTable = ({
   // requires sequential reveal, not per-card settled callbacks.
   const [holmBarrierTick, setHolmBarrierTick] = useState(0);
   useEffect(() => subscribeHolmHandReady(() => setHolmBarrierTick(t => t + 1)), []);
+  // Chucky-specific barrier (audit RC3). isHolmHandReady can be satisfied by
+  // the hands/community waves alone in some paths; the visual stepper must
+  // additionally require that the chucky wave's expected cards are ALL
+  // settled for THIS handContextId and that the local cache matches.
   const chuckyBarrierOpen =
     gameType === 'holm-game' &&
     !!handContextId &&
-    isHolmHandReady(handContextId);
+    isHolmHandReady(handContextId) &&
+    holmDealMetaSnap.handContextId === handContextId &&
+    holmDealMetaSnap.chuckyExpected > 0 &&
+    holmDealMetaSnap.chuckySettled >= holmDealMetaSnap.chuckyExpected &&
+    cachedChuckyHandContextRef.current === handContextId &&
+    !!cachedChuckyCards &&
+    cachedChuckyCards.length >= holmDealMetaSnap.chuckyExpected;
   void holmBarrierTick; // re-evaluates above on barrier flip
 
   // War-time forensics: hook the barrier flip → allChuckySettled marker.
@@ -8063,8 +8086,19 @@ export const MobileGameTable = ({
           const liveLoneSoloCards = liveLoneSoloPlayer
             ? getPlayerCards(liveLoneSoloPlayer.id)
             : [];
+          // Audit RC2: TABLED_SELF live path must be hand-context-scoped.
+          // Require an explicit locked solo player whose lock was captured
+          // FOR this handContextId, and that the deal is past PRE_DEAL/DEALING.
+          const liveLockMatchesHand =
+            !!soloVsChuckyPlayerIdLocked &&
+            soloVsChuckyLockHandRef.current === handContextId &&
+            liveLoneSoloPlayerId === soloVsChuckyPlayerIdLocked;
           const hasLiveLonePlayer =
-            !!isSoloVsChucky && !!liveLoneSoloPlayer && liveLoneSoloCards.length > 0;
+            !!isSoloVsChucky &&
+            !!liveLoneSoloPlayer &&
+            liveLoneSoloCards.length > 0 &&
+            liveLockMatchesHand &&
+            !holmDealNotReady;
 
           // Wave 5D follow-up — capture / re-use the persistence snapshot.
           // The snapshot is keyed on handContextId and survives every
