@@ -775,12 +775,16 @@ export function ThreeFiveSevenForensicsPanel() {
                   <Row label="ownershipFloor (prevWave)" value={String(snap.selfHand.ownershipFloor ?? '—')} />
                   <Row label="ownershipFloorApplied" value={String(snap.selfHand.ownershipFloorApplied ?? '—')} />
                   {cBadDom ? <div style={{ ...violation, padding: '4px 2px' }}>⚠ actualRenderedDomCount &lt; effectiveLength</div> : null}
+                  <div style={{ marginTop: 4, color: '#9fd6ff', fontWeight: 700 }}>ACTUAL SELF RENDERS</div>
+                  {snap.handRenders.filter((h) => h.component === 'SELF').map((h) => <HandRenderRow key={h.id} h={h} />)}
                 </div>
               )}
 
               {activeSection === 'D' && (
                 <div style={sect}>
                   <div style={sectTitle}>D · OPPONENT FORENSICS</div>
+                  <div style={{ color: '#9fd6ff', fontWeight: 700 }}>ACTUAL OPPONENT RENDERS</div>
+                  {snap.handRenders.filter((h) => h.component === 'OPPONENT').map((h) => <HandRenderRow key={h.id} h={h} />)}
                   {snap.opponents.length === 0 ? <div style={{ opacity: 0.6 }}>(no opponents in ownership)</div> : snap.opponents.map((o) => {
                     const bad = (o.visibleCount ?? 0) > o.actualRenderedDomCount;
                     return (
