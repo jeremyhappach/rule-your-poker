@@ -7,8 +7,14 @@ import {
   recordThreeFiveSevenHandRender,
   unregisterThreeFiveSevenHandRender,
 } from "@/lib/canonicalShell/cardTransport/threeFiveSevenForensicsStore";
+import {
+  record357HandLifecycle,
+  record357FanLifecycle,
+  record357CardOwnership,
+} from "@/lib/canonicalShell/cardTransport/threeFiveSevenPresentationForensics";
 
 let __playerHandForensicsSeq = 0;
+
 
 interface PlayerHandProps {
   cards: CardType[];
