@@ -491,9 +491,19 @@ function getHolmSelfDealCardIds({
   const active = players
     .filter((p) => p.status === 'active' && !p.sitting_out)
     .sort((a, b) => a.position - b.position);
-  const start = active.findIndex((p) => p.position === buckPosition);
-  if (start < 0) return [];
-  const ring = [...active.slice(start), ...active.slice(0, start)];
+  if (!active.length) return [];
+  // CLOCKWISE from buck — must match HolmDealOrchestrator.
+  const positions = active.map(p => p.position);
+  const byPos = new Map(active.map(p => [p.position, p]));
+  if (!byPos.has(buckPosition)) return [];
+  const ring: Player[] = [];
+  let cur = buckPosition;
+  for (let i = 0; i < active.length; i++) {
+    const seat = byPos.get(cur);
+    if (!seat) return [];
+    ring.push(seat);
+    if (i < active.length - 1) cur = nextClockwise(cur, positions);
+  }
   const ids: string[] = [];
   let dealIndex = 0;
   for (let round = 0; round < cardsPerPlayer; round++) {
