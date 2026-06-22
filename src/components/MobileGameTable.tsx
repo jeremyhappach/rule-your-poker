@@ -5055,11 +5055,17 @@ export const MobileGameTable = ({
         if (newDeps[k] !== nextSnapshot[k]) diff[k] = { from: newDeps[k], to: nextSnapshot[k] };
       }
       const reasonKeys = Object.keys(diff);
+      const cleanupReason = reasonKeys.length === 0
+        ? 'NO_DEP_DIFF (unmount or identical re-run)'
+        : reasonKeys.join(',');
       recordHolmTimelineEvent('CHUCKY_EFFECT_CLEANUP', {
+        instanceId,
+        effectInstance,
         handContextId: handContextId ?? null,
         timeoutId: timeoutSeq,
         firedBeforeCleanup: fired,
-        reason: reasonKeys.length === 0 ? 'NO_DEP_DIFF (unmount or identical re-run)' : reasonKeys.join(','),
+        reason: cleanupReason,
+        cleanupReason,
         changedDeps: diff,
         oldDeps: newDeps,
         newDeps: nextSnapshot,
