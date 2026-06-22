@@ -38,7 +38,7 @@ export const MobilePlayerTimer = ({
   const deal = useDealRuntime();
   const eligibility = deal
     ? getCanonicalTimerEligibility({
-        gameType: 'three-five-seven',
+        gameType: deal.gameType,
         dealPhase: deal.phase,
         dealSettled: deal.dealSettled,
         readyReleased: deal.readyReleased,
