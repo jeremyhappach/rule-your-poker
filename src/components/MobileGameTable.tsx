@@ -2400,6 +2400,13 @@ export const MobileGameTable = ({
   // through this wrapper so we capture (a) STATE_CHANGED transitions and
   // (b) RESET events with writer attribution. NO logic changes.
   const lastChuckyRevealedRef = useRef<number>(0);
+  // Stable per-MobileGameTable instance id. Declared here (instead of next
+  // to the chucky stepper effect) so the state-setter wrapper can stamp it
+  // onto CHUCKY_REVEALED_STATE_CHANGED. WAR-TIME ONLY.
+  const chuckyInstanceIdRef = useRef<string>('');
+  if (!chuckyInstanceIdRef.current) {
+    chuckyInstanceIdRef.current = `mgt#${Math.random().toString(36).slice(2, 10)}`;
+  }
   const setCachedChuckyCardsRevealed = useCallback(
     (
       next: number | ((prev: number) => number),
