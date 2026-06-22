@@ -2427,7 +2427,7 @@ export const MobileGameTable = ({
   // cachedChuckyCardsRevealed is a LOCAL, MONOTONIC, SEQUENTIAL render count.
   // The incoming chuckyCardsRevealed prop is treated as a TARGET only; a stepper
   // effect below advances the rendered count one card at a time toward that target.
-  const [cachedChuckyCards, setCachedChuckyCards] = useState<CardType[] | null>(null);
+  const [cachedChuckyCards, _setCachedChuckyCardsRaw] = useState<CardType[] | null>(null);
   const [cachedChuckyActive, setCachedChuckyActive] = useState<boolean>(false);
   const [cachedChuckyCardsRevealed, _setCachedChuckyCardsRevealedRaw] = useState<number>(0);
   // Wartime forensics: every writer of cachedChuckyCardsRevealed is routed
@@ -2441,12 +2441,39 @@ export const MobileGameTable = ({
   if (!chuckyInstanceIdRef.current) {
     chuckyInstanceIdRef.current = `mgt#${Math.random().toString(36).slice(2, 10)}`;
   }
+  const cachedChuckyCardsStateRef = useRef<CardType[] | null>(cachedChuckyCards);
+  cachedChuckyCardsStateRef.current = cachedChuckyCards;
   // WAR-TIME CALLGRAPH: per-render seq incremented on EVERY render of MobileGameTable.
   // Stamped on every Chucky event so we can prove render→effect ordering.
   const chuckyRenderSeqRef = useRef(0);
   chuckyRenderSeqRef.current += 1;
   // Track chuckyCards PROP identity (same contents, new array reference each render = parent churn).
   const chuckyCardsPropIdentityRef = useRef<{ ref: unknown; contents: string; renderSeq: number } | null>(null);
+  const setCachedChuckyCards = useCallback(
+    (
+      next: CardType[] | null | ((prev: CardType[] | null) => CardType[] | null),
+      writerMeta?: { writer: string; reason?: string },
+    ) => {
+      _setCachedChuckyCardsRaw((prev) => {
+        const resolved = typeof next === 'function' ? (next as (p: CardType[] | null) => CardType[] | null)(prev) : next;
+        recordHolmTimelineEvent('CHUCKY_ARRAY_IDENTITY_CHURN', {
+          instanceId: chuckyInstanceIdRef.current,
+          renderSeq: chuckyRenderSeqRef.current,
+          writer: writerMeta?.writer ?? 'unknown',
+          reason: writerMeta?.reason ?? null,
+          oldRef: __chuckyAuditRefId(prev),
+          newRef: __chuckyAuditRefId(resolved),
+          oldHash: __chuckyAuditCardsHash(prev),
+          newHash: __chuckyAuditCardsHash(resolved),
+          sameContents: __chuckyAuditCardsHash(prev) === __chuckyAuditCardsHash(resolved),
+          handContextId: handContextIdRef.current ?? null,
+          phase: roundStatusRef.current ?? null,
+        }, handContextIdRef.current ?? null);
+        return resolved;
+      });
+    },
+    [],
+  );
   const setCachedChuckyCardsRevealed = useCallback(
     (
       next: number | ((prev: number) => number),
