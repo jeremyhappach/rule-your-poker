@@ -8778,8 +8778,18 @@ export const MobileGameTable = ({
                                   // placeholder backs, no isHidden
                                   // expansion, no expectedCardCount
                                   // pre-render. 0→1→2→3 strictly.
-                                   return (
+                                    return (
                                      <>
+                                       {gameType === 'holm-game' && (
+                                         <HolmSoloRootRegistrar
+                                           root="SELF_HAND"
+                                           mounted={effectiveCards.length > 0}
+                                           cardIds={effectiveCards.map((c) => `${c.rank}${c.suit}`)}
+                                           handContextId={boundary.baseHandContextId}
+                                           soloDeclared={!!isSoloVsChucky}
+                                           phase={dealPhase}
+                                         />
+                                       )}
                                        {gameType === 'holm-game' && boundary.rawClaimedCardIds.map((cid) => (
                                          <HolmOwnershipBeacon
                                            key={`holm-self-beacon-${cid}`}
