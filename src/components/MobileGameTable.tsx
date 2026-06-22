@@ -8810,6 +8810,7 @@ export const MobileGameTable = ({
                     handContextId={handContextId ?? null}
                     soloDeclared={!!isSoloVsChucky}
                     phase={cachedChuckyCardsRevealed >= (cachedChuckyCards?.length ?? 0) ? 'SHOWDOWN' : 'CHUCKY_REVEAL'}
+                    caller="MobileGameTable.chuckyStage"
                   />
                   <div
                     className={cn(
