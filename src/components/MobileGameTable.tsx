@@ -4578,8 +4578,10 @@ export const MobileGameTable = ({
   useEffect(() => {
     if (gameType !== 'holm-game') return;
     if (!cachedChuckyActive) return;
-    if (!holmCommunityFullyRevealed) return; // Latch: community must finish first
-    if (!chuckyBarrierOpen) return;           // Barrier: all chucky settled
+    // BARRIER ONLY: All chucky cards must be settled (DealRuntime →
+    // GAMEPLAY → markHolmHandReady). Do NOT gate on community reveal —
+    // announcement is cosmetic and must not delay reveal sequencing.
+    if (!chuckyBarrierOpen) return;
     const total = cachedChuckyCards?.length ?? 0;
     if (total <= 0) return;
     // Override the server target — once barrier is open we reveal ALL.
@@ -4589,7 +4591,7 @@ export const MobileGameTable = ({
       setCachedChuckyCardsRevealed(prev => (prev < total ? prev + 1 : prev));
     }, 250);
     return () => clearTimeout(t);
-  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, holmCommunityFullyRevealed, chuckyBarrierOpen, cachedChuckyCards]);
+  }, [gameType, cachedChuckyActive, cachedChuckyCardsRevealed, chuckyCardsRevealed, chuckyBarrierOpen, cachedChuckyCards]);
 
 
   // ── Holm reveal-render-boundary instrumentation (L2) ────────
