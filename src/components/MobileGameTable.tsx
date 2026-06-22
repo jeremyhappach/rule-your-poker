@@ -2671,6 +2671,60 @@ export const MobileGameTable = ({
     setShowdownModeLocked(false);
   }, [handContextId]);
 
+  // ── Explicit TABLED_SELF / CHUCKY_TABLED destroy-on-NEW_HAND_STARTED ──
+  // Ownership contract:
+  //   For a given handContextId, EITHER SELF_HAND OR TABLED_SELF.
+  // When a new handContextId arrives and the previous hand was a solo
+  // (TABLED_SELF was alive), we MUST immediately:
+  //   - destroy TABLED_SELF
+  //   - destroy CHUCKY_TABLED
+  //   - clear solo snapshots
+  //   - clear reveal caches (cachedChuckyCards / cachedChuckyActive /
+  //     cachedChuckyCardsRevealed / chuckyTargetRevealedRef)
+  //   - clear cachedChuckyHandContextRef
+  // and emit TABLED_SELF_UNMOUNT(reason=NEW_HAND_STARTED) into the
+  // wartime timeline. This DOES NOT wait for resetHandUiCaches (which is
+  // deferred during win animations) and DOES NOT depend on
+  // shouldDeferHandReset. Solo cross-hand carryover is illegal regardless
+  // of payout animation state.
+  const prevHandWasSoloRef = useRef(false);
+  const prevHandContextForSoloDestroyRef = useRef<string | null>(handContextId ?? null);
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    // Track wasSolo while the current hand is alive.
+    if (soloVsChuckyTableLocked || isSoloVsChuckyRaw || cachedChuckyActive || (cachedChuckyCards && cachedChuckyCards.length > 0)) {
+      prevHandWasSoloRef.current = true;
+    }
+  }, [gameType, soloVsChuckyTableLocked, isSoloVsChuckyRaw, cachedChuckyActive, cachedChuckyCards]);
+
+  useEffect(() => {
+    if (gameType !== 'holm-game') return;
+    const prev = prevHandContextForSoloDestroyRef.current;
+    const next = handContextId ?? null;
+    if (prev === next) return;
+    const wasSolo = prevHandWasSoloRef.current;
+    prevHandContextForSoloDestroyRef.current = next;
+    prevHandWasSoloRef.current = false;
+    chuckyVisualResetForHand(next);
+    if (!wasSolo) return;
+    // Force-destroy regardless of deferral state.
+    setCachedChuckyCards(null);
+    setCachedChuckyActive(false);
+    setCachedChuckyCardsRevealed(0);
+    chuckyTargetRevealedRef.current = 0;
+    cachedChuckyHandContextRef.current = null;
+    lonePlayerStageSnapshotRef.current = null;
+    setSoloVsChuckyTableLocked(false);
+    setSoloVsChuckyPlayerIdLocked(null);
+    soloVsChuckyAnimatedRef.current = false;
+    recordHolmTimelineEvent('TABLED_SELF_UNMOUNT', {
+      reason: 'NEW_HAND_STARTED',
+      prevHandContextId: prev,
+      nextHandContextId: next,
+    }, prev);
+  }, [gameType, handContextId]);
+
+
   // Capture the solo player id once, so we can keep tabling even if current_decision gets cleared during payout
   useEffect(() => {
     if (soloVsChuckyPlayerIdLocked) return;
